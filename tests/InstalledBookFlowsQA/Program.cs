@@ -185,7 +185,15 @@ internal static class Program
                 Require(saved.Vouchers.Count == 2 && saved.Vouchers.Single(v => v.Number == 2).Lines[0].Summary == "安装合成摘要：支付办公费", "explicit save persists exactly the selected summary without an extra voucher");
                 AssertOriginal(saved); editor = OpenDraft();
                 Require(GridSummary(editor).Contains("安装合成摘要：支付办公费", StringComparison.Ordinal), "normal editor reopen reads persisted selected summary");
-                Capture("summary-refill-reopened"); Close(editor);
+                Capture("summary-refill-reopened");
+                Invoke(editor, Id("PickSummaryButton")); picker = Window(t => t == "选择常用摘要"); SelectSummary(picker); Invoke(picker, Id("ChooseSummary"));
+                Until(() => FocusedWithinGridCell(editor, 0), "picker success restores actual keyboard focus to current summary edit, after Controls restore callback");
+                ControlKey(0x41); Type("安装合成摘要：支付办公费（继续输入）"); Key(0x0d);
+                Until(() => FocusedWithinGridCell(editor, 1), "native Enter after summary input advances to account cell");
+                Require(GridSummary(editor).Contains("安装合成摘要：支付办公费（继续输入）", StringComparison.Ordinal), "native continued keyboard input actually changes the intended summary row");
+                Capture("summary-native-continuation"); Invoke(editor, Id("SaveButton")); Until(() => !HasWindow("记账凭证"), "explicit continued-input save");
+                Require(Read(bookPath).Vouchers.Single(v => v.Number == 2).Lines[0].Summary == "安装合成摘要：支付办公费（继续输入）", "continued native input persists in the same draft");
+                editor = OpenDraft(); Require(GridSummary(editor).Contains("安装合成摘要：支付办公费（继续输入）", StringComparison.Ordinal), "continued summary input survives normal reopen"); Close(editor);
                 SelectSource(); Invoke(main!, Name("查看 / 修改")); editor = Window(t => t == "记账凭证");
                 Require(!editor.FindFirst(TreeScope.Descendants, Id("PickSummaryButton"))!.Current.IsEnabled, "posted read-only voucher disables summary refill"); Close(editor);
             });
@@ -280,7 +288,7 @@ internal static class Program
                 operators.UpdateOperator(adminSession, directory.Revision, actor.Id, actor.DisplayName, actor.Roles, false);
                 operators.Logout(adminSession);
                 SelectSummary(picker); Invoke(picker, Id("ChooseSummary"));
-                Until(() => !string.IsNullOrWhiteSpace(Text(editor, "ErrorText")), "revoked real operator session rejects summary confirmation");
+                Until(() => Text(editor, "ErrorText").StartsWith("摘要未回填，原输入保留：", StringComparison.Ordinal) && (Text(editor, "ErrorText").Contains("会话", StringComparison.Ordinal) || Text(editor, "ErrorText").Contains("权限", StringComparison.Ordinal)), "revoked real operator session rejects summary confirmation with a summary-specific retained-input reason");
                 Require(GridSummary(editor).Contains("会话撤销前保留输入", StringComparison.Ordinal) && Hash(bookPath) == before, "revocation while actual picker is modal preserves typed input and ledger bytes");
                 Capture("expired-summary-confirmation-rejected");
                 Invoke(editor, Id("SaveButton"));
@@ -324,7 +332,7 @@ internal static class Program
         if (evidence.Length == 0) return;
         var results = ExpectedCases.Select(name => Cases.FirstOrDefault(c => c.name == name) ?? new CaseResult(name, "not-run", "Controller has not reached this case.")).ToArray();
         success = success && results.All(c => c.status == "passed");
-        File.WriteAllText(Path.Combine(evidence, "installed-bookflows.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), productionBaseline = "42c718fa4770f3562b74b76f2bcb89f977bb52f6", originalStaleSourceRevisionExecuted = false, originalStaleSourceRevisionReason = "Owned modal and actual exclusive lease prevent supported concurrent ledger mutation; supported real operator revocation is separately executed, root scope decision required", checks = Checks, cases = results, expectedCases = ExpectedCases }, PayloadManifest.Json));
+        File.WriteAllText(Path.Combine(evidence, "installed-bookflows.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), productionBaseline = "4689e29d654ddf15446b121d5281255b8af4b8f5", unexecutedScenarios = new[] { new { name = "stale-source-revision", status = "not-run", reason = "No supported concurrent ledger mutation is available under the owned modal and real exclusive lease; supported session revocation is separately executed; root scope judgment required" } }, originalStaleSourceRevisionExecuted = false, originalStaleSourceRevisionReason = "Owned modal and actual exclusive lease prevent supported concurrent ledger mutation; supported real operator revocation is separately executed, root scope decision required", checks = Checks, cases = results, expectedCases = ExpectedCases }, PayloadManifest.Json));
     }
     private static void Pass(string name) { Checks.Add(name); Save(false, "In progress"); }
     private static void Require(bool value, string name) { if (!value) throw new InvalidDataException(name); Pass(name); }
@@ -356,6 +364,13 @@ internal static class Program
         var rows = list.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.DataItem)).Cast<AutomationElement>().ToArray();
         ((SelectionItemPattern)rows[1].GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
         Invoke(main, Name("查看 / 修改")); return Window(t => t == "记账凭证");
+    }
+    private static bool FocusedWithinGridCell(AutomationElement editor, int column)
+    {
+        var focused = AutomationElement.FocusedElement;
+        var grid = editor.FindFirst(TreeScope.Descendants, Id("LinesGrid"))!;
+        var cell = ((GridPattern)grid.GetCurrentPattern(GridPattern.Pattern)).GetItem(0, column);
+        return focused.Current.ControlType == ControlType.Edit && cell.Current.BoundingRectangle.Contains(focused.Current.BoundingRectangle);
     }
     private static string GridSummary(AutomationElement editor)
     {
