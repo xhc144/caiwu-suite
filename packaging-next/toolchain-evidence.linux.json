@@ -1,0 +1,24 @@
+{
+  "version": "3.13",
+  "compiler": "Bin/makensis",
+  "compilerSha256": "f91f50108d96726504b0db5aa7cf682b8dbfbcfd180e522a7393d316b5333e71",
+  "sourceDateEpoch": 1790467200,
+  "source": {
+    "url": "https://prdownloads.sourceforge.net/nsis/nsis-3.13-src.tar.bz2?download",
+    "sha256": "a8ffe024602d46b6d766f9e1ce30c324ad2a24daeacd3efc2642d436a0c157ac"
+  },
+  "distribution": {
+    "url": "https://prdownloads.sourceforge.net/nsis/nsis-3.13.zip?download",
+    "sha256": "ba63dffc4410ee89193e1cb5a41989991bd77c61068da17e3156d136b7b0b3d8"
+  },
+  "scons": "4.11.1",
+  "nativeCompiler": "g++ Debian 14.2.0-19",
+  "buildCommand": "PYTHONPATH=/tmp/caiwu-nsis-tools/python-libs SOURCE_DATE_EPOCH=1790467200 python3 -m SCons -j4 VERSION=3.13 VER_MAJOR=3 VER_MINOR=13 VER_REVISION=0 VER_BUILD=0 SKIPSTUBS=all SKIPPLUGINS=all SKIPUTILS=all SKIPMISC=all NSIS_CONFIG_CONST_DATA_PATH=no PREFIX=/workspace/caiwu-suite-delivery/.tools/nsis3.13/Bin install-compiler",
+  "smoke": {
+    "compiled": true,
+    "uninstallerFileInstructionCompiled": true,
+    "repeatedBytesEqual": true,
+    "sha256": "c796a955d5b716c48154820a27a9ccc9d9b93e10ea16a633680e33d62fb7c29c",
+    "executedOnWindows": false
+  }
+}

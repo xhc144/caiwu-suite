@@ -1,0 +1,60 @@
+# Proposed workflow; the integration owner must adopt it under .github/workflows/.
+name: Windows delivery acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: caiwu-delivery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  delivery:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.402
+      - name: Fetch hash-pinned official NSIS without installing it
+        shell: pwsh
+        run: python packaging-next/bootstrap-nsis.py --destination .tools/nsis
+      - name: Build self-contained application and installer with locked NuGet graph
+        shell: pwsh
+        run: >-
+          python packaging-next/build.py --version 0.1.0.1
+          --makensis .tools/nsis/nsis-3.13/makensis.exe
+          --out artifacts/delivery/first
+      - name: Repeat the same build and verify bytes
+        shell: pwsh
+        run: |
+          python packaging-next/build.py --version 0.1.0.1 --makensis .tools/nsis/nsis-3.13/makensis.exe --out artifacts/delivery/repeat --skip-tests
+          if ($LASTEXITCODE -ne 0) { throw 'Repeated build failed.' }
+          foreach ($file in @('caiwu-0.1.0.1-win-x64-setup.exe', 'caiwu-0.1.0.1-win-x64-portable.zip')) {
+            if ((Get-FileHash "artifacts/delivery/first/$file").Hash -ne (Get-FileHash "artifacts/delivery/repeat/$file").Hash) { throw "Reproducibility mismatch: $file" }
+          }
+      - name: Build next version for upgrade rejection acceptance
+        shell: pwsh
+        run: >-
+          python packaging-next/build.py --version 0.1.0.2
+          --makensis .tools/nsis/nsis-3.13/makensis.exe
+          --out artifacts/delivery/next --skip-tests
+      - name: Install, run self-authored WPF, enforce update gates and uninstall
+        shell: pwsh
+        run: >-
+          ./packaging-next/Test-WindowsDelivery.ps1
+          -Installer "${{ github.workspace }}/artifacts/delivery/first/caiwu-0.1.0.1-win-x64-setup.exe"
+          -UpgradeInstaller "${{ github.workspace }}/artifacts/delivery/next/caiwu-0.1.0.2-win-x64-setup.exe"
+          -OutputDirectory "${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: caiwu-delivery-${{ github.run_id }}
+          path: |
+            artifacts/delivery/first/*setup.exe
+            artifacts/delivery/first/*portable.zip
+            artifacts/delivery/first/*.json
+            artifacts/delivery/first/SHA256SUMS
+            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/windows-acceptance.json
+            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/wpf/
+          if-no-files-found: warn
