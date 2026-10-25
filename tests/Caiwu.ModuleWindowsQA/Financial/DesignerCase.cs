@@ -33,6 +33,12 @@ internal static partial class Program
         var window = await Show(control, "报表设计器");
         Check(control.CurrentPreview!.Rows[^1].Cells[1].Number == 100.2m, "independent initial leaf-only total100.20");
         var grid = (DataGrid)control.FindName("ColumnEditor");
+        var format = Visuals<ComboBox>(grid).First(b => b.ItemsSource is IEnumerable<NumberFormat>);
+        System.Windows.DependencyObject? parent = format;
+        while (parent is not null && parent is not DataGridCell) parent = System.Windows.Media.VisualTreeHelper.GetParent(parent);
+        var formatCell = (DataGridCell)parent!;
+        Check(format.ActualHeight >= 32 && format.ActualWidth >= 80 && formatCell.ActualHeight - formatCell.Padding.Top - formatCell.Padding.Bottom - formatCell.BorderThickness.Top - formatCell.BorderThickness.Bottom >= format.ActualHeight - 1,
+            "modern format ComboBox fits its real grid cell without vertical or value-label clipping");
         Edit(grid, grid.Items[1], 2, "SUM([periodDebit],-[periodCredit],0.2)");
         Check(control.CurrentPreview is null && !((Button)control.FindName("HtmlButton")).IsEnabled, "real formula cell edit clears stale preview/export");
         Edit(grid, grid.Items[1], 1, "修改后净额"); Edit(grid, grid.Items[1], 3, "220");
