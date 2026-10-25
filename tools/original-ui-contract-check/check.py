@@ -155,11 +155,22 @@ def load_json(path: Path) -> dict[str, Any]:
         data = json.loads(path.read_text(encoding="utf-8"),
                           object_pairs_hook=unique_json_object,
                           parse_constant=lambda x: (_ for _ in ()).throw(InputError(f"Invalid JSON number: {x}")))
+    except RecursionError as exc:
+        raise InputError(f"JSON nesting too deep: {path}") from exc
     except (OSError, UnicodeError, json.JSONDecodeError, InputError) as exc:
         raise InputError(f"Cannot read JSON {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise InputError(f"Expected a JSON object: {path}")
     return data
+
+
+def finite_coordinate(value: Any) -> bool:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
 
 
 def walk_controls(items: list[dict[str, Any]], prefix: str = "") -> dict[str, dict[str, Any]]:
@@ -219,8 +230,7 @@ def validate_observations(data: dict[str, Any]) -> dict[tuple[str, str, str], di
             if "bounds" in control:
                 bounds = control["bounds"]
                 if not isinstance(bounds, dict) or not all(
-                    isinstance(bounds.get(k), (int, float)) and not isinstance(bounds.get(k), bool)
-                    and math.isfinite(bounds[k]) for k in ("x", "y", "width", "height")
+                    finite_coordinate(bounds.get(k)) for k in ("x", "y", "width", "height")
                 ) or bounds["width"] <= 0 or bounds["height"] <= 0:
                     raise InputError(f"invalid finite bounds for control {control['id']}")
                 if bounds.get("unit") not in ("pixels", "dip", "abstract") or not isinstance(

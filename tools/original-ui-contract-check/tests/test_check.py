@@ -268,6 +268,35 @@ class ContractCheckTests(unittest.TestCase):
                 with self.assertRaises(check.InputError):
                     run(data)
 
+    def test_cli_400_digit_coordinate_returns_input_error_without_traceback(self):
+        data = fixture("login-relative-match.synthetic.json")
+        data["windows"][0]["controls"][0]["bounds"]["x"] = 10 ** 399
+        with tempfile.TemporaryDirectory() as directory, redirect_stderr(io.StringIO()) as err, redirect_stdout(io.StringIO()) as out:
+            path = Path(directory) / "large-coordinate.json"
+            output = Path(directory) / "report.json"
+            path.write_text(json.dumps(data), encoding="utf-8")
+            code = check.main(["--repo", str(REPO), "--product", "qingsong/main",
+                               "--case", "login.startup", "--observations", str(path),
+                               "--output", str(output)])
+            self.assertEqual(code, 2)
+            self.assertIn("input-error: invalid finite bounds", err.getvalue())
+            self.assertNotIn("Traceback", err.getvalue())
+            self.assertEqual(out.getvalue(), "")
+            self.assertFalse(output.exists())
+
+    def test_cli_10000_json_levels_return_input_error_without_traceback(self):
+        raw = '{"schema_version":1,"windows":' + "[" * 10000 + "0" + "]" * 10000 + "}"
+        with tempfile.TemporaryDirectory() as directory, redirect_stderr(io.StringIO()) as err, redirect_stdout(io.StringIO()) as out:
+            path = Path(directory) / "deep.json"
+            output = Path(directory) / "report.json"
+            path.write_text(raw, encoding="utf-8")
+            code = check.main(["--observations", str(path), "--output", str(output)])
+            self.assertEqual(code, 2)
+            self.assertIn("input-error: JSON nesting too deep", err.getvalue())
+            self.assertNotIn("Traceback", err.getvalue())
+            self.assertEqual(out.getvalue(), "")
+            self.assertFalse(output.exists())
+
     def test_all_profiles_resolve_in_three_existing_source_products(self):
         report = check.evaluate(REPO, {"schema_version":1, "windows":[]})
         self.assertEqual(len(report["cases"]), 39)

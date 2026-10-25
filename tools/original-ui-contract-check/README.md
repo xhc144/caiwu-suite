@@ -103,7 +103,7 @@ python3 -m unittest discover -s tools/original-ui-contract-check/tests -v
 
 测试还防止跨产品/跨入口冒领、部分观测误判缺失、漏字段自动匹配、跨坐标空间比较、把 schema 列序当屏幕列序、以及将自报 UIA 当真实验收通过。它们是工具回归，不是财务业务测试或 Windows UIA 验收。
 
-本轮实际验证（2026-10-25，Linux / Python 3.12）：32 项合成测试通过，包括重复 id/text/entry 键、同值/转义后同名键、根层及嵌套基线重复键的拒绝；四个夹具的 CLI 实跑结果如下。`unknown` 仍保留，不能把第一行称为真实登录验收通过。
+本轮实际验证（2026-10-25，Linux / Python 3.12）：34 项合成测试通过，包括重复 id/text/entry 键、同值/转义后同名键、根层及嵌套基线重复键的拒绝，以及 400 位坐标整数、10000 层 JSON 嵌套返回 InputError/退出2、无裸栈或成功报告；四个夹具的 CLI 实跑结果如下。`unknown` 仍保留，不能把第一行称为真实登录验收通过。
 
 | 合成输入 | comparison | mismatch 数 | runtime_acceptance | 退出码 |
 |---|---|---:|---|---:|
