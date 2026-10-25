@@ -129,11 +129,23 @@ internal static class Program
             var cost = Window(title => title.StartsWith("成本工作表 ·", StringComparison.Ordinal)); Capture("cost-entry"); Close(cost);
             Menu("会计档案", "复制账套…");
             var copy = Window(title => title.Contains("复制", StringComparison.Ordinal) && title.Contains("账套", StringComparison.Ordinal)); Capture("book-copy-entry"); Close(copy);
+            Menu("实务操作", "复制凭证为新草稿…");
+            var voucherCopy = Window(title => title == "复制为新草稿"); Capture("voucher-copy-entry"); Close(voucherCopy);
             Pass("actual installed summary initialization, cost and book-copy entrypoints open");
 
             var trial = main.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TabItem)).Cast<AutomationElement>().Single(e => e.Current.Name == "科目余额表");
             ((SelectionItemPattern)trial.GetCurrentPattern(SelectionItemPattern.Pattern)).Select(); Capture("trial-balance");
             Require(Text(main, "TrialTotalsText").Contains("123.45", StringComparison.Ordinal), "installed balance page displays posted synthetic amount");
+            Menu("报表", "自定义当前账表…");
+            var designer = Window(title => title == "自定义当前账表"); Capture("designer-entry"); Close(designer);
+            Until(() => Text(main!, "NotificationText").Contains("模板 JSON", StringComparison.Ordinal), "installed designer close and attachment registration");
+            var reports = main.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem)).Cast<AutomationElement>().First(e => e.Current.Name.StartsWith("报表", StringComparison.Ordinal));
+            ((ExpandCollapsePattern)reports.GetCurrentPattern(ExpandCollapsePattern.Pattern)).Expand(); Thread.Sleep(100);
+            var nonprofit = main.FindFirst(TreeScope.Descendants, Name("民非报表分类与预览（当前月）…"))!;
+            Require(!nonprofit.Current.IsEnabled, "actual installed enterprise-regime App keeps the nonprofit-only entry disabled"); Key(0x1b);
+            var loadedAfterPosting = desktop.Modules.Cast<ProcessModule>().Select(m => new { name = m.ModuleName, path = m.FileName }).ToArray();
+            Require(loadedAfterPosting.Any(m => string.Equals(m.name, "e_sqlite3.dll", StringComparison.OrdinalIgnoreCase) && SafePaths.Contains(versionRoot, m.path)), "actual installed SQLite native dependency resolves from the payload");
+            File.WriteAllText(Path.Combine(evidence, "loaded-after-posting.json"), JsonSerializer.Serialize(loadedAfterPosting, PayloadManifest.Json));
 
             Key(0x79); Yes("受管完整备份"); // F10.
             var receipts = Path.Combine(data, "Global", "BackupReceipts");
@@ -156,7 +168,7 @@ internal static class Program
             }
             Save(true, null); return 0;
         }
-        catch (Exception ex) { try { Capture("failure"); DumpTree(); } catch { } Save(false, ex.ToString()); Console.Error.WriteLine(ex.Message); return 1; }
+        catch (Exception ex) { try { Capture("failure"); } catch { } try { DumpTree(); } catch { } Save(false, ex.ToString()); Console.Error.WriteLine(ex.Message); return 1; }
         finally
         {
             try { if (desktop is { HasExited: false }) desktop.CloseMainWindow(); } catch { }
@@ -231,6 +243,8 @@ internal static class Program
     }
     private static void Capture(string name)
     {
+        GetWindowThreadProcessId(GetForegroundWindow(), out var foregroundProcess);
+        if (foregroundProcess != desktop?.Id) throw new InvalidOperationException("Actual product must be foreground for native evidence capture.");
         var screen = GetDC(IntPtr.Zero); var width = GetSystemMetrics(0); var height = GetSystemMetrics(1); var memory = CreateCompatibleDC(screen); var bitmap = CreateCompatibleBitmap(screen, width, height); var old = SelectObject(memory, bitmap);
         try { if (!BitBlt(memory, 0, 0, width, height, screen, 0, 0, 0x40CC0020)) throw new IOException("Native capture failed."); var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, IntPtr.Zero, System.Windows.Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source)); using var file = File.Create(Path.Combine(evidence, name + ".png")); encoder.Save(file); }
         finally { SelectObject(memory, old); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(IntPtr.Zero, screen); }
@@ -241,6 +255,8 @@ internal static class Program
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] input, int size);
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr window);
     [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr window, IntPtr dc);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
