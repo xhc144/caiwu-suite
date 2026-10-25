@@ -22,6 +22,7 @@ using Caiwu.BookTools;
 using Caiwu.BookTools.Wpf;
 using Caiwu.Delivery;
 using Caiwu.Operators;
+using Caiwu.Nonprofit.Reporting.Wpf;
 
 internal static class Program
 {
@@ -223,6 +224,57 @@ internal static class Program
             Assert(items.Length == 4 && items.All(i => !i.IsEnabled && i.ToolTip!.ToString()!.Contains("未认证")), "Missing login enabled business action.");
             Assert(!((ComboBox)host.FindName("OperatorInput")).IsEditable && !((ComboBox)host.FindName("OperatorInput")).IsEnabled, "Arbitrary operator text still editable.");
             host.Close();
+        });
+        Check("NONPROFIT-REGIME-GATE-AND-REAL-UNPROTECTED-PREVIEW", () =>
+        {
+            var previewRoot = Path.Combine(temporary, "nonprofit-preview");
+            var host = new MainWindow(backend, authentication, new() { NonprofitPreviewRoot = previewRoot }); host.Show(); Pump();
+            var menu = ((DockPanel)host.Content).Children.OfType<Menu>().Single().Items.OfType<MenuItem>()
+                .SelectMany(i => i.Items.OfType<MenuItem>()).Single(i => i.Header.ToString() == "民非报表分类与预览（当前月）…");
+            typeof(MainWindow).GetMethod("OpenVerificationBook", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(host, [path]); Pump();
+            Assert(!menu.IsEnabled && menu.ToolTip!.ToString()!.Contains("仅民非"), "Nonprofit panel enabled for business regime.");
+            var npPath = Path.Combine(temporary, "nonprofit.caiwu");
+            using (var np = SqliteLedgerStore.Create(npPath, book with { Id = Guid.NewGuid(), Regime = AccountingRegime.Nonprofit }, accounts)) { }
+            typeof(MainWindow).GetMethod("OpenVerificationBook", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(host, [npPath]);
+            Until(() => menu.IsEnabled);
+            Exception? failure = null; var completed = false; var watch = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(20) };
+            watch.Tick += (_, _) =>
+            {
+                var window = app.Windows.OfType<SessionFeatureWindow>().FirstOrDefault(w => w.Title == "民非报表分类 · 仅本地预览");
+                if (window is null) return; watch.Stop();
+                try
+                {
+                    var panel = Descendants(window).OfType<NonprofitClassificationPanel>().Single();
+                    var result = panel.Calculate();
+                    Assert(result.Issues.Count > 0 && !result.HasCompleteReconciledCalculations, "Missing classifications were silently completed.");
+                    Assert(Find<TextBlock>(window, "Feature.Status").Text.Contains("尚未登记"), "Unregistered JSON claimed backup protection.");
+                    Assert(!Directory.EnumerateFiles(previewRoot, "*.json", SearchOption.AllDirectories).Any(), "Opening/cancelling preview implicitly saved JSON.");
+                    Capture(window, "nonprofit-local-preview");
+                }
+                catch (Exception ex) { failure = ex; }
+                finally { completed = true; window.Close(); }
+            };
+            watch.Start(); menu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)); Until(() => completed); watch.Stop();
+            if (failure is not null) throw failure;
+            using var read = SqliteLedgerStore.Open(npPath); Assert(read.Read().Revision == 0, "Nonprofit preview mutated ledger."); host.Close();
+        });
+        Check("LOGOUT-PRESERVES-OLD-DRAFT-AND-NEW-LOGIN-CANNOT-REVIVE-IT", () =>
+        {
+            var pending = Pending(6); var dialog = new CopiedDraftWindow(pending); var source = session.DatabasePath!;
+            var before = session.Service!.GetSnapshot().Revision;
+            Drive(dialog, () =>
+            {
+                var rows = (ObservableCollection<VoucherLineEdit>)Find<DataGrid>(dialog, "Feature.Copy.Lines").ItemsSource;
+                rows[0].Summary = "注销后仍保留输入"; operators.Logout(login);
+                var replacement = operators.Login(maker.LoginName, syntheticPassword);
+                Click(Find<Button>(dialog, "Feature.Copy.Save")); Until(() => !Find<DockPanel>(dialog, "Feature.Body").IsEnabled);
+                Assert(dialog.IsVisible && pending.SavedVoucher is null && rows[0].Summary == "注销后仍保留输入", "Logout lost input or changed captured login.");
+                using var fresh = SqliteLedgerStore.Open(source); Assert(fresh.Read().Revision == before, "Revoked editor wrote ledger.");
+                var replacementBackend = App.CreateAuthenticatedBackend(operators, replacement);
+                using var newBook = new LedgerSession(replacementBackend); newBook.Open(source);
+                Assert(newBook.Service!.GetSnapshot().Revision == before, "Replacement real login cannot read unchanged book.");
+                operators.Logout(replacement); Capture(dialog, "copy-revoked-operator"); dialog.Close();
+            });
         });
         session.Close(); operators.Logout(login); operators.Logout(admin);
         File.WriteAllText(Path.Combine(evidence, "results.json"), JsonSerializer.Serialize(new { syntheticOnly = true, windowsExecuted = true,

@@ -11,6 +11,11 @@ using Caiwu.BookTools;
 using Caiwu.BookTools.Wpf;
 using Caiwu.Delivery;
 using Caiwu.Operators;
+using Caiwu.Nonprofit.Reporting;
+using Caiwu.Nonprofit.Reporting.Wpf;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Caiwu.Desktop;
 
@@ -38,6 +43,8 @@ public partial class MainWindow
         var cost = new MenuItem { Header = "成本工作表（审核建议）…", ToolTip = "独立工作表，只预览与人工审核，不自动记账。" };
         var bookCopy = new MenuItem { Header = "复制账套…", IsEnabled = false,
             ToolTip = "暂未开放：宿主尚未配置 Delivery 受管路径、数据租约及新账套登记；默认不切换新账套。" };
+        var nonprofit = new MenuItem { Header = "民非报表分类与预览（当前月）…" };
+        Group("报表").Items.Add(nonprofit);
         business.Items.Add(new Separator()); business.Items.Add(copy); business.Items.Add(cost);
         archives.Items.Add(new Separator()); archives.Items.Add(summary); archives.Items.Add(bookCopy);
         copy.Click += async (_, _) =>
@@ -127,6 +134,29 @@ public partial class MainWindow
             catch (Exception ex) { NotificationText.Text = "成本工作表未打开：" + ex.Message; }
             finally { featureOpening = false; RefreshAvailability(); }
         };
+        nonprofit.Click += async (_, _) =>
+        {
+            if (featureOpening) return;
+            try
+            {
+                var binding = CaptureDisplayedFeature(_displayOrigin);
+                if (binding.Shown.Book.Regime != AccountingRegime.Nonprofit) throw new LedgerValidationException("此入口仅用于民间非营利组织账套。");
+                if (string.IsNullOrWhiteSpace(options.NonprofitPreviewRoot)) throw new LedgerValidationException("宿主尚未指定民非分类的用户预览目录。");
+                featureOpening = true; RefreshAvailability(); await binding.DemandPermissionAsync(OperatorPermission.ReadLedger);
+                if (VoucherFrom.SelectedDate is not { } from || VoucherTo.SelectedDate is not { } to)
+                    throw new LedgerValidationException("请先在凭证查询日期中明确完整的同一月份。");
+                var period = new ReportingPeriod(DateOnly.FromDateTime(from), DateOnly.FromDateTime(to), ReportingPeriodKind.Monthly);
+                var physical = Path.GetFullPath(binding.DatabasePath); if (OperatingSystem.IsWindows()) physical = physical.ToUpperInvariant();
+                var key = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(physical + "|" + binding.Shown.Book.Id)));
+                var directory = Path.Combine(options.NonprofitPreviewRoot, key);
+                var window = new SessionFeatureWindow(binding) { Owner = this, Title = "民非报表分类 · 仅本地预览", Width = 1400, Height = 900 };
+                window.StatusForFeature().Text = "分类 JSON 仅本地预览，尚未登记到受管附件或账套备份。请另行保管；缺维度不会猜测或默填零。";
+                window.BodyForFeature().Children.Add(new NonprofitClassificationPanel(() => binding.DemandCurrent().GetSnapshot(), period, directory));
+                window.ShowDialog();
+            }
+            catch (Exception ex) { NotificationText.Text = "民非分类预览未打开：" + ex.Message; }
+            finally { featureOpening = false; RefreshAvailability(); }
+        };
 
         void RefreshAvailability()
         {
@@ -138,6 +168,9 @@ public partial class MainWindow
             summary.ToolTip = !authenticated ? noAuthentication : options.OpenSummaryCatalog is null ? "未配置：宿主需明确用户数据路径、摘要库原子版本及备份附件登记。" : "管理当前账套的常用摘要。";
             cost.IsEnabled = authenticated && !featureOpening && HasBook;
             cost.ToolTip = authenticated ? "仅人工审核建议，不自动记账。" : noAuthentication;
+            nonprofit.IsEnabled = authenticated && !featureOpening && HasBook && Snapshot.Book.Regime == AccountingRegime.Nonprofit && !string.IsNullOrWhiteSpace(options.NonprofitPreviewRoot);
+            nonprofit.ToolTip = !authenticated ? noAuthentication : !HasBook || Snapshot.Book.Regime != AccountingRegime.Nonprofit ? "仅民非制度账套可用。"
+                : string.IsNullOrWhiteSpace(options.NonprofitPreviewRoot) ? "未配置用户预览目录。" : "真实分类与两表预览；JSON 尚未纳入受管附件/备份。";
             // No WriteOperation tag: only these explicit Delivery gates may enable BookTools.
             bookCopy.IsEnabled = authenticated && !featureOpening && HasBook && options.BookCopy is not null;
             bookCopy.ToolTip = !authenticated ? noAuthentication : options.BookCopy is null ? "未配置：Delivery 受管路径、数据租约及新账套登记；BookTools 8bbf842 Windows 并发仍待验。"

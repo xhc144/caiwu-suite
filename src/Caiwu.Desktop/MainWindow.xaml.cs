@@ -159,11 +159,12 @@ public partial class MainWindow : Window
 
     private void Backup_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
+        var origin = RequireOrigin(_displayOrigin); origin.GetService();
         var save = new SaveFileDialog { Title = "备份当前账套", Filter = "账套备份 (*.caiwubak)|*.caiwubak", DefaultExt = ".caiwubak",
             FileName = SafeFileName(Snapshot.Book.Name) + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".caiwubak" };
         if (save.ShowDialog(this) != true) return;
         WithBusy(() => featureAuthentication!.Operators.Execute(featureAuthentication.Session, OperatorPermission.BackupLedger,
-            _ => { _session!.BackupTo(save.FileName); return true; }));
+            _ => { origin.GetService(); _session!.BackupTo(save.FileName); return true; }));
         NotificationText.Text = "备份已保存：" + save.FileName;
     });
 

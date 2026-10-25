@@ -16,6 +16,8 @@ App 在 `LocalApplicationData/CaiwuSuite/Operators` 使用真实 FileOperatorSto
 
 下文旧四引用/一处 hook 是最初的集成说明，当前源码已实施它们；当前必须使用以上第五依赖和真实登录组合，禁止回退为可编辑姓名。
 
+10:24 UTC：已追加第六个生产引用 `Caiwu.Nonprofit.Reporting/Wpf/Caiwu.Nonprofit.Reporting.Wpf.csproj`，固定源码 `cb71350b2b19067e7a8704b74985d8cf0f15e1aa`。真实分类面板进入“报表”菜单，仅民非制度可用；使用当前凭证查询中明确的完整月份，用户目录为 App 显式指定的 LocalPreviews/Nonprofit，再按 physical path + BookId 分隔。面板和宿主持续标记 JSON 尚未登记/备份，缺维度不猜测或默填零。受管数据 owner 所需的精确委托、租约作用域和附件收据见 [MANAGED_MODULE_API_REQUEST.md](MANAGED_MODULE_API_REQUEST.md)，不等待其 11:30 交付而延长本阶段。
+
 本改动只新增 `Features/**`、`MainWindow.Features.cs` 和 `tests/Caiwu.Desktop.FeatureTests/**`。主窗口行为及视觉 owner 仍独占原 `.xaml/.xaml.cs`、App、Theme、项目引用和 workflow。未接触书库、原安装包、真实账套或新派生 catalog。
 
 ## 根需要应用的最小接线

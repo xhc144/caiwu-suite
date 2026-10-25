@@ -22,4 +22,6 @@ public sealed record DesktopFeatureOptions
     /// <summary>Called on a worker thread. Must not create a catalog implicitly on cancel/open.</summary>
     public Func<FeatureSessionBinding, SummaryFeatureRegistration>? OpenSummaryCatalog { get; init; }
     public BookCopyFeatureOptions? BookCopy { get; init; }
+    /// <summary>Explicit user-data preview root. Classification JSON remains outside the ledger backup until registered by Delivery.</summary>
+    public string? NonprofitPreviewRoot { get; init; }
 }
