@@ -50,7 +50,7 @@ UI在加载/编辑开始时把实际显示快照和打开会话绑定。保存/�
 
 首次拒绝后停止远端写入。根随后转来带2026-10-25 06:53:24/06:56:11 UTC时间戳的新证据，明确覆盖本项目新软件私有开发分支提交推送与草稿PR。核查此head/base没有既有PR后，09:20 UTC普通git push成功，再用相同GitHub创建接口仅重试一次，返回PR13、draft=true、head=fa463b7、base=codex/windows-mvp，确认执行成功。未换工具绕拒、未改权限/凭据/可见性。
 
-PR创建时目标基线已前进至 `a49d426d8513600dec0f624f56a35c9ad66e71d4`，GitHub返回mergeable=false。下一短任务需协调集成冲突与视觉专责新XAML，再执行新视觉版本截图；本阶段不抢改视觉、不合main。已有高清入口当前针对行为基线，不能当作新视觉验收截图。
+PR创建时目标基线已前进至 `a49d426d8513600dec0f624f56a35c9ad66e71d4`，连接器初始返回mergeable=false；09:22原生只读查询随后明确为MERGEABLE。因此初始布尔值不能作为实际冲突证据。下一短任务需协调视觉专责新XAML，再执行新视觉版本截图；本阶段不抢改视觉、不合main。已有高清入口当前针对行为基线，不能当作新视觉验收截图。视觉合并须保留期初金额的UpdateSourceTrigger=PropertyChanged及报表BackButton/Back_Click行为绑定。
 
 **另一个仍待许可的事项**：原资源派生完整catalog上传被根报告审批拒绝。旧主工作树 `/workspace/caiwu-acceptance` 的 `docs/reference-ui/static-templates/**` 本地输出仍保留，未复制到此组合、未上传。不能把普通新软件代码许可当作这些派生数据的分发许可。
 

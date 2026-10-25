@@ -96,6 +96,14 @@
     "head": "fa463b716e1fea5b3e413dae412d1405457f95a0",
     "base": "codex/windows-mvp",
     "baseShaAtCreation": "a49d426d8513600dec0f624f56a35c9ad66e71d4",
-    "mergeableAtCreation": false
+    "mergeableAtCreation": false,
+    "mergeableAfterCalculation": "MERGEABLE",
+    "verifiedRemoteHead": "8f1b7f5cc02513600966ea41693178c908d89446",
+    "mergeabilityNote": "Initial connector boolean is preserved as raw creation evidence, not proof of conflicts."
+  },
+  "newRunAt8f1b7f5": {
+    "id": 40180287604,
+    "statusAtRead": "pending",
+    "conclusion": null
   }
 }
