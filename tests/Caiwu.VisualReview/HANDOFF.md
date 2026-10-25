@@ -1,63 +1,69 @@
-# WPF visual module handoff — 2026-10-25
+# WPF visual module handoff — 2026-10-25 10:14 UTC
 
-Deliverable: native WPF visual redesign, private draft [PR 14](https://github.com/xhc144/caiwu-suite/pull/14), branch `codex/modern-visuals`. Ready for integration; no merge, distribution or production-accounting approval is claimed.
+Current deliverable: native WPF visual redesign with the font/style inheritance, report-column and capture refinements. Private draft [PR 14](https://github.com/xhc144/caiwu-suite/pull/14), branch `codex/modern-visuals`. This record supersedes the earlier `7a845d4` evidence.
 
-Validated code commit: `7a845d4e637326c28774740580b675fcc5d240c4`.
+Validated code commit: `98a43e01bb1296abd8968bef50c40a476d9377ad`.
 Behavior-owning base: `6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5` from `codex/windows-revalidation`.
-Validated `src` tree: `afc9f3328856ee207b5257ff73589c73bae058aa`.
-The subsequent handoff-only commit changes this file, not that `src` tree; it does not require another Windows rendering run.
+Validated `src` tree: `da2fb244f2bac779501fa07ac63e45f7c3c28dce`.
+The subsequent handoff-only commit changes Markdown, not that source tree, and does not need another rendering run.
 
 ## Actual evidence
 
-[Isolated Windows run 40181737928](https://github.com/xhc144/caiwu-suite/actions/runs/40181737928): **success** at the validated code commit.
+[Isolated Windows run 40183636004](https://github.com/xhc144/caiwu-suite/actions/runs/40183636004): **success**, exact validated code commit.
 
-- [Primary original PNG artifact 12594895184](https://github.com/xhc144/caiwu-suite/actions/runs/40181737928/artifacts/12594895184): `main-window.png`, `voucher-editor.png`, `ledger.png`, `report.png`; each 1920×1080 at 96 DPI, actual foreground native desktop BitBlt. No crop, resize, upscale, black padding or generated mockup. All four were downloaded and visually inspected; every PNG SHA256 matches `screenshots.json`.
-- [Checks artifact 12594223314](https://github.com/xhc144/caiwu-suite/actions/runs/40181737928/artifacts/12594223314): nine actual visual/runtime checks pass, including template identities, focus/automation peer, calendar popup, menu, editable amount cell, posted read-only state, both Controls picker dialogs under global App resources, and right-aligned generated report amounts. Also six complete 1920×1080 native-window PrintWindow PNGs with SHA256s.
-- The same checks artifact contains the existing eight actual WPF regressions and both new-book/report navigation cases: all PASS, zero failed or blocked. Read-only navigation, invalid/busy/stale saves retaining input and rapid double-save protection were exercised against actual WPF classes and synthetic SQLite books.
-- Official .NET SDK 10.0.402: Desktop, independent VisualReview, and full solution Release cross-builds passed with zero warnings/errors. Linux compilation is distinct from the Windows evidence above.
-- `node tests/Caiwu.VisualReview/verify-xaml.mjs`: all existing operation labels, names, automation IDs, bindings, handler names and WriteOperation guards match the behavior base. `git diff --check` passes.
+- [Original PNG artifact 12595018371](https://github.com/xhc144/caiwu-suite/actions/runs/40183636004/artifacts/12595018371): six real 1920×1080/96-DPI full native desktop BitBlt captures. For the requested four views use `02-vouchers.png`, `03-voucher-editor.png`, `05-bank-ledger.png`, `06-reports.png`. All four were downloaded and visually inspected; every one of the six PNG hashes matches the manifest. No crop, resize, upscale, black padding or generated mockup.
+- That artifact's `visual-review.json` records ten actual visual/runtime checks, actual rendered glyph families/weight/colour and all 70 body-cell/header measurements. Chinese body glyphs are **Microsoft YaHei UI**, numeric glyphs **Segoe UI Variable**, body **Normal / #FF202938**. These are actual GlyphRun typefaces, not just declared font names. No font bytes or system font settings were changed.
+- All seven report rows, including 1403/3001/5001, have **0-pixel** cell/header X and width error across all ten columns. Actual amount content occupies the column width and aligns right. Amounts and displayed totals use grouping, e.g. `100,000.00` and `108,800.00`.
+- [Interaction evidence 12595500778](https://github.com/xhc144/caiwu-suite/actions/runs/40183636004/artifacts/12595500778): same native metadata plus all existing eight WPF regressions and both new-book/report navigation cases PASS; zero failed or blocked. Real invalid/busy/stale saves retaining input, rapid double-save protection, read-only drill-through and cancellation/context preservation were exercised with actual WPF/SQLite.
+- .NET SDK 10.0.402: Desktop, VisualReview and the full solution Release cross-build with warnings treated as errors pass. `node tests/Caiwu.VisualReview/verify-xaml.mjs` and `git diff --check` pass. Linux compilation is distinct from Windows runtime evidence.
 
-Primary `main-window.png` SHA256: `20c4be47d47b3aeb12ce3d8984b4a7d29ca5dfb9ee535380106b516a0d87c08c`.
-Primary `report.png` SHA256: `c5247604005d2bae184bc7c9031123ddf61fa035d48dd8335d8d168aab527951`.
+PNG SHA256s:
+
+| File | SHA256 |
+|---|---|
+| `02-vouchers.png` | `8501c2f4e361e76d23941013a596cea9f1d4924f4cc3f2f37c5a98c432d7ace5` |
+| `03-voucher-editor.png` | `6ef7f417ef74a23a29fd1f338d1f58035cdc8467a238571ae90986d54bbc734b` |
+| `05-bank-ledger.png` | `f56cc6486e5e408621d0616baf13a6ba5868f5ed37593aea6113aa272b442ab8` |
+| `06-reports.png` | `abf772d5d12c7e89571e631bd66ec905db0e07bcfc15ef44a594ee0bf5acd45a` |
 
 ## Integration
 
-Apply only the module commits, preserving the integration branch's newer code-behind/Core/Contracts:
+For an integration that already has `7a845d4`, apply the refinements and independent capture runner:
 
 ```sh
 git fetch origin codex/modern-visuals
-git cherry-pick 6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5..7a845d4e637326c28774740580b675fcc5d240c4
+git cherry-pick 7a845d4e637326c28774740580b675fcc5d240c4..98a43e01bb1296abd8968bef50c40a476d9377ad
 ```
 
-The code never changes code-behind, event signatures, Contracts, Core, SQLite, Controls implementation, solution, existing workflow, installer or delivery hold. Keep any newer binding if the integrator encounters an XAML conflict. This branch already preserved OpeningGrid's PropertyChanged update bindings from v1.2.
+For the whole module, replace the range start with `6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5`. Preserve the integration branch's newer behavior code and any newer binding if there is an XAML conflict. Existing OpeningGrid PropertyChanged bindings and every original name, automation ID, operation label, handler and WriteOperation guard are retained.
 
-Owned files:
+Owned files and roles:
 
 | Path | Purpose and boundary |
 |---|---|
-| `src/Caiwu.Desktop/Themes/Modern.xaml` | Complete built-in Fluent Light resources, explicit named native base styles, full self-authored Button/Tab templates, typography, focus/disabled/hover states, table and amount styles. Runtime verified. |
-| `src/Caiwu.Desktop/App.xaml` | Merges that dictionary. |
-| `src/Caiwu.Desktop/MainWindow.xaml` | Native shell/surfaces/navigation, action hierarchy, status and amount presentation; original bindings/handlers retained. |
-| `src/Caiwu.Desktop/Dialogs/*.xaml` | Visual-only voucher/report surfaces and amount editors; original names/handlers retained. |
-| `tests/Caiwu.VisualReview/**` | Bounded independent Windows runner, source guard and this evidence record. Excluded from the solution; WinExe intentionally avoids accidental launch by old packaging discovery. |
-| `.github/workflows/visual-capture.yml` | Explicitly authorized scope exception: private branch-only capture job. Uploads the four primary images immediately, then runs only relevant visual/WPF/navigation checks. Contents read-only; pinned existing actions; no secrets, installer or publish step. |
+| `src/Caiwu.Desktop/Themes/Modern.xaml` | Complete native Fluent Light resources, explicit native base styles, complete Button/Tab/Cell templates, neutral body typography, focus/hover/disabled/selection and amount presentation. Runtime verified. |
+| `src/Caiwu.Desktop/Themes/ReportGridPresentation.cs` | Read-only display decorator: typed amount metadata, original binding paths/modes, N2 grouping, amount column/header styles and totals; no accounting writes or export/model changes. |
+| `src/Caiwu.Desktop/App.xaml` | Theme resource merge. |
+| `src/Caiwu.Desktop/MainWindow.xaml` | Native shell, surfaces/navigation/action hierarchy; original behavior bindings/handlers retained. |
+| `src/Caiwu.Desktop/Dialogs/*.xaml` | Voucher/report visuals and amount editing styles. ReportGrid opts into GroupAmounts and disables column virtualization while retaining row virtualization. |
+| `tests/Caiwu.VisualReview/**` | Bounded real Windows capture/check runner, source boundary guard and evidence record; outside solution, WinExe, no added NuGet package. |
+| `.github/workflows/visual-capture.yml` | Explicitly authorized ownership exception: private visual branch-only job, pinned existing actions, contents read-only, immediate native PNG upload followed by existing narrow WPF/navigation tests. No installer/publish step or secret. |
 
-The report cell style matches the current ReportBuilder amount headers because dynamically generated columns live in behavior-owned code. If those headers are localized/renamed, the owner can instead assign the existing `AmountCell` style when `column.Kind == ReportValueKind.Amount`; no accounting logic needs changing.
+No existing code-behind, event signatures, Contracts, Core, SQLite, Controls implementation, solution, existing workflow, installer or delivery hold was modified. This is ready for root integration into `codex/sprint-integration-2`, not a merge or whole-product accounting acceptance claim.
 
 ## Findings and repaired attempts
 
-1. Local implicit Button style without a complete template/BasedOn had suppressed Fluent and produced legacy rectangles.
-2. Type-key inheritance was insufficient in actual screenshots. The final theme uses official .NET10 named `Default…Style` bases and complete `Fluent.Light.xaml`; the colour-free `Fluent.xaml` alone left missing surfaces. Native TextBox/ComboBox/DatePicker template identity is checked at runtime.
-3. Custom Window subclasses need an explicit/exact-type Window style. The installed family is `Segoe UI Variable Text`; YaHei UI is available as the Chinese fallback. Font size is verified at runtime.
-4. Renaming the report Generate label broke a probe using the familiar label. Restored all operation labels, added a source guard, and reran both navigation cases successfully.
-5. A small runner desktop clamped a requested 1920×1080 native window. The runner now tests/applies a supported native desktop mode and restores it in finally; it never upscales an image.
+1. The local implicit Button style suppressed Fluent. Complete self-authored templates and explicit .NET10 native named style inheritance fix the legacy rectangles; complete `Fluent.Light.xaml` supplies the missing colour/surface resources.
+2. Selected TabItem foreground/weight had propagated to its page, making body text blue and semi-bold. Header-only setters plus normal neutral cells fix that leak. Actual glyphs confirm YaHei UI/Segoe; no SimSun/Times font fallback was found in the sampled body/amount cells.
+3. Report cells needed complete full-column content layout, not only a right-alignment flag. The cell template now honors padding/stretch and amount columns use typed metadata, grouping and consistent width. Every row's actual X/width and content width are checked, rather than just header widths.
+4. Renaming Generate broke an existing navigation probe. Restored familiar operation labels, added the source guard, and reran both navigation cases successfully.
+5. Early normal-window capture was clamped by a small desktop. Testing/applying a supported native display mode fixed dimensions without upscaling.
+6. A later full-desktop report PNG exposed a maximize/compositor transition despite a green capture process; the old PrintWindow backup also failed the new black-frame guard. The final runner uses one foreground desktop BitBlt path with repeated render/message pumping, DwmFlush, stable client/maximized bounds and black-region rejection. It preserves all ten checks, uploads images early and avoids the redundant unreliable capture path. The current six PNGs are the valid set; do not reuse intermediate black/transitional captures.
 
-Sources for framework behavior/resources: [official WPF Fluent documentation](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net100), [official .NET10 Fluent Light resources](https://github.com/dotnet/wpf/blob/v10.0.0/src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/Themes/Fluent.Light.xaml).
+Framework sources: [official WPF Fluent documentation](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net100), [official .NET10 Fluent Light resources](https://github.com/dotnet/wpf/blob/v10.0.0/src/Microsoft.DotNet.Wpf/src/Themes/PresentationFramework.Fluent/Themes/Fluent.Light.xaml).
 
-## Remaining integration/acceptance work
+## Remaining boundaries
 
-- Integrator must apply this module to `codex/sprint-integration-2` and validate the combined result. No action is denied or uncertain in this module; push and draft PR succeeded.
-- Earlier full runs `40180397486`/`40180961028` remain failed due to Delivery component file-sharing/backup failures and MutationWindows timeout. These are outside this module. Do not label the entire application accepted from this isolated visual pass; keep `DELIVERY_PAUSED`.
-- Actual screenshots are 96 DPI. Physical Chinese IME, screen reader, Windows High Contrast and higher-DPI manual review have not been certified. Existing keyboard routes and accessibility peers were preserved and the specific scripted checks above passed.
-
-Only synthetic books were created. The pre-mounted book library, original software/installers, original UI/SQL/object material, permissions and credentials were not modified or uploaded.
+- Root must integrate and validate the combined application. Earlier full runs `40180397486`/`40180961028` had Delivery file-sharing/backup failures and MutationWindows timeouts owned elsewhere. Keep `DELIVERY_PAUSED`; this isolated visual pass does not clear that hold.
+- Actual evidence is 96 DPI. Physical Chinese IME, screen reader, High Contrast and higher-DPI manual certification remain outside the executed checks. Existing keyboard/editing routes and native automation peers are preserved and the specific scripted checks pass.
+- No current visual-module action is denied, pending or uncertain. Push and draft PR succeeded. Only synthetic books were created. No pre-mounted book library, original installer/software/SQL/object material, original-derived catalog, permissions or credentials were modified/uploaded.

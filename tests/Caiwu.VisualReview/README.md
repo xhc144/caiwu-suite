@@ -1,18 +1,16 @@
 # Native WPF visual review
 
-This is an optional independent Windows runner, outside the solution. It changes no application behavior or account data. `WinExe` is intentional: the existing packaging test discovery does not launch this screenshot app or treat it as an xUnit test. The isolated visual workflow first runs this harness with `-DesktopCapture` and immediately uploads its six native desktop images; it then runs complete-window captures and the existing narrow WPF/navigation regressions. The original Acceptance workflow is unchanged.
+An independent Windows runner for the actual Desktop windows, synthetic SQLite books, and existing Controls dialogs. It lives outside the solution and adds no NuGet dependency. The `WinExe` target avoids accidental launch by old packaging test discovery.
 
 ```powershell
-./tests/Caiwu.VisualReview/run.ps1 -OutputDirectory artifacts/verification/modern
+./tests/Caiwu.VisualReview/run.ps1 -OutputDirectory artifacts/high-resolution
 ```
 
-Add `-DesktopCapture` to capture the full native primary desktop with BitBlt, stable maximized bounds, repeated dispatcher/render pumping and DwmFlush. Both capture modes reject large black compositor-transition regions, retain original dimensions and restore the prior display mode.
+Requires a real Windows desktop and the repository's .NET 10 SDK. The process is bounded to 90 seconds. It tests/applies a supported native desktop mode, maximizes each actual window, pumps layout/render messages, calls DwmFlush, verifies foreground/maximized/client bounds, and uses native BitBlt. The original display mode is restored in finally. It never resizes, crops or upscales a PNG. Unsupported display modes, unstable bounds, large black transition frames, missing output, wrong source identity or failed checks are failures rather than inferred passes.
 
-The runner builds itself, creates a fresh synthetic SQLite book, opens the actual Desktop windows, and captures six complete native 1920×1080 windows using Win32 `PrintWindow`. It does not resize, crop, upscale, load original software, save real books, or create an installer. It fails if native dimensions are unavailable. JSON records commit/source-tree identity, dimensions, DPI, PNG SHA256s, and the exact checks performed. Partial screenshots do not count as a passing run. Timeout is 90 seconds; failed JSON/logs are retained. Windows desktop execution is still required; Linux compilation is not a runtime pass.
+It writes six 1920×1080 native desktop PNGs: `01-workspace.png`, `02-vouchers.png`, `03-voucher-editor.png`, `04-trial-balance.png`, `05-bank-ledger.png`, `06-reports.png`. `visual-review.json` records commit/src identity, original dimensions/DPI, PNG SHA256s, actual GlyphTypeface families, body weight/colour, per-row report cell/header positions/widths/text, and the checks performed. Failed runs keep partial evidence; a partial PNG set is not approval.
 
-It records actual GlyphTypeface names, body weight/colour and per-row report cell/header positions and widths, and checks grouped right-aligned amounts. It checks button template application plus the native automation peer/focus traversal, DatePicker popup, existing menu opening, editable DataGrid amount entry/cancel, read-only posted vouchers, visible voucher widths, and the existing Controls account/summary dialogs under the actual global App resources. It is not a full keyboard/IME/screen-reader/high-contrast certification. The existing Acceptance and Controls interaction regressions remain required.
-
-The six views are workspace, vouchers, voucher (editable in desktop mode; posted/read-only in window mode), trial balance, populated bank ledger, and reports. The metadata identifies each capture mode. The original Acceptance capture can race a native maximize/compositor transition; the isolated desktop mode waits and rejects such frames.
+The runner checks actual native templates, automation peer/focus, calendar popup, menu, editable amount entry/cancel, posted read-only state, both Controls pickers under global resources, rendered Chinese/amount glyph families, neutral normal-weight body text, all 70 cells in the seven-row report fixture, full-width right-aligned amounts and grouping. The isolated visual workflow uploads these images first, then invokes the existing eight WPF and two bounded navigation regressions. It does not run the full business CI or create a distribution package.
 
 A source boundary guard runs on Linux or Windows with Node:
 
@@ -20,12 +18,10 @@ A source boundary guard runs on Linux or Windows with Node:
 node tests/Caiwu.VisualReview/verify-xaml.mjs 6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5
 ```
 
-It compares all names, automation IDs, bindings, event handler names, and write-operation tags to the behavior-owning baseline. It is a boundary check, not visual approval.
+It compares existing operation labels, names, automation IDs, bindings, event handler names and WriteOperation tags to the behavior-owning base. It is a boundary check, distinct from rendering and interaction validation.
 
-## Integration
+`Themes/Modern.xaml` merges the complete .NET 10 Fluent Light dictionary and uses explicit `Default…Style` keys for native inputs/calendars/menus. Custom Window styles apply explicitly or by exact type. Selected TabItem styling is scoped to its header so blue/semi-bold styling cannot leak into page content. The complete cell template stretches content to the actual column width while retaining the native DataGridCell/editor/automation behavior.
 
-Base: `codex/windows-revalidation` at `6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5`. Apply the visual commits to the current integration branch without replacing code-behind, Contracts, Core or Storage. Preserve newer bindings if an XAML conflict occurs. The `Themes/Modern.xaml` dictionary merges Microsoft's complete built-in `Fluent.Light.xaml` dictionary before the application styles. The colour-free `Fluent.xaml` alone was insufficient in actual screenshots. Native TextBox/ComboBox/DatePicker/Menu/DataGrid styles use `BasedOn` with the explicit .NET 10 `Default…Style` resource keys so their complete templates survive. A first actual screenshot exposed legacy templates despite a type-key BasedOn; the named keys correct that resolution. DataGrid CellStyle/ColumnHeaderStyle explicitly select the spacing/focus overlays because Fluent itself sets these properties. Button and navigation templates are self-authored and preserve access keys, pressed/hover/disabled and keyboard focus.
+`Themes/ReportGridPresentation.cs` is a display-only attached decorator enabled on the read-only ReportGrid. It uses typed ReportCell amount metadata, preserves existing binding paths/modes, groups the read-only displayed amounts and totals, selects the amount element/header styles, and sets a readable amount minimum width. It does not change ReportCell values, exports, Core, Contracts, SQLite, or business commands. Report columns are not virtualized; rows still are. No existing code-behind handler/signature is changed.
 
-`App.xaml` merges `Themes/Modern.xaml`. The three existing XAML windows explicitly select the Window style because an implicit base-Window style alone is not sufficient for custom Window subclasses. Exact-type styles also apply the same Window typography to the existing code-created NewBookWindow, AccountWindow and AccountPickerWindow, without editing their behavior. Controls' picker-local styles take precedence as before; this change does not edit that module or replace its selection/edit semantics.
-
-No NuGet dependency added. No pre-mounted book repository, original installer, extracted resources or derived catalogs were modified or uploaded. The delivery hold remains intact.
+See [HANDOFF.md](HANDOFF.md) for immutable validated commits, original artifact IDs, exact integration ranges, repaired attempts and remaining acceptance limits. No original commercial software/resources, pre-mounted book library or real book data are used.
