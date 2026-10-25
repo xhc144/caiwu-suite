@@ -5,8 +5,11 @@
         WindowStartupLocation="CenterOwner" Closing="Window_Closing">
     <Grid Margin="20">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+        <ScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled" Focusable="False">
+        <StackPanel>
         <StackPanel x:Name="Inputs">
             <TextBlock FontSize="22" FontWeight="SemiBold" Text="复制为新账套"/>
             <TextBlock Margin="0,8,0,14" TextWrapping="Wrap" Text="创建独立新身份。请先保存或取消原窗口中的编辑；恢复原身份副本请使用备份恢复。"/>
@@ -28,13 +31,17 @@
             </ComboBox>
             <Button HorizontalAlignment="Left" Padding="16,5" Content="生成复制前预览" Click="Preview_Click"/>
         </StackPanel>
-        <ScrollViewer Grid.Row="1" Margin="0,12,0,12" VerticalScrollBarVisibility="Auto">
-            <TextBlock x:Name="PreviewText" TextWrapping="Wrap"/>
+            <TextBlock x:Name="PreviewText" Margin="0,12,0,12" TextWrapping="Wrap"/>
+        </StackPanel>
         </ScrollViewer>
-        <StackPanel Grid.Row="2">
-            <CheckBox x:Name="Confirmation" Content="我已核对本次预览，明确同意创建这个新身份账套。"
-                      IsChecked="{Binding Confirmed, Mode=TwoWay}" IsEnabled="False" Margin="0,0,0,10"/>
-            <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,0,0,10" AutomationProperties.LiveSetting="Polite"/>
+        <StackPanel x:Name="Footer" Grid.Row="1" Margin="0,12,0,0">
+            <CheckBox x:Name="Confirmation" IsChecked="{Binding Confirmed, Mode=TwoWay}"
+                      IsEnabled="False" Margin="0,0,0,10">
+                <TextBlock Text="我已核对本次预览，明确同意创建这个新身份账套。" TextWrapping="Wrap"/>
+            </CheckBox>
+            <ScrollViewer MaxHeight="90" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,10">
+                <TextBlock x:Name="StatusText" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+            </ScrollViewer>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button x:Name="ExecuteButton" Content="确认复制" Padding="18,6" IsEnabled="False" Click="Execute_Click"/>
                 <Button x:Name="CancelButton" Content="取消" Padding="18,6" Margin="10,0,0,0" Click="Cancel_Click"/>

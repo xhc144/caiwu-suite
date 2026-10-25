@@ -1,7 +1,10 @@
 using System.ComponentModel;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
+using System.Windows.Threading;
 using Caiwu.Contracts;
 using Microsoft.Win32;
 
@@ -12,6 +15,7 @@ public partial class BookCopyWindow : Window
 {
     private readonly BookCopyWorkflow workflow;
     private readonly CancellationTokenSource cancellation = new();
+    private HwndSource? windowSource;
 
     public BookCopyWindow(BookCopyService service, LedgerSnapshot persistedSnapshot,
         string sourcePath, string operatorName, Func<LedgerSnapshot>? refreshSnapshot = null)
@@ -21,10 +25,47 @@ public partial class BookCopyWindow : Window
         DataContext = workflow;
         SourceText.Text = $"{persistedSnapshot.Book.Name} / {persistedSnapshot.Book.Id:D} / revision {persistedSnapshot.Revision}\n{sourcePath}";
         workflow.PropertyChanged += Workflow_Changed;
-        Closed += (_, _) => { workflow.PropertyChanged -= Workflow_Changed; cancellation.Dispose(); };
+        SourceInitialized += (_, _) =>
+        {
+            windowSource = HwndSource.FromHwnd(new WindowInteropHelper(this).Handle);
+            windowSource?.AddHook(WindowMessage);
+            FitWorkArea();
+        };
+        Loaded += (_, _) => FitWorkArea(); // Apply again after CenterOwner has positioned the HWND.
+        Closed += (_, _) => { windowSource?.RemoveHook(WindowMessage); workflow.PropertyChanged -= Workflow_Changed; cancellation.Dispose(); };
     }
 
     public BookCopyResult? Result => workflow.Result;
+
+    private nint WindowMessage(nint hwnd, int message, nint wParam, nint lParam, ref bool handled)
+    {
+        if (message is 0x02E0 or 0x007E or 0x0232) // DPI, display mode, or completed monitor move.
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(FitWorkArea));
+        return 0;
+    }
+
+    private void FitWorkArea()
+    {
+        if (windowSource?.CompositionTarget is not { } target) return;
+        var monitor = MonitorFromWindow(windowSource.Handle, 2);
+        var info = new MonitorInfo { Size = Marshal.SizeOf<MonitorInfo>() };
+        if (!GetMonitorInfo(monitor, ref info)) return;
+        // MONITORINFO is in physical pixels; WPF sizing/position properties are DIPs.
+        var fromPixels = target.TransformFromDevice;
+        var topLeft = fromPixels.Transform(new Point(info.Work.Left, info.Work.Top));
+        var bottomRight = fromPixels.Transform(new Point(info.Work.Right, info.Work.Bottom));
+        var work = new Rect(topLeft, bottomRight);
+        MinWidth = Math.Min(MinWidth, work.Width); MinHeight = Math.Min(MinHeight, work.Height);
+        MaxWidth = work.Width; MaxHeight = work.Height;
+        Width = Math.Min(Width, MaxWidth); Height = Math.Min(Height, MaxHeight);
+        if (double.IsFinite(Left)) Left = Math.Clamp(Left, work.Left, work.Right - Width);
+        if (double.IsFinite(Top)) Top = Math.Clamp(Top, work.Top, work.Bottom - Height);
+    }
+
+    [StructLayout(LayoutKind.Sequential)] private struct NativeRect { public int Left, Top, Right, Bottom; }
+    [StructLayout(LayoutKind.Sequential)] private struct MonitorInfo { public int Size; public NativeRect Monitor, Work; public uint Flags; }
+    [DllImport("user32.dll")] private static extern nint MonitorFromWindow(nint hwnd, uint flags);
+    [DllImport("user32.dll", CharSet = CharSet.Auto)] private static extern bool GetMonitorInfo(nint monitor, ref MonitorInfo info);
 
     private void Workflow_Changed(object? sender, PropertyChangedEventArgs e)
     {
@@ -57,6 +98,8 @@ public partial class BookCopyWindow : Window
             foreach (var rule in p.Rules) text.AppendLine($"\n{rule.Field}：{rule.Behavior}");
             foreach (var notice in p.Notices) text.AppendLine($"\n• {notice}");
             PreviewText.Text = text.ToString(); StatusText.Text = "请核对预览并勾选确认。";
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded,
+                new Action(() => PreviewText.BringIntoView(new Rect(0, 0, 1, 1))));
         }
         catch (Exception error) { StatusText.Text = error.Message; }
     }
