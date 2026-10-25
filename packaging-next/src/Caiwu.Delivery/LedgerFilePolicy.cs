@@ -5,8 +5,8 @@ namespace Caiwu.Delivery;
 /// <summary>Read-only schema-v1 gate, before the store's transactional write-capability probe.</summary>
 public static class LedgerFilePolicy
 {
-    private static readonly HashSet<string> Tables = new(StringComparer.Ordinal)
-        { "ledger", "accounts", "vouchers", "voucher_lines", "audit_events" };
+    internal static readonly string[] RequiredTables = ["ledger", "accounts", "vouchers", "voucher_lines", "audit_events"];
+    private static readonly HashSet<string> Tables = new(RequiredTables, StringComparer.Ordinal);
 
     public static void Validate(string path)
     {
@@ -17,8 +17,10 @@ public static class LedgerFilePolicy
         { DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false, DefaultTimeout = 10 }.ToString());
         db.Open();
         using (var settings = db.CreateCommand()) { settings.CommandText = "PRAGMA trusted_schema=OFF"; settings.ExecuteNonQuery(); }
+        using var transaction = db.BeginTransaction(deferred: true);
         using (var version = db.CreateCommand())
         {
+            version.Transaction = transaction;
             version.CommandText = "PRAGMA user_version";
             if ((long)version.ExecuteScalar()! != 1) throw new InvalidDataException("Only the audited schema-v1 ledger layout is supported.");
             version.CommandText = "PRAGMA application_id";
@@ -26,6 +28,7 @@ public static class LedgerFilePolicy
         }
         var actualTables = new HashSet<string>(StringComparer.Ordinal);
         using var command = db.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = "SELECT type,name,tbl_name,sql FROM sqlite_schema";
         using var reader = command.ExecuteReader();
         while (reader.Read())
@@ -33,10 +36,7 @@ public static class LedgerFilePolicy
             var type = reader.GetString(0); var name = reader.GetString(1); var table = reader.GetString(2);
             if (type == "table" && Tables.Contains(name))
             {
-                var sql = reader.IsDBNull(3) ? "" : reader.GetString(3).TrimStart();
-                if (!sql.StartsWith("CREATE TABLE", StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("Virtual or unsupported ledger tables are not allowed.");
-                actualTables.Add(name);
+                actualTables.Add(name); // Full SQL tokens and engine flags are checked below, not a text prefix.
             }
             else if (type == "index" && Tables.Contains(table) &&
                 (name == "ix_voucher_lines_account" && table == "voucher_lines" ||
@@ -45,5 +45,8 @@ public static class LedgerFilePolicy
             else throw new InvalidDataException("Unsupported schema object in ledger/backup; triggers, views and extra application tables are not accepted.");
         }
         if (!actualTables.SetEquals(Tables)) throw new InvalidDataException("Required ledger schema tables are missing.");
+        reader.Dispose();
+        SchemaV1Layout.Validate(db, transaction);
+        transaction.Commit();
     }
 }

@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-25",
+  "baselineDeliveryCommit": "8e989034eb984910a39d01f28a8f64c0aeeba486",
+  "inspectedIntegrationCommit": "cf334c93aca6c33f48411ceea77d7044c1bf161f",
+  "withdrawnHypothesis": "The claim that swapped accounts columns are read correctly before a positional INSERT later swaps debit/credit is withdrawn: ReadContents also uses SELECT * with ordinal reads. No fix was based on that scenario.",
+  "confirmedCounterexample": {
+    "change": "voucher_lines adds UNIQUE(summary) ON CONFLICT REPLACE; table names, column order/types/PK/FK stay the same and the extra autoindex has NULL SQL",
+    "entryPoints": "LedgerFilePolicy.Validate -> BookOperations.Restore -> ordinary SqliteLedgerStore.Write",
+    "intendedLines": 2,
+    "intendedDebit": 10.25,
+    "intendedCredit": 10.25,
+    "persistedLinesBefore": 1,
+    "persistedDebitBefore": 0,
+    "persistedCreditBefore": 10.25,
+    "storedRevisionBefore": 2,
+    "integrityCheckBefore": "ok",
+    "foreignKeyViolationCount": 0,
+    "inputAndBackupHashesUnchanged": true
+  },
+  "additionalImplementationFinding": "A CR inside -- comment does not end SQLite comment; the first SQL normalizer falsely resurrected an omitted CHECK. .NET bundled SQLite probe confirmed it, and LF-only termination fixed it.",
+  "after": {
+    "directGate": "InvalidDataException",
+    "restore": "InvalidDataException before destination creation",
+    "targetExists": false,
+    "inputAndBackupHashesUnchanged": true,
+    "newCasesPassed": 9,
+    "fullRegressionPassed": 141,
+    "skipped": 0
+  },
+  "compatibilityControl": {
+    "change": "Only whitespace and closed comments change canonical v1 DDL",
+    "gateAndRestoreAccepted": true,
+    "savedLines": 2,
+    "savedDebit": 10.25,
+    "savedCredit": 10.25
+  },
+  "policy": "Read-only input transaction compares the full restricted SQL token signature and SQLite table/index metadata with a fresh schema from the trusted installed store creator. It does not migrate or rewrite user data.",
+  "storageUntouched": true,
+  "windowsExecutableRun": false,
+  "distributionGenerated": false,
+  "libraryRetried": false
+}

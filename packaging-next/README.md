@@ -99,13 +99,23 @@ CLI 均为位置参数：`manifest payload version commit`、`verify payload`、
 
 ## 独立边界复核结果与范围
 
-`evidence/security-boundary-review/` 保存实际失败及修复后结果：旧实现15个新条件中11失败；另外有效只读备份、只读备份目录分别复现1个不同失败。最终22个新增条件和全量132项全部通过，未用已有同条件案例增加计数。恶意触发器控制样本即使 `integrity_check=ok`，恢复后的正常保存仍可把银行期初1234.56改成61234.56；本组件现在在 store.Open 的写能力探针前，以只读连接拒绝触发器、视图、额外应用表/索引和非 schema 1。
+`evidence/security-boundary-review/` 保存实际失败及修复后结果：旧实现15个新条件中11失败；另外有效只读备份、只读备份目录分别复现1个不同失败。最终22个新增条件和全量132项全部通过，未用已有同条件案例增加计数。恶意触发器控制样本即使 `integrity_check=ok`，恢复后的正常保存仍可把银行期初1234.56改成61234.56；本组件现在在 store.Open 的写能力探针前，以只读连接拒绝触发器、视图、额外应用表/索引和非 schema 1；同一次只读事务还与受信任 Storage.Create 新建的规范空库比对完整 DDL 及列/约束/索引元数据。
 
 `LedgerFilePolicy.Validate` 是公开的只读布局门槛，供 Desktop 组合根接入；它不替代路径登记、租约、业务规则或备份来源认证。直接调用原 Storage API 的其他入口不自动获得本模块保护。显式恢复另一个有效账套到新路径会返回其真实 BookId，不会猜测用户意图；恢复指定账套时，UI还应核对预期身份和已知可信校验值。
 
 卸载在删除前保存 pending 标志并移除激活指针。异常或断点留下标志时，后续启动/安装/数据操作拒绝并要求显式恢复，不自动猜测续做；没有自动断电恢复或继续卸载的完成声明。旧预览缺少独立版本所有权摘要时同样拒绝自动删除，不能从现存清单反向“补信任”。
 
 Linux实际验证文件/目录符号链接、sidecar 路径门槛、源/备份哈希、只读文件和0555目录权限以及跨进程租约；设备/extended-namespace 仅做跨平台词法拒绝验证。Windows NTFS junction/ACL/8.3别名、硬链接身份、同权限进程并发替换目录和真实断电未实测；本实现不声称抵抗已控制当前用户文件系统写权限的攻击者。Windows验收仍受独审暂停门槛约束，本次没有运行Windows EXE或生成新分发包。
+
+## schema 约束追加复核
+
+`evidence/schema-constraint-review/`记录C#真实入口反例。原Gate仅验对象名，会允许 `voucher_lines` 加上 `UNIQUE(summary) ON CONFLICT REPLACE`；列序/类型/PK/FK和五表名均没变，额外autoindex的SQL为null。Delivery恢复成功后，普通Storage保存两条同摘要平衡分录（借贷各10.25）只剩一条贷方10.25，revision仍推进到2，完整性仍ok/FK无违规。该结果独立于被撤回的“accounts先正确读再保存交换列”说法；读取本来也SELECT*按序，撤回例不作为修复依据。
+
+`SchemaV1Layout`现在与可信已安装Storage的公开Create入口生成的全新空schema参考比对：有序列名/声明类型/null/default/PK/hidden、FK、STRICT/without-rowid、所有index的origin/unique/partial/列序/排序/collation，以及完整表/索引DDL。参考只在独立临时目录生成并清理，不以用户文件当模板；输入保持只读事务，失败不创建恢复目标、不重写或“修复”备份。
+
+兼容范围明确限制为相同规范schema-v1布局、允许SQLite的ASCII空白、未引用SQL词的ASCII大小写和闭合注释差异；业务数据的中文内容不受影响。不同引号、类型别名、约束表达式或其他未审阅DDL不自动推定等价，不进行静默转换。新参考生成器版本若不再为1，也要求显式更新审核。本轮还实际复现并修复了规范化的CR漏洞：`--`只在LF/EOF结束，不能在CR提前结束而把被注释的CHECK复活，参见[SQLite注释规则](https://www.sqlite.org/lang_comment.html)。
+
+最终新增9项、全量141项通过；canonical空白/闭合comments正向控制恢复后保存两行、借贷各10.25均完整。直接绕过Delivery的Storage控制仍能复现丢行，因此不声称Storage本身已修。主协调可交Storage owner：在Open/Restore边界拒绝未知schema；在Create及InsertContents显式列出INSERT列、ReadContents显式投影；Write在commit前以深语义读回核对完整分录/借贷，不匹配则回滚。**仅改显式列名不能修复额外UNIQUE REPLACE**；该约束门槛和事务语义核对需要单独保留。本模块没有修改Storage/Core/Desktop，也未解除分发暂停。
 
 ## 许可与证据
 
