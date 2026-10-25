@@ -50,6 +50,14 @@ jobs:
         if: always()
         shell: pwsh
         run: ./tests/Caiwu.VisualReview/run.ps1 -OutputDirectory artifacts/visual-checks
+      - name: Recheck existing eight WPF interaction probes after template changes
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.Acceptance/Wpf/run.ps1 -OutputDirectory artifacts/visual-interactions/wpf
+      - name: Recheck existing bounded new-book and report navigation
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.UiNavigation.Tests/run.ps1 -OutputDirectory artifacts/visual-interactions/navigation
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -58,4 +66,7 @@ jobs:
             artifacts/visual-checks/*.png
             artifacts/visual-checks/*.json
             artifacts/visual-checks/*.log
+            artifacts/visual-interactions/**/*.png
+            artifacts/visual-interactions/**/*.json
+            artifacts/visual-interactions/**/*.log
           if-no-files-found: warn
