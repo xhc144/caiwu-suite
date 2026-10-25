@@ -28,9 +28,9 @@ public static class ReportBuilder
             foreach (var line in v.Lines)
             {
                 _ = M(line.Debit); _ = M(line.Credit);
-                debit += line.Debit; credit += line.Credit;
+                debit = MoneyMath.Add(debit, line.Debit); credit = MoneyMath.Add(credit, line.Credit);
             }
-            totalDebit += debit; totalCredit += credit;
+            totalDebit = MoneyMath.Add(totalDebit, debit); totalCredit = MoneyMath.Add(totalCredit, credit);
             rows.Add(new ReportRow([
                 T(v.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), T(v.Kind), T(N(v.Number)),
                 T(StatusName(v.Status)), T(string.Join("\n", v.Lines.Select(l => l.AccountCode))),
@@ -71,7 +71,7 @@ public static class ReportBuilder
             for (var i = 0; i < amounts.Length; i++)
             {
                 cells.Add(M(amounts[i]));
-                if (row.IsLeaf) totals[i] += amounts[i];
+                if (row.IsLeaf) totals[i] = MoneyMath.Add(totals[i], amounts[i]);
             }
             rows.Add(new ReportRow(cells, accountCode: row.AccountCode, accountDepth: depth, isLeaf: row.IsLeaf));
         }
@@ -100,7 +100,7 @@ public static class ReportBuilder
                 throw new ArgumentException("明细账分录日期超出报表期间。", nameof(entries));
             if (row.Date.HasValue)
             {
-                totalDebit += row.Debit; totalCredit += row.Credit;
+                totalDebit = MoneyMath.Add(totalDebit, row.Debit); totalCredit = MoneyMath.Add(totalCredit, row.Credit);
             }
             rows.Add(new ReportRow([
                 T(accountCode), T(AccountName(accountCode, catalog)),
