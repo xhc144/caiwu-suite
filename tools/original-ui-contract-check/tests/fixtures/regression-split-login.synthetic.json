@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "kind": "synthetic",
+    "description": "Minimal regression for the source-proven preview decision to separate operator login from book/date selection. NOT an observation of 0.1.0.4."
+  },
+  "windows": [{
+    "product": "qingsong/main",
+    "object": "w_login",
+    "entry": "event:w_frame.open",
+    "coverage": {"controls":"complete"},
+    "controls": [
+      {"id":"sle_id"},
+      {"id":"sle_password"},
+      {"id":"cb_ok","text":"登录"},
+      {"id":"cb_exit","text":"取消"}
+    ]
+  }]
+}

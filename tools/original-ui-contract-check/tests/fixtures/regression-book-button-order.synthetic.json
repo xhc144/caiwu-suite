@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "kind": "synthetic",
+    "description": "Deliberately swapped confirm/cancel positions to test the original book dialog contract. Not a real UI capture."
+  },
+  "windows": [{
+    "product":"qingsong/main",
+    "object":"w_tzjl",
+    "entry":"menu:m_frame_zw/m_s/m_s05",
+    "coverage":{"controls":"complete"},
+    "controls":[
+      {"id":"dw_1","visible":true,"bounds":{"x":20,"y":20,"width":500,"height":300,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_1","text":"新增","visible":true,"bounds":{"x":550,"y":80,"width":80,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_6","text":"引入","visible":true,"bounds":{"x":550,"y":120,"width":80,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_3","text":"删除","visible":true,"bounds":{"x":550,"y":160,"width":80,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_2","text":"复制","visible":true,"bounds":{"x":550,"y":200,"width":80,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_4","text":"确定","visible":true,"bounds":{"x":550,"y":280,"width":80,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_5","text":"取消","visible":true,"bounds":{"x":550,"y":240,"width":80,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_7","text":"自动备份设置...","visible":true,"bounds":{"x":20,"y":360,"width":180,"height":30,"unit":"abstract","space":"synthetic-window"}}
+    ]
+  }]
+}

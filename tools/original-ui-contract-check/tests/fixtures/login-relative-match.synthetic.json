@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "kind": "synthetic",
+    "description": "Handwritten geometry for comparator regression only. No application was run."
+  },
+  "windows": [{
+    "product": "qingsong/main",
+    "object": "w_login",
+    "entry": "event:w_frame.open",
+    "coverage": {"controls": "complete"},
+    "controls": [
+      {"id":"ddlb_1","visible":true,"bounds":{"x":200,"y":100,"width":300,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"sle_id","visible":true,"bounds":{"x":200,"y":150,"width":200,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"sle_password","visible":true,"bounds":{"x":200,"y":200,"width":200,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"em_1","visible":true,"bounds":{"x":200,"y":250,"width":200,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_3","text":"搜索","visible":true,"bounds":{"x":510,"y":100,"width":60,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_new","text":"N. 新增套账","visible":true,"bounds":{"x":100,"y":320,"width":110,"height":35,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_ok","text":"Y. 确认","visible":true,"bounds":{"x":240,"y":320,"width":100,"height":35,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"cb_exit","text":"E. 退出","visible":true,"bounds":{"x":370,"y":320,"width":100,"height":35,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"st_1","text":"套账名称:","visible":true,"bounds":{"x":100,"y":100,"width":90,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"st_userid","text":"用户代码:","visible":true,"bounds":{"x":100,"y":150,"width":90,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"st_pswd","text":"用户密码:","visible":true,"bounds":{"x":100,"y":200,"width":90,"height":30,"unit":"abstract","space":"synthetic-window"}},
+      {"id":"st_rq","text":"登录日期:","visible":true,"bounds":{"x":100,"y":250,"width":90,"height":30,"unit":"abstract","space":"synthetic-window"}}
+    ]
+  }]
+}
