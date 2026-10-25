@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:dialogs="clr-namespace:Caiwu.Desktop.Dialogs">
   <ResourceDictionary.MergedDictionaries>
     <!-- Keep Microsoft's complete editing, calendar, menu and accessibility templates. -->
     <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
@@ -25,6 +26,9 @@
     <Setter Property="UseLayoutRounding" Value="True" />
     <Setter Property="SnapsToDevicePixels" Value="True" />
   </Style>
+  <Style TargetType="dialogs:NewBookWindow" BasedOn="{StaticResource {x:Type Window}}" />
+  <Style TargetType="dialogs:AccountWindow" BasedOn="{StaticResource {x:Type Window}}" />
+  <Style TargetType="dialogs:AccountPickerWindow" BasedOn="{StaticResource {x:Type Window}}" />
   <!-- A complete Button template avoids a silent Aero fallback when a local Style is used. -->
   <Style TargetType="Button">
     <Setter Property="Background" Value="{DynamicResource AppSurface}" />
@@ -43,7 +47,7 @@
         <Border x:Name="Interaction" CornerRadius="6" Background="#182B45" Opacity="0" IsHitTestVisible="False" />
         <ContentPresenter x:Name="Label" Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-        <Border x:Name="Focus" CornerRadius="6" BorderBrush="{DynamicResource AppAccent}" BorderThickness="2" Visibility="Collapsed" IsHitTestVisible="False" />
+        <Border x:Name="Focus" CornerRadius="6" Margin="2" BorderBrush="{TemplateBinding Foreground}" BorderThickness="2" Visibility="Collapsed" IsHitTestVisible="False" />
       </Grid>
       <ControlTemplate.Triggers>
         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Interaction" Property="Opacity" Value="0.05" /></Trigger>
