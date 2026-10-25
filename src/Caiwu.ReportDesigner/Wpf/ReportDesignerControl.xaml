@@ -19,13 +19,13 @@
    <Button Content="上移" Click="Up_Click" Margin="5,0" Padding="10,4"/><Button Content="下移" Click="Down_Click" Margin="5,0" Padding="10,4"/><Button Content="删除列" Click="Remove_Click" Margin="5,0" Padding="10,4"/>
    <TextBlock Text="预览数据行上限 " VerticalAlignment="Center"/><TextBox x:Name="LimitEditor" Text="200" Width="70" TextChanged="Edited"/>
   </WrapPanel>
-  <DataGrid Grid.Row="3" x:Name="ColumnEditor" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column" RowHeight="30" GridLinesVisibility="Horizontal" CellEditEnding="ColumnCellEditEnding">
+  <DataGrid Grid.Row="3" x:Name="ColumnEditor" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single" SelectionUnit="FullRow" HeadersVisibility="Column" RowHeight="48" GridLinesVisibility="Horizontal" CellEditEnding="ColumnCellEditEnding">
    <DataGrid.Columns>
     <DataGridTextColumn Header="列键" Binding="{Binding Key, UpdateSourceTrigger=PropertyChanged}" Width="115"/>
     <DataGridTextColumn Header="标题" Binding="{Binding Title, UpdateSourceTrigger=PropertyChanged}" Width="140"/>
     <DataGridTextColumn Header="字段 / decimal公式" Binding="{Binding Expression, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="180"/>
     <DataGridTextColumn Header="宽度DIP" Binding="{Binding Width, UpdateSourceTrigger=PropertyChanged}" Width="80"/>
-    <DataGridTemplateColumn Header="格式" Width="80"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding Format, UpdateSourceTrigger=PropertyChanged}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+    <DataGridTemplateColumn Header="格式" Width="110"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding Format, UpdateSourceTrigger=PropertyChanged}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
     <DataGridCheckBoxColumn Header="显示" Binding="{Binding Visible, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
     <DataGridCheckBoxColumn Header="求和" Binding="{Binding Total, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
    </DataGrid.Columns>
