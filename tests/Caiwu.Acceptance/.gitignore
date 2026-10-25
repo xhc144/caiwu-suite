@@ -1,0 +1,5 @@
+.build/
+evidence/ci/artifact.zip
+evidence/ci/*.zip
+evidence/ci/verification/*.caiwu
+evidence/runtime/
