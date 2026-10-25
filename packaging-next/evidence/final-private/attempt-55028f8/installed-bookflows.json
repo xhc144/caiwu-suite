@@ -1,0 +1,162 @@
+{
+  "success": false,
+  "failure": "System.IO.IOException: Installed App did not exit normally.\r\n   at Program.Main(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 302",
+  "windowsExecuted": true,
+  "normalProductLogin": true,
+  "sourceProjectsExecutedAsProduct": false,
+  "sourceCommit": "55028f8fadd39dfde451b2f2a5da3e0d27a408ba",
+  "productionBaseline": "4689e29d654ddf15446b121d5281255b8af4b8f5",
+  "unexecutedScenarios": [
+    {
+      "name": "stale-source-revision",
+      "status": "not-run",
+      "reason": "No supported concurrent ledger mutation is available under the owned modal and real exclusive lease; supported session revocation is separately executed; root scope judgment required"
+    }
+  ],
+  "originalStaleSourceRevisionExecuted": false,
+  "originalStaleSourceRevisionReason": "Owned modal and actual exclusive lease prevent supported concurrent ledger mutation; supported real operator revocation is separately executed, root scope decision required",
+  "checks": [
+    "installed pointer binds the isolated data root",
+    "installed payload advertises the reviewed managed App contract",
+    "fixture uses a fresh synthetic identity store",
+    "normal product rejects a wrong synthetic password",
+    "actual product login locks the current actor control",
+    "installed process resolves coreclr.dll from its own payload",
+    "installed process resolves hostfxr.dll from its own payload",
+    "actual product process loads no native/managed image from the source checkout",
+    "normal App create registers the actual physical book",
+    "normal installed voucher grid saves one balanced draft",
+    "separate real login reviews and posts the draft through installed controls",
+    "actual managed lease file exists: .delivery.lock",
+    "actual installed App retains exclusive OS lease: .delivery.lock",
+    "actual managed lease file exists: .delivery-data.lock",
+    "actual installed App retains exclusive OS lease: .delivery-data.lock",
+    "both copied-voucher cancellations leave exact source bytes and voucher count unchanged",
+    "confirmation alone does not save a copied voucher",
+    "native repeated save produces exactly one fresh unreviewed draft",
+    "copy takes the actual fixed logged-in actor rather than source preparer",
+    "all copied voucher lines and exact amounts persist",
+    "source posted voucher identity lines actors signatures and status remain byte-for-byte semantically unchanged",
+    "duplicate number retains choice and changes no ledger bytes",
+    "cancelled summary edit preserves independently read version and original text",
+    "actual picker cancel preserves current line and persisted ledger",
+    "summary choice does not automatically save the voucher",
+    "explicit save persists exactly the selected summary without an extra voucher",
+    "source posted voucher identity lines actors signatures and status remain byte-for-byte semantically unchanged",
+    "normal editor reopen reads persisted selected summary",
+    "native continued keyboard input actually changes the intended summary row",
+    "continued native input persists in the same draft",
+    "continued summary input survives normal reopen",
+    "posted read-only voucher disables summary refill",
+    "installed host fixes book-copy audit actor",
+    "changed input invalidates stale preview approval and rejects execution",
+    "cancelled book-copy preview publishes nothing and preserves source bytes",
+    "installed host fixes book-copy audit actor",
+    "structured full copy reopens with new identity revision one and complete vouchers",
+    "full copied account/opening and voucher content exactly matches the independently captured source",
+    "full copy preserves book settings, close state and every original audit event",
+    "persisted copy audit binds exact source identity revision and semantic hash",
+    "executed copy preserves exact source bytes and active source session",
+    "repeat native confirm registers exactly one target",
+    "actual managed lease file exists: .delivery.lock",
+    "actual installed App retains exclusive OS lease: .delivery.lock",
+    "actual managed lease file exists: .delivery-data.lock",
+    "actual installed App retains exclusive OS lease: .delivery-data.lock",
+    "installed host fixes book-copy audit actor",
+    "existing destination cannot be approved or executed",
+    "duplicate operation retains exact winner and source file hashes",
+    "restore preserves identity revision and exact semantic snapshot unlike copy-as-new",
+    "restore preserves exact source ledger and global identity bytes",
+    "same-identity restored physical instance has an isolated path with initially identical summary file hash",
+    "same BookId does not alias catalogs: second physical instance update preserves first catalog bytes version and categories",
+    "normal source reopen resolves its own original physical catalog",
+    "visible balance-page explanatory heading confirms actual page content",
+    "balance page and amount remain visible after actual layout/compositor settle",
+    "actual managed lease file exists: .delivery.lock",
+    "actual installed App retains exclusive OS lease: .delivery.lock",
+    "actual managed lease file exists: .delivery-data.lock",
+    "actual installed App retains exclusive OS lease: .delivery-data.lock"
+  ],
+  "cases": [
+    {
+      "name": "voucher-cancel",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "voucher-execute-save-repeat",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "voucher-duplicate-refused",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "summary-manage",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "summary-refill",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "book-preview-cancel-stale-approval",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "book-copy-new-identity",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "book-duplicate-destination-refused",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "backup-restore-same-identity",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "physical-instance-summary-isolation",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "trial-balance-visible-native",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "independent-readback",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "expired-session-during-summary-picker",
+      "status": "failed",
+      "reason": "System.InvalidOperationException: Sequence contains no matching element\r\n   at System.Linq.ThrowHelper.ThrowNoMatchException()\r\n   at System.Linq.Enumerable.Single[TSource](IEnumerable\u00601 source, Func\u00602 predicate)\r\n   at Program.\u003C\u003Ec__DisplayClass18_0.\u003CMain\u003Eb__25() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 287\r\n   at Program.Case(String name, Action action) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 321"
+    }
+  ],
+  "expectedCases": [
+    "voucher-cancel",
+    "voucher-execute-save-repeat",
+    "voucher-duplicate-refused",
+    "summary-manage",
+    "summary-refill",
+    "book-preview-cancel-stale-approval",
+    "book-copy-new-identity",
+    "book-duplicate-destination-refused",
+    "backup-restore-same-identity",
+    "physical-instance-summary-isolation",
+    "trial-balance-visible-native",
+    "independent-readback",
+    "expired-session-during-summary-picker"
+  ]
+}

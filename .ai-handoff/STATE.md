@@ -1,5 +1,12 @@
 # caiwu-suite 主集成交接
 
+## 9549ae0最终私有候选：13:23 UTC组合通过
+
+源码9549ae0671e04d9c7fa565cfb34d614fa3effc0b / run40196386649，普通builder、实际原生生命周期、金融4业务/5附件4codec恢复、BookFlows声明13case及独立helper/卸载均过。src树714a5a79ecb11c0c08ced48841d4e9aa54785212；源freeze866条全匹配。原模态并发ledger revision仍not-run，另实跑支持API会话撤销；root最终独审接受为合成账套有限私人测试，可由root交付；原revision不称等价或实跑，不代表用户接受缩减原目标。未签名、无可信feed、portable新根恢复不支持；有限功能私人测试版，非三套完全复刻或合规认证。
+
+当前精确清单、报告、PNG、失败恢复和剩余门禁见 [最终交接](../packaging-next/FINAL_PRIVATE_PACKAGING_HANDOFF.md) / [候选清单](../packaging-next/PRIVATE_CANDIDATE_MANIFEST.zh-CN.md)。后续证据文档提交不是二进制源。没有用户上传、Release或main合并；原始派生上传仍暂停。root已完成独立整包/二进制核验；本checkout仅Range取小型证据，避免重复490MB传输。
+
+
 ## 12:35 UTC：root明确批准私有生产验证
 
 root已审75c84a6并核验063a1b5源清单，授权转换旧暂停、采纳workflow和运行全新普通生产构建及实际安装生命周期。旧DELIVERY_PAUSED转换为docs/acceptance/PRIVATE_VALIDATION_ONLY.md，用户分发与Release仍禁止；新的完整source SHA和结果单独冻结，未收到两路QA审核SHA前不越目录改写。

@@ -1,0 +1,590 @@
+{
+  "source": {
+    "revision": 6,
+    "book": {
+      "id": "3473ddff-5c70-45aa-9088-b4a46ac7b198",
+      "name": "\u5B89\u88C5\u5408\u6210\u8D26\u5957",
+      "regime": 0,
+      "templateVersion": "small-business-2011-demo.1",
+      "fiscalYear": 2026,
+      "startMonth": 1,
+      "closedThroughMonth": 0,
+      "createdAt": "2026-10-25T13:21:10.3667711+00:00"
+    },
+    "accounts": [
+      {
+        "code": "1001",
+        "name": "\u5E93\u5B58\u73B0\u91D1",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "1002",
+        "name": "\u94F6\u884C\u5B58\u6B3E",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "1403",
+        "name": "\u539F\u6750\u6599",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "3001",
+        "name": "\u5B9E\u6536\u8D44\u672C",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "3103",
+        "name": "\u672C\u5E74\u5229\u6DA6",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "5001",
+        "name": "\u4E3B\u8425\u4E1A\u52A1\u6536\u5165",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "5602",
+        "name": "\u7BA1\u7406\u8D39\u7528",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      }
+    ],
+    "vouchers": [
+      {
+        "id": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "date": "2026-01-01",
+        "kind": "\u8BB0",
+        "number": 1,
+        "attachmentCount": 0,
+        "preparedBy": "operator:1be0e45a07be4fa7a2d320f9f5665d3c",
+        "reviewedBy": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "status": 2,
+        "lines": [
+          {
+            "accountCode": "1002",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9",
+            "debit": 123.45,
+            "credit": 0
+          },
+          {
+            "accountCode": "3001",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+            "debit": 0,
+            "credit": 123.45
+          }
+        ]
+      },
+      {
+        "id": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "date": "2026-01-01",
+        "kind": "\u8BB0",
+        "number": 2,
+        "attachmentCount": 0,
+        "preparedBy": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "reviewedBy": null,
+        "status": 0,
+        "lines": [
+          {
+            "accountCode": "1002",
+            "summary": "\u5B89\u88C5\u5408\u6210\u6458\u8981\uFF1A\u652F\u4ED8\u529E\u516C\u8D39\uFF08\u7EE7\u7EED\u8F93\u5165\uFF09",
+            "debit": 123.45,
+            "credit": 0
+          },
+          {
+            "accountCode": "3001",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+            "debit": 0,
+            "credit": 123.45
+          }
+        ]
+      }
+    ],
+    "auditEvents": [
+      {
+        "id": "edec8aa6-5baa-4002-a087-92d881c719cf",
+        "at": "2026-10-25T13:21:16.5147478+00:00",
+        "operatorName": "operator:1be0e45a07be4fa7a2d320f9f5665d3c",
+        "action": "SaveDraft",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "24e35d97-8710-4521-a787-513d10c5b5b8",
+        "at": "2026-10-25T13:21:20.3190719+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "Review",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "Review 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "e3aa1895-a9a1-4f4e-80bb-6d5010e18949",
+        "at": "2026-10-25T13:21:21.1495576+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "Post",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "Post 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "af953ebf-9dc5-47e4-8b3d-61b01831f96e",
+        "at": "2026-10-25T13:21:30.4075306+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      },
+      {
+        "id": "f7176273-7903-4cdc-ba86-5861e397c8d4",
+        "at": "2026-10-25T13:21:42.0207381+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      },
+      {
+        "id": "30dc8327-2fea-4497-826c-4a98c1771a26",
+        "at": "2026-10-25T13:21:45.8448481+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      }
+    ]
+  },
+  "copied": {
+    "revision": 1,
+    "book": {
+      "id": "ec437e4e-9c6d-48c7-a911-e6a9a5151f42",
+      "name": "\u5B89\u88C5\u590D\u5236\u72EC\u7ACB\u8EAB\u4EFD",
+      "regime": 0,
+      "templateVersion": "small-business-2011-demo.1",
+      "fiscalYear": 2026,
+      "startMonth": 1,
+      "closedThroughMonth": 0,
+      "createdAt": "2026-10-25T13:21:51.4814147+00:00"
+    },
+    "accounts": [
+      {
+        "code": "1001",
+        "name": "\u5E93\u5B58\u73B0\u91D1",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "1002",
+        "name": "\u94F6\u884C\u5B58\u6B3E",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "1403",
+        "name": "\u539F\u6750\u6599",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "3001",
+        "name": "\u5B9E\u6536\u8D44\u672C",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "3103",
+        "name": "\u672C\u5E74\u5229\u6DA6",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "5001",
+        "name": "\u4E3B\u8425\u4E1A\u52A1\u6536\u5165",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "5602",
+        "name": "\u7BA1\u7406\u8D39\u7528",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      }
+    ],
+    "vouchers": [
+      {
+        "id": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "date": "2026-01-01",
+        "kind": "\u8BB0",
+        "number": 1,
+        "attachmentCount": 0,
+        "preparedBy": "operator:1be0e45a07be4fa7a2d320f9f5665d3c",
+        "reviewedBy": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "status": 2,
+        "lines": [
+          {
+            "accountCode": "1002",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9",
+            "debit": 123.45,
+            "credit": 0
+          },
+          {
+            "accountCode": "3001",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+            "debit": 0,
+            "credit": 123.45
+          }
+        ]
+      },
+      {
+        "id": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "date": "2026-01-01",
+        "kind": "\u8BB0",
+        "number": 2,
+        "attachmentCount": 0,
+        "preparedBy": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "reviewedBy": null,
+        "status": 0,
+        "lines": [
+          {
+            "accountCode": "1002",
+            "summary": "\u5B89\u88C5\u5408\u6210\u6458\u8981\uFF1A\u652F\u4ED8\u529E\u516C\u8D39\uFF08\u7EE7\u7EED\u8F93\u5165\uFF09",
+            "debit": 123.45,
+            "credit": 0
+          },
+          {
+            "accountCode": "3001",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+            "debit": 0,
+            "credit": 123.45
+          }
+        ]
+      }
+    ],
+    "auditEvents": [
+      {
+        "id": "edec8aa6-5baa-4002-a087-92d881c719cf",
+        "at": "2026-10-25T13:21:16.5147478+00:00",
+        "operatorName": "operator:1be0e45a07be4fa7a2d320f9f5665d3c",
+        "action": "SaveDraft",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "24e35d97-8710-4521-a787-513d10c5b5b8",
+        "at": "2026-10-25T13:21:20.3190719+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "Review",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "Review 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "e3aa1895-a9a1-4f4e-80bb-6d5010e18949",
+        "at": "2026-10-25T13:21:21.1495576+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "Post",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "Post 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "af953ebf-9dc5-47e4-8b3d-61b01831f96e",
+        "at": "2026-10-25T13:21:30.4075306+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      },
+      {
+        "id": "f7176273-7903-4cdc-ba86-5861e397c8d4",
+        "at": "2026-10-25T13:21:42.0207381+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      },
+      {
+        "id": "30dc8327-2fea-4497-826c-4a98c1771a26",
+        "at": "2026-10-25T13:21:45.8448481+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      },
+      {
+        "id": "f5d7df29-87d1-4f59-a060-87fc08aa5819",
+        "at": "2026-10-25T13:21:51.4814147+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "BookCopiedAsNew",
+        "voucherId": null,
+        "detail": "{\u0022SourceBookId\u0022:\u00223473ddff-5c70-45aa-9088-b4a46ac7b198\u0022,\u0022SourceName\u0022:\u0022\\u5B89\\u88C5\\u5408\\u6210\\u8D26\\u5957\u0022,\u0022SourceRevision\u0022:6,\u0022SourceFingerprint\u0022:\u0022be5fe30ee530393af2b76697acb476f791c0700847dcd14ddc9ef3cc0aff6108\u0022,\u0022Scope\u0022:\u0022FullLedger\u0022,\u0022NewBookId\u0022:\u0022ec437e4e-9c6d-48c7-a911-e6a9a5151f42\u0022}"
+      }
+    ]
+  },
+  "restored": {
+    "revision": 6,
+    "book": {
+      "id": "3473ddff-5c70-45aa-9088-b4a46ac7b198",
+      "name": "\u5B89\u88C5\u5408\u6210\u8D26\u5957",
+      "regime": 0,
+      "templateVersion": "small-business-2011-demo.1",
+      "fiscalYear": 2026,
+      "startMonth": 1,
+      "closedThroughMonth": 0,
+      "createdAt": "2026-10-25T13:21:10.3667711+00:00"
+    },
+    "accounts": [
+      {
+        "code": "1001",
+        "name": "\u5E93\u5B58\u73B0\u91D1",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "1002",
+        "name": "\u94F6\u884C\u5B58\u6B3E",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "1403",
+        "name": "\u539F\u6750\u6599",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "3001",
+        "name": "\u5B9E\u6536\u8D44\u672C",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "3103",
+        "name": "\u672C\u5E74\u5229\u6DA6",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "5001",
+        "name": "\u4E3B\u8425\u4E1A\u52A1\u6536\u5165",
+        "parentCode": null,
+        "direction": 1,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      },
+      {
+        "code": "5602",
+        "name": "\u7BA1\u7406\u8D39\u7528",
+        "parentCode": null,
+        "direction": 0,
+        "isActive": true,
+        "openingDebit": 0,
+        "openingCredit": 0
+      }
+    ],
+    "vouchers": [
+      {
+        "id": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "date": "2026-01-01",
+        "kind": "\u8BB0",
+        "number": 1,
+        "attachmentCount": 0,
+        "preparedBy": "operator:1be0e45a07be4fa7a2d320f9f5665d3c",
+        "reviewedBy": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "status": 2,
+        "lines": [
+          {
+            "accountCode": "1002",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9",
+            "debit": 123.45,
+            "credit": 0
+          },
+          {
+            "accountCode": "3001",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+            "debit": 0,
+            "credit": 123.45
+          }
+        ]
+      },
+      {
+        "id": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "date": "2026-01-01",
+        "kind": "\u8BB0",
+        "number": 2,
+        "attachmentCount": 0,
+        "preparedBy": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "reviewedBy": null,
+        "status": 0,
+        "lines": [
+          {
+            "accountCode": "1002",
+            "summary": "\u5B89\u88C5\u5408\u6210\u6458\u8981\uFF1A\u652F\u4ED8\u529E\u516C\u8D39\uFF08\u7EE7\u7EED\u8F93\u5165\uFF09",
+            "debit": 123.45,
+            "credit": 0
+          },
+          {
+            "accountCode": "3001",
+            "summary": "\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+            "debit": 0,
+            "credit": 123.45
+          }
+        ]
+      }
+    ],
+    "auditEvents": [
+      {
+        "id": "edec8aa6-5baa-4002-a087-92d881c719cf",
+        "at": "2026-10-25T13:21:16.5147478+00:00",
+        "operatorName": "operator:1be0e45a07be4fa7a2d320f9f5665d3c",
+        "action": "SaveDraft",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "24e35d97-8710-4521-a787-513d10c5b5b8",
+        "at": "2026-10-25T13:21:20.3190719+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "Review",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "Review 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "e3aa1895-a9a1-4f4e-80bb-6d5010e18949",
+        "at": "2026-10-25T13:21:21.1495576+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "Post",
+        "voucherId": "a6ef70b7-aedd-4185-810f-1493ad47e91b",
+        "detail": "Post 2026-01-01 \u8BB0-1"
+      },
+      {
+        "id": "af953ebf-9dc5-47e4-8b3d-61b01831f96e",
+        "at": "2026-10-25T13:21:30.4075306+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      },
+      {
+        "id": "f7176273-7903-4cdc-ba86-5861e397c8d4",
+        "at": "2026-10-25T13:21:42.0207381+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      },
+      {
+        "id": "30dc8327-2fea-4497-826c-4a98c1771a26",
+        "at": "2026-10-25T13:21:45.8448481+00:00",
+        "operatorName": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
+        "action": "SaveDraft",
+        "voucherId": "25eec885-8c27-4e61-ac9d-cfaee07582c6",
+        "detail": "\u4FDD\u5B58 2026-01-01 \u8BB0-2"
+      }
+    ]
+  },
+  "inventory": {
+    "contractVersion": 1,
+    "books": [
+      {
+        "instanceId": "0d985009-6cd7-4cb8-a8e1-e5deeddbef44",
+        "bookId": "3473ddff-5c70-45aa-9088-b4a46ac7b198",
+        "relativeDatabasePath": "\u5B89\u88C5 \u5408\u6210\u8D26\u5957.caiwu"
+      },
+      {
+        "instanceId": "f5cf7ae9-863b-4225-bacd-56588138f8e7",
+        "bookId": "ec437e4e-9c6d-48c7-a911-e6a9a5151f42",
+        "relativeDatabasePath": "\u590D\u5236 \u72EC\u7ACB\u8EAB\u4EFD\u8D26\u5957.caiwu"
+      },
+      {
+        "instanceId": "3b89cf68-c80c-48f6-82ae-c005dc188612",
+        "bookId": "3473ddff-5c70-45aa-9088-b4a46ac7b198",
+        "relativeDatabasePath": "Books/3b89cf68c80c48f682aec005dc188612/ledger.caiwu"
+      }
+    ],
+    "attachments": [
+      {
+        "instanceId": "0d985009-6cd7-4cb8-a8e1-e5deeddbef44",
+        "bookId": "3473ddff-5c70-45aa-9088-b4a46ac7b198",
+        "key": "summaries",
+        "codec": "summary-v1",
+        "relativePath": "Books/0d9850096cd74cb8a8e1e5deeddbef44/Modules/Summaries/catalog.json"
+      },
+      {
+        "instanceId": "3b89cf68-c80c-48f6-82ae-c005dc188612",
+        "bookId": "3473ddff-5c70-45aa-9088-b4a46ac7b198",
+        "key": "summaries",
+        "codec": "summary-v1",
+        "relativePath": "Books/3b89cf68c80c48f682aec005dc188612/Modules/Summaries/catalog.json"
+      }
+    ]
+  },
+  "sourceSummary": {
+    "catalogId": "93822025-13e9-4bf5-a049-46439f6a6a87",
+    "revision": 2,
+    "sha256": "4a552bf729d3eb637af1962f4944ad0154033c17bf72009113f03e8376e7b6b1"
+  },
+  "restoredSummary": {
+    "catalogId": "93822025-13e9-4bf5-a049-46439f6a6a87",
+    "revision": 3,
+    "sha256": "365bd7c5f24918316854bc688ed842ee5a0114e56c9483f380cf4b99ab378507"
+  }
+}

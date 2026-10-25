@@ -1,0 +1,67 @@
+name: Exact-byte private candidate handoff without rebuild
+on:
+  push:
+    branches: [codex/final-private-packaging]
+    paths: ['.github/workflows/private-candidate-handoff.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  handoff:
+    if: github.event.repository.private == true
+    runs-on: windows-2025
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Download original immutable artifact and copy only the verified installer and guide
+        shell: python
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          import hashlib,json,os,pathlib,urllib.request,urllib.error,urllib.parse,zipfile
+          source='9549ae0671e04d9c7fa565cfb34d614fa3effc0b'
+          expected_zip='b626617a5e8a4c627652540d4ea8651159baecb394a1e658e5d7ba2bdcd59d5b'
+          installer_name='caiwu-0.1.0.4-win-x64-setup.exe'
+          expected_exe='9248d0363c639caeada84810959d0a8a885d8c1c45cdc7677476b0a4476bcf0b'
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl): return None
+          request=urllib.request.Request('https://api.github.com/repos/xhc144/caiwu-suite/actions/artifacts/12599758441/zip',headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'})
+          try:
+              urllib.request.build_opener(NoRedirect()).open(request,timeout=30)
+              raise RuntimeError('Expected the authorized GitHub artifact redirect')
+          except urllib.error.HTTPError as response:
+              if response.code!=302: raise
+              download=response.headers['Location']
+          if urllib.parse.urlparse(download).scheme!='https': raise RuntimeError('HTTPS artifact transport required')
+          archive=pathlib.Path(os.environ['RUNNER_TEMP'])/'original-12599758441.zip'
+          digest=hashlib.sha256()
+          # Never forward the GitHub token to the signed artifact-storage URL.
+          with urllib.request.urlopen(download,timeout=90) as incoming,archive.open('xb') as target:
+              while block:=incoming.read(4*1024*1024): target.write(block);digest.update(block)
+          if digest.hexdigest()!=expected_zip: raise RuntimeError('Original artifact digest mismatch')
+          out=pathlib.Path('artifacts/private-handoff');out.mkdir(parents=True)
+          with zipfile.ZipFile(archive) as original:
+              base='caiwu-suite/caiwu-suite/artifacts/delivery/next/'
+              release=json.loads(original.read(base+'release-manifest.json'))
+              if release['commit']!=source or release['version']!='0.1.0.4': raise RuntimeError('Binary source/version mismatch')
+              exe=out/installer_name
+              with original.open(base+installer_name) as incoming,exe.open('xb') as target:
+                  while block:=incoming.read(4*1024*1024): target.write(block)
+              if exe.stat().st_size!=132284835 or hashlib.file_digest(exe.open('rb'),'sha256').hexdigest()!=expected_exe: raise RuntimeError('Exact installer length/hash mismatch')
+              guide=original.read('caiwu-suite/caiwu-suite/artifacts/delivery-docs/INSTALL_AND_USE.zh-CN.md')
+              notice=next(f for f in release['payloadFiles'] if f['path']=='delivery-notices/INSTALL_AND_USE.zh-CN.md')
+              if hashlib.sha256(guide).hexdigest()!=notice['sha256']: raise RuntimeError('Original bundled guide hash mismatch')
+              (out/'INSTALL_AND_USE.zh-CN.md').write_bytes(guide)
+          (out/'PRIVATE_TEST_LIMITS.zh-CN.md').write_bytes(pathlib.Path('packaging-next/PRIVATE_CANDIDATE_MANIFEST.zh-CN.md').read_bytes())
+          record={'classification':'LIMITED-PRIVATE-TEST-HANDOFF','installerSourceCommit':source,'originalRun':40196386649,'originalArtifact':12599758441,'originalArtifactZipSha256':expected_zip,'handoffWorkflowCommit':os.environ['GITHUB_SHA'],'rebuilt':False,'renamedInstaller':False,'modifiedInstaller':False,'signed':False,'trustedAutoUpdateFeed':False,'portableNewRootRestoreSupported':False,'originalModalLedgerRevisionExecuted':False,'rootEngineeringAcceptance':'Limited synthetic private testing only; not completion of original goals, user acceptance of reduced goals, formal accounting or public release','files':[{'path':p.name,'bytes':p.stat().st_size,'sha256':hashlib.file_digest(p.open('rb'),'sha256').hexdigest()} for p in sorted(out.iterdir())]}
+          (out/'SOURCE_AND_HASHES.json').write_text(json.dumps(record,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          (out/'SHA256SUMS').write_text(''.join(hashlib.file_digest(p.open('rb'),'sha256').hexdigest()+'  '+p.name+'\n' for p in sorted(out.iterdir()) if p.is_file()),encoding='utf-8')
+          print('Exact original installer retained:',installer_name,132284835,expected_exe)
+          print('No build, executable launch, signature, Release, main merge or permission change performed.')
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: caiwu-0.1.0.4-private-test-download
+          path: artifacts/private-handoff/*
+          compression-level: 0
+          if-no-files-found: error

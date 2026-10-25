@@ -1,0 +1,29 @@
+{
+  "runUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40195378910",
+  "artifactId": 12600260852,
+  "artifactZipSha256": "4aa6f9524bdb60a1c3ec29d2497f5389ffab5b75c85851feafe7812e995b2cb9",
+  "downloadedAndDigestVerified": true,
+  "finalAcceptance": false,
+  "files": [
+    {
+      "path": "windows-acceptance.json",
+      "bytes": 2723,
+      "sha256": "b42ebddc574002055089b9e53273c298ae2b28b0804e30213966da90e70b0a50"
+    },
+    {
+      "path": "installed-bookflows.json",
+      "bytes": 7931,
+      "sha256": "94facd57818fa519756848324295d5b5975e00b384f6294b157214ff373b6b6b"
+    },
+    {
+      "path": "installation-and-independent-readback.json",
+      "bytes": 3553,
+      "sha256": "fad16cfb6007a05caaa64ce29f8f361264b933119790c5477767563fcc1d523a"
+    },
+    {
+      "path": "financial-results.json",
+      "bytes": 9314,
+      "sha256": "43c1778539e2bd07ed96af1e4879d9deeb2a217265f605726a046a4b7038875d"
+    }
+  ]
+}

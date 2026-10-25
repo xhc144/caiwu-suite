@@ -1,0 +1,55 @@
+{
+  "sourceCommit": "55028f8fadd39dfde451b2f2a5da3e0d27a408ba",
+  "success": false,
+  "nativeInstalled": true,
+  "controllerExitCode": 1,
+  "failure": "System.Management.Automation.ItemNotFoundException: Cannot find path 'D:\\a\\_temp\\caiwu-private-bookflows-40195378910-1\\runtime\\readback.json' because it does not exist.\r\n   at System.Management.Automation.LocationGlobber.ExpandMshGlobPath(String path, Boolean allowNonexistingPaths, PSDriveInfo drive, ContainerCmdletProvider provider, CmdletProviderContext context)\r\n   at System.Management.Automation.LocationGlobber.ResolveDriveQualifiedPath(String path, CmdletProviderContext context, Boolean allowNonexistingPaths, CmdletProvider& providerInstance)\r\n   at System.Management.Automation.LocationGlobber.GetGlobbedMonadPathsFromMonadPath(String path, Boolean allowNonexistingPaths, CmdletProviderContext context, CmdletProvider& providerInstance)\r\n   at System.Management.Automation.PathIntrinsics.GetResolvedPSPathFromPSPath(String path, CmdletProviderContext context)\r\n   at Microsoft.PowerShell.Commands.ContentCommandBase.ResolvePaths(String[] pathsToResolve, Boolean allowNonexistingPaths, Boolean allowEmptyResult, CmdletProviderContext currentCommandContext)",
+  "independentInstalledReadback": [
+    {
+      "relativePath": "复制 独立身份账套.caiwu",
+      "sha256": "5aa1737b815d8de9d467fb59c59e9be407d01b5847a0eb580b1de896d3dd20a1",
+      "inspection": {
+        "databasePath": "D:\\a\\_temp\\caiwu-private-bookflows-40195378910-1\\合成 数据\\复制 独立身份账套.caiwu",
+        "bookId": "25996058-5f5a-4c0e-b0a0-d5fcc34529dd",
+        "revision": 1,
+        "voucherCount": 2,
+        "postedVoucherCount": 1,
+        "bankBalance": 123.45,
+        "snapshotSha256": "0bd028a4d23e2714daa4a9186ba2c1817b8137fe451228c79b75d14cc377257c",
+        "fileSha256": "5aa1737b815d8de9d467fb59c59e9be407d01b5847a0eb580b1de896d3dd20a1",
+        "fileSha256Basis": "sqlite-consistent-copy"
+      }
+    },
+    {
+      "relativePath": "安装 合成账套.caiwu",
+      "sha256": "69105b7dcf4d9c5afbc5dde750410f9b7f0a174efeac67ee08753bdaced27d3d",
+      "inspection": {
+        "databasePath": "D:\\a\\_temp\\caiwu-private-bookflows-40195378910-1\\合成 数据\\安装 合成账套.caiwu",
+        "bookId": "cae30558-f2f4-408d-9ad1-14f4b7b88fe9",
+        "revision": 6,
+        "voucherCount": 2,
+        "postedVoucherCount": 1,
+        "bankBalance": 123.45,
+        "snapshotSha256": "1fe35175516a3fd91b56c92b908644114b53d6aea6dcced69dfd6839259bb76d",
+        "fileSha256": "120b0a2ef4e2b17518074a432048b62c21f1313efa66a8cfc9e276135fbe4317",
+        "fileSha256Basis": "sqlite-consistent-copy"
+      }
+    },
+    {
+      "relativePath": "Books\\bbcc15edb01e4deea71f755709efd922\\ledger.caiwu",
+      "sha256": "120b0a2ef4e2b17518074a432048b62c21f1313efa66a8cfc9e276135fbe4317",
+      "inspection": {
+        "databasePath": "D:\\a\\_temp\\caiwu-private-bookflows-40195378910-1\\合成 数据\\Books\\bbcc15edb01e4deea71f755709efd922\\ledger.caiwu",
+        "bookId": "cae30558-f2f4-408d-9ad1-14f4b7b88fe9",
+        "revision": 6,
+        "voucherCount": 2,
+        "postedVoucherCount": 1,
+        "bankBalance": 123.45,
+        "snapshotSha256": "1fe35175516a3fd91b56c92b908644114b53d6aea6dcced69dfd6839259bb76d",
+        "fileSha256": "120b0a2ef4e2b17518074a432048b62c21f1313efa66a8cfc9e276135fbe4317",
+        "fileSha256Basis": "sqlite-consistent-copy"
+      }
+    }
+  ],
+  "uninstallRetention": false
+}

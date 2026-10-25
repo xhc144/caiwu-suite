@@ -1,3 +1,25 @@
+# 最终私有候选交接：9549ae0
+
+**root已最终独审接受9549ae0为有限功能的合成账套私人测试版本，可由root交付；不是原任务全部完成或用户接受缩减目标。** 普通builder的新候选源9549ae0671e04d9c7fa565cfb34d614fa3effc0b，在[run40196386649](https://github.com/xhc144/caiwu-suite/actions/runs/40196386649)同时通过原生生命周期、金融4业务/5附件4codec恢复、修订后BookFlows声明13case及独立已安装helper读回/卸载保留。原模态并发ledger revision未实跑，仍以not-run显式保留，root明确接受实际会话撤销证据，同时原revision场景不称等价或实跑；该边界不阻断合成私人测试，仍不构成所有场景/正式账务验收。
+
+[最终候选清单与中文说明/截图](PRIVATE_CANDIDATE_MANIFEST.zh-CN.md)是交接入口。可供root决定交付的是有限功能私人测试版本，不是三套原软件完全复刻或财务合规认证。
+
+- 候选0.1.0.4：132284835bytes，SHA256 `9248d0363c639caeada84810959d0a8a885d8c1c45cdc7677476b0a4476bcf0b`。初装对照0.1.0.3：132286557bytes，SHA256 `9889eee915f2cd398f9ed92e473ebca08cd8764e017b6b5ee17e9466cc8fdeb1`。数值来自实际普通builder原始release-manifest，root已独立实字节核对；没有改名内部包。
+- [artifact12599758441](https://github.com/xhc144/caiwu-suite/actions/runs/40196386649/artifacts/12599758441)：490768016bytes，GitHub SHA256 `b626617a5e8a4c627652540d4ea8651159baecb394a1e658e5d7ba2bdcd59d5b`。为避免与root重复整包传输，本checkout只取30,512,759bytes Range并验证成员CRC。root已独立完成整包/二进制核验；本checkout不冒称重哈希整包。
+- Windows source-freeze866条与本地Git对象清单全部相等；该原始JSON SHA256 `67c7e728da4365dbef54a68083038661a2690319ba517716b9a6a4af3c000e58`。src树714a5a79ecb11c0c08ced48841d4e9aa54785212，Delivery组合树454dba0d36468fcb2b139678f202d3e14b9b6e0e。后续报告文档提交不是安装器来源。
+- 两版组件各162 passed/0 failed/4平台skip（共166，原始JSON保留），未跳过测试。金融/Book证据清单逐成员hash和长度核对、5附件hash/version对照、实际可信收据对原始backup manifest的SHA均再次检查。两版payload清单摘要及448项文件记录与release清单相符；实际随包中文说明bytes也与payload条目hash相符。
+- 48张PNG均原生1920×1080；7张关键图逐张目视并原字节保存在evidence/final-private/accepted-9549ae0/screenshots。真实余额页123.45、摘要原生继续输入/Enter、专用撤销提示均可见；金融合成110/10、Designer1002行10及成本254可见。成本分配最右列裁切，不声称目视完整21/63。
+
+**失败与恢复均保留：**3e83e0f普通构建成功，旧控制器过早读到原生收据路径前缀而拒绝确认；9f40fc4保留严格路径断言并等待完整输入。55028f8生命周期/金融/摘要原生链通过，新增撤销测试用小写登录名查规范化大写身份失败，后续readback缺失；9549ae0改用服务返回稳定ID，完整撤销、正常退出、readback和卸载已实跑通过。不将旧失败或取消重标成功。
+
+**剩余限制：**root已完成精确字节及报告/图独审，限私人合成测试；原模态并发ledger revision未跑。未签名，无可信自动更新feed，跨新根portable恢复未支持；民非只读/不新建、成本不自动记账、Designer有限、无原账套/旧身份自动迁移、生产原地schema迁移或断电恢复完成声明。合成分类seed及精确金融行列断言边界详见矩阵。本任务没有用户上传/Release/main合并/公开/权限或签名设置变更；原资源及完整派生上传仍暂停。没有新增产品安全blocker或自动审批拒绝；工具日志保存曾遇单参长度限制，分块落地恢复。
+
+当前checkout /workspace/caiwu-final，分支codex/final-private-packaging，[草稿PR34](https://github.com/xhc144/caiwu-suite/pull/34)。book-project未改。使用真实项目交接记录，没有Handoff MCP。停止功能扩展，只保留源绑定成果与root最终决定。
+
+---
+
+以下为上一阶段历史记录，保留原范围和失败，不替代上述新源结果。
+
 # 最终 packaging/doc 集成交接
 
 > **12:35 UTC阶段更新：**root已明确批准私有生产构建及实际安装生命周期验证。旧 DELIVERY_PAUSED 已转换为 `docs/acceptance/PRIVATE_VALIDATION_ONLY.md`，新workflow已采纳，新的完整SHA及结果单独冻结。用户分发和Release仍未批准；两路QA的审核SHA仍待root回传。以下原有暂停/待采纳表述是上一阶段记录，以本更新及分项门禁记录的最新授权为准。
