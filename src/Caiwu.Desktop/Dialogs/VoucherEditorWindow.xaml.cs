@@ -139,7 +139,14 @@ public partial class VoucherEditorWindow : Window
             if (!_lines.Contains(line)) throw new LedgerValidationException("原分录已变化，请重新选择。");
             line.Summary = selected; ErrorText.Text = ""; FocusCell(line, 0);
         }
-        catch (Exception ex) { ErrorText.Text = SaveError.Message(ex); }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError("Summary selection failed: {0}", ex);
+            ErrorText.Text = ex is Caiwu.Summaries.SummaryCatalogException or Caiwu.Operators.OperatorException or
+                StoreConcurrencyException or System.IO.IOException or UnauthorizedAccessException or LedgerValidationException
+                ? "摘要未回填，原输入保留：" + ex.Message
+                : "摘要未回填，原输入保留。选择摘要时发生错误，请关闭后重新核对。";
+        }
     }
     private void PickAccount()
     {
