@@ -4,8 +4,9 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ReviewedSourceRoot Condition="'$(ReviewedSourceRoot)' == ''">$(MSBuildThisFileDirectory)../../..</ReviewedSourceRoot>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../../src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
+    <ProjectReference Include="$(ReviewedSourceRoot)/src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
   </ItemGroup>
 </Project>
