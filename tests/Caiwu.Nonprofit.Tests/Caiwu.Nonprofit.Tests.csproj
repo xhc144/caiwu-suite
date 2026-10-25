@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="[18.11.0]" />
+    <PackageReference Include="xunit.v3.mtp-off" Version="[4.0.2]" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="[4.0.1]">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <ProjectReference Include="../../src/Caiwu.Nonprofit/Caiwu.Nonprofit.csproj" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="../../rules/scenarios/nonprofit-v2.json" Link="Fixtures/nonprofit-v2.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="../../rules/packages/nonprofit.json" Link="Fixtures/nonprofit.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

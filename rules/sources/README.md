@@ -16,3 +16,5 @@
 | 企业2019附件2 | 资产负债表2—3；利润表10—11；现金流量表15—16；所有者权益变动表17；附件没有科目数字编码 |
 
 HTML存档是网页证据，不是被限制获取的标准/出版物全文。`enterprise-guide-2023-reply.html`只证明应用指南以出版物提供；`interface-standard-2024-access.html`只证明版权限制。不得因这些文件存在就把相应完整指南或标准标为已取得。
+
+v2新增2017收入通知及正式21页PDF、2018租赁通知3份原始字节，目前共15份可hash核对的官方文件。2006原始指南RAR403未取得，不在official目录伪造文件；只读通知记录为 `HistoricalBasePartiallySuperseded`，不把已被后续收入/租赁等替代的2006规则整体标现行。取证结果及软404排除记录见 `../enterprise/current-official-evidence.json`。

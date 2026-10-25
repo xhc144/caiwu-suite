@@ -64,7 +64,8 @@
             "enum": [
               "OfficialCurrent",
               "OfficialFuturePhased",
-              "Draft"
+              "Draft",
+              "HistoricalBasePartiallySuperseded"
             ]
           },
           "retrievedOn": {

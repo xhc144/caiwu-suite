@@ -14,7 +14,7 @@
       "id": "enterprise-nonfinancial-2019-appendix2-sample",
       "regime": "Enterprise",
       "path": "packages/enterprise.json",
-      "sha256": "a280b0a7ac090219cdd8cd6b7f6e08f15f12b364c97f2fbfe60cd5033ec31a83",
+      "sha256": "be243a6545e2769dd5f215b340edd585f3c0a38a394ebf2037f8832e1a3a5305",
       "status": "OfficialCurrent",
       "selectable": true
     },

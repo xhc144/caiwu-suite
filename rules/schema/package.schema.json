@@ -686,6 +686,10 @@
         "sourceRefs"
       ],
       "additionalProperties": false
+    },
+    "officialNameEvidencePath": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "required": [
