@@ -209,6 +209,17 @@
           "Caiwu.Persistence.Sqlite": "[1.0.0, )"
         }
       },
+      "caiwu.delivery.modules": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Costing": "[1.0.0, )",
+          "Caiwu.Delivery": "[1.0.0, )",
+          "Caiwu.Nonprofit.Reporting": "[1.0.0, )",
+          "Caiwu.Operators": "[1.0.0, )",
+          "Caiwu.ReportDesigner": "[1.0.0, )",
+          "Caiwu.Summaries": "[1.0.0, )"
+        }
+      },
       "caiwu.nonprofit.reporting": {
         "type": "Project",
         "dependencies": {
@@ -239,6 +250,18 @@
         "dependencies": {
           "Caiwu.Contracts": "[1.0.0, )",
           "Microsoft.Data.Sqlite": "[10.0.13, 10.0.13]"
+        }
+      },
+      "caiwu.reportdesigner": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Reporting": "[1.0.0, )"
+        }
+      },
+      "caiwu.reportdesigner.wpf": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.ReportDesigner": "[1.0.0, )"
         }
       },
       "caiwu.reporting": {

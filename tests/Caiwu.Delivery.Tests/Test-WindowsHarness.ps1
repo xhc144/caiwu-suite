@@ -19,7 +19,7 @@ foreach ($name in @('Assert', 'Same-Book')) {
 }
 $sample = [pscustomobject]@{
     bookId = '0d68f5b6-4f75-4e61-95dd-637cf5859888'; revision = 10
-    voucherCount = 3; postedVoucherCount = 3; bankBalance = [decimal]108800
+    voucherCount = 1; postedVoucherCount = 1; bankBalance = [decimal]123.45
     snapshotSha256 = ('a' * 64)
 }
 Same-Book $sample $sample
