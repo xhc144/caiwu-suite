@@ -1,0 +1,73 @@
+diff --git a/packaging-next/src/Caiwu.Delivery/packages.lock.json b/packaging-next/src/Caiwu.Delivery/packages.lock.json
+index b618a9c..aedc4ea 100644
+--- a/packaging-next/src/Caiwu.Delivery/packages.lock.json
++++ b/packaging-next/src/Caiwu.Delivery/packages.lock.json
+@@ -57,6 +57,20 @@
+           "Microsoft.Data.Sqlite": "[10.0.13, 10.0.13]"
+         }
+       }
++    },
++    "net10.0/linux-x64": {
++      "SQLitePCLRaw.lib.e_sqlite3": {
++        "type": "Transitive",
++        "resolved": "2.1.13",
++        "contentHash": "D2UAuiGxFYBqeRXjjjGgvJ5UQifzn6wefmSqeKU7XcNGKLbJRP6X7kcPZ6opOBJGdCIlgbSxTvDpBbLvsN594A=="
++      }
++    },
++    "net10.0/win-x64": {
++      "SQLitePCLRaw.lib.e_sqlite3": {
++        "type": "Transitive",
++        "resolved": "2.1.13",
++        "contentHash": "D2UAuiGxFYBqeRXjjjGgvJ5UQifzn6wefmSqeKU7XcNGKLbJRP6X7kcPZ6opOBJGdCIlgbSxTvDpBbLvsN594A=="
++      }
+     }
+   }
+ }
+\ No newline at end of file
+diff --git a/src/Caiwu.Core/packages.lock.json b/src/Caiwu.Core/packages.lock.json
+index 9d6dc80..54c5bb1 100644
+--- a/src/Caiwu.Core/packages.lock.json
++++ b/src/Caiwu.Core/packages.lock.json
+@@ -5,6 +5,7 @@
+       "caiwu.contracts": {
+         "type": "Project"
+       }
+-    }
++    },
++    "net10.0/win-x64": {}
+   }
+ }
+\ No newline at end of file
+diff --git a/src/Caiwu.Persistence.Sqlite/packages.lock.json b/src/Caiwu.Persistence.Sqlite/packages.lock.json
+index 273ec7e..bece91a 100644
+--- a/src/Caiwu.Persistence.Sqlite/packages.lock.json
++++ b/src/Caiwu.Persistence.Sqlite/packages.lock.json
+@@ -51,6 +51,13 @@
+       "caiwu.contracts": {
+         "type": "Project"
+       }
++    },
++    "net10.0/win-x64": {
++      "SQLitePCLRaw.lib.e_sqlite3": {
++        "type": "Transitive",
++        "resolved": "2.1.13",
++        "contentHash": "D2UAuiGxFYBqeRXjjjGgvJ5UQifzn6wefmSqeKU7XcNGKLbJRP6X7kcPZ6opOBJGdCIlgbSxTvDpBbLvsN594A=="
++      }
+     }
+   }
+ }
+\ No newline at end of file
+diff --git a/src/Caiwu.Reporting/packages.lock.json b/src/Caiwu.Reporting/packages.lock.json
+index 9d6dc80..54c5bb1 100644
+--- a/src/Caiwu.Reporting/packages.lock.json
++++ b/src/Caiwu.Reporting/packages.lock.json
+@@ -5,6 +5,7 @@
+       "caiwu.contracts": {
+         "type": "Project"
+       }
+-    }
++    },
++    "net10.0/win-x64": {}
+   }
+ }
+\ No newline at end of file

@@ -67,5 +67,26 @@
     "artifactId": 12594657891,
     "zipSha256": "3ed06cb8ed30e091db2dab09c39dccf39c607f95dc7cba45d395eaa5fd17ba6b",
     "scope": "SUCCESS: six actual stale mutation windows, two native-keyboard focus cases, nine visual resource checks and six complete native window PNGs. The actual unique OK control has ID2; no financial assertions were removed."
+  },
+  {
+    "runId": 40182847550,
+    "commit": "2586fed12b14e0659f83c5849dc1f848ddc0d06c",
+    "artifactId": 12595156632,
+    "zipSha256": "94d69b69471ea56821d9bd7a0e9df1e1003cab87573fce9b9cc114ab2c86d7b8",
+    "scope": "Four actual native 1920x1080 primary pages; current accepted core-page visual source."
+  },
+  {
+    "runId": 40183498471,
+    "commit": "a74d03f9228751df10b1e713fe40766ac15bff13",
+    "artifactId": 12595187759,
+    "zipSha256": "979eebbc7269bdc9fe7297b84c54e73d27dd3e36eb68080926f36998ec087d8c",
+    "scope": "Focused SUCCESS, latest2586 visuals plus all six stale windows/two native focus cases/ten visual checks."
+  },
+  {
+    "runId": 40184804270,
+    "commit": "1f4e9ea14aad44de3a2c6673811808260ee43922",
+    "artifactId": 12595726977,
+    "zipSha256": "613018f0ac76a04491fe4a1358ba9ed6d97898b2d7601c1d1e788feb576022b5",
+    "scope": "Complete Windows SUCCESS: source-identity clean, SQLite117/117, original publication race12/12, Core149, Reporting45+9, Controls15; WPF8/nav2/stale6/nativefocus2/dual3/v1222, Delivery143/0/4, ten visual checks and four native primary pages. Delivery hold/no distribution archive pass. Does not cover new authenticated host modules."
   }
 ]
