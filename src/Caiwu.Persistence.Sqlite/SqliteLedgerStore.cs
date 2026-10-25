@@ -23,6 +23,7 @@ public sealed class SqliteLedgerStore : ILedgerStore
     {
         ArgumentNullException.ThrowIfNull(book);
         ArgumentNullException.ThrowIfNull(accounts);
+        var initial = CopySnapshot(new(0, book, accounts, [], []));
         var destination = NewDestination(path);
         PublishNew(destination, stage =>
         {
@@ -31,10 +32,13 @@ public sealed class SqliteLedgerStore : ILedgerStore
             {
                 Execute(db, transaction, Schema.Create);
                 Execute(db, transaction, """
-                    INSERT INTO ledger VALUES (1, 0, $id, $name, $regime, $template,
+                    INSERT INTO ledger (singleton,revision,book_id,name,regime,template_version,
+                        fiscal_year,start_month,closed_through_month,created_at)
+                    VALUES (1, 0, $id, $name, $regime, $template,
                         $year, $start, $closed, $created)
-                    """, BookParameters(book));
-                InsertContents(db, transaction, new(0, book, accounts, [], []));
+                    """, BookParameters(initial.Book));
+                InsertContents(db, transaction, initial);
+                AssertReadback(initial, ReadContents(db, transaction));
                 transaction.Commit();
             }
             using var store = new SqliteLedgerStore(stage, db);
@@ -98,6 +102,7 @@ public sealed class SqliteLedgerStore : ILedgerStore
         lock (gate)
         {
             ThrowIfDisposed();
+            next = CopySnapshot(next);
             if (expectedRevision < 0 || expectedRevision == long.MaxValue || next.Revision != expectedRevision + 1)
                 throw new StoreConcurrencyException("保存版本必须等于预期版本加一，请刷新账套后重试。");
 
@@ -122,6 +127,9 @@ public sealed class SqliteLedgerStore : ILedgerStore
                 DELETE FROM accounts;
                 """, BookParameters(next.Book));
             InsertContents(connection, transaction, next);
+            // Constraints/triggers can silently ignore, replace or alter rows. Verify every
+            // DTO field using this transaction's uncommitted view, before committing anything.
+            AssertReadback(next, ReadContents(connection, transaction));
             transaction.Commit();
         }
     }
@@ -329,12 +337,43 @@ public sealed class SqliteLedgerStore : ILedgerStore
         return decimal.ToInt64(cents);
     }
 
+    private static LedgerSnapshot CopySnapshot(LedgerSnapshot snapshot) => snapshot with
+    {
+        Accounts = snapshot.Accounts.ToArray(),
+        Vouchers = snapshot.Vouchers.Select(v => v with { Lines = v.Lines.ToArray() }).ToArray(),
+        AuditEvents = snapshot.AuditEvents.ToArray()
+    };
+
+    private static void AssertReadback(LedgerSnapshot expected, LedgerSnapshot actual)
+    {
+        static void Equal(bool condition, string part)
+        {
+            if (!condition) throw new InvalidDataException($"SQLite写入读回校验失败（{part}），拒绝提交。");
+        }
+        Equal(expected.Revision == actual.Revision && expected.Book == actual.Book &&
+            expected.Book.CreatedAt.EqualsExact(actual.Book.CreatedAt), "账套身份、属性或版本");
+        Equal(expected.Accounts.SequenceEqual(actual.Accounts), "科目及期初余额");
+        Equal(expected.Vouchers.Count == actual.Vouchers.Count, "凭证集合");
+        for (var i = 0; i < expected.Vouchers.Count; i++)
+        {
+            var e = expected.Vouchers[i]; var a = actual.Vouchers[i];
+            // Record equality checks every header field; line collections need value comparison.
+            Equal((e with { Lines = a.Lines }) == a && e.Lines.SequenceEqual(a.Lines), $"凭证及完整分录，第{i + 1}张");
+        }
+        Equal(expected.AuditEvents.SequenceEqual(actual.AuditEvents), "审计记录");
+        for (var i = 0; i < expected.AuditEvents.Count; i++)
+            Equal(expected.AuditEvents[i].At.EqualsExact(actual.AuditEvents[i].At), "审计时间及偏移");
+    }
+
     private static void InsertContents(SqliteConnection db, SqliteTransaction transaction, LedgerSnapshot snapshot)
     {
         for (var i = 0; i < snapshot.Accounts.Count; i++)
         {
             var a = snapshot.Accounts[i];
-            Execute(db, transaction, "INSERT INTO accounts VALUES ($code,$ordinal,$name,$parent,$direction,$active,$debit,$credit)",
+            Execute(db, transaction, """
+                INSERT INTO accounts (code,ordinal,name,parent_code,direction,is_active,opening_debit_cents,opening_credit_cents)
+                VALUES ($code,$ordinal,$name,$parent,$direction,$active,$debit,$credit)
+                """,
                 ("$code", a.Code), ("$ordinal", i), ("$name", a.Name), ("$parent", a.ParentCode),
                 ("$direction", (int)a.Direction), ("$active", a.IsActive ? 1 : 0),
                 ("$debit", Cents(a.OpeningDebit)), ("$credit", Cents(a.OpeningCredit)));
@@ -343,14 +382,20 @@ public sealed class SqliteLedgerStore : ILedgerStore
         {
             var v = snapshot.Vouchers[i];
             var id = v.Id.ToString("D");
-            Execute(db, transaction, "INSERT INTO vouchers VALUES ($id,$ordinal,$date,$kind,$number,$attachments,$prepared,$reviewed,$status)",
+            Execute(db, transaction, """
+                INSERT INTO vouchers (id,ordinal,date,kind,number,attachment_count,prepared_by,reviewed_by,status)
+                VALUES ($id,$ordinal,$date,$kind,$number,$attachments,$prepared,$reviewed,$status)
+                """,
                 ("$id", id), ("$ordinal", i), ("$date", v.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
                 ("$kind", v.Kind), ("$number", v.Number), ("$attachments", v.AttachmentCount),
                 ("$prepared", v.PreparedBy), ("$reviewed", v.ReviewedBy), ("$status", (int)v.Status));
             for (var j = 0; j < v.Lines.Count; j++)
             {
                 var line = v.Lines[j];
-                Execute(db, transaction, "INSERT INTO voucher_lines VALUES ($id,$ordinal,$account,$summary,$debit,$credit)",
+                Execute(db, transaction, """
+                    INSERT INTO voucher_lines (voucher_id,ordinal,account_code,summary,debit_cents,credit_cents)
+                    VALUES ($id,$ordinal,$account,$summary,$debit,$credit)
+                    """,
                     ("$id", id), ("$ordinal", j), ("$account", line.AccountCode), ("$summary", line.Summary),
                     ("$debit", Cents(line.Debit)), ("$credit", Cents(line.Credit)));
             }
@@ -358,7 +403,10 @@ public sealed class SqliteLedgerStore : ILedgerStore
         for (var i = 0; i < snapshot.AuditEvents.Count; i++)
         {
             var a = snapshot.AuditEvents[i];
-            Execute(db, transaction, "INSERT INTO audit_events VALUES ($id,$ordinal,$at,$operator,$action,$voucher,$detail)",
+            Execute(db, transaction, """
+                INSERT INTO audit_events (id,ordinal,at,operator_name,action,voucher_id,detail)
+                VALUES ($id,$ordinal,$at,$operator,$action,$voucher,$detail)
+                """,
                 ("$id", a.Id.ToString("D")), ("$ordinal", i), ("$at", a.At.ToString("O", CultureInfo.InvariantCulture)),
                 ("$operator", a.OperatorName), ("$action", a.Action), ("$voucher", a.VoucherId?.ToString("D")), ("$detail", a.Detail));
         }
@@ -368,43 +416,70 @@ public sealed class SqliteLedgerStore : ILedgerStore
     {
         long revision;
         BookInfo book;
-        using (var command = Command(db, transaction, "SELECT * FROM ledger WHERE singleton=1"))
+        using (var command = Command(db, transaction, """
+            SELECT singleton,revision,book_id,name,regime,template_version,fiscal_year,start_month,closed_through_month,created_at
+            FROM ledger ORDER BY singleton
+            """))
         using (var r = command.ExecuteReader())
         {
-            if (!r.Read()) throw new InvalidDataException("账套信息缺失。");
-            revision = r.GetInt64(1);
-            book = new(Guid.ParseExact(r.GetString(2), "D"), r.GetString(3), (AccountingRegime)r.GetInt32(4),
-                r.GetString(5), r.GetInt32(6), r.GetInt32(7), r.GetInt32(8), ParseTimestamp(r.GetString(9)));
+            if (!r.Read() || Integer(r, 0) != 1) throw new InvalidDataException("账套信息缺失或主记录无效。");
+            revision = Integer(r, 1);
+            book = new(Guid.ParseExact(r.GetString(2), "D"), r.GetString(3), EnumValue<AccountingRegime>(r, 4),
+                r.GetString(5), Int32(r, 6), Int32(r, 7), Int32(r, 8), ParseTimestamp(r.GetString(9)));
+            if (r.Read()) throw new InvalidDataException("账套存在多条主记录。");
         }
         var accounts = new List<Account>();
-        using (var command = Command(db, transaction, "SELECT * FROM accounts ORDER BY ordinal"))
+        using (var command = Command(db, transaction, """
+            SELECT code,name,parent_code,direction,is_active,opening_debit_cents,opening_credit_cents FROM accounts ORDER BY ordinal
+            """))
         using (var r = command.ExecuteReader())
-            while (r.Read()) accounts.Add(new(r.GetString(0), r.GetString(2), NullableString(r, 3),
-                (BalanceDirection)r.GetInt32(4), r.GetInt64(5) == 1, r.GetInt64(6) / 100m, r.GetInt64(7) / 100m));
+            while (r.Read()) accounts.Add(new(r.GetString(0), r.GetString(1), NullableString(r, 2),
+                EnumValue<BalanceDirection>(r, 3), Boolean(r, 4), Integer(r, 5) / 100m, Integer(r, 6) / 100m));
         var lines = new Dictionary<string, List<VoucherLine>>();
-        using (var command = Command(db, transaction, "SELECT * FROM voucher_lines ORDER BY voucher_id, ordinal"))
+        using (var command = Command(db, transaction, """
+            SELECT voucher_id,account_code,summary,debit_cents,credit_cents FROM voucher_lines ORDER BY voucher_id, ordinal
+            """))
         using (var r = command.ExecuteReader())
             while (r.Read())
             {
                 var id = r.GetString(0);
                 if (!lines.TryGetValue(id, out var list)) lines.Add(id, list = []);
-                list.Add(new(r.GetString(2), r.GetString(3), r.GetInt64(4) / 100m, r.GetInt64(5) / 100m));
+                list.Add(new(r.GetString(1), r.GetString(2), Integer(r, 3) / 100m, Integer(r, 4) / 100m));
             }
         var vouchers = new List<Voucher>();
-        using (var command = Command(db, transaction, "SELECT * FROM vouchers ORDER BY ordinal"))
+        using (var command = Command(db, transaction, """
+            SELECT id,date,kind,number,attachment_count,prepared_by,reviewed_by,status FROM vouchers ORDER BY ordinal
+            """))
         using (var r = command.ExecuteReader())
             while (r.Read()) vouchers.Add(new(Guid.ParseExact(r.GetString(0), "D"),
-                DateOnly.ParseExact(r.GetString(2), "yyyy-MM-dd", CultureInfo.InvariantCulture), r.GetString(3),
-                r.GetInt32(4), r.GetInt32(5), r.GetString(6), NullableString(r, 7), (VoucherStatus)r.GetInt32(8),
-                lines.TryGetValue(r.GetString(0), out var list) ? list.ToArray() : []));
+                DateOnly.ParseExact(r.GetString(1), "yyyy-MM-dd", CultureInfo.InvariantCulture), r.GetString(2),
+                Int32(r, 3), Int32(r, 4), r.GetString(5), NullableString(r, 6), EnumValue<VoucherStatus>(r, 7),
+                lines.Remove(r.GetString(0), out var list) ? list.ToArray() : []));
+        if (lines.Count != 0) throw new InvalidDataException("存在未归属有效凭证的分录。");
         var audit = new List<AuditEvent>();
-        using (var command = Command(db, transaction, "SELECT * FROM audit_events ORDER BY ordinal"))
+        using (var command = Command(db, transaction, """
+            SELECT id,at,operator_name,action,voucher_id,detail FROM audit_events ORDER BY ordinal
+            """))
         using (var r = command.ExecuteReader())
-            while (r.Read()) audit.Add(new(Guid.ParseExact(r.GetString(0), "D"), ParseTimestamp(r.GetString(2)),
-                r.GetString(3), r.GetString(4), r.IsDBNull(5) ? null : Guid.ParseExact(r.GetString(5), "D"), r.GetString(6)));
+            while (r.Read()) audit.Add(new(Guid.ParseExact(r.GetString(0), "D"), ParseTimestamp(r.GetString(1)),
+                r.GetString(2), r.GetString(3), r.IsDBNull(4) ? null : Guid.ParseExact(r.GetString(4), "D"), r.GetString(5)));
         return new(revision, book, accounts.ToArray(), vouchers.ToArray(), audit.ToArray());
     }
 
     private static string? NullableString(SqliteDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? null : reader.GetString(ordinal);
     private static DateTimeOffset ParseTimestamp(string value) => DateTimeOffset.ParseExact(value, "O", CultureInfo.InvariantCulture);
+
+    // GetInt64 alone coerces REAL/TEXT values, which could hide altered fractional cents.
+    private static long Integer(SqliteDataReader reader, int ordinal) => reader.GetValue(ordinal) is long value
+        ? value : throw new InvalidDataException("账套整数或金额字段的实际存储类型无效。");
+    private static int Int32(SqliteDataReader reader, int ordinal) => checked((int)Integer(reader, ordinal));
+    private static bool Boolean(SqliteDataReader reader, int ordinal) => Integer(reader, ordinal) switch
+    {
+        0 => false, 1 => true, _ => throw new InvalidDataException("账套布尔字段无效。")
+    };
+    private static T EnumValue<T>(SqliteDataReader reader, int ordinal) where T : struct, Enum
+    {
+        var value = (T)Enum.ToObject(typeof(T), Int32(reader, ordinal));
+        return Enum.IsDefined(value) ? value : throw new InvalidDataException("账套枚举字段无效。");
+    }
 }
