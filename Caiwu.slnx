@@ -8,6 +8,7 @@
     <Project Path="src/Caiwu.Costing/Caiwu.Costing.csproj" />
     <Project Path="src/Caiwu.Desktop.Controls/Caiwu.Desktop.Controls.csproj" />
     <Project Path="src/Caiwu.Nonprofit.Reporting/Caiwu.Nonprofit.Reporting.csproj" />
+    <Project Path="src/Caiwu.Nonprofit/Caiwu.Nonprofit.csproj" />
     <Project Path="src/Caiwu.Operators/Caiwu.Operators.csproj" />
     <Project Path="src/Caiwu.Summaries/Caiwu.Summaries.csproj" />
     <Project Path="src/Caiwu.VoucherTools.Wpf/Caiwu.VoucherTools.Wpf.csproj" />
@@ -33,7 +34,9 @@
   <Folder Name="/src/Caiwu.Summaries/Wpf/">
     <Project Path="src/Caiwu.Summaries/Wpf/Caiwu.Summaries.Wpf.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/Caiwu.Nonprofit.Tests/Caiwu.Nonprofit.Tests.csproj" />
+  </Folder>
   <Folder Name="/tests/Caiwu.Desktop.FeatureTests/" />
   <Folder Name="/tests/Caiwu.Desktop.FeatureTests/Logic/">
     <Project Path="tests/Caiwu.Desktop.FeatureTests/Logic/Caiwu.Desktop.FeatureTests.csproj" />
