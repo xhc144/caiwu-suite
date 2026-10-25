@@ -137,7 +137,10 @@ foreach (var (regime, capital, income, expense) in new[]
         Equal(originalState, State(restored), "restored state");
         var service = new LedgerService(restored);
         CheckSample(service, capital, income, expense);
-        Rejected(restored, () => service.SaveDraft(Draft(feb1, "1403", "1002", 1m, "改历史") with { Id = voucherIds[0] }, "制单员"), "restored history stays immutable");
+        var opened = service.GetSnapshot();
+        var attemptedHistoricalEdit = Draft(feb1, "1403", "1002", 1m, "改历史") with
+        { Id = voucherIds[0], ExpectedRevision = opened.Revision, ExpectedBookId = opened.Book.Id };
+        Rejected(restored, () => service.SaveDraft(attemptedHistoricalEdit, "制单员"), "restored history stays immutable");
         var future = service.SaveDraft(Draft(feb1, "1403", "1002", 20m, "恢复副本的新草稿"), "制单员");
         Equal(1, future.Number, "restored future month number starts at one");
         Equal(12L, restored.Read().Revision, "restored copy can advance independently");

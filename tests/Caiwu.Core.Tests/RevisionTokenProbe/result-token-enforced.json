@@ -1,0 +1,63 @@
+{
+  "targetCommit": "eb81bb32\u002Bcore-token-enforcement-working-tree",
+  "actualCoreAndTwoSqliteConnections": true,
+  "expectedRevisionCapturedAtLoad": true,
+  "bookIdentityFieldPresent": true,
+  "wpfExecuted": false,
+  "passed": 13,
+  "failed": 0,
+  "results": [
+    {
+      "id": "ACC002-FRESH",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-TWO-CONNECTIONS-STALE",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-MISSING",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-FUTURE",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEGATIVE",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-ACCEPTED-VERSION-SECOND-SAVE",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-LEGACY-NEW",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEW-CORRECT",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEW-WRONG",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-STORE-CAS-AFTER-READ",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-MISSING-BOOK",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-OTHER-BOOK-SAME-REVISION",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEW-WRONG-BOOK",
+      "status": "PASS"
+    }
+  ]
+}

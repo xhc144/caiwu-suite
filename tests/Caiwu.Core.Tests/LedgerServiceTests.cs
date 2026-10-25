@@ -20,6 +20,10 @@ public sealed class LedgerServiceTests
         int? number = null, string kind = "记") => new(null, date ?? Jan1, kind, number, 0,
         [new(debit, "业务借方", amount, 0), new(credit, "业务贷方", 0, amount)]);
 
+    // Loading is explicit: this helper cannot read a newer revision from a service at save time.
+    private static VoucherDraft EditFrom(LedgerSnapshot opened, Guid id, VoucherDraft changes) => changes with
+    { Id = id, ExpectedRevision = opened.Revision, ExpectedBookId = opened.Book.Id };
+
     private static Voucher Posted(LedgerService service, VoucherDraft? draft = null)
     {
         var voucher = service.SaveDraft(draft ?? Draft(), "制单员");
@@ -190,15 +194,18 @@ public sealed class LedgerServiceTests
         Assert.Equal(6, s.SaveDraft(Draft(), "A").Number);
         Assert.Equal(1, s.SaveDraft(Draft(date: Feb1), "A").Number);
         Assert.Equal(1, s.SaveDraft(Draft(kind: "收"), "A").Number);
-        var updated = s.SaveDraft(Draft(20) with { Id = second.Id, AttachmentCount = 3 }, "B");
+        var opened = s.GetSnapshot();
+        var updated = s.SaveDraft(EditFrom(opened, second.Id, Draft(20) with { AttachmentCount = 3 }), "B");
         Assert.Equal(5, updated.Number);
         Assert.Equal("B", updated.PreparedBy);
         Assert.Equal(3, updated.AttachmentCount);
         Rejected(store, () => s.SaveDraft(Draft(number: 5), "A"));
         Rejected(store, () => s.SaveDraft(Draft(number: 0), "A"));
         Rejected(store, () => s.SaveDraft(Draft(number: -1), "A"));
-        Rejected(store, () => s.SaveDraft(Draft(number: 5) with { Id = first.Id }, "A"));
-        var moved = s.SaveDraft(Draft(date: Feb1) with { Id = second.Id }, "A");
+        var reopened = s.GetSnapshot();
+        var duplicateEdit = EditFrom(reopened, first.Id, Draft(number: 5));
+        Rejected(store, () => s.SaveDraft(duplicateEdit, "A"));
+        var moved = s.SaveDraft(EditFrom(reopened, second.Id, Draft(date: Feb1)), "A");
         Assert.Equal(2, moved.Number);
     }
 
@@ -221,7 +228,8 @@ public sealed class LedgerServiceTests
         Assert.Empty(s.GetSnapshot().Vouchers);
         Assert.Equal("DeleteDraft", s.GetSnapshot().AuditEvents[^1].Action);
         Rejected(store, () => s.DeleteDraft(v.Id, "A"));
-        Rejected(store, () => s.SaveDraft(Draft() with { Id = Guid.NewGuid() }, "A"));
+        var missingEdit = EditFrom(s.GetSnapshot(), Guid.NewGuid(), Draft());
+        Rejected(store, () => s.SaveDraft(missingEdit, "A"));
         Rejected(store, () => s.Review(Guid.NewGuid(), "A"));
         Rejected(store, () => s.CancelReview(Guid.NewGuid(), "A"));
         Rejected(store, () => s.Post(Guid.NewGuid(), "A"));
@@ -251,13 +259,15 @@ public sealed class LedgerServiceTests
         s.Review(v.Id, "B");
         Assert.Equal("B", s.GetSnapshot().Vouchers.Single().ReviewedBy);
         Rejected(store, () => s.Review(v.Id, "C"));
-        Rejected(store, () => s.SaveDraft(Draft() with { Id = v.Id }, "A"));
+        var reviewedEdit = EditFrom(s.GetSnapshot(), v.Id, Draft());
+        Rejected(store, () => s.SaveDraft(reviewedEdit, "A"));
         Rejected(store, () => s.DeleteDraft(v.Id, "A"));
         s.CancelReview(v.Id, "B");
         Assert.Null(s.GetSnapshot().Vouchers.Single().ReviewedBy);
         Assert.Equal(VoucherStatus.Draft, s.GetSnapshot().Vouchers.Single().Status);
         Rejected(store, () => s.Post(v.Id, "A"));
-        s.SaveDraft(Draft(20) with { Id = v.Id }, "C");
+        var reopenedDraft = s.GetSnapshot();
+        s.SaveDraft(EditFrom(reopenedDraft, v.Id, Draft(20)), "C");
         Rejected(store, () => s.Review(v.Id, "C"));
         s.Review(v.Id, "B");
         s.Post(v.Id, "C");
@@ -270,11 +280,12 @@ public sealed class LedgerServiceTests
         using var store = Store();
         var s = new LedgerService(store);
         var v = Posted(s);
+        var postedEdit = EditFrom(s.GetSnapshot(), v.Id, Draft(20));
         Rejected(store, () => s.Post(v.Id, "A"));
         Rejected(store, () => s.CancelReview(v.Id, "B"));
         Rejected(store, () => s.DeleteDraft(v.Id, "A"));
         Rejected(store, () => s.Review(v.Id, "B"));
-        Rejected(store, () => s.SaveDraft(Draft(20) with { Id = v.Id }, "A"));
+        Rejected(store, () => s.SaveDraft(postedEdit, "A"));
         Assert.Equal(10m, s.GetTrialBalance(Jan1, Jan31).Sum(r => r.PeriodDebit));
     }
 
@@ -325,16 +336,19 @@ public sealed class LedgerServiceTests
         var posted = Posted(s);
         var feb = s.SaveDraft(Draft(date: Feb1), "A");
         s.CloseMonth(1, "A");
+        var lockedSnapshot = s.GetSnapshot();
+        var febToJan = EditFrom(lockedSnapshot, feb.Id, Draft());
+        var janToFeb = EditFrom(lockedSnapshot, posted.Id, Draft(date: Feb1));
         Rejected(store, () => s.SaveDraft(Draft(), "A"));
-        Rejected(store, () => s.SaveDraft(Draft() with { Id = feb.Id }, "A"));
-        Rejected(store, () => s.SaveDraft(Draft(date: Feb1) with { Id = posted.Id }, "A"));
+        Rejected(store, () => s.SaveDraft(febToJan, "A"));
+        Rejected(store, () => s.SaveDraft(janToFeb, "A"));
         Rejected(store, () => s.DeleteDraft(posted.Id, "A"));
         Rejected(store, () => s.Review(posted.Id, "B"));
         Rejected(store, () => s.CancelReview(posted.Id, "B"));
         Rejected(store, () => s.Post(posted.Id, "A"));
         Assert.Equal(10m, s.GetTrialBalance(Jan1, Jan31).Sum(r => r.PeriodDebit));
         Assert.Equal(2, s.GetLedger("1002", Jan1, Jan31).Count);
-        s.SaveDraft(Draft(20, Feb1) with { Id = feb.Id }, "A");
+        s.SaveDraft(EditFrom(lockedSnapshot, feb.Id, Draft(20, Feb1)), "A");
     }
 
     [Fact]
@@ -564,12 +578,13 @@ public sealed class LedgerServiceTests
         var v = s.SaveDraft(Draft(), "A");
         if (operation is "cancel-review" or "post") s.Review(v.Id, "B");
         if (operation == "close") { s.Review(v.Id, "B"); s.Post(v.Id, "C"); }
+        var edit = EditFrom(s.GetSnapshot(), v.Id, Draft(20));
         Action command = operation switch
         {
             "account" => () => s.SaveAccount(new("9999", "新科目", null, BalanceDirection.Debit, true, 0, 0), "A"),
             "delete-account" => () => s.DeleteAccount("1001", "A"),
             "openings" => () => s.SetOpeningBalances([new("1002", 100, 0), new("4001", 0, 100)], "A"),
-            "save-draft" => () => s.SaveDraft(Draft(20) with { Id = v.Id }, "A"),
+            "save-draft" => () => s.SaveDraft(edit, "A"),
             "delete-draft" => () => s.DeleteDraft(v.Id, "A"),
             "cancel-review" => () => s.CancelReview(v.Id, "B"),
             "post" => () => s.Post(v.Id, "C"),
