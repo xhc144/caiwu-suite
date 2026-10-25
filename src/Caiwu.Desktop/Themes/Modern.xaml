@@ -151,6 +151,23 @@
       <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/></Trigger>
     </Style.Triggers>
   </Style>
+  <!-- ReportCenter generates columns in its behavior owner; style current amount headers without changing those bindings. -->
+  <Style x:Key="ReportCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期初借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期初贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="本期借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="本期贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期末借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期末贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="借方合计"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="贷方合计"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="借方发生额"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="贷方发生额"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="余额（借正贷负）"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+    </Style.Triggers>
+  </Style>
   <Style x:Key="AmountCell" TargetType="TextBlock">
     <Setter Property="TextAlignment" Value="Right"/><Setter Property="Padding" Value="4,0,10,0"/>
     <Setter Property="VerticalAlignment" Value="Center"/>

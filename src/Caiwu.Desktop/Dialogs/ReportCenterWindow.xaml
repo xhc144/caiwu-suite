@@ -29,7 +29,7 @@
       <TextBlock x:Name="NoteText" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#53677B" />
       <TextBlock x:Name="ErrorText" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#B42318" />
     </StackPanel>
-    <DataGrid x:Name="ReportGrid" RowHeight="36" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
+    <DataGrid x:Name="ReportGrid" CellStyle="{StaticResource ReportCell}" RowHeight="36" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
               SelectionMode="Single" SelectionUnit="FullRow" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
               AlternatingRowBackground="#F4F8FB" MouseDoubleClick="ReportGrid_MouseDoubleClick" />
   </DockPanel>

@@ -120,7 +120,12 @@ internal static class Program
             Call(main, "ShowVerificationPage", 5); Pump(); Capture(main, "05-bank-ledger.png");
             var report = new ReportCenterWindow(snapshot.Accounts, new(2026, 10, 1), new(2026, 10, 31),
                 (kind, account, from, to) => ReportingQueries.Build(service, kind, account, from, to), (_, _) => { }) { Owner = main };
-            report.Show(); Pump(); SizeNative(report); Capture(report, "06-reports.png"); report.Close(); Pump();
+            report.Show(); Pump(); SizeNative(report); Capture(report, "06-reports.png");
+            var reportGrid = (DataGrid)report.FindName("ReportGrid");
+            var reportAmount = reportGrid.Columns.Single(c => c.Header?.ToString() == "期初借方");
+            Require(reportAmount.GetCellContent(reportGrid.Items[0]) is TextBlock { TextAlignment: TextAlignment.Right }, "Generated report amount cells are not aligned right.");
+            Checks.Add("Generated report amount cells align right without changing report bindings");
+            report.Close(); Pump();
             main.Close(); Pump();
             SaveResult(true, null); app.Shutdown(0); return 0;
         }
