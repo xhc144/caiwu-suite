@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "failure": null,
+  "windowsExecuted": true,
+  "normalProductLogin": true,
+  "sourceProjectsExecutedAsProduct": false,
+  "sourceCommit": "dece298946d03ad88c5031eb02dab8f87c330046",
+  "migrationAttempted": true,
+  "originalBundleUnavailable": true,
+  "portableBackupRestoreSupported": false,
+  "checks": [
+    "installed pointer binds the isolated data root",
+    "installed payload advertises the reviewed managed App contract",
+    "fixture starts with an unused isolated global identity directory",
+    "normal product rejects a wrong synthetic password",
+    "actual product login locks the current actor control",
+    "installed process resolves coreclr.dll from its own payload",
+    "installed process resolves hostfxr.dll from its own payload",
+    "actual product process loads no native/managed image from the source checkout",
+    "cross-root recovery fixture makes the original absolute bundle directory unavailable",
+    "unchanged carried receipt is rejected because its absolute bundle path is outside the new data root",
+    "rejected cross-root recovery publishes no live ledger",
+    "rejected cross-root recovery leaves the new root\u0027s global identities unchanged"
+  ]
+}

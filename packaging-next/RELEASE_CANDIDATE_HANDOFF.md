@@ -2,7 +2,28 @@
 
 Branch: `codex/release-candidate`. This stage ends by **12:15 UTC**. The delivery hold remains in place. No installer, distribution ZIP, Release, signing material, credentials or production update feed is created by the preparatory workflow.
 
-## Latest handoff — 12:08 UTC
+## Final verified result — 12:10 UTC
+
+**Exact validated code/payload source:** `dece298946d03ad88c5031eb02dab8f87c330046`. Both [native installation run40191539507](https://github.com/xhc144/caiwu-suite/actions/runs/40191539507) and [clean-source/publish/helper run40191539456](https://github.com/xhc144/caiwu-suite/actions/runs/40191539456) completed successfully. This supersedes the pending status below; earlier records remain historical and their binaries are not relabelled.
+
+Actual installed App/launcher results: normal setup through synthetic identity APIs and explicit UI login, wrong-password rejection, fixed actor, exact Chinese/space path creation, balanced draft save, separate actor review/post, 123.45 balance, actual module entrypoints, real installed dependency locations, plain native F10 cancel with no receipt, plain F10 accept, separate menu backup, trusted receipt restore, both real OS leases and busy native upgrade refusal, idle protected native upgrade, upgraded normal login/open, disabled updates/unsigned trust rejection, and native uninstall retention all passed. **28 observed retained files** (ledgers, registered attachments, backups, receipts and global identity files) retained their hashes; an unknown program-root file also survived.
+
+Restoration now has independent proof on the **actual restored physical target**, not only a UI message or original book: equal BookId/revision/full semantic snapshot SHA, one posted voucher, exact 123.45 bank balance, complete registered attachment membership, matching summary key/codec/file hash and native content/version. The installed self-contained helper independently reads both source and target and invokes the actual `Same-Book` assertions. Raw `restored-readback-dece298.json` and `installed-runtime-dece298.json` are retained in `evidence/release-candidate`.
+
+Scope remains precise: the installed fixture registers summaries. Cost/Designer/book-copy/voucher-copy windows were opened (copy was cancelled); their entire business-edit/execute chains and nonprofit business operation are covered by root's separate component QA, **not claimed as executed by this installed fixture**. The real enterprise-regime App keeps nonprofit-only entry disabled. Four native attachment codecs are injected in the helper and their full four-attachment backup/restore/identity integration is separately Windows-tested by the preparation workflow.
+
+The new-data-root portability probe also passed its expected **safe rejection**: carried unchanged bundle+receipt, original absolute source directory unavailable, no live ledger publication, new-root identity hash unchanged, original fixture moved back with hashes intact. **Portable backup import/remapping remains unsupported**; same-root recovery is validated. Final user-delivery approval, capability enablement in the held production builder and a final approved rebuild remain with root. Internal candidates remain unsigned, no trusted production feed is configured, and `DELIVERY_PAUSED.md` stays present.
+
+Artifact **12598641121** ([link](https://github.com/xhc144/caiwu-suite/actions/runs/40191539507/artifacts/12598641121)), ZIP SHA256 `418447d6628130e866e3d715f8ffc96e32051447e1d1c9e8717d3ff1cd2f8b53`, was downloaded through the supported GitHub tool and hash-verified. Only internal QA; **not approved for user delivery**:
+
+| Internal version | Bytes | Installer SHA256 |
+|---|---:|---|
+| 0.1.0.1 | 132234855 | `d942ae376706f63063e4583affc665d23794420fc35ad6bb0ac27a62c9ab68b8` |
+| 0.1.0.2 | 132234884 | `3c94f80ce3b9dcc1c850abef4c326107807d1dadb7042546df4849ef9e41ace6` |
+
+No permission/approval blocker remains for this stage; final product delivery is deliberately paused. Source, retained reports and draft PR30 are saved before the 12:15 UTC hard cutoff. Documentation/evidence commits after the code SHA are not the binary source. No main merge, Release, user Library package, original installer execution, original derived catalog, real accounting data, new credentials, signing trust or paid service was introduced.
+
+## Prior handoff snapshot — 12:08 UTC
 
 **Useful completed result:** clean source `1c216dac71d360259209e9a002d7f81cd8bb095a` passed the actual native [installation run40190873646](https://github.com/xhc144/caiwu-suite/actions/runs/40190873646) and its separate clean-source/publish run40190873625. The native run installed real NSIS artifacts under current-user Programs, used Chinese/space program and data paths, launched only the installed helper/App from a non-source working directory, logged in normally, created a real book, saved/reviewed/posted with distinct actors, displayed the expected 123.45 balance and opened the actual module entrypoints. It then exercised menu backup/restore, both held OS leases, rejected the in-use native upgrade, performed an idle 0.1.0.1→0.1.0.2 upgrade with complete registered-book/module backup receipts, logged into the upgraded App, and uninstalled while preserving all 24 observed data/attachment/identity/backup files plus an unknown program-directory file. Update policy stayed disabled and the existing trust gate rejected the unsigned candidate.
 

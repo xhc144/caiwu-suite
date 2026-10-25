@@ -1,0 +1,14 @@
+{
+  "classification": "INTERNAL-UNVALIDATED",
+  "sourceCommit": "dece298946d03ad88c5031eb02dab8f87c330046",
+  "version": "0.1.0.2",
+  "deliveryPaused": true,
+  "approvedForUserDelivery": false,
+  "signed": false,
+  "installer": {
+    "name": "INTERNAL-UNVALIDATED-caiwu-0.1.0.2-win-x64-setup.exe",
+    "bytes": 132234884,
+    "sha256": "3c94f80ce3b9dcc1c850abef4c326107807d1dadb7042546df4849ef9e41ace6"
+  },
+  "payloadManifestSha256": "0c05a6b4b8cd5f3592694e1313cf19f0d9e643873a87e342a9fa9b4e30131171"
+}
