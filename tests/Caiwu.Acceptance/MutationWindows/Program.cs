@@ -65,7 +65,7 @@ internal static class Program
         }
         var seen = new List<SeenMutation>(); var wrapped = backend with { CreateService = store => new ObservedLedgerService(backend.CreateService(store), seen) };
         var main = new MainWindow(wrapped); main.Show(); Call(main, "OpenVerificationBook", path); Idle();
-        ((TextBox)main.FindName("OperatorInput")).Text = "乙";
+        ((ComboBox)main.FindName("OperatorInput")).Text = "乙";
         var session = Field<LedgerSession>(main, "_session"); var shown = session.Snapshot!;
         using var other = backend.Open(path); var writer = backend.CreateService(other);
         var v0 = shown.Vouchers.FirstOrDefault();
