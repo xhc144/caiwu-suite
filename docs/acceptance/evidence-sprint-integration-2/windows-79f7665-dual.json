@@ -1,0 +1,23 @@
+{
+  "actualWindowsWpf": true,
+  "checkoutCommit": "79f76654f414ae4c95cba0555574d27ba861609d",
+  "mechanism": "Two separate .NET processes, each actual MainWindow\u002BVoucherEditorWindow; controls and Save routed events scripted. File opening uses the existing verification hook, not native file-dialog automation.",
+  "physicalKeyboardImeTested": false,
+  "nativeFileDialogsTested": false,
+  "deliveryBlocked": true,
+  "failed": 0,
+  "results": [
+    {
+      "id": "APP-BACKEND-VALIDATES-OPEN-AND-RESTORE-BEFORE-STORAGE",
+      "status": "PASS"
+    },
+    {
+      "id": "TWO-APPLICATION-PROCESSES-STALE-EDITOR",
+      "status": "PASS"
+    },
+    {
+      "id": "TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS",
+      "status": "PASS"
+    }
+  ]
+}

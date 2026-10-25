@@ -1,0 +1,103 @@
+{
+  "coreCommit": "66621203066488c7e7a4115ede508e88ec58e3fa",
+  "contractCommit": "bb76658c19df94ab79e257db076d2ac8a39b7997",
+  "combinationCommit": "08f93a35bb2d20d944ef26aaae2ebc927a92b133",
+  "actualSqlite": true,
+  "actualDesktopSessionAndPreviewSourcesLinked": true,
+  "windowsWpfExecuted": false,
+  "fixturePolicy": "Mutation arguments originate in explicit displayed/planned snapshots; no save/retry helper reads replacement tokens.",
+  "runtime": ".NET 10.0.13",
+  "os": "Debian GNU/Linux 13 (trixie)",
+  "passed": 22,
+  "failed": 0,
+  "cases": [
+    {
+      "name": "STALE-OPENING-200-CANNOT-BE-REPLACED-BY-OLD-100",
+      "status": "PASS"
+    },
+    {
+      "name": "STALE-ACCOUNT-CANNOT-REENABLE-NEWLY-DISABLED-ACCOUNT",
+      "status": "PASS"
+    },
+    {
+      "name": "STALE-DELETEDRAFT-CANNOT-ACT-ON-UNSEEN-20",
+      "status": "PASS"
+    },
+    {
+      "name": "STALE-REVIEW-CANNOT-ACT-ON-UNSEEN-20",
+      "status": "PASS"
+    },
+    {
+      "name": "POST-CONFIRMED-10-CANNOT-POST-CHANGED-20",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-SaveAccount",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-DeleteAccount",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-SetOpeningBalances",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-DeleteDraft",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-Review",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-CancelReview",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-Post",
+      "status": "PASS"
+    },
+    {
+      "name": "LEGACY-NO-CONTEXT-CloseMonth",
+      "status": "PASS"
+    },
+    {
+      "name": "NEW-DRAFT-REQUIRES-both",
+      "status": "PASS"
+    },
+    {
+      "name": "NEW-DRAFT-REQUIRES-book",
+      "status": "PASS"
+    },
+    {
+      "name": "NEW-DRAFT-REQUIRES-revision",
+      "status": "PASS"
+    },
+    {
+      "name": "CROSS-BOOK-SAME-REVISION-SAME-ID",
+      "status": "PASS"
+    },
+    {
+      "name": "NONEXISTENT-ID-WITH-CORRECT-CONTEXT",
+      "status": "PASS"
+    },
+    {
+      "name": "PREVIEW-WRAPPER-FORWARDS-ORIGINAL-CONTEXT-REFERENCE",
+      "status": "PASS"
+    },
+    {
+      "name": "SAME-BOOK-ID-REVISION-RESTORE-INVALIDATES-OLD-SESSION",
+      "status": "PASS"
+    },
+    {
+      "name": "FAILED-OPEN-KEEPS-VALID-PENDING-ORIGIN",
+      "status": "PASS"
+    },
+    {
+      "name": "CLOSE-REOPEN-SAME-FILE-DOES-NOT-REVIVE-OLD-ORIGIN",
+      "status": "PASS"
+    }
+  ]
+}

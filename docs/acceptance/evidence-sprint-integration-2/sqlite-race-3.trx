@@ -1,0 +1,57 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="87674251-f8aa-4474-a5a0-385df1ea54fd" name="@203665d5b983 2026-10-25 09:26:09" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-25T09:26:09.3320965+00:00" queuing="2026-10-25T09:26:09.3320966+00:00" start="2026-10-25T09:26:08.5287744+00:00" finish="2026-10-25T09:26:09.3372595+00:00" />
+  <TestSettings name="default" id="7fe63389-d7e5-48df-b541-7e5b6117a844">
+    <Deployment runDeploymentRoot="_203665d5b983_2026-10-25_09_26_09" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="970d3a67-80df-43ae-9d83-4135015203da" testId="dfa4073c-b67f-4fba-b293-a9765b0c6c1f" testName="Caiwu.Persistence.Sqlite.Tests.StoreTests.RacingCreatorsNeverOverwriteTheWinner" computerName="203665d5b983" duration="00:00:00.2141968" startTime="2026-10-25T09:26:09.0074145+00:00" endTime="2026-10-25T09:26:09.2354726+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="970d3a67-80df-43ae-9d83-4135015203da">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Single() Failure: The collection contained 2 matching items
+Expected:      (predicate expression)
+Collection:    [null, null]
+Match indices: 0, 1</Message>
+          <StackTrace>   at Caiwu.Persistence.Sqlite.Tests.StoreTests.RacingCreatorsNeverOverwriteTheWinner() in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/StoreTests.cs:line 603
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.StoreTests.RacingCreatorsNeverOverwriteTheWinner" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="dfa4073c-b67f-4fba-b293-a9765b0c6c1f">
+      <Execution id="970d3a67-80df-43ae-9d83-4135015203da" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.StoreTests" name="RacingCreatorsNeverOverwriteTheWinner" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="dfa4073c-b67f-4fba-b293-a9765b0c6c1f" executionId="970d3a67-80df-43ae-9d83-4135015203da" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v4.0.1+0f7d528729 (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.09]   Discovering: Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.15]   Discovered:  Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.17]   Starting:    Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.42]       Assert.Single() Failure: The collection contained 2 matching items
+[xUnit.net 00:00:00.42]       Expected:      (predicate expression)
+[xUnit.net 00:00:00.42]       Collection:    [null, null]
+[xUnit.net 00:00:00.42]       Match indices: 0, 1
+[xUnit.net 00:00:00.42]       Stack Trace:
+[xUnit.net 00:00:00.42]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/StoreTests.cs(603,0): at Caiwu.Persistence.Sqlite.Tests.StoreTests.RacingCreatorsNeverOverwriteTheWinner()
+[xUnit.net 00:00:00.42]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:00.43]   Finished:    Caiwu.Persistence.Sqlite.Tests
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="203665d5b983" outcome="Error" timestamp="2026-10-25T09:26:09.2401637+00:00">
+        <Text>[xUnit.net 00:00:00.42]     Caiwu.Persistence.Sqlite.Tests.StoreTests.RacingCreatorsNeverOverwriteTheWinner [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

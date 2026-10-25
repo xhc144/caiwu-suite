@@ -1,0 +1,48 @@
+{
+  "schema": "caiwu-ui-navigation-results/1",
+  "actualWindowsWpf": true,
+  "executedAtUtc": "2026-10-25T09:27:03.4502754+00:00",
+  "os": "Microsoft Windows 10.0.26100",
+  "checkoutCommit": "79f76654f414ae4c95cba0555574d27ba861609d",
+  "productionSourceTree": "2b6d3abda7b369be4ce1d56928d0574f12f9108d",
+  "deliverySourceTree": "0b29fc19779e4d8731224380c6a1488f1f16c743",
+  "mechanism": "Production WPF controls, routed click/double-click events and real modal windows; same-process native file-dialog Cancel button. Programmatic text entry, not physical keyboard/IME testing.",
+  "failures": 1,
+  "blocked": 0,
+  "results": [
+    {
+      "id": "UI-NAV-NEWBOOK-CANCEL-RETAINS-INPUT",
+      "status": "PASS"
+    },
+    {
+      "id": "UI-NAV-REPORT-RETURN-RETAINS-CONTEXT",
+      "status": "FAIL",
+      "detail": "System.InvalidOperationException: Sequence contains no matching element\r\n   at System.Linq.ThrowHelper.ThrowNoMatchException()\r\n   at System.Linq.Enumerable.Single[TSource](IEnumerable\u00601 source, Func\u00602 predicate)\r\n   at Program.Button(Window owner, String content) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.UiNavigation.Tests\\Program.cs:line 353\r\n   at Program.ReportReturnAsync() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.UiNavigation.Tests\\Program.cs:line 172\r\n   at Program.ReportReturnAsync()\r\n   at Program.CheckAsync(String id, Func\u00601 probe) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.UiNavigation.Tests\\Program.cs:line 288"
+    }
+  ],
+  "observations": [
+    {
+      "probe": "new-book",
+      "expected": {
+        "Name": "\u53D6\u6D88\u540E\u5E94\u4FDD\u7559\u7684\u865A\u62DF\u8D26\u5957",
+        "Year": "2025",
+        "Regime": 1,
+        "Month": 7
+      },
+      "actual": {
+        "Name": "\u53D6\u6D88\u540E\u5E94\u4FDD\u7559\u7684\u865A\u62DF\u8D26\u5957",
+        "Year": "2025",
+        "Regime": 1,
+        "Month": 7
+      },
+      "returnedDirectly": false,
+      "createCalls": 0,
+      "nativeCancel": {
+        "Title": "\u4FDD\u5B58\u65B0\u8D26\u5957",
+        "ClassName": "#32770",
+        "ProcessId": 6356,
+        "CancelButtonClicked": true
+      }
+    }
+  ]
+}
