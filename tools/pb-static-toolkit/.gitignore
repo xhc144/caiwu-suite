@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pbd
+*.exe
+*.dll
+*.zip
+*.csv
+*.json
+*.bin
+*.partial
+out/
