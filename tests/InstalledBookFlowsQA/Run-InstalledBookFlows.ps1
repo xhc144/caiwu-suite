@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory)][string]$Installer,
     [Parameter(Mandatory)][string]$ControllerExecutable,
-    [Parameter(Mandatory)][string]$OutputDirectory
+    [Parameter(Mandatory)][string]$OutputDirectory,
+    [string]$Version = '0.1.0.1'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -30,8 +31,8 @@ try {
     Native (Resolve-Path $Installer).Path ('/S /DATAROOT="' + $dataRoot + '" /D=' + $installRoot)
     Assert (Test-Path $registry) 'Native NSIS installation registration absent.'
     $pointer = Get-Content (Join-Path $installRoot 'current.json') -Raw | ConvertFrom-Json
-    Assert ($pointer.dataRoot -eq $dataRoot -and $pointer.version -eq '0.1.0.1') 'Installed data/version binding mismatch.'
-    $versionRoot = Join-Path $installRoot 'versions/0.1.0.1'
+    Assert ($pointer.dataRoot -eq $dataRoot -and $pointer.version -eq $Version) 'Installed data/version binding mismatch.'
+    $versionRoot = Join-Path $installRoot "versions/$Version"
     $manifest = Get-Content (Join-Path $versionRoot 'payload-manifest.json') -Raw | ConvertFrom-Json
     Assert ($manifest.commit -eq $env:GITHUB_SHA -and $manifest.managedDataContract) 'Actual installed payload source or managed capability mismatch.'
     $result.nativeInstalled = $true

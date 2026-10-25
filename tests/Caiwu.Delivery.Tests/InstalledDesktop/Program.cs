@@ -301,8 +301,12 @@ internal static class Program
         var focused = AutomationElement.FocusedElement;
         if (focused.Current.ControlType != ControlType.Edit) throw new InvalidDataException("Native filename mnemonic did not focus an edit control.");
         ControlKey(0x41); Type(path);
-        var entered = ((ValuePattern)focused.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
-        var normalized = Path.GetFullPath(entered.Trim('"'));
+        var entered = ""; var normalized = "";
+        Until(() => {
+            entered = ((ValuePattern)focused.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
+            try { normalized = Path.GetFullPath(entered.Trim('"')); } catch (ArgumentException) { return false; }
+            return string.Equals(normalized, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase);
+        }, "native filename edit completes exact requested path", 5000);
         File.WriteAllText(Path.Combine(evidence, "native-path-" + Guid.NewGuid().ToString("N") + ".json"), JsonSerializer.Serialize(new { title, controlName = focused.Current.Name, automationId = focused.Current.AutomationId, entered, normalized, expected = path }, PayloadManifest.Json));
         if (!string.Equals(normalized, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Native filename input did not read back as the exact requested path.");
         Key(0x09); Thread.Sleep(100); // Commit the filename field before explicit confirmation.

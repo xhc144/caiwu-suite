@@ -25,7 +25,7 @@ internal static class Program
     private static readonly List<string> Failures = [];
     private static string bookPath = "", copiedBookPath = "", restoredBookPath = "", originalVoucherJson = "";
     private static LedgerSnapshot? baseline;
-    private static readonly string[] ExpectedCases = ["voucher-cancel", "voucher-execute-save-repeat", "voucher-duplicate-refused", "summary-manage", "summary-refill", "book-preview-cancel-stale-approval", "book-copy-new-identity", "book-duplicate-destination-refused", "backup-restore-same-identity", "physical-instance-summary-isolation", "trial-balance-visible-native", "independent-readback", "stale-source-revision"];
+    private static readonly string[] ExpectedCases = ["voucher-cancel", "voucher-execute-save-repeat", "voucher-duplicate-refused", "summary-manage", "summary-refill", "book-preview-cancel-stale-approval", "book-copy-new-identity", "book-duplicate-destination-refused", "backup-restore-same-identity", "physical-instance-summary-isolation", "trial-balance-visible-native", "independent-readback", "expired-session-during-summary-picker"];
 
     private static readonly string Password = Environment.GetEnvironmentVariable("CAIWU_INTERNAL_QA_PASSWORD") ?? "Synthetic!" + Guid.NewGuid().ToString("N");
 
@@ -171,14 +171,23 @@ internal static class Program
                 Capture("summary-reopened"); Close(manager);
             });
             Case("summary-refill", () => {
-                Shortcut(0x4e); var editor = Window(t => t == "记账凭证");
-                var buttons = editor.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)).Cast<AutomationElement>().Select(e => new { e.Current.Name, e.Current.AutomationId }).ToArray();
-                File.WriteAllText(Path.Combine(evidence, "summary-refill-controls.json"), JsonSerializer.Serialize(buttons, PayloadManifest.Json));
-                Capture("summary-refill-missing-entry");
-                var refill = editor.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)).Cast<AutomationElement>().FirstOrDefault(e => e.Current.Name.Contains("摘要", StringComparison.Ordinal));
-                Close(editor);
-                Require(refill is not null, "PRODUCT GAP: installed voucher editor has no summary selection/refill control; saved summaries cannot be returned to a voucher through the normal UI");
-                throw new InvalidOperationException("Summary refill control changed: implement and independently validate actual choose, fill, cancel and save before passing.");
+                var before = Hash(bookPath); var old = Read(bookPath).Vouchers.Single(v => v.Number == 2).Lines[0].Summary;
+                var editor = OpenDraft();
+                Invoke(editor, Id("PickSummaryButton")); var picker = Window(t => t == "选择常用摘要");
+                Invoke(picker, Name("取消"));
+                Require(GridSummary(editor).Contains(old, StringComparison.Ordinal) && Hash(bookPath) == before, "actual picker cancel preserves current line and persisted ledger");
+                Invoke(editor, Id("PickSummaryButton")); picker = Window(t => t == "选择常用摘要");
+                SelectSummary(picker); Invoke(picker, Id("ChooseSummary"));
+                Until(() => GridSummary(editor).Contains("安装合成摘要：支付办公费", StringComparison.Ordinal), "selected saved summary fills current voucher line");
+                Require(Hash(bookPath) == before, "summary choice does not automatically save the voucher"); Capture("summary-refill-before-save");
+                Invoke(editor, Id("SaveButton")); Until(() => !HasWindow("记账凭证"), "explicit save of selected summary");
+                var saved = Read(bookPath);
+                Require(saved.Vouchers.Count == 2 && saved.Vouchers.Single(v => v.Number == 2).Lines[0].Summary == "安装合成摘要：支付办公费", "explicit save persists exactly the selected summary without an extra voucher");
+                AssertOriginal(saved); editor = OpenDraft();
+                Require(GridSummary(editor).Contains("安装合成摘要：支付办公费", StringComparison.Ordinal), "normal editor reopen reads persisted selected summary");
+                Capture("summary-refill-reopened"); Close(editor);
+                SelectSource(); Invoke(main!, Name("查看 / 修改")); editor = Window(t => t == "记账凭证");
+                Require(!editor.FindFirst(TreeScope.Descendants, Id("PickSummaryButton"))!.Current.IsEnabled, "posted read-only voucher disables summary refill"); Close(editor);
             });
             Case("book-preview-cancel-stale-approval", () => {
                 var before = Hash(bookPath); var target = Path.Combine(data, "cancelled-copy.caiwu");
@@ -260,7 +269,26 @@ internal static class Program
                 Capture("trial-balance-confirmed-native");
                 File.WriteAllText(Path.Combine(evidence, "trial-balance-visible-receipt.json"), JsonSerializer.Serialize(new { sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), selectedPageTitle = tab.Current.Name, selected = ((SelectionItemPattern)tab.GetCurrentPattern(SelectionItemPattern.Pattern)).Current.IsSelected, gridVisible = !visibleGrid.Current.IsOffscreen, gridBounds = visibleGrid.Current.BoundingRectangle.ToString(), rowCount = ((GridPattern)visibleGrid.GetCurrentPattern(GridPattern.Pattern)).Current.RowCount, totalsVisible = !visibleTotals.Current.IsOffscreen, actualTotals = visibleTotals.Current.Name, expectedPostedAmount = "123.45", nativeWidth = GetSystemMetrics(0), nativeHeight = GetSystemMetrics(1), pngSha256 = Hash(Path.Combine(evidence, "trial-balance-confirmed-native.png")) }, PayloadManifest.Json));
             });
-            Cases.Add(new("stale-source-revision", "not-run", "No supported normal installed UI action changes a source revision while its owned modal editor remains open. Do not mutate SQLite behind the App-owned managed-data lease or change credentials/permissions to manufacture expiry. Preview approval invalidation is verified separately and is not claimed as this case."));
+            Case("expired-session-during-summary-picker", () => {
+                var before = Hash(bookPath); var revision = Read(bookPath).Revision;
+                var editor = OpenDraft(); var grid = editor.FindFirst(TreeScope.Descendants, Id("LinesGrid"))!;
+                Cell(grid, 0, 0, "会话撤销前保留输入");
+                Invoke(editor, Id("PickSummaryButton")); var picker = Window(t => t == "选择常用摘要");
+                var adminSession = operators.Login("fixture-admin", Password);
+                var directory = operators.GetDirectory(adminSession);
+                var actor = directory.Operators.Single(o => o.LoginName == "fixture-reviewer");
+                operators.UpdateOperator(adminSession, directory.Revision, actor.Id, actor.DisplayName, actor.Roles, false);
+                operators.Logout(adminSession);
+                SelectSummary(picker); Invoke(picker, Id("ChooseSummary"));
+                Until(() => !string.IsNullOrWhiteSpace(Text(editor, "ErrorText")), "revoked real operator session rejects summary confirmation");
+                Require(GridSummary(editor).Contains("会话撤销前保留输入", StringComparison.Ordinal) && Hash(bookPath) == before, "revocation while actual picker is modal preserves typed input and ledger bytes");
+                Capture("expired-summary-confirmation-rejected");
+                Invoke(editor, Id("SaveButton"));
+                Require(HasWindow("记账凭证") && Hash(bookPath) == before && Read(bookPath).Revision == revision, "original draft save rejects revoked session without token refresh or revision advance");
+                CheckLeases(); Capture("expired-draft-save-rejected"); SetForegroundWindow((IntPtr)editor.Current.NativeWindowHandle); Key(0x1b); Yes("未保存的凭证");
+                Until(() => !HasWindow("记账凭证"), "explicit discard after rejected stale-session save");
+                File.WriteAllText(Path.Combine(evidence, "session-expiry-scope.json"), JsonSerializer.Serialize(new { actuallyExecuted = "Supported administrator UpdateOperator disables the existing synthetic reviewer while the real summary picker is modal; choose and original draft save both rejected", originalSourceRevisionScenarioExecuted = false, originalSourceRevisionScenarioReason = "Owned modal window and genuine exclusive data lease make a supported concurrent ledger mutation unavailable. No SQLite write or lease bypass was used.", rootScopeDecisionRequired = true, ledgerRevisionUnchanged = revision }, PayloadManifest.Json));
+            });
             CheckLeases();
             Close(main);
             if (!launcher.WaitForExit(30000) || launcher.ExitCode != 0) throw new IOException("Installed App did not exit normally.");
@@ -296,7 +324,7 @@ internal static class Program
         if (evidence.Length == 0) return;
         var results = ExpectedCases.Select(name => Cases.FirstOrDefault(c => c.name == name) ?? new CaseResult(name, "not-run", "Controller has not reached this case.")).ToArray();
         success = success && results.All(c => c.status == "passed");
-        File.WriteAllText(Path.Combine(evidence, "installed-bookflows.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), productionBaseline = "dece298946d03ad88c5031eb02dab8f87c330046", checks = Checks, cases = results, expectedCases = ExpectedCases }, PayloadManifest.Json));
+        File.WriteAllText(Path.Combine(evidence, "installed-bookflows.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), productionBaseline = "42c718fa4770f3562b74b76f2bcb89f977bb52f6", originalStaleSourceRevisionExecuted = false, originalStaleSourceRevisionReason = "Owned modal and actual exclusive lease prevent supported concurrent ledger mutation; supported real operator revocation is separately executed, root scope decision required", checks = Checks, cases = results, expectedCases = ExpectedCases }, PayloadManifest.Json));
     }
     private static void Pass(string name) { Checks.Add(name); Save(false, "In progress"); }
     private static void Require(bool value, string name) { if (!value) throw new InvalidDataException(name); Pass(name); }
@@ -321,6 +349,27 @@ internal static class Program
         var tab = main!.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TabItem)).Cast<AutomationElement>().Single(e => e.Current.Name == "凭证序时簿"); ((SelectionItemPattern)tab.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
         var list = main.FindFirst(TreeScope.Descendants, Id("VoucherGrid"))!;
         var row = list.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.DataItem)).Cast<AutomationElement>().First(); ((SelectionItemPattern)row.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
+    }
+    private static AutomationElement OpenDraft()
+    {
+        SelectSource(); var list = main!.FindFirst(TreeScope.Descendants, Id("VoucherGrid"))!;
+        var rows = list.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.DataItem)).Cast<AutomationElement>().ToArray();
+        ((SelectionItemPattern)rows[1].GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
+        Invoke(main, Name("查看 / 修改")); return Window(t => t == "记账凭证");
+    }
+    private static string GridSummary(AutomationElement editor)
+    {
+        var grid = editor.FindFirst(TreeScope.Descendants, Id("LinesGrid"))!;
+        var cell = ((GridPattern)grid.GetCurrentPattern(GridPattern.Pattern)).GetItem(0, 0);
+        var text = cell.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text)).Cast<AutomationElement>().Select(e => e.Current.Name);
+        var edits = cell.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit)).Cast<AutomationElement>().Select(e => ((ValuePattern)e.GetCurrentPattern(ValuePattern.Pattern)).Current.Value);
+        return cell.Current.Name + string.Join("", text.Concat(edits));
+    }
+    private static void SelectSummary(AutomationElement picker)
+    {
+        var list = picker.FindFirst(TreeScope.Descendants, Id("SummaryList"))!;
+        var row = list.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.DataItem))!;
+        ((SelectionItemPattern)row.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
     }
     private static AutomationElement VoucherChoice(int number) { SelectSource(); Menu("实务操作", "复制凭证为新草稿…"); var w = Window(t => t == "复制为新草稿"); Set(w, "CopyDate", baseline!.Vouchers.Single().Date.ToString("yyyy-MM-dd")); Set(w, "CopyKind", "记"); Set(w, "CopyNumber", number.ToString()); Set(w, "CopyAttachments", "0"); return w; }
     private static AutomationElement BookChoice(string destination, string name) { Menu("会计档案", "复制账套…"); var w = Window(t => t == "复制为新账套"); var edits = Edits(w); SetValue(edits[0], name); SetValue(edits[1], destination); Require(((ValuePattern)edits[2].GetCurrentPattern(ValuePattern.Pattern)).Current.IsReadOnly, "installed host fixes book-copy audit actor"); return w; }

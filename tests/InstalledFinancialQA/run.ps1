@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Installer, [Parameter(Mandatory)][string]$OutputDirectory)
+param([Parameter(Mandatory)][string]$Installer, [Parameter(Mandatory)][string]$OutputDirectory, [string]$Version = '0.1.0.1')
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if (-not $IsWindows -or $env:GITHUB_ACTIONS -ne 'true' -or -not [Environment]::Is64BitProcess) { throw 'Disposable x64 Windows CI only.' }
@@ -17,7 +17,7 @@ try {
     if (-not $native.WaitForExit(120000)) { $native.Kill($true); throw 'Native installer timeout.' }
     $native.Refresh(); if ($native.ExitCode -ne 0) { throw "Native installer failed: $($native.ExitCode)" }; $installed = $true
     $pointer = Get-Content (Join-Path $installRoot 'current.json') -Raw | ConvertFrom-Json
-    if ($pointer.dataRoot -ne $dataRoot -or $pointer.version -ne '0.1.0.1') { throw 'Installed pointer mismatch.' }
+    if ($pointer.dataRoot -ne $dataRoot -or $pointer.version -ne $Version) { throw 'Installed pointer mismatch.' }
     $start = [Diagnostics.ProcessStartInfo]::new($controller); $start.UseShellExecute = $false; $start.WorkingDirectory = $evidence
     $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
     foreach ($argument in @($installRoot, $dataRoot, $evidence)) { $start.ArgumentList.Add($argument) }
