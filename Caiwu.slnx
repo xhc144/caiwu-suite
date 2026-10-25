@@ -5,6 +5,7 @@
   <Project Path="src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
   <Project Path="tests/Caiwu.Desktop.Logic.Tests/Caiwu.Desktop.Logic.Tests.csproj" />
   <Project Path="tests/Caiwu.Core.Tests/Caiwu.Core.Tests.csproj" />
+  <Project Path="tests/Caiwu.Core.Tests/SqliteIntegrationProbe/IntegrationProbe.csproj" />
   <Project Path="tests/Caiwu.Persistence.Sqlite.Tests/Caiwu.Persistence.Sqlite.Tests.csproj" />
   <Project Path="tests/Caiwu.Integration.Tests/Caiwu.Integration.Tests.csproj" />
 </Solution>

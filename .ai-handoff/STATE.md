@@ -15,5 +15,9 @@
 - 修复结果：在任何dotnet进程前设置工作区XDG_RUNTIME_DIR（权限700）后，锁与还原成功，不需改HOME/宿主权限。`tools/dotnet-local.sh`记录完整可复用配置。
 - 已cherry-pick SQLite d69a8b7→本分支5b32cbb，Core c499a4d→本分支70034e3；App组合根已连接真实模块。完整WPF Release交叉构建0警告0错误，Core53、SQLite63、界面13、真实SQLite/Core集成9全部通过。
 - 待验证：开发分支Windows CI的WPF窗口实际运行/渲染和预览包；人工键盘/打印/高DPI验收未完成。首版不覆盖完整报表、年结、成本分配、电子凭证/完整认证，模板未经生产复核。
+- 后续Windows CI40172477245成功（037a075），138项检查在Windows也通过，WPF启动并渲染四图后完成打包。下载外层Actions产物两次重定向blob HTTP403，0字节，未目视PNG，不再盲重试。
+- Core额外验证0bc92ac已cherry-pick为fa8efc4并重新运行，332断言通过。已加入solution和打包验证脚本，不改Core/SQLite生产源码。
+- 本地自包含Windows ZIP已生成并CRC核验：artifacts/caiwu-preview-win-x64-fa8efc4-local.zip，64255749字节，SHA256见docs/DELIVERY_STATUS.md。大文件Library助手在tools/list HTTP401前置失败，三份预览交付文件均未保存Library，未绕过。
+- 原UI统一入口docs/reference-ui/README.md+pages.json，31稳定page-id逐项区分旧手册/未见子窗/未实机；原商用素材未进仓库。已保存研究Library版本仍为0、193504字节。
 - 下一步：根把契约提交发送两个实现任务；根处理最新开工授权与构建审批冲突。核心与SQLite各按独占目录实现，返回代码及测试证据后集成。UI选择已改为.NET10 WPF，业务/存储不受影响。
 - 状态：公共接口与UI骨架已写但未编译；实际记账能力尚未实现；Windows实机验证未完成；任何财务正确性/合规性未验证。

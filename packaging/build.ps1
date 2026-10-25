@@ -14,7 +14,10 @@ try {
     Invoke-DotNet -Arguments @('build', 'Caiwu.slnx', '-c', 'Release', '--nologo')
     if (-not $SkipTests) {
         Get-ChildItem 'tests' -Filter '*.csproj' -Recurse | ForEach-Object {
-            if ($_.Name -in @('Caiwu.Desktop.Logic.Tests.csproj', 'Caiwu.Integration.Tests.csproj')) {
+            if ($_.Name -eq 'IntegrationProbe.csproj') {
+                $probeDirectory = Join-Path $artifactDirectory ('verification/core-probe-' + [Guid]::NewGuid().ToString('N'))
+                Invoke-DotNet -Arguments @('run', '--project', $_.FullName, '-c', 'Release', '--no-build', '--', $probeDirectory)
+            } elseif ((Get-Content $_.FullName -Raw) -match '<OutputType>\s*Exe\s*</OutputType>') {
                 Invoke-DotNet -Arguments @('run', '--project', $_.FullName, '-c', 'Release', '--no-build')
             } else {
                 Invoke-DotNet -Arguments @('test', $_.FullName, '-c', 'Release', '--no-build', '--logger', 'trx', '--results-directory', (Join-Path $artifactDirectory 'test-results'))

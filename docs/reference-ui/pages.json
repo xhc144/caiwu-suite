@@ -1,0 +1,509 @@
+{
+  "schema_version": 1,
+  "updated": "2026-10-25",
+  "scope": "known_subset_not_complete_ui_tree",
+  "shared_reference": {
+    "library_file_id": "libfile_442a588c36dc8191bf833338100c9a0e",
+    "file_id": "file_000000005aa481fdaf3aa99cfb4ac0cf",
+    "file_name": "caiwu-ui-reference-private-20261025.zip",
+    "version": 0,
+    "sha256": "b686e5b13011b1615fbf33b991940795a60c643624b34eb1aae8ef43047ccd20"
+  },
+  "source_runtime_executed_by_main_integration": false,
+  "pages": [
+    {
+      "page_id": "QS-MAIN-001",
+      "parent_id": null,
+      "label": "主窗口",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/01-qingsong-part-019.jpg",
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "MainWindow工作台",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-BOOK-LIST-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "账套管理",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/02-qingsong-part-023.jpg",
+      "fields": [
+        "代码",
+        "名称",
+        "新增/删除/复制按钮"
+      ],
+      "shortcuts": [],
+      "implementation": "文件/打开账套；未复刻原账套管理列表",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-BOOK-NEW-001",
+      "parent_id": "QS-BOOK-LIST-001",
+      "label": "新建账套",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/02-qingsong-part-023.jpg",
+      "fields": [
+        "代码",
+        "名称"
+      ],
+      "shortcuts": [],
+      "implementation": "文件/新建账套→NewBookWindow",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-BOOK-COPY-001",
+      "parent_id": "QS-BOOK-LIST-001",
+      "label": "复制账套子窗",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "button_seen_child_pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "未实现；备份恢复不是复制弹窗的原样复刻",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-INIT-WIZARD-001",
+      "parent_id": "QS-BOOK-NEW-001",
+      "label": "一键初始/分步向导",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "制度",
+        "单位",
+        "启用日期",
+        "科目级次"
+      ],
+      "shortcuts": [],
+      "implementation": "NewBookWindow集中字段，流程变化待老用户核对",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-OPERATOR-001",
+      "parent_id": "QS-INIT-WIZARD-001",
+      "label": "操作员/权限",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "代码",
+        "名称",
+        "权限"
+      ],
+      "shortcuts": [],
+      "implementation": "当前操作员名称切换；完整认证/权限未实现",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-ACCOUNT-001",
+      "parent_id": "QS-INIT-WIZARD-001",
+      "label": "科目维护",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "代码",
+        "名称",
+        "上下级",
+        "方向"
+      ],
+      "shortcuts": [],
+      "implementation": "会计科目页→新增/修改/明细AccountWindow",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-OPENING-001",
+      "parent_id": "QS-INIT-WIZARD-001",
+      "label": "期初余额",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/03-qingsong-part-049.jpg",
+      "fields": [
+        "科目代码",
+        "名称",
+        "借贷余额",
+        "只读格"
+      ],
+      "shortcuts": [],
+      "implementation": "期初余额页",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-VOUCHER-LIST-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "凭证序时簿",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/04-qingsong-part-075.jpg",
+      "fields": [
+        "日期",
+        "凭证号",
+        "摘要",
+        "金额",
+        "状态"
+      ],
+      "shortcuts": [
+        "F4审核（列表焦点）"
+      ],
+      "implementation": "凭证序时簿页",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-VOUCHER-EDIT-001",
+      "parent_id": "QS-VOUCHER-LIST-001",
+      "label": "凭证录入",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/05-qingsong-part-077.jpg",
+      "fields": [
+        "日期",
+        "类型",
+        "编号",
+        "附单",
+        "摘要",
+        "科目",
+        "借方",
+        "贷方",
+        "制单/审核/记账"
+      ],
+      "shortcuts": [
+        "Enter下一格/行",
+        "F7平衡复制"
+      ],
+      "implementation": "新增/查看修改→VoucherEditorWindow",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-SUMMARY-PICK-001",
+      "parent_id": "QS-VOUCHER-EDIT-001",
+      "label": "预设摘要选择",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/06-qingsong-part-079.jpg",
+      "fields": [
+        "摘要分类",
+        "预设摘要"
+      ],
+      "shortcuts": [
+        "双击摘要"
+      ],
+      "implementation": "未实现摘要库弹窗；当前可直接录入摘要",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-ACCOUNT-PICK-001",
+      "parent_id": "QS-VOUCHER-EDIT-001",
+      "label": "科目查找子窗",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "搜索关键字",
+        "代码",
+        "名称"
+      ],
+      "shortcuts": [
+        "F4科目栏",
+        "双击选择"
+      ],
+      "implementation": "F4→AccountPickerWindow",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-VOUCHER-COPY-001",
+      "parent_id": "QS-VOUCHER-EDIT-001",
+      "label": "凭证复制子窗",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "原日期",
+        "类型",
+        "编号"
+      ],
+      "shortcuts": [],
+      "implementation": "未实现",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-VOUCHER-REVIEW-001",
+      "parent_id": "QS-VOUCHER-LIST-001",
+      "label": "审核/批审核子窗",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "范围",
+        "审核/取消审核"
+      ],
+      "shortcuts": [],
+      "implementation": "当前为选中单张审核；原批审核弹窗未复刻",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-VOUCHER-TRANSFER-001",
+      "parent_id": "QS-VOUCHER-LIST-001",
+      "label": "导入/转出文件子窗",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "仅自研CSV导出；原TXT/DBF导入未实现",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-POST-CLOSE-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "记账/月度结转/结账",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "月份",
+        "类型"
+      ],
+      "shortcuts": [
+        "不照搬原反记账改历史路径"
+      ],
+      "implementation": "记账/月结确认已实现；结转与更正流程未实现",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-TRIAL-FILTER-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "余额查询条件",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "起止期间",
+        "科目范围"
+      ],
+      "shortcuts": [],
+      "implementation": "余额表页内期间选择；原弹窗未复刻",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-LEDGER-DRILL-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "总账→明细→凭证联查",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/07-qingsong-part-123.jpg",
+      "fields": [
+        "代码",
+        "期间",
+        "摘要",
+        "发生/余额"
+      ],
+      "shortcuts": [
+        "双击逐层联查"
+      ],
+      "implementation": "余额表双击→明细→只读凭证",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-REPORT-LIST-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "报表管理目录",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/08-qingsong-part-213.jpg",
+      "fields": [
+        "编号",
+        "报表名称",
+        "增加/复制/删除/定义/显示"
+      ],
+      "shortcuts": [],
+      "implementation": "未实现原报表目录；新Reporting模块另行接入",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-REPORT-DESIGN-001",
+      "parent_id": "QS-REPORT-LIST-001",
+      "label": "报表定义/公式子页",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "未实现",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-BACKUP-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "备份/恢复子窗",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [
+        "目录",
+        "文件名",
+        "确认/覆盖"
+      ],
+      "shortcuts": [
+        "自研F10备份，不主张原快捷键一致"
+      ],
+      "implementation": "文件/备份与恢复副本；原弹窗视觉待核",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-CONTEXT-MENUS-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "各工作页右键菜单",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "待统一补证；不凭经验造原菜单",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "QS-ERROR-STATES-001",
+      "parent_id": "QS-MAIN-001",
+      "label": "错误/权限/锁期/只读状态",
+      "source": "轻松会计说明书2006；非2026实机",
+      "manual_evidence": "pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "自研错误校验已实现；原提示与状态待观察",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "GEN-MAIN-001",
+      "parent_id": null,
+      "label": "通用主管会计主窗口",
+      "source": "主管会计08版通用手册；不是民非/成本专版实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/09-generic-2008-part-016.jpg",
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "只作业务导航参考",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "GEN-BOOK-001",
+      "parent_id": "GEN-MAIN-001",
+      "label": "通用账套管理与新建",
+      "source": "主管会计08版通用手册；不是民非/成本专版实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/10-generic-2008-part-019.jpg",
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "不当作专版实机证据",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "GEN-VOUCHER-001",
+      "parent_id": "GEN-MAIN-001",
+      "label": "通用凭证页",
+      "source": "主管会计08版通用手册；不是民非/成本专版实机",
+      "manual_evidence": "image_seen",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": "screens/11-generic-2008-part-067.jpg",
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "凭证纸布局参考",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "NF-2026-MAIN-001",
+      "parent_id": null,
+      "label": "2026民非专版及子页",
+      "source": "民非安装包；实际UI待观察",
+      "manual_evidence": "pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "实验科目支持基础记账；专版制度业务页未复刻",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "NF-2026-ACTIVITY-001",
+      "parent_id": "NF-2026-MAIN-001",
+      "label": "限定/非限定收支与报表",
+      "source": "民非2026实际UI待观察",
+      "manual_evidence": "pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "待Rules/Reporting适配及会计复核",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "COST-MAIN-001",
+      "parent_id": null,
+      "label": "成本专版及子页",
+      "source": "成本安装包；实际UI待观察",
+      "manual_evidence": "pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "待Costing模块接入，不声称原成本操作已复刻",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "COST-ALLOCATE-001",
+      "parent_id": "COST-MAIN-001",
+      "label": "归集/分配/在产品/完工",
+      "source": "成本实际UI待观察",
+      "manual_evidence": "pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "等待业务模块与原页面补证",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    },
+    {
+      "page_id": "ORIGINAL-ABOUT-001",
+      "parent_id": null,
+      "label": "正式版本/许可/关于页",
+      "source": "三包实际程序待观察",
+      "manual_evidence": "pending",
+      "runtime_state": "not_observed",
+      "screenshot_in_shared_zip": null,
+      "fields": [],
+      "shortcuts": [],
+      "implementation": "不绕登录/许可，不把PB通用版本1.0.0.1当正式版本",
+      "verification_gap": "待原程序观察任务补齐2026实际页面、进入/返回、右键菜单和错误/禁用状态。"
+    }
+  ]
+}
