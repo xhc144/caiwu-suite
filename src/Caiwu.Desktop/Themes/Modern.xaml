@@ -7,7 +7,7 @@
   </ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="AppCanvas" Color="#F2F5FA" />
   <SolidColorBrush x:Key="AppSurface" Color="#FFFFFF" />
-  <SolidColorBrush x:Key="AppInk" Color="#182B45" />
+  <SolidColorBrush x:Key="AppInk" Color="#202938" />
   <SolidColorBrush x:Key="AppMuted" Color="#596B82" />
   <SolidColorBrush x:Key="AppLine" Color="#DAE3EE" />
   <SolidColorBrush x:Key="AppAccent" Color="#2463D4" />
@@ -19,6 +19,7 @@
   </Style>
   <Style TargetType="Window">
     <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI" />
+    <Setter Property="Language" Value="zh-CN" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="Foreground" Value="{DynamicResource AppInk}" />
@@ -112,16 +113,16 @@
     </ControlTemplate></Setter.Value></Setter>
   </Style>
   <Style TargetType="TabItem" BasedOn="{StaticResource DefaultTabItemStyle}">
-    <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/><Setter Property="Background" Value="Transparent"/>
+    <Setter Property="Foreground" Value="{DynamicResource AppInk}"/><Setter Property="FontWeight" Value="Normal"/><Setter Property="Background" Value="Transparent"/>
     <Setter Property="Padding" Value="19,10"/><Setter Property="Margin" Value="0,0,5,0"/>
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusRing}" />
     <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="TabItem">
       <Border x:Name="Frame" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}" BorderThickness="1" BorderBrush="Transparent">
-        <ContentPresenter x:Name="ContentSite" ContentSource="Header" RecognizesAccessKey="True" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <ContentPresenter x:Name="ContentSite" TextElement.Foreground="{DynamicResource AppMuted}" TextElement.FontWeight="Normal" ContentSource="Header" RecognizesAccessKey="True" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </Border>
       <ControlTemplate.Triggers>
         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Frame" Property="Background" Value="#E8EDF5"/></Trigger>
-        <Trigger Property="IsSelected" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource AppAccentSoft}"/><Setter TargetName="Frame" Property="BorderBrush" Value="#C9D9F8"/><Setter Property="Foreground" Value="#174FAC"/><Setter Property="FontWeight" Value="SemiBold"/></Trigger>
+        <Trigger Property="IsSelected" Value="True"><Setter TargetName="Frame" Property="Background" Value="{DynamicResource AppAccentSoft}"/><Setter TargetName="Frame" Property="BorderBrush" Value="#C9D9F8"/><Setter TargetName="ContentSite" Property="TextElement.Foreground" Value="#174FAC"/><Setter TargetName="ContentSite" Property="TextElement.FontWeight" Value="SemiBold"/></Trigger>
         <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource AppAccent}"/></Trigger>
         <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
       </ControlTemplate.Triggers>
@@ -144,32 +145,26 @@
     <Setter Property="BorderBrush" Value="{DynamicResource AppLine}"/><Setter Property="BorderThickness" Value="0,0,0,1"/>
   </Style>
   <Style TargetType="DataGridCell" BasedOn="{StaticResource DefaultDataGridCellStyle}">
+    <Setter Property="Foreground" Value="{DynamicResource AppInk}"/><Setter Property="FontWeight" Value="Normal"/>
+    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="DataGridCell">
+      <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" SnapsToDevicePixels="True"/>
+      </Border>
+    </ControlTemplate></Setter.Value></Setter>
     <Setter Property="Padding" Value="10,4"/><Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="Transparent"/>
     <Style.Triggers>
+      <Trigger Property="IsEditing" Value="True"><Setter Property="Padding" Value="2,1"/></Trigger>
       <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#E8F0FF"/><Setter Property="Foreground" Value="#173E7D"/></Trigger>
       <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/></Trigger>
     </Style.Triggers>
   </Style>
-  <!-- ReportCenter generates columns in its behavior owner; style current amount headers without changing those bindings. -->
   <Style x:Key="ReportCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
     <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
-    <Style.Triggers>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期初借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期初贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="本期借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="本期贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期末借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期末贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="借方合计"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="贷方合计"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="借方发生额"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="贷方发生额"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="余额（借正贷负）"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
-    </Style.Triggers>
   </Style>
   <Style x:Key="AmountCell" TargetType="TextBlock">
-    <Setter Property="TextAlignment" Value="Right"/><Setter Property="Padding" Value="4,0,10,0"/>
+    <Setter Property="TextAlignment" Value="Right"/><Setter Property="Padding" Value="0"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
     <Setter Property="Typography.NumeralAlignment" Value="Tabular" />
   </Style>
@@ -187,6 +182,7 @@
     </Style.Triggers>
   </Style>
   <Style TargetType="StatusBar" BasedOn="{StaticResource {x:Type StatusBar}}">
+    <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI"/>
     <Setter Property="Background" Value="White"/><Setter Property="Padding" Value="20,5"/>
     <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/><Setter Property="FontSize" Value="12"/>
   </Style>
