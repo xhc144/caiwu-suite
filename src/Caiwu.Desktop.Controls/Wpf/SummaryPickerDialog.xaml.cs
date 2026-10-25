@@ -9,6 +9,7 @@ public partial class SummaryPickerDialog : Window
 {
     private SummaryPickerState? state;
     private bool synchronizing;
+    private bool finishing;
     private readonly PickerComposition composition;
     public SummaryLibraryItem? SelectedSummary { get; private set; }
 
@@ -22,6 +23,7 @@ public partial class SummaryPickerDialog : Window
         synchronizing = true; SummaryCategories.SelectedIndex = 0; synchronizing = false;
         RefreshItems();
         Loaded += (_, _) => { SummarySearch.Focus(); SummarySearch.SelectAll(); };
+        Closed += (_, _) => finishing = true;
     }
     private void Search_Changed(object sender, TextChangedEventArgs e)
     { if (state is null) return; state.SetQuery(SummarySearch.Text); RefreshItems(); }
@@ -64,11 +66,18 @@ public partial class SummaryPickerDialog : Window
     private void Choose_Click(object sender, RoutedEventArgs e) => Choose();
     private void Choose()
     {
+        if (finishing) return;
         var result = state?.AcceptSelection();
         if (result?.Accepted != true) { SelectionStatus.Text = state?.StatusText ?? "摘要尚未载入。"; return; }
-        SelectedSummary = result.Value; DialogResult = true;
+        SelectedSummary = result.Value; Finish(true);
     }
     private void Cancel_Click(object sender, RoutedEventArgs e) => Cancel();
-    private void Cancel() { SelectedSummary = null; DialogResult = false; }
+    private void Cancel() { if (finishing) return; SelectedSummary = null; Finish(false); }
+    private void Finish(bool accepted)
+    {
+        finishing = true;
+        try { DialogResult = accepted; }
+        finally { if (IsVisible) { finishing = false; SelectedSummary = null; } }
+    }
     private void Window_Closing(object? sender, CancelEventArgs e) { if (DialogResult != true) SelectedSummary = null; }
 }
