@@ -26,6 +26,8 @@ internal static class Program
     private static readonly List<object> Captures = [];
     private static readonly List<string> Checks = [];
     private static string output = "";
+    private static nint displayMode;
+    private static byte[]? originalDisplay;
 
     [STAThread]
     private static int Main(string[] args)
@@ -36,6 +38,7 @@ internal static class Program
         App? app = null;
         try
         {
+            PrepareDesktop();
             app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var backend = new DesktopBackend(SqliteLedgerStore.Open, SqliteLedgerStore.Create,
                 SqliteLedgerStore.RestoreBackup, s => new LedgerService(s), TemplateCatalog.All);
@@ -125,6 +128,11 @@ internal static class Program
         {
             SaveResult(false, ex.ToString()); app?.Shutdown(1); return 1;
         }
+        finally
+        {
+            if (originalDisplay is not null) { Marshal.Copy(originalDisplay, 0, displayMode, 220); ChangeDisplaySettings(displayMode, 0); }
+            if (displayMode != 0) Marshal.FreeHGlobal(displayMode);
+        }
     }
 
     private static void SaveResult(bool success, string? error) => File.WriteAllText(Path.Combine(output, "visual-review.json"),
@@ -134,6 +142,22 @@ internal static class Program
             sourceTree = Environment.GetEnvironmentVariable("CAIWU_VISUAL_SOURCE_TREE"),
             generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
 
+    private static void PrepareDesktop()
+    {
+        // Same native mode protocol as the existing independent Acceptance high-resolution runner.
+        displayMode = Marshal.AllocHGlobal(220); Marshal.Copy(new byte[220], 0, displayMode, 220);
+        Marshal.WriteInt16(displayMode, 68, 220);
+        Require(EnumDisplaySettings(null, -1, displayMode), "Cannot read actual Windows display mode.");
+        originalDisplay = new byte[220]; Marshal.Copy(displayMode, originalDisplay, 0, 220);
+        if (GetSystemMetrics(0) < 1920 || GetSystemMetrics(1) < 1080)
+        {
+            Marshal.WriteInt32(displayMode, 72, Marshal.ReadInt32(displayMode, 72) | 0x180000);
+            Marshal.WriteInt32(displayMode, 172, 1920); Marshal.WriteInt32(displayMode, 176, 1080);
+            Require(ChangeDisplaySettings(displayMode, 2) == 0 && ChangeDisplaySettings(displayMode, 0) == 0,
+                "Runner display does not support native 1920x1080; no upscaled capture allowed.");
+        }
+        Require(GetSystemMetrics(0) >= 1920 && GetSystemMetrics(1) >= 1080, "Native display mode change was ineffective.");
+    }
     private static void SizeNative(Window window)
     {
         window.WindowState = WindowState.Normal; window.Activate(); Pump();
@@ -186,6 +210,9 @@ internal static class Program
     }
     private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EnumDisplaySettings(string? device, int mode, nint settings);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ChangeDisplaySettings(nint settings, int flags);
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetWindowPos(nint hwnd, nint after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetWindowRect(nint hwnd, out Rect rect);
     [DllImport("user32.dll")] private static extern nint GetWindowDC(nint hwnd);
