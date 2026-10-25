@@ -62,6 +62,7 @@ public partial class MainWindow : Window
 
     private bool Run(Action action, string? success = null, bool requireBook = true, bool discardOpening = false)
     {
+        if (featureOpening) { NotificationText.Text = "正在完成新功能操作，请等待结果后再切换账套或执行其他操作。"; return false; }
         try
         {
             if (featureAuthentication?.IsPotentiallyCurrent != true)
@@ -451,6 +452,7 @@ public partial class MainWindow : Window
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {
+        if (featureOpening) { NotificationText.Text = "正在完成新功能后台操作，请等待结果后关闭。"; e.Cancel = true; return; }
         if (!ConfirmDiscardOpening()) { e.Cancel = true; return; }
         _session?.Dispose();
     }

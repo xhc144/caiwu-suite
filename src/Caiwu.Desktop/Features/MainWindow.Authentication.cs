@@ -16,6 +16,7 @@ public partial class MainWindow
         system.Items.Add(new Separator()); system.Items.Add(manage); system.Items.Add(password); system.Items.Add(switchOperator);
         manage.Click += (_, _) =>
         {
+            if (featureOpening) { NotificationText.Text = "正在完成新功能操作，请等待结果后管理操作员。"; return; }
             try
             {
                 var auth = featureAuthentication ?? throw new InvalidOperationException("请先登录。");
@@ -25,6 +26,7 @@ public partial class MainWindow
         };
         password.Click += (_, _) =>
         {
+            if (featureOpening) { NotificationText.Text = "正在完成新功能操作，请等待结果后修改密码。"; return; }
             try
             {
                 if (!ConfirmDiscardOpening()) return;
@@ -39,6 +41,7 @@ public partial class MainWindow
 
     private void RequestOperatorSwitch()
     {
+        if (featureOpening) { NotificationText.Text = "正在完成新功能操作，请等待结果后注销或换人。"; return; }
         if (!ConfirmDiscardOpening()) return;
         _openingDirty = false;
         featureAuthentication?.Operators.Logout(featureAuthentication.Session);
