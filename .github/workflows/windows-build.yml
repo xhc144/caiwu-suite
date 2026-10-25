@@ -99,4 +99,5 @@ jobs:
             !artifacts/**/*.caiwu
             !artifacts/**/*.caiwu-wal
             !artifacts/**/*.caiwu-shm
+            !artifacts/**/*.backup
           if-no-files-found: warn

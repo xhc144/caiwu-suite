@@ -5,3 +5,4 @@ evidence/ci/verification/*.caiwu
 evidence/runtime/
 
 evidence/windows-*/artifact.zip
+evidence/windows-*/**/*.backup
