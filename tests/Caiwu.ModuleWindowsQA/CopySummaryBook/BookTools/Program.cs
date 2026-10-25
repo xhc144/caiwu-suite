@@ -222,7 +222,7 @@ internal static class Program
             Click(dialog, "ConfirmButton");
             Need(dialog.IsVisible && Find<TextBox>(dialog, "DateInput").IsKeyboardFocused, "invalid date keeps window and actual keyboard focus");
             Need(Read(source).Revision == shown.Revision && Json(Read(source)) == before, "invalid confirmation does not write actual SQLite");
-            NativeCapture.Save(dialog, "voucher-error-focus.png");
+            NativeCapture.Save(dialog, stale ? "voucher-stale-error-focus.png" : "voucher-error-focus.png");
             if (stale)
             {
                 using var store = SqliteLedgerStore.Open(source);

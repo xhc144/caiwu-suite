@@ -57,6 +57,18 @@ try {
             if (@($cases | Where-Object { -not $_.passed }).Count -gt 0) { throw 'One or more actual Windows cases failed.' }
         }
     }
+    # A case-level PNG receipt must still match after all processes have completed.
+    # This detects accidental cross-case filename reuse as well as missing/corrupt images.
+    foreach ($jsonFile in Get-ChildItem $OutputDirectory -Filter '*.json' -File) {
+        $receipt = Get-Content -Raw $jsonFile.FullName | ConvertFrom-Json
+        foreach ($capture in @($receipt.captures)) {
+            if ($null -eq $capture) { continue }
+            $capturePath = Join-Path $OutputDirectory $capture.file
+            if (-not (Test-Path $capturePath) -or (Get-FileHash $capturePath -Algorithm SHA256).Hash.ToLowerInvariant() -ne $capture.sha256) {
+                throw "Capture SHA256 mismatch in $($jsonFile.Name): $($capture.file)."
+            }
+        }
+    }
 } catch { $failed = $_.ToString() }
 finally {
     $trees = @{}

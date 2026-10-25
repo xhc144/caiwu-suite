@@ -35,7 +35,7 @@ internal static class NativeCapture
             var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, 0, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source));
             var path = Path.Combine(Program.Output, filename);
-            using (var file = File.Create(path)) encoder.Save(file);
+            using (var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write)) encoder.Save(file);
             var dpi = VisualTreeHelper.GetDpi(window);
             Captures.Add(new { file = filename, width, height, dpiX = dpi.PixelsPerInchX, dpiY = dpi.PixelsPerInchY,
                 sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))),
@@ -57,7 +57,7 @@ internal static class NativeCapture
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source));
             var file = Path.GetFileNameWithoutExtension(filename) + "-desktop.png";
             var path = Path.Combine(Program.Output, file);
-            using (var output = File.Create(path)) encoder.Save(output);
+            using (var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write)) encoder.Save(output);
             GetWindowRect(hwnd, out var bounds);
             Captures.Add(new { file, width, height, windowBounds = new { bounds.Left, bounds.Top, bounds.Right, bounds.Bottom },
                 sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))),
