@@ -9,28 +9,21 @@
 ```csharp
 using Caiwu.Nonprofit.Reporting;
 
-// 来源实现负责冻结实际账簿版本、审核分类/确认计量、完整覆盖与分析余额。
-INonprofitStatementDataSource source = /* 宿主的数据源 */;
-var context = new StatementContext(bookId, bookName, ledgerRevision,
-    new ReportingPeriod(new(2026, 6, 1), new(2026, 6, 30), ReportingPeriodKind.Monthly),
-    generatedAt, StatementSourceKind.PostedLedger, reviewedSnapshotEvidence, true);
-var balance = NonprofitBalanceSheet.Calculate(source.ReadBalanceSheet(context));
-var activity = NonprofitActivityStatement.Calculate(source.ReadActivityStatement(context));
-var set = NonprofitStatementReconciliation.Compare(balance, activity);
-
-// UI展示Status、MissingReasons；Columns按顺序绑定Lines.Values。
-// Values[i].Amount是decimal?，null必须显示“缺失”及原因，不能改显示为0。
-// Key是稳定项目键；PresentationOrder是本模块顺序；OfficialRowNumber为null。
-// RequireCompleteCalculation/RequireCompleteReconciliation用于阻止完整计算的后续操作。
-// 即使两者通过，RequireFormalReport和FormalReport导出仍拒绝。
-
-using var output = File.Create(userSelectedCsvPath);
-NonprofitStatementExporter.WriteCsv(activity, output);
-// HTML：宿主选择本地文件后用浏览器打开并打印；不启动服务器、导航或自动打印。
-string printableHtml = NonprofitStatementExporter.ToHtml(balance, new StatementHtmlOptions(18));
+// 用户先在独立WPF分类面板完成分类并另存JSON；宿主指定用户数据目录。
+var snapshot = ledgerService.GetSnapshot();
+var files = new ClassificationJsonStore(userDataDirectory);
+var manifest = files.Load(selectedClassificationFileName, snapshot);
+var source = new LedgerSnapshotStatementDataSource(ledgerService.GetSnapshot, manifest);
+var preview = source.CreateBoundPreview(generatedAt);
+var balance = preview.Statements.BalanceSheet;
+var activity = preview.Statements.ActivityStatement;
+// 绑定Columns与Lines.Values；Amount为null必须显示缺失原因。
+// 若源已变化，下列带来源检查的导出会在写入前拒绝旧分类。
+using var output = new FileStream(userSelectedCsvPath, FileMode.CreateNew);
+preview.WriteCsv(NonprofitStatementForm.ActivityStatement, output);
 ```
 
-`INonprofitStatementDataSource.ReadBalanceSheet/ReadActivityStatement` 返回本模块输入类型，不接收任意摘要SQL或旧报表catalog。宿主须核对返回输入的 `Context` 是同一个冻结上下文。`SourceLedgerRevision`永远是账簿版本，不能用规划版本替代。`GeneratedAt`、币种确认和来源引用必须由宿主显式提供。
+`LedgerSnapshotStatementDataSource`已实现 `INonprofitStatementDataSource`，从当前保存快照和与来源绑定的显式分类清单提供数据。也可用 `source.CreateContext(generatedAt)`取得相同来源上下文，再调用两个Read方法。`SourceLedgerRevision`是账簿版本，不能用规划版本替代。[数据源、JSON和操作流程](Classification/README.md)；[独立WPF接线](Wpf/README.md)。
 
 ### 与现有两种来源的差异
 
@@ -40,7 +33,7 @@ string printableHtml = NonprofitStatementExporter.ToHtml(balance, new StatementH
 | 民非领域 `PlanningState`（当前代码的实际类型名） | 单月、分类余额、限制证据、规划版本、来源账簿版本、规划阶段 | 已批准记账事实、年初报表、完整YTD普通发生额、全套资产负债分析；结转后的零损益余额不能恢复本期发生额 |
 | `NonprofitProposal.ProjectedState` / `VoucherSuggestion` | 待审建议、稳定建议行ID、业务类型和证据 | 审核/记账状态、真实持久化与历史完整性；投影不是账簿 |
 
-`LedgerSnapshotGapAnalyzer.Analyze`只返回差异原因，不伪造维度。此分支没有提供把现有快照自动转换成完整民非报表的适配器，也没有给Contracts或SQLite硬塞字段。根后续需要持久化真实行ID、完整分类与业务类型、审核事实、全年发生额及分析工作底稿，再实现数据源。
+`LedgerSnapshotGapAnalyzer.Analyze`描述原快照的固有缺口；现已提供 `LedgerSnapshotStatementDataSource`＋显式分类JSON解决可操作的读取与补维度。科目语义、分录角色/类别、成本组成、到期与受托明细、完整覆盖和年初依据由用户明确输入，未确认的仍缺失。账套/科目/已记账金额直接来自保存快照；基础余额禁止手填覆盖。未修改Contracts或SQLite。定位采用BookId＋revision＋快照hash、凭证ID＋分录序号＋内容hash；源变更必须重核，未声称跨revision永久稳定行ID已经落盘。
 
 调用方若用于规划预览，必须指定 `PendingReviewProjection`，导出和DTO都会保留“待审假设投影，非已记账事实”。即使规划阶段为 `ClassifiedClosingComputed`，也不能据此改称真实结账。可选集成测试调用固定提交 `7b8e8b74dfa4b704b439722573687ee1044ac424` 的真实规划服务，演示这一边界；未再造计划服务。
 
@@ -100,6 +93,6 @@ string printableHtml = NonprofitStatementExporter.ToHtml(balance, new StatementH
 - [财政部《民间非营利组织会计制度》正式全文](https://yn.mof.gov.cn/caizhengjiancha/202504/P020250415689506085583.pdf)，SHA256 `35b47fb928e167293150187fff4b03cfc0b8c814b978b5dcbbb750650a4417c6`。PDF128–129资产负债表、130–131业务活动表、134–142资产负债填列说明、142–146活动表说明；28–35页分类/收入费用、103–107页3101/3102/3201处理；124–125页5601专门说明。
 - [财政部财会〔2025〕6号衔接规定](https://www.mof.gov.cn/jrttts/202505/P020250521563512745169.pdf)，SHA256 `bdc2a3b37dc85d73ddf347a27679d854a448b176ce43c838168f53c5ac17aadf`，PDF4–5页2026年初表与首次比较数例外。
 
-本模块未实现现金流量表、附注、行业/慈善监管全部要求、全部新增/自定义主要收入单列、注册资金直接投入完整列报、税务判断、完整新旧迁移或真实持久化/桌面操作。到期投资减值归属非零时主动留缺失；业务确认计量、成本分配合理性、解除条件与权限继续由来源和既有领域流程负责。没有修改安装/更新/卸载逻辑或账套保护。
+本模块未实现现金流量表、附注、行业/慈善监管全部要求、全部新增/自定义主要收入单列、注册资金直接投入完整列报、税务判断、完整新旧迁移。真实Core/SQLite读取、显式分类JSON和独立WPF面板已实现；主Desktop接线、分类纳入主备份和Windows实际操作验收仍由根集成。到期投资减值归属非零时主动留缺失；业务确认计量、成本分配合理性、解除条件与权限继续由来源和既有领域流程负责。没有修改安装/更新/卸载逻辑或账套保护。
 
 验证与两组独立手算见 `../../tests/Caiwu.Nonprofit.Reporting.Tests/VALIDATION.md`。浏览器实际打印、Windows界面和真实业务账套尚未验收；没有以编译或测试数量宣称产品整体完成。

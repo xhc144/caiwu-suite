@@ -5,7 +5,7 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="PlanningIntegration/**/*.cs" />
+    <Compile Remove="PlanningIntegration/**/*.cs;SqliteIntegration/**/*.cs;WpfProbe/**/*.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="[18.11.0]" />
     <PackageReference Include="xunit.v3.mtp-off" Version="[4.0.2]" />
     <PackageReference Include="xunit.runner.visualstudio" Version="[4.0.1]"><PrivateAssets>all</PrivateAssets><IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets></PackageReference>
