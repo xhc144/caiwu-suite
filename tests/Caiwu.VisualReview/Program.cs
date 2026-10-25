@@ -36,6 +36,7 @@ internal static class Program
         App? app = null;
         try
         {
+            using var desktop = NativeDesktopMode.EnsureFullHd();
             app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var backend = new DesktopBackend(SqliteLedgerStore.Open, SqliteLedgerStore.Create,
                 SqliteLedgerStore.RestoreBackup, s => new LedgerService(s), TemplateCatalog.All);
@@ -132,8 +133,9 @@ internal static class Program
         window.WindowState = WindowState.Normal; window.Activate(); Pump();
         var hwnd = new WindowInteropHelper(window).Handle;
         Require(SetWindowPos(hwnd, 0, 0, 0, 1920, 1080, 0x0004 | 0x0010), "SetWindowPos failed."); Pump();
-        Require(GetWindowRect(hwnd, out var rect) && rect.Right - rect.Left == 1920 && rect.Bottom - rect.Top == 1080,
-            "Runner did not create a native 1920x1080 window; no upscale is allowed.");
+        Require(GetWindowRect(hwnd, out var rect), "Cannot measure the resized native window.");
+        Require(rect.Right - rect.Left == 1920 && rect.Bottom - rect.Top == 1080,
+            $"Runner returned native {rect.Right - rect.Left}x{rect.Bottom - rect.Top} instead of 1920x1080; no upscale is allowed.");
     }
     private static void Capture(Window window, string file)
     {

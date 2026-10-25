@@ -85,7 +85,7 @@ internal static class Program
             EditCell(grid, rows.Single(r => r.Code == "3001"), 3, "150.00");
             EditCell(grid, rows.Single(r => r.Code == "1002"), 2, "150.00"); // active text editor at submission
             var newer = writer.GetSnapshot(); writer.SetOpeningBalances([new("1002", 200, 0), new("3001", 0, 200)], "甲", Ctx(newer)); var before = State();
-            var acknowledge = Dialogs(("数据已发生变化", 1, (Action?)null)); Call(main, "SaveOpening_Click", main, new RoutedEventArgs()); acknowledge.GetAwaiter().GetResult();
+            var acknowledge = Dialogs(("数据已发生变化", 1, (Action?)null)); Call(main, "SaveOpening_Click", main, new RoutedEventArgs()); WaitForDialogs(acknowledge);
             Check(State() == before && rows.Single(r => r.Code == "1002").DebitText == "150.00" && rows.Single(r => r.Code == "3001").CreditText == "150.00", "Opening input lost or stale amount persisted.");
             OriginalContext("SetOpeningBalances"); Capture(main, name);
         }
@@ -137,7 +137,7 @@ internal static class Program
             var dialogs = name == "POST" ? Dialogs(("确认记账", 6, (Action)(() => { ChangeTo20(); expected = State(); })), ("数据已发生变化", 1, null))
                 : name == "DELETE" ? Dialogs(("删除草稿", 6, (Action?)null), ("数据已发生变化", 1, null)) : Dialogs(("数据已发生变化", 1, (Action?)null));
             var handler = name == "DELETE" ? "DeleteVoucher_Click" : name == "REVIEW" ? "Review_Click" : "Post_Click";
-            Call(main, handler, main, new RoutedEventArgs()); dialogs.GetAwaiter().GetResult();
+            Call(main, handler, main, new RoutedEventArgs()); WaitForDialogs(dialogs);
             Check(expected is not null && State() == expected, "Stale selected/confirmed voucher mutated unseen amount/status/audit.");
             OriginalContext(name == "DELETE" ? "DeleteDraft" : name == "REVIEW" ? "Review" : "Post"); Capture(main, name);
         }
@@ -179,6 +179,17 @@ internal static class Program
             Check(FindDialog(item.Title) != dialog, "Native confirmation remained visible after clicking its real button.");
         }
     });
+    private static void WaitForDialogs(Task task)
+    {
+        // The real application returns to its WPF loop after the handler. The probe
+        // must also pump while the native driver finishes; GetWindowText from the
+        // driver can synchronously send WM_GETTEXT to this UI thread.
+        var dispatcher = Dispatcher.CurrentDispatcher;
+        var frame = new DispatcherFrame();
+        _ = task.ContinueWith(_ => dispatcher.BeginInvoke(() => frame.Continue = false), TaskScheduler.Default);
+        Dispatcher.PushFrame(frame);
+        task.GetAwaiter().GetResult();
+    }
     private static IntPtr FindDialog(string title)
     {
         var found = IntPtr.Zero; EnumWindows((h, _) => { GetWindowThreadProcessId(h, out var pid); var text = new StringBuilder(256); GetWindowText(h, text, text.Capacity); var cls = new StringBuilder(64); GetClassName(h, cls, cls.Capacity); if (pid == Environment.ProcessId && IsWindowVisible(h) && text.ToString() == title && cls.ToString() == "#32770") { found = h; return false; } return true; }, IntPtr.Zero); return found;
