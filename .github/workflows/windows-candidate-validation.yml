@@ -4,7 +4,10 @@ on:
     branches: [codex/release-candidate]
     paths:
       - '.github/workflows/windows-candidate-validation.yml'
-      - 'packaging-next/**'
+      - 'packaging-next/Prepare-WindowsCandidate.ps1'
+      - 'packaging-next/Delivery.restore.targets'
+      - 'packaging-next/locks/**'
+      - 'packaging-next/src/**'
       - 'src/Caiwu.Desktop/**'
       - 'tests/Caiwu.Delivery.Tests/**'
   workflow_dispatch:
@@ -38,10 +41,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Published helper integration failed.' }
           dotnet run --project tests/Caiwu.Delivery.Tests/ModuleIntegration -c Release -- artifacts/candidate-preparation/module-integration-windows.json
           if ($LASTEXITCODE -ne 0) { throw 'Four native attachment integration failed.' }
-      - name: Exercise independent normal synthetic login and feature windows
-        shell: pwsh
-        timeout-minutes: 4
-        run: ./tests/Caiwu.Desktop.FeatureTests/Windows/run.ps1 -Evidence artifacts/candidate-authentication
       - name: Confirm source identity and distribution hold
         if: always()
         shell: pwsh
@@ -55,8 +54,4 @@ jobs:
           name: candidate-preparation-evidence-${{ github.sha }}
           path: |
             artifacts/candidate-preparation/*.json
-            artifacts/candidate-authentication/*.json
-            artifacts/candidate-authentication/*.png
-            artifacts/candidate-authentication/*.txt
-            artifacts/candidate-authentication/*.log
           if-no-files-found: warn

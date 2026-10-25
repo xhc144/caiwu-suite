@@ -23,7 +23,7 @@ try {
     $out = [IO.Path]::GetFullPath($OutputDirectory)
     if (Test-Path -LiteralPath $out) { throw 'Preparation output must be a new directory.' }
     New-Item -ItemType Directory -Path $out | Out-Null
-    $common = @("-p:CustomAfterMicrosoftCommonTargets=$root/packaging-next/Delivery.restore.targets", '-p:RuntimeFrameworkVersion=10.0.13', '-p:TargetLatestRuntimePatch=false')
+    $common = @("-p:CustomAfterMicrosoftCommonTargets=$root/packaging-next/Delivery.restore.targets", '-p:RuntimeFrameworkVersion=10.0.13', '-p:TargetLatestRuntimePatch=false', '-p:DeliveryLibraryOnly=true')
     $identity = @("-p:Version=$Version", "-p:AssemblyVersion=$Version", "-p:FileVersion=$Version", "-p:InformationalVersion=$Version+$commit", "-p:SourceRevisionId=$commit", '-p:ContinuousIntegrationBuild=true', "-p:PathMap=$root=/_/", '-p:DebugType=embedded', '-p:PublishReadyToRun=false')
     foreach ($spec in @(
         @{ Project = 'src/Caiwu.Desktop/Caiwu.Desktop.csproj'; Graph = 'desktop'; Destination = 'payload'; Single = 'false' },

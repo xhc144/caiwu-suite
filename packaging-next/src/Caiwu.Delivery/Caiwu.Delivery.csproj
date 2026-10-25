@@ -1,9 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType Condition="'$(DeliveryLibraryOnly)' != 'true'">Exe</OutputType>
+    <OutputType Condition="'$(DeliveryLibraryOnly)' == 'true'">Library</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
+  <ItemGroup Condition="'$(DeliveryLibraryOnly)' == 'true'"><Compile Remove="Program.cs" /></ItemGroup>
   <ItemGroup><Compile Remove="Modules/**/*.cs" /></ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../../src/Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />

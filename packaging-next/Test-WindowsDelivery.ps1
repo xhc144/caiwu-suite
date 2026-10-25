@@ -81,6 +81,11 @@ try {
     Assert ($ready.checkoutCommit -eq $manifest.commit) 'Runtime evidence belongs to a different payload source commit.'
     $running = Get-Process -Id $ready.desktopPid
     Assert ($running.Path -eq (Join-Path $installRoot 'versions/0.1.0.1/Caiwu.Desktop.exe')) 'Controller did not launch the installed App.'
+    foreach ($leasePath in @((Join-Path $installRoot '.delivery.lock'), (Join-Path $dataRoot '.delivery-data.lock'))) {
+        $held = $false
+        try { $probe = [IO.File]::Open($leasePath, 'Open', 'ReadWrite', 'None'); $probe.Dispose() } catch [IO.IOException] { $held = $true }
+        Assert $held 'Actual managed App did not own both real non-shareable OS leases.'
+    }
     $pointerHash = (Get-FileHash $pointerPath).Hash
     $bookHash = (Get-FileHash -LiteralPath $ready.bookPath).Hash
     Run-Native $UpgradeInstaller ('/S /DATAROOT="' + $dataRoot + '" /D=' + $installRoot) 1
@@ -103,6 +108,18 @@ try {
     $healthEvidence = Join-Path $output 'upgraded-runtime'
     $control = Start-Controller $healthEvidence 'health'; Wait-Controller $control $healthEvidence; $control = $null
     Pass 'actual upgraded installed App logs in with retained identities and opens retained source ledger'
+
+    $activeRoot = Join-Path $installRoot 'versions/0.1.0.2'
+    $policy = & (Join-Path $activeRoot 'Caiwu.Delivery.exe') check-update (Join-Path $activeRoot 'update-policy.json') '0.1.0.2' | ConvertFrom-Json
+    Assert ($LASTEXITCODE -eq 0 -and $policy.status -eq 'disabled') 'Installed policy unexpectedly enables an unconfigured production update channel.'
+    $unsignedRejected = $false
+    try {
+        & (Join-Path $PSScriptRoot 'Assert-TrustedInstaller.ps1') -Installer $UpgradeInstaller -ExpectedSha256 (Get-FileHash -LiteralPath $UpgradeInstaller -Algorithm SHA256).Hash -ExpectedVersion '0.1.0.2' -CurrentVersion '0.1.0.1' -PublisherThumbprints @('1111111111111111111111111111111111111111') | Out-Null
+    } catch {
+        if ($_.Exception.Message -like '*valid Windows-trusted Authenticode signature*') { $unsignedRejected = $true } else { throw }
+    }
+    Assert $unsignedRejected 'Unsigned internal candidate was not rejected by the existing Windows trust gate.'
+    Pass 'actual installed update channel stays disabled and the existing trust gate rejects the unsigned internal candidate'
 
     $retained = Data-Hashes
     $unknown = Join-Path $installRoot 'synthetic-user-note.txt'; 'Retain unowned synthetic file.' | Set-Content $unknown

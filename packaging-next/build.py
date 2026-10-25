@@ -78,7 +78,7 @@ def main():
     cli = helper_project.parent / 'bin/Release/net10.0/Caiwu.Delivery.Host.dll'
     # This import redirects graph-wide lock files into this owner's directory. Root projects remain untouched.
     base_common = [f'-p:CustomAfterMicrosoftCommonTargets={ROOT / "packaging-next/Delivery.restore.targets"}',
-              f'-p:RuntimeFrameworkVersion={RUNTIME}', '-p:TargetLatestRuntimePatch=false']
+              f'-p:RuntimeFrameworkVersion={RUNTIME}', '-p:TargetLatestRuntimePatch=false', '-p:DeliveryLibraryOnly=true']
     version = [f'-p:Version={options.version}', f'-p:AssemblyVersion={options.version}',
                f'-p:FileVersion={options.version}', f'-p:InformationalVersion={options.version}+{commit}',
                f'-p:SourceRevisionId={commit}', '-p:ContinuousIntegrationBuild=true',

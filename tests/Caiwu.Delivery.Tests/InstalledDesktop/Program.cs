@@ -16,6 +16,7 @@ internal static class Program
     private static string evidence = "", install = "", data = "";
     private static Process? launcher, desktop;
     private static AutomationElement? main;
+    private static bool normalLoginCompleted;
     private static readonly string Password = Environment.GetEnvironmentVariable("CAIWU_INTERNAL_QA_PASSWORD") ?? "Synthetic!" + Guid.NewGuid().ToString("N");
 
     [STAThread]
@@ -163,7 +164,7 @@ internal static class Program
         }
     }
 
-    private static void Save(bool success, string? failure) { if (evidence.Length > 0) File.WriteAllText(Path.Combine(evidence, "installed-runtime.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = true, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), checks = Checks }, PayloadManifest.Json)); }
+    private static void Save(bool success, string? failure) { if (evidence.Length > 0) File.WriteAllText(Path.Combine(evidence, "installed-runtime.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), checks = Checks }, PayloadManifest.Json)); }
     private static void Pass(string name) { Checks.Add(name); Save(false, "In progress"); }
     private static void Require(bool value, string name) { if (!value) throw new InvalidDataException(name); Pass(name); }
     private static Condition Id(string id) => new PropertyCondition(AutomationElement.AutomationIdProperty, id);
@@ -189,6 +190,7 @@ internal static class Program
         password.SetFocus(); Type(rejectWrongFirst ? "deliberately-wrong-synthetic-password" : Password); Invoke(window, Id("LoginButton"));
         if (rejectWrongFirst) { Require(HasWindow("操作员登录"), "normal product rejects a wrong synthetic password"); password.SetFocus(); Type(Password); Invoke(window, Id("LoginButton")); }
         Until(() => !HasWindow("操作员登录"), "normal explicit product login");
+        normalLoginCompleted = true;
     }
     private static void Menu(string group, string item)
     {
