@@ -104,8 +104,16 @@ internal static partial class Program
         var backend = DesktopCompositionExample.CreateBackend(operators, oldLogin);
         using var oldSession = new LedgerSession(backend); oldSession.Open(path); var oldService = oldSession.Service!;
         var shown = oldService.GetSnapshot();
-        var closed = false; DesktopCompositionExample.Logout(operators, oldLogin, () => closed = true);
-        Require(closed, "Compiled logout composition failed to close captured UI.");
+        var owner = new Window { Title = "合成退出宿主", Width = 420, Height = 200 };
+        owner.Show();
+        var editor = DesktopCompositionExample.CaptureVoucherEditor(oldSession, oldLogin, null, owner); editor.Show(); NativeInput.Pump();
+        Require(editor.IsVisible, "Old production editor did not open before logout.");
+        var closed = false; DesktopCompositionExample.Logout(operators, oldLogin, () =>
+        {
+            Reject<OperatorAuthorizationException>(() => oldService.GetSnapshot());
+            editor.Close(); owner.Close(); closed = true;
+        });
+        Require(closed && !editor.IsVisible && !owner.IsVisible, "Compiled logout composition failed to revoke first and close actual captured windows.");
         var replacement = NativeLogin("qa-reviewer", Password);
         Reject<OperatorAuthorizationException>(() => oldService.GetSnapshot());
         Reject<OperatorAuthorizationException>(() => oldService.SaveDraft(Draft(shown), replacement.Identity.ActorKey));

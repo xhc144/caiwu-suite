@@ -13,6 +13,8 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Focused Operators lockfile restore failed.' }
     dotnet build $project -c Release --nologo -warnaserror --no-restore
     if ($LASTEXITCODE -ne 0) { throw 'Focused Operators component host build failed.' }
+    git diff --quiet -- src packaging-next/src
+    if ($LASTEXITCODE -ne 0) { throw 'Production sources changed during probe build; provenance cannot be claimed.' }
     $executable = Join-Path $PSScriptRoot 'bin/Release/net10.0-windows/Caiwu.ModuleWindowsQA.Operators.exe'
     $process = Start-Process $executable -ArgumentList ('"' + $target + '"') -PassThru -RedirectStandardOutput "$target/stdout.log" -RedirectStandardError "$target/stderr.log"
     if (-not $process.WaitForExit($TimeoutSeconds * 1000)) { $process.Kill($true); throw 'Operators Windows watchdog expired; partial evidence remains incomplete.' }

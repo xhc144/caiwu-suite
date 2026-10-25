@@ -8,6 +8,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Caiwu.Operators;
 using Caiwu.Operators.Wpf;
+using Caiwu.Desktop.Presentation;
+using Caiwu.Operators.Tests.WindowsSmoke;
 
 internal static partial class Program
 {
@@ -134,18 +136,29 @@ internal static partial class Program
             AddFromUi(window, "qa-maker", "虚构制单人", ["AccountantRole", "PreparerRole", "ReviewerRole", "PosterRole", "PeriodCloserRole"]);
             AddFromUi(window, "qa-reviewer", "虚构审核人", ["PreparerRole", "ReviewerRole"]);
             AddFromUi(window, "qa-revoked", "虚构撤销测试", ["ReaderRole"]);
+            var path = Path.Combine(temporary, "role-revocation.caiwu");
+            using (var creator = new LedgerSession(DesktopCompositionExample.CreateBackend(operators, admin))) creator.Create(path, NewBook("合成角色撤销"), Accounts);
             var oldReader = NativeLogin("qa-revoked", Password);
+            using var readerBook = new LedgerSession(DesktopCompositionExample.CreateBackend(operators, oldReader)); readerBook.Open(path);
+            var before = readerBook.Service!.GetSnapshot();
             NativeInput.Foreground(window); SelectOperator(window, "QA-REVOKED");
             NativeInput.Toggle(window, "PreparerRole", true); NativeInput.Toggle(window, "ReaderRole", false); NativeInput.Click(window, "SaveButton");
             Reject<OperatorAuthorizationException>(() => operators.RequirePermission(oldReader, OperatorPermission.ReadLedger));
+            Reject<OperatorAuthorizationException>(() => readerBook.Service.GetSnapshot());
+            Reject<OperatorAuthorizationException>(() => readerBook.Service.SaveDraft(Draft(before), "虚构制单人"));
             var fresh = operators.Login("qa-revoked", Password); operators.RequirePermission(fresh, OperatorPermission.PrepareVoucher);
+            using var freshBook = new LedgerSession(DesktopCompositionExample.CreateBackend(operators, fresh)); freshBook.Open(path);
             SelectOperator(window, "QA-REVOKED"); NativeInput.Toggle(window, "EnabledInput", false); NativeInput.Click(window, "SaveButton");
             Require(!operators.GetDirectory(admin).Operators.Single(x => x.LoginName == "QA-REVOKED").IsEnabled, "UI disable did not persist.");
             Reject<OperatorAuthorizationException>(() => operators.RequirePermission(fresh, OperatorPermission.ReadLedger));
+            Reject<OperatorAuthorizationException>(() => freshBook.Service!.SaveDraft(Draft(before), "虚构制单人"));
             Reject<OperatorAuthorizationException>(() => operators.Login("qa-revoked", Password));
+            using (var persisted = Caiwu.Persistence.Sqlite.SqliteLedgerStore.Open(path))
+                Require(persisted.Read().Revision == before.Revision && persisted.Read().Vouchers.Count == 0, "Role/disable-revoked adapter mutated ledger.");
             SelectOperator(window, "QA-ADMIN"); NativeInput.Toggle(window, "EnabledInput", false); NativeInput.Click(window, "SaveButton");
             Require(window.IsVisible && Error(window).Length > 0 && operators.GetDirectory(admin).Operators.Single(x => x.LoginName == "QA-ADMIN").IsEnabled, "Last administrator protection failed.");
-            ClearSecrets(window); Capture(window, "management-synthetic"); NativeInput.Press(window, 0x1B);
+            ClearSecrets(window); foreach (var scroll in Visuals<ScrollViewer>(window)) scroll.ScrollToTop(); NativeInput.Pump();
+            Capture(window, "management-synthetic"); NativeInput.Press(window, 0x1B);
         });
     }
     private static void AddFromUi(Window window, string login, string display, string[] roles)
