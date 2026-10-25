@@ -2,6 +2,8 @@
 
 2026-10-25。这里只补测试与证据，未修改Contracts、生产Core、SQLite或UI。主协调决定强制检查代码的改动归属后再实施，避免同时改同一SaveDraft点。
 
+最终复核远端又推进到 `34f065b6028ebd2102f0520263bae8bd3b7ec09f`。该SHA已集成ACC-003，且Desktop的EditVoucher已从同一次fresh snapshot取得数据/revision，编辑器保存也传入了 `_baseRevision` / `_book.Id`（仅静态核对，未跑WPF）。但是Core的SaveDraft仍未读取两个token。**同一仓库内13项探针针对34f065b重新restore/build/run，仍5通过/8失败，退出1，0编译警告/错误**：[result-34f.json](result-34f.json)。以下0d2/0377为较早冻结证据；最终结论应以34f这次复核为准，不能再说该最终SHA的UI未接线。
+
 ## 读取到的实际提交
 
 - 首次远端HEAD：`0377ce764bc5a191c232c3f50da602a5ca2c0c0c`。它新增 `VoucherDraft.ExpectedRevision`、契约说明及暂停分发配置，**没有修改Core.SaveDraft或编辑器**。`git grep ExpectedRevision` 在生产源码中仅命中Contracts。
@@ -59,3 +61,5 @@ CAIWU_TOKEN_TARGET_COMMIT=0d2ae9e379b02c2d86bbd174f56dcd437f910206 \
 ```
 
 运行时必须传输出JSON的完整路径，父目录需存在。环境中的目标SHA仅作来源记录，不影响测试或绕过检查。后续针对修复后的不可变SHA重建、运行，才可改变本缺陷状态。未执行Windows/WPF双窗口、实际编辑器处理器、输入保留或打包分发验收；当前仍应保留分发暂停。
+
+复核34f时，上述三条命令的CaiwuSourceRoot改为 `/workspace/caiwu-core-acc002-34f`，来源变量设为完整34f SHA，输出文件为 `/tmp/caiwu-acc002-token-probe/result-34f.json`；其余命令和仓库内Program.cs完全相同。此增量只有测试/结果记录，不与主协调并行修改生产SaveDraft。

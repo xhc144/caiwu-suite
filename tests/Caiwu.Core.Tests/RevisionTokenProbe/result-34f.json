@@ -1,0 +1,71 @@
+{
+  "targetCommit": "34f065b6028ebd2102f0520263bae8bd3b7ec09f",
+  "actualCoreAndTwoSqliteConnections": true,
+  "expectedRevisionCapturedAtLoad": true,
+  "bookIdentityFieldPresent": true,
+  "wpfExecuted": false,
+  "passed": 5,
+  "failed": 8,
+  "results": [
+    {
+      "id": "ACC002-FRESH",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-TWO-CONNECTIONS-STALE",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=10, revision=3"
+    },
+    {
+      "id": "ACC002-MISSING",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-FUTURE",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-NEGATIVE",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-ACCEPTED-VERSION-SECOND-SAVE",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-LEGACY-NEW",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEW-CORRECT",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEW-WRONG",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=10, revision=1"
+    },
+    {
+      "id": "ACC002-STORE-CAS-AFTER-READ",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-MISSING-BOOK",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-OTHER-BOOK-SAME-REVISION",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-NEW-WRONG-BOOK",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=10, revision=1"
+    }
+  ]
+}
