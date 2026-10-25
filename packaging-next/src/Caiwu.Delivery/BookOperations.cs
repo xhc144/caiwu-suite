@@ -7,7 +7,12 @@ using Caiwu.Persistence.Sqlite;
 namespace Caiwu.Delivery;
 
 public sealed record BookInspection(string DatabasePath, Guid BookId, long Revision, int VoucherCount,
-    int PostedVoucherCount, decimal? BankBalance, string SnapshotSha256, string FileSha256);
+    int PostedVoucherCount, decimal? BankBalance, string SnapshotSha256, string FileSha256)
+{
+    // A live main file alone is not a WAL-inclusive database fingerprint.
+    // "sqlite-consistent-copy" hashes the closed inspection snapshot, not DatabasePath's live bytes.
+    public string FileSha256Basis { get; init; } = "database-file";
+}
 public sealed record BookCopyResult(BookInspection Source, BookInspection Copy);
 
 /// <summary>Explicit single-book operations. They do not certify a complete Desktop inventory or enable upgrades.</summary>
@@ -23,11 +28,12 @@ public static class BookOperations
             var backup = BookPath(current.DataRoot, relativeBackup);
             if (IsBackup(current.DataRoot, source) || !IsBackup(current.DataRoot, backup))
                 throw new InvalidDataException("Backup must read a managed book and create a new file in .delivery-backups.");
-            LedgerFilePolicy.Validate(source);
-            Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
-            // This store API opens its source read-only and uses SQLite BackupDatabase, including committed WAL.
-            SqliteLedgerStore.RestoreBackup(source, backup);
-            return new BookCopyResult(InspectPath(source, current.DataRoot), InspectPath(backup, current.DataRoot));
+            return WithSnapshot(source, current.DataRoot, (snapshot, inspected) =>
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
+                SqliteLedgerStore.RestoreBackup(snapshot, backup);
+                return new BookCopyResult(inspected, InspectWritableCopy(backup));
+            });
         });
 
     public static BookCopyResult Restore(string installRoot, string relativeBackup, string relativeNewBook) =>
@@ -37,11 +43,12 @@ public static class BookOperations
             var destination = BookPath(current.DataRoot, relativeNewBook);
             if (!IsBackup(current.DataRoot, backup) || IsBackup(current.DataRoot, destination))
                 throw new InvalidDataException("Restore must read .delivery-backups and create a new book outside that directory.");
-            LedgerFilePolicy.Validate(backup);
-            var sourceInspection = InspectPath(backup, current.DataRoot);
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            SqliteLedgerStore.RestoreBackup(backup, destination);
-            return new BookCopyResult(sourceInspection, InspectPath(destination, current.DataRoot));
+            return WithSnapshot(backup, current.DataRoot, (snapshot, inspected) =>
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                SqliteLedgerStore.RestoreBackup(snapshot, destination);
+                return new BookCopyResult(inspected, InspectWritableCopy(destination));
+            });
         });
 
     private static bool IsBackup(string dataRoot, string path) =>
@@ -54,39 +61,39 @@ public static class BookOperations
         return path;
     }
 
-    private static BookInspection InspectPath(string path, string dataRoot)
+    private static BookInspection InspectPath(string path, string dataRoot) =>
+        WithSnapshot(path, dataRoot, (_, inspected) => inspected);
+
+    private static T WithSnapshot<T>(string path, string dataRoot, Func<string, BookInspection, T> consume)
     {
         LedgerFilePolicy.Validate(path);
-        try { return InspectWritableCopy(path); }
-        catch (UnauthorizedAccessException)
+        // All input inspection is read-only, including ordinary writable/live books. Capture once,
+        // then read, hash and copy that same committed snapshot; never hash a live main file.
+        var cache = SafePaths.Child(dataRoot, ".delivery-scratch");
+        Directory.CreateDirectory(cache);
+        var clone = SafePaths.Child(cache, ".inspection-" + Guid.NewGuid().ToString("N") + ".tmp");
+        var published = false;
+        try
         {
-            // Public store.Open checks write capability. An archived read-only backup must remain read-only.
-            // Read it through a consistent fresh SQLite copy, without duplicating the persistence reader.
-            var cache = SafePaths.Child(dataRoot, ".delivery-scratch");
-            Directory.CreateDirectory(cache);
-            var clone = SafePaths.Child(cache, ".inspection-" + Guid.NewGuid().ToString("N") + ".tmp");
-            var published = false;
-            try
+            SqliteLedgerStore.RestoreBackup(path, clone); published = true;
+            var inspected = InspectWritableCopy(clone) with
+            { DatabasePath = path, FileSha256Basis = "sqlite-consistent-copy" };
+            return consume(clone, inspected);
+        }
+        finally
+        {
+            // Only this newly published inspection copy is ours; never remove an existing destination.
+            if (published)
             {
-                SqliteLedgerStore.RestoreBackup(path, clone); published = true;
-                LedgerFilePolicy.Validate(clone);
-                var inspected = InspectWritableCopy(clone);
-                return inspected with { DatabasePath = path, FileSha256 = PayloadManifest.Hash(path) };
-            }
-            finally
-            {
-                // Only this newly published inspection copy is ours; never remove an existing destination.
-                if (published)
-                {
-                    SafePaths.RejectLinks(cache);
-                    foreach (var suffix in new[] { "", "-wal", "-shm", "-journal" }) File.Delete(clone + suffix);
-                }
+                SafePaths.RejectLinks(cache);
+                foreach (var suffix in new[] { "", "-wal", "-shm", "-journal" }) File.Delete(clone + suffix);
             }
         }
     }
 
     private static BookInspection InspectWritableCopy(string path)
     {
+        LedgerFilePolicy.Validate(path);
         LedgerSnapshot snapshot;
         using (var store = SqliteLedgerStore.Open(path))
         {

@@ -60,15 +60,20 @@ public static class UpgradeSafety
             {
                 var backup = SafePaths.Child(directory, $"book-{copies.Count:D4}.caiwu");
                 LedgerFilePolicy.Validate(source);
-                using (var store = SqliteLedgerStore.Open(source))
+                // The read-only source API captures committed WAL data without a live write probe.
+                // BackupDatabase publishes a self-contained DELETE-journal copy and closes its handles.
+                SqliteLedgerStore.RestoreBackup(source, backup);
+                LedgerFilePolicy.Validate(backup);
+                (Guid Id, long Revision) identity;
+                using (var completedBackup = SqliteLedgerStore.Open(backup))
                 {
-                    store.CheckIntegrity();
-                    store.BackupTo(backup);
-                    using var completedBackup = SqliteLedgerStore.Open(backup);
+                    completedBackup.CheckIntegrity();
                     var snapshot = completedBackup.Read();
-                    identities.Add((snapshot.Book.Id, snapshot.Revision));
-                    entries.Add(new { source, backup, snapshot.Book.Id, snapshot.Revision, sha256 = PayloadManifest.Hash(backup) });
+                    identity = (snapshot.Book.Id, snapshot.Revision);
                 }
+                // File.OpenRead deliberately excludes writers on Windows. Hash only after SQLite closes.
+                identities.Add(identity);
+                entries.Add(new { source, backup, identity.Id, identity.Revision, sha256 = PayloadManifest.Hash(backup) });
                 var staged = SafePaths.Child(directory, $"staged-{copies.Count:D4}.caiwu");
                 SqliteLedgerStore.RestoreBackup(backup, staged);
                 copies.Add(staged);
