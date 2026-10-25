@@ -1,6 +1,6 @@
 {
   "schema": "caiwu-independent-windows-handoff/1",
-  "codeCombinationCommit": "c70cd966fb814de87bd54b0921de3de4dc36dc08",
+  "codeCombinationCommit": "d0e32bbb2a16156ed98f6fea9967fc5f4e954d9b",
   "productionSourceTree": "e0559c454e6675b0d269b1e4bfe7b8731702a1c5",
   "deliverySourceTree": "0b29fc19779e4d8731224380c6a1488f1f16c743",
   "coreBlob": "ec873a80c12486a792f627acedcee4b960d0a983",
@@ -76,6 +76,15 @@
     {
       "sha": "c70cd966fb814de87bd54b0921de3de4dc36dc08",
       "subject": "Keep synthetic SQLite backup binaries out of uploaded screenshot evidence"
+    },
+    {
+      "sha": "a4c72a1921f370617460447552b9c63c0f76ca45",
+      "subject": "Record actual failed Windows run and immutable local revalidation handoff"
+    },
+    {
+      "sha": "d0e32bbb2a16156ed98f6fea9967fc5f4e954d9b",
+      "subject": "Capture populated bank ledger and verify native foreground window"
     }
-  ]
+  ],
+  "independentConsoleEvidenceCommit": "c70cd966fb814de87bd54b0921de3de4dc36dc08"
 }

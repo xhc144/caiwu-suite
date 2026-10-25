@@ -47,7 +47,7 @@
   {
     "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/high-resolution-cross-build.log",
     "bytes": 1073,
-    "sha256": "740bcea2a8dbd6cd2862efee8c24136d9e71b586029ce79d2b6483e399c60ba1"
+    "sha256": "a4b2e25ab1274444d62dd1b8d417e19c47922d40be667e4878d30d789770f5d6"
   },
   {
     "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/integration-local.log",
