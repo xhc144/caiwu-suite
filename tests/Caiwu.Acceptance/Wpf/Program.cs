@@ -132,6 +132,45 @@ internal static class Program
             });
             transaction.Rollback();
         });
+        Check("WPF-STALE-EDITOR-RETAINS-OPENING-TOKEN-AND-INPUT", () =>
+        {
+            var draft = service.SaveDraft(new(null, new(2026, 10, 2), "记", null, 0,
+                [new("1002", "旧窗口原值", 10, 0), new("3001", "旧窗口原值", 0, 10)]), "甲");
+            // Each editor's voucher, book identity and revision come from exactly one
+            // snapshot at OPEN time, before either write. Never refresh a token in Save.
+            var openingA = service.GetSnapshot();
+            var openingB = service.GetSnapshot();
+            var originalB = openingB.Vouchers.Single(v => v.Id == draft.Id);
+            var attempts = new List<VoucherDraft>();
+            var editor = new VoucherEditorWindow(openingB.Book, openingB.Accounts, originalB, "甲", request =>
+            {
+                attempts.Add(request); return service.SaveDraft(request, "甲");
+            }, expectedRevision: openingB.Revision) { Owner = window };
+            using var otherStore = SqliteLedgerStore.Open(path); var other = new LedgerService(otherStore);
+            InDialog(editor, () =>
+            {
+                Fill(editor, "旧窗口未保存输入", "30.00", "30.00");
+                var originalA = openingA.Vouchers.Single(v => v.Id == draft.Id);
+                other.SaveDraft(new(originalA.Id, originalA.Date, originalA.Kind, originalA.Number,
+                    originalA.AttachmentCount, [new("1002", "另一实例新值", 20, 0), new("3001", "另一实例新值", 0, 20)],
+                    openingA.Revision, openingA.Book.Id), "甲");
+                var afterOther = JsonSerializer.Serialize(store.Read());
+                var button = (Button)editor.FindName("SaveButton");
+                for (var retry = 0; retry < 2; retry++)
+                {
+                    button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Assert(editor.IsVisible && editor.DialogResult is null, "Stale editor closed/overwrote after conflict.");
+                    AssertUnchangedInput(editor, "旧窗口未保存输入", "30.00", "30.00");
+                    Assert(!string.IsNullOrWhiteSpace(((TextBlock)editor.FindName("ErrorText")).Text), "Stale save showed no error.");
+                    Assert(JsonSerializer.Serialize(store.Read()) == afterOther, "Stale save changed newer data/audit/revision.");
+                }
+                Assert(attempts.Count == 2 && attempts.All(r => r.ExpectedRevision == openingB.Revision && r.ExpectedBookId == openingB.Book.Id),
+                    "Editor refreshed or omitted its original token during save/retry.");
+                Capture(editor, "stale-editor-retains-token-input.png");
+                Measurements.Add(new { probe = "WPF-STALE-EDITOR-RETAINS-OPENING-TOKEN-AND-INPUT", saveAttempts = attempts.Count,
+                    openingRevision = openingB.Revision, originalTokensRetained = true, actualSecondSqliteConnection = true });
+            });
+        });
         Check("WPF-POSTED-READONLY", () =>
         {
             var posted = service.GetSnapshot().Vouchers.Single(v => v.Id == saved.Id);

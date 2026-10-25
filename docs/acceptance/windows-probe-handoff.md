@@ -1,8 +1,8 @@
 # 有限 Windows 探针交接与截图下载路径
 
-2026-10-25。此轮仅准备探针，**未收到修复不可变提交、未执行 Windows、未宣布任何缺陷已修复**。保留 `037a07585078d4dfcd443a2cc4a237c88aed07a0` 的原复现与证据。新增生产代码仍为空；只改 Acceptance 测试和报告。
+2026-10-25。初轮仅准备探针；现已收到 Core 修复 `53fe0f2d2744e557dab98bf2652ffa5fce644c25` 并完成独立后端定点复验，见 [复验报告](53fe0f2-core-revalidation.md)。**Windows 仍未执行，不据后端结果解除分发阻断**。保留 `037a07585078d4dfcd443a2cc4a237c88aed07a0` 的原复现与证据。新增生产代码仍为空；只改 Acceptance 测试和报告。
 
-## 七个有限探针
+## 八个有限探针
 
 执行：PowerShell 7 / Windows / 官方 .NET 10.0.402：
 
@@ -17,16 +17,17 @@
 | `WPF-MALFORMED-AMOUNT-REJECTED` | 借贷均填 `1,23`；触发实际 Save，必须明确拒绝、不关闭、不改变整个持久快照、不丢原始字符串。 |
 | `WPF-RAPID-DOUBLE-SAVE-SINGLE-WRITE` | 向真实 Save 按钮发送四个原生 `SendInput` 鼠标事件，即 down/up/down/up；断言保存回调、凭证数、revision 都只增加一次。不向已关闭按钮对象再次人为 RaiseEvent，避免伪造物理连点缺陷。 |
 | `WPF-SQLITE-BUSY-RETAINS-INPUT` | 真实 SQLite 连接持有写锁；真实 Save 处理器必须保留窗口、摘要及金额并显示错误，输出 PNG。 |
+| `WPF-STALE-EDITOR-RETAINS-OPENING-TOKEN-AND-INPUT` | 保留实际编辑器的打开快照；另一个真实 SQLite 连接提交新值后，两次实际 Save 都必须拒绝、留窗、保留输入和原 token，完整快照不得变化。 |
 | `WPF-POSTED-READONLY` | 真实已记账凭证打开后，分录只读、Save 不可用；实际 Save 方法也不能写 revision。 |
 | `WPF-ACCOUNT-INVALID-RETAINS-INPUT` | 实际科目表单填三位编码，点实际默认按钮；必须保持表单可修改。 |
 
 连点探针若不能获得前台、`SetCursorPos`/`SendInput` 不成功或五秒内没有到达 Save，会记录 `BLOCKED`。它没有声称物理键盘、IME 或原生文件对话框验收。关闭凭证后，探针暂时拦截 owner 的鼠标事件，避免第二次点击在 owner 上启动无关操作；凭证窗口自身的输入路由不变。
 
-执行器最长 120 秒（可在 30–300 秒间指定）；超时终止自己的测试进程并输出 timeout JSON。任何 `FAIL`、`BLOCKED`、结果缺失、commit 不匹配或探针数不等于七项都返回非零，不包装为通过。清除旧结果再执行，记录 checkout commit 与生产 `src` tree SHA，防止把旧 JSON 当新证据。
+执行器最长 120 秒（可在 30–300 秒间指定）；超时终止自己的测试进程并输出 timeout JSON。任何 `FAIL`、`BLOCKED`、结果缺失、commit 不匹配或探针数不等于八项都返回非零，不包装为通过。清除旧结果再执行，记录 checkout commit 与生产 `src` tree SHA，防止把旧 JSON 当新证据。
 
 CI 需由主协调在其 workflow 中显式调用此脚本并 `if: always()` 上传 `artifacts/independent-acceptance/**`；本任务没有修改 workflow、生产模块或根 solution。当前 `packaging/build.ps1` 扫描到这些 csproj 也不会替代实际运行此独立控制台探针。
 
-本轮验证：官方 SDK 10.0.402，Linux 交叉编译成功，**0 warning / 0 error**。Windows 执行状态：**未执行，待修复 SHA 与 Windows runner**。原来 18 项 console 基线结果不因增加探针而改写。
+本轮验证：官方 SDK 10.0.402，Linux 交叉编译成功，**0 warning / 0 error**。针对准确 53fe0f2 的八项探针交叉编译同样为 0 warning / 0 error。Windows 执行状态：**未执行，待主协调 Windows runner**。原来 18 项 console 基线结果不因增加探针而改写。
 
 ## 已成功的截图获取方式（无凭据）
 
