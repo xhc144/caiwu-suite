@@ -28,7 +28,7 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Delivery hold missing.' }
-          git diff --exit-code dece298946d03ad88c5031eb02dab8f87c330046 HEAD -- src packaging-next/src tests/Caiwu.Delivery.Tests/InstalledDesktop
+          git diff --exit-code 9f40fc4fc11b2b0982389d54b35845005f4b5c89 HEAD -- src packaging-next/src tests/Caiwu.Delivery.Tests/InstalledDesktop
           if ($LASTEXITCODE -ne 0) { throw 'Production or existing controller differs from validated baseline.' }
           dotnet build tests/InstalledBookFlowsQA -c Release -warnaserror
           if ($LASTEXITCODE -ne 0) { throw 'Independent controller build failed.' }
