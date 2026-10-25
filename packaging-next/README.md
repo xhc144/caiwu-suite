@@ -9,11 +9,11 @@
 - .NET 10 LTS / WPF / Windows x64 自包含发布，NSIS 3.13 当前用户安装器、开始菜单、ARP 卸载登记和便携 ZIP。无需管理员权限；不写 HKLM、不安装服务、不更改安全设置。
 - 显式四段 Windows 版本、完整源码 commit、固定 SDK/runtime、NuGet content hashes/锁文件、固定 NSIS/SCons 下载 SHA256、固定构建时间和有序 ZIP；逐文件清单与发布校验。默认拒绝脏源码和未锁定依赖。
 - 程序版本目录不可覆盖，`current.json` 是原子激活点。数据根保留绑定安装根、版本和 payload 摘要的回执，阻断换安装根或卸载后换包绕过升级；卸载后仅相同 payload 可在原根重装。安装及卸载与程序启动共享租约；相同数据根另有全局租约，避免两处安装同时写同一组账套。
-- 卸载只删除清单中仍匹配原 SHA256 的程序文件。未知文件、被修改的程序文件、账套与备份保留，不递归删程序根。程序根有未知文件或回执不一致时，重装/迁移目录需要显式恢复流程。默认数据根 `%LOCALAPPDATA%\CaiwuSuite\Data` 与程序根 `%LOCALAPPDATA%\Programs\CaiwuSuite` 分离；支持 `/DATAROOT=`，并拒绝程序/数据/临时 payload 嵌套和 reparse points。
-- 升级组件以 SQLite Backup API 为每个已登记账套生成一致性备份，并从备份回读 book/revision 和校验值。迁移回调只收到恢复出的副本；损坏或异常会阻断激活，原账套与旧指针不动，备份及回执保留。
+- 卸载先以安装时单独保留的 `VersionManifests` 摘要识别受管版本，对所有受管清单和候选文件完成预检，再去激活并删除仍匹配原 SHA256 的程序文件。未知目录里的有效清单也不构成删除授权；账套、备份及 SQLite journal 不得成为 payload。未知文件、被修改的程序文件、账套与备份保留，不递归删程序根。程序根有未知文件或回执不一致时，重装/迁移目录需要显式恢复流程。默认数据根 `%LOCALAPPDATA%\CaiwuSuite\Data` 与程序根 `%LOCALAPPDATA%\Programs\CaiwuSuite` 分离；支持 `/DATAROOT=`，并拒绝程序/数据/临时 payload 嵌套和 reparse points。
+- 升级组件以 SQLite Backup API 为每个已登记账套生成一致性备份，并从备份回读 book/revision 和校验值。迁移回调只收到恢复出的副本；除完整性外，必须保持原 BookId 且 revision 不后退，并通过 schema-v1 对象门槛；损坏或异常会阻断激活，原账套与旧指针不动，备份及回执保留。
 - 自动检查/下载组件支持 HTTPS 精确主机白名单、无重定向、有界 feed/下载、单调版本与 SHA256。Windows 另以可信 Authenticode、固定发布者指纹、签名包产品名/实际版本核对。下载只产生 `.untrusted`；通过签名后可生成等待用户审批的 `.exe`，不会自动执行。
 
-**真实 Desktop 尚未完成账套登记和统一入口集成，实际包的 `managedDataContract=false`。首次安装路径已实现但运行可用性仍待 Windows 和独立 P1 复查，覆盖升级会在激活前阻断。** 不应手改标记来绕过。数据回执与激活指针之间发生断电时须核对两份回执并走显式恢复；不声称已完成断电恢复测试。当前仅支持 schema 1；已实现迁移副本验证门槛，没有实现生产账套原地 schema 迁移或自动数据回退。
+**真实 Desktop 尚未完成账套登记和统一入口集成，实际包的 `managedDataContract=false`。首次安装路径已实现但运行可用性仍待 Windows 和独立 P1 复查，覆盖升级会在激活前阻断。** 不应手改标记来绕过。数据回执与激活指针不一致时，启动、数据操作与卸载都会在动作前拒绝；两者之间发生断电时须核对回执并走显式恢复；不声称已完成断电恢复测试。当前仅支持 schema 1；已实现迁移副本验证门槛，没有实现生产账套原地 schema 迁移或自动数据回退。
 
 **包未签名、无可信发布通道，`update-policy.json` 默认 disabled。** 自动更新应用的完整闭环尚未完成；不能把任意 URL 的下载/执行当成功。不会生成、索取或导入证书/私钥，也不购买许可。签名正向验收、可信 feed 托管与审批后的应用流程由发布负责人接入。
 
@@ -76,7 +76,7 @@ workflow 的 `require_managed_desktop` 默认 false。开启后必须在安装�
 4. 当前 `UpgradeSafety.Prepare(dataRoot,paths,migrateStaged)` 必须在租约内调用，返回备份目录、staged 副本和回执。只允许迁移副本。将来 schema 改变时，另设计跨文件日志与可恢复提交，并由存储 owner 验证恢复流程；不能把这个阶段误称为已支持原地 schema 升降级。
 5. 更新 API：`UpdateClient.CheckAsync` 供启动/空闲时自动检查，`DownloadAsync` 仅做有界 hash 验证；`Stage-TrustedUpdate.ps1` 做 Windows 签名审批并返回待审批路径。`Assert-TrustedInstaller.ps1` 可在实际应用前再次校验签名、hash、产品与实际版本。没有安装后置健康检查/失败应用回退的 unattended apply 实现，当前应由用户手动确认后交安装器处理，升级数据门槛仍生效。
 
-`BookOperations` 是明确指定单账套的保守工具：读写均持 install/data 两租约，核对 ownership/current/data receipt；备份只能从数据根账套写新 `.delivery-backups/*.caiwu`，恢复只能从该区写数据根内新 `.caiwu`，不覆盖。语义 SHA256 比较完整持久快照；原始文件 SHA256 单独报告，备份和源文件无需字节相同。`BankBalance` 仅为唯一同名样本科目的辅助值，多个同名“银行存款”返回 null，不阻断备份恢复。恢复工具不伪造全量 Desktop 登记；恢复副本需由 Desktop 正式打开/登记后才可能满足完整升级清单。
+`BookOperations` 是明确指定单账套的保守工具：读写均持 install/data 两租约，核对 ownership/current/data receipt；备份只能从数据根账套写新 `.delivery-backups/*.caiwu`，恢复只能从该区写数据根内新 `.caiwu`，不覆盖。有效只读备份可恢复；检查经 SQLite 的只读源备份 API 在 dataRoot/.delivery-scratch 生成独占新 `.tmp` 一致性副本后读取，并只清理该新副本；不要求原备份或备份目录可写，scratch/目标仍须可写。语义 SHA256 比较完整持久快照；原始文件 SHA256 单独报告，备份和源文件无需字节相同。`BankBalance` 仅为唯一同名样本科目的辅助值，多个同名“银行存款”返回 null，不阻断备份恢复。恢复工具不伪造全量 Desktop 登记；恢复副本需由 Desktop 正式打开/登记后才可能满足完整升级清单。
 
 CLI 均为位置参数：`manifest payload version commit`、`verify payload`、`install payload installRoot dataRoot`、`launch installRoot [Desktop args...]`、`uninstall installRoot`、`inspect-book installRoot relativeBook`、`backup-book installRoot relativeSource .delivery-backups/new.caiwu`、`restore-book installRoot .delivery-backups/backup.caiwu relativeNewBook`、`check-update policy currentVersion`、`stage-update policy currentVersion stagingRoot`。更新策略由可信安装配置提供；feed 不能自行增补主机或发布者指纹。
 
@@ -86,7 +86,7 @@ CLI 均为位置参数：`manifest payload version commit`、`verify payload`、
 
 | 现有文件/方法 | 当前缺口与最小接法 |
 | --- | --- |
-| `src/Caiwu.Desktop/App.xaml.cs` / `OnStartup` | 仍直接传 `SqliteLedgerStore.Open/Create/RestoreBackup`，不消费 `CAIWU_DATA_ROOT`。在组合根包装这三个委托：规范化数据根和实际路径，拒绝程序根、根外、reparse、非 `.caiwu` 的生产账套；不要仅靠文件对话框初始目录。 |
+| `src/Caiwu.Desktop/App.xaml.cs` / `OnStartup` | 仍直接传 `SqliteLedgerStore.Open/Create/RestoreBackup`，不消费 `CAIWU_DATA_ROOT`。新安全复核确认直接 Storage Restore 可保留触发器；在 Open 和 RestoreBackup 的存储调用之前加入公共 `Caiwu.Delivery.LedgerFilePolicy.Validate(path)` 只读门槛（恢复时检查所选 backup）。在组合根包装这三个委托：规范化数据根和实际路径，拒绝程序根、根外、reparse、非 `.caiwu` 的生产账套；不要仅靠文件对话框初始目录。 |
 | `src/Caiwu.Desktop/Presentation/LedgerSession.cs` / `Open`、`Create`、`Replace` | `Replace` 读取并验证新 store 后、替换 `_store` 前，原子登记 `next.DatabasePath`；登记失败继续旧会话并 dispose next。对 create/open 都从真实 store 路径登记，不能只登记原始用户输入。 |
 | 同文件 / `RestoreTo`；`MainWindow.xaml.cs` / `Restore_Click` | 现为恢复后再 `_session.Open(save.FileName)`。保持这个正式打开步骤来登记恢复副本，并在恢复前验证目标属于数据根。外部备份可显式选择读取，目标始终是新文件，不能用 raw copy 当 WAL 恢复。 |
 | `MainWindow.xaml.cs` / `NewBook_Click`、`OpenBook_Click`、`Restore_Click` | 三个文件对话框都未限制数据根，open 还允许所有文件。设置受管初始目录用于操作习惯，同时必须由上述 backend/session 路径门槛兜底。 |
@@ -96,6 +96,16 @@ CLI 均为位置参数：`manifest payload version commit`、`verify payload`、
 | 主 `packaging/build.ps1` / 测试调度与暂停门槛 | 最新已按 `<OutputType>Exe` 跑 console 测试，本模块无需再改名称白名单；新增测试需根 solution 由主协调纳入。候选 workflow 直接显式跑本测试，并同样检查独审暂停标志。 |
 
 新增 v1.1 `VoucherDraft.ExpectedRevision` 未改变 `BookOperations` 使用的 store/read/backup/restore 契约；本组件不编辑草稿，不替代该 P1 返修。所有生产升级、签名和 Windows 运行结论仍以主独审与 Windows CI 为准。
+
+## 独立边界复核结果与范围
+
+`evidence/security-boundary-review/` 保存实际失败及修复后结果：旧实现15个新条件中11失败；另外有效只读备份、只读备份目录分别复现1个不同失败。最终22个新增条件和全量132项全部通过，未用已有同条件案例增加计数。恶意触发器控制样本即使 `integrity_check=ok`，恢复后的正常保存仍可把银行期初1234.56改成61234.56；本组件现在在 store.Open 的写能力探针前，以只读连接拒绝触发器、视图、额外应用表/索引和非 schema 1。
+
+`LedgerFilePolicy.Validate` 是公开的只读布局门槛，供 Desktop 组合根接入；它不替代路径登记、租约、业务规则或备份来源认证。直接调用原 Storage API 的其他入口不自动获得本模块保护。显式恢复另一个有效账套到新路径会返回其真实 BookId，不会猜测用户意图；恢复指定账套时，UI还应核对预期身份和已知可信校验值。
+
+卸载在删除前保存 pending 标志并移除激活指针。异常或断点留下标志时，后续启动/安装/数据操作拒绝并要求显式恢复，不自动猜测续做；没有自动断电恢复或继续卸载的完成声明。旧预览缺少独立版本所有权摘要时同样拒绝自动删除，不能从现存清单反向“补信任”。
+
+Linux实际验证文件/目录符号链接、sidecar 路径门槛、源/备份哈希、只读文件和0555目录权限以及跨进程租约；设备/extended-namespace 仅做跨平台词法拒绝验证。Windows NTFS junction/ACL/8.3别名、硬链接身份、同权限进程并发替换目录和真实断电未实测；本实现不声称抵抗已控制当前用户文件系统写权限的攻击者。Windows验收仍受独审暂停门槛约束，本次没有运行Windows EXE或生成新分发包。
 
 ## 许可与证据
 

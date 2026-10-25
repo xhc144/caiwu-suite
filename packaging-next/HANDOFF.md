@@ -50,3 +50,12 @@
 - unverified：Windows native安装、真实窗口忙态、安装EXE备份恢复、签名门槛与卸载均待GitHub Windows runner。在暂停独审门槛存在时，候选workflow故意不产新包、不启动安装验收。严格managedDesktop输入只读观察真实清单，不制造清单或切换标记；正向版本升级依然未完成。
 - success：在隔离worktree只把本模块两目录覆盖到主集成不可变0377ce764bc5a191c232c3f50da602a5ca2c0c0c，针对其最新Contracts（含ExpectedRevision）和SQLite再次跑相同110项，全部通过；其他owner源码未改。该worktree真实暂停文件也实际阻断build.py，且在任何tool执行或输出目录创建前返回非零。
 - evidence/windows-harness-preparation记录两份110项报告、官方PowerShell下载证据及验证摘要。候选workflow的true/false两个严格模式渲染后共14个PowerShell run块均解析通过。窗口忙态probe同时校对实际安装路径、非零窗口句柄与已核对的主窗口标题，避免把启动错误消息框算作主窗口成功。
+
+## 独立安装/备份边界安全复核
+
+- 以87b3fbf2a5141088d490be807ccb3bdb57d56d7f为本轮基线，先只跑15个不同新条件，实测11项失败；不是把原110项重复计数。之后另复现“只读有效备份已复制后却报失败”和“只读备份目录被错误要求可写”两个独立条件。
+- 已修：独立VersionManifests所有权摘要与全量卸载预检；未知版本/目录/链接保留；删除前pending+去激活；data-only租约与中断凭据的公共启动/卸载门槛；migration BookId/revision绑定；只读schema-v1对象门槛拒trigger/view等；只读备份一致性inspection copy和独立scratch目录。账套后缀和-journal不得进入程序payload。
+- success：22个新增边界全部通过，最终全量132/132、无失败无跳过；副作用断言实际核对用户账套/未知文件、有效备份哈希、程序/指针/回执及POSIX自写启动sentinel。额外权限测试只作用于唯一fixture并恢复，不改系统安全。完整前后JSON在evidence/security-boundary-review。
+- 恶意trigger独立控制：完整性仍ok，直接Storage恢复后普通snapshot保存将期初1234.56改成61234.56。本模块拒绝这类对象，但主Desktop当前直接Storage Open/RestoreBackup仍需在App.OnStartup的委托包装中调用公共LedgerFilePolicy.Validate；不将本模块修复冒称全App已安全。
+- unverified：Windows原生安装/卸载、NTFS junction/ACL/8.3、硬链接身份、同用户恶意并发换目录及真实断电；只对Windows namespace做词法拒绝，不能当NTFS实测。保留独审暂停门槛，没有新分发包、Library重试、签名/更新权限扩展或main合并。
+- 兼容/恢复门槛：旧预览若没有独立版本摘要则拒绝自动卸载/更新，不能从现存manifest反推信任；pending卸载需显式恢复，没有自动继续或断电恢复完成声明。备份布局校验不证明数据来源真实性，指定账套恢复仍需UI核对期望BookId/已知可信hash。

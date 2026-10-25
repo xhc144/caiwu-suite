@@ -1,0 +1,101 @@
+{
+  "success": true,
+  "total": 22,
+  "passed": 22,
+  "failed": 0,
+  "skipped": 0,
+  "runtime": ".NET 10.0.13",
+  "os": "Debian GNU/Linux 13 (trixie)",
+  "publishedWindowsArtifactExecuted": false,
+  "scope": "Synthetic self-authored delivery components only. No reference installer or real accounting data.",
+  "results": [
+    {
+      "name": "security: a forged active manifest cannot turn a user book into uninstall-owned content",
+      "status": "passed"
+    },
+    {
+      "name": "security: an unknown version directory with a valid forged manifest stays user-owned",
+      "status": "passed"
+    },
+    {
+      "name": "security: an unknown directory link cannot leave an active pointer after program deletion",
+      "status": "passed"
+    },
+    {
+      "name": "security: a data-only session lease prevents uninstall before any mutation",
+      "status": "passed"
+    },
+    {
+      "name": "security: interrupted data receipt advancement cannot launch an older active program",
+      "status": "passed"
+    },
+    {
+      "name": "security: interrupted data receipt advancement cannot uninstall the older active program",
+      "status": "passed"
+    },
+    {
+      "name": "security: a valid migrated stage for a different book must not be marked upgrade-ready",
+      "status": "passed"
+    },
+    {
+      "name": "security: an inactive owned manifest is preflighted before deleting the newer current program",
+      "status": "passed"
+    },
+    {
+      "name": "security: a same-identity migration cannot move the ledger revision backward",
+      "status": "passed"
+    },
+    {
+      "name": "security: caiwubak and rollback-journal files cannot enter a program payload",
+      "status": "passed"
+    },
+    {
+      "name": "security: a pending uninstall blocks launch install and book operations without side effects",
+      "status": "passed"
+    },
+    {
+      "name": "security: cross-platform lexical guard rejects Windows device namespace roots",
+      "status": "passed"
+    },
+    {
+      "name": "Linux read-only backup directory still permits recovery through a writable data-root scratch area",
+      "status": "passed"
+    },
+    {
+      "name": "valid read-only backup restores successfully without post-copy failure or source mutation",
+      "status": "passed"
+    },
+    {
+      "name": "adversarial trigger fixture passes integrity yet changes a later ordinary snapshot write",
+      "status": "passed"
+    },
+    {
+      "name": "delivery rejects a schema-one trigger backup before creating any restored book",
+      "status": "passed"
+    },
+    {
+      "name": "delivery rejects an extra schema-one view rather than silently treating it as the supported layout",
+      "status": "passed"
+    },
+    {
+      "name": "delivery backup refuses a trigger-bearing source without replacing a known good backup",
+      "status": "passed"
+    },
+    {
+      "name": "future-schema backup is rejected while the valid older backup and original remain unchanged",
+      "status": "passed"
+    },
+    {
+      "name": "explicit new-copy restore reports a different valid book identity and never substitutes the original",
+      "status": "passed"
+    },
+    {
+      "name": "second-book preparation failure retains the completed first backup and all earlier valid backups",
+      "status": "passed"
+    },
+    {
+      "name": "staged migration adding an unsupported trigger blocks preparation without mutating the live source",
+      "status": "passed"
+    }
+  ]
+}
