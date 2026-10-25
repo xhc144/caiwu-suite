@@ -4,3 +4,4 @@
 *.png -text
 # Keep the original bundled guide byte-for-byte, including CRLF and trailing blank lines.
 accepted-9549ae0/INSTALL_AND_USE.zh-CN.md -text -whitespace
+attempt-3e83e0f/controller-stderr.log -text -whitespace
