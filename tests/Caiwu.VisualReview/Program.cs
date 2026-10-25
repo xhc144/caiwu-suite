@@ -199,7 +199,10 @@ internal static class Program
     }
     private static void ObserveFonts(Window window, string file)
     {
-        foreach (var text in Descendants<TextBlock>(window).Where(t => t.IsVisible && !string.IsNullOrWhiteSpace(t.Text)).Take(28))
+        var cells = Descendants<DataGrid>(window).Where(g => g.IsVisible && g.Items.Count > 0)
+            .SelectMany(g => g.Columns.Select(c => c.GetCellContent(g.Items[0]))).OfType<TextBlock>();
+        var labels = Descendants<TextBlock>(window).Where(t => t.IsVisible && !string.IsNullOrWhiteSpace(t.Text)).Take(16);
+        foreach (var text in cells.Concat(labels).Distinct())
         {
             var glyphs = Glyphs(VisualTreeHelper.GetDrawing(text)).ToArray();
             FontObservations.Add(new { file, text = text.Text.Length > 64 ? text.Text[..64] : text.Text,
