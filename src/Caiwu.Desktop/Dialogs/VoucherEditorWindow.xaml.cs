@@ -15,6 +15,7 @@ public partial class VoucherEditorWindow : Window
     private readonly IReadOnlyList<Account> _accounts;
     private readonly Voucher? _original;
     private readonly Func<VoucherDraft, Voucher> _save;
+    private readonly Func<Window, string?>? _pickSummary;
     private readonly bool _readOnly;
     private readonly ObservableCollection<VoucherLineEdit> _lines = [];
     private bool _dirty, _saved, _ready, _saving;
@@ -23,10 +24,11 @@ public partial class VoucherEditorWindow : Window
 
     public VoucherEditorWindow(BookInfo book, IReadOnlyList<Account> accounts, Voucher? voucher,
         string operatorName, Func<VoucherDraft, Voucher> save, bool forceReadOnly = false,
-        long? expectedRevision = null)
+        long? expectedRevision = null, Func<Window, string?>? pickSummary = null)
     {
         InitializeComponent();
         _book = book; _accounts = accounts; _original = voucher; _save = save; _baseRevision = expectedRevision;
+        _pickSummary = pickSummary;
         _readOnly = forceReadOnly || voucher is not null && voucher.Status != VoucherStatus.Draft;
         BookText.Text = book.Name;
         var defaultMonth = Math.Clamp(book.ClosedThroughMonth + 1, book.StartMonth, 12);
@@ -42,6 +44,8 @@ public partial class VoucherEditorWindow : Window
         LinesGrid.IsReadOnly = _readOnly;
         foreach (var control in new Control[] { DateInput, KindInput, AttachmentInput, SaveButton,
             AddLineButton, RemoveLineButton, PickAccountButton, BalanceButton }) control.IsEnabled = !_readOnly;
+        PickSummaryButton.IsEnabled = !_readOnly && _pickSummary is not null;
+        PickSummaryButton.ToolTip = _pickSummary is null ? "当前会话未配置受管摘要库。" : "从当前物理账套已登记的摘要库回填当前分录；仍须单独保存凭证。";
         DateInput.SelectedDateChanged += (_, _) => MarkDirty();
         KindInput.TextChanged += (_, _) => MarkDirty();
         AttachmentInput.TextChanged += (_, _) => MarkDirty();
@@ -122,6 +126,21 @@ public partial class VoucherEditorWindow : Window
         if (_lines.Count == 0) AddLine(new VoucherLineEdit()); MarkDirty(); UpdateTotals();
     }
     private void PickAccount_Click(object sender, RoutedEventArgs e) => PickAccount();
+    private void PickSummary_Click(object sender, RoutedEventArgs e)
+    {
+        if (_readOnly || _saving || _saved || _pickSummary is null || CurrentLine() is not { } line) return;
+        try
+        {
+            LinesGrid.CommitEdit(DataGridEditingUnit.Cell, true);
+            LinesGrid.CommitEdit(DataGridEditingUnit.Row, true);
+            var selected = _pickSummary(this);
+            // Cancel, failed validation and expired contexts never replace the current input.
+            if (selected is null) return;
+            if (!_lines.Contains(line)) throw new LedgerValidationException("原分录已变化，请重新选择。");
+            line.Summary = selected; ErrorText.Text = ""; FocusCell(line, 0);
+        }
+        catch (Exception ex) { ErrorText.Text = SaveError.Message(ex); }
+    }
     private void PickAccount()
     {
         if (_readOnly || CurrentLine() is not { } line) return;

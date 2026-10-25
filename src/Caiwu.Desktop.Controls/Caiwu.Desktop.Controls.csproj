@@ -4,6 +4,10 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
   </PropertyGroup>
+  <!-- A multi-target outer restore runs before Microsoft.Common.targets imports. -->
+  <PropertyGroup Condition="'$(DeliveryLockGraph)' != ''">
+    <NuGetLockFilePath>$(MSBuildThisFileDirectory)../../packaging-next/locks/$(DeliveryLockGraph)/Caiwu.Desktop.Controls.packages.lock.json</NuGetLockFilePath>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows'">
     <UseWPF>true</UseWPF>
   </PropertyGroup>

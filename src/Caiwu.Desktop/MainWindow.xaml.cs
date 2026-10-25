@@ -209,9 +209,12 @@ public partial class MainWindow : Window
         var voucher = id is { } value ? editSnapshot.Vouchers.SingleOrDefault(v => v.Id == value)
             ?? throw new StoreConcurrencyException("该凭证已发生变化，请重新查询。") : null;
         var operatorName = OperatorName();
+        var summaryBinding = featureAuthentication is not null && editorSummaryCatalog is not null
+            ? new Features.FeatureSessionBinding(_session!, editSnapshot, featureAuthentication) : null;
         return new VoucherEditorWindow(editSnapshot.Book, editSnapshot.Accounts, voucher, operatorName,
             draft => origin.GetService().SaveDraft(draft, operatorName), forceReadOnly: !PreviewLedgerService.AllowsWrites(editSnapshot.Book),
-            expectedRevision: editSnapshot.Revision) { Owner = owner ?? this };
+            expectedRevision: editSnapshot.Revision,
+            pickSummary: summaryBinding is null ? null : window => PickVoucherSummary(window, summaryBinding)) { Owner = owner ?? this };
     }
     private void EditVoucher(Voucher? voucher, Window? owner = null)
     {

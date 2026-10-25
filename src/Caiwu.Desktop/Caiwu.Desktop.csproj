@@ -14,6 +14,7 @@
     <ProjectReference Include="../../packaging-next/src/Caiwu.Delivery/Caiwu.Delivery.csproj" />
     <ProjectReference Include="../Caiwu.VoucherTools.Wpf/Caiwu.VoucherTools.Wpf.csproj" />
     <ProjectReference Include="../Caiwu.Summaries/Caiwu.Summaries.csproj" />
+    <ProjectReference Include="../Caiwu.Desktop.Controls/Caiwu.Desktop.Controls.csproj" />
     <ProjectReference Include="../Caiwu.Costing/Wpf/Caiwu.Costing.Wpf.csproj" />
     <ProjectReference Include="../Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj" />
     <ProjectReference Include="../Caiwu.Operators/Wpf/Caiwu.Operators.Wpf.csproj" />

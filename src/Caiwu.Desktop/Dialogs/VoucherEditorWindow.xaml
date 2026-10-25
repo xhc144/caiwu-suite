@@ -33,6 +33,7 @@
           <Button x:Name="RemoveLineButton" Content="删除分录" Click="RemoveLine_Click" />
           <Separator />
           <Button x:Name="PickAccountButton" Content="科目查找 F4" Click="PickAccount_Click" />
+          <Button x:Name="PickSummaryButton" Content="选择摘要" Click="PickSummary_Click" />
           <Button x:Name="BalanceButton" Content="平衡复制 F7" Click="Balance_Click" />
         </ToolBar>
       </ToolBarTray>

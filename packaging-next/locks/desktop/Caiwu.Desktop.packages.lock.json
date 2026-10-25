@@ -220,6 +220,12 @@
           "Caiwu.Summaries": "[1.0.0, )"
         }
       },
+      "caiwu.desktop.controls": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )"
+        }
+      },
       "caiwu.nonprofit.reporting": {
         "type": "Project",
         "dependencies": {

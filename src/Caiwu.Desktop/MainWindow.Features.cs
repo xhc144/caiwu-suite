@@ -28,6 +28,7 @@ public partial class MainWindow
     private bool featuresInitialized, featureOpening;
     private FeatureAuthentication? featureAuthentication;
     private ManagedFeatureContext? managedFeatureContext;
+    private Func<FeatureSessionBinding, SummaryFeatureRegistration>? editorSummaryCatalog;
 
     /// <summary>One explicit owner hook, after InitializeComponent and _session initialization.</summary>
     public void InitializeDesktopFeatures(DesktopFeatureOptions options)
@@ -36,6 +37,7 @@ public partial class MainWindow
         if (featuresInitialized) throw new InvalidOperationException("桌面新功能已初始化。");
         featureAuthentication = options.Authentication;
         managedFeatureContext = options.Managed;
+        editorSummaryCatalog = options.OpenSummaryCatalog;
         if (options.BookCopy is { } configured && (configured.AcquireDataLease is null ||
             configured.ValidateManagedDestination is null || configured.RegisterCreatedBook is null))
             throw new ArgumentException("账套复制必须同时配置数据租约、受管路径和新账套登记。", nameof(options));
@@ -258,6 +260,25 @@ public partial class MainWindow
         if (bound.Context.ExpectedBookId != shown.Book.Id || bound.Context.ExpectedRevision != shown.Revision)
             throw new StoreConcurrencyException("显示的数据与当前账套不一致，请重新载入后核对。");
         return new(_session!, shown, featureAuthentication ?? throw new OperatorAuthorizationException("请先完成真实操作员登录。"));
+    }
+
+    private string? PickVoucherSummary(Window owner, FeatureSessionBinding binding)
+    {
+        binding.DemandCurrent(); binding.Authentication.Demand(OperatorPermission.PrepareVoucher);
+        var registration = (editorSummaryCatalog ?? throw new LedgerValidationException("当前会话未配置摘要库。"))(binding);
+        var catalog = new SessionSummaryCatalog(binding, registration.Catalog, registration.ManagementPermission);
+        var shown = catalog.Read();
+        var items = shown.ToPickerItems((id, category, text) => new Controls.SummaryLibraryItem(id, category, text));
+        var selected = Controls.SelectionDialogs.PickSummary(owner, items);
+        if (!selected.Accepted) return null;
+        // Revalidate the original ledger/session and exact catalog version; never refresh a draft token.
+        binding.Authentication.Demand(OperatorPermission.PrepareVoucher);
+        var current = catalog.Read();
+        if (current.Version != shown.Version)
+            throw new Caiwu.Summaries.SummaryConflictException("摘要库版本已变化，原分录未修改；请关闭后重新核对。");
+        if (selected.Value is not { } value || !shown.Entries.Any(e => e.Id.ToString("D") == value.Id && e.Text == value.Text))
+            throw new Caiwu.Summaries.SummaryConflictException("摘要选择与原目录不一致，原分录未修改。");
+        return value.Text;
     }
 
     private async Task OpenCopiedVoucherAsync()
