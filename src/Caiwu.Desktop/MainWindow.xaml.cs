@@ -32,6 +32,7 @@ public partial class MainWindow : Window
     }
 
     private bool HasBook => _session?.Snapshot is not null;
+    private bool CanWriteBook => HasBook && PreviewLedgerService.AllowsWrites(Snapshot.Book);
     internal void OpenVerificationBook(string path) { _session!.Open(path); BookOpened(); }
     internal void ShowVerificationPage(int index) { Pages.SelectedIndex = index; QueryCurrent(); UpdateLayout(); }
     internal VoucherEditorWindow OpenVerificationVoucher(Guid id)
@@ -82,13 +83,14 @@ public partial class MainWindow : Window
         {
             Title = "财务套件 · 开发预览"; BookNameText.Text = "财务工作台";
             BookSubtitleText.Text = "现代界面 · 熟悉的账务流程"; StatusText.Text = "尚未打开账套";
-            return;
+            UpdateWriteAccess(this); return;
         }
         var snapshot = Snapshot; var book = snapshot.Book;
         var regime = book.Regime switch { AccountingRegime.SmallBusiness => "小企业", AccountingRegime.Enterprise => "企业", _ => "民间非营利组织" };
         var period = book.ClosedThroughMonth >= 12 ? "本年度已结账" : $"当前期间 {book.FiscalYear}-{book.ClosedThroughMonth + 1:00}";
         Title = $"{book.Name} — 财务套件 · 开发预览"; BookNameText.Text = book.Name;
         BookSubtitleText.Text = $"{regime} · {book.FiscalYear}年度 · {period} · 实验模板";
+        if (!CanWriteBook) BookSubtitleText.Text += " · 只读核对，专有核算未开放";
         StatusText.Text = $"{period}    账套：{Path.GetFileName(_session!.DatabasePath)}";
         OverviewText.Text = $"本年度已保存 {snapshot.Vouchers.Count} 张凭证：草稿 {snapshot.Vouchers.Count(v => v.Status == VoucherStatus.Draft)} 张，" +
             $"已审核 {snapshot.Vouchers.Count(v => v.Status == VoucherStatus.Reviewed)} 张，已记账 {snapshot.Vouchers.Count(v => v.Status == VoucherStatus.Posted)} 张。";
@@ -104,6 +106,7 @@ public partial class MainWindow : Window
         QueryVouchers();
         if (TrialFrom.SelectedDate is not null) QueryTrial();
         if (LedgerFrom.SelectedDate is not null && LedgerAccountInput.SelectedItem is not null) QueryLedger();
+        UpdateWriteAccess(this);
     }
 
     private void BookOpened()
@@ -178,8 +181,15 @@ public partial class MainWindow : Window
 
     private void EditVoucher(Voucher? voucher)
     {
-        var dialog = new VoucherEditorWindow(Snapshot.Book, Snapshot.Accounts, voucher, OperatorName(),
-            draft => Service.SaveDraft(draft, OperatorName())) { Owner = this };
+        // Both data and edit token must come from this one fresh snapshot, never a stale grid row.
+        var editSnapshot = Service.GetSnapshot();
+        if (voucher is not null)
+            voucher = editSnapshot.Vouchers.SingleOrDefault(v => v.Id == voucher.Id)
+                ?? throw new StoreConcurrencyException("该凭证已发生变化，请重新查询。");
+        var operatorName = OperatorName();
+        var dialog = new VoucherEditorWindow(editSnapshot.Book, editSnapshot.Accounts, voucher, operatorName,
+            draft => Service.SaveDraft(draft, operatorName), forceReadOnly: !PreviewLedgerService.AllowsWrites(editSnapshot.Book),
+            expectedRevision: voucher is null ? null : editSnapshot.Revision) { Owner = this };
         if (dialog.ShowDialog() == true)
         {
             Reload(); Pages.SelectedIndex = 1;
@@ -232,9 +242,10 @@ public partial class MainWindow : Window
     {
         Run(() =>
         {
-            var dialog = new AccountWindow(original, parent) { Owner = this };
+            var operatorName = OperatorName();
+            var dialog = new AccountWindow(original, parent, account => Service.SaveAccount(account, operatorName)) { Owner = this };
             if (dialog.ShowDialog() != true || dialog.Result is null) return;
-            Service.SaveAccount(dialog.Result, OperatorName()); Reload(); NotificationText.Text = "会计科目已保存。";
+            Reload(); NotificationText.Text = "会计科目已保存。";
         }, discardOpening: true);
     }
     private void DeleteAccount_Click(object sender, RoutedEventArgs e) => Run(() =>
@@ -253,7 +264,7 @@ public partial class MainWindow : Window
             row.PropertyChanged += (_, _) => { _openingDirty = true; OpeningTotals(); };
             _opening.Add(row);
         }
-        OpeningGrid.IsReadOnly = Snapshot.Vouchers.Any(v => v.Status == VoucherStatus.Posted) || Snapshot.Book.ClosedThroughMonth >= Snapshot.Book.StartMonth;
+        OpeningGrid.IsReadOnly = !CanWriteBook || Snapshot.Vouchers.Any(v => v.Status == VoucherStatus.Posted) || Snapshot.Book.ClosedThroughMonth >= Snapshot.Book.StartMonth;
         _openingDirty = false; OpeningTotals();
     }
     private void OpeningTotals()
@@ -393,4 +404,12 @@ public partial class MainWindow : Window
         _session?.Dispose();
     }
     private static string SafeFileName(string name) => string.Concat(name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
+    private void UpdateWriteAccess(DependencyObject root)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(root).OfType<DependencyObject>())
+        {
+            if (child is FrameworkElement element && Equals(element.Tag, "WriteOperation")) element.IsEnabled = CanWriteBook;
+            UpdateWriteAccess(child);
+        }
+    }
 }

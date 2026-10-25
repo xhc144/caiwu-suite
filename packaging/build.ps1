@@ -14,10 +14,17 @@ try {
     Invoke-DotNet -Arguments @('build', 'Caiwu.slnx', '-c', 'Release', '--nologo')
     if (-not $SkipTests) {
         Get-ChildItem 'tests' -Filter '*.csproj' -Recurse | ForEach-Object {
-            if ($_.Name -eq 'IntegrationProbe.csproj') {
+            $projectText = Get-Content $_.FullName -Raw
+            if ($_.FullName -match 'Caiwu.Acceptance') {
+                # The original regression has a historical copied catch expression; the independent owner adapts it.
+                # Actual WPF acceptance is run below using its bounded, result-identity-checking runner.
+                return
+            } elseif ($projectText -match '<IsTestProject>\s*true\s*</IsTestProject>') {
+                Invoke-DotNet -Arguments @('test', $_.FullName, '-c', 'Release', '--no-build', '--logger', 'trx', '--results-directory', (Join-Path $artifactDirectory 'test-results'))
+            } elseif ($_.Name -eq 'IntegrationProbe.csproj') {
                 $probeDirectory = Join-Path $artifactDirectory ('verification/core-probe-' + [Guid]::NewGuid().ToString('N'))
                 Invoke-DotNet -Arguments @('run', '--project', $_.FullName, '-c', 'Release', '--no-build', '--', $probeDirectory)
-            } elseif ((Get-Content $_.FullName -Raw) -match '<OutputType>\s*Exe\s*</OutputType>') {
+            } elseif ($projectText -match '<OutputType>\s*Exe\s*</OutputType>') {
                 Invoke-DotNet -Arguments @('run', '--project', $_.FullName, '-c', 'Release', '--no-build')
             } else {
                 Invoke-DotNet -Arguments @('test', $_.FullName, '-c', 'Release', '--no-build', '--logger', 'trx', '--results-directory', (Join-Path $artifactDirectory 'test-results'))
@@ -32,6 +39,7 @@ try {
         if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'WPF verification timed out.' }
         if ($process.ExitCode -ne 0) { throw "WPF verification failed ($($process.ExitCode)); see artifacts/verification." }
         if (-not (Test-Path (Join-Path $verificationDirectory 'ui-verification.json'))) { throw 'WPF verification did not produce its result.' }
+        & ./tests/Caiwu.Acceptance/Wpf/run.ps1 -OutputDirectory (Join-Path $artifactDirectory 'independent-acceptance')
     }
     if (Test-Path (Join-Path $projectRoot 'docs/acceptance/DELIVERY_PAUSED.md')) {
         Write-Warning 'Independent acceptance has paused delivery. Tests and WPF evidence were generated; no distribution archive or installer is produced.'

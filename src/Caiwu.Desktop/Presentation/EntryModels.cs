@@ -22,11 +22,33 @@ public static class AmountInput
     public static decimal Parse(string? text, string label)
     {
         if (string.IsNullOrWhiteSpace(text)) return 0m;
-        if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.CurrentCulture, out var value))
-            throw new LedgerValidationException($"{label}请输入有效金额。");
-        if (value < 0m || decimal.Round(value, 2) != value)
-            throw new LedgerValidationException($"{label}请输入非负金额，最多两位小数。");
+        var format = CultureInfo.CurrentCulture.NumberFormat;
+        var parts = text.Trim().Split(format.NumberDecimalSeparator, StringSplitOptions.None);
+        if (parts.Length > 2 || parts[0].Length == 0 ||
+            parts.Length == 2 && (parts[1].Length is < 1 or > 2 || !Digits(parts[1])))
+            throw Invalid();
+        var groups = parts[0].Split(format.NumberGroupSeparator, StringSplitOptions.None);
+        if (groups.Any(group => group.Length == 0 || !Digits(group))) throw Invalid();
+        if (groups.Length > 1)
+        {
+            var sizes = format.NumberGroupSizes;
+            for (var position = groups.Length - 1; position >= 0; position--)
+            {
+                var size = sizes[Math.Min(groups.Length - 1 - position, sizes.Length - 1)];
+                if (size == 0 ? position != 0 : position == 0 ? groups[position].Length > size : groups[position].Length != size)
+                    throw Invalid();
+            }
+        }
+        var integer = string.Concat(groups);
+        var fraction = parts.Length == 2 ? parts[1].PadRight(2, '0') : "00";
+        // Parse exact cents first: decimal.TryParse alone can round a very large input.
+        if (!long.TryParse(integer + fraction, NumberStyles.None, CultureInfo.InvariantCulture, out var cents))
+            throw new LedgerValidationException($"{label}金额超出本版支持范围。");
+        var value = cents / 100m;
         return value;
+
+        LedgerValidationException Invalid() => new($"{label}请输入非负金额，最多两位小数；千分位须按当前区域格式完整分组。");
+        static bool Digits(string value) => value.All(c => c is >= '0' and <= '9');
     }
 
     public static string Edit(decimal value) => value == 0m ? "" : value.ToString("0.00", CultureInfo.CurrentCulture);
@@ -87,6 +109,7 @@ public sealed record AccountDisplay(Account Value, bool IsLeaf)
 {
     public string Code => Value.Code;
     public string Name => Value.Name;
+    public string Caption => Code + "  " + Name;
     public string Parent => Value.ParentCode ?? "";
     public string Side => Value.Direction == BalanceDirection.Debit ? "借" : "贷";
     public string State => Value.IsActive ? "启用" : "停用";

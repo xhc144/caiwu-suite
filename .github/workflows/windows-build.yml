@@ -29,4 +29,5 @@ jobs:
             artifacts/*.json
             artifacts/test-results/
             artifacts/verification/
+            artifacts/independent-acceptance/
           if-no-files-found: warn

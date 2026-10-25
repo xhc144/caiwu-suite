@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using Caiwu.Contracts;
+using Caiwu.Desktop.Presentation;
 
 namespace Caiwu.Desktop.Dialogs;
 
@@ -52,11 +53,16 @@ public sealed class NewBookWindow : Window
         form.Children.Add(new TextBlock { Text = "本开发预览用于试用与核对，不替代生产账务验收。",
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) });
         _template.ItemsSource = templates; _template.SelectedIndex = 0;
+        var templateStyle = new Style(typeof(ComboBoxItem));
+        var nonprofit = new DataTrigger { Binding = new Binding(nameof(TemplateDefinition.Regime)), Value = AccountingRegime.Nonprofit };
+        nonprofit.Setters.Add(new Setter(IsEnabledProperty, false));
+        nonprofit.Setters.Add(new Setter(ToolTipProperty, "民非专有核算尚未完备，本版暂不开放新建。"));
+        templateStyle.Triggers.Add(nonprofit); _template.ItemContainerStyle = templateStyle;
         DialogLayout.Field(form, "单位 / 账套名称", _name);
         DialogLayout.Field(form, "会计制度", _template);
         DialogLayout.Field(form, "会计年度", _year);
         DialogLayout.Field(form, "启用月份", _month);
-        form.Children.Add(new TextBlock { Text = "账套建立后固定制度与版本。首版仅支持单年度人民币基础账务。",
+        form.Children.Add(new TextBlock { Text = "账套建立后固定制度与版本。首版仅支持单年度人民币基础账务；民非专有核算尚未完备，暂不开放新建。",
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 12, 0, 0) });
         form.Children.Add(_error);
         DialogLayout.Buttons(form, this, "选择保存位置…", Accept);
@@ -69,6 +75,7 @@ public sealed class NewBookWindow : Window
         if (!int.TryParse(_year.Text, out var year) || year is < 2000 or > 2100)
         { _error.Text = "请输入2000至2100之间的会计年度。"; return; }
         if (SelectedTemplate is not { } template) { _error.Text = "请选择会计制度。"; return; }
+        if (template.Regime == AccountingRegime.Nonprofit) { _error.Text = "本版暂未开放民非账套，请等待专有核算完成后使用。"; return; }
         var month = (int)_month.SelectedItem;
         Book = new BookInfo(Guid.NewGuid(), _name.Text.Trim(), template.Regime, template.Version,
             year, month, month - 1, DateTimeOffset.UtcNow);
@@ -85,7 +92,9 @@ public sealed class AccountWindow : Window
     private readonly Account? _original;
     public Account? Result { get; private set; }
 
-    public AccountWindow(Account? account, string? parentCode)
+    public AccountWindow(Account? account, string? parentCode) : this(account, parentCode, null) { }
+
+    public AccountWindow(Account? account, string? parentCode, Action<Account>? save)
     {
         _original = account;
         var form = DialogLayout.Form(this, account is null ? "新增会计科目" : "修改会计科目");
@@ -99,12 +108,20 @@ public sealed class AccountWindow : Window
         _active.Margin = new Thickness(0, 16, 0, 0); form.Children.Add(_active); form.Children.Add(_error);
         DialogLayout.Buttons(form, this, "确定", () =>
         {
-            if (string.IsNullOrWhiteSpace(_code.Text) || string.IsNullOrWhiteSpace(_name.Text))
-            { _error.Text = "科目代码和名称不能为空。"; return; }
-            Result = new Account(_code.Text.Trim(), _name.Text.Trim(), string.IsNullOrWhiteSpace(_parent.Text) ? null : _parent.Text.Trim(),
-                _direction.SelectedIndex == 1 ? BalanceDirection.Credit : BalanceDirection.Debit, _active.IsChecked == true,
-                _original?.OpeningDebit ?? 0m, _original?.OpeningCredit ?? 0m);
-            DialogResult = true;
+            try
+            {
+                var code = _code.Text.Trim();
+                if (code.Length is < 4 or > 32 || !code.All(c => c is >= '0' and <= '9'))
+                    throw new LedgerValidationException("科目代码请输入4至32位数字。");
+                if (string.IsNullOrWhiteSpace(_name.Text)) throw new LedgerValidationException("科目名称不能为空。");
+                var result = new Account(code, _name.Text.Trim(), string.IsNullOrWhiteSpace(_parent.Text) ? null : _parent.Text.Trim(),
+                    _direction.SelectedIndex == 1 ? BalanceDirection.Credit : BalanceDirection.Debit, _active.IsChecked == true,
+                    _original?.OpeningDebit ?? 0m, _original?.OpeningCredit ?? 0m);
+                save?.Invoke(result);
+                Result = result;
+                DialogResult = true;
+            }
+            catch (Exception ex) { _error.Text = SaveError.Message(ex); }
         });
     }
 }

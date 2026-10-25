@@ -17,15 +17,17 @@ public partial class VoucherEditorWindow : Window
     private readonly Func<VoucherDraft, Voucher> _save;
     private readonly bool _readOnly;
     private readonly ObservableCollection<VoucherLineEdit> _lines = [];
-    private bool _dirty, _saved, _ready;
+    private bool _dirty, _saved, _ready, _saving;
+    private readonly long? _baseRevision;
     public Voucher? SavedVoucher { get; private set; }
 
     public VoucherEditorWindow(BookInfo book, IReadOnlyList<Account> accounts, Voucher? voucher,
-        string operatorName, Func<VoucherDraft, Voucher> save)
+        string operatorName, Func<VoucherDraft, Voucher> save, bool forceReadOnly = false,
+        long? expectedRevision = null)
     {
         InitializeComponent();
-        _book = book; _accounts = accounts; _original = voucher; _save = save;
-        _readOnly = voucher is not null && voucher.Status != VoucherStatus.Draft;
+        _book = book; _accounts = accounts; _original = voucher; _save = save; _baseRevision = expectedRevision;
+        _readOnly = forceReadOnly || voucher is not null && voucher.Status != VoucherStatus.Draft;
         BookText.Text = book.Name;
         var defaultMonth = Math.Clamp(book.ClosedThroughMonth + 1, book.StartMonth, 12);
         DateInput.SelectedDate = voucher?.Date.ToDateTime(TimeOnly.MinValue) ?? new DateTime(book.FiscalYear, defaultMonth, 1);
@@ -88,7 +90,8 @@ public partial class VoucherEditorWindow : Window
     private void Save_Click(object sender, RoutedEventArgs e) => Save();
     private void Save()
     {
-        if (_readOnly) return;
+        if (_readOnly || _saving || _saved) return;
+        _saving = true; SaveButton.IsEnabled = false; ErrorText.Text = "";
         try
         {
             LinesGrid.CommitEdit(DataGridEditingUnit.Cell, true); LinesGrid.CommitEdit(DataGridEditingUnit.Row, true);
@@ -97,12 +100,15 @@ public partial class VoucherEditorWindow : Window
                 throw new LedgerValidationException("附单张数请输入非负整数。");
             var lines = _lines.Where(l => !l.IsEmpty).Select((line, index) => line.ToLine(index + 1)).ToArray();
             var draft = new VoucherDraft(_original?.Id, DateOnly.FromDateTime(date), KindInput.Text.Trim(),
-                _original?.Number, attachments, lines);
+                _original?.Number, attachments, lines, _baseRevision, _book.Id);
             SavedVoucher = _save(draft); _saved = true; DialogResult = true;
         }
-        catch (Exception ex) when (ex is LedgerValidationException or StoreConcurrencyException or ArgumentException
-            or InvalidOperationException or OverflowException or System.IO.IOException)
-        { ErrorText.Text = ex.Message; }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Trace.TraceError("Voucher save failed: {0}", ex);
+            ErrorText.Text = SaveError.Message(ex);
+        }
+        finally { _saving = false; SaveButton.IsEnabled = !_readOnly && !_saved; }
     }
 
     private void AddLine_Click(object sender, RoutedEventArgs e)

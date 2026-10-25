@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="记账凭证" Width="1060" Height="710" MinWidth="900" MinHeight="600"
         WindowStartupLocation="CenterOwner" UseLayoutRounding="True">
-  <DockPanel Margin="20">
+  <DockPanel Margin="20" Background="#F3F6FA">
     <StackPanel DockPanel.Dock="Top">
       <DockPanel Margin="0,0,0,14">
         <Button DockPanel.Dock="Right" Content="打印" Click="Print_Click" Padding="16,7" Margin="8,0,0,0" />

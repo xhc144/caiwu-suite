@@ -12,7 +12,7 @@ public partial class App : Application
     {
         base.OnStartup(e);
         var backend = new DesktopBackend(SqliteLedgerStore.Open, SqliteLedgerStore.Create,
-            SqliteLedgerStore.RestoreBackup, store => new LedgerService(store), TemplateCatalog.All);
+            SqliteLedgerStore.RestoreBackup, store => new PreviewLedgerService(new LedgerService(store)), TemplateCatalog.All);
         if (e.Args.Length == 2 && e.Args[0] == "--smoke-test")
         {
             UiVerification.Run(this, backend, e.Args[1]);

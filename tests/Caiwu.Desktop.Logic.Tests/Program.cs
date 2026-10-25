@@ -11,12 +11,20 @@ void Check(bool condition, string message)
 }
 Check(AmountInput.Parse("0.10", "金额") + AmountInput.Parse("0.20", "金额") == 0.30m, "金额输入保持十进制精度");
 Check(AmountInput.Parse("", "金额") == 0m && AmountInput.Parse("1,234.50", "金额") == 1234.50m, "空金额和千分位输入");
-foreach (var invalid in new[] { "1.001", "-1", "1e4", "不是金额" })
+foreach (var invalid in new[] { "1.001", "-1", "1e4", "不是金额", "1,23", "1,,2", "12,34.56", "100,00",
+    "1234,567", "1,234,", "1.2.3", "1.000", "1\u200B23", "92233720368547758.08", "792281625142643375935439503.35" })
 {
     var rejected = false;
     try { AmountInput.Parse(invalid, "测试金额"); } catch (LedgerValidationException) { rejected = true; }
     Check(rejected, "拒绝非法金额：" + invalid);
 }
+Check(AmountInput.Parse("92,233,720,368,547,758.07", "金额") == 92233720368547758.07m, "金额存储边界不静默舍入");
+CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
+Check(AmountInput.Parse("1.234,56", "金额") == 1234.56m && AmountInput.Parse("1,23", "金额") == 1.23m,
+    "按实际区域区分小数符和千分位");
+CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("hi-IN");
+Check(AmountInput.Parse("12,34,567.89", "金额") == 1234567.89m, "支持区域的三二位分组");
+CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("zh-CN");
 
 var account = new Account("1002", "银行存款", null, BalanceDirection.Debit, true, 100000m, 0m);
 var book = new BookInfo(Guid.NewGuid(), "界面会话测试", AccountingRegime.SmallBusiness, "test", 2026, 10, 9, DateTimeOffset.UtcNow);
