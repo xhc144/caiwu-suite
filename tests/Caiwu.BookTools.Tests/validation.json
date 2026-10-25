@@ -1,0 +1,44 @@
+{
+  "dateUtc": "2026-10-25",
+  "branch": "codex/book-copy-tools",
+  "baseCommit": "a49d426d8513600dec0f624f56a35c9ad66e71d4",
+  "environment": "Debian 13 x64",
+  "sdk": "10.0.402",
+  "runtime": "10.0.13",
+  "microsoftDataSqlite": "10.0.13",
+  "data": "Synthetic account books only; no original installer, real account books, original SQL or derived catalogs",
+  "checks": [
+    { "command": "dotnet restore tests/Caiwu.BookTools.Tests/Caiwu.BookTools.Tests.csproj --locked-mode", "exitCode": 0 },
+    { "command": "dotnet test tests/Caiwu.BookTools.Tests/Caiwu.BookTools.Tests.csproj -c Release --no-restore --logger \"trx;LogFileName=booktools.trx\"", "exitCode": 0, "passed": 40, "failed": 0, "skipped": 0 },
+    { "command": "dotnet restore src/Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj --locked-mode", "exitCode": 0 },
+    { "command": "dotnet build src/Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj -c Release --no-restore", "exitCode": 0, "warnings": 0, "errors": 0 }
+  ],
+  "independentNumericExpectations": {
+    "sourceOpeningBankDebit": "100000.00",
+    "postedPeriodDebitAndCredit": "31200.00",
+    "fullCopyClosingBankDebit": "108800.00",
+    "fullCopyClosingMaterialDebit": "10000.00",
+    "fullCopyClosingExpenseDebit": "1200.00",
+    "fullCopyClosingRevenueCredit": "20000.00",
+    "fullCopyClosingDebitAndCredit": "120000.00",
+    "openingOnlyBankDebit": "100000.00"
+  },
+  "verification": [
+    "Raw SQL identity/name/revision, integer cents, voucher count, integrity and foreign keys",
+    "Full contract-field preservation, nested line order, voucher states, original audit IDs and deleted-voucher references",
+    "New book revision starts at one; restore preserves original identity and revision",
+    "Original and read-only backup hashes unchanged",
+    "Preview/input/cancel filesystem side effects, explicit approval, concurrency guard and source refresh",
+    "Stale fields rejected even when revision unchanged; source changes after capture excluded",
+    "Committed WAL included and uncommitted writer excluded",
+    "Prepublication cancellation, destination/sidecar races and corrupt saved-readback leave no partial target",
+    "Only owned temporary files deleted; unknown files preserved with cleanup diagnostics"
+  ],
+  "notRun": [
+    "Actual Windows WPF interaction, keyboard, DPI and accessibility",
+    "Desktop menu/session integration and Delivery managed-book registration",
+    "Windows filesystem aliases, actual power-loss recovery or production accounting certification"
+  ],
+  "priorFailure": "One test asserted unescaped Chinese text inside standard JSON; corrected to parse SourceName. The subsequent 40-test run passed.",
+  "scope": ["src/Caiwu.BookTools/**", "tests/Caiwu.BookTools.Tests/**"]
+}
