@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -65,9 +66,9 @@ internal static class Program
     }
     private static async Task ProbeAsync(string id, bool accept)
     {
-        var backend = (DesktopBackend)typeof(App).GetMethod("CreateBackend", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
-        var path = Path.Combine(output, id + ".caiwu"); SampleLedger.Create(backend, path);
-        var main = new MainWindow(backend); Application.Current.MainWindow = main; main.Show();
+        var backend = SyntheticDesktopIdentity.Backend;
+        var path = Path.Combine(output, id + ".caiwu"); SyntheticDesktopIdentity.SeedSample(path);
+        var main = SyntheticDesktopIdentity.CreateMain(backend); Application.Current.MainWindow = main; main.Show();
         Call(main, "OpenVerificationBook", path);
         var editor = (VoucherEditorWindow)Call(main, "CreateVerificationEditor", (object?)null)!; editor.Show();
         await SettleAsync();

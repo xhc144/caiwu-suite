@@ -17,7 +17,7 @@ internal sealed class FeatureWindowMonitor : IDisposable
         timer.Tick += Tick; window.PreviewKeyDown += Key; window.PreviewMouseDown += Mouse;
         window.Closed += Closed; timer.Start();
     }
-    private void Tick(object? sender, EventArgs e) => Check();
+    private async void Tick(object? sender, EventArgs e) { await binding.Authentication.CheckAsync(); Check(); }
     private bool Check()
     {
         if (binding.IsCurrent) return true;

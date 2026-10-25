@@ -21,6 +21,7 @@ using Caiwu.VoucherTools;
 using Caiwu.BookTools;
 using Caiwu.BookTools.Wpf;
 using Caiwu.Delivery;
+using Caiwu.Operators;
 
 internal static class Program
 {
@@ -45,19 +46,24 @@ internal static class Program
             var service = new LedgerService(seed); var s = service.GetSnapshot();
             service.SaveDraft(new(null, new(2026, 1, 1), "记", 1, 0, [new("1002", "合成凭证", 100.25m, 0), new("3001", "合成凭证", 0, 100.25m)], s.Revision, s.Book.Id), "源制单人");
         }
-        var backend = new DesktopBackend(p => SqliteLedgerStore.Open(p), (p, b, a) => SqliteLedgerStore.Create(p, b, a),
-            SqliteLedgerStore.RestoreBackup, s => new PreviewLedgerService(new LedgerService(s)), []);
+        const string syntheticPassword = "Feature-Only-Synthetic-Password!2026";
+        var operators = new LocalOperatorService(new FileOperatorStore(Path.Combine(temporary, "operators")));
+        operators.InitializeAdministrator("fixture-admin", "合成管理员", syntheticPassword); var admin = operators.Login("fixture-admin", syntheticPassword);
+        var maker = operators.AddOperator(admin, operators.GetDirectory(admin).Revision, "fixture-maker", "合成制单人", syntheticPassword,
+            OperatorRoles.Administrator | OperatorRoles.Preparer | OperatorRoles.Accountant);
+        var login = operators.Login(maker.LoginName, syntheticPassword); var authentication = new FeatureAuthentication(operators, login);
+        var backend = App.CreateAuthenticatedBackend(operators, login);
         using var session = new LedgerSession(backend); session.Open(path);
         PendingVoucherCopy Pending(int number)
         {
             var s = session.Snapshot!;
-            var plan = new VoucherCopyPlanner().Plan(s, s.Vouchers[0].Id, new(new(2026, 1, 2), "记", number, 0, "当前制单人")).Plan!;
-            return new(new(session, s), plan);
+            var plan = new VoucherCopyPlanner().Plan(s, s.Vouchers[0].Id, new(new(2026, 1, 2), "记", number, 0, authentication.ActorKey)).Plan!;
+            return new(new(session, s, authentication), plan);
         }
         Check("HOST-MENUS-AND-DISABLED-POLICY-GATES", () =>
         {
-            var host = new MainWindow(backend); app.MainWindow = host;
-            host.InitializeDesktopFeatures(new()); host.Show(); Pump();
+            var host = new MainWindow(backend, authentication); app.MainWindow = host;
+            host.Show(); Pump();
             typeof(MainWindow).GetMethod("OpenVerificationBook", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(host, [path]); Pump();
             var menu = ((DockPanel)host.Content).Children.OfType<Menu>().Single();
             var business = menu.Items.OfType<MenuItem>().Single(i => i.Header.ToString()!.StartsWith("实务操作"));
@@ -95,7 +101,7 @@ internal static class Program
                 rows[1].CreditText = "100.25"; Click(Find<Button>(dialog, "Feature.Copy.Save"));
                 Until(() => pending.SavedVoucher is not null && !dialog.IsVisible);
             });
-            Assert(pending.SavedVoucher is { Status: VoucherStatus.Draft, ReviewedBy: null } v && v.Id != pending.Plan.SourceVoucherId && v.PreparedBy == "当前制单人", "Saved identity/state/operator invalid.");
+            Assert(pending.SavedVoucher is { Status: VoucherStatus.Draft, ReviewedBy: null } v && v.Id != pending.Plan.SourceVoucherId && v.PreparedBy == authentication.ActorKey, "Saved identity/state/operator invalid.");
             Assert(session.Service!.GetSnapshot().Vouchers.Count == before.Vouchers.Count + 1, "Saved more than once."); session.Refresh();
         });
         Check("COPY-SAME-BOOK-REOPEN-DISABLES-OLD-WINDOW", () =>
@@ -114,7 +120,7 @@ internal static class Program
         var registration = new SummaryFeatureRegistration(catalog, "synthetic.summary.attachment", "合成测试登记；不替代真实 Delivery 清单");
         Check("SUMMARY-ASYNC-PERSISTENCE-AND-UI-THREAD-STATE", () =>
         {
-            var recording = new RecordingCatalog(catalog); var dialog = new AsyncSummaryManagerWindow(new(session, session.Snapshot!), registration with { Catalog = recording });
+            var recording = new RecordingCatalog(catalog); var dialog = new AsyncSummaryManagerWindow(new(session, session.Snapshot!, authentication), registration with { Catalog = recording });
             var uiThread = Environment.CurrentManagedThreadId; var notifications = new List<int>();
             dialog.State.PropertyChanged += (_, _) => notifications.Add(Environment.CurrentManagedThreadId);
             var ticks = 0; var pulse = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(10) }; pulse.Tick += (_, _) => ticks++;
@@ -136,7 +142,7 @@ internal static class Program
         });
         Check("SUMMARY-CONFLICT-AND-INVALID-QUERY-RETAIN-INPUT", () =>
         {
-            var dialog = new AsyncSummaryManagerWindow(new(session, session.Snapshot!), registration);
+            var dialog = new AsyncSummaryManagerWindow(new(session, session.Snapshot!, authentication), registration);
             Drive(dialog, () =>
             {
                 Until(() => dialog.State.Snapshot is not null);
@@ -152,7 +158,7 @@ internal static class Program
         });
         Check("SUMMARY-SAME-BOOK-RESTORE-DISABLES-OLD-WINDOW", () =>
         {
-            var dialog = new AsyncSummaryManagerWindow(new(session, session.Snapshot!), registration); var before = catalog.Read().Version;
+            var dialog = new AsyncSummaryManagerWindow(new(session, session.Snapshot!, authentication), registration); var before = catalog.Read().Version;
             Drive(dialog, () =>
             {
                 Until(() => dialog.State.Snapshot is not null); var backup = Path.Combine(temporary, "same-id.caiwubak"); session.BackupTo(backup);
@@ -163,7 +169,7 @@ internal static class Program
         });
         Check("COST-WORKSHEET-PREVIEW-DOES-NOT-POST-AND-INVALIDATES", () =>
         {
-            var before = session.Service!.GetSnapshot().Revision; var binding = new FeatureSessionBinding(session, session.Snapshot!);
+            var before = session.Service!.GetSnapshot().Revision; var binding = new FeatureSessionBinding(session, session.Snapshot!, authentication);
             var dialog = new SessionFeatureWindow(binding); var page = new CostWorksheetPage(book.Id, new(2026, 1, 2));
             ((DockPanel)dialog.Content).Children.OfType<DockPanel>().Single().Children.Add(page);
             Drive(dialog, () =>
@@ -208,7 +214,17 @@ internal static class Program
             Assert(copied.Read().Vouchers.Count == s.Vouchers.Count && session.DatabasePath == source && session.Snapshot!.Book.Id == s.Book.Id,
                 "Copy lost contents or automatically switched the source session.");
         });
-        session.Close();
+        Check("UNAUTHENTICATED-HOST-ALL-FEATURES-DISABLED", () =>
+        {
+            var host = new MainWindow(backend); host.Show(); Pump();
+            var menu = ((DockPanel)host.Content).Children.OfType<Menu>().Single();
+            var items = menu.Items.OfType<MenuItem>().SelectMany(i => i.Items.OfType<MenuItem>()).Where(i =>
+                i.Header.ToString() is "复制凭证为新草稿…" or "常用摘要管理…" or "复制账套…" or "成本工作表（审核建议）…").ToArray();
+            Assert(items.Length == 4 && items.All(i => !i.IsEnabled && i.ToolTip!.ToString()!.Contains("未认证")), "Missing login enabled business action.");
+            Assert(!((ComboBox)host.FindName("OperatorInput")).IsEditable && !((ComboBox)host.FindName("OperatorInput")).IsEnabled, "Arbitrary operator text still editable.");
+            host.Close();
+        });
+        session.Close(); operators.Logout(login); operators.Logout(admin);
         File.WriteAllText(Path.Combine(evidence, "results.json"), JsonSerializer.Serialize(new { syntheticOnly = true, windowsExecuted = true,
             physicalKeyboardOrImeTested = false, os = Environment.OSVersion.ToString(), results = Results }, new JsonSerializerOptions { WriteIndented = true }));
         app.Shutdown(); Directory.Delete(temporary, true); return failures == 0 ? 0 : 1;

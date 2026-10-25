@@ -26,7 +26,7 @@ public sealed class AsyncSummaryManagerWindow : SessionFeatureWindow
         AutomationProperties.SetAutomationId(categories, "Feature.Summary.Categories");
         AutomationProperties.SetAutomationId(entries, "Feature.Summary.Entries");
         AutomationProperties.SetAutomationId(draft, "Feature.Summary.Draft");
-        adapter = new(new SessionSummaryCatalog(binding, registration.Catalog), binding.Shown.Book.Name);
+        adapter = new(new SessionSummaryCatalog(binding, registration.Catalog, registration.ManagementPermission), binding.Shown.Book.Name);
         State = adapter.State;
         var top = new StackPanel(); DockPanel.SetDock(top, Dock.Top);
         top.Children.Add(new TextBlock { Text = $"摘要文件：{registration.Catalog.Location.CatalogPath}", TextWrapping = TextWrapping.Wrap });

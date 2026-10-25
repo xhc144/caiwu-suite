@@ -1,5 +1,21 @@
 # 新功能桌面接入交接
 
+## 10:20 UTC 接线更新（优先于下文最初 hook 交接）
+
+根已明确移交 Desktop 项目引用、MainWindow 行为、App 组合根及相关测试适配。本分支现在已经实际加好五个项目引用、构造函数初始化与登录组合，不再仅留 hook。新增第五个依赖为 Operators `1957435365390756fd8267937fd0ec408b1e498f`（先 `7a1e673`），实际采用 `AuthorizedLedgerServiceFactory.BindSession`。原四个作者模块仍由根集成其源码，不在本任务重写。
+
+App 在 `LocalApplicationData/CaiwuSuite/Operators` 使用真实 FileOperatorStore/LocalOperatorService，先首次设置，再显式登录；取消不创建 backend/MainWindow/可写账套会话。生产没有默认密码或跳过认证参数；旧 `--smoke-test` 现在拒绝并以 exit 2 结束，原 `Verification/**` 从发行程序集排除。`packaging/build.ps1` 的旧 smoke 调用须由 packaging owner 改成独立测试宿主，不能恢复产品认证后门。
+
+`App.CreateAuthenticatedBackend(operators, fixedLogin)` 是真实组合 API：Open→ReadLedger，Create/Restore→RestoreLedger，原 Delivery 源文件检查与 Storage 不覆盖规则保留；Core 只在固定登录的授权 factory 闭包内创建，九写三读集中守卫。现有 Backup handler 额外检查 BackupLedger。MainWindow 构造接受该真实 backend 与 `FeatureAuthentication`；没有认证时不创建 LedgerSession，四个新业务入口全部禁用并显示原因。顶栏 ComboBox 在行为代码中禁用任意姓名并显示本次登录的 DisplayName，`OperatorName()` 不读 UI 文本。系统管理菜单已接真实管理/本人改密/注销换人窗口。
+
+注销/换人先撤销原 OperatorSession、关闭原 LedgerSession 增加 generation，再关闭主窗并由 App 重新登录、创建全新固定 backend；取消保持未登录。新窗口绑定原登录对象，复制计划只使用可信 ActorKey，保存通过集中装饰器传空旧姓名参数。摘要管理权限由注册明确指定（默认 PrepareVoucher），账套复制额外检查 RestoreLedger，成本只读预览检查 ReadLedger。后台授权轮询不会在 UI 线程读身份文件。
+
+`tests/Caiwu.Desktop.FeatureTests/Shared/SyntheticDesktopIdentity.cs` 仅在独立测试项目编译：正常创建虚构身份并登录，再调用真实组合 API；没有产品测试开关。既有 VisualReview、NativeFocus、HighResolution、MutationWindows、DualWindows、Wpf 与导航宿主已改用该夹具，保留原焦点、金额、快照、数据无变化与窗口输入断言；双进程共享虚构身份目录，并仍各自正常登录。产品主 XAML/Themes 未改。
+
+**仍保留禁用：**App 没有伪造摘要附件登记或 BookTools Delivery 租约。当前 Delivery 的完整安装/数据校验作用域是 internal `Installation.WithExclusiveData`，public `AcquireLease` 仅安装锁，不能代替数据锁；本任务不复制这套内部协议或放宽保护。因此默认账套复制仍显示未配置原因。摘要目录/附件的整体备份恢复也没有现成宿主登记协议，当前保留清楚的实际配置接点和默认禁用，不能把任意字符串当成登记完成。
+
+下文旧四引用/一处 hook 是最初的集成说明，当前源码已实施它们；当前必须使用以上第五依赖和真实登录组合，禁止回退为可编辑姓名。
+
 本改动只新增 `Features/**`、`MainWindow.Features.cs` 和 `tests/Caiwu.Desktop.FeatureTests/**`。主窗口行为及视觉 owner 仍独占原 `.xaml/.xaml.cs`、App、Theme、项目引用和 workflow。未接触书库、原安装包、真实账套或新派生 catalog。
 
 ## 根需要应用的最小接线

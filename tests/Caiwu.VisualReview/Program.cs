@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -38,10 +39,9 @@ internal static class Program
         {
             using var desktop = NativeDesktopMode.EnsureFullHd();
             app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            var backend = new DesktopBackend(SqliteLedgerStore.Open, SqliteLedgerStore.Create,
-                SqliteLedgerStore.RestoreBackup, s => new LedgerService(s), TemplateCatalog.All);
+            var backend = SyntheticDesktopIdentity.Backend;
             var path = Path.Combine(output, "synthetic-visual-" + Guid.NewGuid().ToString("N") + ".caiwu");
-            var postedId = SampleLedger.Create(backend, path);
+            var postedId = SyntheticDesktopIdentity.SeedSample(path);
             using var store = SqliteLedgerStore.Open(path);
             var service = new LedgerService(store);
             var snapshot = service.GetSnapshot();
@@ -56,7 +56,7 @@ internal static class Program
                     service.Review(voucher.Id, "审核员", new(reviewPlan.Book.Id, reviewPlan.Revision));
                 }
             }
-            var main = new MainWindow(backend); app.MainWindow = main; main.Show(); Pump();
+            var main = SyntheticDesktopIdentity.CreateMain(backend); app.MainWindow = main; main.Show(); Pump();
             Call(main, "OpenVerificationBook", path); Pump(); SizeNative(main);
             Call(main, "ShowVerificationPage", 0); Pump(); Capture(main, "01-workspace.png");
             Call(main, "ShowVerificationPage", 1); Pump(); Capture(main, "02-vouchers.png");
