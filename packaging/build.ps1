@@ -10,6 +10,7 @@ try {
     }
     $artifactDirectory = Join-Path $projectRoot 'artifacts'
     $publishDirectory = Join-Path $artifactDirectory 'publish/win-x64'
+    $deliveryPaused = Test-Path (Join-Path $projectRoot 'docs/acceptance/DELIVERY_PAUSED.md')
     New-Item -ItemType Directory -Force -Path $artifactDirectory | Out-Null
     Invoke-DotNet -Arguments @('build', 'Caiwu.slnx', '-c', 'Release', '--nologo')
     if (-not $SkipTests) {
@@ -31,17 +32,26 @@ try {
             }
         }
     }
-    Invoke-DotNet -Arguments @('publish', 'src/Caiwu.Desktop/Caiwu.Desktop.csproj', '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=false', '-o', $publishDirectory)
+    if ($deliveryPaused) {
+        # The held validation path uses the already built real Windows app. A RID
+        # publish restores a different lock graph and dirties tracked source locks,
+        # which correctly makes the following source-identity guard refuse to run.
+        $desktopExecutable = Join-Path $projectRoot 'src/Caiwu.Desktop/bin/Release/net10.0-windows/Caiwu.Desktop.exe'
+    } else {
+        Invoke-DotNet -Arguments @('publish', 'src/Caiwu.Desktop/Caiwu.Desktop.csproj', '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=false', '-o', $publishDirectory)
+        $desktopExecutable = Join-Path $publishDirectory 'Caiwu.Desktop.exe'
+    }
     if (-not $SkipTests) {
         $verificationDirectory = Join-Path $artifactDirectory 'verification'
         New-Item -ItemType Directory -Force -Path $verificationDirectory | Out-Null
-        $process = Start-Process -FilePath (Join-Path $publishDirectory 'Caiwu.Desktop.exe') -ArgumentList @('--smoke-test', ('"' + $verificationDirectory + '"')) -PassThru
+        if (-not (Test-Path $desktopExecutable)) { throw "Built Windows application is missing: $desktopExecutable" }
+        $process = Start-Process -FilePath $desktopExecutable -ArgumentList @('--smoke-test', ('"' + $verificationDirectory + '"')) -PassThru
         if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'WPF verification timed out.' }
         if ($process.ExitCode -ne 0) { throw "WPF verification failed ($($process.ExitCode)); see artifacts/verification." }
         if (-not (Test-Path (Join-Path $verificationDirectory 'ui-verification.json'))) { throw 'WPF verification did not produce its result.' }
         & ./tests/Caiwu.Acceptance/Wpf/run.ps1 -OutputDirectory (Join-Path $artifactDirectory 'independent-acceptance')
     }
-    if (Test-Path (Join-Path $projectRoot 'docs/acceptance/DELIVERY_PAUSED.md')) {
+    if ($deliveryPaused -or (Test-Path (Join-Path $projectRoot 'docs/acceptance/DELIVERY_PAUSED.md'))) {
         Write-Warning 'Independent acceptance has paused delivery. Tests and WPF evidence were generated; no distribution archive or installer is produced.'
         return
     }

@@ -9,7 +9,10 @@ $OutputDirectory = (Resolve-Path $OutputDirectory).Path
 if (-not $ReviewedSourceRoot) { $ReviewedSourceRoot = $root }
 $ReviewedSourceRoot = (Resolve-Path $ReviewedSourceRoot).Path
 & git -C $ReviewedSourceRoot diff --quiet HEAD -- src
-if ($LASTEXITCODE -ne 0) { throw 'Reviewed production sources have local edits; refusing ambiguous source identity.' }
+if ($LASTEXITCODE -ne 0) {
+    & git -C $ReviewedSourceRoot diff --name-only HEAD -- src | Set-Content (Join-Path $OutputDirectory 'source-identity-diff.txt')
+    throw 'Reviewed production sources have local edits; refusing ambiguous source identity. See source-identity-diff.txt.'
+}
 $env:CAIWU_ACCEPTANCE_CHECKOUT_COMMIT = (& git -C $ReviewedSourceRoot rev-parse HEAD).Trim()
 $env:CAIWU_ACCEPTANCE_SOURCE_TREE = (& git -C $ReviewedSourceRoot rev-parse 'HEAD:src').Trim()
 $resultPath = Join-Path $OutputDirectory 'wpf-results.json'
