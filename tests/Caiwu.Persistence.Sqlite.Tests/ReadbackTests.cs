@@ -69,10 +69,18 @@ public sealed class ReadbackTests : IDisposable
     {
         var before = State(store.Read());
         var input = State(next);
+        // These fixtures have no concurrent writer. A byte comparison is meaningful
+        // only for their complete DELETE-mode file, with all SQLite handles closed.
+        // File.ReadAllBytes intentionally keeps its restrictive sharing mode.
+        using (var db = Raw()) Assert.Equal("delete", Scalar(db, "PRAGMA journal_mode"));
+        store.Dispose();
         var bytes = File.ReadAllBytes(Database);
-        Assert.Throws<InvalidDataException>(() => store.Write(next, 1));
-        Assert.Equal(before, State(store.Read()));
-        Assert.Equal(input, State(next));
+        using (var attempt = SqliteLedgerStore.Open(Database))
+        {
+            Assert.Throws<InvalidDataException>(() => attempt.Write(next, 1));
+            Assert.Equal(before, State(attempt.Read()));
+            Assert.Equal(input, State(next));
+        }
         Assert.Equal(bytes, File.ReadAllBytes(Database));
         using var reopened = SqliteLedgerStore.Open(Database);
         Assert.Equal(before, State(reopened.Read()));
@@ -161,8 +169,9 @@ public sealed class ReadbackTests : IDisposable
         using (var db = Raw()) Sql(db, trigger);
         RefusedAndUnchanged(store, Next());
         using (var db = Raw()) Sql(db, "DROP TRIGGER silent");
-        store.Write(Next(), 1);
-        Assert.Equal(State(Next()), State(store.Read()));
+        using var accepted = SqliteLedgerStore.Open(Database);
+        accepted.Write(Next(), 1);
+        Assert.Equal(State(Next()), State(accepted.Read()));
     }
 
     [Fact]
@@ -327,20 +336,45 @@ public sealed class ReadbackTests : IDisposable
             COMMIT;
             """);
         var before = State(store.Read());
+        using (var db = Raw()) Assert.Equal("delete", Scalar(db, "PRAGMA journal_mode"));
+        store.Dispose();
         var bytesBefore = File.ReadAllBytes(Database);
-        var error = Record.Exception(() => store.Write(Next(), 1));
-        using (var db = Raw())
+        using (var attempt = SqliteLedgerStore.Open(Database))
         {
-            var actualLines = Scalar(db, "SELECT count(*) FROM voucher_lines WHERE voucher_id='22222222-2222-2222-2222-222222222222'");
-            var revision = Scalar(db, "SELECT revision FROM ledger");
-            var integrity = Scalar(db, "PRAGMA integrity_check");
-            Assert.True(error is InvalidDataException,
-                $"{conflict}: expected semantic rejection; actualError={error?.GetType().Name ?? "none"}, newVoucherLines={actualLines} (requested2), revision={revision}, integrity={integrity}");
-            Assert.Equal("ok", integrity);
+            var error = Record.Exception(() => attempt.Write(Next(), 1));
+            using (var db = Raw())
+            {
+                var actualLines = Scalar(db, "SELECT count(*) FROM voucher_lines WHERE voucher_id='22222222-2222-2222-2222-222222222222'");
+                var revision = Scalar(db, "SELECT revision FROM ledger");
+                var integrity = Scalar(db, "PRAGMA integrity_check");
+                Assert.True(error is InvalidDataException,
+                    $"{conflict}: expected semantic rejection; actualError={error?.GetType().Name ?? "none"}, newVoucherLines={actualLines} (requested2), revision={revision}, integrity={integrity}");
+                Assert.Equal("ok", integrity);
+            }
+            Assert.Equal(before, State(attempt.Read()));
         }
-        Assert.Equal(before, State(store.Read()));
         Assert.Equal(bytesBefore, File.ReadAllBytes(Database));
         using var independentlyReopened = SqliteLedgerStore.Open(Database);
         Assert.Equal(before, State(independentlyReopened.Read()));
+    }
+
+    [Fact]
+    public void Closed_file_byte_comparison_detects_a_committed_same_length_change()
+    {
+        using (Seed()) { }
+        var before = File.ReadAllBytes(Database);
+        using (var db = Raw())
+        {
+            Assert.Equal("delete", Scalar(db, "PRAGMA journal_mode"));
+            // Same UTF-8 length: a file-size-only check would miss this committed change.
+            Sql(db, "UPDATE ledger SET name='已改读回账套' WHERE singleton=1");
+        }
+        var after = File.ReadAllBytes(Database);
+        Assert.Equal(before.Length, after.Length);
+        Assert.NotEqual(Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(before)),
+            Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(after)));
+        using var reopened = SqliteLedgerStore.Open(Database);
+        Assert.Equal("已改读回账套", reopened.Read().Book.Name);
+        reopened.CheckIntegrity();
     }
 }
