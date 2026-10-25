@@ -28,6 +28,11 @@ public sealed class NonprofitPlanningService(NonprofitRules? rules = null)
         catch (OverflowException) { throw new NonprofitValidationException("NP_TOTAL_OVERFLOW", "Decimal amount overflow"); }
     }
     private static long Cents(decimal amount) => checked((long)(Money(amount) * 100m));
+    private static decimal MoneyFromCents(BigInteger cents)
+    {
+        Check(cents >= -long.MaxValue && cents <= long.MaxValue, "NP_TOTAL_OVERFLOW", "Amount exceeds the symmetric signed Int64-cent range");
+        return (long)cents / 100m;
+    }
     private static Guid Id(Guid book, Guid request, string scope)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"{book:D}|{request:D}|{scope}"));
@@ -79,14 +84,15 @@ public sealed class NonprofitPlanningService(NonprofitRules? rules = null)
                 "NP_RESTRICTION_EVIDENCE", "Nonempty evidence and specific conditions required");
         }
         Check(state.Balances.Select(b => new Key(b.AccountCode, b.Classification)).Distinct().Count() == state.Balances.Count, "NP_BALANCE_DUPLICATE", "Duplicate classified balance key");
-        decimal total = 0;
+        // This is a signed balance check, not a monetary field or a voucher-side total.
+        // Its exact intermediate sum must not depend on balance enumeration order.
+        BigInteger total = BigInteger.Zero;
         foreach (var balance in state.Balances)
         {
-            Money(balance.NetDebit);
+            total += Cents(balance.NetDebit);
             Check(balance.AccountCode != "3201" || balance.NetDebit == 0, "NP_UNSUPPORTED_PRIOR_ADJUSTMENT", "Prior-year adjustments require a separately reviewed workflow");
             if (balance.NetDebit != 0) ValidateClassification(state, balance.AccountCode, balance.Classification);
             else rules.Account(balance.AccountCode);
-            total = Add(total, balance.NetDebit);
         }
         Check(total == 0, "NP_UNBALANCED", "Source/planned balance snapshot must balance");
         Check(state.Receipts.Select(r => r.RequestId).Distinct().Count() == state.Receipts.Count, "NP_DUPLICATE_REQUEST", "Duplicate saved request receipt");
@@ -203,6 +209,7 @@ public sealed class NonprofitPlanningService(NonprofitRules? rules = null)
         var working = CopyState(state);
         foreach (var draft in drafts) working = ValidateAndProject(working, draft, release, activity);
         var next = working with { Revision = checked(state.Revision + 1), Receipts = Freeze(state.Receipts.Append(new(requestId, payload, Freeze(drafts.Select(v => v.Id))))) };
+        ValidateState(next);
         var before = state.Balances.ToDictionary(b => new Key(b.AccountCode, b.Classification), b => b.NetDebit);
         var after = next.Balances.ToDictionary(b => new Key(b.AccountCode, b.Classification), b => b.NetDebit);
         var changes = before.Keys.Union(after.Keys).OrderBy(Order, StringComparer.Ordinal)
@@ -282,10 +289,12 @@ public sealed class NonprofitPlanningService(NonprofitRules? rules = null)
             Check(from.Debit <= available, "NP_RELEASE_EXCEEDS_AVAILABLE", "Cannot release another grant or repeatedly release consumed net assets");
             Check(from.Debit == available, "NP_RELEASE_AMOUNT_SCOPE", "Full release covers this whole evidence record; partial scope needs separate evidence");
         }
-        foreach (var line in draft.Lines)
+        // A voucher changes a classified bucket atomically. Net its lines in wide cents
+        // before bounding the resulting field; reversing offsetting lines is immaterial.
+        foreach (var group in draft.Lines.GroupBy(line => new Key(line.AccountCode, line.Classification)))
         {
-            var key = new Key(line.AccountCode, line.Classification);
-            balances[key] = Add(balances.GetValueOrDefault(key), line.Debit - line.Credit);
+            var delta = group.Aggregate(BigInteger.Zero, (sum, line) => sum + Cents(line.Debit) - Cents(line.Credit));
+            balances[group.Key] = MoneyFromCents((BigInteger)Cents(balances.GetValueOrDefault(group.Key)) + delta);
         }
         var phase = state.Phase;
         if (draft.Kind == SuggestionKind.Closing)
