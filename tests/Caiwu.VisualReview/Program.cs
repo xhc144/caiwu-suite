@@ -133,6 +133,7 @@ internal static class Program
             var reportAmount = reportGrid.Columns.Single(c => c.Header?.ToString() == "期初借方");
             Require(reportAmount.GetCellContent(reportGrid.Items[0]) is TextBlock { TextAlignment: TextAlignment.Right }, "Generated report amount cells are not aligned right.");
             ValidateReportCells(reportGrid);
+            Require(((TextBlock)report.FindName("TotalText")).Text.Contains("100,000.00", StringComparison.Ordinal), "Displayed report totals were not grouped.");
             Checks.Add("Every visible report row matches header column positions and widths; amounts are right-aligned and grouped");
             report.Close(); Pump();
             main.Close(); Pump();
@@ -211,8 +212,8 @@ internal static class Program
         var problems = new List<string>();
         foreach (var item in grid.Items.OfType<Caiwu.Reporting.ReportRow>())
         {
-            var row = (DataGridRow)grid.ItemContainerGenerator.ContainerFromItem(item);
-            Require(row is not null, "Synthetic report row was not realized.");
+            var row = grid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow
+                ?? throw new InvalidOperationException("Synthetic report row was not realized.");
             var cells = Descendants<DataGridCell>(row).ToDictionary(c => c.Column.DisplayIndex);
             foreach (var column in grid.Columns)
             {
