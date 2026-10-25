@@ -1,0 +1,111 @@
+{
+  "passed": 38,
+  "renders": [
+    {
+      "name": "account-list",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "account-blocked",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "account-disabled",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "account-tree",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "account-tree-selected",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "account-composition",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "summary-library",
+      "width": 860,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "summary-cancel",
+      "width": 860,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "empty-accounts",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "empty-summaries",
+      "width": 860,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "invalid-chart",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "helper-account-accept",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "helper-account-cancel",
+      "width": 880,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "helper-summary-accept",
+      "width": 860,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "name": "helper-summary-cancel",
+      "width": 860,
+      "height": 570,
+      "dpiX": 96,
+      "dpiY": 96
+    }
+  ],
+  "platform": "Microsoft Windows NT 10.0.26100.0"
+}

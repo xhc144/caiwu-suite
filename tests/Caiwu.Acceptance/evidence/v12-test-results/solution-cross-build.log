@@ -1,0 +1,29 @@
+  Determining projects to restore...
+  Restored /workspace/caiwu-windows-revalidation/tests/Caiwu.Desktop.Logic.Tests/Caiwu.Desktop.Logic.Tests.csproj (in 393 ms).
+  Restored /workspace/caiwu-windows-revalidation/src/Caiwu.Contracts/Caiwu.Contracts.csproj (in 336 ms).
+  Restored /workspace/caiwu-windows-revalidation/src/Caiwu.Core/Caiwu.Core.csproj (in 397 ms).
+  Restored /workspace/caiwu-windows-revalidation/tests/Caiwu.Reporting.Tests/Integration/Caiwu.Reporting.Integration.Tests.csproj (in 372 ms).
+  Restored /workspace/caiwu-windows-revalidation/src/Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj (in 4 ms).
+  Restored /workspace/caiwu-windows-revalidation/tests/Caiwu.Integration.Tests/Caiwu.Integration.Tests.csproj (in 8 ms).
+  Restored /workspace/caiwu-windows-revalidation/tests/Caiwu.Core.Tests/Caiwu.Core.Tests.csproj (in 15 ms).
+  7 of 14 projects are up-to-date for restore.
+  Caiwu.Contracts -> /workspace/caiwu-windows-revalidation/src/Caiwu.Contracts/bin/Release/net10.0/Caiwu.Contracts.dll
+  Caiwu.Persistence.Sqlite -> /workspace/caiwu-windows-revalidation/src/Caiwu.Persistence.Sqlite/bin/Release/net10.0/Caiwu.Persistence.Sqlite.dll
+  Caiwu.Reporting -> /workspace/caiwu-windows-revalidation/src/Caiwu.Reporting/bin/Release/net10.0/Caiwu.Reporting.dll
+  Caiwu.Core -> /workspace/caiwu-windows-revalidation/src/Caiwu.Core/bin/Release/net10.0/Caiwu.Core.dll
+  IntegrationProbe -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Core.Tests/SqliteIntegrationProbe/bin/Release/net10.0/IntegrationProbe.dll
+  Caiwu.Integration.Tests -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Integration.Tests/bin/Release/net10.0/Caiwu.Integration.Tests.dll
+  Caiwu.Reporting.Tests -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Reporting.Tests/bin/Release/net10.0/Caiwu.Reporting.Tests.dll
+  Caiwu.Core.Tests -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Core.Tests/bin/Release/net10.0/Caiwu.Core.Tests.dll
+  Caiwu.Desktop.Logic.Tests -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Desktop.Logic.Tests/bin/Release/net10.0/Caiwu.Desktop.Logic.Tests.dll
+  Caiwu.Persistence.Sqlite.Tests -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll
+  Caiwu.Reporting.Integration.Tests -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Reporting.Tests/Integration/bin/Release/net10.0/Caiwu.Reporting.Integration.Tests.dll
+  Caiwu.Delivery -> /workspace/caiwu-windows-revalidation/packaging-next/src/Caiwu.Delivery/bin/Debug/net10.0/Caiwu.Delivery.dll
+  Caiwu.Desktop -> /workspace/caiwu-windows-revalidation/src/Caiwu.Desktop/bin/Release/net10.0-windows/Caiwu.Desktop.dll
+  Caiwu.Acceptance.Wpf -> /workspace/caiwu-windows-revalidation/tests/Caiwu.Acceptance/Wpf/bin/Release/net10.0-windows/Caiwu.Acceptance.Wpf.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.49

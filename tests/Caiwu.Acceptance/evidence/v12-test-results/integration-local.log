@@ -1,0 +1,13 @@
+PASS 真实SQLite保存并重开三张已记账凭证
+PASS 银行期末108800
+PASS 本期借贷各31200
+PASS 期末借贷各120000
+PASS 银行明细含期初与三条可追溯发生额
+PASS 真实存储下拒绝删除已记账凭证
+PASS 备份恢复副本保留凭证与revision
+PASS 真实存储下月结期间锁已持久化
+PASS 后续源账变化不影响恢复副本
+PASS Desktop报表适配器用真实账套和查询结果生成元数据
+PASS 当前状态筛选导出不混入已记账凭证
+PASS 凭证导出搜索覆盖全部分录而不是首行摘要
+Real SQLite/Core/session integration checks passed: 12

@@ -1,0 +1,81 @@
+{
+  "schema": "caiwu-independent-windows-handoff/1",
+  "codeCombinationCommit": "c70cd966fb814de87bd54b0921de3de4dc36dc08",
+  "productionSourceTree": "e0559c454e6675b0d269b1e4bfe7b8731702a1c5",
+  "deliverySourceTree": "0b29fc19779e4d8731224380c6a1488f1f16c743",
+  "coreBlob": "ec873a80c12486a792f627acedcee4b960d0a983",
+  "contractTree": "5282011ae8b5e38250e22310c3006a5a02dc373d",
+  "sqliteTree": "8901b46316cd14fd1e70e3b01cbc3a3c535d074c",
+  "sqliteBlob": "eaf5aa6508ddb1e89d2a5faac3b66bc01a1c2c05",
+  "remoteWindowsExecutedCommit": "6a4683955267306f8eb9544635560d214b5921f9",
+  "run": 40177493350,
+  "artifact": 12593102445,
+  "newWindowsExecuted": false,
+  "deliveryPaused": true,
+  "remoteWritesAfterPrDenial": false,
+  "sourceImports": {
+    "Delivery": "ef17e64d18f7bc85fd6cfe452d1d0418b018f568",
+    "Storage": "ecc5225f7aaf9e9d0fd79c13a8a14059dde6df4b",
+    "Contracts": "bb76658c19df94ab79e257db076d2ac8a39b7997",
+    "Core": "66621203066488c7e7a4115ede508e88ec58e3fa",
+    "NavigationProbes": "0f8fb850c75a5f249cca2f86bf63d8dbe4d91a9b"
+  },
+  "localCommits": [
+    {
+      "sha": "d236b5abe3d5014e417d2d7b9033a8476c34b566",
+      "subject": "Add real SQLite evidence for adjacent ledger mutation safety"
+    },
+    {
+      "sha": "866d6a7eed58d77e33204b9a877130c335804370",
+      "subject": "Define fail-closed ledger mutation snapshot context v1.2"
+    },
+    {
+      "sha": "f18fbe39a5610e1d98152a5844981c2ff397c712",
+      "subject": "Require original snapshot context for every ledger mutation"
+    },
+    {
+      "sha": "866bee734bc032dbd6bbfc1e2df9862e05808c9d",
+      "subject": "Record immutable v1.2 mutation safety and lifecycle evidence"
+    },
+    {
+      "sha": "20ff5003475d849e5792e756c54deae11c9352ae",
+      "subject": "Integrate exact ef17 Delivery schema fix for isolated verification"
+    },
+    {
+      "sha": "b77272bf377567c289c0ded4455b326b9326e9dc",
+      "subject": "Integrate exact ecc5225 SQLite transactional readback fix"
+    },
+    {
+      "sha": "f57438e38bcbb04916b47a5e5e780f3861670179",
+      "subject": "Bind desktop mutations to the shown v1.2 snapshot and open session"
+    },
+    {
+      "sha": "3594b4115ed9cad23dc58c98975ff37902a3efd7",
+      "subject": "Restore report filters business selection and both scroll axes after drilldown"
+    },
+    {
+      "sha": "4d44bc7949e21c8264c5172e9d2eba71e662434d",
+      "subject": "Require transactional rollback in the integrated Delivery adversarial control"
+    },
+    {
+      "sha": "9e1ead0d7276ab748a56925f7561f9568b6866fa",
+      "subject": "Prepare independent v1.2 UI revalidation and native four-page capture"
+    },
+    {
+      "sha": "1d5ab261ba4963a9f5f67586dd011a4fd76fb2ea",
+      "subject": "Revalidate trigger control as an exact rollback with hardened Storage"
+    },
+    {
+      "sha": "5af3d8ef08adb53069a0c6327532008e064d65b2",
+      "subject": "Add bounded actual-window probes for five stale mutations and clone restore"
+    },
+    {
+      "sha": "ec354e10f452e4f4416c69529bb7dd3d906f8eef",
+      "subject": "Match the real editable operator ComboBox in UI probes"
+    },
+    {
+      "sha": "c70cd966fb814de87bd54b0921de3de4dc36dc08",
+      "subject": "Keep synthetic SQLite backup binaries out of uploaded screenshot evidence"
+    }
+  ]
+}

@@ -1,0 +1,377 @@
+[
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-local-independent-final.json",
+    "bytes": 2523,
+    "sha256": "d11ccd995bd13f9dff3420dfca8edf4aafe7e5768dbe14c371dbd9309ffee774"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-local-independent.json",
+    "bytes": 2485,
+    "sha256": "51f11fbc71544db38d0290b4498e9f3877dda81d8fe8f621163493fcbef91b7f"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/core-local.trx",
+    "bytes": 226639,
+    "sha256": "7f6a1202a917fe9d2806646a17c1db83f1386a363eddd6357ab3a354d989bdd9"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/delivery-full-linux-after.json",
+    "bytes": 17121,
+    "sha256": "d74edbd9b58d32ce08bdc526ed7f0db07d5dae21102bcb7a1072a99553075458"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/delivery-full-linux-after.log",
+    "bytes": 21460,
+    "sha256": "4f5d4765e00db12d63a13fcda3f7eb314c50ec7893fafd5a65c54303dec750ce"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/delivery-full-linux.json",
+    "bytes": 23053,
+    "sha256": "2558c78957d321cd862dcd978d6485405870bd7bcd6c20e6688bd11583d9d519"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/delivery-schema-linux-after.json",
+    "bytes": 1630,
+    "sha256": "a2f6ea88184e4f60437051e51c26e6e7536aea850be8f16f2826134121c301dc"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/delivery-schema-linux.json",
+    "bytes": 2960,
+    "sha256": "0c43339408b562590a47748e0b6ec62103e733fc8a0002e8cd75a36819715d06"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/desktop-logic-local.log",
+    "bytes": 1135,
+    "sha256": "2fa3cebf1c4a32ba07043df95a210dbfcc9c416860159dc6bf34912c98510ff3"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/high-resolution-cross-build.log",
+    "bytes": 1073,
+    "sha256": "740bcea2a8dbd6cd2862efee8c24136d9e71b586029ce79d2b6483e399c60ba1"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/integration-local.log",
+    "bytes": 618,
+    "sha256": "ca26a3d51e8085bd91799196302ce0b69e5d5703ff5b15df9d6740dac53ed02a"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/mutation-windows-cross-build.log",
+    "bytes": 1507,
+    "sha256": "63a37bc2426cae5e0a93a1bcd2ec2c7c7e8a0701446cf54237665dcfef5efe84"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/navigation-cross-build.log",
+    "bytes": 1180,
+    "sha256": "862023ab27d7d6afd8ade72c083e0581a3a8944b515fed43db566ea842d9797d"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/reporting-integration-local.trx",
+    "bytes": 15492,
+    "sha256": "9efb3d002d9c20479300e1dcd80a29003838ea005610e123d11b2d1ff9c54b95"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/solution-cross-build.log",
+    "bytes": 2909,
+    "sha256": "b20866829f799cb7c300294be9f94dfd707bd725b3da9d0ffd7fff768999cc54"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/storage-local.trx",
+    "bytes": 168711,
+    "sha256": "b9901cc60f1973b93910f7cafb70f7814e84a1c6b38830fce0d5e9e38fdb7709"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/summary.json",
+    "bytes": 1062,
+    "sha256": "c405ae9d495f5b9509647bfb7467c9b2655fcb023305ec21001be9723b9a7f45"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/v12-test-results/v12-independent.log",
+    "bytes": 908,
+    "sha256": "f39b4413270394129fa308c42a32b4e9f8c8adbd4c4cb11d841684223fac04cd"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/delivery-components/current.json",
+    "bytes": 31906,
+    "sha256": "9bb656112d39762997cd91f789391bedbd01338d4ab7db7a41a05f9644e8918c"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/command.json",
+    "bytes": 52,
+    "sha256": "f0f5d9d2063715edf129fb1600c055e9249eeed9926655cff4ba653168ad0a0b"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/editor-event-1.png",
+    "bytes": 30368,
+    "sha256": "b7f634ab317693b5b5549e6d3cff31818129ba5b4453f99f74961d8d3cd0de34"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/editor-ready.png",
+    "bytes": 29380,
+    "sha256": "9ef7b3cd553bbd8b79c373a02a750037caff113015653af340a1bfe66479883f"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/event-1.json",
+    "bytes": 550,
+    "sha256": "928247db33fd400478f592b80193142802f759066e50826cecf4b8a85784c041"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/event-2.json",
+    "bytes": 663,
+    "sha256": "eb6067a409ac287698bbee0174f80259276b3a4b75c4e02703e2ab3450b855ff"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/main-window.png",
+    "bytes": 59186,
+    "sha256": "a91b753c4d92323a84d3674d905fa0f6c783bbdd0b1d99c33464c8beba780723"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/ready.json",
+    "bytes": 543,
+    "sha256": "744d3321296be6d9afe9fec7044e84f423372e2471384af4895f892ec66e78c7"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/command.json",
+    "bytes": 52,
+    "sha256": "f0f5d9d2063715edf129fb1600c055e9249eeed9926655cff4ba653168ad0a0b"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/editor-event-1.png",
+    "bytes": 30254,
+    "sha256": "9d9f06721baeaa47c35ea9b4bf3385213925fbd0eabc754f72b3df226c29652e"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/editor-ready.png",
+    "bytes": 29414,
+    "sha256": "54022ef70fa091b2cf729473f0a8d49b1d99322f016cb96ecb7d64b64ec2d267"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/event-1.json",
+    "bytes": 550,
+    "sha256": "cd7c2e1e99bbdea354f69024c621befa713294a760bf77908933353cbffc056a"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/event-2.json",
+    "bytes": 663,
+    "sha256": "0a2bc1b91c090f0dceac5e475726f72717172212eefd3029a8c7186bf9aae280"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/main-window.png",
+    "bytes": 59154,
+    "sha256": "b7a77727fc548a000678f1a8e3fb14408f7b97c9518c11f370698a60162f97b2"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/ready.json",
+    "bytes": 543,
+    "sha256": "f6877488111602f443c2968cce5846929454f832e6f772363bb2d50d07f8a7f8"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/command.json",
+    "bytes": 52,
+    "sha256": "f0f5d9d2063715edf129fb1600c055e9249eeed9926655cff4ba653168ad0a0b"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/editor-event-1.png",
+    "bytes": 30368,
+    "sha256": "b7f634ab317693b5b5549e6d3cff31818129ba5b4453f99f74961d8d3cd0de34"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/editor-ready.png",
+    "bytes": 29380,
+    "sha256": "9ef7b3cd553bbd8b79c373a02a750037caff113015653af340a1bfe66479883f"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/event-1.json",
+    "bytes": 550,
+    "sha256": "952e02e728477e9ad9fae8c347ff870e00088f8286f0d79588bef8db11289fff"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/event-2.json",
+    "bytes": 663,
+    "sha256": "f32402c612027b9c279cb70b75d4768086211a3466552500cd2e5e76a86d8d23"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/main-window.png",
+    "bytes": 59186,
+    "sha256": "a91b753c4d92323a84d3674d905fa0f6c783bbdd0b1d99c33464c8beba780723"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/ready.json",
+    "bytes": 543,
+    "sha256": "1e0ef7c77a15898963a94c8d4e6224aa5ba01a86c61010cb2acaba6d0750d745"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/command.json",
+    "bytes": 53,
+    "sha256": "78a69bd831d41314c51b53bf8c91491e803314f9d1fac253905b252ed2d1c213"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-event-1.png",
+    "bytes": 30221,
+    "sha256": "f39e1c32f28c5310f13e21aecf81a2cecb229cc6599db0688bd0d38bc95c3839"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-event-2.png",
+    "bytes": 35103,
+    "sha256": "54e6d301df35d27631109ac5163602ffe86d725d28092d008100f21be374724a"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-event-3.png",
+    "bytes": 35103,
+    "sha256": "54e6d301df35d27631109ac5163602ffe86d725d28092d008100f21be374724a"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-ready.png",
+    "bytes": 29380,
+    "sha256": "9ef7b3cd553bbd8b79c373a02a750037caff113015653af340a1bfe66479883f"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/event-1.json",
+    "bytes": 550,
+    "sha256": "00524dcb7ce1576fe9b754fca265aea1bd2bb3eee21ebfdfe776115d5ef37cb3"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/event-2.json",
+    "bytes": 920,
+    "sha256": "2c5eb94469010a39e9dc71b6c36de67f7e66caa66c4a12591121aee30022b08e"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/event-3.json",
+    "bytes": 1029,
+    "sha256": "666f5a73fa541d2df526b46dcb203a7f3e38f28221d503fdc77a66842a0596b7"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/event-4.json",
+    "bytes": 1031,
+    "sha256": "5fb9c26dce7ffc391680cb83613fad815535ebae6c95ea538140477f2cd6aef5"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/main-window.png",
+    "bytes": 59186,
+    "sha256": "a91b753c4d92323a84d3674d905fa0f6c783bbdd0b1d99c33464c8beba780723"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/ready.json",
+    "bytes": 543,
+    "sha256": "ffefb4b44035e54c3539bd33a97ee10146581c1748d64862622a624726354f31"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/dual-windows-results.json",
+    "bytes": 1898,
+    "sha256": "60ad21b587e6c6895f926659e2ca5dd880f3c5f86589cd163214beb635cb27ea"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/parent.stderr.log",
+    "bytes": 227,
+    "sha256": "9a5042bc0aaf32d3ed36d96b8ba313e91e61fa2dbab837239731d9d133864d43"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/dual-windows/parent.stdout.log",
+    "bytes": 92,
+    "sha256": "b182fcef5dc0592f50ecd44b2b61f23b9fe4099aa361a335afe3eca8f9705e6b"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/job.log",
+    "bytes": 104675,
+    "sha256": "5309b313706ec5e438a3cc3e084caa9a16740122b735c76207a3691b30b5d6a5"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/account-blocked.png",
+    "bytes": 34274,
+    "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/account-composition.png",
+    "bytes": 34274,
+    "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/account-disabled.png",
+    "bytes": 23794,
+    "sha256": "53e73d8d03bf43a332e411c33e25475e2945e2fcb542951efaf36abbfbbafaa8"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/account-list.png",
+    "bytes": 34274,
+    "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/account-tree-selected.png",
+    "bytes": 32853,
+    "sha256": "ceefa8b883b44e8c6a6c6b40821a069ccf92f5443f3a2186bf3f95c4864a9db7"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/account-tree.png",
+    "bytes": 34274,
+    "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/empty-accounts.png",
+    "bytes": 20590,
+    "sha256": "3e5da68fd7b199e3232d50dd6572527d19272660272390844b8872c3c44372a4"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/empty-summaries.png",
+    "bytes": 17941,
+    "sha256": "15b5c3c2c32ef859f4e3a9f83d1d86d5e67c70f468ec5befb38f8a5a80fb3f94"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/helper-account-accept.png",
+    "bytes": 34274,
+    "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/helper-account-cancel.png",
+    "bytes": 34274,
+    "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/helper-summary-accept.png",
+    "bytes": 24006,
+    "sha256": "ebb354616d49ff8805fc3cad7bee9990f22c950d005034147fa67c3eca5b0072"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/helper-summary-cancel.png",
+    "bytes": 24006,
+    "sha256": "ebb354616d49ff8805fc3cad7bee9990f22c950d005034147fa67c3eca5b0072"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/invalid-chart.png",
+    "bytes": 22118,
+    "sha256": "3b224deeabb8c14be5bca6aaa6dcc6d6e68ca9efa5a8a65df42673511b91ce89"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/smoke.json",
+    "bytes": 2053,
+    "sha256": "950ef817d362cd56ad00f23f325f50ae0f86e4eea2c5b00d202cb01e375cd28f"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/summary-cancel.png",
+    "bytes": 24006,
+    "sha256": "ebb354616d49ff8805fc3cad7bee9990f22c950d005034147fa67c3eca5b0072"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/reference-dialogs/summary-library.png",
+    "bytes": 22718,
+    "sha256": "afea95ba74b022c75268d1425c99a0903a9dc5ea64934abc1a639d6a22f738b7"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/revalidation/core-repair.json",
+    "bytes": 2839,
+    "sha256": "bb1435126281a3fba8e2e311fdb7917208ef38ea79cab4efcf46e5faf0031e26"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/screenshots-index.json",
+    "bytes": 6427,
+    "sha256": "b7a59decd355a394aed161e5700ad78a4a1b8103588031d15be3d8c30cb8b3e5"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/test-results/runneradmin_runnervmdaln5_2026-10-25_08_41_04_net10.0.trx",
+    "bytes": 112106,
+    "sha256": "45a7e4ce7f1d1cf13ff6a881781af02fc95e212c702670f29187202a8294b9c7"
+  },
+  {
+    "path": "tests/Caiwu.Acceptance/evidence/windows-40177493350/verification/core-probe-7ead70aab1014470a4455d12aa553e2e/result.json",
+    "bytes": 1109,
+    "sha256": "adfe11553942d0cd60f2775dfb44444d6cbd71b7de8ad12d811a9759a7fd2020"
+  }
+]

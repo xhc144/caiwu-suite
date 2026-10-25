@@ -1,0 +1,183 @@
+{
+  "commit": "6a4683955267306f8eb9544635560d214b5921f9",
+  "run": 40177493350,
+  "artifact": 12593102445,
+  "archiveSha256": "1a627f551794337904945324fe528906dcbc8be3e44e6a52c611b0677915d1be",
+  "mechanism": "Actual Windows WPF RenderTargetBitmap; content-based capture can clip margins. Not full desktop native capture.",
+  "screenshots": [
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/editor-event-1.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "b7f634ab317693b5b5549e6d3cff31818129ba5b4453f99f74961d8d3cd0de34"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/editor-ready.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "9ef7b3cd553bbd8b79c373a02a750037caff113015653af340a1bfe66479883f"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/A/main-window.png",
+      "width": 1064,
+      "height": 749,
+      "sha256": "a91b753c4d92323a84d3674d905fa0f6c783bbdd0b1d99c33464c8beba780723"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/editor-event-1.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "9d9f06721baeaa47c35ea9b4bf3385213925fbd0eabc754f72b3df226c29652e"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/editor-ready.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "54022ef70fa091b2cf729473f0a8d49b1d99322f016cb96ecb7d64b64ec2d267"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-SEPARATE-BOOKS/B/main-window.png",
+      "width": 1064,
+      "height": 749,
+      "sha256": "b7a77727fc548a000678f1a8e3fb14408f7b97c9518c11f370698a60162f97b2"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/editor-event-1.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "b7f634ab317693b5b5549e6d3cff31818129ba5b4453f99f74961d8d3cd0de34"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/editor-ready.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "9ef7b3cd553bbd8b79c373a02a750037caff113015653af340a1bfe66479883f"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/A/main-window.png",
+      "width": 1064,
+      "height": 749,
+      "sha256": "a91b753c4d92323a84d3674d905fa0f6c783bbdd0b1d99c33464c8beba780723"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-event-1.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "f39e1c32f28c5310f13e21aecf81a2cecb229cc6599db0688bd0d38bc95c3839"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-event-2.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "54e6d301df35d27631109ac5163602ffe86d725d28092d008100f21be374724a"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-event-3.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "54e6d301df35d27631109ac5163602ffe86d725d28092d008100f21be374724a"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/editor-ready.png",
+      "width": 988,
+      "height": 631,
+      "sha256": "9ef7b3cd553bbd8b79c373a02a750037caff113015653af340a1bfe66479883f"
+    },
+    {
+      "path": "dual-windows/TWO-APPLICATION-PROCESSES-STALE-EDITOR/B/main-window.png",
+      "width": 1064,
+      "height": 749,
+      "sha256": "a91b753c4d92323a84d3674d905fa0f6c783bbdd0b1d99c33464c8beba780723"
+    },
+    {
+      "path": "reference-dialogs/account-blocked.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+    },
+    {
+      "path": "reference-dialogs/account-composition.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+    },
+    {
+      "path": "reference-dialogs/account-disabled.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "53e73d8d03bf43a332e411c33e25475e2945e2fcb542951efaf36abbfbbafaa8"
+    },
+    {
+      "path": "reference-dialogs/account-list.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+    },
+    {
+      "path": "reference-dialogs/account-tree-selected.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "ceefa8b883b44e8c6a6c6b40821a069ccf92f5443f3a2186bf3f95c4864a9db7"
+    },
+    {
+      "path": "reference-dialogs/account-tree.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+    },
+    {
+      "path": "reference-dialogs/empty-accounts.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "3e5da68fd7b199e3232d50dd6572527d19272660272390844b8872c3c44372a4"
+    },
+    {
+      "path": "reference-dialogs/empty-summaries.png",
+      "width": 860,
+      "height": 570,
+      "sha256": "15b5c3c2c32ef859f4e3a9f83d1d86d5e67c70f468ec5befb38f8a5a80fb3f94"
+    },
+    {
+      "path": "reference-dialogs/helper-account-accept.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+    },
+    {
+      "path": "reference-dialogs/helper-account-cancel.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "8af9e27595e301f01629b65c269f84fe1f9aac945a58a2a584eda05e2aa05811"
+    },
+    {
+      "path": "reference-dialogs/helper-summary-accept.png",
+      "width": 860,
+      "height": 570,
+      "sha256": "ebb354616d49ff8805fc3cad7bee9990f22c950d005034147fa67c3eca5b0072"
+    },
+    {
+      "path": "reference-dialogs/helper-summary-cancel.png",
+      "width": 860,
+      "height": 570,
+      "sha256": "ebb354616d49ff8805fc3cad7bee9990f22c950d005034147fa67c3eca5b0072"
+    },
+    {
+      "path": "reference-dialogs/invalid-chart.png",
+      "width": 880,
+      "height": 570,
+      "sha256": "3b224deeabb8c14be5bca6aaa6dcc6d6e68ca9efa5a8a65df42673511b91ce89"
+    },
+    {
+      "path": "reference-dialogs/summary-cancel.png",
+      "width": 860,
+      "height": 570,
+      "sha256": "ebb354616d49ff8805fc3cad7bee9990f22c950d005034147fa67c3eca5b0072"
+    },
+    {
+      "path": "reference-dialogs/summary-library.png",
+      "width": 860,
+      "height": 570,
+      "sha256": "afea95ba74b022c75268d1425c99a0903a9dc5ea64934abc1a639d6a22f738b7"
+    }
+  ]
+}

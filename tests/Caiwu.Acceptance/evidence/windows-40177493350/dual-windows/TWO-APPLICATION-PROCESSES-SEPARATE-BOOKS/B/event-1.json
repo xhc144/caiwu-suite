@@ -1,0 +1,19 @@
+{
+  "role": "B",
+  "kind": "type",
+  "processId": 5424,
+  "openingBookId": "a5070cce-ede5-498e-9aca-d5bbe5541253",
+  "openingRevision": 1,
+  "editorVisible": true,
+  "inputDebit": "30.00",
+  "inputCredit": "30.00",
+  "inputSummary": "\u672A\u4FDD\u5B58\u8F93\u5165-B",
+  "error": "",
+  "storedBookId": "a5070cce-ede5-498e-9aca-d5bbe5541253",
+  "storedRevision": 1,
+  "storedAmount": 10,
+  "vouchers": 1,
+  "auditEvents": 1,
+  "snapshotSha256": "8f42fb23a390f4d87648d941f0b57ed4da14a33c5193f8524f72ee6a7f54d7d3",
+  "sentTokens": []
+}
