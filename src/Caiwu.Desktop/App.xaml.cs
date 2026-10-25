@@ -24,6 +24,7 @@ public partial class App : Application
             store => new PreviewLedgerService(new LedgerService(store))), TemplateCatalog.All);
 
     private LocalOperatorService? operators;
+    private string? userDataRoot;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -38,7 +39,8 @@ public partial class App : Application
         {
             var data = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (string.IsNullOrWhiteSpace(data)) throw new InvalidOperationException("无法确定当前用户的数据目录，未建立账务会话。");
-            operators = new(new FileOperatorStore(Path.Combine(data, "CaiwuSuite", "Operators")));
+            userDataRoot = Path.Combine(data, "CaiwuSuite");
+            operators = new(new FileOperatorStore(Path.Combine(userDataRoot, "Operators")));
             LoginAndShowMain();
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "启动未完成", MessageBoxButton.OK, MessageBoxImage.Warning); Shutdown(1); }
@@ -52,7 +54,8 @@ public partial class App : Application
         try
         {
             var authentication = new FeatureAuthentication(service, login);
-            var main = new MainWindow(CreateAuthenticatedBackend(service, login), authentication);
+            var options = new DesktopFeatureOptions { NonprofitPreviewRoot = Path.Combine(userDataRoot!, "LocalPreviews", "Nonprofit") };
+            var main = new MainWindow(CreateAuthenticatedBackend(service, login), authentication, options);
             MainWindow = main;
             main.Closed += (_, _) =>
             {

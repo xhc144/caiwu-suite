@@ -10,6 +10,7 @@ git -C "$caiwu_source_root" archive dcda051a0c9ee364ccff4c2b4c7085f446fac39d src
 git -C "$caiwu_source_root" archive 8bbf8428ccd0b656fec83c7a1ede828cd5691442 src/Caiwu.BookTools | tar -x -C "$caiwu_validation_root"
 git -C "$caiwu_source_root" archive af0d0e34ab9963fc91cabb8a58aed558b34390f0 src/Caiwu.Costing | tar -x -C "$caiwu_validation_root"
 git -C "$caiwu_source_root" archive 1957435365390756fd8267937fd0ec408b1e498f src/Caiwu.Operators | tar -x -C "$caiwu_validation_root"
+git -C "$caiwu_source_root" archive cb71350b2b19067e7a8704b74985d8cf0f15e1aa src/Caiwu.Nonprofit.Reporting | tar -x -C "$caiwu_validation_root"
 export CAIWU_DOTNET_ROOT="${CAIWU_DOTNET_ROOT:-$caiwu_source_root/.tools/dotnet}"
 cd "$caiwu_validation_root"
 mkdir -p artifacts/desktop-features

@@ -39,6 +39,7 @@ public class SessionFeatureWindow : Window
     }
 
     internal DockPanel BodyForFeature() => Body;
+    internal TextBlock StatusForFeature() => Status;
 
     protected override void OnPreviewKeyDown(KeyEventArgs e)
     {
