@@ -25,6 +25,7 @@ internal static class Program
 {
     private static readonly List<object> Captures = [];
     private static readonly List<string> Checks = [];
+    private static readonly List<object> FontObservations = [];
     private static string output = "";
     private static nint displayMode;
     private static byte[]? originalDisplay;
@@ -145,7 +146,7 @@ internal static class Program
             captureMethod = "Win32 PrintWindow, complete native window including non-client frame; no image resize or crop",
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_VISUAL_COMMIT"),
             sourceTree = Environment.GetEnvironmentVariable("CAIWU_VISUAL_SOURCE_TREE"),
-            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
+            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, fontObservations = FontObservations, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
 
     private static void PrepareDesktop()
     {
@@ -174,6 +175,7 @@ internal static class Program
     private static void Capture(Window window, string file)
     {
         window.Activate(); window.UpdateLayout(); Pump();
+        ObserveFonts(window, file);
         var hwnd = new WindowInteropHelper(window).Handle;
         Require(GetWindowRect(hwnd, out var rect), "Cannot measure native window.");
         int width = rect.Right - rect.Left, height = rect.Bottom - rect.Top;
@@ -194,6 +196,24 @@ internal static class Program
                 sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))) });
         }
         finally { SelectObject(memory, old); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(hwnd, dc); }
+    }
+    private static void ObserveFonts(Window window, string file)
+    {
+        foreach (var text in Descendants<TextBlock>(window).Where(t => t.IsVisible && !string.IsNullOrWhiteSpace(t.Text)).Take(28))
+        {
+            var glyphs = Glyphs(VisualTreeHelper.GetDrawing(text)).ToArray();
+            FontObservations.Add(new { file, text = text.Text.Length > 64 ? text.Text[..64] : text.Text,
+                declaredFamily = text.FontFamily.Source, size = text.FontSize, weight = text.FontWeight.ToString(),
+                foreground = text.Foreground?.ToString(),
+                actualFamilies = glyphs.SelectMany(g => g.FamilyNames.Values).Distinct().ToArray() });
+        }
+    }
+    private static IEnumerable<GlyphTypeface> Glyphs(Drawing? drawing)
+    {
+        if (drawing is GlyphRunDrawing glyph) yield return glyph.GlyphRun.GlyphTypeface;
+        if (drawing is DrawingGroup group)
+            foreach (var child in group.Children)
+                foreach (var face in Glyphs(child)) yield return face;
     }
     private static object? Call(object target, string name, params object[] args)
     {
