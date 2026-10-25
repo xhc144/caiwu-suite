@@ -188,7 +188,7 @@ internal static class Program
         var window = Window(title => title == "操作员登录"); SetValue(window.FindFirst(TreeScope.Descendants, Id("OperatorLoginName"))!, login);
         var password = window.FindFirst(TreeScope.Descendants, Id("OperatorLoginPassword"))!;
         password.SetFocus(); Type(rejectWrongFirst ? "deliberately-wrong-synthetic-password" : Password); Invoke(window, Id("LoginButton"));
-        if (rejectWrongFirst) { Require(HasWindow("操作员登录"), "normal product rejects a wrong synthetic password"); password.SetFocus(); Type(Password); Invoke(window, Id("LoginButton")); }
+        if (rejectWrongFirst) { Until(() => !string.IsNullOrWhiteSpace(Text(window, "ErrorText")), "explicit invalid-password error from normal product login"); Require(HasWindow("操作员登录"), "normal product rejects a wrong synthetic password"); password.SetFocus(); Type(Password); Invoke(window, Id("LoginButton")); }
         Until(() => !HasWindow("操作员登录"), "normal explicit product login");
         normalLoginCompleted = true;
     }

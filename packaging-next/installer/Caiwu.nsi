@@ -87,7 +87,7 @@ Section "Caiwu Suite" SEC_MAIN
   SetOutPath "$PLUGINSDIR\engine"
   File /oname=Caiwu.Delivery.exe "${HELPER}"
   SetOutPath "$PLUGINSDIR\payload"
-  File /r "${PAYLOAD}/*"
+  File /r "${PAYLOAD}\*"
   ClearErrors
   ExecWait '"$PLUGINSDIR\engine\Caiwu.Delivery.exe" install "$PLUGINSDIR\payload" "$INSTDIR" "$DataRoot"' $0
   ${If} ${Errors}
