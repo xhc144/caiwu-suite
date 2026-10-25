@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "caiwu.contracts": {
+        "type": "Project"
+      },
+      "caiwu.core": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )"
+        }
+      },
+      "caiwu.vouchertools": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )"
+        }
+      },
+      "caiwu.vouchertools.wpf": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.VoucherTools": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

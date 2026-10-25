@@ -1,0 +1,38 @@
+name: Copy Summary Book actual Windows QA
+on:
+  push:
+    branches: [codex/module-copy-summary-qa]
+    paths:
+      - 'tests/Caiwu.ModuleWindowsQA/CopySummaryBook/**'
+      - '.github/workflows/module-copy-summary-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: copy-summary-book-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  windows-module:
+    if: github.ref == 'refs/heads/codex/module-copy-summary-qa'
+    runs-on: windows-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [Voucher, Summary, BookTools]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 10.0.402
+      - name: Run only assigned real module windows with synthetic data
+        shell: pwsh
+        run: ./tests/Caiwu.ModuleWindowsQA/CopySummaryBook/run.ps1 -Module '${{ matrix.module }}'
+      - name: Upload raw screenshots and SHA-bound results immediately
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: copy-summary-book-${{ matrix.module }}-${{ github.sha }}
+          path: artifacts/copy-summary-book/${{ matrix.module }}/
+          if-no-files-found: error
+          retention-days: 14
