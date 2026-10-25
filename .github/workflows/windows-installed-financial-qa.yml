@@ -3,7 +3,9 @@ on:
   push:
     branches: [codex/installed-financial-qa]
     paths:
-      - 'tests/InstalledFinancialQA/**'
+      - 'tests/InstalledFinancialQA/*.cs'
+      - 'tests/InstalledFinancialQA/*.csproj'
+      - 'tests/InstalledFinancialQA/run.ps1'
       - '.github/workflows/windows-installed-financial-qa.yml'
   workflow_dispatch:
 permissions:
