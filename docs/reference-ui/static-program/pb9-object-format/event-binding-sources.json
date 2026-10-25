@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "question": "Six-byte event triples and index-domain binding to external functions",
+  "conclusion": "No independently validated PB9 mapping for all three event words or a cross-library RefIndex found in the inspected sources",
+  "external_parsers_executed": false,
+  "target_data_read_or_uploaded": false,
+  "newly_inspected_files": [
+    {
+      "repository": "sugitter/pb-devkit",
+      "commit": "41543403890de392e978ed348b41207cf4a50466",
+      "path": "pb-devkit-1.x/src/pb_devkit/decompiler.py",
+      "blob_sha": "0cf6c78c7426317a7d714521978247e19713fbe8",
+      "lines": 2383,
+      "url": "https://github.com/sugitter/pb-devkit/blob/41543403890de392e978ed348b41207cf4a50466/pb-devkit-1.x/src/pb_devkit/decompiler.py",
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "repository": "sugitter/pb-devkit",
+      "commit": "41543403890de392e978ed348b41207cf4a50466",
+      "path": "pb-devkit-2.x/pb-devkit-core/src/decompile.rs",
+      "blob_sha": "1ab1385eb020a0cc9ea56964b2c9b85800b2fc94",
+      "lines": 184,
+      "url": "https://github.com/sugitter/pb-devkit/blob/41543403890de392e978ed348b41207cf4a50466/pb-devkit-2.x/pb-devkit-core/src/decompile.rs",
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "repository": "ahzs645/PbdViewer",
+      "commit": "31c645bb1ec5ccdf664713b0e4435a3bc3c83c70",
+      "path": "web/src/pb/PbEntry.ts",
+      "blob_sha": "89d8394e7461c8f159bca779039ad113481c77f0",
+      "lines": 534,
+      "url": "https://github.com/ahzs645/PbdViewer/blob/31c645bb1ec5ccdf664713b0e4435a3bc3c83c70/web/src/pb/PbEntry.ts",
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "repository": "ahzs645/PbdViewer",
+      "commit": "31c645bb1ec5ccdf664713b0e4435a3bc3c83c70",
+      "path": "web/test/smoke.ts",
+      "blob_sha": "d2fbe498f2e1d05b8f7635655aa0b4db541ed27c",
+      "lines": 89,
+      "url": "https://github.com/ahzs645/PbdViewer/blob/31c645bb1ec5ccdf664713b0e4435a3bc3c83c70/web/test/smoke.ts",
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "repository": "ahzs645/PbdViewer",
+      "commit": "31c645bb1ec5ccdf664713b0e4435a3bc3c83c70",
+      "path": "web/test/paritydump.ts",
+      "blob_sha": "cba92b7cbbc1548e572a0d9ebddcea777d354996",
+      "lines": 66,
+      "url": "https://github.com/ahzs645/PbdViewer/blob/31c645bb1ec5ccdf664713b0e4435a3bc3c83c70/web/test/paritydump.ts",
+      "read_only": true,
+      "executed": false
+    }
+  ],
+  "related_repository_tree_checks": [
+    {
+      "repository": "guen-hyunsoo/powerbuilder-decompiler",
+      "ref": "2199814282882726ba5786318ba50384728e129f",
+      "finding": "pbd/pcode.py blob 1769f26d2b30dc39de2ddb4296a78de65112f631 matches previously inspected PB6 example; not independent corroboration"
+    },
+    {
+      "repository": "clpo13/PbdViewer",
+      "ref": "02b54b83395eae9584bda5946872c8707e4615db",
+      "finding": "PbEntry/PCodeParserBase/FunctionDefinition relevant blobs match original; no new event-table implementation in these paths"
+    },
+    {
+      "repository": "ahzs645/PbdViewer",
+      "ref": "31c645bb1ec5ccdf664713b0e4435a3bc3c83c70",
+      "finding": "TS port still skips6*count; smoke and parity tests inspect structural consumption and printed declarations, not the six-byte field semantics"
+    }
+  ],
+  "specific_findings": [
+    {
+      "source": "sugitter/pb-devkit Python",
+      "lines": [
+        1,
+        3,
+        649,
+        650,
+        678,
+        679,
+        1225,
+        1265
+      ],
+      "fact": "Explicitly based on Hucxy; still skips6*count; same GlobalIndex inheritance and name/receiver-based calls",
+      "implication": "A second language implementation is not independent evidence of event semantics"
+    },
+    {
+      "source": "Hucxy/PbdViewer code search RefIndex",
+      "locations": [
+        "PbFunctionDefinition.cs property",
+        "PbEntry.cs assignment"
+      ],
+      "fact": "Only these two indexed locations returned; no consumer establishing external target binding found",
+      "implication": "Do not infer a cross-library identity from the variable name"
+    },
+    {
+      "source": "sugitter/pb-devkit Rust",
+      "lines": [
+        76,
+        78,
+        88,
+        96
+      ],
+      "fact": "Compiled-only case delegates to Python; inspected Rust tests exercise invalid/source-export flows",
+      "implication": "Not evidence for independent PB9 event or RefIndex decoding"
+    }
+  ],
+  "official_sources": [
+    {
+      "url": "https://docs.appeon.com/pb2022/native_interface_programmers_guide_and_reference/XREF_91730_Header_file.html",
+      "supports": "pbevtid.h maps event token names to internal identifiers",
+      "does_not_support": "Which word in the six-byte PBD table holds a token, or the PB9 numeric mapping"
+    },
+    {
+      "url": "https://docs.appeon.com/pb2019/pbug/ch08s02.html",
+      "supports": "Unmapped user events have no event ID in the painter",
+      "does_not_support": "How an unmapped event is represented in a compiled PB9 table"
+    },
+    {
+      "url": "https://docs.appeon.com/pb2021/native_interface_programmers_guide_and_reference/ch01s02.html",
+      "supports": "GetMethodID resolves by class, method name, routine kind and signature",
+      "does_not_support": "Equality of pbmethodID, persistent GlobalIndex, RefIndex or EventCode"
+    },
+    {
+      "url": "https://docs.appeon.com/pb2025/native_interface_programmers_guide_and_reference/XREF_85999_IPB_Session.html",
+      "supports": "FindGroup searches name+group type in the current library list",
+      "does_not_support": "A universal GlobalIndex across PBD files, or fixed-library selection absent the execution list"
+    },
+    {
+      "url": "https://docs.appeon.com/pb2025/application_techniques/Using_external_functions.html",
+      "supports": "External functions are declared with a DLL library; aliases can name the exported function",
+      "does_not_support": "A direct persistent-index-to-PE-address formula"
+    }
+  ],
+  "access_limitations": [
+    {
+      "action": "Read linked original-author forum article",
+      "target": "https://bbs.kanxue.com/thread-247372.htm",
+      "outcome": "verification_page_only_no_article_read",
+      "reason": "Requires site verification/login",
+      "bypass_attempted": false
+    },
+    {
+      "action": "List Hucxy repository forks through connector",
+      "target": "GitHub forks endpoint",
+      "outcome": "connector_error_no_list",
+      "alternative_used": "Read repository search results and inspect two distinct fork trees; did not retry the unavailable endpoint"
+    }
+  ],
+  "bounded_search_scope": "Targeted event/index searches; two parser families plus selected ports/forks and official semantic references. This is not a claim that no unpublished or other public decoder exists."
+}

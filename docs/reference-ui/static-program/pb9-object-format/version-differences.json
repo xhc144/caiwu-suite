@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "evidence_scope": "read-only source comparison, zero target object internal verification",
+  "gates": [
+    {
+      "subject": "container format",
+      "facts": "HDR 0500 selects PB5 layout; HDR 0600 can occur in ANSI or Unicode containers",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbFile.cs#L155"
+    },
+    {
+      "subject": "object p-code profile",
+      "facts": "object versions 79,114,146,166,193,196 select Parser90; 238 selects Parser100; 283 Parser105; 316,319,321,322,325,333,334 Parser110",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCodeHelper.cs#L661",
+      "warning": "Parser90 class name does not make all these versions PB9"
+    },
+    {
+      "subject": "function definition width",
+      "facts": "version>146 uses48; older non-PB5 uses44; PB5 uses32",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L431"
+    },
+    {
+      "subject": "timestamp width",
+      "facts": "PbdViewer adds an extra u32 after each timestamp for object version>=334; legacy Python only branches on h1==335",
+      "warning": "Boundary discrepancy requires raw version and structural validation; do not guess a universal layout",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L234"
+    },
+    {
+      "subject": "Parser90 operand exception",
+      "facts": "opcode297 uses zero operand words when version<193, otherwise its base table says one",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser90.cs#L82"
+    },
+    {
+      "subject": "Parser100 translation",
+      "facts": "op<=26 forwards unchanged; op>=29 forwards op-2; 27/28 lack inherited semantic handler",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser100.cs#L77"
+    },
+    {
+      "subject": "Parser105 translation",
+      "facts": "op2..549 maps to parent op-1; 0/1 have separate return rules",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser105.cs#L81"
+    },
+    {
+      "subject": "Parser110 translation",
+      "facts": "through408 unchanged; through416 +1; through419 +2; higher +3 relative to parent semantics",
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser110.cs#L81"
+    },
+    {
+      "subject": "ANSI versus Unicode",
+      "facts": "Sybase10.5 release bulletin says PB9 and earlier PBDs use ANSI; PB10+ requires regenerated Unicode PBDs",
+      "source": "https://infocenter-archive.sybase.com/help/topic/com.sybase.dc33822_1050/pdf/pbentrb.pdf",
+      "warning": "ANSI is not an identified code page; do not unconditionally use host Encoding.Default"
+    },
+    {
+      "subject": "static calls and polymorphism",
+      "facts": "Official language documentation says STATIC object lookup still permits an override on a descendant runtime instance",
+      "source": "https://docs.appeon.com/pb2022/powerscript_reference/xREF_33712_Static_versus.html",
+      "warning": "A compile-time slot/name does not prove the unique runtime callee"
+    }
+  ],
+  "critical_incompatibilities_with_legacy_PB6_example": [
+    {
+      "field": "first word of 32-byte definition",
+      "legacy": "Python DefSlot calls it class_id",
+      "PbdViewer": "InheritType; own type is class_slot+2",
+      "risk": "False self/ancestor edges"
+    },
+    {
+      "field": "routine to declaration binding",
+      "legacy": "matches routine.id2 against FuncInfo index field at+22",
+      "PbdViewer": "UI indexes local FunctionDefinitions array directly using routine index second word",
+      "risk": "False routine names; must compare ordinal, RefIndex and GlobalIndex separately"
+    },
+    {
+      "field": "transaction opcodes",
+      "legacy": "table labels6 as commit and7 as rollback",
+      "PbdViewer_Parser90": "5 commit;6 rollback;7 disconnect",
+      "risk": "False persistence transaction graph"
+    }
+  ]
+}

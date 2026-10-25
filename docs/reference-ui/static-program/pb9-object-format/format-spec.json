@@ -1,0 +1,409 @@
+{
+  "schema_version": 1,
+  "status": "external_reader_behavior_known_target_compatibility_unverified",
+  "endianness": "little",
+  "offset_origin": "logical object start for entry fields; record start for record fields; referenced pool start for pool refs",
+  "source_commit": "b46fd3e42b8f26ed18a547b9e4bec47f96530a86",
+  "profile": {
+    "versions": [
+      193,
+      196
+    ],
+    "version_hex": [
+      "00c1",
+      "00c4"
+    ],
+    "reason": "PCodeHelper maps these object version words to PCodeParser90",
+    "not_equivalent_to": [
+      "HDR 0600",
+      "PBVM90 filename",
+      "marketing product version alone"
+    ],
+    "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCodeHelper.cs#L661"
+  },
+  "tables": [
+    {
+      "name": "entry_header",
+      "bytes": 26,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L234",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u16",
+          "meaning": "object_version"
+        },
+        {
+          "offset": 2,
+          "type": "u16",
+          "meaning": "flag_raw"
+        },
+        {
+          "offset": 4,
+          "type": "u32",
+          "meaning": "entry_type_raw"
+        },
+        {
+          "offset": 8,
+          "type": "u32",
+          "meaning": "unknown"
+        },
+        {
+          "offset": 12,
+          "type": "u32",
+          "meaning": "modified_time_candidate"
+        },
+        {
+          "offset": 16,
+          "type": "u32",
+          "meaning": "compiled_time_candidate"
+        },
+        {
+          "offset": 20,
+          "type": "u32",
+          "meaning": "unknown"
+        },
+        {
+          "offset": 24,
+          "type": "u16",
+          "meaning": "count_of_following_12_byte_records"
+        }
+      ]
+    },
+    {
+      "name": "class_slot",
+      "bytes": 16,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L299",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u16",
+          "meaning": "flags_raw; kind=(byte0>>1)&7"
+        },
+        {
+          "offset": 2,
+          "type": "u16",
+          "meaning": "own_type_reference"
+        },
+        {
+          "offset": 4,
+          "type": "u16",
+          "meaning": "enum_record_count_if_kind1"
+        }
+      ]
+    },
+    {
+      "name": "object_definition",
+      "bytes": 32,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L321",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u16",
+          "meaning": "inherit_type_reference"
+        },
+        {
+          "offset": 2,
+          "type": "u16",
+          "meaning": "parent_type_reference"
+        },
+        {
+          "offset": 4,
+          "type": "u16",
+          "meaning": "local_function_definition_count"
+        },
+        {
+          "offset": 16,
+          "type": "u16",
+          "meaning": "all_function_dispatch_slot_count"
+        },
+        {
+          "offset": 22,
+          "type": "u16",
+          "meaning": "unknown_4_byte_table_count"
+        },
+        {
+          "offset": 24,
+          "type": "u16",
+          "meaning": "uninterpreted_6_byte_table_count"
+        },
+        {
+          "offset": 26,
+          "type": "u16",
+          "meaning": "unknown_16_byte_table_count"
+        },
+        {
+          "offset": 28,
+          "type": "u16",
+          "meaning": "all_variable_slot_count_and_unknown_8_byte_table_count"
+        }
+      ]
+    },
+    {
+      "name": "function_definition",
+      "bytes": 48,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L431",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u32",
+          "meaning": "name_offset_in_FunctionBuffer"
+        },
+        {
+          "offset": 8,
+          "type": "u32",
+          "meaning": "parameter_offset_in_ParamBuffer; 0xffff checked as absent"
+        },
+        {
+          "offset": 12,
+          "type": "u32",
+          "meaning": "alias_offset_in_FunctionBuffer; 0xffff checked as absent"
+        },
+        {
+          "offset": 16,
+          "type": "u32",
+          "meaning": "library_offset_in_FunctionBuffer"
+        },
+        {
+          "offset": 20,
+          "type": "u16",
+          "meaning": "GlobalIndex; inherited dispatch slot"
+        },
+        {
+          "offset": 22,
+          "type": "u16",
+          "meaning": "RefIndex; raw until independently matched"
+        },
+        {
+          "offset": 28,
+          "type": "u16",
+          "meaning": "return_type_reference"
+        },
+        {
+          "offset": 30,
+          "type": "u8",
+          "meaning": "parameter_count"
+        },
+        {
+          "offset": 31,
+          "type": "u8",
+          "meaning": "flags: event1 external4 private0x10 protected0x20"
+        },
+        {
+          "offset": 32,
+          "type": "u16",
+          "meaning": "EventCode"
+        },
+        {
+          "offset": 44,
+          "type": "u16",
+          "meaning": "throws_type_offset_in_FunctionBuffer; 0xffff absent"
+        }
+      ]
+    },
+    {
+      "name": "parameter",
+      "bytes": 12,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L465",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u32",
+          "meaning": "name_offset_in_FunctionBuffer"
+        },
+        {
+          "offset": 4,
+          "type": "u32",
+          "meaning": "array_descriptor_offset_in_FunctionBuffer"
+        },
+        {
+          "offset": 8,
+          "type": "u16",
+          "meaning": "type_reference"
+        },
+        {
+          "offset": 10,
+          "type": "u8",
+          "meaning": "read_only_bit4; else reference_bit2"
+        }
+      ]
+    },
+    {
+      "name": "type_record",
+      "bytes": 20,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L560",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 8,
+          "type": "u32",
+          "meaning": "name_offset_in_own_lookup_pool"
+        },
+        {
+          "offset": 16,
+          "type": "u8",
+          "meaning": "0x40 means referenced object in source implementation"
+        }
+      ]
+    },
+    {
+      "name": "referenced_function",
+      "bytes": 20,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L589",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 8,
+          "type": "u32",
+          "meaning": "name_offset_in_own_lookup_pool"
+        },
+        {
+          "offset": 12,
+          "type": "u16",
+          "meaning": "GlobalIndex"
+        },
+        {
+          "offset": 16,
+          "type": "u8",
+          "meaning": "2 means global function in source implementation"
+        }
+      ]
+    },
+    {
+      "name": "routine_index",
+      "bytes": 4,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L499",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u16",
+          "meaning": "uninterpreted"
+        },
+        {
+          "offset": 2,
+          "type": "u16",
+          "meaning": "local FunctionDefinitions array ordinal used by viewer UI"
+        }
+      ]
+    },
+    {
+      "name": "event_triple",
+      "bytes": 6,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L403",
+      "evidence_class": "legacy_PB6_interpretation_not_confirmed",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u16",
+          "meaning": "uninterpreted in PbdViewer; legacy PB6 parser calls it event_id"
+        },
+        {
+          "offset": 2,
+          "type": "u16",
+          "meaning": "uninterpreted in PbdViewer; legacy PB6 parser calls it reference_index"
+        },
+        {
+          "offset": 4,
+          "type": "u16",
+          "meaning": "uninterpreted in PbdViewer; legacy PB6 parser resolves it as type"
+        }
+      ]
+    },
+    {
+      "name": "call_target_descriptor",
+      "bytes": 8,
+      "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParserBase.cs#L413",
+      "evidence_class": "external_source_field_read",
+      "target_validated": false,
+      "fields": [
+        {
+          "offset": 0,
+          "type": "u16",
+          "meaning": "candidate inherited dispatch slot; 0xffff may lack binding"
+        },
+        {
+          "offset": 2,
+          "type": "u16",
+          "meaning": "type_reference"
+        },
+        {
+          "offset": 4,
+          "type": "u32",
+          "meaning": "function_name_offset_in_routine_buffer"
+        }
+      ]
+    }
+  ],
+  "struct_buffer": {
+    "layout": [
+      "u32 data_bytes",
+      "u32 auxiliary_bytes",
+      "data[data_bytes]",
+      "auxiliary[auxiliary_bytes]"
+    ],
+    "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L551",
+    "do_not_assume_auxiliary_is_padding": true
+  },
+  "lookup_block": {
+    "layout": [
+      "opaque[6]",
+      "StructBuffer string/metadata pool",
+      "u16 record_table_bytes",
+      "record20[record_table_bytes/20]"
+    ],
+    "source": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs#L560",
+    "required_additional_checks": [
+      "record_table_bytes % 20 == 0",
+      "every pool ref in bounds",
+      "NUL terminator inside correct pool",
+      "no silent truncation"
+    ]
+  },
+  "entry_sequence": [
+    "fixed header26 for candidate versions C1/C4",
+    "leading_count *12 opaque records",
+    "StructBuffer entry variable/value pool",
+    "Lookup20 global/shared variables",
+    "u16 class_slot_count; u16 object_definition_count",
+    "StructBuffer function string pool",
+    "StructBuffer parameter pool",
+    "Lookup20 types",
+    "Lookup20 enums",
+    "class_slot_count *16 class slots",
+    "object_definition_count *32 object definitions",
+    "per class slot: kind0 consumes next definition and parses object body; kind1 consumes enum_count*8; other branches require inspection"
+  ],
+  "object_body_sequence": [
+    "u16 routine_body_count",
+    "routine_body_count *4 routine index records",
+    "each routine body: u16 pcode_byte_count,u16 debug_record_count,u16 unknown,pcode bytes,debug_record_count*4 bytes,Lookup20 local variables,StructBuffer routine value/name buffer",
+    "definition[24] count *6 uninterpreted table",
+    "definition[22] count *4 uninterpreted table",
+    "Lookup20 referenced functions/events",
+    "Lookup20 properties/variables",
+    "definition[28] count *8 uninterpreted table",
+    "definition[26] count *16 uninterpreted table",
+    "definition[4] count *48 function definitions"
+  ],
+  "hard_invariants": [
+    "All offsets/lengths must fit one logical object and its DAT-to-file map",
+    "Do not confuse own class type from class slot+2 with inherited type from definition+0",
+    "Body index is not automatically GlobalIndex or RefIndex; test all independently",
+    "Parent ownership and inheritance are separate relations",
+    "Source behavior is evidence about that reader, not proof of the target file layout"
+  ]
+}
