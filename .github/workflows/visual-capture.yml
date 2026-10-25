@@ -1,0 +1,50 @@
+name: Native WPF visual capture
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: caiwu-visual-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  capture:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.402
+      - name: Confirm visual-only boundaries and delivery hold
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Visual capture requires the existing delivery hold.' }
+          node tests/Caiwu.VisualReview/verify-xaml.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Original XAML interaction contract changed.' }
+      - name: Capture four full native desktop pages with synthetic data
+        shell: pwsh
+        run: ./tests/Caiwu.Acceptance/HighResolution/run.ps1 -OutputDirectory artifacts/high-resolution
+      # Upload the first useful evidence before any optional interaction checks.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: caiwu-native-visual-${{ github.sha }}-${{ github.run_number }}
+          path: |
+            artifacts/high-resolution/*.png
+            artifacts/high-resolution/*.json
+            artifacts/high-resolution/*.log
+            artifacts/high-resolution/*failure.txt
+          if-no-files-found: warn
+      - name: Check native editing, focus, date popup and Controls under global theme
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.VisualReview/run.ps1 -OutputDirectory artifacts/visual-checks
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: caiwu-native-visual-checks-${{ github.sha }}-${{ github.run_number }}
+          path: |
+            artifacts/visual-checks/*.png
+            artifacts/visual-checks/*.json
+            artifacts/visual-checks/*.log
+          if-no-files-found: warn
