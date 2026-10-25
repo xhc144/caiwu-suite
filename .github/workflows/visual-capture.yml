@@ -34,7 +34,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Original XAML interaction contract changed.' }
       - name: Capture full native desktop pages after compositor and bounds checks
         shell: pwsh
-        run: ./tests/Caiwu.VisualReview/run.ps1 -DesktopCapture -OutputDirectory artifacts/high-resolution
+        run: ./tests/Caiwu.VisualReview/run.ps1 -OutputDirectory artifacts/high-resolution
       # Upload the first useful evidence before any optional interaction checks.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
@@ -46,10 +46,6 @@ jobs:
             artifacts/high-resolution/*.log
             artifacts/high-resolution/*failure.txt
           if-no-files-found: warn
-      - name: Check native editing, focus, date popup and Controls under global theme
-        if: always()
-        shell: pwsh
-        run: ./tests/Caiwu.VisualReview/run.ps1 -OutputDirectory artifacts/visual-checks
       - name: Recheck existing eight WPF interaction probes after template changes
         if: always()
         shell: pwsh
@@ -63,9 +59,7 @@ jobs:
         with:
           name: caiwu-native-visual-checks-${{ github.sha }}-${{ github.run_number }}
           path: |
-            artifacts/visual-checks/*.png
-            artifacts/visual-checks/*.json
-            artifacts/visual-checks/*.log
+            artifacts/high-resolution/visual-review.json
             artifacts/visual-interactions/**/*.png
             artifacts/visual-interactions/**/*.json
             artifacts/visual-interactions/**/*.log

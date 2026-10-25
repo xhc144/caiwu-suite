@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$DesktopCapture, [string]$OutputDirectory, [ValidateRange(30, 180)][int]$TimeoutSeconds = 90)
+param([string]$OutputDirectory, [ValidateRange(30, 180)][int]$TimeoutSeconds = 90)
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'Visual review requires actual Windows WPF. No screenshots produced.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -14,12 +14,11 @@ $resultPath = Join-Path $OutputDirectory 'visual-review.json'
 if (Test-Path $resultPath) { Remove-Item $resultPath }
 $dll = Join-Path $PSScriptRoot 'bin/Release/net10.0-windows/Caiwu.VisualReview.dll'
 $captureArguments = @(('"' + $dll + '"'), ('"' + $OutputDirectory + '"'))
-if ($DesktopCapture) { $captureArguments += '--desktop' }
 $p = Start-Process -FilePath (Get-Command dotnet).Source -ArgumentList $captureArguments -PassThru -RedirectStandardOutput (Join-Path $OutputDirectory 'stdout.log') -RedirectStandardError (Join-Path $OutputDirectory 'stderr.log')
 if (-not $p.WaitForExit($TimeoutSeconds * 1000)) { $p.Kill($true); throw 'Visual harness timed out; inspect partial PNGs and logs. No pass inferred.' }
 if ($p.ExitCode -ne 0 -or -not (Test-Path $resultPath)) { throw 'Visual harness failed; inspect visual-review.json and logs.' }
 $r = Get-Content -Raw $resultPath | ConvertFrom-Json
-if (-not $r.success -or -not $r.actualWindowsWpf -or $r.checkoutCommit -ne $env:CAIWU_VISUAL_COMMIT -or $r.screenshots.Count -ne 6) { throw 'Visual evidence identity/count/status mismatch.' }
+if (-not $r.success -or -not $r.actualWindowsDesktop -or $r.resizedOrUpscaled -or -not $r.actualWindowsWpf -or $r.checkoutCommit -ne $env:CAIWU_VISUAL_COMMIT -or $r.screenshots.Count -ne 6) { throw 'Visual evidence identity/count/status mismatch.' }
 foreach ($capture in $r.screenshots) {
     if ($capture.width -lt 1920 -or $capture.height -lt 1080) { throw 'Native screenshot resolution is insufficient.' }
     $actual = (Get-FileHash (Join-Path $OutputDirectory $capture.file) -Algorithm SHA256).Hash.ToLowerInvariant()
