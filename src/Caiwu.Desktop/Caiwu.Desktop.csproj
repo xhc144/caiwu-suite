@@ -11,5 +11,6 @@
     <ProjectReference Include="../Caiwu.Core/Caiwu.Core.csproj" />
     <ProjectReference Include="../Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />
     <ProjectReference Include="../Caiwu.Reporting/Caiwu.Reporting.csproj" />
+    <ProjectReference Include="../../packaging-next/src/Caiwu.Delivery/Caiwu.Delivery.csproj" />
   </ItemGroup>
 </Project>

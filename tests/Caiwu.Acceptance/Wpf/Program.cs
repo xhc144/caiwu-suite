@@ -32,8 +32,7 @@ internal static class Program
         directory = Path.GetFullPath(args.Length == 0 ? "tests/Caiwu.Acceptance/evidence/runtime/wpf" : args[0]);
         Directory.CreateDirectory(directory);
         var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        var backend = new DesktopBackend(SqliteLedgerStore.Open, SqliteLedgerStore.Create,
-            SqliteLedgerStore.RestoreBackup, s => new LedgerService(s), TemplateCatalog.All);
+        var backend = (DesktopBackend)typeof(App).GetMethod("CreateBackend", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
         var path = Path.Combine(directory, "acceptance-" + Guid.NewGuid().ToString("N") + ".caiwu");
         var book = new BookInfo(Guid.NewGuid(), "独立验收", AccountingRegime.SmallBusiness, "acceptance", 2026, 10, 9, DateTimeOffset.UtcNow);
         using var store = SqliteLedgerStore.Create(path, book, TemplateCatalog.Get(AccountingRegime.SmallBusiness).Accounts);
