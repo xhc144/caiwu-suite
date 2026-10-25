@@ -33,7 +33,8 @@ internal static class Program
         {
             Need(OperatingSystem.IsWindows(), "actual Windows required");
             app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
-            app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml") });
+            app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Caiwu.Desktop;component/Themes/Modern.xaml", UriKind.Relative) });
+            Need(app.Resources["AppCanvas"] is SolidColorBrush, "exact production Modern.xaml resources loaded without product startup");
             switch (name)
             {
                 case "book-preview-cancel": BookPreview(root); break;

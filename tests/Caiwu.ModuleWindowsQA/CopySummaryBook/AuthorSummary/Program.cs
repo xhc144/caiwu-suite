@@ -35,6 +35,7 @@ internal static class Program
             Guid category = default, entry = default;
             Drive(manager, window =>
             {
+                Console.WriteLine(JsonSerializer.Serialize(new { diagnostic = "book-scope", window.State.BookId, window.State.BookDisplayName, expectedBookId = book, actualText = Find<TextBlock>(window, "BookScope").Text, inlineText = new System.Windows.Documents.TextRange(Find<TextBlock>(window, "BookScope").ContentStart, Find<TextBlock>(window, "BookScope").ContentEnd).Text }));
                 Check(window.State.BookId == book && Find<TextBlock>(window, "BookScope").Text.Contains("合成账套 A", StringComparison.Ordinal), "scope identifies the injected book");
                 Check(!Find<Button>(window, "ChooseButton").IsEnabled, "empty catalog cannot be selected");
                 Click(window, "AddCategoryButton"); SetText(window, "CategoryNameBox", "费用");
@@ -187,7 +188,7 @@ internal static class Program
         window.ContentRendered += (_, _) => window.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
         {
             try { Flush(window); actions(window); }
-            catch (Exception ex) { failure = ex; window.Close(); }
+            catch (Exception ex) { failure = ex; try { Capture(window, "summary-failure.png"); } catch (Exception captureError) { Console.Error.WriteLine(captureError); } window.Close(); }
         }));
         timer.Start(); window.ShowDialog(); timer.Stop();
         if (failure is not null) throw new InvalidOperationException("Summary manager modal regression failed.", failure);

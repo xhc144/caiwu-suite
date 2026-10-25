@@ -12,5 +12,6 @@
     <ProjectReference Include="../../../../src/Caiwu.VoucherTools.Wpf/Caiwu.VoucherTools.Wpf.csproj" />
     <ProjectReference Include="../../../../src/Caiwu.Summaries/Wpf/Caiwu.Summaries.Wpf.csproj" />
     <ProjectReference Include="../../../../src/Caiwu.Core/Caiwu.Core.csproj" />
+    <ProjectReference Include="../../../../src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
   </ItemGroup>
 </Project>
