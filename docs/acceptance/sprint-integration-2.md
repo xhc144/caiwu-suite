@@ -1,8 +1,8 @@
 # 第二阶段主集成与 Windows 验证
 
-更新时间：2026-10-25 10:41 UTC。私有分支 `codex/sprint-integration-2`，目标 `codex/windows-revalidation`，草稿 [PR16](https://github.com/xhc144/caiwu-suite/pull/16)。本阶段最迟 **11:00 UTC** 交接结束。交付暂停标记和安装/升级账套保护保留；没有新安装包、分发 ZIP、main 合并或权限修改。
+更新时间：2026-10-25 10:49 UTC。私有分支 `codex/sprint-integration-2`，目标 `codex/windows-revalidation`，草稿 [PR16](https://github.com/xhc144/caiwu-suite/pull/16)。本阶段最迟 **11:00 UTC** 交接结束。交付暂停标记和安装/升级账套保护保留；没有新安装包、分发 ZIP、main 合并或权限修改。
 
-**核心与现代视觉的完整 Windows 组合已通过**：代码 `1f4e9ea14aad44de3a2c6673811808260ee43922`，成功 [run40184804270](https://github.com/xhc144/caiwu-suite/actions/runs/40184804270)。当前新增认证/功能宿主组合代码为 `74fc20d6029f4626554356aff002d6cd18c8037b`，[run40185768858](https://github.com/xhc144/caiwu-suite/actions/runs/40185768858) 正在验证；不能用前一组合绿灯替代新认证路径结果。
+**核心与现代视觉的完整 Windows 组合已通过**：代码 `1f4e9ea14aad44de3a2c6673811808260ee43922`，成功 [run40184804270](https://github.com/xhc144/caiwu-suite/actions/runs/40184804270)。认证/功能宿主生产代码为 `74fc20d6029f4626554356aff002d6cd18c8037b`；该组合独立测试启动遇到实际Windows阻断，测试隔离修复 `1f2fd4f4eba7ee25f64c359b8ee9353358e19f32`（生产树未变）的[完整run40186288355](https://github.com/xhc144/caiwu-suite/actions/runs/40186288355)与[定点run40186288268](https://github.com/xhc144/caiwu-suite/actions/runs/40186288268)正在验证；不能用前一组合绿灯替代新认证路径结果。
 
 ## 已接入来源
 
@@ -46,7 +46,7 @@ Delivery `BookInspection.FileSha256Basis` 区分输入 `sqlite-consistent-copy` 
 
 ## 新认证/模块组合状态
 
-74fc20d已在Linux完整Release编译，0warning/0error；真实SQLite/摘要/身份文件16场景通过；新14项窗口宿主交叉编译通过。生产App真实首次设置与显式登录，取消无可写会话；固定OperatorSession贯穿原服务与新窗口，不能在保存时取新全局登录。复制凭证仅显式保存新Draft写账，成本仅计算建议；民非预览明确标记JSON尚未受管保护。新Windows结果待run40185768858，不把模块库测试或交叉编译当应用完成。
+74fc20d已在Linux完整Release编译，0warning/0error；真实SQLite/摘要/身份文件16场景通过；新14项窗口宿主交叉编译通过。生产App真实首次设置与显式登录，取消无可写会话；固定OperatorSession贯穿原服务与新窗口，不能在保存时取新全局登录。复制凭证仅显式保存新Draft写账，成本仅计算建议；民非预览明确标记JSON尚未受管保护。旧定点run40185768596实际失败：六旧窗口全部35秒watchdog阻断，焦点输入未到格后Application关闭，视觉90秒timeout。artifact12595763828保留失败。所有宿主直接new App触发产品新增登录生命周期；1f2fd4f仅在独立测试程序集派生资源Application，隔离重复产品启动，正常虚构身份登录/集中授权和原断言保留。真实首次设置/登录对话框及组合API仍由14项场景检查；独立资源宿主不等同产品启动事件本身已验。旧全量40185768858已请求停止，新Windows结果待40186288355/40186288268，不把模块库测试或交叉编译当应用完成。
 
 **摘要管理与账套复制目前在App中仍禁用**，因为实际受管路径/附件登记/数据租约委托尚未接入。Delivery受管模块实现9ca1deb/evidence795f6d6已交PR28，但未接入本阶段；需Feature owner按其真实API接线，不得用空委托开启。ReportDesigner尚未接入。详细接口、六模块完整SHA与生命周期见src/Caiwu.Desktop/Features/HOST_INTEGRATION.md和MANAGED_MODULE_API_REQUEST.md。
 
@@ -59,7 +59,7 @@ Delivery `BookInspection.FileSha256Basis` 区分输入 `sqlite-consistent-copy` 
 
 ## 剩余交接与边界
 
-1. 完成74fc20d精确Windows组合并保存source-bound窗口结果；如失败，具体定位后交接，不拿1f绿灯覆盖。
+1. 完成1f2fd4f精确Windows组合并保存source-bound窗口结果；如失败，具体定位后交接，不拿1f绿灯覆盖。
 2. Feature owner接PR28真实受管数据API，启用摘要/账套复制后另跑组合；全局Operators不能作为单本账套附件恢复。当前未改Delivery新实现或宿主委托范围。
 3. 实际安装器/升级、NTFS断电/恢复、物理键盘/中文IME、多DPI/多显示器、打印尚未运行。当前ManagedDataContract/交付暂停仍阻止新发行包，不删除保护赶进度。
 4. 成本大工作表延迟未量测，民非分类JSON和Designer备份未形成应用闭环，不称用户可用的完整财务套件。

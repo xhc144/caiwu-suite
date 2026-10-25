@@ -88,5 +88,12 @@
     "artifactId": 12595726977,
     "zipSha256": "613018f0ac76a04491fe4a1358ba9ed6d97898b2d7601c1d1e788feb576022b5",
     "scope": "Complete Windows SUCCESS: source-identity clean, SQLite117/117, original publication race12/12, Core149, Reporting45+9, Controls15; WPF8/nav2/stale6/nativefocus2/dual3/v1222, Delivery143/0/4, ten visual checks and four native primary pages. Delivery hold/no distribution archive pass. Does not cover new authenticated host modules."
+  },
+  {
+    "runId": 40185768596,
+    "commit": "74fc20d6029f4626554356aff002d6cd18c8037b",
+    "artifactId": 12595763828,
+    "zipSha256": "b72815d172d7ae57277bd630729886945372056c0c927eb1909a5bfc5c74d733",
+    "scope": "FAILED: new product OnStartup login interferes with independent host dispatcher; all six stale cases watchdog-blocked, native input misses intended cell and Application shuts down, visual90s timeout. Independent resource Application startup isolated in1f2fd4f; no production auth bypass."
   }
 ]
