@@ -8,7 +8,10 @@ on:
       - 'packaging-next/Delivery.restore.targets'
       - 'packaging-next/locks/**'
       - 'packaging-next/src/**'
-      - 'src/Caiwu.Desktop/**'
+      - 'src/**/*.cs'
+      - 'src/**/*.xaml'
+      - 'src/**/*.csproj'
+      - 'src/**/packages.lock.json'
       - 'tests/Caiwu.Delivery.Tests/**'
   workflow_dispatch:
 permissions:

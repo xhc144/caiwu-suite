@@ -7,7 +7,10 @@ on:
       - 'packaging-next/Build-InternalQa.ps1'
       - 'packaging-next/Test-WindowsDelivery.ps1'
       - 'packaging-next/src/**'
-      - 'src/Caiwu.Desktop/**'
+      - 'src/**/*.cs'
+      - 'src/**/*.xaml'
+      - 'src/**/*.csproj'
+      - 'src/**/packages.lock.json'
       - 'tests/Caiwu.Delivery.Tests/InstalledDesktop/**'
   workflow_dispatch:
 permissions:
