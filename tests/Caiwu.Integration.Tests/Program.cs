@@ -26,13 +26,13 @@ try
         var ledger = session.Service.GetLedger("1002", new(2026, 10, 1), new(2026, 10, 31));
         Check(ledger.Count == 4 && ledger[^1].RunningBalance == 108800m && ledger.Skip(1).All(l => l.VoucherId is not null), "银行明细含期初与三条可追溯发生额");
         var posted = session.Snapshot.Vouchers[0]; var rejected = false;
-        try { session.Service.DeleteDraft(posted.Id, "管理员"); } catch (LedgerValidationException) { rejected = true; }
+        try { session.Service.DeleteDraft(posted.Id, "管理员", new(session.Snapshot.Book.Id, session.Snapshot.Revision)); } catch (LedgerValidationException) { rejected = true; }
         Check(rejected, "真实存储下拒绝删除已记账凭证");
         var backup = Path.Combine(folder, "sample.caiwubak"); session.BackupTo(backup);
         var restored = Path.Combine(folder, "restored.caiwu"); session.RestoreTo(backup, restored);
         using var copy = SqliteLedgerStore.Open(restored);
         Check(copy.Read().Vouchers.Count == 3 && copy.Read().Revision == session.Snapshot.Revision, "备份恢复副本保留凭证与revision");
-        session.Service.CloseMonth(10, "结账员"); session.Refresh();
+        session.Service.CloseMonth(10, "结账员", new(session.Snapshot!.Book.Id, session.Snapshot.Revision)); session.Refresh();
         Check(session.Snapshot!.Book.ClosedThroughMonth == 10, "真实存储下月结期间锁已持久化");
         using var immutableBackup = SqliteLedgerStore.Open(restored);
         Check(immutableBackup.Read().Book.ClosedThroughMonth == 9, "后续源账变化不影响恢复副本");

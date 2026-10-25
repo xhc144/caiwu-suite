@@ -81,15 +81,15 @@ sealed class FakeStore(LedgerSnapshot snapshot) : ILedgerStore
 sealed class FakeService(ILedgerStore store) : ILedgerService
 {
     public LedgerSnapshot GetSnapshot() => store.Read();
-    public void SaveAccount(Account a, string o) => throw new NotSupportedException();
-    public void DeleteAccount(string a, string o) => throw new NotSupportedException();
-    public void SetOpeningBalances(IReadOnlyList<OpeningBalance> b, string o) => throw new NotSupportedException();
+    public void SaveAccount(Account a, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
+    public void DeleteAccount(string a, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
+    public void SetOpeningBalances(IReadOnlyList<OpeningBalance> b, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
     public Voucher SaveDraft(VoucherDraft d, string o) => throw new NotSupportedException();
-    public void DeleteDraft(Guid id, string o) => throw new NotSupportedException();
-    public void Review(Guid id, string o) => throw new NotSupportedException();
-    public void CancelReview(Guid id, string o) => throw new NotSupportedException();
-    public void Post(Guid id, string o) => throw new NotSupportedException();
-    public void CloseMonth(int m, string o) => throw new NotSupportedException();
+    public void DeleteDraft(Guid id, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
+    public void Review(Guid id, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
+    public void CancelReview(Guid id, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
+    public void Post(Guid id, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
+    public void CloseMonth(int m, string o, LedgerMutationContext? context = null) => throw new NotSupportedException();
     public IReadOnlyList<TrialBalanceRow> GetTrialBalance(DateOnly f, DateOnly t) => throw new NotSupportedException();
     public IReadOnlyList<LedgerEntryRow> GetLedger(string a, DateOnly f, DateOnly t) => throw new NotSupportedException();
 }

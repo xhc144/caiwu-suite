@@ -18,6 +18,7 @@ public sealed class LedgerSession : IDisposable
     public LedgerSnapshot? Snapshot { get; private set; }
     public string? DatabasePath => _store?.DatabasePath;
     public bool IsOpen => _store is not null;
+    public long Generation { get; private set; }
 
     public LedgerSession(DesktopBackend backend) => _backend = backend;
 
@@ -35,7 +36,8 @@ public sealed class LedgerSession : IDisposable
             var service = _backend.CreateService(next);
             var snapshot = service.GetSnapshot();
             var previous = _store;
-            _store = next;
+            var nextGeneration = checked(Generation + 1);
+            _store = next; Generation = nextGeneration;
             Service = service;
             Snapshot = snapshot;
             previous?.Dispose();
@@ -55,6 +57,7 @@ public sealed class LedgerSession : IDisposable
 
     public void Close()
     {
+        if (_store is not null) Generation = checked(Generation + 1);
         _store?.Dispose();
         _store = null;
         Service = null;

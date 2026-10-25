@@ -14,7 +14,9 @@ public static class SampleLedger
         using var store = backend.Create(path, book, template.Accounts);
         var service = backend.CreateService(store);
         string Code(string name) => template.Accounts.Single(a => a.Name == name).Code;
-        service.SetOpeningBalances([new(Code("银行存款"), 100000m, 0m), new(Code("实收资本"), 0m, 100000m)], "期初复核员");
+        var openingPlan = service.GetSnapshot();
+        service.SetOpeningBalances([new(Code("银行存款"), 100000m, 0m), new(Code("实收资本"), 0m, 100000m)], "期初复核员",
+            new(openingPlan.Book.Id, openingPlan.Revision));
         Guid last = Guid.Empty;
         foreach (var (debit, credit, amount, summary) in new[]
         {
@@ -23,9 +25,14 @@ public static class SampleLedger
             ("银行存款", "主营业务收入", 20000m, "收到业务款（测试）")
         })
         {
+            // Each new synthetic command plans from its own snapshot; no user edit is retried here.
+            var entryPlan = service.GetSnapshot();
             var voucher = service.SaveDraft(new VoucherDraft(null, new DateOnly(2026, 10, 12), "记", null, 1,
-                [new(Code(debit), summary, amount, 0m), new(Code(credit), summary, 0m, amount)]), "制单员");
-            service.Review(voucher.Id, "审核员"); service.Post(voucher.Id, "记账员"); last = voucher.Id;
+                [new(Code(debit), summary, amount, 0m), new(Code(credit), summary, 0m, amount)], entryPlan.Revision, entryPlan.Book.Id), "制单员");
+            var reviewPlan = service.GetSnapshot();
+            service.Review(voucher.Id, "审核员", new(reviewPlan.Book.Id, reviewPlan.Revision));
+            var postPlan = service.GetSnapshot();
+            service.Post(voucher.Id, "记账员", new(postPlan.Book.Id, postPlan.Revision)); last = voucher.Id;
         }
         return last;
     }

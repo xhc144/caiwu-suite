@@ -183,8 +183,8 @@
               <DataGrid.Columns>
                 <DataGridTextColumn Header="科目代码" Binding="{Binding Code}" Width="160" IsReadOnly="True" />
                 <DataGridTextColumn Header="科目名称" Binding="{Binding Name}" Width="*" IsReadOnly="True" />
-                <DataGridTextColumn Header="借方期初" Binding="{Binding DebitText}" Width="200" />
-                <DataGridTextColumn Header="贷方期初" Binding="{Binding CreditText}" Width="200" />
+                <DataGridTextColumn Header="借方期初" Binding="{Binding DebitText, UpdateSourceTrigger=PropertyChanged}" Width="200" />
+                <DataGridTextColumn Header="贷方期初" Binding="{Binding CreditText, UpdateSourceTrigger=PropertyChanged}" Width="200" />
               </DataGrid.Columns>
             </DataGrid>
           </DockPanel>

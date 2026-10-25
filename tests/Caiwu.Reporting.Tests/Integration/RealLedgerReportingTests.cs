@@ -47,9 +47,10 @@ public sealed class RealLedgerReportingTests
     public void ParentGrossBalancesAreNotNettedOrCountedTwiceAndCreditLedgerStaysNegative()
     {
         using var fixture = new RealBook(AccountingRegime.Enterprise);
+        var openingPlan = fixture.Service.GetSnapshot();
         fixture.Service.SetOpeningBalances([
             new(BankLeaf, 100000m, 0), new(BankSibling, 0, 1000m), new(fixture.Capital, 0, 99000m)
-        ], AuditOnlyActor);
+        ], AuditOnlyActor, new(openingPlan.Book.Id, openingPlan.Revision));
         fixture.SeedContractSample();
         fixture.Reopen();
         var snapshot = fixture.Service.GetSnapshot();
@@ -80,7 +81,8 @@ public sealed class RealLedgerReportingTests
         fixture.SeedContractSample();
         var draft = fixture.Save(new(2026, 1, 31), 0.10m, fixture.Expense, BankLeaf, "草稿不入账");
         var reviewed = fixture.Save(new(2026, 1, 30), 0.20m, BankLeaf, fixture.Income, "已审核不入账");
-        fixture.Service.Review(reviewed.Id, "审核员");
+        var reviewPlan = fixture.Service.GetSnapshot();
+        fixture.Service.Review(reviewed.Id, "审核员", new(reviewPlan.Book.Id, reviewPlan.Revision));
         fixture.Post(new(2026, 2, 1), 99m, BankLeaf, fixture.Income, "二月不进一月");
         fixture.Reopen();
         var reports = Reports(fixture.Service, From, To);
@@ -108,12 +110,15 @@ public sealed class RealLedgerReportingTests
     public void SameVoucherRepeatedAccountLinesKeepIdsOrderingAndExactCents()
     {
         using var fixture = new RealBook(AccountingRegime.Enterprise);
+        var entryPlan = fixture.Service.GetSnapshot();
         var voucher = fixture.Service.SaveDraft(new(null, new(2026, 1, 15), "记", null, 1, [
             new(fixture.Expense, "第一行 0.10", 0.10m, 0), new(fixture.Expense, "第二行 0.20", 0.20m, 0),
             new(BankLeaf, "贷方 0.30", 0, 0.30m)
-        ]), "制单员");
-        fixture.Service.Review(voucher.Id, "审核员");
-        fixture.Service.Post(voucher.Id, "记账员");
+        ], entryPlan.Revision, entryPlan.Book.Id), "制单员");
+        var reviewPlan = fixture.Service.GetSnapshot();
+        fixture.Service.Review(voucher.Id, "审核员", new(reviewPlan.Book.Id, reviewPlan.Revision));
+        var postPlan = fixture.Service.GetSnapshot();
+        fixture.Service.Post(voucher.Id, "记账员", new(postPlan.Book.Id, postPlan.Revision));
         fixture.Reopen();
         var snapshot = fixture.Service.GetSnapshot();
         var metadata = Metadata(snapshot.Book, new(2026, 1, 15), new(2026, 1, 15));
@@ -283,18 +288,30 @@ public sealed class RealLedgerReportingTests
             Service = new LedgerService(Store);
             foreach (var account in new[] { A("100201", "银行分支", "1002"), A(BankLeaf, "银行账户 <img src=x> 🧾", "100201"),
                 A(BankSibling, "银行反向余额", "1002"), A("100299", "零余额银行", "1002") })
-                Service.SaveAccount(account, AuditOnlyActor);
-            Service.SetOpeningBalances([new(BankLeaf, 100000m, 0), new(Capital, 0, 100000m)], AuditOnlyActor);
+            {
+                var accountPlan = Service.GetSnapshot();
+                Service.SaveAccount(account, AuditOnlyActor, new(accountPlan.Book.Id, accountPlan.Revision));
+            }
+            var openingPlan = Service.GetSnapshot();
+            Service.SetOpeningBalances([new(BankLeaf, 100000m, 0), new(Capital, 0, 100000m)], AuditOnlyActor,
+                new(openingPlan.Book.Id, openingPlan.Revision));
         }
 
         private static Account A(string code, string name, string parent) => new(code, name, parent, BalanceDirection.Debit, true, 0, 0);
-        internal Voucher Save(DateOnly date, decimal amount, string debit, string credit, string summary) =>
-            Service.SaveDraft(new(null, date, "记", null, 1, [new(debit, summary, amount, 0), new(credit, summary, 0, amount)]), "制单员");
+        internal Voucher Save(DateOnly date, decimal amount, string debit, string credit, string summary)
+        {
+            // This is fresh synthetic fixture creation, not an existing user edit/retry.
+            var entryPlan = Service.GetSnapshot();
+            return Service.SaveDraft(new(null, date, "记", null, 1,
+                [new(debit, summary, amount, 0), new(credit, summary, 0, amount)], entryPlan.Revision, entryPlan.Book.Id), "制单员");
+        }
         internal void Post(DateOnly date, decimal amount, string debit, string credit, string summary)
         {
             var voucher = Save(date, amount, debit, credit, summary);
-            Service.Review(voucher.Id, "审核员");
-            Service.Post(voucher.Id, "记账员");
+            var reviewPlan = Service.GetSnapshot();
+            Service.Review(voucher.Id, "审核员", new(reviewPlan.Book.Id, reviewPlan.Revision));
+            var postPlan = Service.GetSnapshot();
+            Service.Post(voucher.Id, "记账员", new(postPlan.Book.Id, postPlan.Revision));
         }
         internal void SeedContractSample()
         {

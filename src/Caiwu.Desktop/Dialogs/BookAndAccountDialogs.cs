@@ -46,13 +46,18 @@ public sealed class NewBookWindow : Window
     public BookInfo? Book { get; private set; }
     public TemplateDefinition? SelectedTemplate => _template.SelectedItem as TemplateDefinition;
 
-    public NewBookWindow(IReadOnlyList<TemplateDefinition> templates)
+    public NewBookWindow(IReadOnlyList<TemplateDefinition> templates, BookInfo? draft = null)
     {
         var form = DialogLayout.Form(this, "新建账套");
         form.Children.Add(new TextBlock { Text = "建立独立账套", FontSize = 22, FontWeight = FontWeights.SemiBold });
         form.Children.Add(new TextBlock { Text = "本开发预览用于试用与核对，不替代生产账务验收。",
             TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 8) });
         _template.ItemsSource = templates; _template.SelectedIndex = 0;
+        if (draft is not null)
+        {
+            _name.Text = draft.Name; _year.Text = draft.FiscalYear.ToString(); _month.SelectedItem = draft.StartMonth;
+            _template.SelectedItem = templates.FirstOrDefault(t => t.Regime == draft.Regime) ?? templates.FirstOrDefault();
+        }
         var templateStyle = new Style(typeof(ComboBoxItem));
         var nonprofit = new DataTrigger { Binding = new Binding(nameof(TemplateDefinition.Regime)), Value = AccountingRegime.Nonprofit };
         nonprofit.Setters.Add(new Setter(IsEnabledProperty, false));

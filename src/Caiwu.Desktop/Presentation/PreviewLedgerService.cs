@@ -12,16 +12,16 @@ public sealed class PreviewLedgerService(ILedgerService inner) : ILedgerService
     }
     private void Write(Action action) { DemandWritable(inner.GetSnapshot().Book); action(); }
     public LedgerSnapshot GetSnapshot() => inner.GetSnapshot();
-    public void SaveAccount(Account account, string operatorName) => Write(() => inner.SaveAccount(account, operatorName));
-    public void DeleteAccount(string code, string operatorName) => Write(() => inner.DeleteAccount(code, operatorName));
-    public void SetOpeningBalances(IReadOnlyList<OpeningBalance> balances, string operatorName) => Write(() => inner.SetOpeningBalances(balances, operatorName));
+    public void SaveAccount(Account account, string operatorName, LedgerMutationContext? context = null) => Write(() => inner.SaveAccount(account, operatorName, context));
+    public void DeleteAccount(string code, string operatorName, LedgerMutationContext? context = null) => Write(() => inner.DeleteAccount(code, operatorName, context));
+    public void SetOpeningBalances(IReadOnlyList<OpeningBalance> balances, string operatorName, LedgerMutationContext? context = null) => Write(() => inner.SetOpeningBalances(balances, operatorName, context));
     public Voucher SaveDraft(VoucherDraft draft, string operatorName)
     { DemandWritable(inner.GetSnapshot().Book); return inner.SaveDraft(draft, operatorName); }
-    public void DeleteDraft(Guid id, string operatorName) => Write(() => inner.DeleteDraft(id, operatorName));
-    public void Review(Guid id, string reviewer) => Write(() => inner.Review(id, reviewer));
-    public void CancelReview(Guid id, string operatorName) => Write(() => inner.CancelReview(id, operatorName));
-    public void Post(Guid id, string operatorName) => Write(() => inner.Post(id, operatorName));
-    public void CloseMonth(int month, string operatorName) => Write(() => inner.CloseMonth(month, operatorName));
+    public void DeleteDraft(Guid id, string operatorName, LedgerMutationContext? context = null) => Write(() => inner.DeleteDraft(id, operatorName, context));
+    public void Review(Guid id, string reviewer, LedgerMutationContext? context = null) => Write(() => inner.Review(id, reviewer, context));
+    public void CancelReview(Guid id, string operatorName, LedgerMutationContext? context = null) => Write(() => inner.CancelReview(id, operatorName, context));
+    public void Post(Guid id, string operatorName, LedgerMutationContext? context = null) => Write(() => inner.Post(id, operatorName, context));
+    public void CloseMonth(int month, string operatorName, LedgerMutationContext? context = null) => Write(() => inner.CloseMonth(month, operatorName, context));
     public IReadOnlyList<TrialBalanceRow> GetTrialBalance(DateOnly from, DateOnly to) => inner.GetTrialBalance(from, to);
     public IReadOnlyList<LedgerEntryRow> GetLedger(string accountCode, DateOnly from, DateOnly to) => inner.GetLedger(accountCode, from, to);
 }

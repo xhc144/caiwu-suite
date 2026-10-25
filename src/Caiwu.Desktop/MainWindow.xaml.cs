@@ -22,6 +22,8 @@ public partial class MainWindow : Window
     private IReadOnlyList<TrialBalanceRow> _trialRows = [];
     private IReadOnlyList<LedgerDisplay> _ledgerRows = [];
     private bool _ready, _openingDirty;
+    private SessionBoundMutation? _voucherOrigin, _accountOrigin, _openingOrigin, _displayOrigin;
+    private BookInfo? _displayBook, _newBookDraft;
 
     public MainWindow(DesktopBackend? backend = null)
     {
@@ -84,9 +86,11 @@ public partial class MainWindow : Window
         {
             Title = "财务套件 · 开发预览"; BookNameText.Text = "财务工作台";
             BookSubtitleText.Text = "现代界面 · 熟悉的账务流程"; StatusText.Text = "尚未打开账套";
+            _voucherOrigin = _accountOrigin = _openingOrigin = _displayOrigin = null; _displayBook = null;
             UpdateWriteAccess(this); return;
         }
         var snapshot = Snapshot; var book = snapshot.Book;
+        _displayOrigin = new SessionBoundMutation(_session!, snapshot); _displayBook = book;
         var regime = book.Regime switch { AccountingRegime.SmallBusiness => "小企业", AccountingRegime.Enterprise => "企业", _ => "民间非营利组织" };
         var period = book.ClosedThroughMonth >= 12 ? "本年度已结账" : $"当前期间 {book.FiscalYear}-{book.ClosedThroughMonth + 1:00}";
         Title = $"{book.Name} — 财务套件 · 开发预览"; BookNameText.Text = book.Name;
@@ -98,6 +102,7 @@ public partial class MainWindow : Window
         _accountRows = snapshot.Accounts.OrderBy(a => a.Code, StringComparer.Ordinal)
             .Select(a => new AccountDisplay(a, !snapshot.Accounts.Any(child => child.ParentCode == a.Code))).ToArray();
         AccountGrid.ItemsSource = _accountRows;
+        _accountOrigin = new SessionBoundMutation(_session!, snapshot);
         var selectedCode = LedgerAccountInput.SelectedValue as string;
         LedgerAccountInput.ItemsSource = _accountRows;
         LedgerAccountInput.SelectedValue = selectedCode;
@@ -122,13 +127,14 @@ public partial class MainWindow : Window
 
     private void NewBook_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
-        var dialog = new NewBookWindow(_backend!.Templates) { Owner = this };
-        if (dialog.ShowDialog() != true || dialog.Book is null || dialog.SelectedTemplate is null) return;
+        var dialog = new NewBookWindow(_backend!.Templates, _newBookDraft) { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.Book is null || dialog.SelectedTemplate is null) { _newBookDraft = null; return; }
+        _newBookDraft = dialog.Book; // Native path cancellation/failure must retain the accepted form fields.
         var save = new SaveFileDialog { Title = "保存新账套", Filter = "财务账套 (*.caiwu)|*.caiwu", DefaultExt = ".caiwu",
             FileName = SafeFileName(dialog.Book.Name) + ".caiwu", AddExtension = true };
         if (save.ShowDialog(this) != true) return;
         if (File.Exists(save.FileName)) throw new LedgerValidationException("新账套不能覆盖已有文件，请选择新的文件名。");
-        _session!.Create(save.FileName, dialog.Book, dialog.SelectedTemplate.Accounts); BookOpened();
+        _session!.Create(save.FileName, dialog.Book, dialog.SelectedTemplate.Accounts); BookOpened(); _newBookDraft = null;
         NotificationText.Text = "账套已建立。请核对科目并录入期初余额。";
     }, requireBook: false, discardOpening: true);
 
@@ -180,17 +186,22 @@ public partial class MainWindow : Window
     private Voucher SelectedVoucher() => VoucherGrid.SelectedItem is VoucherListRow row ? row.Value
         : throw new LedgerValidationException("请先选择一张凭证。");
 
+    internal VoucherEditorWindow CreateVerificationEditor(Guid? id) => CreateVoucherEditor(id);
+    private VoucherEditorWindow CreateVoucherEditor(Guid? id, Window? owner = null)
+    {
+        // Opening/reloading an editor loads its full data and token together. Submission never refreshes either.
+        var editSnapshot = Service.GetSnapshot();
+        var origin = new SessionBoundMutation(_session!, editSnapshot);
+        var voucher = id is { } value ? editSnapshot.Vouchers.SingleOrDefault(v => v.Id == value)
+            ?? throw new StoreConcurrencyException("该凭证已发生变化，请重新查询。") : null;
+        var operatorName = OperatorName();
+        return new VoucherEditorWindow(editSnapshot.Book, editSnapshot.Accounts, voucher, operatorName,
+            draft => origin.GetService().SaveDraft(draft, operatorName), forceReadOnly: !PreviewLedgerService.AllowsWrites(editSnapshot.Book),
+            expectedRevision: editSnapshot.Revision) { Owner = owner ?? this };
+    }
     private void EditVoucher(Voucher? voucher, Window? owner = null)
     {
-        // Both data and edit token must come from this one fresh snapshot, never a stale grid row.
-        var editSnapshot = Service.GetSnapshot();
-        if (voucher is not null)
-            voucher = editSnapshot.Vouchers.SingleOrDefault(v => v.Id == voucher.Id)
-                ?? throw new StoreConcurrencyException("该凭证已发生变化，请重新查询。");
-        var operatorName = OperatorName();
-        var dialog = new VoucherEditorWindow(editSnapshot.Book, editSnapshot.Accounts, voucher, operatorName,
-            draft => Service.SaveDraft(draft, operatorName), forceReadOnly: !PreviewLedgerService.AllowsWrites(editSnapshot.Book),
-            expectedRevision: voucher is null ? null : editSnapshot.Revision) { Owner = owner ?? this };
+        var dialog = CreateVoucherEditor(voucher?.Id, owner);
         if (dialog.ShowDialog() == true)
         {
             Reload(); Pages.SelectedIndex = 1;
@@ -200,21 +211,21 @@ public partial class MainWindow : Window
     }
 
     private void Review_Click(object sender, RoutedEventArgs e) => Run(() =>
-    { Service.Review(SelectedVoucher().Id, OperatorName()); Reload(); }, "凭证已审核。", discardOpening: true);
+    { var voucher = SelectedVoucher(); var origin = RequireOrigin(_voucherOrigin); origin.GetService().Review(voucher.Id, OperatorName(), origin.Context); Reload(); }, "凭证已审核。", discardOpening: true);
     private void CancelReview_Click(object sender, RoutedEventArgs e) => Run(() =>
-    { Service.CancelReview(SelectedVoucher().Id, OperatorName()); Reload(); }, "已取消审核；凭证可由制单人修改。", discardOpening: true);
+    { var voucher = SelectedVoucher(); var origin = RequireOrigin(_voucherOrigin); origin.GetService().CancelReview(voucher.Id, OperatorName(), origin.Context); Reload(); }, "已取消审核；凭证可由制单人修改。", discardOpening: true);
     private void Post_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
-        var voucher = SelectedVoucher();
+        var voucher = SelectedVoucher(); var origin = RequireOrigin(_voucherOrigin);
         if (MessageBox.Show(this, $"将记账 {voucher.Date:yyyy-MM-dd} {voucher.Kind}-{voucher.Number:0000}，金额 {AmountInput.Display(voucher.Lines.Sum(l => l.Debit))}。\n\n记账后不能直接修改或删除。是否继续？",
             "确认记账", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-        Service.Post(voucher.Id, OperatorName()); Reload(); NotificationText.Text = "凭证已记账，可在余额表和明细账中联查。";
+        origin.GetService().Post(voucher.Id, OperatorName(), origin.Context); Reload(); NotificationText.Text = "凭证已记账，可在余额表和明细账中联查。";
     }, discardOpening: true);
     private void DeleteVoucher_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
-        var voucher = SelectedVoucher();
+        var voucher = SelectedVoucher(); var origin = RequireOrigin(_voucherOrigin);
         if (MessageBox.Show(this, $"删除草稿 {voucher.Kind}-{voucher.Number:0000}？", "删除草稿", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-        Service.DeleteDraft(voucher.Id, OperatorName()); Reload(); NotificationText.Text = "草稿已删除。";
+        origin.GetService().DeleteDraft(voucher.Id, OperatorName(), origin.Context); Reload(); VoucherGrid.SelectedItem = null; NotificationText.Text = "草稿已删除。";
     }, discardOpening: true);
 
     private void QueryVouchers()
@@ -228,6 +239,7 @@ public partial class MainWindow : Window
             .Where(v => ReportingQueries.Matches(v, query)).Select(v => new VoucherListRow(v))
             .OrderBy(v => v.Value.Date).ThenBy(v => v.Value.Kind, StringComparer.Ordinal).ThenBy(v => v.Value.Number).ToArray();
         VoucherGrid.ItemsSource = _voucherRows;
+        _voucherOrigin = new SessionBoundMutation(_session!, Snapshot);
         VoucherCountText.Text = $"当前查询 {_voucherRows.Count} 张凭证 · 金额合计 {AmountInput.Display(_voucherRows.Sum(v => v.Amount))}（含所选状态）";
     }
 
@@ -242,8 +254,8 @@ public partial class MainWindow : Window
     {
         Run(() =>
         {
-            var operatorName = OperatorName();
-            var dialog = new AccountWindow(original, parent, account => Service.SaveAccount(account, operatorName)) { Owner = this };
+            var operatorName = OperatorName(); var origin = RequireOrigin(_accountOrigin);
+            var dialog = new AccountWindow(original, parent, account => origin.GetService().SaveAccount(account, operatorName, origin.Context)) { Owner = this };
             if (dialog.ShowDialog() != true || dialog.Result is null) return;
             Reload(); NotificationText.Text = "会计科目已保存。";
         }, discardOpening: true);
@@ -251,8 +263,9 @@ public partial class MainWindow : Window
     private void DeleteAccount_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
         if (AccountGrid.SelectedItem is not AccountDisplay row) throw new LedgerValidationException("请选择会计科目。");
+        var origin = RequireOrigin(_accountOrigin);
         if (MessageBox.Show(this, $"删除科目 {row.Code} {row.Name}？", "删除科目", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-        Service.DeleteAccount(row.Code, OperatorName()); Reload(); NotificationText.Text = "科目已删除。";
+        origin.GetService().DeleteAccount(row.Code, OperatorName(), origin.Context); Reload(); NotificationText.Text = "科目已删除。";
     }, discardOpening: true);
 
     private void ReloadOpeningRows()
@@ -265,6 +278,7 @@ public partial class MainWindow : Window
             _opening.Add(row);
         }
         OpeningGrid.IsReadOnly = !CanWriteBook || Snapshot.Vouchers.Any(v => v.Status == VoucherStatus.Posted) || Snapshot.Book.ClosedThroughMonth >= Snapshot.Book.StartMonth;
+        _openingOrigin = new SessionBoundMutation(_session!, Snapshot);
         _openingDirty = false; OpeningTotals();
     }
     private void OpeningTotals()
@@ -281,7 +295,9 @@ public partial class MainWindow : Window
     private void SaveOpening_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
         OpeningGrid.CommitEdit(DataGridEditingUnit.Cell, true); OpeningGrid.CommitEdit(DataGridEditingUnit.Row, true);
-        Service.SetOpeningBalances(_opening.Select(row => row.ToBalance()).ToArray(), OperatorName());
+        if (!_openingDirty) { NotificationText.Text = "没有待保存的期初修改。"; return; }
+        var origin = RequireOrigin(_openingOrigin);
+        origin.GetService().SetOpeningBalances(_opening.Select(row => row.ToBalance()).ToArray(), OperatorName(), origin.Context);
         _openingDirty = false; Reload();
     }, "期初余额已保存。请再次核对借贷合计。");
     private void ReloadOpening_Click(object sender, RoutedEventArgs e) => Run(Reload, "期初余额已重新载入。", discardOpening: true);
@@ -318,7 +334,7 @@ public partial class MainWindow : Window
         else if (Pages.SelectedIndex == 4) QueryTrial();
         else if (Pages.SelectedIndex == 5) QueryLedger();
     }
-    private void Query_Click(object sender, RoutedEventArgs e) => Run(QueryCurrent);
+    private void Query_Click(object sender, RoutedEventArgs e) => Run(() => { Reload(); QueryCurrent(); }, discardOpening: true);
     private void TrialGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e) => Run(() =>
     {
         if (TrialGrid.SelectedItem is not TrialBalanceRow row) return;
@@ -335,11 +351,12 @@ public partial class MainWindow : Window
 
     private void CloseMonth_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
-        var book = Snapshot.Book; var month = book.ClosedThroughMonth + 1;
+        var book = _displayBook ?? throw new StoreConcurrencyException("请重新载入当前账套。");
+        var origin = RequireOrigin(_displayOrigin); var month = book.ClosedThroughMonth + 1;
         if (month > 12) throw new LedgerValidationException("本年度已结账。首版尚不支持自动开立下一年度。");
         if (MessageBox.Show(this, $"确认结账 {book.FiscalYear}-{month:00}？\n请先检查余额并保存备份。结账后本期不再录入凭证。", "月度结账",
             MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
-        Service.CloseMonth(month, OperatorName()); Reload(); NotificationText.Text = $"{book.FiscalYear}-{month:00}已结账。";
+        origin.GetService().CloseMonth(month, OperatorName(), origin.Context); Reload(); NotificationText.Text = $"{book.FiscalYear}-{month:00}已结账。";
     }, discardOpening: true);
 
     private ReportDocument CurrentReport()
@@ -385,12 +402,12 @@ public partial class MainWindow : Window
     });
     private void ReportCenter_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
-        var snapshot = Service.GetSnapshot();
+        var snapshot = Service.GetSnapshot(); var origin = new SessionBoundMutation(_session!, snapshot);
         var from = new DateOnly(snapshot.Book.FiscalYear, Math.Min(snapshot.Book.ClosedThroughMonth + 1, 12), 1);
         var to = new DateOnly(from.Year, from.Month, DateTime.DaysInMonth(from.Year, from.Month));
         var dialog = new ReportCenterWindow(snapshot.Accounts, from, to,
-            (kind, account, first, last) => ReportingQueries.Build(Service, kind, account, first, last),
-            (id, owner) => EditVoucher(Service.GetSnapshot().Vouchers.Single(v => v.Id == id), owner)) { Owner = this };
+            (kind, account, first, last) => ReportingQueries.Build(origin.GetService(), kind, account, first, last),
+            (id, owner) => { var source = origin.GetService(); EditVoucher(source.GetSnapshot().Vouchers.Single(v => v.Id == id), owner); }) { Owner = this };
         dialog.ShowDialog();
     }, discardOpening: true);
 
@@ -427,6 +444,8 @@ public partial class MainWindow : Window
         if (!ConfirmDiscardOpening()) { e.Cancel = true; return; }
         _session?.Dispose();
     }
+    private static SessionBoundMutation RequireOrigin(SessionBoundMutation? origin) => origin
+        ?? throw new StoreConcurrencyException("显示数据的来源已失效，请重新载入并核对。");
     private static string SafeFileName(string name) => string.Concat(name.Select(c => Path.GetInvalidFileNameChars().Contains(c) ? '_' : c));
     private void UpdateWriteAccess(DependencyObject root)
     {
