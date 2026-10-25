@@ -1,5 +1,16 @@
 # caiwu-suite 主集成交接
 
+## 最终 packaging/doc 接续：2026-10-25
+
+本轮独立 checkout `/workspace/caiwu-final`，分支 `codex/final-private-packaging` / [草稿 PR34](https://github.com/xhc144/caiwu-suite/pull/34)。生产构建改动检查点 `75c84a6484eb79e1f9031b620539f39b976a1862`；基线 PR30 `2707a72ffe1b73fed715517802e6ad62e48fe611`；PR33 文档已拣选并按最新安装证据更新。src 树保持 `3854470d5c59e25d92c0e2f567a4ea8decbf8c27`，book-project 未改。
+
+root 已明确接受原五 P1 和 dece298 的 F10/实际恢复物理目标深回读，范围及剩余门禁见 [分项记录](../docs/acceptance/final-private-review-gates.md)。只有 summaries 附件获该安装 fixture 深验；旧所谓余额图实际仍是凭证页，不能作为余额页可见性证明。等待根对新生产路径的审查、两路安装业务 QA 的审核 SHA、最后门禁转换与最终构建的明确批准；DELIVERY_PAUSED 保留，尚无最终分发包/Release。
+
+普通 builder 增加显式 managed/full-SHA 路径，默认 manifest 仍 false；源冻结工具、真实版本可参数化安装复验与不活动的 final workflow 模板已准备。本轮本地 Python gate 7项、host 零警告/错误构建、实际子进程组件保护9项通过（Linux，不冒称 Windows 安装）。精确源 Windows 无安装器/ZIP 准备运行 [40192913945](https://github.com/xhc144/caiwu-suite/actions/runs/40192913945)；最终状态见 [本轮交接](../packaging-next/FINAL_PRIVATE_PACKAGING_HANDOFF.md)。
+
+以下为之前阶段历史快照，不能替代上述新分项结论。
+
+
 ## 本分支第二阶段接续
 
 2026-10-25 10:57 UTC本阶段收尾：核心完整Windows基线1f4e9ea14aad44de3a2c6673811808260ee43922/run40184804270成功；额外认证候选生产树74fc20d、最终测试代码10e38ff65313aae5106a6b55c42790d47345b8fb定点40186708406成功（旧窗口6/焦点2/视觉10），但14新窗口/真实产品启动/候选全量/安装尚未验。Managed9ca1deb和Feature新末段未接入。后续QA先读docs/acceptance/evidence-sprint-integration-2/candidate-packaging-handoff.md；不解除暂停、不把未暂停RID打包路径称为clean。

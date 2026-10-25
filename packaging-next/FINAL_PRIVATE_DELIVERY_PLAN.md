@@ -2,6 +2,8 @@
 
 状态：**DELIVERY_PAUSED 保留，尚无最终分发包或 Release。** 本分支 `codex/final-private-packaging` / [草稿 PR34](https://github.com/xhc144/caiwu-suite/pull/34) 从 PR30 head `2707a72ffe1b73fed715517802e6ad62e48fe611` 接续，拣选文档 PR33 `4460fec7a9d3e07162a66bae2b2f69415d8ad73a`（本分支拣选提交 `e4a93295410ae7e6ef16f6c85e0aa107c983b828`）。不修改 book-project、main、权限、签名信任或更新策略。
 
+**root 最新复核：**原五项 P1、dece298 的 F10 及实际恢复目标深回读已在明确范围内独审接受；[分项门禁记录](../docs/acceptance/final-private-review-gates.md) 保存来源及限制。余额深回读不是余额页可见性截图证明。生产变更检查点为 `75c84a6484eb79e1f9031b620539f39b976a1862`；root 要求先审此 diff，再明确批准最后门禁转换与最终构建。当前仍保留 marker。
+
 ## 三个身份分别冻结
 
 1. **已有安装证据的源：**`dece298946d03ad88c5031eb02dab8f87c330046`。其 [安装 run40191539507](https://github.com/xhc144/caiwu-suite/actions/runs/40191539507)、[准备 run40191539456](https://github.com/xhc144/caiwu-suite/actions/runs/40191539456) 成功；完整范围和旧失败见 [PR30 交接](RELEASE_CANDIDATE_HANDOFF.md)。新文档/测试提交不追认成这些二进制的源。
@@ -55,7 +57,7 @@ ZIP 改称 `*-win-x64-payload.zip`：内容用于核对 payload，不是已支�
 
 ## 保留的限制与等待项
 
-- 等待根对旧 P1（列宽、旧草稿令牌、停用科目期初、歧义金额、锁冲突）的指定独审，以及 F10/恢复深回读的新证据接受和明确放行。
+- 原五项 P1 和 F10/实际恢复深回读已由 root 接受；仍等待其审查生产构建改动后，明确批准最后门禁转换与最终构建。安装余额页可见性及新截图待专项补证。
 - 等待根回传两路 QA 的完整审核 SHA；本分支不写 `tests/InstalledFinancialQA`、`tests/InstalledBookFlowsQA` 及其 workflow。
 - 跨数据根/跨机便携恢复无重映射实现，原 bundle+receipt 在新根被安全拒绝；不能改收据或放宽 SafePaths 伪造成功。
 - 内部安装 fixture 深验已登记摘要；其它模块完整业务由专项安装 QA 证明。民非主账务仍只读/禁止新建，成本不自动记账，设计器有限，身份备份无主 UI；无原账套/旧身份自动迁移、生产原地 schema 迁移或断电恢复完成声明。

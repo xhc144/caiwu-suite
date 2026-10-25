@@ -1,0 +1,2 @@
+# Preserve downloaded JSON evidence bytes and hashes.
+*.json -text
