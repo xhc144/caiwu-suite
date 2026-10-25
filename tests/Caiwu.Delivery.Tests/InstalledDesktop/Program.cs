@@ -33,9 +33,10 @@ internal static class Program
         if (!OperatingSystem.IsWindows() || args.Length is < 3 or > 4) throw new ArgumentException("Windows: installRoot dataRoot evidence [hold]");
         using var watchdog = new Timer(_ => { Save(false, "Controller exceeded 5 minute deadline."); Environment.FailFast("Installed App controller watchdog."); }, null, 300000, Timeout.Infinite);
         install = Path.GetFullPath(args[0]); data = Path.GetFullPath(args[1]); evidence = Path.GetFullPath(args[2]); Directory.CreateDirectory(evidence);
+        DesktopMode? display = null;
         try
         {
-            using var display = new DesktopMode();
+            display = new DesktopMode();
             var current = Installation.ReadCurrent(install);
             Require(Path.GetFullPath(current.DataRoot) == data, "installed pointer binds the isolated data root");
             var versionRoot = Path.Combine(install, "versions", current.Version);
@@ -164,9 +165,10 @@ internal static class Program
             ((ExpandCollapsePattern)reports.GetCurrentPattern(ExpandCollapsePattern.Pattern)).Expand(); Thread.Sleep(100);
             var nonprofit = main.FindFirst(TreeScope.Descendants, Name("民非报表分类与预览（当前月）…"))!;
             Require(!nonprofit.Current.IsEnabled, "actual installed enterprise-regime App keeps the nonprofit-only entry disabled"); Key(0x1b);
+            desktop.Refresh(); // Process caches Modules; SQLite loads after the initial login snapshot.
             var loadedAfterPosting = desktop.Modules.Cast<ProcessModule>().Select(m => new { name = m.ModuleName, path = m.FileName }).ToArray();
-            Require(loadedAfterPosting.Any(m => string.Equals(m.name, "e_sqlite3.dll", StringComparison.OrdinalIgnoreCase) && SafePaths.Contains(versionRoot, m.path)), "actual installed SQLite native dependency resolves from the payload");
             File.WriteAllText(Path.Combine(evidence, "loaded-after-posting.json"), JsonSerializer.Serialize(loadedAfterPosting, PayloadManifest.Json));
+            Require(loadedAfterPosting.Any(m => string.Equals(m.name, "e_sqlite3.dll", StringComparison.OrdinalIgnoreCase) && SafePaths.Contains(versionRoot, m.path)), "actual installed SQLite native dependency resolves from the payload");
 
             Key(0x79); Yes("受管完整备份"); // F10.
             var receipts = Path.Combine(data, "Global", "BackupReceipts");
@@ -194,6 +196,7 @@ internal static class Program
         {
             try { if (desktop is { HasExited: false }) desktop.CloseMainWindow(); } catch { }
             if (launcher is { HasExited: false } && !launcher.WaitForExit(5000)) launcher.Kill(true);
+            display?.Dispose();
         }
     }
 
@@ -261,7 +264,17 @@ internal static class Program
         Down(0x12); Key(0x4e); Up(0x12); Thread.Sleep(150); // Alt+N: File name / 文件名.
         var focused = AutomationElement.FocusedElement;
         if (focused.Current.ControlType != ControlType.Edit) throw new InvalidDataException("Native filename mnemonic did not focus an edit control.");
-        ControlKey(0x41); Type(path); Key(0x0d);
+        ControlKey(0x41); Type(path);
+        var entered = ((ValuePattern)focused.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
+        var normalized = Path.GetFullPath(entered.Trim('"'));
+        File.WriteAllText(Path.Combine(evidence, "native-path-" + Guid.NewGuid().ToString("N") + ".json"), JsonSerializer.Serialize(new { title, controlName = focused.Current.Name, automationId = focused.Current.AutomationId, entered, normalized, expected = path }, PayloadManifest.Json));
+        if (!string.Equals(normalized, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Native filename input did not read back as the exact requested path.");
+        Key(0x09); Thread.Sleep(100); // Commit the filename field before explicit confirmation.
+        var saving = title.StartsWith("保存", StringComparison.Ordinal);
+        var confirm = dialog.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)).Cast<AutomationElement>().FirstOrDefault(e => saving
+            ? e.Current.Name.StartsWith("Save", StringComparison.OrdinalIgnoreCase) || e.Current.Name.Contains("保存", StringComparison.Ordinal)
+            : e.Current.Name.StartsWith("Open", StringComparison.OrdinalIgnoreCase) || e.Current.Name.Contains("打开", StringComparison.Ordinal)) ?? throw new InvalidDataException("Native Save/Open confirmation button absent.");
+        ((InvokePattern)confirm.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
         Until(() => !HasWindow(title), "native path dialog acceptance");
     }
     private static void Cell(AutomationElement grid, int row, int column, string text)
