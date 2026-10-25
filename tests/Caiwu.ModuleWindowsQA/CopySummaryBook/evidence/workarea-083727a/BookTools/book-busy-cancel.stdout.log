@@ -1,0 +1,14 @@
+PASS actual Windows required
+PASS exact production Modern.xaml resources loaded without product startup
+PASS ??????? enabled
+PASS ExecuteButton enabled
+PASS CancelButton enabled
+PASS busy cancel safely exits before publication without writes
+PASS completed cancellation visibly reports safe outcome and close action
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS CancelButton enabled
+PASS busy cancellation cleans owned workspace

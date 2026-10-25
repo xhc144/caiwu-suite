@@ -1,0 +1,19 @@
+PASS actual Windows required
+PASS exact production Modern.xaml resources loaded without product startup
+PASS ??????? enabled
+PASS invalid preview stays open with error
+PASS invalid preview cannot execute
+PASS ??????? enabled
+PASS preview does not write source or target
+PASS preview requires explicit approval
+PASS preview identifies new identity
+PASS checkbox enables execute
+PASS changed input invalidates plan and approval
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS CancelButton enabled
+PASS cancel leaves both books unchanged
+PASS cancel creates no temporary workspace

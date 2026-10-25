@@ -1,0 +1,17 @@
+PASS actual Windows required
+PASS exact production Modern.xaml resources loaded without product startup
+PASS ??????? enabled
+PASS actual preview has no target
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS ExecuteButton enabled
+PASS copy creates planned fresh book identity
+PASS copy persists accounts and original openings exactly
+PASS selected scope persists exact vouchers
+PASS copy persists provenance and selected audit scope
+PASS selected scope retains or resets a genuinely closed month
+PASS reopened copied book has independently expected ledger balance
+PASS success preserves source and cleans staging

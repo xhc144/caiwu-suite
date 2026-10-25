@@ -1,0 +1,13 @@
+PASS actual Windows required
+PASS exact production Modern.xaml resources loaded without product startup
+PASS ??????? enabled
+PASS ExecuteButton enabled
+PASS stale source fails inside window without publishing
+PASS failed execute retains input and concurrent winner
+PASS failed stale plan requires fresh approval
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS CancelButton enabled

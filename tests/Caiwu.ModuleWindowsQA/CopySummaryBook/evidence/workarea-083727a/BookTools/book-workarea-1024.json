@@ -1,0 +1,314 @@
+{
+  "name": "book-workarea-1024",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "read actual native display mode",
+    "requested native display mode supported and applied",
+    "actual display is 1024x768, no resized screenshot",
+    "exact production Modern.xaml resources loaded without product startup",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "scrollable input can receive actual keyboard focus",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native invalid preview retains visible window and error",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native preview displays exact target before approval",
+    "long form and complete plan remain scrollable instead of clipped",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native approval enables visible execute button",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native visible cancellation publishes nothing",
+    "work-area interaction leaves source bytes unchanged",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "scrollable input can receive actual keyboard focus",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native invalid preview retains visible window and error",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native preview displays exact target before approval",
+    "long form and complete plan remain scrollable instead of clipped",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native approval enables visible execute button",
+    "independently read actual monitor work area and HWND bounds",
+    "complete HWND fits physical work area including taskbar exclusion",
+    "Confirmation fully visible inside real work area",
+    "ExecuteButton fully visible inside real work area",
+    "CancelButton fully visible inside real work area",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "native mouse target enabled and visible",
+    "native mouse target passes actual WPF hit test without overlay",
+    "native mouse target is actual foreground module",
+    "native cursor positioned on tested control",
+    "SendInput delivered real mouse down/up",
+    "native visible confirmation creates target",
+    "native confirmed copy reopens with planned identity and content",
+    "work-area interaction leaves source bytes unchanged",
+    "original display mode restored"
+  ],
+  "observations": [
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 156,
+        "Top": 0,
+        "Right": 946,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 156,
+        "Top": 0,
+        "Right": 946,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 156,
+        "Top": 0,
+        "Right": 946,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 156,
+        "Top": 0,
+        "Right": 946,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 26,
+        "Top": 0,
+        "Right": 816,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 26,
+        "Top": 0,
+        "Right": 816,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 26,
+        "Top": 0,
+        "Right": 816,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    },
+    {
+      "workArea": {
+        "Left": 0,
+        "Top": 0,
+        "Right": 1024,
+        "Bottom": 720
+      },
+      "windowBounds": {
+        "Left": 26,
+        "Top": 0,
+        "Right": 816,
+        "Bottom": 720
+      },
+      "MaxWidth": 1024,
+      "MaxHeight": 720,
+      "dpiX": 96,
+      "dpiY": 96
+    }
+  ],
+  "checkoutCommit": "083727a0697182cd0831040f6298e42d92761089",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual work-area bounds/hit tests and native SendInput mouse preview/approval/confirm/cancel; fields set through WPF properties. Native keyboard/IME and other DPI values not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "book-workarea-1024-cancel.png",
+      "width": 790,
+      "height": 720,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "c676e793b2979b2dd67cdc6d32ad2791f0058aeb16b32c45ff6d8b900950989c",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "book-workarea-1024-cancel-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 156,
+        "Top": 0,
+        "Right": 946,
+        "Bottom": 720
+      },
+      "sha256": "24030c0bf028e246b3e2b0f391a42e1d54f92c5c9b0a33c66922c2828cf73682",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    },
+    {
+      "file": "book-workarea-1024-confirm.png",
+      "width": 790,
+      "height": 720,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "5d0a7f3184fa386c6b4c30f19f8cc8c5b0ff7a95aee2c59a3d5b87616eb38748",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "book-workarea-1024-confirm-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 26,
+        "Top": 0,
+        "Right": 816,
+        "Bottom": 720
+      },
+      "sha256": "fbfff1a9213d17d11f305d3bd72d554a8fc40c27e46a8ce771022cfca2328157",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

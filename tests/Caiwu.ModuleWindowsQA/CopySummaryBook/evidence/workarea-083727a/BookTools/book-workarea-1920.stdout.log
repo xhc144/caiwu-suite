@@ -1,0 +1,111 @@
+PASS actual Windows required
+PASS read actual native display mode
+PASS requested native display mode supported and applied
+PASS actual display is 1920x1080, no resized screenshot
+PASS exact production Modern.xaml resources loaded without product startup
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS scrollable input can receive actual keyboard focus
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native invalid preview retains visible window and error
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native preview displays exact target before approval
+PASS long form and complete plan remain scrollable instead of clipped
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native approval enables visible execute button
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native visible cancellation publishes nothing
+PASS work-area interaction leaves source bytes unchanged
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS scrollable input can receive actual keyboard focus
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native invalid preview retains visible window and error
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native preview displays exact target before approval
+PASS long form and complete plan remain scrollable instead of clipped
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native approval enables visible execute button
+PASS independently read actual monitor work area and HWND bounds
+PASS complete HWND fits physical work area including taskbar exclusion
+PASS Confirmation fully visible inside real work area
+PASS ExecuteButton fully visible inside real work area
+PASS CancelButton fully visible inside real work area
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS native mouse target enabled and visible
+PASS native mouse target passes actual WPF hit test without overlay
+PASS native mouse target is actual foreground module
+PASS native cursor positioned on tested control
+PASS SendInput delivered real mouse down/up
+PASS native visible confirmation creates target
+PASS native confirmed copy reopens with planned identity and content
+PASS work-area interaction leaves source bytes unchanged
+PASS original display mode restored

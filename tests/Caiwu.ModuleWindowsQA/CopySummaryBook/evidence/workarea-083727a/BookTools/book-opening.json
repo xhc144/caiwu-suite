@@ -1,0 +1,60 @@
+{
+  "name": "book-opening",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "\u751F\u6210\u590D\u5236\u524D\u9884\u89C8 enabled",
+    "actual preview has no target",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "ExecuteButton enabled",
+    "copy creates planned fresh book identity",
+    "copy persists accounts and original openings exactly",
+    "selected scope persists exact vouchers",
+    "copy persists provenance and selected audit scope",
+    "selected scope retains or resets a genuinely closed month",
+    "reopened copied book has independently expected ledger balance",
+    "success preserves source and cleans staging"
+  ],
+  "observations": [
+    {
+      "Id": "4a4e4377-737e-4b76-b058-1105f3414ec6",
+      "targetSha256": "2d1f2a0731d4d58d29d9a1d581596b3488249b712157382b8746b7d17a79b3fa",
+      "sourceSha256": "f5b333ea8ab220b9175cd65b92277dcff5767d29d513a64463c8dd3714763b75",
+      "opening": true
+    }
+  ],
+  "checkoutCommit": "083727a0697182cd0831040f6298e42d92761089",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "book-opening-preview.png",
+      "width": 790,
+      "height": 720,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "8694b14f6deb80ed68942e28aa8cf6e2aa42c642d679811a6da4414469fef265",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "book-opening-preview-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 104,
+        "Top": 0,
+        "Right": 894,
+        "Bottom": 720
+      },
+      "sha256": "8e1401004af086ebea6124d3f98735b02e504c727fcf8c6291b6dd91df9a3fa2",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

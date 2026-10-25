@@ -1,0 +1,55 @@
+{
+  "name": "book-preview-cancel",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "\u751F\u6210\u590D\u5236\u524D\u9884\u89C8 enabled",
+    "invalid preview stays open with error",
+    "invalid preview cannot execute",
+    "\u751F\u6210\u590D\u5236\u524D\u9884\u89C8 enabled",
+    "preview does not write source or target",
+    "preview requires explicit approval",
+    "preview identifies new identity",
+    "checkbox enables execute",
+    "changed input invalidates plan and approval",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "CancelButton enabled",
+    "cancel leaves both books unchanged",
+    "cancel creates no temporary workspace"
+  ],
+  "observations": [],
+  "checkoutCommit": "083727a0697182cd0831040f6298e42d92761089",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "book-preview-invalidated.png",
+      "width": 790,
+      "height": 720,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "d65ecd143d95ed7cd6a2c9459ad29b7640c6e8f4e5d1016bfae5a7f67d394f5b",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "book-preview-invalidated-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 156,
+        "Top": 0,
+        "Right": 946,
+        "Bottom": 720
+      },
+      "sha256": "e74d1385fe91feadf767d68a8a6be10b97d1a7e950b570c22ebb102c00f9da54",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

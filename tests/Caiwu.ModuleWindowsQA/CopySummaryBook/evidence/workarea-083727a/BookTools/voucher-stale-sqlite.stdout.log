@@ -1,0 +1,15 @@
+PASS actual Windows required
+PASS exact production Modern.xaml resources loaded without product startup
+PASS initial focus is actual date input
+PASS ConfirmButton enabled
+PASS invalid date keeps window and actual keyboard focus
+PASS invalid confirmation does not write actual SQLite
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS ConfirmButton enabled
+PASS dialog preserves original snapshot token and fresh identity
+PASS real Core/SQLite rejects stale plan without replacing winner
+PASS stale save preserves exact SQLite bytes

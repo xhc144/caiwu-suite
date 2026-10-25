@@ -1,0 +1,152 @@
+PASS actual Windows required
+PASS exact production Modern.xaml resources loaded without product startup
+PASS round 0 exactly one publisher succeeds
+PASS round 0 loser reports IOException
+PASS round 0 winner identity and bytes survive loser cleanup
+PASS round 0 both source byte hashes unchanged
+PASS round 0 both temporary workspaces removed
+PASS round 1 exactly one publisher succeeds
+PASS round 1 loser reports IOException
+PASS round 1 winner identity and bytes survive loser cleanup
+PASS round 1 both source byte hashes unchanged
+PASS round 1 both temporary workspaces removed
+PASS round 2 exactly one publisher succeeds
+PASS round 2 loser reports IOException
+PASS round 2 winner identity and bytes survive loser cleanup
+PASS round 2 both source byte hashes unchanged
+PASS round 2 both temporary workspaces removed
+PASS round 3 exactly one publisher succeeds
+PASS round 3 loser reports IOException
+PASS round 3 winner identity and bytes survive loser cleanup
+PASS round 3 both source byte hashes unchanged
+PASS round 3 both temporary workspaces removed
+PASS round 4 exactly one publisher succeeds
+PASS round 4 loser reports IOException
+PASS round 4 winner identity and bytes survive loser cleanup
+PASS round 4 both source byte hashes unchanged
+PASS round 4 both temporary workspaces removed
+PASS round 5 exactly one publisher succeeds
+PASS round 5 loser reports IOException
+PASS round 5 winner identity and bytes survive loser cleanup
+PASS round 5 both source byte hashes unchanged
+PASS round 5 both temporary workspaces removed
+PASS round 6 exactly one publisher succeeds
+PASS round 6 loser reports IOException
+PASS round 6 winner identity and bytes survive loser cleanup
+PASS round 6 both source byte hashes unchanged
+PASS round 6 both temporary workspaces removed
+PASS round 7 exactly one publisher succeeds
+PASS round 7 loser reports IOException
+PASS round 7 winner identity and bytes survive loser cleanup
+PASS round 7 both source byte hashes unchanged
+PASS round 7 both temporary workspaces removed
+PASS round 8 exactly one publisher succeeds
+PASS round 8 loser reports IOException
+PASS round 8 winner identity and bytes survive loser cleanup
+PASS round 8 both source byte hashes unchanged
+PASS round 8 both temporary workspaces removed
+PASS round 9 exactly one publisher succeeds
+PASS round 9 loser reports IOException
+PASS round 9 winner identity and bytes survive loser cleanup
+PASS round 9 both source byte hashes unchanged
+PASS round 9 both temporary workspaces removed
+PASS round 10 exactly one publisher succeeds
+PASS round 10 loser reports IOException
+PASS round 10 winner identity and bytes survive loser cleanup
+PASS round 10 both source byte hashes unchanged
+PASS round 10 both temporary workspaces removed
+PASS round 11 exactly one publisher succeeds
+PASS round 11 loser reports IOException
+PASS round 11 winner identity and bytes survive loser cleanup
+PASS round 11 both source byte hashes unchanged
+PASS round 11 both temporary workspaces removed
+PASS round 12 exactly one publisher succeeds
+PASS round 12 loser reports IOException
+PASS round 12 winner identity and bytes survive loser cleanup
+PASS round 12 both source byte hashes unchanged
+PASS round 12 both temporary workspaces removed
+PASS round 13 exactly one publisher succeeds
+PASS round 13 loser reports IOException
+PASS round 13 winner identity and bytes survive loser cleanup
+PASS round 13 both source byte hashes unchanged
+PASS round 13 both temporary workspaces removed
+PASS round 14 exactly one publisher succeeds
+PASS round 14 loser reports IOException
+PASS round 14 winner identity and bytes survive loser cleanup
+PASS round 14 both source byte hashes unchanged
+PASS round 14 both temporary workspaces removed
+PASS round 15 exactly one publisher succeeds
+PASS round 15 loser reports IOException
+PASS round 15 winner identity and bytes survive loser cleanup
+PASS round 15 both source byte hashes unchanged
+PASS round 15 both temporary workspaces removed
+PASS round 16 exactly one publisher succeeds
+PASS round 16 loser reports IOException
+PASS round 16 winner identity and bytes survive loser cleanup
+PASS round 16 both source byte hashes unchanged
+PASS round 16 both temporary workspaces removed
+PASS round 17 exactly one publisher succeeds
+PASS round 17 loser reports IOException
+PASS round 17 winner identity and bytes survive loser cleanup
+PASS round 17 both source byte hashes unchanged
+PASS round 17 both temporary workspaces removed
+PASS round 18 exactly one publisher succeeds
+PASS round 18 loser reports IOException
+PASS round 18 winner identity and bytes survive loser cleanup
+PASS round 18 both source byte hashes unchanged
+PASS round 18 both temporary workspaces removed
+PASS round 19 exactly one publisher succeeds
+PASS round 19 loser reports IOException
+PASS round 19 winner identity and bytes survive loser cleanup
+PASS round 19 both source byte hashes unchanged
+PASS round 19 both temporary workspaces removed
+PASS round 20 exactly one publisher succeeds
+PASS round 20 loser reports IOException
+PASS round 20 winner identity and bytes survive loser cleanup
+PASS round 20 both source byte hashes unchanged
+PASS round 20 both temporary workspaces removed
+PASS round 21 exactly one publisher succeeds
+PASS round 21 loser reports IOException
+PASS round 21 winner identity and bytes survive loser cleanup
+PASS round 21 both source byte hashes unchanged
+PASS round 21 both temporary workspaces removed
+PASS round 22 exactly one publisher succeeds
+PASS round 22 loser reports IOException
+PASS round 22 winner identity and bytes survive loser cleanup
+PASS round 22 both source byte hashes unchanged
+PASS round 22 both temporary workspaces removed
+PASS round 23 exactly one publisher succeeds
+PASS round 23 loser reports IOException
+PASS round 23 winner identity and bytes survive loser cleanup
+PASS round 23 both source byte hashes unchanged
+PASS round 23 both temporary workspaces removed
+PASS round 24 exactly one publisher succeeds
+PASS round 24 loser reports IOException
+PASS round 24 winner identity and bytes survive loser cleanup
+PASS round 24 both source byte hashes unchanged
+PASS round 24 both temporary workspaces removed
+PASS round 25 exactly one publisher succeeds
+PASS round 25 loser reports IOException
+PASS round 25 winner identity and bytes survive loser cleanup
+PASS round 25 both source byte hashes unchanged
+PASS round 25 both temporary workspaces removed
+PASS round 26 exactly one publisher succeeds
+PASS round 26 loser reports IOException
+PASS round 26 winner identity and bytes survive loser cleanup
+PASS round 26 both source byte hashes unchanged
+PASS round 26 both temporary workspaces removed
+PASS round 27 exactly one publisher succeeds
+PASS round 27 loser reports IOException
+PASS round 27 winner identity and bytes survive loser cleanup
+PASS round 27 both source byte hashes unchanged
+PASS round 27 both temporary workspaces removed
+PASS round 28 exactly one publisher succeeds
+PASS round 28 loser reports IOException
+PASS round 28 winner identity and bytes survive loser cleanup
+PASS round 28 both source byte hashes unchanged
+PASS round 28 both temporary workspaces removed
+PASS round 29 exactly one publisher succeeds
+PASS round 29 loser reports IOException
+PASS round 29 winner identity and bytes survive loser cleanup
+PASS round 29 both source byte hashes unchanged
+PASS round 29 both temporary workspaces removed

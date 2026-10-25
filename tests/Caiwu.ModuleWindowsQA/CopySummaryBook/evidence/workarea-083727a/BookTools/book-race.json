@@ -1,0 +1,1576 @@
+{
+  "name": "book-race",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "round 0 exactly one publisher succeeds",
+    "round 0 loser reports IOException",
+    "round 0 winner identity and bytes survive loser cleanup",
+    "round 0 both source byte hashes unchanged",
+    "round 0 both temporary workspaces removed",
+    "round 1 exactly one publisher succeeds",
+    "round 1 loser reports IOException",
+    "round 1 winner identity and bytes survive loser cleanup",
+    "round 1 both source byte hashes unchanged",
+    "round 1 both temporary workspaces removed",
+    "round 2 exactly one publisher succeeds",
+    "round 2 loser reports IOException",
+    "round 2 winner identity and bytes survive loser cleanup",
+    "round 2 both source byte hashes unchanged",
+    "round 2 both temporary workspaces removed",
+    "round 3 exactly one publisher succeeds",
+    "round 3 loser reports IOException",
+    "round 3 winner identity and bytes survive loser cleanup",
+    "round 3 both source byte hashes unchanged",
+    "round 3 both temporary workspaces removed",
+    "round 4 exactly one publisher succeeds",
+    "round 4 loser reports IOException",
+    "round 4 winner identity and bytes survive loser cleanup",
+    "round 4 both source byte hashes unchanged",
+    "round 4 both temporary workspaces removed",
+    "round 5 exactly one publisher succeeds",
+    "round 5 loser reports IOException",
+    "round 5 winner identity and bytes survive loser cleanup",
+    "round 5 both source byte hashes unchanged",
+    "round 5 both temporary workspaces removed",
+    "round 6 exactly one publisher succeeds",
+    "round 6 loser reports IOException",
+    "round 6 winner identity and bytes survive loser cleanup",
+    "round 6 both source byte hashes unchanged",
+    "round 6 both temporary workspaces removed",
+    "round 7 exactly one publisher succeeds",
+    "round 7 loser reports IOException",
+    "round 7 winner identity and bytes survive loser cleanup",
+    "round 7 both source byte hashes unchanged",
+    "round 7 both temporary workspaces removed",
+    "round 8 exactly one publisher succeeds",
+    "round 8 loser reports IOException",
+    "round 8 winner identity and bytes survive loser cleanup",
+    "round 8 both source byte hashes unchanged",
+    "round 8 both temporary workspaces removed",
+    "round 9 exactly one publisher succeeds",
+    "round 9 loser reports IOException",
+    "round 9 winner identity and bytes survive loser cleanup",
+    "round 9 both source byte hashes unchanged",
+    "round 9 both temporary workspaces removed",
+    "round 10 exactly one publisher succeeds",
+    "round 10 loser reports IOException",
+    "round 10 winner identity and bytes survive loser cleanup",
+    "round 10 both source byte hashes unchanged",
+    "round 10 both temporary workspaces removed",
+    "round 11 exactly one publisher succeeds",
+    "round 11 loser reports IOException",
+    "round 11 winner identity and bytes survive loser cleanup",
+    "round 11 both source byte hashes unchanged",
+    "round 11 both temporary workspaces removed",
+    "round 12 exactly one publisher succeeds",
+    "round 12 loser reports IOException",
+    "round 12 winner identity and bytes survive loser cleanup",
+    "round 12 both source byte hashes unchanged",
+    "round 12 both temporary workspaces removed",
+    "round 13 exactly one publisher succeeds",
+    "round 13 loser reports IOException",
+    "round 13 winner identity and bytes survive loser cleanup",
+    "round 13 both source byte hashes unchanged",
+    "round 13 both temporary workspaces removed",
+    "round 14 exactly one publisher succeeds",
+    "round 14 loser reports IOException",
+    "round 14 winner identity and bytes survive loser cleanup",
+    "round 14 both source byte hashes unchanged",
+    "round 14 both temporary workspaces removed",
+    "round 15 exactly one publisher succeeds",
+    "round 15 loser reports IOException",
+    "round 15 winner identity and bytes survive loser cleanup",
+    "round 15 both source byte hashes unchanged",
+    "round 15 both temporary workspaces removed",
+    "round 16 exactly one publisher succeeds",
+    "round 16 loser reports IOException",
+    "round 16 winner identity and bytes survive loser cleanup",
+    "round 16 both source byte hashes unchanged",
+    "round 16 both temporary workspaces removed",
+    "round 17 exactly one publisher succeeds",
+    "round 17 loser reports IOException",
+    "round 17 winner identity and bytes survive loser cleanup",
+    "round 17 both source byte hashes unchanged",
+    "round 17 both temporary workspaces removed",
+    "round 18 exactly one publisher succeeds",
+    "round 18 loser reports IOException",
+    "round 18 winner identity and bytes survive loser cleanup",
+    "round 18 both source byte hashes unchanged",
+    "round 18 both temporary workspaces removed",
+    "round 19 exactly one publisher succeeds",
+    "round 19 loser reports IOException",
+    "round 19 winner identity and bytes survive loser cleanup",
+    "round 19 both source byte hashes unchanged",
+    "round 19 both temporary workspaces removed",
+    "round 20 exactly one publisher succeeds",
+    "round 20 loser reports IOException",
+    "round 20 winner identity and bytes survive loser cleanup",
+    "round 20 both source byte hashes unchanged",
+    "round 20 both temporary workspaces removed",
+    "round 21 exactly one publisher succeeds",
+    "round 21 loser reports IOException",
+    "round 21 winner identity and bytes survive loser cleanup",
+    "round 21 both source byte hashes unchanged",
+    "round 21 both temporary workspaces removed",
+    "round 22 exactly one publisher succeeds",
+    "round 22 loser reports IOException",
+    "round 22 winner identity and bytes survive loser cleanup",
+    "round 22 both source byte hashes unchanged",
+    "round 22 both temporary workspaces removed",
+    "round 23 exactly one publisher succeeds",
+    "round 23 loser reports IOException",
+    "round 23 winner identity and bytes survive loser cleanup",
+    "round 23 both source byte hashes unchanged",
+    "round 23 both temporary workspaces removed",
+    "round 24 exactly one publisher succeeds",
+    "round 24 loser reports IOException",
+    "round 24 winner identity and bytes survive loser cleanup",
+    "round 24 both source byte hashes unchanged",
+    "round 24 both temporary workspaces removed",
+    "round 25 exactly one publisher succeeds",
+    "round 25 loser reports IOException",
+    "round 25 winner identity and bytes survive loser cleanup",
+    "round 25 both source byte hashes unchanged",
+    "round 25 both temporary workspaces removed",
+    "round 26 exactly one publisher succeeds",
+    "round 26 loser reports IOException",
+    "round 26 winner identity and bytes survive loser cleanup",
+    "round 26 both source byte hashes unchanged",
+    "round 26 both temporary workspaces removed",
+    "round 27 exactly one publisher succeeds",
+    "round 27 loser reports IOException",
+    "round 27 winner identity and bytes survive loser cleanup",
+    "round 27 both source byte hashes unchanged",
+    "round 27 both temporary workspaces removed",
+    "round 28 exactly one publisher succeeds",
+    "round 28 loser reports IOException",
+    "round 28 winner identity and bytes survive loser cleanup",
+    "round 28 both source byte hashes unchanged",
+    "round 28 both temporary workspaces removed",
+    "round 29 exactly one publisher succeeds",
+    "round 29 loser reports IOException",
+    "round 29 winner identity and bytes survive loser cleanup",
+    "round 29 both source byte hashes unchanged",
+    "round 29 both temporary workspaces removed"
+  ],
+  "observations": [
+    {
+      "round": 0,
+      "winnerCount": 1,
+      "savedBookId": "f9d063b3-c132-4e41-a227-ed04e924504b",
+      "sourceAHash": "471f5b701e96d67e08fdb0f703926db36af980d7d769d69e159aecee2be3c01c",
+      "sourceBHash": "1a85092899e4c287d92f7b314a4c97eb0baa323ddc4c768ae39e8f3793b4bbd5",
+      "finalHash": "a520963b2a4bd2b1f60c10d10429bd1551bca4eaebb1bb42dd91a781d4ad89c0",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "ec603f56-ec45-4b2d-b582-a6a981d6ad84",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-0\\winner.caiwu",
+            "Book": {
+              "Id": "f9d063b3-c132-4e41-a227-ed04e924504b",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:22.1544308+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "5d2f8910bdc73d17e24e3c7d66ec1af7e5d169443882de154204e4cffd6fa10f",
+            "SavedFingerprint": "63e5e3f2b45fff6d71ddad21c77a791389754c6dab0bcd7655653c832bff3454",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "a520963b2a4bd2b1f60c10d10429bd1551bca4eaebb1bb42dd91a781d4ad89c0"
+        }
+      ]
+    },
+    {
+      "round": 1,
+      "winnerCount": 1,
+      "savedBookId": "8443d4e0-c511-4c61-8503-d60aaa75312a",
+      "sourceAHash": "c29e33cda55a6cdf668ff88e1da641a14d53cf0813f5ad3629afc739bbc3d9cd",
+      "sourceBHash": "f6135e7ce3ea39e5e5b868d9a71dfd9334ccacaf71addbca50864080006375ca",
+      "finalHash": "a7c370933b01b83eb007d75192477efa0c0aa27d04c3dfc788511a686ff231c9",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "e2581fec-7205-45ca-896e-57a2ad0bd930",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-1\\winner.caiwu",
+            "Book": {
+              "Id": "8443d4e0-c511-4c61-8503-d60aaa75312a",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:22.9014806+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "b722fea9ec6276f2ccf00b7a4bc10cc73c101825348a8190979e7660e59fcdd7",
+            "SavedFingerprint": "80a4642dbc4d87866ec62ce5504c906674d82b876e1921643c9be45fcbdaefdb",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "a7c370933b01b83eb007d75192477efa0c0aa27d04c3dfc788511a686ff231c9"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "winnerCount": 1,
+      "savedBookId": "2cb7f7da-5bfe-4611-8a26-5463f0658b83",
+      "sourceAHash": "f90b0aaeb987d5364a4b221af8f13dbc4951f24fe35893bc6ab961c4cd2fc89f",
+      "sourceBHash": "76902379b97c4052162ea0511ac99b77318eed2d7db04bd833614b69c0473253",
+      "finalHash": "8fa0e9e821daa74264d8a660aac641424b25711ff854552ab6fe22743dd7b5c0",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "73f76d2b-9eb0-4c17-b8a7-4b59a94a0c26",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-2\\winner.caiwu",
+            "Book": {
+              "Id": "2cb7f7da-5bfe-4611-8a26-5463f0658b83",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:23.6382497+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "3c08dddfdb10d923aa46af39d3005c0f0a67fe06731c687ecb84a32dcd8a1555",
+            "SavedFingerprint": "b78734599c48cff9ffa6c06309dbd16a152db07fb18807295b890700ea722bcb",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "8fa0e9e821daa74264d8a660aac641424b25711ff854552ab6fe22743dd7b5c0"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "winnerCount": 1,
+      "savedBookId": "ce7cad62-bd0d-4e82-bded-6edebd4d5ae8",
+      "sourceAHash": "2e4bcf968bd7ae9121ab8a9815fdaa42083a74bbb7c6518e7a62c42f115b90f1",
+      "sourceBHash": "71125b1ce5aea5c1b2abd6665ff760af1467dbf5d05500a98415c2eff65c1d71",
+      "finalHash": "f256e5783836b6719d4dba9a42aab3d464983cfc2eb7fc341b3c7ec5d3cbd292",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "3ea885d4-ae93-400e-a56f-afb3f744335a",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-3\\winner.caiwu",
+            "Book": {
+              "Id": "ce7cad62-bd0d-4e82-bded-6edebd4d5ae8",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:24.2871059+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "a0a557ac1aee434ca8fac01a3ff8e49649e487a6fd4a677f14f53213bf9851c4",
+            "SavedFingerprint": "6ff8d783784e135ef9ea6a7d25362f41e633f721694bb24c6f1f5cada291ab47",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "f256e5783836b6719d4dba9a42aab3d464983cfc2eb7fc341b3c7ec5d3cbd292"
+        }
+      ]
+    },
+    {
+      "round": 4,
+      "winnerCount": 1,
+      "savedBookId": "1862d4a4-23cd-4c69-af2e-b2e268a36fe2",
+      "sourceAHash": "a2c2f75c8a9d13ec81c8ca799f7186ad5e57036324abaf9e46f446640b113e2a",
+      "sourceBHash": "4df54108b5331464efd2662e5ee7b4b57d3ea6e1baa726c551972dfb37ec2cfc",
+      "finalHash": "b8bae3a462c0db719bcf2400f957471eaf5cc4a0782e4355ada1bae05b5c1eba",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "a1da448e-ae86-4ef1-877e-8158b55fc32b",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-4\\winner.caiwu",
+            "Book": {
+              "Id": "1862d4a4-23cd-4c69-af2e-b2e268a36fe2",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:25.015771+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "fcc4eff8a353a41dc2a8ec92a9af4484c02528315e5f01da67393c1f7fd7095b",
+            "SavedFingerprint": "5c4994a13dd9c9928817cc7ee0cd2c14ae030524a6a13fec78cfcbc922c72b82",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "b8bae3a462c0db719bcf2400f957471eaf5cc4a0782e4355ada1bae05b5c1eba"
+        }
+      ]
+    },
+    {
+      "round": 5,
+      "winnerCount": 1,
+      "savedBookId": "6f205142-76c1-449d-a9af-227d509fce43",
+      "sourceAHash": "c267e746c931f26f9658e9253fbad65a95ed02337f437c186393a61c94e0c4be",
+      "sourceBHash": "cb45f87e0f90422c6925d6c09f914dc7b2a2f71db223241b956f775b096fff4a",
+      "finalHash": "a7159175dbb88a0801a482254ff7a0c4711c2ae120e16dc2eac9f6bee5edc84d",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "dfb19774-ec56-4f63-a365-1f765b992068",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-5\\winner.caiwu",
+            "Book": {
+              "Id": "6f205142-76c1-449d-a9af-227d509fce43",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:25.7455269+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "a813e29fbf3cd55c743c5b15949fc2df745b0ab54b4bc280284668df79358326",
+            "SavedFingerprint": "29aa48a100f5494f7698870027912f0d964b51d85e735e73d4b00f48ddc2a8d6",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "a7159175dbb88a0801a482254ff7a0c4711c2ae120e16dc2eac9f6bee5edc84d"
+        }
+      ]
+    },
+    {
+      "round": 6,
+      "winnerCount": 1,
+      "savedBookId": "d2212b1d-f0cc-4355-b373-68f31607d1de",
+      "sourceAHash": "d2a546f3f337aa171a35c6d32706f8ef5d8423ed003728cae624e5944b3e3203",
+      "sourceBHash": "3bd81177059f4b6f1199172929ecefb95bea426dcc94c023260f81177d8898ca",
+      "finalHash": "c10b455aee476d407239af58ffc5abceac3366d2e85bc90e894475d14f617fd6",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "b7416a7e-621b-4bd2-a903-997609648fd7",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-6\\winner.caiwu",
+            "Book": {
+              "Id": "d2212b1d-f0cc-4355-b373-68f31607d1de",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:26.514498+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "2eeed6c19db99e32ff07c814b47b8c668d666fa948379797465c6aa0fb14b716",
+            "SavedFingerprint": "2523f73b34e9a3381a4669cfb56277bacc8d232f906b5389045b07802ad8c752",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "c10b455aee476d407239af58ffc5abceac3366d2e85bc90e894475d14f617fd6"
+        }
+      ]
+    },
+    {
+      "round": 7,
+      "winnerCount": 1,
+      "savedBookId": "ad3f43a2-3b78-4ff1-a231-74fc9b32a713",
+      "sourceAHash": "3ebd9ac87f0fef1e302e3dd32d52caa39dd8f00c5097cffac5e36b748bed109c",
+      "sourceBHash": "8e6573c66c9b71a5e92ec575b38cc723033b0b1bb5628998a067042dba203032",
+      "finalHash": "557e58927dca029382f21aeb414ac5a900a586c832beb9b15876edff32d39a29",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "e906df05-33f7-4c08-a337-34ee6edc5c16",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-7\\winner.caiwu",
+            "Book": {
+              "Id": "ad3f43a2-3b78-4ff1-a231-74fc9b32a713",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:27.2295543+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "6557f5f90570f4cad007e8510dc807d2b2fb02137714ad27bfabe6af87b96c2b",
+            "SavedFingerprint": "59b2b00781b648b84e6a59a4cabe0a5ebc1d45fd7677b068bdd37d8231e8ff2d",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "557e58927dca029382f21aeb414ac5a900a586c832beb9b15876edff32d39a29"
+        }
+      ]
+    },
+    {
+      "round": 8,
+      "winnerCount": 1,
+      "savedBookId": "b02e5224-977d-41e4-a0ad-e97d32b20109",
+      "sourceAHash": "37ae43f88bdb74783bc039e952d2256708417a6f59fbd6ad9eca8ca0215944fd",
+      "sourceBHash": "7a987873f6d0a028a035886128010cdd45fb64a9df4abcabc1f34ad360a8e04d",
+      "finalHash": "d7be91bd6e75617b74f545fdf2e49cb5f0a718efb63d3cab1d6e0e42ddd3d178",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "8a31651c-f5ab-4f86-9a78-199b39907090",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-8\\winner.caiwu",
+            "Book": {
+              "Id": "b02e5224-977d-41e4-a0ad-e97d32b20109",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:27.960188+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "ca9adc03f93b64dd244372791153ef8ba091cb55d8ce955f47eb6dc6ff673513",
+            "SavedFingerprint": "bd83c92883ac5e823f524ad7d044fe752f7af9f9e837bd734f3aa8e1ae73769e",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "d7be91bd6e75617b74f545fdf2e49cb5f0a718efb63d3cab1d6e0e42ddd3d178"
+        }
+      ]
+    },
+    {
+      "round": 9,
+      "winnerCount": 1,
+      "savedBookId": "3f849e10-ffc0-40aa-a0f7-b101f05e54ef",
+      "sourceAHash": "4151e598991c75f33286e981303537fc5bd3267effbc37046d8818158cfd867f",
+      "sourceBHash": "b1b8bef9a09411ffe81a25f64a1d269c0950e92e0a3272ce9b52629ccdc51be7",
+      "finalHash": "74a4f0842d10c4635313cff629100233e2fbf229dab6da52643de5ec05e51655",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "f8bbce66-b93a-435d-977a-7d56e7608498",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-9\\winner.caiwu",
+            "Book": {
+              "Id": "3f849e10-ffc0-40aa-a0f7-b101f05e54ef",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:28.6519952+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "a29c094538d30335cebb78a1622524a5fb7c7c11b79d89eb81f48fb0e64f9695",
+            "SavedFingerprint": "a4bc7fa3a220bc15df009f0bf8345a11f4e0e64db7a45ea417707c3a396db9f5",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "74a4f0842d10c4635313cff629100233e2fbf229dab6da52643de5ec05e51655"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 10,
+      "winnerCount": 1,
+      "savedBookId": "612b5242-7741-45c2-a27c-693d851a4191",
+      "sourceAHash": "859d2b52db6cf15e64bc839902ab08c3ee979a9c73804fd621626f0677e1a43e",
+      "sourceBHash": "fcdd33ab5626daec8eb9ddbd8113552330dd80e72472e1f6c32f0f74a0d23080",
+      "finalHash": "3fa47c6bf247f78f3be614263f8f5bf101632dac57148ae6c725c938c7540993",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "157a5775-d142-4eb9-b75d-80371aaaf654",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-10\\winner.caiwu",
+            "Book": {
+              "Id": "612b5242-7741-45c2-a27c-693d851a4191",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:29.3476947+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "71b90c16b73d97c67de17413f52a5dd72691f2976b7c31048e9031b154bd0123",
+            "SavedFingerprint": "c017a14e36389c7ab9715a24cbafe8dd7f13fe09957f70a1079554d8d3f3b41c",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "3fa47c6bf247f78f3be614263f8f5bf101632dac57148ae6c725c938c7540993"
+        }
+      ]
+    },
+    {
+      "round": 11,
+      "winnerCount": 1,
+      "savedBookId": "e01c4282-d057-41d7-9001-f078986f93a7",
+      "sourceAHash": "d4404652111745d4b9e10c69e4e0111a704b6a74a6cbcd9d660d4d5454379e80",
+      "sourceBHash": "058dbf66bb8cb47ef4f3e64f97e53f5baa77f2baa778314c8d1cdf38189d7b5f",
+      "finalHash": "c2132e181ad4cc8ef8c1088c5922effb7556aea3a48fd536c59f3607726cd53c",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "00bf4bfc-c020-44e8-bedb-344a451818c2",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-11\\winner.caiwu",
+            "Book": {
+              "Id": "e01c4282-d057-41d7-9001-f078986f93a7",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:30.0667079+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "7fbd6b21d8949c580a53a5743d276807bc7ef0d6b12488fe6553e0002460351f",
+            "SavedFingerprint": "1d0666763d8b8e41bed5d3c1361634653494d234df13761ad1115c576e8e8aac",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "c2132e181ad4cc8ef8c1088c5922effb7556aea3a48fd536c59f3607726cd53c"
+        }
+      ]
+    },
+    {
+      "round": 12,
+      "winnerCount": 1,
+      "savedBookId": "18c02306-61c9-489f-a92b-28d4e9192872",
+      "sourceAHash": "a0934a1bdcdd1bcb49aa52fc7071b8084070066921ff6717d5e786c60dadd7d9",
+      "sourceBHash": "5d9d2384118755e9f2c1acaf8f57fb88b4730b64232ae7d497c75866be39122d",
+      "finalHash": "e31ad7a5036a874b4e975184fd226f633786c04133fdbe4d961776b950631f0c",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "b09c8c7a-aa4c-4a71-96e4-21c20cb4a452",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-12\\winner.caiwu",
+            "Book": {
+              "Id": "18c02306-61c9-489f-a92b-28d4e9192872",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:30.7963327+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "495f3535bc5a06a662d1a34b3745d9bac42878d6159e2712119324a1f848e0eb",
+            "SavedFingerprint": "b82a4356df623966d40d3b8fdfd0bb98295d9fefc4ddbfdc44c697e83b371f0e",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "e31ad7a5036a874b4e975184fd226f633786c04133fdbe4d961776b950631f0c"
+        }
+      ]
+    },
+    {
+      "round": 13,
+      "winnerCount": 1,
+      "savedBookId": "0de9381e-5b28-4d92-b080-434613f7d27a",
+      "sourceAHash": "531520171738ee8c9a67f4b63df416e3caac2e5fcff54d6cb5e3fd2582c37d34",
+      "sourceBHash": "6a270b9e3c8de27dbff3ba47f716ee8b24c7514a0801603484d2ad61260c0698",
+      "finalHash": "de5f815fe91503cafebdc12b90a0a339893cb1a25d2f5dd292525c7125be3c8f",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "b97688bc-b43a-4c3e-9347-94d1966c6967",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-13\\winner.caiwu",
+            "Book": {
+              "Id": "0de9381e-5b28-4d92-b080-434613f7d27a",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:31.5327671+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "d6262c04a1c23f8a7d07302aef6710fadb9e73022f41cc793bc7e5cccabd0dc5",
+            "SavedFingerprint": "7a5f945be1988f2031027b2ccd7fd9925109016711b1b22402607ff5be94d231",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "de5f815fe91503cafebdc12b90a0a339893cb1a25d2f5dd292525c7125be3c8f"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 14,
+      "winnerCount": 1,
+      "savedBookId": "f72081c6-4381-4283-b7a2-e2440998c15f",
+      "sourceAHash": "7c2597f6e8b6c79784050ec8c6367362bea4e45318f373a43a2a4f987206b5c8",
+      "sourceBHash": "aa096704977dff6ef125893e75117db7ea4c6eaef6dd3aea452c2513b01a2ab4",
+      "finalHash": "0145fa47f715818b71150b4ad4ad5b522e420f172db41472e7bc8818d4152c7b",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "6918382a-3484-42e6-8249-77ae0bf28ee3",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-14\\winner.caiwu",
+            "Book": {
+              "Id": "f72081c6-4381-4283-b7a2-e2440998c15f",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:32.2307707+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "8329fc81b043bf3590d2e5136cfe7661d18fccbeb30113c476a32e7c76c52818",
+            "SavedFingerprint": "fc863c00b379d592268748ef52b33d2077d54a41088fa431dbb6f1e7d436471c",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "0145fa47f715818b71150b4ad4ad5b522e420f172db41472e7bc8818d4152c7b"
+        }
+      ]
+    },
+    {
+      "round": 15,
+      "winnerCount": 1,
+      "savedBookId": "e140c4b9-708b-48d7-9741-77869ab861df",
+      "sourceAHash": "9b607ec739ba57592721b7db9a21903162e10f9eba4e696c87aa51ad4e1ecd1e",
+      "sourceBHash": "d5400c40553dd195721b5299ede553b3f11f342dd25974e61034286d0744c5b5",
+      "finalHash": "3bc703f5c6f47217c67bac0414452296f98fcdb1b1302478da7da7e9f6ee0136",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "8b22b5a4-d335-4927-92bc-bc5a0f35dcb8",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-15\\winner.caiwu",
+            "Book": {
+              "Id": "e140c4b9-708b-48d7-9741-77869ab861df",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:33.0317899+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "d0b4e0c5306675c6f842c7d77e25b26e41ae19d624b92ac830630351ca1d9e03",
+            "SavedFingerprint": "fc2ed34272283976672b0b5928cc2950b51c5a1f63b8c13ba3412a85f609d58c",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "3bc703f5c6f47217c67bac0414452296f98fcdb1b1302478da7da7e9f6ee0136"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 16,
+      "winnerCount": 1,
+      "savedBookId": "453e4217-6f5d-4d1b-9bd6-bd775f48f41a",
+      "sourceAHash": "d2227e371c368ed40b967f2cde2576d010d20e7b037c8b0576ce9a8b49ab5db3",
+      "sourceBHash": "93069eb985659179ab70e312ccfeec0e170f7a0a7df385680970b1f41cc71e79",
+      "finalHash": "6f7d0a09615592d22c06859f965e21be3c04d2be0adee879f18d80e1cd45b2c0",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "5817dc41-60de-4523-afad-d85518970088",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-16\\winner.caiwu",
+            "Book": {
+              "Id": "453e4217-6f5d-4d1b-9bd6-bd775f48f41a",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:33.7263007+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "591e7eb553cef91ef5e14167d93c32d2512389f930ca90760c480514e83eabd4",
+            "SavedFingerprint": "85a1ef667b178668ea8f95ea3e2982ff44f522b8f27f52f604843d115c27bdfc",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "6f7d0a09615592d22c06859f965e21be3c04d2be0adee879f18d80e1cd45b2c0"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 17,
+      "winnerCount": 1,
+      "savedBookId": "9e35ec48-b85c-4bf8-a1ce-7b289fda6bad",
+      "sourceAHash": "a0ef5e79681aebbcf4d08a361b09f5829713711f1252cc8ee7103c9f371eb6d1",
+      "sourceBHash": "dd67575485d06b803cc1ca031c073ab04339356c4abedd4fdd8db43505efa35c",
+      "finalHash": "c75fa582269d67056b222ac865f737538612e37ee94efe00f88e2b5474e3d650",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "9dc0bca9-c370-40b0-bb97-c7d8181585b0",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-17\\winner.caiwu",
+            "Book": {
+              "Id": "9e35ec48-b85c-4bf8-a1ce-7b289fda6bad",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:34.4549583+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "e45a8367194cd71c909938277c8fc0e1d065eec7ca3651e0ce7b8b4f4f9d163a",
+            "SavedFingerprint": "b9cf86620b34d9837e570032ff9d7924ff1dffb56f71596a588e68286386eca4",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "c75fa582269d67056b222ac865f737538612e37ee94efe00f88e2b5474e3d650"
+        }
+      ]
+    },
+    {
+      "round": 18,
+      "winnerCount": 1,
+      "savedBookId": "32026e2e-9d65-43fe-9782-2c09e5991cae",
+      "sourceAHash": "805b62d909ce0bba084677e306ee07ad6949595f57e6db9810e253bdd0bea993",
+      "sourceBHash": "63c22f608cf30f7b5d88fe6c8b66eef5ab240761637fdd016a3e4120e25b2e2d",
+      "finalHash": "00cfc038f5f2243aaf954b0b3faf10adf7d0af8cf5996000351907ce950f77fb",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "3a3aa630-f9a9-42e9-ac56-eb675a41fa66",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-18\\winner.caiwu",
+            "Book": {
+              "Id": "32026e2e-9d65-43fe-9782-2c09e5991cae",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:35.2016881+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "4dbb66e1b89ab09c8ebce224fc858eeeefafae77c1132ba7097dd27f12480687",
+            "SavedFingerprint": "ebdc4c18d4382ed2e2ea15ea3ccaf4a0e2c7be07146867d6382733dcb4b90f6a",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "00cfc038f5f2243aaf954b0b3faf10adf7d0af8cf5996000351907ce950f77fb"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 19,
+      "winnerCount": 1,
+      "savedBookId": "b9040a9a-2ec2-4de7-a2f4-b05e527362c9",
+      "sourceAHash": "10045aeffb38b1784b6a2d8397a9c7e501caf081cf53c73bfe435a08131556e3",
+      "sourceBHash": "e069f33ce54ef3e1c9fce4016251cf7f4d2aa056a24b934a02952b9ca7d8aee5",
+      "finalHash": "da5fa43d4c089c2cd1ffd5570e57ede90dc79c2a6828095a928dd064ea5371b6",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "28577f94-c28a-421f-b73e-48b345baacc6",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-19\\winner.caiwu",
+            "Book": {
+              "Id": "b9040a9a-2ec2-4de7-a2f4-b05e527362c9",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:35.9323336+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "b22e8304f63345a36e17ddc359bc395a947c09adca99a64eb19e60ad5ab64a6b",
+            "SavedFingerprint": "f5151e3847fe4f70d8a094856747537b414bdc779aed14c54eb21bacbbc30f11",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "da5fa43d4c089c2cd1ffd5570e57ede90dc79c2a6828095a928dd064ea5371b6"
+        }
+      ]
+    },
+    {
+      "round": 20,
+      "winnerCount": 1,
+      "savedBookId": "af39f998-ded8-4773-9b20-05cfccfebf52",
+      "sourceAHash": "cd6fa5ccc7f25d438b402c31fe9ed97174a59f52fec0d650ad582978d6b43738",
+      "sourceBHash": "a57ec1586a5192b84c7f9757c51b62e21362cefba757f3e513b19fea3ba16bb8",
+      "finalHash": "95e167d0afe2af16ea96dcb18cb597520e824131e6466eb0cce73ebc662a8a1c",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "0ae36830-6dc8-4dd2-974e-4107402dd545",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-20\\winner.caiwu",
+            "Book": {
+              "Id": "af39f998-ded8-4773-9b20-05cfccfebf52",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:36.7159505+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "dbd3ff9179da5b9e6ede406bc6db26cc7fd8af78d81db53e2d9bd404c0a118c2",
+            "SavedFingerprint": "604ca64e12d9f68982fed2a766d397eb4f27174222b92057e8f6fcec5da015ce",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "95e167d0afe2af16ea96dcb18cb597520e824131e6466eb0cce73ebc662a8a1c"
+        }
+      ]
+    },
+    {
+      "round": 21,
+      "winnerCount": 1,
+      "savedBookId": "3d597704-a027-4490-8803-0aea2880d44f",
+      "sourceAHash": "053be3211373823cfbb90801aebdd4bbafa30f3eeb4c0e83b57178c5b06474f9",
+      "sourceBHash": "4b946ed1668e8bc955cb7b78c546b130625ad8358824052d0d409b844540a53c",
+      "finalHash": "1adf00f9b1417f968986cc9084fe3a5c0b7bed2cbaa8453ff57fc9208ff0c60e",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "7f66a3dc-d0dc-49b1-85a0-c9e9dc2837bf",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-21\\winner.caiwu",
+            "Book": {
+              "Id": "3d597704-a027-4490-8803-0aea2880d44f",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:37.4522529+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "ca5428fc52ce3c2c140460815b790f296dcc4105e2861e0a2473b6c683c7b866",
+            "SavedFingerprint": "b41281f787572036440c1516a52f5d3ce9f3d4f769e38cb94dd54184856753c5",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "1adf00f9b1417f968986cc9084fe3a5c0b7bed2cbaa8453ff57fc9208ff0c60e"
+        }
+      ]
+    },
+    {
+      "round": 22,
+      "winnerCount": 1,
+      "savedBookId": "7db4e08b-2046-4a4f-8ab5-c58e79d232bf",
+      "sourceAHash": "4fbeb81eb91f38f31cfb612b13b713abda1d5800cb0446c1e6016f5c43a8aa55",
+      "sourceBHash": "3a6d817b96d4931267df06fabe5b624c3ad998d3d1dac59b084dcdc5d1dc7cc0",
+      "finalHash": "471488e29dba728f6a509dcb984d70bfe258182ce43962da8d7087464cef011a",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "3d58d766-2384-49e1-8364-e5292ea6ca28",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-22\\winner.caiwu",
+            "Book": {
+              "Id": "7db4e08b-2046-4a4f-8ab5-c58e79d232bf",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:38.194777+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "98ecb2bc9e75c3681cdf742c38ceed023c74e82ba2e4393d8c56fb8fca31e180",
+            "SavedFingerprint": "1d9e88bff609331f1ba91e2c1c7ba3ee8d02c7f580b4083d3c3247372ae372b1",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "471488e29dba728f6a509dcb984d70bfe258182ce43962da8d7087464cef011a"
+        }
+      ]
+    },
+    {
+      "round": 23,
+      "winnerCount": 1,
+      "savedBookId": "11b00fc3-efce-4c9b-aad9-6af76c7eaf3b",
+      "sourceAHash": "8e6180e7c1032df1a49567bb8aae9c57b43eeffb61a600ac2ddf59d687b84550",
+      "sourceBHash": "7fb83f8588a359af0af0f87494b7a6ce8084cfeabdb78d8855b7ce815efe4652",
+      "finalHash": "221be93ee2f265681501fc61b561e70fe5f2a6c11c6c855651f34a9a348a37f2",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "7ca3359d-5137-4f24-b40a-0127b297d95f",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-23\\winner.caiwu",
+            "Book": {
+              "Id": "11b00fc3-efce-4c9b-aad9-6af76c7eaf3b",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:38.8917612+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "4d5ad8538712976b4007e1c40ab48f02250802300cad95acc79bef329e7ee753",
+            "SavedFingerprint": "de5242908f929f20b6b83668b4a0cb1ae05f6e00c75d9d148cdae9d924172ac0",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "221be93ee2f265681501fc61b561e70fe5f2a6c11c6c855651f34a9a348a37f2"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 24,
+      "winnerCount": 1,
+      "savedBookId": "a5fe7e1f-70fd-4263-854a-a2da8c4d34dc",
+      "sourceAHash": "af275477e21570a133ef3cf40427bb3b10f02cc3754ffafa5b50c94f4c8320d3",
+      "sourceBHash": "ba9345cc17e0bf76afd1fa58d1bcf1defadafe815502047e85f399b0cfee1188",
+      "finalHash": "c3cd95f1125f330a3e5c5b15758d30f2c084405a7ab8bd3fd089a1938741cb0b",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "0618dc9a-c257-427e-a001-8c891a1239d4",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-24\\winner.caiwu",
+            "Book": {
+              "Id": "a5fe7e1f-70fd-4263-854a-a2da8c4d34dc",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:39.6293279+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "c0c6b0ed75a3182b191c8a854c7a43315b49c8a8ac75c57dfe21a5829035710b",
+            "SavedFingerprint": "4f72ec371a016bbbab4b42ceff692776ce4f041cea67178936da868f1606dc3d",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "c3cd95f1125f330a3e5c5b15758d30f2c084405a7ab8bd3fd089a1938741cb0b"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 25,
+      "winnerCount": 1,
+      "savedBookId": "5be4b371-3fee-4421-bab8-ff1277142d94",
+      "sourceAHash": "542942e1199555dffe6f324b82cb4267543eb75a79487243d191a5d1f3ac747d",
+      "sourceBHash": "39379826e293b9b311e9251ad32cc86de43d1cb76e90bb654c18bbc986602875",
+      "finalHash": "9d095a33cef4a51096eab05795f647efad1008638e4a201eaab056142c6a0d63",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "e646106e-c48c-4e5b-a0f6-7079527029c5",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-25\\winner.caiwu",
+            "Book": {
+              "Id": "5be4b371-3fee-4421-bab8-ff1277142d94",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:40.3309007+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "bc6487448e47d9cc1152f074200d600033523f16c89524acd694bee8f4d3c9fc",
+            "SavedFingerprint": "f0fdb20ce35560a0318e0ec98e36a9e16d612dbcee544fb12ccfb8b19684e395",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "9d095a33cef4a51096eab05795f647efad1008638e4a201eaab056142c6a0d63"
+        }
+      ]
+    },
+    {
+      "round": 26,
+      "winnerCount": 1,
+      "savedBookId": "48eb7ca9-b673-4b95-8f0d-4b9717b4b1cc",
+      "sourceAHash": "74746b75bac127561e1f84de5de3f4f21cfdbb2613a573f0418a2ca29613e4a8",
+      "sourceBHash": "7ccbd38945513f10a53915097282ca5891f8ca84fce83a48f8a9309fd0de53a2",
+      "finalHash": "cfd47396e390e79766472db49e1aee64a5f7963bb472d25290ac4df50b07e034",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "e559f2c0-e4f5-477c-895c-607259382a76",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-26\\winner.caiwu",
+            "Book": {
+              "Id": "48eb7ca9-b673-4b95-8f0d-4b9717b4b1cc",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:41.0321291+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "7066bf3a0f783c4f60e2f503686af770419210a366147d2609913d64b9de39da",
+            "SavedFingerprint": "c1eec20adb8de5393356a605a6efeef197dded48fb5cb75d6fae6c5cd66356f3",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "cfd47396e390e79766472db49e1aee64a5f7963bb472d25290ac4df50b07e034"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 27,
+      "winnerCount": 1,
+      "savedBookId": "b33b8603-9fbe-4db2-9c3c-baa7851325d4",
+      "sourceAHash": "f39e439cf722ce49a8d2c2b79df520b3b559ba1e5720684262c2292188bbb1ed",
+      "sourceBHash": "162cefcd4d3ac2db74ce26520730fb22e6dda62c4d9ff06f6600158eb96058f0",
+      "finalHash": "e28dfd109aff302e9a5922d2a57d744a018058e1cb06f1b770968948bc1dd359",
+      "outcomes": [
+        {
+          "Result": {
+            "PlanId": "119684c7-7079-4402-9210-b5308918e7e4",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-27\\winner.caiwu",
+            "Book": {
+              "Id": "b33b8603-9fbe-4db2-9c3c-baa7851325d4",
+              "Name": "\u5408\u6210\u7ADE\u4E89A",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:41.7178682+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "daff79d14dc371718144c1880db452b3d0b96888116cb389859a09b5ac3c4e90",
+            "SavedFingerprint": "136e4e4917ddc73e806f7d23255405c7a44315baab0ab88b6f2c2a8bf27cfeba",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "e28dfd109aff302e9a5922d2a57d744a018058e1cb06f1b770968948bc1dd359"
+        },
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        }
+      ]
+    },
+    {
+      "round": 28,
+      "winnerCount": 1,
+      "savedBookId": "da549afa-957d-4f23-98ee-5cd8fd8418e4",
+      "sourceAHash": "ac59766b3016593a57aa3a70cd62aee9b10f0d226c1a0e16e054c40db413aa74",
+      "sourceBHash": "88f26bf91887bc8d64db840b8982fceeae2375993c8968fb188321a0db84621f",
+      "finalHash": "5e6e7744fbde337b79ebf32b8c70260ddee85236a8c9121b03b1c1d7ae83b321",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "475dc2c4-b960-4f5b-8a69-741283a8c881",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-28\\winner.caiwu",
+            "Book": {
+              "Id": "da549afa-957d-4f23-98ee-5cd8fd8418e4",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:42.4612551+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "600dc3aaac601f9b09174c498dd0ba21efc8bc22f9d83eef6412c49bc2fb6142",
+            "SavedFingerprint": "68b4a1cfe3b9c011e7f04f966bc08cd7a98af34c2cd05171d2a0202a3e341418",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "5e6e7744fbde337b79ebf32b8c70260ddee85236a8c9121b03b1c1d7ae83b321"
+        }
+      ]
+    },
+    {
+      "round": 29,
+      "winnerCount": 1,
+      "savedBookId": "563eb80f-9191-4535-a52e-fa242d13535f",
+      "sourceAHash": "2125520300b5be453645f855c712e301e9f297ad3d870ddbdfe67573e289ede6",
+      "sourceBHash": "b28108835a60b1b74bfb8ad99ce8d973e0d891cd68a612c08945a2dea3b02d53",
+      "finalHash": "5ec01f37bb3787412587384e5a55c1e53234a17d40fc456c3cb9fe7846fb6b18",
+      "outcomes": [
+        {
+          "Result": null,
+          "Error": "System.IO.IOException: Cannot create a file when that file already exists.",
+          "Hash": null
+        },
+        {
+          "Result": {
+            "PlanId": "25b0d50f-8c7c-4504-aabf-6c2958569382",
+            "DestinationPath": "C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-module-qa-e952e13302904993bd6d207432e9b91b\\round-29\\winner.caiwu",
+            "Book": {
+              "Id": "563eb80f-9191-4535-a52e-fa242d13535f",
+              "Name": "\u5408\u6210\u7ADE\u4E89B",
+              "Regime": 1,
+              "TemplateVersion": "synthetic-only",
+              "FiscalYear": 2026,
+              "StartMonth": 1,
+              "ClosedThroughMonth": 1,
+              "CreatedAt": "2026-10-25T11:35:43.1245226+00:00"
+            },
+            "Revision": 1,
+            "Counts": {
+              "Accounts": 2,
+              "Vouchers": 1,
+              "Drafts": 0,
+              "Reviewed": 0,
+              "Posted": 1,
+              "AuditEvents": 5,
+              "OpeningDebit": 10,
+              "OpeningCredit": 10
+            },
+            "SourceFingerprint": "84b4f2d74a6d4093bbcd1553abf01bb27f57a8ae7afdeb627c03f2e899fea48d",
+            "SavedFingerprint": "9121685633f4170ca8ede14cee5d29369fd0288ab30ac75daa7d46ca649418d7",
+            "CleanupWarnings": []
+          },
+          "Error": null,
+          "Hash": "5ec01f37bb3787412587384e5a55c1e53234a17d40fc456c3cb9fe7846fb6b18"
+        }
+      ]
+    }
+  ],
+  "checkoutCommit": "083727a0697182cd0831040f6298e42d92761089",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": []
+}

@@ -1,5 +1,7 @@
 # 独立 Windows 模块 UI 验收交接
 
+后续 root 已明确授权并完成 BookTools 工作区小修：生产修复 `49b194e`、实际 Windows 验收 `083727a`，1024×768 与 1920×1080 下底部原生鼠标可达已通过。详见 [WORKAREA_FIX.md](WORKAREA_FIX.md)。以下为 11:21 第一阶段的原始交接与当时未完项，保留为历史证据。
+
 2026-10-25 UTC；私有分支 `codex/module-copy-summary-qa`；草稿 [PR 29](https://github.com/xhc144/caiwu-suite/pull/29)，目标 `codex/sprint-integration-2`。
 
 **success：实际 WPF 控件/服务用例、30 轮 Windows 同目标发布竞争及逐用例截图收据检查全部通过；partial：小屏幕原生窗口适配未通过视觉复核，详见下方剩余项。** 真实 Windows 验收源码 SHA：`e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7`；[最终聚焦 CI 40188069024](https://github.com/xhc144/caiwu-suite/actions/runs/40188069024)，三个 job 均 success。后续仅保存证据/文档的提交不冒充新的运行源码 SHA。

@@ -1,7 +1,7 @@
 # Copy / Summary / BookTools independent Windows acceptance
 
 This test-only module targets the private development branch `codex/module-copy-summary-qa`.
-No Desktop entrypoint, Contracts, Core, Storage, production module, installer or delivery hold is changed.
+The authorized follow-up changes only BookTools WPF work-area/layout handling. No Desktop entrypoint, Contracts, Core, Storage, copy plan/publication/persistence, installer or delivery hold is changed.
 Only synthetic temporary books are opened. No commercial software or extracted data is used.
 
 ## Baseline and reuse
@@ -36,9 +36,9 @@ Use a fresh output directory for every run. The dedicated workflow triggers only
 
 The supplementary screenshots include native `PrintWindow` at the actual HWND's dimensions and complete primary-desktop `BitBlt` with the tested HWND verified foreground, without crop/resize/upscale. The author probes use WPF `RenderTargetBitmap` of their actual displayed windows; these are identified separately and do not prove desktop compositor rendering. `evidence-manifest.json` binds every raw file's SHA256/size to checkout and relevant Git subtree identities. Supplementary JSON also describes native capture dimensions/DPI/hash. Captures use `CreateNew`; all per-case PNG receipts are revalidated after the last case to reject cross-case overwrites. The runner's actual display dimensions are recorded, rather than upscaled to a requested resolution.
 
-Inputs use actual control properties and WPF RoutedEvent Click/Key. Focus checks inspect actual keyboard focus. Native physical keyboard, mouse, IME, DPI matrix, accessibility, host-menu wiring and production financial compliance are not asserted.
+Original probes use actual control properties and WPF RoutedEvent Click/Key. Focus checks inspect actual keyboard focus. The new work-area cases additionally use native SendInput mouse clicks and hit tests. Native keyboard, IME, other DPI values, accessibility, host-menu wiring and production financial compliance are not asserted.
 
-Final CI success validates those control/service assertions and evidence integrity. Visual review retains a small-screen finding: on the runner's actual 1024×768 desktop, the default BookTools window can extend beyond the work area and taskbar. Full HWND captures and desktop originals are both preserved; physical target visibility on small displays is not accepted. See `HANDOFF.md` for the exact remaining scope and minimal owner suggestion.
+The first phase retained a 1024×768 BookTools work-area finding. The authorized follow-up fixes only that module's WPF layout: actual monitor/DIP bounds, scrollable content, fixed action footer. New native mouse/hit-test cases pass at real 1024×768 and 1920×1080, both 96 DPI. See `WORKAREA_FIX.md` for the minimal production SHA, current CI and raw originals; the first-phase evidence remains preserved. Other DPI values, native keyboard/IME and multi-monitor movement are still unverified.
 
 ## Integration
 

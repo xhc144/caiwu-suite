@@ -1,0 +1,52 @@
+{
+  "name": "voucher-focus-sqlite",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "initial focus is actual date input",
+    "ConfirmButton enabled",
+    "invalid date keeps window and actual keyboard focus",
+    "invalid confirmation does not write actual SQLite",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "ConfirmButton enabled",
+    "dialog preserves original snapshot token and fresh identity",
+    "dialog alone did not persist copy",
+    "host explicitly saves fresh draft with current actor",
+    "fresh copied voucher reopens from actual SQLite"
+  ],
+  "observations": [],
+  "checkoutCommit": "083727a0697182cd0831040f6298e42d92761089",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "voucher-error-focus.png",
+      "width": 1044,
+      "height": 788,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "f6d89df23eea2ae36aeaa9d5d2ba320851c64e578aff14c0f688a841305d2049",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "voucher-error-focus-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 130,
+        "Top": 130,
+        "Right": 1174,
+        "Bottom": 918
+      },
+      "sha256": "a055131478b34e9f1b4af4c3be9f3a69e81d5865018402d3a4ed9c64820707fd",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}
