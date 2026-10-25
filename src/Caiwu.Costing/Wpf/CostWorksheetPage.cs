@@ -126,9 +126,20 @@ public sealed class CostWorksheetPage : UserControl
         AutomationProperties.SetAutomationId(grid, path);
         grid.SetBinding(ItemsControl.ItemsSourceProperty, path); grids.Add(grid); return grid;
     }
-    private static void TextColumn(DataGrid grid, string title, string path, string? format = null) => grid.Columns.Add(new DataGridTextColumn
-    { Header = title, Binding = new Binding(path) { Mode = grid.IsReadOnly ? BindingMode.OneWay : BindingMode.TwoWay,
-        UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged, StringFormat = format }, MinWidth = 100 });
+    private static void TextColumn(DataGrid grid, string title, string path, string? format = null)
+    {
+        var column = new DataGridTextColumn
+        { Header = title, Binding = new Binding(path) { Mode = grid.IsReadOnly ? BindingMode.OneWay : BindingMode.TwoWay,
+            UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged, StringFormat = format }, MinWidth = 100 };
+        if (format is not null || path is "SharedMaterials" or "DirectLabor" or "ManufacturingOverhead" or "OutputQuantity" or "DirectMaterials" or "LaborHours" or "MachineHours" or "Detail.Weight" or "Detail.ExactNumerator" or "Detail.ExactDenominator")
+        {
+            var display = new Style(typeof(TextBlock), column.ElementStyle);
+            display.Setters.Add(new Setter(TextBlock.TextAlignmentProperty, TextAlignment.Right)); column.ElementStyle = display;
+            var editing = new Style(typeof(TextBox), column.EditingElementStyle);
+            editing.Setters.Add(new Setter(TextBox.TextAlignmentProperty, TextAlignment.Right)); column.EditingElementStyle = editing;
+        }
+        grid.Columns.Add(column);
+    }
     private static void BasisColumn(DataGrid grid, string title, string path) => grid.Columns.Add(new DataGridComboBoxColumn
     { Header = title, ItemsSource = Enum.GetNames<AllocationBasis>(), SelectedItemBinding = new Binding(path)
         { Mode = BindingMode.TwoWay, UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged }, MinWidth = 150 });
