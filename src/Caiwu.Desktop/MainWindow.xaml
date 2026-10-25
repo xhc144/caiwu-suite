@@ -102,7 +102,7 @@
           <DockPanel Margin="12">
             <StackPanel DockPanel.Dock="Top">
               <WrapPanel Margin="0,0,0,10">
-                <Button Content="＋ 新增  Ctrl+N" Style="{StaticResource PrimaryButton}" Click="NewVoucher_Click" Tag="WriteOperation" />
+                <Button Content="新增 Ctrl+N" Style="{StaticResource PrimaryButton}" Click="NewVoucher_Click" Tag="WriteOperation" />
                 <Button Content="查看 / 修改" Click="EditVoucher_Click" />
                 <Button Content="审核 F4" Click="Review_Click" Tag="WriteOperation" />
                 <Button Content="取消审核" Click="CancelReview_Click" Tag="WriteOperation" />
