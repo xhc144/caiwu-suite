@@ -43,6 +43,7 @@ internal static class Program
             var main = new MainWindow(backend); app.MainWindow = main; main.Show(); Call(main, "OpenVerificationBook", path);
             main.WindowState = WindowState.Maximized; Idle(main);
             Call(main, "ShowVerificationPage", 1); Capture(main, "main-window.png");
+            ((ComboBox)main.FindName("LedgerAccountInput")).SelectedValue = "1002";
             Call(main, "ShowVerificationPage", 5); Capture(main, "ledger.png");
             var editor = (VoucherEditorWindow)Call(main, "CreateVerificationEditor", (object?)null)!;
             editor.Show(); editor.WindowState = WindowState.Maximized;
@@ -81,6 +82,8 @@ internal static class Program
         void Capture(Window window, string file)
         {
             window.Activate(); Idle(window);
+            if (GetForegroundWindow() != new WindowInteropHelper(window).Handle)
+                throw new InvalidOperationException("BLOCKED: intended WPF page is not the foreground native window.");
             var width = GetSystemMetrics(0); var height = GetSystemMetrics(1);
             var screen = GetDC(IntPtr.Zero); var dc = CreateCompatibleDC(screen); var bmp = CreateCompatibleBitmap(screen, width, height); var previous = SelectObject(dc, bmp);
             try
@@ -101,6 +104,7 @@ internal static class Program
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ChangeDisplaySettings(IntPtr settings, int flags);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] private static extern uint GetDpiForWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr window);
     [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr window, IntPtr dc);
     [DllImport("gdi32.dll")] private static extern IntPtr CreateCompatibleDC(IntPtr dc);
