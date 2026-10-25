@@ -3,7 +3,7 @@ using Caiwu.Delivery;
 
 try
 {
-    if (args.Length == 0) throw new ArgumentException("Commands: manifest, verify, install, uninstall, launch, check-update, stage-update. Arguments are positional; see packaging-next/README.md.");
+    if (args.Length == 0) throw new ArgumentException("Commands: manifest, verify, install, uninstall, launch, inspect-book, backup-book, restore-book, check-update, stage-update. Arguments are positional; see packaging-next/README.md.");
     switch (args[0])
     {
         case "manifest" when args.Length == 4:
@@ -16,6 +16,12 @@ try
             Installation.Uninstall(args[1]); break;
         case "launch" when args.Length >= 2:
             return Installation.Launch(args[1], args.Skip(2).ToArray());
+        case "inspect-book" when args.Length == 3:
+            Console.WriteLine(JsonSerializer.Serialize(BookOperations.Inspect(args[1], args[2]), PayloadManifest.Json)); break;
+        case "backup-book" when args.Length == 4:
+            Console.WriteLine(JsonSerializer.Serialize(BookOperations.Backup(args[1], args[2], args[3]), PayloadManifest.Json)); break;
+        case "restore-book" when args.Length == 4:
+            Console.WriteLine(JsonSerializer.Serialize(BookOperations.Restore(args[1], args[2], args[3]), PayloadManifest.Json)); break;
         case "check-update" when args.Length == 3:
         case "stage-update" when args.Length == 4:
             var policy = JsonSerializer.Deserialize<UpdatePolicy>(File.ReadAllText(args[1]), PayloadManifest.Json) ?? throw new InvalidDataException("No update policy.");

@@ -40,6 +40,24 @@ public static class Installation
         SafePaths.RequireSeparateRoots(installRoot, owner.DataRoot);
         return owner;
     }
+    internal static T WithExclusiveData<T>(string installRoot, Func<CurrentInstallation, T> action)
+    {
+        installRoot = SafePaths.Full(installRoot);
+        using var installLease = AcquireLease(installRoot);
+        var owner = ReadOwner(installRoot);
+        var current = ReadCurrent(installRoot);
+        if (!SafePaths.Full(owner.DataRoot).Equals(SafePaths.Full(current.DataRoot), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Installation and data receipts disagree; recovery is required.");
+        using var dataLease = AcquireDataLease(current.DataRoot);
+        var receipt = JsonSerializer.Deserialize<DataRootOwner>(File.ReadAllText(SafePaths.Child(current.DataRoot, DataOwnerFile)), PayloadManifest.Json)
+            ?? throw new InvalidDataException("Invalid data ownership receipt.");
+        var manifest = PayloadManifest.Read(SafePaths.Child(installRoot, $"versions/{current.Version}/{PayloadManifest.FileName}"));
+        if (receipt.Product != Product || !SafePaths.Full(receipt.InstallRoot).Equals(installRoot, StringComparison.OrdinalIgnoreCase) ||
+            receipt.Version != current.Version || receipt.ManifestSha256 != manifest.Digest())
+            throw new InvalidDataException("Installation and data receipts disagree; recovery is required.");
+        return action(current);
+    }
+
     private static void AtomicJson(string path, object value)
     {
         var temp = path + "." + Guid.NewGuid().ToString("N") + ".tmp";

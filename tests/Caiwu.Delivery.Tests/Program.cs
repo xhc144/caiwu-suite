@@ -38,6 +38,7 @@ var report = new
     success = failed == 0, total = cases.Length, passed = cases.Length - failed - skipped,
     failed, skipped, runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
     os = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+    publishedWindowsArtifactExecuted = false,
     scope = "Synthetic self-authored delivery components only. No reference installer or real accounting data.",
     results
 };
@@ -421,6 +422,7 @@ internal static class DeliveryCases
             yield return ("update policy permits a newer pinned-host candidate for later signature verification", _ =>
                 UpdateRules.Validate(Policy(), Candidate(), "0.1.0.1"));
             foreach (var test in NetworkCases()) yield return test;
+            foreach (var test in BookOperationCases.All) yield return test;
         }
     }
 
@@ -561,6 +563,7 @@ internal sealed class Fixture : IDisposable
 {
     public const string Commit = "97d696a3ee7adf100e24b4924438468bd34dd80c";
     public const string ManifestName = "payload-manifest.json";
+    public static readonly Guid OperationBookId = Guid.Parse("b71956f8-de07-4d64-a881-a947085698e8");
     public string Root { get; } = Path.Combine(Path.GetTempPath(), "caiwu-delivery-tests-" + Guid.NewGuid().ToString("N"));
     public string Install { get; }
     public string Data { get; }
@@ -581,9 +584,9 @@ internal sealed class Fixture : IDisposable
     }
 
     public string Book(string name = "synthetic.caiwu") => BookAt(Path.Combine(Data, name));
-    public string BookAt(string path)
+    public string BookAt(string path, Guid? id = null)
     {
-        var book = new BookInfo(Guid.NewGuid(), "仅用于交付自动测试的合成账套", AccountingRegime.Enterprise,
+        var book = new BookInfo(id ?? Guid.NewGuid(), "仅用于交付自动测试的合成账套", AccountingRegime.Enterprise,
             "synthetic-delivery-v1", 2026, 1, 0, new DateTimeOffset(2026, 10, 25, 0, 0, 0, TimeSpan.Zero));
         Account[] accounts =
         [
@@ -593,6 +596,29 @@ internal sealed class Fixture : IDisposable
         using var store = SqliteLedgerStore.Create(path, book, accounts);
         var snapshot = store.Read();
         store.Write(snapshot with { Revision = 1, AuditEvents = [new(Guid.NewGuid(), book.CreatedAt, "交付测试", "合成样本", null, "没有真实财务数据")] }, 0);
+        return path;
+    }
+
+    public string OperationBook()
+    {
+        var path = BookAt(Path.Combine(Data, "synthetic.caiwu"), OperationBookId);
+        using var store = SqliteLedgerStore.Open(path);
+        var before = store.Read();
+        var accounts = before.Accounts.Select(a => a.Code == "1002" ? a with { Name = "银行存款" } : a)
+            .Append(new Account("6602", "测试费用", null, BalanceDirection.Debit, true, 0m, 0m)).ToArray();
+        Voucher[] vouchers =
+        [
+            new(Guid.Parse("11111111-1111-1111-1111-111111111111"), new(2026, 1, 10), "转", 1, 0,
+                "测试制单", "测试审核", VoucherStatus.Posted,
+                [new("1002", "合成已记账收款", 100.25m, 0m), new("4001", "合成已记账收款", 0m, 100.25m)]),
+            new(Guid.Parse("22222222-2222-2222-2222-222222222222"), new(2026, 1, 11), "转", 2, 0,
+                "测试制单", "测试审核", VoucherStatus.Posted,
+                [new("6602", "合成已记账支出", 20.10m, 0m), new("1002", "合成已记账支出", 0m, 20.10m)]),
+            new(Guid.Parse("33333333-3333-3333-3333-333333333333"), new(2026, 1, 12), "转", 3, 0,
+                "测试制单", null, VoucherStatus.Draft,
+                [new("1002", "未记账不计余额", 999.99m, 0m), new("4001", "未记账不计余额", 0m, 999.99m)])
+        ];
+        store.Write(before with { Revision = 2, Accounts = accounts, Vouchers = vouchers }, 1);
         return path;
     }
 
