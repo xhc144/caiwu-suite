@@ -1,0 +1,70 @@
+{
+  "sourceCommit": "1cec21f25ee8245269506aceb703bc1bdbc59a26",
+  "files": [
+    {
+      "path": "installation-and-independent-readback.json",
+      "bytes": 1063,
+      "sha256": "3433c7a9c867643ca1e963f25c9503ce7e6d23fe4b70ecfeba9392d4567eb6e4"
+    },
+    {
+      "path": "runtime\\controller-stderr.log",
+      "bytes": 67,
+      "sha256": "e2662d8c34901867f3221e27a6f797f12f9a21a57c62c4c2e9241b4b5e70553f"
+    },
+    {
+      "path": "runtime\\controller-stdout.log",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "runtime\\failure-ui-tree.json",
+      "bytes": 2,
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "path": "runtime\\installed-bookflows.json",
+      "bytes": 11294,
+      "sha256": "d7c36af6c8b68a9165ac574ff5c06ff6c54cbb673d11570da7fac66c7c064ba9"
+    },
+    {
+      "path": "runtime\\loaded-native-modules.json",
+      "bytes": 22672,
+      "sha256": "4ebfc014fee3c24f9e5a2c5e5c6ce127f7243ae052d5da310f891db07684b586"
+    },
+    {
+      "path": "runtime\\native-path-411a75f812564a4dbf7ced69208baea2.json",
+      "bytes": 517,
+      "sha256": "0dc6e9f6f4226c36cae97d05a279a2843d7e4bd60dc684efe55358c6a45ddd76"
+    },
+    {
+      "path": "runtime\\native-path-f4a7fbae4ca64b348f1696aa8a3aa056.json",
+      "bytes": 523,
+      "sha256": "980eeef1abe83d718c8a5c658c0a76c2623870b535c76dea503f0ad2e03cf9b6"
+    },
+    {
+      "path": "runtime\\new-book.png",
+      "bytes": 500138,
+      "sha256": "1306085c6e2d2ed82805458b03cfdbd20f5adf6b3aab1f6e4e8307aaa49a7be4"
+    },
+    {
+      "path": "runtime\\normal-login.png",
+      "bytes": 481589,
+      "sha256": "44d50e32e11726887aff24c97ddb18d25835d5c8cf62ff2420f8463c1f2ee85b"
+    },
+    {
+      "path": "runtime\\posted-voucher.png",
+      "bytes": 497893,
+      "sha256": "0e4661e3b705e0d6ab83f86be87efec4fff0e2aa864f24b103d368de7d206e29"
+    },
+    {
+      "path": "runtime\\voucher-cancel-failure.png",
+      "bytes": 497893,
+      "sha256": "0e4661e3b705e0d6ab83f86be87efec4fff0e2aa864f24b103d368de7d206e29"
+    },
+    {
+      "path": "runtime\\voucher-input.png",
+      "bytes": 508682,
+      "sha256": "6a6b1d76390ada653b29c7defa511f9cc8fdc0ed9c2500300b95f5b3b5e8b08c"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+installed-bookflows	Build external independent controller	﻿2026-10-25T12:22:32.9533151Z ##[group]Run if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Delivery hold missing.' }
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9533689Z [36;1mif (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Delivery hold missing.' }[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9534277Z [36;1mgit diff --exit-code dece298946d03ad88c5031eb02dab8f87c330046 HEAD -- src packaging-next/src tests/Caiwu.Delivery.Tests/InstalledDesktop[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9534746Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'Production or existing controller differs from validated baseline.' }[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9535076Z [36;1mdotnet build tests/InstalledBookFlowsQA -c Release -warnaserror[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9535357Z [36;1mif ($LASTEXITCODE -ne 0) { throw 'Independent controller build failed.' }[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9984553Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9984837Z env:
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9984972Z   DOTNET_ROOT: C:\Program Files\dotnet
+installed-bookflows	Build external independent controller	2026-10-25T12:22:32.9985132Z ##[endgroup]
+installed-bookflows	Build external independent controller	2026-10-25T12:22:42.2190392Z   Determining projects to restore...
+installed-bookflows	Build external independent controller	2026-10-25T12:22:45.0858034Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Summaries\Caiwu.Summaries.csproj (in 117 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:45.1157145Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Reporting\Caiwu.Reporting.csproj (in 30 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:45.1217891Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.ReportDesigner\Caiwu.ReportDesigner.csproj (in 5 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.1577976Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Persistence.Sqlite\Caiwu.Persistence.Sqlite.csproj (in 4.03 sec).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.5827107Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Operators\Caiwu.Operators.csproj (in 419 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.5968647Z   Restored D:\a\caiwu-suite\caiwu-suite\tests\InstalledBookFlowsQA\Caiwu.InstalledBookFlowsQA.csproj (in 4.69 sec).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.6114892Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Nonprofit.Reporting\Caiwu.Nonprofit.Reporting.csproj (in 7 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.6125880Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Costing\Caiwu.Costing.csproj (in 1 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.6179525Z   Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Contracts\Caiwu.Contracts.csproj (in 1 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.6205383Z   Restored D:\a\caiwu-suite\caiwu-suite\packaging-next\src\Caiwu.Delivery\Modules\Caiwu.Delivery.Modules.csproj (in 8 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.6208862Z   Restored D:\a\caiwu-suite\caiwu-suite\packaging-next\src\Caiwu.Delivery\Caiwu.Delivery.csproj (in 3 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:49.6295081Z   Restored D:\a\caiwu-suite\caiwu-suite\packaging-next\src\Caiwu.Delivery.Host\Caiwu.Delivery.Host.csproj (in 6 ms).
+installed-bookflows	Build external independent controller	2026-10-25T12:22:58.8699275Z   Caiwu.Contracts -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Contracts\bin\Release\net10.0\Caiwu.Contracts.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:03.2139019Z   Caiwu.Costing -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Costing\bin\Release\net10.0\Caiwu.Costing.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:03.2140105Z   Caiwu.Summaries -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Summaries\bin\Release\net10.0\Caiwu.Summaries.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:03.2140763Z   Caiwu.Operators -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Operators\bin\Release\net10.0\Caiwu.Operators.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:03.2141484Z   Caiwu.Reporting -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Reporting\bin\Release\net10.0\Caiwu.Reporting.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:03.2142275Z   Caiwu.Nonprofit.Reporting -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Nonprofit.Reporting\bin\Release\net10.0\Caiwu.Nonprofit.Reporting.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:03.2143479Z   Caiwu.Persistence.Sqlite -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Persistence.Sqlite\bin\Release\net10.0\Caiwu.Persistence.Sqlite.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:04.4086790Z   Caiwu.Delivery -> D:\a\caiwu-suite\caiwu-suite\packaging-next\src\Caiwu.Delivery\bin\Release\net10.0\Caiwu.Delivery.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:04.8697525Z   Caiwu.ReportDesigner -> D:\a\caiwu-suite\caiwu-suite\src\Caiwu.ReportDesigner\bin\Release\net10.0\Caiwu.ReportDesigner.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:05.0385394Z   Caiwu.Delivery.Modules -> D:\a\caiwu-suite\caiwu-suite\packaging-next\src\Caiwu.Delivery\Modules\bin\Release\net10.0\Caiwu.Delivery.Modules.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:05.2279294Z   Caiwu.Delivery.Host -> D:\a\caiwu-suite\caiwu-suite\packaging-next\src\Caiwu.Delivery.Host\bin\Release\net10.0\Caiwu.Delivery.Host.dll
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0076767Z ##[error]D:\a\caiwu-suite\caiwu-suite\tests\InstalledBookFlowsQA\ProvenanceFingerprint.cs(12,32): error CS0246: The type or namespace name 'MemoryStream' could not be found (are you missing a using directive or an assembly reference?) [D:\a\caiwu-suite\caiwu-suite\tests\InstalledBookFlowsQA\Caiwu.InstalledBookFlowsQA.csproj]
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0223504Z 
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0226458Z Build FAILED.
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0226725Z 
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0229198Z ##[error]D:\a\caiwu-suite\caiwu-suite\tests\InstalledBookFlowsQA\ProvenanceFingerprint.cs(12,32): error CS0246: The type or namespace name 'MemoryStream' could not be found (are you missing a using directive or an assembly reference?) [D:\a\caiwu-suite\caiwu-suite\tests\InstalledBookFlowsQA\Caiwu.InstalledBookFlowsQA.csproj]
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0233162Z     0 Warning(s)
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0233458Z     1 Error(s)
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0234756Z 
+installed-bookflows	Build external independent controller	2026-10-25T12:23:06.0234961Z Time Elapsed 00:00:28.61
+installed-bookflows	Build external independent controller	2026-10-25T12:23:07.1104628Z [31;1mException: [0mD:\a\_temp\db28a433-0c54-4ca8-a288-89517410011d.ps1:6[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:23:07.1106285Z [31;1m[0m[36;1mLine |[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:23:07.1107712Z [31;1m[0m[36;1m[36;1m   6 | [0m … $LASTEXITCODE -ne 0) { [36;1mthrow 'Independent controller build failed.'[0m }[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:23:07.1108865Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m     | [31;1m                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:23:07.1109913Z [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m     | [31;1mIndependent controller build failed.[0m
+installed-bookflows	Build external independent controller	2026-10-25T12:23:07.1381590Z ##[error]Process completed with exit code 1.

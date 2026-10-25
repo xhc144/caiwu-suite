@@ -285,7 +285,7 @@ internal static class Program
             Failures.Add(name + ": " + ex.Message); Cases.Add(new(name, "failed", ex.ToString()));
             try { Capture(name + "-failure"); DumpTree(name + "-ui-tree"); } catch { }
             // Close owned product dialogs to continue independent cases; no synthetic business writes here.
-            var ownerHandle = main?.Current.NativeWindowHandle ?? 0;
+            var ownerHandle = 0; try { ownerHandle = main?.Current.NativeWindowHandle ?? 0; } catch (ElementNotAvailableException) { }
             foreach (var window in ProductWindows().Reverse().ToArray()) { try { if (window.Current.NativeWindowHandle != ownerHandle) Close(window); } catch { } }
         }
         Save(false, "In progress");
