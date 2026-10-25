@@ -23,6 +23,7 @@ using Caiwu.BookTools.Wpf;
 using Caiwu.Delivery;
 using Caiwu.Operators;
 using Caiwu.Nonprofit.Reporting.Wpf;
+using Caiwu.Operators.Wpf;
 
 internal static class Program
 {
@@ -55,6 +56,37 @@ internal static class Program
         var login = operators.Login(maker.LoginName, syntheticPassword); var authentication = new FeatureAuthentication(operators, login);
         var backend = App.CreateAuthenticatedBackend(operators, login);
         using var session = new LedgerSession(backend); session.Open(path);
+        Check("REAL-FIRST-USE-CANCEL-AND-EXPLICIT-LOGIN-COMPOSITION", () =>
+        {
+            var identity = new LocalOperatorService(new FileOperatorStore(Path.Combine(temporary, "first-use-ui")));
+            var cancelled = LoginScript(identity, window => window.Close());
+            Assert(cancelled is null && identity.IsFirstUse, "Cancelling setup created identity/session.");
+            var setupThenCancel = LoginScript(identity, window =>
+            {
+                if (window is FirstUseWindow)
+                {
+                    ((TextBox)window.FindName("LoginInput")).Text = "ui-synthetic-admin";
+                    ((TextBox)window.FindName("DisplayInput")).Text = "窗口虚构管理员";
+                    ((PasswordBox)window.FindName("PasswordInput")).Password = syntheticPassword;
+                    ((PasswordBox)window.FindName("ConfirmInput")).Password = syntheticPassword;
+                    Click((Button)window.FindName("SaveButton")); Assert(!window.IsVisible, "Valid first setup did not complete.");
+                }
+                else window.Close();
+            });
+            Assert(setupThenCancel is null && !identity.IsFirstUse, "Setup silently logged in or cancelled login reset identity.");
+            var explicitLogin = LoginScript(identity, window =>
+            {
+                Assert(window is LoginWindow, "Initialized store unexpectedly reopened setup.");
+                ((TextBox)window.FindName("LoginInput")).Text = "ui-synthetic-admin";
+                ((PasswordBox)window.FindName("PasswordInput")).Password = syntheticPassword;
+                Click((Button)window.FindName("LoginButton")); Assert(!window.IsVisible, "Explicit UI login failed.");
+            });
+            Assert(explicitLogin is not null, "Explicit normal login produced no service-issued session.");
+            var host = new MainWindow(App.CreateAuthenticatedBackend(identity, explicitLogin!), new(identity, explicitLogin!)); host.Show(); Pump();
+            var actor = (ComboBox)host.FindName("OperatorInput");
+            Assert(!actor.IsEditable && !actor.IsEnabled && actor.SelectedItem?.ToString() == "窗口虚构管理员", "Top bar still accepts arbitrary authentication names.");
+            host.Close(); identity.Logout(explicitLogin);
+        });
         PendingVoucherCopy Pending(int number)
         {
             var s = session.Snapshot!;
@@ -306,6 +338,22 @@ internal static class Program
         dialog.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
         { try { action(); } catch (Exception ex) { failure = ex; } finally { if (dialog.IsVisible) dialog.Close(); } }));
         dialog.ShowDialog(); if (failure is not null) throw failure;
+    }
+    private static OperatorSession? LoginScript(LocalOperatorService service, Action<Window> action)
+    {
+        Exception? failure = null; var handled = new HashSet<Window>();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(20) };
+        timer.Tick += (_, _) =>
+        {
+            var window = Application.Current.Windows.Cast<Window>().FirstOrDefault(w => w.IsVisible && (w is FirstUseWindow or LoginWindow) && !handled.Contains(w));
+            if (window is null) return; handled.Add(window);
+            try { action(window); } catch (Exception ex) { failure = ex; window.Close(); }
+        };
+        timer.Start(); OperatorSession? result;
+        try { result = OperatorDialogs.Login(null, service); }
+        finally { timer.Stop(); }
+        if (failure is not null) throw failure;
+        return result;
     }
     private static void Capture(Window dialog, string name)
     {
