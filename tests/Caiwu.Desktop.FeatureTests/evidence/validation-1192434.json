@@ -1,0 +1,69 @@
+{
+  "sourceCommit": "11924347082b72c4ee6cdcfd9ea106c2e33934da",
+  "baselineCommit": "5e21ac321f119efd30a4a11780b27ee651f58221",
+  "latestHostApiChecked": "b3b85eb3ab7fa859a3c44cca5bb6d25d48d7b434",
+  "syntheticOnly": true,
+  "sdk": "10.0.402",
+  "runtime": ".NET 10.0.13",
+  "platform": "Linux",
+  "dependencyCommits": {
+    "VoucherTools": "54871a004a836d76824b2c29959e5b22139f4e86",
+    "Summaries": "dcda051a0c9ee364ccff4c2b4c7085f446fac39d",
+    "BookTools": "8bbf8428ccd0b656fec83c7a1ede828cd5691442",
+    "Costing": "af0d0e34ab9963fc91cabb8a58aed558b34390f0"
+  },
+  "checks": [
+    {
+      "action": "combined Desktop Release build with the documented 4 ProjectReferences",
+      "status": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "action": "actual synthetic SQLite and summary service flows",
+      "status": "passed",
+      "scenarios": 13,
+      "failed": 0
+    },
+    {
+      "action": "Windows/WPF probe Release cross-build",
+      "status": "passed",
+      "warnings": 0,
+      "errors": 0
+    },
+    {
+      "action": "Windows/WPF actual execution",
+      "status": "not-run",
+      "reason": "Linux environment; no Windows runtime"
+    },
+    {
+      "action": "real Delivery path/lease and summary backup attachment integration",
+      "status": "pending-owner",
+      "reason": "outside assigned paths; default menu gates remain disabled"
+    },
+    {
+      "action": "Operators centralized service composition",
+      "status": "pending-owner",
+      "reason": "author adapter not supplied at this checkpoint; lifecycle hook documented"
+    }
+  ],
+  "productionAndProbeSha256": {
+    "src/Caiwu.Desktop/Features/AsyncSummaryManagerWindow.cs": "f2e574f5406d966def1db005a59e8396987bedc4e914497244559c67a7ab8723",
+    "src/Caiwu.Desktop/Features/AsyncSummaryStateAdapter.cs": "d046ac511f3ee50c856508f55da67793d9b94465240d4c08abe7ef1b23c7561b",
+    "src/Caiwu.Desktop/Features/CopiedDraftWindow.cs": "72aeedee2a91d47f617d452c55dfd761db51d585347f93fb07591e60a11d592d",
+    "src/Caiwu.Desktop/Features/DesktopFeatureOptions.cs": "43ddb17482626612a4935d7378b5dc783b6683bb4a512c02d356a60f95c3ed4b",
+    "src/Caiwu.Desktop/Features/FeatureSessionBinding.cs": "acbef563b48b3db711d9fb90154f780ed3bb1f1b0181fc07bc7b1dbcd5861de1",
+    "src/Caiwu.Desktop/Features/FeatureWindowMonitor.cs": "28df314c34fe30afb42505f30d37a17673d33b3ff9072cad2971bb9d79bc5eea",
+    "src/Caiwu.Desktop/Features/PendingVoucherCopy.cs": "0467c72d2541666d8da5be8949f956aff6ad8f6a6fe6b217102e2b73d3157e7c",
+    "src/Caiwu.Desktop/Features/SessionFeatureWindow.cs": "8d88caafa5185c6c14a7df5631a852f10dea0104a102eab9e8707a88a8093ae4",
+    "src/Caiwu.Desktop/Features/SessionSummaryCatalog.cs": "0223699b97fed791a803e08b873f26e67c075150ac49caf93d3a40c6e16a48ab",
+    "src/Caiwu.Desktop/MainWindow.Features.cs": "25e4193a1c3375faaad6277a58f087a37efcf9c37c25b745ebdfcf807d73467c",
+    "tests/Caiwu.Desktop.FeatureTests/Logic/Program.cs": "076f5e633073cff2ced2f4ebdcccfcab61c06a15697aae5dcdb0435c7a924c6e",
+    "tests/Caiwu.Desktop.FeatureTests/Windows/Program.cs": "79a0c6c2f6ce6aca6d87025c6c035407a782f45b5a51e6bade655c0843ae3737"
+  },
+  "evidenceSha256": {
+    "desktop-build-1192434.log": "0988f7a324a4cc99d61365968b4b9510342a4b98ee2970bfc159e8ed782950bc",
+    "logic-1192434.json": "753652975ec1b55007f9515d261222e20591086f9869cb52074aa24d03967c7d",
+    "windows-cross-build-1192434.log": "44bd2d6fbba3bc1c4695f37edd8456a865ff3a556578b3a952a9c7ab0b45262f"
+  }
+}
