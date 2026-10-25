@@ -170,7 +170,7 @@ internal static class Program
             File.WriteAllText(Path.Combine(evidence, "loaded-after-posting.json"), JsonSerializer.Serialize(loadedAfterPosting, PayloadManifest.Json));
             Require(loadedAfterPosting.Any(m => string.Equals(m.name, "e_sqlite3.dll", StringComparison.OrdinalIgnoreCase) && SafePaths.Contains(versionRoot, m.path)), "actual installed SQLite native dependency resolves from the payload");
 
-            Key(0x79); Yes("受管完整备份"); // F10.
+            Menu("文件", "备份当前账套…"); Yes("受管完整备份");
             var receipts = Path.Combine(data, "Global", "BackupReceipts");
             Until(() => Directory.Exists(receipts) && Directory.GetFiles(receipts, "*.json").Length == 1 && Text(main!, "NotificationText").Contains("独立可信哈希收据已保存", StringComparison.Ordinal), "normal complete backup receipt and UI completion");
             var receipt = Directory.GetFiles(receipts, "*.json").Single();
