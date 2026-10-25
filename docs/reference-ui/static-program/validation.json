@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-25",
+  "scope": "metadata_and_synthetic_container_validation_only",
+  "tests": {
+    "synthetic_container_tests": 10,
+    "result": "passed",
+    "real_PB9_inputs_tested": 0
+  },
+  "metadata_checks": [
+    "pinned source SHA256",
+    "453 unique record IDs",
+    "179 PE record joins",
+    "870 DLL import records",
+    "main program import names",
+    "same-size differing-hash PBD families",
+    "deterministic regeneration"
+  ],
+  "source_repository_commit": "dc6e08cca3df4788f400de2ca62bd18b3fa0c92d",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 5734,
+      "sha256": "c2c2d8b8f78b63741327520009f16a0988d846b299ed54fdba3a432674bd47ff"
+    },
+    {
+      "path": "RUNBOOK.md",
+      "bytes": 4399,
+      "sha256": "22308d6df114880dde692fbfb141f9bb104a7819e2fa0f31b9f0e5b3e87afda7"
+    },
+    {
+      "path": "behavior-research-specs.json",
+      "bytes": 6383,
+      "sha256": "8aa627cca19f17bbf40f82ba7af660a1de8e06371a257c03d970a4bb07ec52b9"
+    },
+    {
+      "path": "build_research.py",
+      "bytes": 11001,
+      "sha256": "4414ebe7bf52bb62e85ae1d6d0d0f2128c7f60b72db5372f3b8b2a591e8aac0d"
+    },
+    {
+      "path": "coordinator-request.json",
+      "bytes": 23793,
+      "sha256": "a0206a00ec8dffb1c17f34f7ef67407e3b0164ab7040de4a411af0447036b1ef"
+    },
+    {
+      "path": "dependencies.json",
+      "bytes": 341536,
+      "sha256": "f0daba2a2f22f2d5e43a6e3ab05b1493218549ec9aaff461e08e0f2474f76c16"
+    },
+    {
+      "path": "inventory.json",
+      "bytes": 173748,
+      "sha256": "1998ab2b6c5222381de4624fa1fcd9dd7b2f1e8574a999346c1d38f398e867c2"
+    },
+    {
+      "path": "package-comparison.json",
+      "bytes": 21876,
+      "sha256": "2bad91c74eda6fe2fc8e3fd11a8ea1a21cd705097f084e28c6dbfa7baf5a22cf"
+    },
+    {
+      "path": "pb_container_probe.py",
+      "bytes": 16645,
+      "sha256": "5c2469fc95054678e1469f5c6aacd49184bfc63be0a0c01925f2e8acd113ad63"
+    },
+    {
+      "path": "summary.json",
+      "bytes": 8843,
+      "sha256": "2194243fd03c3ec7f1c36fec051bb06b439129299ee2120c69ad2482b8a6433b"
+    },
+    {
+      "path": "test_pb_container_probe.py",
+      "bytes": 4760,
+      "sha256": "e2350d8ebb19b969719c0f70cf7805dd68fc4aa764e14a4ffbae730dd73a4196"
+    },
+    {
+      "path": "tool-route.json",
+      "bytes": 3508,
+      "sha256": "dbd4c83b976f28e1695367c53ce1f2a32b1bb7b9d5f99e5621e0da82e8d4de27"
+    }
+  ],
+  "remaining_blocker": "pending_existing_extraction_owner_container_probe_reports",
+  "original_program_executed": false
+}

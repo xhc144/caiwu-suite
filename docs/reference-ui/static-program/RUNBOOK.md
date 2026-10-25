@@ -18,7 +18,7 @@ python3 docs/reference-ui/static-program/pb_container_probe.py \
 ## 已实现的证据粒度
 
 - 512 字节对齐 HDR、ANSI/Unicode 头、NOD/ENT 对象索引、DAT 链、TRL 头指针。
-- 每个对象的目录偏移、名称及扩展名、声明大小、完整逻辑内容哈希、逻辑偏移到物理文件片段的映射。
+- 每个对象的目录偏移、名称及扩展名、声明大小、完整逻辑内容哈希、逻辑偏移到物理文件片段的映射；编译对象候选返回头部六个原始 u16，便于核对格式分支，不解释成已验证 PB9 字段。
 - PB 风格名称与业务词的有界命中，只输出词及位置。库内名称可与声明索引相配，但关系仍是 `text_name_occurrence_not_call_or_inheritance`。
 - 字符串特征可提示 DataWindow 文本候选；不输出整段 SQL 或商业实现。每个对象 `function_event_table_status=not_decoded`，调用图明确为空且标为未解码。
 
@@ -28,7 +28,7 @@ python3 docs/reference-ui/static-program/pb_container_probe.py \
 
 [PBDumper 作者页](https://sebkirche.github.io/pbdumper/) 报告测试 PB5—11.5，可作为容器结果的第二实现比对。但本轮通过 GitHub 连接器读取作者同名仓库返回 404，未取得可审查源码；未下载或执行其 EXE。待源码来源与构建可核后才考虑采用。
 
-[sijms/PowerBuilder-decompile](https://github.com/sijms/PowerBuilder-decompile/tree/5a7b9b05a400ddef8515dbf74e6fcd51a2e741a4) 为 MIT，README 明示不完整且只测试 PB6。本轮只检查了 `pbd_dump.py` 和部分类型表，没有执行、没有复制它的解析实现。其容器代码缺少本任务需要的链边界、路径及结果分层检查；PB6 的 p-code/系统函数编号不能直接用于 PB9。下一阶段若采用，须先检查 `definitions.py` 和 `pcode.py` 的版本门控，以本批字节交叉验证，再为函数表、事件表、调用操作码分别建立独立证据层。
+[sijms/PowerBuilder-decompile](https://github.com/sijms/PowerBuilder-decompile/tree/5a7b9b05a400ddef8515dbf74e6fcd51a2e741a4) 为 MIT，README 明示不完整且只测试 PB6。本轮检查 `pbd_dump.py`、类型表，以及 `definitions.py` / `pcode.py` 的关键结构；没有执行、没有复制解析实现。容器代码缺少本任务需要的链边界、路径及结果分层检查。对象解析有一个 `h1 == 0x14f` 日期宽度分支，但未见按 PB9 校验的完整版本门控；静态操作码表附带固定运行库地址。不能直接把这些编号或函数名用于本批 PB9 文件。后续结构路线、源文件 blob SHA 和应检查的表见 `tool-route.json`。
 
 ## 明确未解析
 

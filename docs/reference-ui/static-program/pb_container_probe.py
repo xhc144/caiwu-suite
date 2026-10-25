@@ -165,6 +165,8 @@ class Library:
             name = raw_name.decode(self.encoding, errors="replace").rstrip("\x00")
             blob, spans, errors = self.chain(pointer, size)
             obj = {"entry_offset": pos, "node_offset": offset, "name": name,
+                   "evidence_class": "container_field_observation", "confidence": "medium",
+                   "confidence_scope": "container_layout_only_PB9_object_semantics_not_validated",
                    "name_raw_sha256": sha(raw_name), "name_encoding": self.encoding,
                    "entry_extension": name.rsplit(".", 1)[-1].lower() if "." in name else None,
                    "type_evidence": "entry_extension_only_runtime_class_not_decoded",
@@ -177,6 +179,11 @@ class Library:
             if blob is not None:
                 obj.update(string_hints(blob, spans, self.hint_limit))
                 obj["datawindow_text_signature_candidate"] = all(x in blob.lower() for x in (b"datawindow", b"table", b"column"))
+                if obj["entry_extension"] in {"win", "men", "fun", "udo", "app", "str"} and len(blob) >= 12:
+                    obj["compiled_header_observation"] = {
+                        "object_offset": 0, "first_six_u16_le": list(struct.unpack_from("<6H", blob)),
+                        "file_spans": physical_spans(spans, 0, 12),
+                        "interpretation": "raw_header_words_only_no_PB9_layout_validated"}
             self.objects.append(obj)
             info["entries_parsed"] += 1
             pos += self.entry_size + name_size
