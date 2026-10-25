@@ -11,14 +11,14 @@ import datetime
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import re
 import stat
 import struct
 import sys
 
 
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "0.1.1"
 SCHEMA_VERSION = "original-compat-preflight-1"
 CHUNK_BYTES = 1024 * 1024
 MAX_METADATA_BYTES = 1024 * 1024
@@ -33,15 +33,23 @@ class MetadataError(ValueError):
     pass
 
 
+class MetadataBudgetExceeded(MetadataError):
+    pass
+
+
 class StableReadError(OSError):
     pass
 
 
 def local_path(raw):
-    """Normalize syntax without resolving symlinks or discovering other files."""
+    """Reject parent traversal before normalization can hide a linked component."""
     value = os.fspath(raw)
     if not value or "\x00" in value or "://" in value or value.startswith(("\\\\", "//")):
         raise InputError("local_regular_file_required")
+    # Path preserves '..'; abspath does not. Check native and Windows syntax
+    # before abspath, without resolve(), filesystem access or following links.
+    if ".." in Path(value).parts or ".." in PureWindowsPath(value).parts:
+        raise InputError("parent_directory_component_rejected")
     return Path(os.path.abspath(value))
 
 
@@ -118,6 +126,21 @@ def read_range(stream, offset, size, file_size):
     return value
 
 
+class MetadataReader:
+    """One cumulative budget for every static metadata read on one file."""
+    def __init__(self, stream, file_size):
+        self.stream = stream
+        self.file_size = file_size
+        self.bytes_read = 0
+
+    def read(self, offset, size):
+        if size > MAX_METADATA_BYTES - self.bytes_read:
+            raise MetadataBudgetExceeded("cumulative_metadata_budget_exceeded")
+        value = read_range(self.stream, offset, size, self.file_size)
+        self.bytes_read += len(value)
+        return value
+
+
 def version_blob(blob):
     """Read VS_FIXEDFILEINFO only, never localized strings or arbitrary text."""
     if len(blob) < 6:
@@ -140,18 +163,18 @@ def version_blob(blob):
             "meaning": "file_declared_numeric_metadata_only"}
 
 
-def pe_metadata(stream, file_size):
+def pe_metadata(reader):
     """Bounded PE header/resource walk. No library loading or execution."""
-    dos = read_range(stream, 0, 64, file_size)
+    dos = reader.read(0, 64)
     pe_offset = struct.unpack_from("<I", dos, 60)[0]
-    header = read_range(stream, pe_offset, 24, file_size)
+    header = reader.read(pe_offset, 24)
     if header[:4] != b"PE\0\0":
         raise MetadataError("pe_signature")
     machine, section_count = struct.unpack_from("<HH", header, 4)
     optional_size = struct.unpack_from("<H", header, 20)[0]
     if not 1 <= section_count <= 96 or not 96 <= optional_size <= 4096:
         raise MetadataError("pe_header")
-    optional = read_range(stream, pe_offset + 24, optional_size, file_size)
+    optional = reader.read(pe_offset + 24, optional_size)
     magic = struct.unpack_from("<H", optional)[0]
     if magic == 0x10b:
         count_offset, directory_offset, format_name = 92, 96, "PE32"
@@ -175,7 +198,7 @@ def pe_metadata(stream, file_size):
     if resource_size > MAX_METADATA_BYTES:
         result["version_status"] = "resource_directory_exceeds_metadata_limit"
         return result
-    raw_sections = read_range(stream, pe_offset + 24 + optional_size, section_count * 40, file_size)
+    raw_sections = reader.read(pe_offset + 24 + optional_size, section_count * 40)
     sections = []
     for offset in range(0, len(raw_sections), 40):
         _virtual_size, rva, raw_size, raw_offset = struct.unpack_from("<IIII", raw_sections, offset + 8)
@@ -186,7 +209,7 @@ def pe_metadata(stream, file_size):
         if len(matches) != 1:
             raise MetadataError("resource_mapping")
         return matches[0]
-    resource = read_range(stream, file_offset(resource_rva, resource_size), resource_size, file_size)
+    resource = reader.read(file_offset(resource_rva, resource_size), resource_size)
     seen = set()
     def entries(offset):
         if offset in seen or offset + 16 > len(resource):
@@ -211,7 +234,7 @@ def pe_metadata(stream, file_size):
                 data_rva, data_size = struct.unpack_from("<II", resource, data_target)
                 if len(leaves) >= 16:
                     raise MetadataError("version_leaf_limit")
-                leaves.append(read_range(stream, file_offset(data_rva, data_size), data_size, file_size))
+                leaves.append(reader.read(file_offset(data_rva, data_size), data_size))
     versions = []
     for leaf in leaves:
         value = version_blob(leaf)
@@ -226,13 +249,16 @@ def pe_metadata(stream, file_size):
 def static_hints(path, stream, file_size):
     hints = {"database_file_format_version": None, "database_engine_version": None,
              "application_schema_version": None}
-    prefix = read_range(stream, 0, min(16, file_size), file_size)
+    reader = MetadataReader(stream, file_size)
+    prefix = reader.read(0, min(16, file_size))
     if prefix == b"SQLite format 3\0":
         hints["file_signature"] = "SQLite_format_3"
         hints["note"] = "SQLite_signature_is_not_original_SQL_Anywhere_compatibility"
     elif prefix.startswith(b"MZ"):
         try:
-            hints["pe"] = pe_metadata(stream, file_size)
+            hints["pe"] = pe_metadata(reader)
+        except MetadataBudgetExceeded:
+            hints["pe_metadata_status"] = "cumulative_metadata_budget_exceeded_no_version_claim"
         except MetadataError:
             hints["pe_metadata_status"] = "malformed_or_unsupported_no_version_claim"
     else:
@@ -240,6 +266,8 @@ def static_hints(path, stream, file_size):
     match = re.fullmatch(r"db(?:eng|srv|odbc|serv|con|lib|tool|lgen)(\d+)\.(?:exe|dll)", path.name, re.I)
     if match:
         hints["filename_version_hint"] = {"major": int(match.group(1)), "basis": "filename_only", "verified": False}
+    hints["metadata_bytes_read"] = reader.bytes_read
+    hints["metadata_byte_limit"] = MAX_METADATA_BYTES
     return hints
 
 

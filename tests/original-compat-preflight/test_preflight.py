@@ -353,6 +353,33 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual("resource_directory_exceeds_metadata_limit", item["hints"]["pe"]["version_status"])
         self.assertEqual([], item["hints"]["pe"]["declared_versions"])
 
+    def test_metadata_budget_is_cumulative_across_version_leaves(self):
+        per_leaf = preflight.MAX_METADATA_BYTES // 4
+        data = bytearray(0x800 + per_leaf)
+        original = fictional_pe()
+        data[:len(original)] = original
+        # Sixteen language leaves reference one large synthetic version blob.
+        # The old per-read limit would read it sixteen times (> 4 MiB).
+        resource = 0x200
+        struct.pack_into("<HH", data, resource + 0x40 + 12, 0, 16)
+        for i in range(16):
+            struct.pack_into("<II", data, resource + 0x40 + 16 + i * 8, 1000 + i, 0x100 + i * 16)
+            struct.pack_into("<IIII", data, resource + 0x100 + i * 16, 0x1600, per_leaf, 0, 0)
+        data[0x800:0x800 + 92] = original[0x300:0x300 + 92]
+        raw_size = len(data) - resource
+        struct.pack_into("<IIII", data, 0x98 + 224 + 8, raw_size, 0x1000, raw_size, resource)
+        source = self.write("many-languages.exe", data)
+        with mock.patch.object(preflight, "read_range", wraps=preflight.read_range) as reader:
+            item = self.report(source)["files"][0]
+        actual_metadata_bytes = sum(call.args[2] for call in reader.call_args_list)
+        self.assertLessEqual(actual_metadata_bytes, preflight.MAX_METADATA_BYTES)
+        self.assertEqual("recorded", item["status"])
+        self.assertEqual(hashlib.sha256(data).hexdigest(), item["sha256"])
+        self.assertEqual("cumulative_metadata_budget_exceeded_no_version_claim", item["hints"]["pe_metadata_status"])
+        self.assertNotIn("pe", item["hints"])
+        self.assertEqual(actual_metadata_bytes, item["hints"]["metadata_bytes_read"])
+        self.assertEqual(preflight.MAX_METADATA_BYTES, item["hints"]["metadata_byte_limit"])
+
     def test_valid_pe_without_version_resource_remains_unknown(self):
         data = bytearray(fictional_pe())
         struct.pack_into("<II", data, 0x98 + 112, 0, 0)
@@ -367,6 +394,48 @@ class PreflightTests(unittest.TestCase):
                 with self.assertRaises(preflight.InputError):
                     self.report(path)
                 reader.assert_not_called()
+
+    def test_parent_components_are_rejected_before_lexical_normalization(self):
+        for value in ["local/link/../file.db", "../file.db", "local\\link\\..\\file.db", "C:..\\file.db"]:
+            with self.subTest(value=value), mock.patch.object(preflight.os.path, "abspath") as normalize:
+                with self.assertRaises(preflight.InputError):
+                    preflight.local_path(value)
+                normalize.assert_not_called()
+
+    @unittest.skipUnless(hasattr(os, "symlink"), "symlink unavailable")
+    def test_symlink_then_parent_input_cannot_hash_a_different_file(self):
+        local_file = self.write("local/file.db", b"local-bytes")
+        outside_file = self.write("outside/file.db", b"outside-bytes")
+        outside_sub = outside_file.parent / "sub"
+        outside_sub.mkdir()
+        link = local_file.parent / "link"
+        link.symlink_to(outside_sub, target_is_directory=True)
+        selected = link / ".." / "file.db"
+        # The OS resolves this to outside/file.db, not local/file.db.
+        self.assertEqual(b"outside-bytes", selected.read_bytes())
+        with mock.patch.object(preflight, "inspect_file", wraps=preflight.inspect_file) as reader:
+            with self.assertRaises(preflight.InputError):
+                self.report(selected)
+            reader.assert_not_called()
+        self.assertEqual(b"local-bytes", local_file.read_bytes())
+        self.assertEqual(b"outside-bytes", outside_file.read_bytes())
+
+    @unittest.skipUnless(hasattr(os, "symlink"), "symlink unavailable")
+    def test_symlink_then_parent_output_cannot_redirect_report(self):
+        source = self.write("local/input.db")
+        outside_sub = self.root / "outside/sub"
+        outside_sub.mkdir(parents=True)
+        link = source.parent / "link"
+        link.symlink_to(outside_sub, target_is_directory=True)
+        selected_output = link / ".." / "report.json"
+        with mock.patch.object(preflight, "inspect_file", wraps=preflight.inspect_file) as reader:
+            status, out, err = self.cli(["--file", str(source), "--output", str(selected_output)])
+            self.assertEqual(2, status)
+            reader.assert_not_called()
+        self.assertEqual("", out)
+        self.assertIn("parent_directory_component_rejected", err)
+        self.assertFalse((source.parent / "report.json").exists())
+        self.assertFalse((outside_sub.parent / "report.json").exists())
 
     def test_cli_new_report_and_existing_output_never_overwritten(self):
         source = self.write("sample.db")
