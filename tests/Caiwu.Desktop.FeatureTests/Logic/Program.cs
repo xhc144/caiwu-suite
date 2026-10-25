@@ -7,6 +7,11 @@ using Caiwu.Persistence.Sqlite;
 using Caiwu.Summaries;
 using Caiwu.VoucherTools;
 using Caiwu.Operators;
+using Caiwu.Delivery;
+using Caiwu.Nonprofit.Reporting;
+using Caiwu.Costing;
+using Caiwu.ReportDesigner;
+using Caiwu.Reporting;
 
 var results = new List<object>();
 var root = Path.Combine(Path.GetTempPath(), "caiwu-feature-synthetic-" + Guid.NewGuid().ToString("N"));
@@ -171,6 +176,50 @@ await Check("AUTH-READER-CANNOT-SAVE-COPIED-DRAFT", async () =>
     var pending = new PendingVoucherCopy(new(readerBook, shown, readerAuth), plan);
     await Reject<OperatorAuthorizationException>(() => pending.SaveAsync(plan.Draft));
     Assert(readerBook.Service!.GetSnapshot().Revision == shown.Revision && pending.SavedVoucher is null, "Reader reached ledger write"); operators.Logout(readerLogin);
+});
+await Check("MANAGED-HOST-REAL-LEASE-FOUR-ATTACHMENTS-AND-PHYSICAL-RESTORE", async () =>
+{
+    var fixture = Path.Combine(root, "managed-host"); var payload = Path.Combine(fixture, "payload"); Directory.CreateDirectory(payload);
+    File.WriteAllText(Path.Combine(payload, "Caiwu.Desktop.exe"), "synthetic never-executed fixture payload");
+    PayloadManifest.Create(payload, "0.1.0.1", "1a504886a59592dc5aa2bd836d309c546da0456d", true).Write(Path.Combine(payload, PayloadManifest.FileName));
+    var install = Path.Combine(fixture, "program"); var dataRoot = Path.Combine(fixture, "data"); Installation.Install(payload, install, dataRoot);
+    await Reject<InvalidDataException>(() => Task.Run(() => ManagedDesktopLaunch.OpenSession(install, dataRoot, Path.Combine(payload, "Caiwu.Desktop.exe"))));
+    using var managed = ManagedDesktopLaunch.OpenSession(install, dataRoot, Path.Combine(install, "versions", "0.1.0.1", "Caiwu.Desktop.exe"));
+    await Reject<IOException>(() => Task.Run(() => Installation.OpenManagedData(install, dataRoot)));
+    using var operation = await Task.Run(managed.AcquireOperationLease);
+    var identities = new LocalOperatorService(new FileOperatorStore(managed.OperatorsDirectory));
+    identities.InitializeAdministrator("managed-admin", "合成受管管理员", syntheticPassword); var administrator = identities.Login("managed-admin", syntheticPassword);
+    var person = identities.AddOperator(administrator, identities.GetDirectory(administrator).Revision, "managed-maker", "合成受管制单人", syntheticPassword, OperatorRoles.Administrator | OperatorRoles.Preparer);
+    var signed = identities.Login(person.LoginName, syntheticPassword); var auth = new FeatureAuthentication(identities, signed);
+    var trusted = new DesktopBackend(p => identities.Execute(signed, OperatorPermission.ReadLedger, _ => (ILedgerStore)SqliteLedgerStore.Open(p)),
+        (p, b, a) => identities.Execute(signed, OperatorPermission.RestoreLedger, _ => (ILedgerStore)SqliteLedgerStore.Create(p, b, a)), SqliteLedgerStore.RestoreBackup,
+        AuthorizedLedgerServiceFactory.BindSession(identities, signed, s => new PreviewLedgerService(new LedgerService(s))), []);
+    var context = new ManagedFeatureContext(managed); var guarded = context.BindBackend(trusted);
+    using var opened = new LedgerSession(guarded);
+    var source = Path.Combine(dataRoot, "nonprofit.caiwu"); opened.Create(source, book with { Id = Guid.NewGuid(), Regime = AccountingRegime.Nonprofit }, accounts);
+    var binding = new FeatureSessionBinding(opened, opened.Snapshot!, auth); var options = context.Options(auth);
+    Assert(options.BookCopy is not null && options.OpenSummaryCatalog is not null && options.CanInitializeSummaryCatalog!(binding), "Managed options still disabled");
+    await Reject<InvalidDataException>(() => Task.Run(() => options.OpenSummaryCatalog!(binding)));
+    var summary = options.InitializeSummaryCatalog!(binding); var s0 = summary.Catalog.Read(); summary.Catalog.AddCategory("受管分类", s0.Version);
+    Assert(!options.CanInitializeSummaryCatalog!(binding), "Summary initialization was not registered");
+    var npDir = context.ModuleDirectory(binding, "Nonprofit");
+    var classification = new ClassificationEditorSession(opened.Snapshot!, new(new(2026, 1, 1), new(2026, 1, 31), ReportingPeriodKind.Monthly), DateTimeOffset.UtcNow);
+    new ClassificationJsonStore(npDir).SaveNew("review.json", classification.BuildManifest()); context.RegisterModuleFiles(binding, "Nonprofit", "nonprofit-classification-v1");
+    var costing = new CostWorksheetEditor(opened.Snapshot!.Book.Id, new(2026, 1, 1)); costing.LoadSyntheticExample(); costing.PreparedBy = auth.ActorKey; costing.Calculate();
+    CostWorksheetExport.SaveNewJson(Path.Combine(context.ModuleDirectory(binding, "Costing"), "worksheet.json"), costing.GetCalculatedInput()); context.RegisterModuleFiles(binding, "Costing", "cost-worksheet-v1");
+    var report = ReportBuilder.TrialBalance(new(opened.Snapshot.Book, new(2026, 1, 1), new(2026, 1, 31), DateTimeOffset.UtcNow), opened.Service!.GetTrialBalance(new(2026, 1, 1), new(2026, 1, 31)), opened.Snapshot.Accounts);
+    var input = new ReportInputSnapshot(report, opened.Snapshot.Revision);
+    TemplateStore.Save(Path.Combine(context.ModuleDirectory(binding, "Reports"), "template.json"), input.CreateTemplate()); context.RegisterModuleFiles(binding, "Reports", "report-template-v1");
+    var original = managed.FindBook(source, opened.Snapshot.Book.Id); var identityHash = PayloadManifest.Hash(Path.Combine(managed.OperatorsDirectory, "operators.json"));
+    var backup = context.Modules.BookBackups.Backup(original);
+    Assert(backup.Manifest.Attachments.Length == 4 && !backup.Manifest.IncludesGlobalIdentities, "Complete backup omitted an attachment or included global identities");
+    var restored = context.Modules.BookBackups.Restore(backup.Directory, backup.ManifestSha256);
+    Assert(restored.Book.BookId == original.BookId && restored.Book.InstanceId != original.InstanceId && restored.DatabasePath != source, "Restoration reused a physical instance");
+    var recoveredSummary = context.Modules.OpenSummary(restored.DatabasePath, restored.Book.BookId);
+    Assert(recoveredSummary.Catalog.Read().Categories.Single().Name == "受管分类" && recoveredSummary.Catalog.Location.CatalogPath != summary.Catalog.Location.CatalogPath, "Restored summary reused original physical catalog");
+    opened.Open(restored.DatabasePath); Assert(!binding.IsCurrent, "Same-identity managed restore revived old window");
+    Assert(PayloadManifest.Hash(Path.Combine(managed.OperatorsDirectory, "operators.json")) == identityHash, "Single book recovery changed global identities");
+    identities.Logout(signed); identities.Logout(administrator);
 });
 await Check("AUTH-LOGOUT-NEW-LOGIN-DOES-NOT-REACTIVATE-OLD-WINDOW", async () =>
 {
