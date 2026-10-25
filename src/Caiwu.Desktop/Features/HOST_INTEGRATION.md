@@ -4,7 +4,7 @@
 
 ## 根需要应用的最小接线
 
-基线实际读取的是 `codex/sprint-integration-2` 的 `5e21ac3`，字段为 `_session`、`_displayOrigin`、`_voucherOrigin`、`Snapshot`、`VoucherGrid`、`OperatorName()`；列表项为 `VoucherListRow.Value`。没有假定新的宿主接口。partial 与当前 MainWindow 已实际组合编译。
+基线实际读取的是 `codex/sprint-integration-2` 的 `5e21ac3`，10:00 UTC 再取到 `b3b85eb` 并核对主窗口/会话接口未变。字段为 `_session`、`_displayOrigin`、`_voucherOrigin`、`Snapshot`、`VoucherGrid`、`OperatorName()`；列表项为 `VoucherListRow.Value`。没有假定新的宿主接口。partial 与当前 MainWindow 已实际组合编译。
 
 先采用作者生产模块：
 
@@ -69,7 +69,7 @@ BookCopy = new BookCopyFeatureOptions(
     RegisterCreatedBook: (binding, result) => /* 在仍持租约时登记新账套 */)
 ```
 
-这些注释是 owner 必须实现的接点，不是可提交的假委托或默认绕过。三个委托在 worker 运行，不能操作 WPF 对象。租约贯穿窗口预览、明确确认、执行、结果登记；源和捕获副本固定调用现有 `LedgerFilePolicy.Validate`，目标策略在实际服务规定的两处复验。窗口固定原显示快照，所谓重新预览也只返回原快照，不临时刷新 token；来源变化应关闭重开。会话更换时窗口失效，服务策略回调也再次拒绝旧会话。
+这些注释是 owner 必须实现的接点，不是可提交的假委托或默认绕过。三个委托在 worker 运行，不能操作 WPF 对象；接入 Operators 后还须捕获并重验原 OperatorSession 的宿主复制/登记权限，不用新的全局登录对象替换它。租约贯穿窗口预览、明确确认、执行、结果登记；源和捕获副本固定调用现有 `LedgerFilePolicy.Validate`，目标策略在实际服务规定的两处复验。窗口固定原显示快照，所谓重新预览也只返回原快照，不临时刷新 token；来源变化应关闭重开。会话更换时窗口失效，服务策略回调也再次拒绝旧会话。宿主把 BookTools 原有的操作人文本框锁成只读，始终使用打开窗口时的 actor。
 
 复制成功默认仍停在源账套，不调用 `_session.Open(newPath)`。文件已发布但登记失败时保留新文件并明确报告其路径，不能删除副本或提示用户盲目重复复制。**Windows 并发发布和真实数据租约尚未运行验证**，默认门控保持；不能以 Unix P1 闭合替代 Windows 验收。
 
@@ -97,6 +97,6 @@ BookCopy = new BookCopyFeatureOptions(
 pwsh -File tests/Caiwu.Desktop.FeatureTests/Windows/run.ps1
 ```
 
-脚本有 90 秒进程 watchdog，真实显示 WPF 模态窗口、走实际 Routed Button.Click、真实 Core/SQLite/摘要文件并产出带 checkout SHA 的 JSON 和 WPF PNG。覆盖菜单位置/禁用原因、取消无写入、复制错误留窗及更正保存、同身份重开/恢复旧窗口失效、摘要后台 I/O 与 Dispatcher 状态通知、摘要冲突/无效 Unicode、成本建议不记账。它不声称物理鼠标、键盘、中文 IME、多 DPI 或原生屏幕截图验收。本轮仅 Linux 交叉编译，**Windows 窗口未执行**。
+脚本有 90 秒进程 watchdog，真实显示 WPF 模态窗口、走实际 Routed Button.Click、真实 Core/SQLite/摘要文件并产出带 checkout SHA 的 JSON 和 WPF PNG。覆盖菜单位置/禁用原因、取消无写入、复制错误留窗及更正保存、同身份重开/恢复旧窗口失效、摘要后台 I/O 与 Dispatcher 状态通知、摘要冲突/无效 Unicode、成本建议不记账，以及 BookTools 真窗口取消/明确确认复制后保持源会话。它不声称物理鼠标、键盘、中文 IME、多 DPI 或原生屏幕截图验收。本轮仅 Linux 交叉编译，**Windows 窗口未执行**。
 
 初次同时启动两个共享输出目录的 build/run 导致 `GenerateDepsFile` 文件占用失败；已改为顺序执行并成功。不是生产源码失败，也没有删测试或放宽错误。

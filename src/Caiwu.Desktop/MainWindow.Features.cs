@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
+using System.Windows.Data;
 using Caiwu.Contracts;
 using Caiwu.Costing.Wpf;
 using Caiwu.Desktop.Features;
@@ -52,6 +53,10 @@ public partial class MainWindow
                 { binding.DemandCurrent(); gates.ValidateManagedDestination(binding, path); });
                 var window = new BookCopyWindow(tools, binding.Shown, binding.DatabasePath, actor,
                     refreshSnapshot: () => { binding.DemandCurrent(); return binding.Shown; }) { Owner = this };
+                // This host supplies the actor; the module's standalone audit-name field cannot impersonate another operator.
+                var actorInput = ((StackPanel)window.FindName("Inputs")).Children.OfType<TextBox>().Single(text =>
+                    BindingOperations.GetBindingExpression(text, TextBox.TextProperty)?.ParentBinding.Path.Path == nameof(BookCopyWorkflow.OperatorName));
+                actorInput.IsReadOnly = true;
                 if (TryFindResource(typeof(Window)) is Style style) window.Style = style;
                 using var monitor = new FeatureWindowMonitor(window, binding);
                 if (window.ShowDialog() == true && window.Result is { } created)

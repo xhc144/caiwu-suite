@@ -18,6 +18,9 @@ using Caiwu.Desktop.Presentation;
 using Caiwu.Persistence.Sqlite;
 using Caiwu.Summaries;
 using Caiwu.VoucherTools;
+using Caiwu.BookTools;
+using Caiwu.BookTools.Wpf;
+using Caiwu.Delivery;
 
 internal static class Program
 {
@@ -171,6 +174,39 @@ internal static class Program
                 session.Open(session.DatabasePath!); Until(() => !Find<DockPanel>(dialog, "Feature.Body").IsEnabled); dialog.Close();
             });
             Assert(session.Service!.GetSnapshot().Revision == before, "Cost invalidation wrote ledger.");
+        });
+        Check("BOOKCOPY-CANCEL-NO-PUBLICATION", () =>
+        {
+            var destination = Path.Combine(temporary, "cancelled-copy.caiwu"); var originalPath = session.DatabasePath;
+            var originalRevision = session.Snapshot!.Revision;
+            var window = new BookCopyWindow(new BookCopyService(validateSource: LedgerFilePolicy.Validate), session.Snapshot!, originalPath!, "合成操作员");
+            Drive(window, () =>
+            {
+                var workflow = (BookCopyWorkflow)window.DataContext; workflow.NewBookName = "取消副本"; workflow.DestinationPath = destination;
+                Click(ButtonText(window, "生成复制前预览")); Assert(workflow.Plan is not null, "Real BookTools preview not produced.");
+                Capture(window, "bookcopy-cancel"); Click((Button)window.FindName("CancelButton"));
+            });
+            Assert(!File.Exists(destination) && session.DatabasePath == originalPath && session.Service!.GetSnapshot().Revision == originalRevision, "Book copy cancel wrote or switched session.");
+        });
+        Check("BOOKCOPY-EXPLICIT-SUCCESS-KEEPS-SOURCE-SESSION", () =>
+        {
+            var destination = Path.Combine(temporary, "confirmed-copy.caiwu"); var source = session.DatabasePath!; var s = session.Snapshot!;
+            var validations = 0;
+            var tools = new BookCopyService(validateSource: LedgerFilePolicy.Validate, validateDestination: target =>
+            {
+                Assert(Path.GetDirectoryName(target) == temporary && !File.Exists(target), "Synthetic managed path gate failed."); validations++;
+            });
+            var window = new BookCopyWindow(tools, s, source, "合成操作员");
+            Drive(window, () =>
+            {
+                var workflow = (BookCopyWorkflow)window.DataContext; workflow.NewBookName = "明确确认新副本"; workflow.DestinationPath = destination;
+                Click(ButtonText(window, "生成复制前预览")); ((CheckBox)window.FindName("Confirmation")).IsChecked = true;
+                Click((Button)window.FindName("ExecuteButton")); Until(() => window.Result is not null && !window.IsVisible);
+            });
+            Assert(window.Result is { } result && result.Book.Id != s.Book.Id && validations >= 2, "Copy bypassed new identity/target policy.");
+            using var copied = SqliteLedgerStore.Open(destination);
+            Assert(copied.Read().Vouchers.Count == s.Vouchers.Count && session.DatabasePath == source && session.Snapshot!.Book.Id == s.Book.Id,
+                "Copy lost contents or automatically switched the source session.");
         });
         session.Close();
         File.WriteAllText(Path.Combine(evidence, "results.json"), JsonSerializer.Serialize(new { syntheticOnly = true, windowsExecuted = true,
