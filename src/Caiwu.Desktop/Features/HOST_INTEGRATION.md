@@ -1,5 +1,23 @@
 # 实际桌面接线与交接
 
+## 最终受管接线（优先替代前述缺配置状态）
+
+截至源码 e407e0b / 验证 68b7525，已采用 Delivery 生产 9ca1deb40f9215817a0433572460183d3ba82566 及 Designer 03ee6dac47a7cc1c61f303f3c5e214245f87017d，新增 Delivery.Modules 与 ReportDesigner.Wpf 两个引用。App 现在要求 CAIWU_INSTALL_ROOT / CAIWU_DATA_ROOT 明确配置，在任何用户数据访问前用 Environment.ProcessPath 调 ManagedDesktopLaunch.OpenSession；active EXE、回执、payload 和真实子进程租约不通过则失败关闭，没有 LocalApplicationData 回退。应使用 Caiwu.Delivery launch-managed <installRoot>；旧 launch 由父进程持锁，不能混用。切换 contract flag/快捷方式与 Windows 安装验证交 codex/release-candidate owner，未擅改打包保护或生产标志。
+
+全局身份库现固定 managedData.OperatorsDirectory，即 Global/Operators。ManagedFeatureContext.BindBackend 正式登记每次成功 Create/Open 的物理路径与实际 BookId，失败关闭 store 并保留已创建文件；不在根外开 SQLite。生产恢复只走受管完整 bundle，单本恢复不覆盖全局账号。
+
+ManagedFeatureContext.Options 已填真实摘要工厂和 BookTools 三委托。摘要未登记时由菜单给出明确创建确认，取消不创建；确认才调用 InitializeSummary 并实际登记。普通打开只 OpenSummary，损坏文件不重置。BookTools 使用真实 AcquireOperationLease，不重复取 OS 锁；目标验证与登记由 ManagedDataSession 完成，默认不切新账套。
+
+民非 JSON 放当前物理账套的 Nonprofit 模块目录；Designer 从当前所见凭证/余额/明细及原期间/筛选构造固定 ReportInputSnapshot，模板只在 Reports 目录读写，Id/Version/SHA 由原模块校验。两者关闭窗口后、主窗仍处于 busy 保护时，逐文件用真实 codec 核验并登记；失败保留文件、明确提示且完整备份会阻断未登记数据，不冒称已经保护。成本新增“保存并登记受管审核工作表”按钮，只有此明确按钮保存的 JSON 才纳入附件；原普通导出不冒称备份附件。Designer 导出限定 Exports 目录，不能把 HTML/CSV 混入模块清单。
+
+F10 使用 ManagedBookBackup 捕获账套及全部登记附件，保存 Global/BackupReceipts 下的独立返回哈希收据；恢复只接受该可信收据而不从陌生 bundle 自算哈希，恢复到新物理实例后正式打开并登记。原件及已发布结果不删除，全局身份不进入单本 bundle。身份单独备份仍使用 ManagedIdentityBackup，不混入书本恢复。
+
+最新证据在 tests/Caiwu.Desktop.FeatureTests/evidence/managed-68b7525：17 个合成服务场景通过（含 active-path 拒绝、真实租约、四类附件、完整恢复、同 BookId 不同实例/目录隔离、全局身份哈希未变），9 份 build 日志均 0 警告/0 错误。Windows 脚本增加真实受管 MainWindow 的摘要、BookTools、Designer、成本保存及备份登记场景，总计15项，仅交叉编译，Windows 未执行。后续交 codex/release-candidate；11:15 前结束，不再扩功能。
+
+
+<details><summary>此前阶段记录（仅供历史追溯，最终状态以上文为准）</summary>
+
+
 本分支已经实施 App 登录组合、Desktop 项目引用、MainWindow 初始化/身份菜单、四功能薄适配和民非预览。主 XAML/Themes、Contracts/Core/Storage、安装保护和仓库权限未改。生产接线所有权由根在本轮明确移交；没有另造插件框架或身份实现。
 
 ## 集成顺序
@@ -62,16 +80,4 @@ Shared/SyntheticDesktopIdentity.cs 只在独立测试工程编译，正常创建
 
 Windows/run.ps1 包含真实首次设置取消/设置后取消登录/显式登录、新功能模态窗口、主题、后台 I/O、旧登录/账套失效、民非缺维度及未保护标记。Routed Button.Click 与实际 WPF PNG 不等同物理键盘/IME、多 DPI 或原生屏幕验收。本环境为 Linux，Windows 执行未跑；编译不能代替这些结果。validate-combination.sh 可重建固定六模块组合并运行合成服务检查、编译现有测试宿主；实际结果与源码哈希见测试目录 VALIDATION.md/evidence。
 
-## 最终受管接线（优先替代前述缺配置状态）
-
-截至源码 e407e0b / 验证 68b7525，已采用 Delivery 生产 9ca1deb40f9215817a0433572460183d3ba82566 及 Designer 03ee6dac47a7cc1c61f303f3c5e214245f87017d，新增 Delivery.Modules 与 ReportDesigner.Wpf 两个引用。App 现在要求 CAIWU_INSTALL_ROOT / CAIWU_DATA_ROOT 明确配置，在任何用户数据访问前用 Environment.ProcessPath 调 ManagedDesktopLaunch.OpenSession；active EXE、回执、payload 和真实子进程租约不通过则失败关闭，没有 LocalApplicationData 回退。应使用 Caiwu.Delivery launch-managed <installRoot>；旧 launch 由父进程持锁，不能混用。切换 contract flag/快捷方式与 Windows 安装验证交 codex/release-candidate owner，未擅改打包保护或生产标志。
-
-全局身份库现固定 managedData.OperatorsDirectory，即 Global/Operators。ManagedFeatureContext.BindBackend 正式登记每次成功 Create/Open 的物理路径与实际 BookId，失败关闭 store 并保留已创建文件；不在根外开 SQLite。生产恢复只走受管完整 bundle，单本恢复不覆盖全局账号。
-
-ManagedFeatureContext.Options 已填真实摘要工厂和 BookTools 三委托。摘要未登记时由菜单给出明确创建确认，取消不创建；确认才调用 InitializeSummary 并实际登记。普通打开只 OpenSummary，损坏文件不重置。BookTools 使用真实 AcquireOperationLease，不重复取 OS 锁；目标验证与登记由 ManagedDataSession 完成，默认不切新账套。
-
-民非 JSON 放当前物理账套的 Nonprofit 模块目录；Designer 从当前所见凭证/余额/明细及原期间/筛选构造固定 ReportInputSnapshot，模板只在 Reports 目录读写，Id/Version/SHA 由原模块校验。两者关闭窗口后、主窗仍处于 busy 保护时，逐文件用真实 codec 核验并登记；失败保留文件、明确提示且完整备份会阻断未登记数据，不冒称已经保护。成本新增“保存并登记受管审核工作表”按钮，只有此明确按钮保存的 JSON 才纳入附件；原普通导出不冒称备份附件。Designer 导出限定 Exports 目录，不能把 HTML/CSV 混入模块清单。
-
-F10 使用 ManagedBookBackup 捕获账套及全部登记附件，保存 Global/BackupReceipts 下的独立返回哈希收据；恢复只接受该可信收据而不从陌生 bundle 自算哈希，恢复到新物理实例后正式打开并登记。原件及已发布结果不删除，全局身份不进入单本 bundle。身份单独备份仍使用 ManagedIdentityBackup，不混入书本恢复。
-
-最新证据在 tests/Caiwu.Desktop.FeatureTests/evidence/managed-68b7525：17 个合成服务场景通过（含 active-path 拒绝、真实租约、四类附件、完整恢复、同 BookId 不同实例/目录隔离、全局身份哈希未变），9 份 build 日志均 0 警告/0 错误。Windows 脚本增加真实受管 MainWindow 的摘要、BookTools、Designer、成本保存及备份登记场景，总计15项，仅交叉编译，Windows 未执行。后续交 codex/release-candidate；11:15 前结束，不再扩功能。
+</details>
