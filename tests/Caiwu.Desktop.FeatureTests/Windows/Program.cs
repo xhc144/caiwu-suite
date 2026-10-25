@@ -25,6 +25,8 @@ using Caiwu.Delivery;
 using Caiwu.Operators;
 using Caiwu.Nonprofit.Reporting.Wpf;
 using Caiwu.Operators.Wpf;
+using Caiwu.ReportDesigner;
+using Caiwu.ReportDesigner.Wpf;
 
 internal static class Program
 {
@@ -309,6 +311,58 @@ internal static class Program
                 operators.Logout(replacement); Capture(dialog, "copy-revoked-operator"); dialog.Close();
             });
         });
+        Check("MANAGED-MAIN-ENABLES-REAL-MODULES-AND-REGISTERS-SAVED-FILES", () =>
+        {
+            var fixture = Path.Combine(temporary, "managed-main"); var payload = Path.Combine(fixture, "payload"); Directory.CreateDirectory(payload);
+            File.WriteAllText(Path.Combine(payload, "Caiwu.Desktop.exe"), "synthetic fixture, not executed");
+            PayloadManifest.Create(payload, "0.1.0.1", "e407e0b827c345ad2415ad0cb4634d0fc5f534a2", true).Write(Path.Combine(payload, PayloadManifest.FileName));
+            var program = Path.Combine(fixture, "program"); var dataRoot = Path.Combine(fixture, "data"); Installation.Install(payload, program, dataRoot);
+            using var data = Installation.OpenManagedData(program, dataRoot); // Independent test host; production App separately validates its real EXE via OpenSession.
+            var identity = new LocalOperatorService(new FileOperatorStore(data.OperatorsDirectory));
+            identity.InitializeAdministrator("managed-admin", "受管虚构管理员", syntheticPassword); var manager = identity.Login("managed-admin", syntheticPassword);
+            var person = identity.AddOperator(manager, identity.GetDirectory(manager).Revision, "managed-maker", "受管虚构制单人", syntheticPassword, OperatorRoles.Administrator | OperatorRoles.Preparer);
+            var signed = identity.Login(person.LoginName, syntheticPassword); var fixedAuth = new FeatureAuthentication(identity, signed);
+            var managed = new ManagedFeatureContext(data); var managedBackend = managed.BindBackend(App.CreateAuthenticatedBackend(identity, signed));
+            var source = Path.Combine(dataRoot, "source.caiwu"); var sourceBook = book with { Id = Guid.NewGuid(), Name = "受管窗口合成账套" };
+            using (var created = managedBackend.Create(source, sourceBook, accounts)) { }
+            managed.Modules.InitializeSummary(source, sourceBook.Id); // Explicit fixture setup, never an implicit OpenSummary fallback.
+            var host = new MainWindow(managedBackend, fixedAuth, managed.Options(fixedAuth)); host.Show(); Pump();
+            typeof(MainWindow).GetMethod("OpenVerificationBook", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(host, [source]);
+            MenuItem Menu(string title) => ((DockPanel)host.Content).Children.OfType<Menu>().Single().Items.OfType<MenuItem>().SelectMany(i => i.Items.OfType<MenuItem>()).Single(i => i.Header.ToString() == title);
+            Until(() => Menu("常用摘要管理…").IsEnabled && Menu("复制账套…").IsEnabled);
+            NextWindow<AsyncSummaryManagerWindow>(w => { Until(() => w.State.Snapshot is not null); Assert(w.State.BookId == sourceBook.Id, "Summary bound wrong book."); }, () => Menu("常用摘要管理…").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)));
+            Until(() => Menu("复制账套…").IsEnabled);
+            NextWindow<BookCopyWindow>(w =>
+            {
+                Assert(((StackPanel)w.FindName("Inputs")).Children.OfType<TextBox>().Any(t => t.IsReadOnly && t.Text == fixedAuth.ActorKey), "Managed copy actor field remains editable.");
+                var workflow = (BookCopyWorkflow)w.DataContext; workflow.NewBookName = "受管窗口明确新副本";
+                Click(ButtonText(w, "生成复制前预览")); ((CheckBox)w.FindName("Confirmation")).IsChecked = true; Click((Button)w.FindName("ExecuteButton"));
+                Until(() => w.Result is not null && !w.IsVisible);
+            }, () => Menu("复制账套…").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)));
+            Until(() => data.ReadInventory().Books.Length == 2 && Menu("复制账套…").IsEnabled);
+            var active = (LedgerSession)typeof(MainWindow).GetField("_session", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(host)!;
+            Assert(active.DatabasePath == source, "Managed copy switched to the new book automatically.");
+            typeof(MainWindow).GetMethod("ShowVerificationPage", BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(host, [4]);
+            Until(() => Menu("自定义当前账表…").IsEnabled);
+            NextWindow<SessionFeatureWindow>(w =>
+            {
+                var panel = Descendants(w).OfType<ReportDesignerControl>().Single(); Assert(panel.CurrentPreview is not null, "Real designer did not preview the current report.");
+                var binding = new FeatureSessionBinding(active, active.Snapshot!, fixedAuth);
+                TemplateStore.Save(Path.Combine(managed.ModuleDirectory(binding, "Reports"), "window-template.json"), panel.CurrentPreview!.Template);
+                Capture(w, "managed-designer");
+            }, () => Menu("自定义当前账表…").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)));
+            Until(() => data.ReadInventory().Attachments.Any(a => a.Codec == "report-template-v1") && Menu("成本工作表（审核建议）…").IsEnabled);
+            NextWindow<SessionFeatureWindow>(w =>
+            {
+                var page = Descendants(w).OfType<CostWorksheetPage>().Single(); page.Editor.LoadSyntheticExample(); page.Editor.Calculate();
+                Click(ButtonText(w, "保存并登记受管审核工作表")); Until(() => Find<TextBlock>(w, "Feature.Status").Text.Contains("已保存并登记"));
+                Capture(w, "managed-cost-save");
+            }, () => Menu("成本工作表（审核建议）…").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)));
+            Until(() => Menu("成本工作表（审核建议）…").IsEnabled);
+            var registered = data.FindBook(source, sourceBook.Id); var backup = managed.Modules.BookBackups.Backup(registered);
+            Assert(backup.Manifest.Attachments.Length == 3 && !backup.Manifest.IncludesGlobalIdentities, "Managed window saves not included in complete backup.");
+            host.Close(); identity.Logout(signed); identity.Logout(manager);
+        });
         session.Close(); operators.Logout(login); operators.Logout(admin);
         File.WriteAllText(Path.Combine(evidence, "results.json"), JsonSerializer.Serialize(new { syntheticOnly = true, windowsExecuted = true,
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_FEATURE_CHECKOUT_COMMIT"),
@@ -357,6 +411,20 @@ internal static class Program
         finally { timer.Stop(); }
         if (failure is not null) throw failure;
         return result;
+    }
+    private static void NextWindow<T>(Action<T> action, Action open) where T : Window
+    {
+        Exception? failure = null; var done = false;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(20) };
+        timer.Tick += (_, _) =>
+        {
+            var window = Application.Current.Windows.OfType<T>().FirstOrDefault(w => w.IsVisible);
+            if (window is null) return; timer.Stop();
+            try { action(window); } catch (Exception ex) { failure = ex; }
+            finally { if (window.IsVisible) window.Close(); done = true; }
+        };
+        timer.Start(); try { open(); Until(() => done); } finally { timer.Stop(); }
+        if (failure is not null) throw failure;
     }
     private static void Capture(Window dialog, string name)
     {
