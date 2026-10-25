@@ -159,6 +159,21 @@ public sealed class ReportBuilderTests
     }
 
     [Fact]
+    public void TotalsRejectDecimalScaleLossEvenWhenAdditionDoesNotOverflow()
+    {
+        Assert.Equal(decimal.MaxValue, decimal.MaxValue + 0.01m); // CLR's rounding, not a valid money total.
+        Assert.Throws<OverflowException>(() => ReportBuilder.TrialBalance(Metadata(),
+            [B("1", true, decimal.MaxValue), B("2", true, 0.01m)]));
+        Assert.Throws<OverflowException>(() => ReportBuilder.TrialBalance(Metadata(),
+            [B("1", true, decimal.MinValue), B("2", true, -0.01m)]));
+        var voucher = V(1) with { Lines = [new("1002", "大额", decimal.MaxValue, 0), new("1002", "分值", 0.01m, 0)] };
+        Assert.Throws<OverflowException>(() => ReportBuilder.VoucherList(Metadata(), [voucher]));
+        Assert.Throws<OverflowException>(() => ReportBuilder.VoucherList(Metadata(), [V(1, decimal.MaxValue), V(2, 0.01m)]));
+        Assert.Throws<OverflowException>(() => ReportBuilder.Ledger(Metadata(), "1002", [
+            new(From, null, "记", 1, "大额", decimal.MaxValue, 0, 0), new(From, null, "记", 2, "分值", 0.01m, 0, 0)]));
+    }
+
+    [Fact]
     public void RejectDuplicateRowsAndCircularCatalogInsteadOfDoubleCountingOrHanging()
     {
         var voucher = V(1);

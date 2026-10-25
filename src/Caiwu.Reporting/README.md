@@ -83,7 +83,7 @@ HTML 为自包含 UTF-8 文档，无脚本、外链资源或自动导航，CSP �
 
 默认 A4 横向，每个逻辑页最多 12 行（合计也占一行）；每页重复标题、元数据、说明和列头，末页显示来源。支持 1–1000 行/逻辑页与纵向。使用打印换页、重复表头、长文本换行与行内避免分页。页脚计数是逻辑页；超高单行、极长摘要/来源、浏览器缩放或字体差异可能增加实际纸张页数，用户应按打印预览调整每页行数。极长金额允许在列内换行以保留完整数字、避免覆盖邻列。
 
-分以下精度抛 `ArgumentException`，合计超 decimal 范围抛 `OverflowException`，不静默舍入。反向/跨账套年度/早于启用月期间、未知制度/状态、日期越界明细、重复凭证 ID/余额科目编码、循环科目关系及不安全来源会明确拒绝。账户借贷方向、审核权限、试算是否平衡等业务校验仍由 Core 负责，Reporting 不生成或更改账务事实。I/O 错误原样抛出，宿主只在写入成功后提示导出完成。
+分以下精度抛 `ArgumentException`，合计超 decimal 范围或无法精确保留分值时抛 `OverflowException`，不静默舍入。即便 CLR 的 decimal 加法未溢出而舍去了小数（如 `decimal.MaxValue + 0.01m`），也会用精确整数分值校验后拒绝输出。反向/跨账套年度/早于启用月期间、未知制度/状态、日期越界明细、重复凭证 ID/余额科目编码、循环科目关系及不安全来源会明确拒绝。账户借贷方向、审核权限、试算是否平衡等业务校验仍由 Core 负责，Reporting 不生成或更改账务事实。I/O 错误原样抛出，宿主只在写入成功后提示导出完成。
 
 ## 实际验证
 
@@ -96,6 +96,17 @@ dotnet test tests/Caiwu.Reporting.Tests/Caiwu.Reporting.Tests.csproj \
   --no-restore --configuration Release
 ```
 
-实际运行：44 项通过，0 失败，0 跳过。测试覆盖独立手算契约样例（本期借贷各 31200、期末借贷各 120000）、父子汇总去重、零余额、负余额、多级任意编码、未知科目、Unicode、凭证 ID、来源地址/版本/期间/时间、0.1+0.2、精度拒绝/decimal 极限、空表、日期状态筛选、不可变快照、CSV 攻击文本与 RFC 回读、HTML 编码、10000 行分页与无丢行、BOM/流所有权、I/O 失败传播。
+实际运行：45 项单元测试通过，0 失败，0 跳过。测试覆盖独立手算契约样例（本期借贷各 31200、期末借贷各 120000）、父子汇总去重、零余额、负余额、多级任意编码、未知科目、Unicode、凭证 ID、来源地址/版本/期间/时间、0.1+0.2、精度拒绝/decimal 极限及静默分值损失、空表、日期状态筛选、不可变快照、CSV 攻击文本与 RFC 回读、HTML 编码、10000 行分页与无丢行、BOM/流所有权、I/O 失败传播。
+
+新增可独立运行的真实 Core＋SQLite 集成测试，位于 `tests/Caiwu.Reporting.Tests/Integration/`。它与单元测试隔离，不会让仅依赖 Contracts 的基础单元测试引用 Core/SQLite。须在已合入这两个模块的完整集成树中运行：
+
+```sh
+dotnet restore tests/Caiwu.Reporting.Tests/Integration/Caiwu.Reporting.Integration.Tests.csproj \
+  --configfile tests/Caiwu.Reporting.Tests/NuGet.Config --locked-mode
+dotnet test tests/Caiwu.Reporting.Tests/Integration/Caiwu.Reporting.Integration.Tests.csproj \
+  --no-restore --configuration Release -p:TreatWarningsAsErrors=true
+```
+
+在集成分支 `037a07585078d4dfcd443a2cc4a237c88aed07a0` 加本模块代码的隔离工作树中实际运行，9 项全部通过。通过真实 `LedgerService` 保存/审核/记账到 SQLite，再关闭重开生成三类报表，写入实际 CSV/HTML 文件并独立解析 CSV 验证，临时账套和导出在用例结束后删除。覆盖小企业/企业两种模板、多级与反向余额、期初滚入、日期端点、草稿/已审核不入账、同凭证多行、精确分值、持久化攻击文本、元数据/来源/ID 保留、无审计操作人/数据库路径泄露、空期间及备份恢复内容一致；未使用 UI 或浏览器。详细审查及 Desktop owner 待办见 `tests/Caiwu.Reporting.Tests/Integration/REVIEW.md`。
 
 浏览器实测边界：在 Linux 容器用已安装 Chromium 对生成的本地 HTML 发起 `file://` 导航，返回 `net::ERR_BLOCKED_BY_ADMINISTRATOR`。停止了该浏览器验证，未修改策略，未获得真实打印 PDF 或截图；不得据单元测试声称浏览器/打印机验收完成。Windows 桌面接入、实际浏览器打印预览与真实打印机尚需主协调验收。
