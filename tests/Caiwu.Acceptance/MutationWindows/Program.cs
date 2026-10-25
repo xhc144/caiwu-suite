@@ -157,8 +157,10 @@ internal static class Program
         var content = grid.Columns[column].GetCellContent(row); var input = content as TextBox ?? (content is null ? null : Visuals<TextBox>(content).FirstOrDefault());
         Check(input is not null, "Active editing TextBox not found."); input!.Focus(); input.Text = text;
     }
-    private static Task Dialogs(params (string Title, int Button, Action? BeforeClick)[] sequence) => Task.Run(() =>
+    private static Task Dialogs(params (string Title, int Button, Action? BeforeClick)[] sequence)
     {
+        var task = Task.Run(() =>
+        {
         foreach (var item in sequence)
         {
             var deadline = DateTime.UtcNow.AddSeconds(12); IntPtr dialog;
@@ -168,17 +170,30 @@ internal static class Program
             File.AppendAllText(Path.Combine(output, "native-dialogs.jsonl"), JsonSerializer.Serialize(new { title = item.Title, text = text.ToString() }) + Environment.NewLine);
             if (item.Title == "确认记账") Check(text.ToString().Contains("10.00"), "Actual native confirmation did not show the original ten-unit amount.");
             item.BeforeClick?.Invoke(); var button = GetDlgItem(dialog, item.Button);
+            File.AppendAllText(Path.Combine(output, "native-driver.jsonl"), JsonSerializer.Serialize(new
+            { item.Title, requestedButton = item.Button, foundButton = button != IntPtr.Zero,
+                visible = IsWindowVisible(button), enabled = IsWindowEnabled(button) }) + Environment.NewLine);
             Check(button != IntPtr.Zero && IsWindowVisible(button) && IsWindowEnabled(button), "Native confirmation button missing/disabled/hidden.");
             // BM_CLICK requires an active dialog (Microsoft's documented precondition).
             // Only the same-process dialog found above can receive this native activation/click.
             SetForegroundWindow(dialog);
-            Check(SendMessageTimeout(button, 0x00F5, IntPtr.Zero, IntPtr.Zero, 0x0002, 5000, out _) != IntPtr.Zero,
+            var completed = SendMessageTimeout(button, 0x00F5, IntPtr.Zero, IntPtr.Zero, 0x0002, 5000, out _);
+            var error = Marshal.GetLastPInvokeError();
+            File.AppendAllText(Path.Combine(output, "native-driver.jsonl"), JsonSerializer.Serialize(new
+            { item.Title, clickCompleted = completed != IntPtr.Zero, win32Error = error }) + Environment.NewLine);
+            Check(completed != IntPtr.Zero,
                 "Native confirmation click did not complete within five seconds.");
             var closeDeadline = DateTime.UtcNow.AddSeconds(5);
             while (FindDialog(item.Title) == dialog && DateTime.UtcNow < closeDeadline) Thread.Sleep(30);
             Check(FindDialog(item.Title) != dialog, "Native confirmation remained visible after clicking its real button.");
         }
-    });
+        });
+        // A modal UI can remain open when its driver faults. Report that cause
+        // immediately so the outer process watchdog cannot hide it as a timeout.
+        _ = task.ContinueWith(t => Console.Error.WriteLine("NATIVE-DIALOG-DRIVER-FAIL: " + t.Exception),
+            CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        return task;
+    }
     private static void WaitForDialogs(Task task)
     {
         // The real application returns to its WPF loop after the handler. The probe
