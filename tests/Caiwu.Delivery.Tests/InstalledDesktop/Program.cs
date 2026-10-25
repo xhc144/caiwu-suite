@@ -81,8 +81,8 @@ internal static class Program
             if (migration)
             {
                 var receiptPath = Path.Combine(data, "Global", "BackupReceipts", "carried-receipt.json");
-                using var receipt = JsonDocument.Parse(File.ReadAllText(receiptPath));
-                originalBundleUnavailable = !Directory.Exists(receipt.RootElement.GetProperty("Directory").GetString());
+                using var carriedReceiptDocument = JsonDocument.Parse(File.ReadAllText(receiptPath));
+                originalBundleUnavailable = !Directory.Exists(carriedReceiptDocument.RootElement.GetProperty("Directory").GetString());
                 Require(originalBundleUnavailable, "cross-root recovery fixture makes the original absolute bundle directory unavailable");
                 Menu("文件", "从备份恢复副本…"); FileDialog("选择本机受管完整备份的可信哈希收据", receiptPath); Yes("完整恢复");
                 migrationAttempted = true;
