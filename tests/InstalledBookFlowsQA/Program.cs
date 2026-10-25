@@ -198,6 +198,8 @@ internal static class Program
                 Until(() => !HasWindow("复制为新账套") && File.Exists(copiedBookPath) && Text(main!, "NotificationText").Contains("新账套已复制并登记", StringComparison.Ordinal), "actual book copy execution registration and close", 30000);
                 var saved = Read(copiedBookPath); var source = Read(bookPath);
                 Require(saved.Book.Id != source.Book.Id && saved.Book.Name == "安装复制独立身份" && saved.Revision == 1 && saved.Vouchers.Count == source.Vouchers.Count, "structured full copy reopens with new identity revision one and complete vouchers");
+                Require(JsonSerializer.Serialize(saved.Accounts, PayloadManifest.Json) == JsonSerializer.Serialize(source.Accounts, PayloadManifest.Json) && JsonSerializer.Serialize(saved.Vouchers, PayloadManifest.Json) == JsonSerializer.Serialize(source.Vouchers, PayloadManifest.Json), "full copied account/opening and voucher content exactly matches the independently captured source");
+                Require((saved.Book with { Id = source.Book.Id, Name = source.Book.Name, CreatedAt = source.Book.CreatedAt }) == source.Book && saved.AuditEvents.Count == source.AuditEvents.Count + 1 && source.AuditEvents.All(a => saved.AuditEvents.Any(b => JsonSerializer.Serialize(a, PayloadManifest.Json) == JsonSerializer.Serialize(b, PayloadManifest.Json))), "full copy preserves book settings, close state and every original audit event");
                 var provenance = saved.AuditEvents.Single(a => a.Action == "BookCopiedAsNew");
                 using var detail = JsonDocument.Parse(provenance.Detail);
                 Require(detail.RootElement.GetProperty("SourceBookId").GetGuid() == source.Book.Id && detail.RootElement.GetProperty("SourceRevision").GetInt64() == source.Revision && detail.RootElement.GetProperty("SourceFingerprint").GetString() == ProvenanceFingerprint.Compute(source), "persisted copy audit binds exact source identity revision and semantic hash");
@@ -324,7 +326,7 @@ internal static class Program
     private static AutomationElement BookChoice(string destination, string name) { Menu("会计档案", "复制账套…"); var w = Window(t => t == "复制为新账套"); var edits = Edits(w); SetValue(edits[0], name); SetValue(edits[1], destination); Require(((ValuePattern)edits[2].GetCurrentPattern(ValuePattern.Pattern)).Current.IsReadOnly, "installed host fixes book-copy audit actor"); return w; }
     private static void ApproveBook(AutomationElement w) { var c = w.FindFirst(TreeScope.Descendants, Id("Confirmation"))!; Until(() => c.Current.IsEnabled, "preview ready for approval"); ((TogglePattern)c.GetCurrentPattern(TogglePattern.Pattern)).Toggle(); Until(() => w.FindFirst(TreeScope.Descendants, Id("ExecuteButton"))!.Current.IsEnabled, "explicit approval enables execution"); }
     private static void OpenBook(string path) { Shortcut(0x4f); FileDialog("打开账套", path); Until(() => Text(main!, "NotificationText").Contains("账套已打开", StringComparison.Ordinal), "normal book reopen"); }
-    private static void CheckLeases() { foreach (var path in new[] { Path.Combine(install, ".delivery.lock"), Path.Combine(data, ".delivery-data.lock") }) { var rejected = false; try { using var file = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None); } catch (IOException) { rejected = true; } Require(rejected, "actual installed App retains exclusive OS lease: " + Path.GetFileName(path)); } }
+    private static void CheckLeases() { foreach (var path in new[] { Path.Combine(install, ".delivery.lock"), Path.Combine(data, ".delivery-data.lock") }) { Require(File.Exists(path), "actual managed lease file exists: " + Path.GetFileName(path)); var rejected = false; try { using var file = File.Open(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None); } catch (IOException) { rejected = true; } Require(rejected, "actual installed App retains exclusive OS lease: " + Path.GetFileName(path)); } }
     private static void NativeDoubleClick(AutomationElement control) { var r = control.Current.BoundingRectangle; SetCursorPos((int)(r.X + r.Width / 2), (int)(r.Y + r.Height / 2)); for (var i = 0; i < 2; i++) { Send(new Input { Type = 0, Mouse = new Mouse { Flags = 2 } }); Send(new Input { Type = 0, Mouse = new Mouse { Flags = 4 } }); Thread.Sleep(20); } }
     private static Condition Id(string id) => new PropertyCondition(AutomationElement.AutomationIdProperty, id);
     private static Condition Name(string name) => new PropertyCondition(AutomationElement.NameProperty, name);
@@ -388,8 +390,14 @@ internal static class Program
         var focused = AutomationElement.FocusedElement;
         if (focused.Current.ControlType != ControlType.Edit) throw new InvalidDataException("Native filename mnemonic did not focus an edit control.");
         ControlKey(0x41); Type(path);
-        var entered = ((ValuePattern)focused.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
-        var normalized = Path.GetFullPath(entered.Trim('"'));
+        var entered = ""; var normalized = "";
+        // SendInput queues native messages. UIA can observe a prefix before the edit drains them.
+        // Wait for the exact complete value; never confirm or substitute a different path.
+        Until(() => {
+            entered = ((ValuePattern)focused.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
+            try { normalized = Path.GetFullPath(entered.Trim('"')); } catch (ArgumentException) { return false; }
+            return string.Equals(normalized, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase);
+        }, "native filename edit completes exact requested path", 5000);
         File.WriteAllText(Path.Combine(evidence, "native-path-" + Guid.NewGuid().ToString("N") + ".json"), JsonSerializer.Serialize(new { title, controlName = focused.Current.Name, automationId = focused.Current.AutomationId, entered, normalized, expected = path }, PayloadManifest.Json));
         if (!string.Equals(normalized, Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("Native filename input did not read back as the exact requested path.");
         Key(0x09); Thread.Sleep(100); // Commit the filename field before explicit confirmation.
@@ -424,6 +432,7 @@ internal static class Program
     {
         GetWindowThreadProcessId(GetForegroundWindow(), out var foregroundProcess);
         if (foregroundProcess != desktop?.Id) throw new InvalidOperationException("Actual product must be foreground for native evidence capture.");
+        desktop!.WaitForInputIdle(2000); Thread.Sleep(200); DwmFlush(); Thread.Sleep(100);
         var screen = GetDC(IntPtr.Zero); var width = GetSystemMetrics(0); var height = GetSystemMetrics(1); var memory = CreateCompatibleDC(screen); var bitmap = CreateCompatibleBitmap(screen, width, height); var old = SelectObject(memory, bitmap);
         try { if (!BitBlt(memory, 0, 0, width, height, screen, 0, 0, 0x40CC0020)) throw new IOException("Native capture failed."); var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, IntPtr.Zero, System.Windows.Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source)); using var file = File.Create(Path.Combine(evidence, name + ".png")); encoder.Save(file); }
         finally { SelectObject(memory, old); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(IntPtr.Zero, screen); }
