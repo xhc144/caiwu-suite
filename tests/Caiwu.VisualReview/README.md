@@ -8,7 +8,7 @@ This is an optional independent Windows runner, outside the solution. It changes
 
 The runner builds itself, creates a fresh synthetic SQLite book, opens the actual Desktop windows, and captures six complete native 1920×1080 windows using Win32 `PrintWindow`. It does not resize, crop, upscale, load original software, save real books, or create an installer. It fails if native dimensions are unavailable. JSON records commit/source-tree identity, dimensions, DPI, PNG SHA256s, and the exact checks performed. Partial screenshots do not count as a passing run. Timeout is 90 seconds; failed JSON/logs are retained. Windows desktop execution is still required; Linux compilation is not a runtime pass.
 
-It checks button template application plus the native automation peer/focus traversal, DatePicker popup, existing menu opening, editable DataGrid amount entry/cancel, read-only posted vouchers, and visible voucher widths. It is not a full keyboard/IME/screen-reader/high-contrast certification. The existing Acceptance and Controls interaction regressions remain required.
+It checks button template application plus the native automation peer/focus traversal, DatePicker popup, existing menu opening, editable DataGrid amount entry/cancel, read-only posted vouchers, visible voucher widths, and the existing Controls account/summary dialogs under the actual global App resources. It is not a full keyboard/IME/screen-reader/high-contrast certification. The existing Acceptance and Controls interaction regressions remain required.
 
 The six views are workspace, vouchers, posted voucher, trial balance, populated bank ledger, and reports. `PrintWindow` captures are separate from Acceptance's full desktop `BitBlt` evidence and should be described accurately.
 
