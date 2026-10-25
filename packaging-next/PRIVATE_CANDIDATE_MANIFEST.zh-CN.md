@@ -4,6 +4,11 @@
 
 ## 来源与制品
 
+**安装器专用私有下载：**[artifact12600694219](https://github.com/xhc144/caiwu-suite/actions/runs/40198401255/artifacts/12600694219)，132306768 bytes，ZIP SHA256 `dc54d8c006c542e328e9e2faa1eb7e74e3449f74c303a7356e161a9b4afbd1cb`。只含原名0.1.0.4安装器、原随包中文说明、私人测试限制及来源/校验；无需下载下面490MB完整证据包获取安装器。需要仓库授权访问。
+
+[一次性handoff运行40198401255](https://github.com/xhc144/caiwu-suite/actions/runs/40198401255)仅下载原artifact、核整包b626…及EXE9248…后复制原字节；没有构建、执行或改EXE，没有拆分规避聊天限制。handoff workflow commit `b46e94036f9b2d4216c8582b0c302a9912692d7b`不是安装器源。根报告聊天附件通道大小限制，Library已有原EXE但聊天附件未送达；这是通道产品限制，不是权限拒绝。本任务未重试大聊天附件。
+
+
 - 普通生产 builder 的实际构建源：`9549ae0671e04d9c7fa565cfb34d614fa3effc0b`，干净源码、显式受管 capability、固定依赖锁；没有重命名或复用内部安装器。
 - 主产品树：`714a5a79ecb11c0c08ced48841d4e9aa54785212`；Delivery 组合源码树：`454dba0d36468fcb2b139678f202d3e14b9b6e0e`。
 - [真实 Windows 构建及三组验收 run40196386649](https://github.com/xhc144/caiwu-suite/actions/runs/40196386649)，job121178010155，success。

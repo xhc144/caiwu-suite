@@ -2,3 +2,5 @@
 *.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 *.log -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
 *.png -text
+# Keep the original bundled guide byte-for-byte, including CRLF and trailing blank lines.
+accepted-9549ae0/INSTALL_AND_USE.zh-CN.md -text -whitespace

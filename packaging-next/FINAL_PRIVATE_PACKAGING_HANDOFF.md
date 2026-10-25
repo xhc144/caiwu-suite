@@ -2,6 +2,8 @@
 
 **root已最终独审接受9549ae0为有限功能的合成账套私人测试版本，可由root交付；不是原任务全部完成或用户接受缩减目标。** 普通builder的新候选源9549ae0671e04d9c7fa565cfb34d614fa3effc0b，在[run40196386649](https://github.com/xhc144/caiwu-suite/actions/runs/40196386649)同时通过原生生命周期、金融4业务/5附件4codec恢复、修订后BookFlows声明13case及独立已安装helper读回/卸载保留。原模态并发ledger revision未实跑，仍以not-run显式保留，root明确接受实际会话撤销证据，同时原revision场景不称等价或实跑；该边界不阻断合成私人测试，仍不构成所有场景/正式账务验收。
 
+[安装器专用小包artifact12600694219](https://github.com/xhc144/caiwu-suite/actions/runs/40198401255/artifacts/12600694219)已成功：132306768bytes，ZIP SHA256 dc54d8c006c542e328e9e2faa1eb7e74e3449f74c303a7356e161a9b4afbd1cb。一次性handoff run40198401255/b46e940仅核原artifact/EXE并复制，不构建/执行/修改；安装器来源仍9549ae0。聊天大附件未送达是产品大小限制，原文件不拆分，本任务没有重试上传。
+
 [最终候选清单与中文说明/截图](PRIVATE_CANDIDATE_MANIFEST.zh-CN.md)是交接入口。可供root决定交付的是有限功能私人测试版本，不是三套原软件完全复刻或财务合规认证。
 
 - 候选0.1.0.4：132284835bytes，SHA256 `9248d0363c639caeada84810959d0a8a885d8c1c45cdc7677476b0a4476bcf0b`。初装对照0.1.0.3：132286557bytes，SHA256 `9889eee915f2cd398f9ed92e473ebca08cd8764e017b6b5ee17e9466cc8fdeb1`。数值来自实际普通builder原始release-manifest，root已独立实字节核对；没有改名内部包。
