@@ -1,0 +1,56 @@
+{
+  "targetCommit": "0377ce764bc5a191c232c3f50da602a5ca2c0c0c",
+  "actualCoreAndTwoSqliteConnections": true,
+  "expectedRevisionCapturedAtLoad": true,
+  "bookIdentityFieldPresent": false,
+  "wpfExecuted": false,
+  "passed": 5,
+  "failed": 5,
+  "results": [
+    {
+      "id": "ACC002-FRESH",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-TWO-CONNECTIONS-STALE",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=10, revision=3"
+    },
+    {
+      "id": "ACC002-MISSING",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-FUTURE",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-NEGATIVE",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=20, revision=2"
+    },
+    {
+      "id": "ACC002-ACCEPTED-VERSION-SECOND-SAVE",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-LEGACY-NEW",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEW-CORRECT",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC002-NEW-WRONG",
+      "status": "FAIL",
+      "detail": "Expected StoreConcurrencyException, but save succeeded; amount=10, revision=1"
+    },
+    {
+      "id": "ACC002-STORE-CAS-AFTER-READ",
+      "status": "PASS"
+    }
+  ]
+}

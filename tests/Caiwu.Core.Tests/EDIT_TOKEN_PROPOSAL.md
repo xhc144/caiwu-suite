@@ -1,5 +1,7 @@
 # ACC-002 最小兼容接口建议（供Contracts owner决定）
 
+更新：主协调已在 `0d2ae9e379b02c2d86bbd174f56dcd437f910206` 定义 `ExpectedRevision` / `ExpectedBookId` 两个末尾可空参数，后续以根 `docs/contracts-v1.1-draft-edit-token.md` 为准。以下原提案仅保留讨论依据，不要求再新增另一套token DTO。实际独立回归与归属见 `RevisionTokenProbe/README.md`；该SHA的生产Core/UI尚未接线。
+
 2026-10-25，问题已用真实Core和两个SQLite连接重现：B持有金额10的旧凭证，A改成20，B再保存成功覆盖回10。保存时读取fresh revision仅保护单个命令内部，不能表达编辑开始时的版本。此次不自行修改Contracts、UI或SQLite。
 
 建议保持现有构造参数、ILedgerService.SaveDraft签名及落盘Voucher DTO不变，由主协调统一加入一个非位置属性：
@@ -25,4 +27,4 @@ public sealed record VoucherDraft(Guid? Id, DateOnly Date, string Kind, int? Num
 
 验收最小集合：两个真实连接各加载同一草稿，A凭其原token改20成功，B用旧token保存10须冲突，落盘仍20；已有Id缺token拒绝；跨账套token拒绝；成功保存后用**已接受版本**再次保存可行；冲突时不增加审计/revision、不修改输入；已审核/记账及锁期限制保持。还需根实际WPF双窗口验收输入保留，不能用后端测试冒充。
 
-状态：**待Contracts owner定稿后实施ACC-002**；当前Core分支没有假装修复此项。
+状态：**契约字段已由主协调定义，Core/UI强制路径待协调实施**；当前Core分支没有假装修复此项。

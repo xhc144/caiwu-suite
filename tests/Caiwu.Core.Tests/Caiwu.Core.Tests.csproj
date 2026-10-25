@@ -18,6 +18,7 @@
   <ItemGroup>
     <!-- The optional real-store probe is a separate executable, outside the domain-only test assembly. -->
     <Compile Remove="SqliteIntegrationProbe/**/*.cs" />
+    <Compile Remove="RevisionTokenProbe/**/*.cs" />
     <ProjectReference Include="../../src/Caiwu.Core/Caiwu.Core.csproj" />
     <ProjectReference Include="../../src/Caiwu.Contracts/Caiwu.Contracts.csproj" />
     <Using Include="Xunit" />
