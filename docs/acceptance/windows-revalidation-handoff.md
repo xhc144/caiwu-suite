@@ -1,6 +1,6 @@
 # 独立 Windows 复验阶段交接
 
-阶段截止前保存；交付暂停不解除。最新本地代码组合为 `d0e32bbb2a16156ed98f6fea9967fc5f4e954d9b`（完整SHA见本报告旁的 `windows-revalidation-provenance.json`）。远端已实跑版本仍是 `6a4683955267306f8eb9544635560d214b5921f9`，详见 [实际 Windows 失败报告](windows-40177493350.md)。本阶段未创建自己的组合草稿PR。
+阶段截止前保存；交付暂停不解除。代码组合为 `d0e32bbb2a16156ed98f6fea9967fc5f4e954d9b`（源码树见本报告旁的 `windows-revalidation-provenance.json`）。远端已完成实跑版本仍是 `6a4683955267306f8eb9544635560d214b5921f9`，详见 [实际 Windows 失败报告](windows-40177493350.md)。新增授权证据后组合及证据已推送 `fa463b716e1fea5b3e413dae412d1405457f95a0`，草稿 [PR13](https://github.com/xhc144/caiwu-suite/pull/13) 已创建；新CI尚未验完。
 
 ## 可拣选改动
 
@@ -42,13 +42,15 @@ UI在加载/编辑开始时把实际显示快照和打开会话绑定。保存/�
 5. `tests/Caiwu.Acceptance/DualWindows/run.ps1`：两个真实应用进程及公共Open/Restore gate；重验Pooling=false夹具。
 6. Delivery需优先修复/重验 Windows 文件共享故障，不能用Linux141通过解除门槛。物理中文IME/真实键盘焦点、多DPI与NTFS断电另行验，不从脚本输入推定。
 
-## 精确阻断
+## 审批状态与剩余阻断
 
-**已拒绝**：为私库 `xhc144/caiwu-suite` 的 `codex/windows-revalidation` 向 `codex/windows-mvp` 创建草稿PR。自动审批原文：
+**历史拒绝，现已解除**：为私库 `xhc144/caiwu-suite` 的 `codex/windows-revalidation` 向 `codex/windows-mvp` 创建草稿PR。首次自动审批原文：
 
 > Creating a draft PR is an external commitment, and although draft PRs were authorized generally, the user explicitly restricted work to branch codex/independent-acceptance; this request targets codex/windows-revalidation instead.
 
-虽然后续任务已明确要求该隔离分支，仍尊重工具拒绝。已发具体确认问题，答复待到；没有换工具重试PR、没有后续push。远端6a46839此前push成功；此后的新组合提交均仅本地。需要根取得精确分支授权，随后才重试一次被拒操作并触发新版CI。
+首次拒绝后停止远端写入。根随后转来带2026-10-25 06:53:24/06:56:11 UTC时间戳的新证据，明确覆盖本项目新软件私有开发分支提交推送与草稿PR。核查此head/base没有既有PR后，09:20 UTC普通git push成功，再用相同GitHub创建接口仅重试一次，返回PR13、draft=true、head=fa463b7、base=codex/windows-mvp，确认执行成功。未换工具绕拒、未改权限/凭据/可见性。
+
+PR创建时目标基线已前进至 `a49d426d8513600dec0f624f56a35c9ad66e71d4`，GitHub返回mergeable=false。下一短任务需协调集成冲突与视觉专责新XAML，再执行新视觉版本截图；本阶段不抢改视觉、不合main。已有高清入口当前针对行为基线，不能当作新视觉验收截图。
 
 **另一个仍待许可的事项**：原资源派生完整catalog上传被根报告审批拒绝。旧主工作树 `/workspace/caiwu-acceptance` 的 `docs/reference-ui/static-templates/**` 本地输出仍保留，未复制到此组合、未上传。不能把普通新软件代码许可当作这些派生数据的分发许可。
 

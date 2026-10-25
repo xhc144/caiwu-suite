@@ -12,7 +12,7 @@
   "artifact": 12593102445,
   "newWindowsExecuted": false,
   "deliveryPaused": true,
-  "remoteWritesAfterPrDenial": false,
+  "remoteWritesAfterPrDenial": true,
   "sourceImports": {
     "Delivery": "ef17e64d18f7bc85fd6cfe452d1d0418b018f568",
     "Storage": "ecc5225f7aaf9e9d0fd79c13a8a14059dde6df4b",
@@ -86,5 +86,16 @@
       "subject": "Capture populated bank ledger and verify native foreground window"
     }
   ],
-  "independentConsoleEvidenceCommit": "c70cd966fb814de87bd54b0921de3de4dc36dc08"
+  "independentConsoleEvidenceCommit": "c70cd966fb814de87bd54b0921de3de4dc36dc08",
+  "approvalResolution": {
+    "newEvidenceFromParent": true,
+    "priorPrAttemptExecuted": false,
+    "originalCreateInterfaceRetryCount": 1,
+    "retrySucceeded": true,
+    "draftPr": "https://github.com/xhc144/caiwu-suite/pull/13",
+    "head": "fa463b716e1fea5b3e413dae412d1405457f95a0",
+    "base": "codex/windows-mvp",
+    "baseShaAtCreation": "a49d426d8513600dec0f624f56a35c9ad66e71d4",
+    "mergeableAtCreation": false
+  }
 }
