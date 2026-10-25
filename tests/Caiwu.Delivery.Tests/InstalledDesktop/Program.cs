@@ -221,7 +221,7 @@ internal static class Program
     private static void Key(ushort key) { Down(key); Up(key); }
     private static void Down(ushort key) => Send(new Input { Type = 1, Keyboard = new Keyboard { VirtualKey = key } });
     private static void Up(ushort key) => Send(new Input { Type = 1, Keyboard = new Keyboard { VirtualKey = key, Flags = 2 } });
-    private static void Type(string text) { foreach (var ch in text) { Send(new Input { Type = 1, Keyboard = new Keyboard { Scan = ch, Flags = 4 } }); Send(new Input { Type = 1, Keyboard = new Keyboard { Scan = ch, Flags = 6 } }); } }
+    private static void Type(string text) { foreach (var ch in text) { Send(new Input { Type = 1, Keyboard = new Keyboard { Scan = ch, Flags = 4 } }); Send(new Input { Type = 1, Keyboard = new Keyboard { Scan = ch, Flags = 6 } }); } Thread.Sleep(150); }
     private static void Send(Input input) { if (SendInput(1, [input], Marshal.SizeOf<Input>()) != 1) throw new IOException("Native input was rejected."); }
     private static void DumpTree()
     {

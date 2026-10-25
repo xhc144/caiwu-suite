@@ -1,0 +1,14 @@
+{
+  "success": true,
+  "sourceCommit": "6f56a678d8cd2097217b46fe3e9ea2f8a09a6e91",
+  "windowsExecuted": true,
+  "nativeInstallerExecuted": false,
+  "checks": [
+    "real cross-process data lease rejects upgrade before pointer activation",
+    "CLI host activates next version with native module codecs",
+    "upgrade preserves source SQLite and registered summary bytes",
+    "upgrade leaves the separate global identity directory unchanged",
+    "upgrade creates a native summary bundle before activation",
+    "CLI uninstall retains ledger, registered attachment and global directory"
+  ]
+}
