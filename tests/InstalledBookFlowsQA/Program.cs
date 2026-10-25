@@ -58,7 +58,7 @@ internal static class Program
             var admin = operators.Login("fixture-admin", Password);
             var roles = OperatorRoles.Administrator | OperatorRoles.Accountant | OperatorRoles.Preparer | OperatorRoles.Reviewer | OperatorRoles.Poster;
             operators.AddOperator(admin, operators.GetDirectory(admin).Revision, "fixture-maker", "虚构安装制单人", Password, roles);
-            operators.AddOperator(admin, operators.GetDirectory(admin).Revision, "fixture-reviewer", "虚构安装审核人", Password, roles);
+            var reviewerIdentity = operators.AddOperator(admin, operators.GetDirectory(admin).Revision, "fixture-reviewer", "虚构安装审核人", Password, roles);
             operators.Logout(admin);
             var identityPath = Path.Combine(identityRoot, "operators.json");
             var identityBefore = Hash(identityPath);
@@ -284,8 +284,10 @@ internal static class Program
                 Invoke(editor, Id("PickSummaryButton")); var picker = Window(t => t == "选择常用摘要");
                 var adminSession = operators.Login("fixture-admin", Password);
                 var directory = operators.GetDirectory(adminSession);
-                var actor = directory.Operators.Single(o => o.LoginName == "fixture-reviewer");
-                operators.UpdateOperator(adminSession, directory.Revision, actor.Id, actor.DisplayName, actor.Roles, false);
+                var actor = directory.Operators.Single(o => o.Id == reviewerIdentity.Id);
+                var revoked = operators.UpdateOperator(adminSession, directory.Revision, actor.Id, actor.DisplayName, actor.Roles, false);
+                Require(revoked.Id == reviewerIdentity.Id && !revoked.IsEnabled, "supported administrator API revokes the exact stable identity returned by fixture creation");
+                File.WriteAllText(Path.Combine(evidence, "session-revocation.json"), JsonSerializer.Serialize(new { actor.Id, actor.ActorKey, actor.LoginName, beforeEnabled = actor.IsEnabled, afterEnabled = revoked.IsEnabled, ordinaryAuthorizedApi = "LocalOperatorService.UpdateOperator", noLedgerWrite = true }, PayloadManifest.Json));
                 operators.Logout(adminSession);
                 SelectSummary(picker); Invoke(picker, Id("ChooseSummary"));
                 Until(() => Text(editor, "ErrorText").StartsWith("摘要未回填，原输入保留：", StringComparison.Ordinal) && (Text(editor, "ErrorText").Contains("会话", StringComparison.Ordinal) || Text(editor, "ErrorText").Contains("权限", StringComparison.Ordinal)), "revoked real operator session rejects summary confirmation with a summary-specific retained-input reason");

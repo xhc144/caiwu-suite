@@ -124,6 +124,7 @@ jobs:
             artifacts/delivery/*/*setup.exe
             artifacts/delivery/*/*payload.zip
             artifacts/delivery/*/release-manifest.json
+            artifacts/delivery/*/delivery-tests.json
             artifacts/delivery/*/SHA256SUMS
             artifacts/delivery/*/payload/payload-manifest.json
             artifacts/delivery-docs/INSTALL_AND_USE.zh-CN.md
