@@ -1,5 +1,9 @@
 # caiwu-suite 主集成交接
 
+## 本分支第二阶段接续
+
+`codex/sprint-integration-2` 的当前状态、导入来源、实际 Windows 证据和未完成项见 [第二阶段集成记录](../docs/acceptance/sprint-integration-2.md)，草稿 PR16 目标是 `codex/windows-revalidation`。以下原有记录描述较早的 `codex/windows-mvp` 阶段，不能代替第二阶段实际验证。交付暂停门槛仍在，未生成新分发包或合并 main。
+
 2026-10-25；实际工作树 `/workspace/caiwu-suite-dev`，仅 `codex/windows-mvp` / 草稿 PR1，不合main、不改私有权限或原安装包。更早的中间状态已由git历史保留，此处只记当前事实。
 
 用户已明确授权自研、适量并行、开发分支提交推送和草稿PR。原安装器的具体执行已由独立观察任务另外确认并获批准；本任务不运行它。观察任务报告Wine32加载失败，无安装或原软件窗口，不是仍待授权。

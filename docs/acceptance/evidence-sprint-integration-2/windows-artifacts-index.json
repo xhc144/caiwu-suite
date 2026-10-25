@@ -1,0 +1,36 @@
+[
+  {
+    "runId": 40180397486,
+    "commit": "79f76654f414ae4c95cba0555574d27ba861609d",
+    "artifactId": 12594028382,
+    "zipSha256": "7a20297d506b97d19608e4490b1a384ded8faf62a04196071dd5a5eba19e9ecb"
+  },
+  {
+    "runId": 40180883501,
+    "commit": "e9c436803d287937d5314e6bd3f7360e71b219ff",
+    "artifactId": 12594388585,
+    "zipSha256": "bfbf64122795178720b9fcf789ef9f060423ef92324803715688b8512936a3b7",
+    "scope": "Actual native keyboard focus and navigation; later run cancellation is not a whole-run pass."
+  },
+  {
+    "runId": 40180961028,
+    "commit": "33985eb75574b008df8dce320db2ddb3e4f3121b",
+    "artifactId": 12593554752,
+    "zipSha256": "76ba335cf13d37b9a1f89aca900d51f611f7959db5a1501e67081619c1aea900",
+    "scope": "Latest typography four native 1920x1080 pages and navigation; Delivery and old mutation probe failed."
+  },
+  {
+    "runId": 40181053280,
+    "commit": "d6f92dcd9361260eb5a6eced7fc4909fa914311e",
+    "artifactId": 12594409190,
+    "zipSha256": "20f7adff54b601cef312efa922d318778793c157c61e90c973ccd6fdecfb854b",
+    "scope": "Delivery sharing repair actual Windows 143 pass / 0 fail / 4 skip, all six sharing cases pass; whole run fails in Storage hash fixture and old mutation harness."
+  },
+  {
+    "runId": 40181306433,
+    "commit": "f68f86361f76dda786559623b1a76458a2fbd596",
+    "artifactId": 12593918462,
+    "zipSha256": "677788b67e86e454db193962913c9eb4b5db947b5c99fecb52147280d88ed33f",
+    "scope": "Combined modern visuals plus Delivery sharing repair: WPF8, navigation2, native focus2, Core v1.2 22, dual-process/App gate3, Delivery143/0/4 pass; account and same-identity restore mutations pass, four native confirmations blocked; optional six-window capture size failure and 45 Storage readback fixture sharing failures remain."
+  }
+]

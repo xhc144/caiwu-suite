@@ -1,0 +1,37 @@
+{
+  "checkoutCommit": "f68f86361f76dda786559623b1a76458a2fbd596",
+  "actualWindowsWpf": true,
+  "mechanism": "Six isolated real production WPF processes, actual SQLite competing writers and same-process native confirmations; individual watchdogs preserve partial failures.",
+  "physicalKeyboardImeTested": false,
+  "failures": 4,
+  "results": [
+    {
+      "id": "OPENING",
+      "status": "BLOCKED",
+      "detail": "Actual mutation scenario exceeded its 35-second process watchdog. Other scenarios continue independently."
+    },
+    {
+      "id": "ACCOUNT",
+      "status": "PASS"
+    },
+    {
+      "id": "DELETE",
+      "status": "BLOCKED",
+      "detail": "Actual mutation scenario exceeded its 35-second process watchdog. Other scenarios continue independently."
+    },
+    {
+      "id": "REVIEW",
+      "status": "BLOCKED",
+      "detail": "Actual mutation scenario exceeded its 35-second process watchdog. Other scenarios continue independently."
+    },
+    {
+      "id": "POST",
+      "status": "BLOCKED",
+      "detail": "Actual mutation scenario exceeded its 35-second process watchdog. Other scenarios continue independently."
+    },
+    {
+      "id": "SAME-IDENTITY-RESTORE",
+      "status": "PASS"
+    }
+  ]
+}
