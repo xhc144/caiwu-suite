@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-windows7.0": {
+      "caiwu.costing": {
+        "type": "Project"
+      },
+      "caiwu.costing.wpf": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Costing": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}
