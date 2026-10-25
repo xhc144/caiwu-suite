@@ -26,6 +26,7 @@ internal static class Program
     private static readonly List<object> Captures = [];
     private static readonly List<string> Checks = [];
     private static readonly List<object> FontObservations = [];
+    private static readonly List<object> ReportCellMeasurements = [];
     private static string output = "";
     private static nint displayMode;
     private static byte[]? originalDisplay;
@@ -67,6 +68,12 @@ internal static class Program
             var grid = (DataGrid)main.FindName("VoucherGrid");
             Require(grid.Columns.All(c => c.ActualWidth >= 90), "Voucher columns collapsed.");
             Checks.Add("Original navigation and readable voucher columns");
+            var summaryText = (TextBlock)grid.Columns[2].GetCellContent(grid.Items[0]);
+            var amountText = (TextBlock)grid.Columns[3].GetCellContent(grid.Items[0]);
+            Require(summaryText.FontWeight == FontWeights.Normal && summaryText.Foreground.ToString() == "#FF202938", "Selected navigation header style leaked into body text.");
+            Require(Glyphs(VisualTreeHelper.GetDrawing(summaryText)).SelectMany(g => g.FamilyNames.Values).Any(n => n.Contains("YaHei", StringComparison.OrdinalIgnoreCase)), "Actual Chinese body glyph is not YaHei UI.");
+            Require(Glyphs(VisualTreeHelper.GetDrawing(amountText)).SelectMany(g => g.FamilyNames.Values).Any(n => n.Contains("Segoe", StringComparison.OrdinalIgnoreCase)), "Actual amount glyph is not Segoe UI.");
+            Checks.Add("Actual rendered Chinese body uses YaHei UI and amount glyphs use Segoe, with neutral normal-weight body text");
             var button = Descendants<Button>(main).First(b => b.Content?.ToString()?.Contains("Ctrl+N") == true);
             button.ApplyTemplate();
             Require(button.Template.FindName("Frame", button) is Border { CornerRadius.TopLeft: > 0 }, "Modern Button template is not applied.");
@@ -125,7 +132,8 @@ internal static class Program
             var reportGrid = (DataGrid)report.FindName("ReportGrid");
             var reportAmount = reportGrid.Columns.Single(c => c.Header?.ToString() == "期初借方");
             Require(reportAmount.GetCellContent(reportGrid.Items[0]) is TextBlock { TextAlignment: TextAlignment.Right }, "Generated report amount cells are not aligned right.");
-            Checks.Add("Generated report amount cells align right without changing report bindings");
+            ValidateReportCells(reportGrid);
+            Checks.Add("Every visible report row matches header column positions and widths; amounts are right-aligned and grouped");
             report.Close(); Pump();
             main.Close(); Pump();
             SaveResult(true, null); app.Shutdown(0); return 0;
@@ -146,7 +154,7 @@ internal static class Program
             captureMethod = "Win32 PrintWindow, complete native window including non-client frame; no image resize or crop",
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_VISUAL_COMMIT"),
             sourceTree = Environment.GetEnvironmentVariable("CAIWU_VISUAL_SOURCE_TREE"),
-            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, fontObservations = FontObservations, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
+            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, fontObservations = FontObservations, reportCellMeasurements = ReportCellMeasurements, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
 
     private static void PrepareDesktop()
     {
@@ -196,6 +204,37 @@ internal static class Program
                 sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))) });
         }
         finally { SelectObject(memory, old); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(hwnd, dc); }
+    }
+    private static void ValidateReportCells(DataGrid grid)
+    {
+        var headers = Descendants<DataGridColumnHeader>(grid).Where(h => h.Column is not null).ToDictionary(h => h.Column.DisplayIndex);
+        var problems = new List<string>();
+        foreach (var item in grid.Items.OfType<Caiwu.Reporting.ReportRow>())
+        {
+            var row = (DataGridRow)grid.ItemContainerGenerator.ContainerFromItem(item);
+            Require(row is not null, "Synthetic report row was not realized.");
+            var cells = Descendants<DataGridCell>(row).ToDictionary(c => c.Column.DisplayIndex);
+            foreach (var column in grid.Columns)
+            {
+                Require(cells.TryGetValue(column.DisplayIndex, out var cell), "Report cell is missing.");
+                var header = headers[column.DisplayIndex];
+                var x = cell!.TranslatePoint(new Point(), grid).X;
+                var headerX = header.TranslatePoint(new Point(), grid).X;
+                var text = column.GetCellContent(item) as TextBlock;
+                var isAmount = item.Cells[column.DisplayIndex].Kind == Caiwu.Reporting.ReportValueKind.Amount;
+                ReportCellMeasurements.Add(new { account = item.AccountCode, column = column.Header, x, headerX, cellWidth = cell.ActualWidth,
+                    headerWidth = header.ActualWidth, textX = text?.TranslatePoint(new Point(), grid).X, textWidth = text?.ActualWidth, text = text?.Text,
+                    alignment = text?.TextAlignment.ToString() });
+                if (Math.Abs(x - headerX) > 1.1 || Math.Abs(cell.ActualWidth - header.ActualWidth) > 1.1)
+                    problems.Add($"{item.AccountCode}/{column.Header}: body {x:0.##}/{cell.ActualWidth:0.##}, header {headerX:0.##}/{header.ActualWidth:0.##}");
+                if (isAmount && (text?.TextAlignment != TextAlignment.Right || Math.Abs(text.ActualWidth - (cell.ActualWidth - 22)) > 2))
+                    problems.Add($"{item.AccountCode}/{column.Header}: amount content does not occupy the column width");
+            }
+        }
+        var bank = grid.Items.OfType<Caiwu.Reporting.ReportRow>().Single(r => r.AccountCode == "1002");
+        var opening = grid.Columns.Single(c => c.Header?.ToString() == "期初借方");
+        Require(opening.GetCellContent(bank) is TextBlock { Text: "100,000.00" }, "Read-only report amount was not grouped for display.");
+        Require(problems.Count == 0, string.Join("; ", problems));
     }
     private static void ObserveFonts(Window window, string file)
     {
