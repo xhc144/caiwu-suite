@@ -25,6 +25,10 @@ jobs:
             dotnet build $project -c Release --nologo
             if ($LASTEXITCODE -ne 0) { throw "Independent component build failed: $project" }
           }
+          dotnet build tests/Caiwu.Desktop.FeatureTests/Logic/Caiwu.Desktop.FeatureTests.csproj -c Release --nologo
+          if ($LASTEXITCODE -ne 0) { throw 'Authenticated feature logic build failed.' }
+          dotnet run --project tests/Caiwu.Desktop.FeatureTests/Logic/Caiwu.Desktop.FeatureTests.csproj -c Release --no-build -- artifacts/desktop-features-logic/results.json
+          if ($LASTEXITCODE -ne 0) { throw 'Authenticated feature logic failed.' }
       - name: Build, test and render self-authored software under delivery hold
         shell: pwsh
         run: ./packaging/build.ps1
@@ -52,6 +56,11 @@ jobs:
         if: always()
         shell: pwsh
         run: ./tests/Caiwu.Acceptance/NativeFocus/run.ps1 -OutputDirectory artifacts/native-focus
+      - name: Verify authenticated first-use login and actual feature windows
+        if: always()
+        timeout-minutes: 4
+        shell: pwsh
+        run: ./tests/Caiwu.Desktop.FeatureTests/Windows/run.ps1 -Evidence artifacts/desktop-features-windows
       - name: Run Controls bounded Windows smoke
         if: always()
         shell: pwsh
@@ -109,6 +118,8 @@ jobs:
             artifacts/high-resolution/
             artifacts/mutation-windows/
             artifacts/native-focus/
+            artifacts/desktop-features-windows/
+            artifacts/desktop-features-logic/
             artifacts/sqlite-create-race-windows/
             !artifacts/ui-navigation/build-*/**
             !artifacts/**/*.caiwu

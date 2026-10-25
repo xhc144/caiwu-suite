@@ -16,7 +16,7 @@ try {
     if (-not $SkipTests) {
         Get-ChildItem 'tests' -Filter '*.csproj' -Recurse | ForEach-Object {
             $projectText = Get-Content $_.FullName -Raw
-            if ($_.FullName -match 'Caiwu.Acceptance') {
+            if ($_.FullName -match 'Caiwu.Acceptance|Caiwu.Desktop.FeatureTests' -or $projectText -match '<UseWPF>\s*true\s*</UseWPF>') {
                 # The original regression has a historical copied catch expression; the independent owner adapts it.
                 # Actual WPF acceptance is run below using its bounded, result-identity-checking runner.
                 return
@@ -32,23 +32,13 @@ try {
             }
         }
     }
-    if ($deliveryPaused) {
-        # The held validation path uses the already built real Windows app. A RID
-        # publish restores a different lock graph and dirties tracked source locks,
-        # which correctly makes the following source-identity guard refuse to run.
-        $desktopExecutable = Join-Path $projectRoot 'src/Caiwu.Desktop/bin/Release/net10.0-windows/Caiwu.Desktop.exe'
-    } else {
+    if (-not $deliveryPaused) {
         Invoke-DotNet -Arguments @('publish', 'src/Caiwu.Desktop/Caiwu.Desktop.csproj', '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:PublishSingleFile=false', '-o', $publishDirectory)
-        $desktopExecutable = Join-Path $publishDirectory 'Caiwu.Desktop.exe'
     }
     if (-not $SkipTests) {
-        $verificationDirectory = Join-Path $artifactDirectory 'verification'
-        New-Item -ItemType Directory -Force -Path $verificationDirectory | Out-Null
-        if (-not (Test-Path $desktopExecutable)) { throw "Built Windows application is missing: $desktopExecutable" }
-        $process = Start-Process -FilePath $desktopExecutable -ArgumentList @('--smoke-test', ('"' + $verificationDirectory + '"')) -PassThru
-        if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'WPF verification timed out.' }
-        if ($process.ExitCode -ne 0) { throw "WPF verification failed ($($process.ExitCode)); see artifacts/verification." }
-        if (-not (Test-Path (Join-Path $verificationDirectory 'ui-verification.json'))) { throw 'WPF verification did not produce its result.' }
+        # Authentication is exercised by the independent synthetic-identity host.
+        # Product startup has no smoke switch or test identity. The held path
+        # also avoids RID restore mutating tracked source lock files.
         & ./tests/Caiwu.Acceptance/Wpf/run.ps1 -OutputDirectory (Join-Path $artifactDirectory 'independent-acceptance')
     }
     if ($deliveryPaused -or (Test-Path (Join-Path $projectRoot 'docs/acceptance/DELIVERY_PAUSED.md'))) {

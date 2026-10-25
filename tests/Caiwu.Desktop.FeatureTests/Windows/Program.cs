@@ -310,6 +310,8 @@ internal static class Program
         });
         session.Close(); operators.Logout(login); operators.Logout(admin);
         File.WriteAllText(Path.Combine(evidence, "results.json"), JsonSerializer.Serialize(new { syntheticOnly = true, windowsExecuted = true,
+            checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_FEATURE_CHECKOUT_COMMIT"),
+            productionSourceTree = Environment.GetEnvironmentVariable("CAIWU_FEATURE_SOURCE_TREE"),
             physicalKeyboardOrImeTested = false, os = Environment.OSVersion.ToString(), results = Results }, new JsonSerializerOptions { WriteIndented = true }));
         app.Shutdown(); Directory.Delete(temporary, true); return failures == 0 ? 0 : 1;
     }
