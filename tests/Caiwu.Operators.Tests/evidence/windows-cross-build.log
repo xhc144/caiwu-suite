@@ -1,0 +1,15 @@
+  Caiwu.Contracts -> /workspace/caiwu/src/Caiwu.Contracts/bin/Release/net10.0/Caiwu.Contracts.dll
+  Caiwu.Operators -> /workspace/caiwu/src/Caiwu.Operators/bin/Release/net10.0/Caiwu.Operators.dll
+  Caiwu.Core -> /workspace/caiwu/src/Caiwu.Core/bin/Release/net10.0/Caiwu.Core.dll
+  Caiwu.Reporting -> /workspace/caiwu/src/Caiwu.Reporting/bin/Release/net10.0/Caiwu.Reporting.dll
+  Caiwu.Persistence.Sqlite -> /workspace/caiwu/src/Caiwu.Persistence.Sqlite/bin/Release/net10.0/Caiwu.Persistence.Sqlite.dll
+  Caiwu.Delivery -> /workspace/caiwu/packaging-next/src/Caiwu.Delivery/bin/Release/net10.0/Caiwu.Delivery.dll
+  Caiwu.Operators.Wpf -> /workspace/caiwu/src/Caiwu.Operators/Wpf/bin/Release/net10.0-windows/Caiwu.Operators.Wpf.dll
+  Caiwu.Desktop -> /workspace/caiwu/src/Caiwu.Desktop/bin/Release/net10.0-windows/Caiwu.Desktop.dll
+  Caiwu.Operators.WindowsSmoke -> /workspace/caiwu/tests/Caiwu.Operators.Tests/WindowsSmoke/bin/Release/net10.0-windows/Caiwu.Operators.WindowsSmoke.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:02.07
