@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -23,6 +24,7 @@ internal static partial class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        Console.OutputEncoding = new UTF8Encoding(false); Console.Error.WriteLine("Financial component QA: actual Windows, synthetic data only.");
         output = Path.GetFullPath(args.Single()); Directory.CreateDirectory(output);
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Actual Windows required.");
         PresentationTraceSources.DataBindingSource.Listeners.Add(new TextWriterTraceListener(bindingErrors));

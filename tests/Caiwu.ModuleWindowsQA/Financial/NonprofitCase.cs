@@ -78,16 +78,26 @@ internal static partial class Program
         Check(File.ReadAllText(Path.Combine(userData, "synthetic-activity.csv")).Contains("10.00", StringComparison.Ordinal), "native CSV export contains actual donation10");
         beforeCancel = Files(userData); NativeDialog(() => Click(panel, "导出当前表HTML"), null); SameFiles(beforeCancel, userData, "native export cancellation has no side effect");
         await Capture(window, "nonprofit-activity.png");
+        Tab(panel, "1 科目语义"); await Settle();
+        Edit(accounts, panel.Editor.Accounts.Single(a => a.Code == "1002"), 6, "合成再次复核依据");
+        Click(panel, "导出当前表HTML");
+        Check(panel.Preview is null && window.IsVisible && Visuals<TextBlock>(panel).Any(t => t.Text.Contains("分类已修改", StringComparison.Ordinal)), "classification edit refuses stale export and removes old complete-looking preview");
+        SameFiles(beforeCancel, userData, "changed classification creates no export file");
+        panel.ImportClassification("synthetic-reviewed.json"); Click(panel, "校验并预览"); Tab(panel, "业务活动表预览"); await Settle();
         Check(System.Text.Json.JsonSerializer.Serialize(store.Read()) == snapshotBefore, "classification, preview, save, load and export never write the saved ledger");
         var bound = new LedgerSnapshotStatementDataSource(store.Read, panel.Editor.BuildManifest()).CreateBoundPreview(Clock);
-        var seen = service.GetSnapshot(); service.SaveDraft(new(null, new(2026, 6, 25), "变更", null, 0, [new("1002", "合成来源变更", 1, 0), new("4101", "合成来源变更", 0, 1)], seen.Revision, seen.Book.Id), "合成制单");
+        var refusedPath = Path.Combine(userData, "synthetic-stale-should-not-exist.csv");
+        NativeDialog(() => Click(panel, "导出当前表CSV"), refusedPath, () => {
+            var seen = service.GetSnapshot(); service.SaveDraft(new(null, new(2026, 6, 25), "变更", null, 0, [new("1002", "合成来源变更", 1, 0), new("4101", "合成来源变更", 0, 1)], seen.Revision, seen.Book.Id), "合成制单");
+        });
+        Check(!File.Exists(refusedPath) && panel.Preview is null, "source changes inside actual native export dialog: no file and no stale complete preview");
         using var staleExport = new MemoryStream();
         try { bound.WriteCsv(NonprofitStatementForm.ActivityStatement, staleExport); throw new InvalidOperationException("Old classification export accepted."); }
         catch (ClassificationStaleException) { Check(staleExport.Length == 0, "source change rejects bound export before writing any bytes"); }
         try { panel.ImportClassification("synthetic-reviewed.json"); throw new InvalidOperationException("Old classification import accepted."); }
         catch (ClassificationStaleException) { Check(Hash(classification) == savedHash, "old classification rejected and original JSON preserved"); }
         Click(panel, "校验并预览"); await Settle();
-        Check(window.IsVisible && Visuals<TextBlock>(panel).Any(t => t.Text.Contains("NP_CLASSIFICATION_STALE", StringComparison.Ordinal)) &&
+        Check(window.IsVisible && panel.Preview is null && Visuals<TextBlock>(panel).Any(t => t.Text.Contains("NP_CLASSIFICATION_STALE", StringComparison.Ordinal)) &&
             Visuals<Button>(panel).Where(b => b.Content as string is "导出当前表CSV" or "导出当前表HTML" or "另存新分类JSON").All(b => !b.IsEnabled), "source-change error stays visible and disables save/export");
         SameFiles(beforeCancel, userData, "stale source produced no new or modified sidecar/export files");
         await Capture(window, "nonprofit-stale.png");

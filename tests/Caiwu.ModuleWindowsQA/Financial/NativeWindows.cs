@@ -7,6 +7,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace Caiwu.ModuleWindowsQA.Financial;
 
@@ -87,14 +88,15 @@ internal static partial class Program
                     var cancel = buttons.FirstOrDefault(e => e.Current.IsEnabled && e.Current.Name is "Cancel" or "取消" or "取消(C)");
                     if (cancel is null) { Thread.Sleep(80); continue; }
                     // Waiting for the actual enabled Cancel button avoids losing Escape during native dialog initialization.
-                    whileOpen?.Invoke();
-                    if (path is null) ((InvokePattern)cancel.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+                    if (path is null) { whileOpen?.Invoke(); ((InvokePattern)cancel.GetCurrentPattern(InvokePattern.Pattern)).Invoke(); }
                     else
                     {
-                        var edit = root.FindFirst(TreeScope.Descendants, new AndCondition(
-                            new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit),
-                            new PropertyCondition(AutomationElement.AutomationIdProperty, "1001")))
-                            ?? throw new InvalidOperationException("Actual native File name edit (1001) not found.");
+                        var edits = root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit)).Cast<AutomationElement>().Where(e => e.Current.IsEnabled && !e.Current.IsOffscreen).ToArray();
+                        var edit = edits.FirstOrDefault(e => e.Current.AutomationId == "1001") ??
+                            edits.SingleOrDefault(e => e.Current.Name.StartsWith("File name", StringComparison.OrdinalIgnoreCase) || e.Current.Name.StartsWith("文件名", StringComparison.Ordinal));
+                        if (edit is null) { Thread.Sleep(80); continue; }
+                        File.AppendAllText(Path.Combine(output, "native-dialog.jsonl"), System.Text.Json.JsonSerializer.Serialize(new { fileNameEditId = edit.Current.AutomationId, fileNameEditLabel = edit.Current.Name }) + "\n");
+                        whileOpen?.Invoke();
                         edit.SetFocus(); Thread.Sleep(100);
                         if (GetForegroundWindow() != handle) throw new InvalidOperationException("Native file dialog lost foreground before typing.");
                         Send([KeyInput(0x11, 0, 0), KeyInput(0x41, 0, 0), KeyInput(0x41, 0, 2), KeyInput(0x11, 0, 2)]);
@@ -122,7 +124,13 @@ internal static partial class Program
             }
         });
         open();
-        if (!driver.Wait(TimeSpan.FromSeconds(14))) throw new TimeoutException("Native dialog driver exceeded its deadline.");
+        // Reuse MutationWindows.WaitForDialogs: a native provider may still synchronously query the UI thread after the modal closes.
+        var dispatcher = Dispatcher.CurrentDispatcher; var frame = new DispatcherFrame();
+        var timeout = new DispatcherTimer { Interval = TimeSpan.FromSeconds(14) };
+        timeout.Tick += (_, _) => { timeout.Stop(); frame.Continue = false; };
+        _ = driver.ContinueWith(_ => dispatcher.BeginInvoke(new Action(() => frame.Continue = false)), TaskScheduler.Default);
+        timeout.Start(); Dispatcher.PushFrame(frame); timeout.Stop();
+        if (!driver.IsCompleted) throw new TimeoutException("Native dialog driver exceeded its deadline.");
         driver.GetAwaiter().GetResult(); checks.Add(path is null ? "actual native dialog cancelled" : "actual native dialog selected permitted synthetic path");
         File.AppendAllText(Path.Combine(output, "native-dialog.jsonl"), System.Text.Json.JsonSerializer.Serialize(new { at = DateTimeOffset.UtcNow, stage = "closed", currentCase, path }) + "\n");
     }

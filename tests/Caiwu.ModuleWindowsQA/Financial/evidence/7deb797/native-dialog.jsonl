@@ -1,0 +1,12 @@
+{"at":"2026-10-25T11:10:08.1488228+00:00","stage":"opening","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:10:10.316032+00:00","stage":"closed","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:10:10.3196913+00:00","stage":"opening","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:10:11.0057674+00:00","stage":"closed","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:10:15.60677+00:00","stage":"opening","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:10:16.3867075+00:00","stage":"closed","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:10:16.3884461+00:00","stage":"opening","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:10:16.5246694+00:00","stage":"closed","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:10:16.5262379+00:00","stage":"opening","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"requested":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json","actual":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"at":"2026-10-25T11:10:17.7886534+00:00","stage":"closed","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"at":"2026-10-25T11:10:17.7895971+00:00","stage":"opening","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
