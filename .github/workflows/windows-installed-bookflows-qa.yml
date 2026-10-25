@@ -1,0 +1,65 @@
+name: Installed book business flows Windows QA
+on:
+  push:
+    branches: [codex/installed-bookflows-qa]
+    paths:
+      - 'tests/InstalledBookFlowsQA/**'
+      - '.github/workflows/windows-installed-bookflows-qa.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: installed-bookflows-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  installed-bookflows:
+    runs-on: windows-2025
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 10.0.402
+      - name: Build external independent controller
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Delivery hold missing.' }
+          git diff --exit-code dece298946d03ad88c5031eb02dab8f87c330046 HEAD -- src packaging-next/src tests/Caiwu.Delivery.Tests/InstalledDesktop
+          if ($LASTEXITCODE -ne 0) { throw 'Production or existing controller differs from validated baseline.' }
+          dotnet build tests/InstalledBookFlowsQA -c Release -warnaserror
+          if ($LASTEXITCODE -ne 0) { throw 'Independent controller build failed.' }
+      - name: Prepare existing pinned native installer tool
+        shell: pwsh
+        run: |
+          python packaging-next/bootstrap-nsis.py --destination .tools/nsis
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned NSIS failed.' }
+      - name: Build exact clean internal installation candidate under existing hold
+        shell: pwsh
+        run: |
+          ./packaging-next/Build-InternalQa.ps1 -OutputDirectory artifacts/internal-qa/0.1.0.1 -ExpectedCommit '${{ github.sha }}' -Version 0.1.0.1 -MakeNsis .tools/nsis/nsis-3.13/makensis.exe -ControllerExecutable tests/InstalledBookFlowsQA/bin/Release/net10.0-windows/Caiwu.InstalledBookFlowsQA.exe
+      - name: Actual NSIS install normal Desktop business operations independent installed readback
+        shell: pwsh
+        timeout-minutes: 13
+        run: |
+          ./tests/InstalledBookFlowsQA/Run-InstalledBookFlows.ps1 -Installer artifacts/internal-qa/0.1.0.1/INTERNAL-UNVALIDATED-caiwu-0.1.0.1-win-x64-setup.exe -ControllerExecutable tests/InstalledBookFlowsQA/bin/Release/net10.0-windows/Caiwu.InstalledBookFlowsQA.exe -OutputDirectory '${{ runner.temp }}/installed-bookflows-${{ github.run_id }}-${{ github.run_attempt }}'
+      - name: Confirm immutable source and hold
+        if: always()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Delivery hold removed.' }
+          if (@(git status --porcelain --untracked-files=normal).Count -ne 0) { git status --short; throw 'Source changed during QA.' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: installed-bookflows-evidence-${{ github.sha }}
+          path: |
+            artifacts/internal-qa/0.1.0.1/INTERNAL-UNVALIDATED.json
+            artifacts/internal-qa/0.1.0.1/preparation.json
+            artifacts/internal-qa/0.1.0.1/payload/payload-manifest.json
+            ${{ runner.temp }}/installed-bookflows-${{ github.run_id }}-${{ github.run_attempt }}/*.json
+            ${{ runner.temp }}/installed-bookflows-${{ github.run_id }}-${{ github.run_attempt }}/runtime/*.json
+            ${{ runner.temp }}/installed-bookflows-${{ github.run_id }}-${{ github.run_attempt }}/runtime/*.png
+            ${{ runner.temp }}/installed-bookflows-${{ github.run_id }}-${{ github.run_attempt }}/runtime/*.log
+          if-no-files-found: warn
