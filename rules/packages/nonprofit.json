@@ -1,0 +1,1503 @@
+{
+  "schemaVersion": 1,
+  "id": "nonprofit-2026-official",
+  "version": "2026.10.25.1",
+  "regime": "Nonprofit",
+  "displayName": "民非2026：正式56项一级科目快照",
+  "legalStatus": "OfficialCurrent",
+  "legalEffectiveFrom": "2026-01-01",
+  "supportedPeriodsFrom": "2026-01-01",
+  "effectiveUntil": null,
+  "isVerifiedForProduction": false,
+  "scope": {
+    "description": "境内依法设立，同时具备非营利目的、资源提供者不取得经济回报且不保留或享有财产权利三特征；财政部门另有规定从其规定。",
+    "includedProfiles": [
+      "EligibleNonprofit"
+    ],
+    "exclusions": [
+      "行政事业单位不因名称为非营利自动适用",
+      "行业、地方及慈善监管专用规则未覆盖"
+    ],
+    "requiresHumanEligibilityReview": true
+  },
+  "coverage": {
+    "firstLevelAccounts": "CompleteOfficialBaseSnapshot",
+    "officialBaseCount": 56,
+    "allCurrentRequirementsCovered": false,
+    "reports": "MetadataAndRepresentativeRows",
+    "migration": "PartialEvidenceOnly"
+  },
+  "sourceRefs": [
+    {
+      "sourceId": "nonprofit-standard",
+      "locator": "第2、67—79、94—95条；PDF第47—49页"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "np26-1001",
+      "code": "1001",
+      "name": "现金",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 1,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号1；科目说明始于第50页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1002",
+      "code": "1002",
+      "name": "银行存款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 2,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号2；科目说明始于第51页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1009",
+      "code": "1009",
+      "name": "其他货币资金",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 3,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号3；科目说明始于第56页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1101",
+      "code": "1101",
+      "name": "短期投资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 4,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号4；科目说明始于第59页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1102",
+      "code": "1102",
+      "name": "短期投资跌价准备",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 5,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号5；科目说明始于第61页"
+        }
+      ],
+      "notes": [
+        "Contra-asset: credit balance; do not infer direction from asset category."
+      ]
+    },
+    {
+      "id": "np26-1111",
+      "code": "1111",
+      "name": "应收票据",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 6,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号6；科目说明始于第62页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1121",
+      "code": "1121",
+      "name": "应收账款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 7,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号7；科目说明始于第64页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1122",
+      "code": "1122",
+      "name": "其他应收款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 8,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号8；科目说明始于第65页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1131",
+      "code": "1131",
+      "name": "坏账准备",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 9,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号9；科目说明始于第67页"
+        }
+      ],
+      "notes": [
+        "Contra-asset: credit balance; do not infer direction from asset category."
+      ]
+    },
+    {
+      "id": "np26-1141",
+      "code": "1141",
+      "name": "预付账款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 10,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号10；科目说明始于第68页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1201",
+      "code": "1201",
+      "name": "存货",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 11,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号11；科目说明始于第69页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1202",
+      "code": "1202",
+      "name": "存货跌价准备",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 12,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号12；科目说明始于第71页"
+        }
+      ],
+      "notes": [
+        "Contra-asset: credit balance; do not infer direction from asset category."
+      ]
+    },
+    {
+      "id": "np26-1301",
+      "code": "1301",
+      "name": "待摊费用",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 13,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号13；科目说明始于第72页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1401",
+      "code": "1401",
+      "name": "长期股权投资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 14,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号14；科目说明始于第73页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1402",
+      "code": "1402",
+      "name": "长期债权投资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 15,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号15；科目说明始于第75页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1403",
+      "code": "1403",
+      "name": "其他长期投资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 16,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号16；科目说明始于第77页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1421",
+      "code": "1421",
+      "name": "长期投资减值准备",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 17,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号17；科目说明始于第79页"
+        }
+      ],
+      "notes": [
+        "Contra-asset: credit balance; do not infer direction from asset category."
+      ]
+    },
+    {
+      "id": "np26-1501",
+      "code": "1501",
+      "name": "固定资产",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 18,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号18；科目说明始于第80页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1502",
+      "code": "1502",
+      "name": "累计折旧",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 19,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号19；科目说明始于第83页"
+        }
+      ],
+      "notes": [
+        "Contra-asset: credit balance; do not infer direction from asset category."
+      ]
+    },
+    {
+      "id": "np26-1505",
+      "code": "1505",
+      "name": "在建工程",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 20,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号20；科目说明始于第85页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1506",
+      "code": "1506",
+      "name": "文物资源",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 21,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号21；科目说明始于第86页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1509",
+      "code": "1509",
+      "name": "固定资产清理",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 22,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号22；科目说明始于第88页"
+        }
+      ],
+      "notes": [
+        "May have debit or credit balance; report debit positive / credit negative (PDF 89 and 137)."
+      ]
+    },
+    {
+      "id": "np26-1601",
+      "code": "1601",
+      "name": "无形资产",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 23,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号23；科目说明始于第90页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1602",
+      "code": "1602",
+      "name": "累计摊销",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 24,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第47页，序号24；科目说明始于第91页"
+        }
+      ],
+      "notes": [
+        "Contra-asset: credit balance; do not infer direction from asset category."
+      ]
+    },
+    {
+      "id": "np26-1701",
+      "code": "1701",
+      "name": "长期待摊费用",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 25,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号25；科目说明始于第91页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-1801",
+      "code": "1801",
+      "name": "受托代理资产",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 26,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号26；科目说明始于第92页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2101",
+      "code": "2101",
+      "name": "短期借款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 27,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号27；科目说明始于第93页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2201",
+      "code": "2201",
+      "name": "应付票据",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 28,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号28；科目说明始于第94页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2202",
+      "code": "2202",
+      "name": "应付账款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 29,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号29；科目说明始于第95页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2203",
+      "code": "2203",
+      "name": "预收账款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 30,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号30；科目说明始于第96页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2204",
+      "code": "2204",
+      "name": "应付职工薪酬",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 31,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号31；科目说明始于第96页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2206",
+      "code": "2206",
+      "name": "应交税费",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 32,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号32；科目说明始于第98页"
+        }
+      ],
+      "notes": [
+        "Credit balance is unpaid tax, debit balance is overpaid tax (PDF 99)."
+      ]
+    },
+    {
+      "id": "np26-2209",
+      "code": "2209",
+      "name": "其他应付款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 33,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号33；科目说明始于第99页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2301",
+      "code": "2301",
+      "name": "预提费用",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 34,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号34；科目说明始于第99页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2501",
+      "code": "2501",
+      "name": "长期借款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 35,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号35；科目说明始于第100页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2502",
+      "code": "2502",
+      "name": "长期应付款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 36,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号36；科目说明始于第101页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2503",
+      "code": "2503",
+      "name": "预计负债",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 37,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号37；科目说明始于第101页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-2601",
+      "code": "2601",
+      "name": "受托代理负债",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 38,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号38；科目说明始于第102页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-3101",
+      "code": "3101",
+      "name": "非限定性净资产",
+      "parentCode": null,
+      "category": "NetAssets",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 39,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号39；科目说明始于第103页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-3102",
+      "code": "3102",
+      "name": "限定性净资产",
+      "parentCode": null,
+      "category": "NetAssets",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 40,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号40；科目说明始于第104页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-3201",
+      "code": "3201",
+      "name": "以前年度净资产调整",
+      "parentCode": null,
+      "category": "NetAssets",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 41,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号41；科目说明始于第106页"
+        }
+      ],
+      "notes": [
+        "May be debited or credited; close to respective net assets, zero after closing (PDF 106–107)."
+      ]
+    },
+    {
+      "id": "np26-4101",
+      "code": "4101",
+      "name": "捐赠收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 42,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号42；科目说明始于第107页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-4201",
+      "code": "4201",
+      "name": "会费收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 43,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号43；科目说明始于第108页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-4301",
+      "code": "4301",
+      "name": "提供服务收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 44,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号44；科目说明始于第109页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-4401",
+      "code": "4401",
+      "name": "政府补助收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 45,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号45；科目说明始于第111页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-4501",
+      "code": "4501",
+      "name": "商品销售收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 46,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号46；科目说明始于第112页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-4601",
+      "code": "4601",
+      "name": "投资收益",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 47,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号47；科目说明始于第114页"
+        }
+      ],
+      "notes": [
+        "Investment net profit/loss can be credited or debited; zero after closing (PDF 114–116)."
+      ]
+    },
+    {
+      "id": "np26-4701",
+      "code": "4701",
+      "name": "总部拨款收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 48,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号48；科目说明始于第116页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-4901",
+      "code": "4901",
+      "name": "其他收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 49,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号49；科目说明始于第117页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-5101",
+      "code": "5101",
+      "name": "业务活动成本",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 50,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第48页，序号50；科目说明始于第119页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-5201",
+      "code": "5201",
+      "name": "税金及附加",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 51,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第49页，序号51；科目说明始于第120页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-5301",
+      "code": "5301",
+      "name": "管理费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 52,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第49页，序号52；科目说明始于第121页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-5401",
+      "code": "5401",
+      "name": "筹资费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 53,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第49页，序号53；科目说明始于第122页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-5501",
+      "code": "5501",
+      "name": "资产减值损失",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 54,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第49页，序号54；科目说明始于第124页"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "np26-5601",
+      "code": "5601",
+      "name": "所得税费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 55,
+      "restrictionPolicy": "ReviewRequired",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第49页，序号55；科目说明始于第124页"
+        }
+      ],
+      "notes": [
+        "Specific instructions only show period transfer to unrestricted net assets (PDF 124–125); generic expense presentation requires both classes (PDF 146). Restricted tax treatment not validated; do not assert automated support or infer a prohibition from silence."
+      ]
+    },
+    {
+      "id": "np26-5901",
+      "code": "5901",
+      "name": "其他费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 56,
+      "restrictionPolicy": "Required",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第49页，序号56；科目说明始于第125页"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "reports": [
+    {
+      "id": "np-bs",
+      "officialForm": "会民非01表",
+      "title": "资产负债表",
+      "periods": [
+        "Interim",
+        "Annual"
+      ],
+      "columns": [
+        "年初余额",
+        "期末余额"
+      ],
+      "coverage": "MetadataOnly",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第128—129、134—142页"
+        }
+      ],
+      "rows": [],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ]
+    },
+    {
+      "id": "np-activity",
+      "officialForm": "会民非02表",
+      "title": "业务活动表",
+      "periods": [
+        "Interim",
+        "Annual"
+      ],
+      "columns": [
+        "本月数.非限定性",
+        "本月数.限定性",
+        "本月数.合计",
+        "本年累计数.非限定性",
+        "本年累计数.限定性",
+        "本年累计数.合计"
+      ],
+      "coverage": "MetadataAndRepresentativeRows",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第130—131、142—146页"
+        }
+      ],
+      "rows": [
+        {
+          "id": "donation",
+          "label": "捐赠收入",
+          "officialRowNumber": null,
+          "terms": [
+            {
+              "accountCode": "4101",
+              "measure": "period_net_debit",
+              "coefficient": -1
+            }
+          ],
+          "restrictionColumns": [
+            "Unrestricted",
+            "Restricted"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "nonprofit-standard",
+              "locator": "PDF第143页，捐赠收入"
+            }
+          ],
+          "limitations": [
+            "仅此行代表性取数；输入为未结转发生额或期末净额，按measure。"
+          ]
+        },
+        {
+          "id": "admin",
+          "label": "管理费用",
+          "officialRowNumber": null,
+          "terms": [
+            {
+              "accountCode": "5301",
+              "measure": "period_net_debit",
+              "coefficient": 1
+            }
+          ],
+          "restrictionColumns": [
+            "Unrestricted",
+            "Restricted"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "nonprofit-standard",
+              "locator": "PDF第145—146页"
+            }
+          ],
+          "limitations": [
+            "仅此行代表性取数；输入为未结转发生额或期末净额，按measure。"
+          ]
+        }
+      ],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ],
+      "columnVariants": [
+        {
+          "period": "Monthly",
+          "status": "DefinedMetadata",
+          "columns": [
+            "本月数.非限定性",
+            "本月数.限定性",
+            "本月数.合计",
+            "本年累计数.非限定性",
+            "本年累计数.限定性",
+            "本年累计数.合计"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "nonprofit-standard",
+              "locator": "PDF第142—143页，业务活动表第2项；提供比较数时需增设可比期间栏目"
+            }
+          ]
+        },
+        {
+          "period": "Quarterly",
+          "status": "DefinedMetadata",
+          "columns": [
+            "本季度数.非限定性",
+            "本季度数.限定性",
+            "本季度数.合计",
+            "本年累计数.非限定性",
+            "本年累计数.限定性",
+            "本年累计数.合计"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "nonprofit-standard",
+              "locator": "PDF第142—143页，业务活动表第2项；提供比较数时需增设可比期间栏目"
+            }
+          ]
+        },
+        {
+          "period": "HalfYearly",
+          "status": "DefinedMetadata",
+          "columns": [
+            "本半年度数.非限定性",
+            "本半年度数.限定性",
+            "本半年度数.合计",
+            "本年累计数.非限定性",
+            "本年累计数.限定性",
+            "本年累计数.合计"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "nonprofit-standard",
+              "locator": "PDF第142—143页，业务活动表第2项；提供比较数时需增设可比期间栏目"
+            }
+          ]
+        },
+        {
+          "period": "Annual",
+          "status": "UnimplementedPresentation",
+          "columns": [],
+          "sourceRefs": [
+            {
+              "sourceId": "nonprofit-standard",
+              "locator": "PDF第142—143页比较数增列；首次2026例外见衔接PDF第4—5页。本包未实现完整年度比较列变体，不把月表列作为年度完整模板"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "np-cashflow",
+      "officialForm": "会民非03表",
+      "title": "现金流量表",
+      "periods": [
+        "Annual"
+      ],
+      "columns": [
+        "本年金额",
+        "上年金额"
+      ],
+      "coverage": "MetadataOnly",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "PDF第132—133、147—153页"
+        }
+      ],
+      "rows": [],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ]
+    },
+    {
+      "id": "np-notes",
+      "officialForm": null,
+      "title": "附注",
+      "periods": [
+        "Annual"
+      ],
+      "columns": [],
+      "coverage": "MetadataOnly",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第88条；PDF第39—41、153—155页"
+        }
+      ],
+      "rows": [],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ]
+    }
+  ],
+  "limitations": [
+    "完整的是正式附录56项一级代码/名称快照；不等于全部明细、可选科目或全制度实现。",
+    "5601专门说明第124—125页与报表第146页的一般分类表述需专业复核，限定性所得税自动处理阻断。",
+    "本包只提供分类/结转路由与代表性取数验证，不提供真实记账服务、完整报表或完整旧账迁移。",
+    "未获执业会计师生产审定，真实财务合规不能保证。"
+  ],
+  "restrictionRules": {
+    "dimensionValues": [
+      "Unrestricted",
+      "Restricted"
+    ],
+    "inventedSubaccountCodes": false,
+    "evidenceRequiredForRestricted": [
+      "ExternalProvider",
+      "LawOrAdministrativeRegulation"
+    ],
+    "internalBudgetAloneQualifies": false,
+    "restrictedSpendingAutomaticallyReclassifiesNetAssets": false,
+    "closingTargets": {
+      "Unrestricted": "3101",
+      "Restricted": "3102"
+    },
+    "manualReviewAccounts": [
+      "5601"
+    ],
+    "sourceRefs": [
+      {
+        "sourceId": "nonprofit-standard",
+        "locator": "第67—70、74—75、78—79条；PDF第28—35、103—107页"
+      },
+      {
+        "sourceId": "nonprofit-standard",
+        "locator": "5601说明PDF第124—125页；业务活动表说明第146页"
+      }
+    ]
+  },
+  "firstAdoptionComparatives": {
+    "year": 2026,
+    "openingBalanceSheetDate": "2026-01-01",
+    "activityAndCashflowPriorYearRequired": false,
+    "missingValueMeaning": "NotRequiredOnFirstAdoption; never silently zero",
+    "sourceRefs": [
+      {
+        "sourceId": "nonprofit-transition",
+        "locator": "第三部分；PDF第4—5页"
+      }
+    ]
+  }
+}

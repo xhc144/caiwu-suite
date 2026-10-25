@@ -158,3 +158,5 @@ SQLite：所有字段round-trip、readonly/缺文件/坏文件、Write并发revi
 已读取关键条目：财会〔2024〕12号不可逆记账、民非2026收入费用分别按限定性/非限定性及同码异义迁移、新企业第30号分阶段执行、科目征求稿不作现行依据。首版Core不实现Unpost/Reopen等接口；民非完整规则尚未实现前只列实验模板，不宣传生产覆盖。
 
 UI选择：采用.NET10 WPF、内建Fluent资源字典与自有紧凑样式，避免实验性ThemeMode API和额外UI包。WPF成熟DataGrid、键盘路由、打印和DPI能力适合财务工作页；不用旧灰色控件外观，也不改成稀疏网页仪表盘。参考 https://learn.microsoft.com/en-us/dotnet/desktop/wpf/whats-new/net100 。
+
+主集成额外ownership：`tests/Caiwu.Desktop.Logic.Tests/**`、`.github/workflows/**`、`NuGet.Config`。纯界面逻辑测试不依赖WPF、不实现财务规则；Windows CI只运行自研代码，绝不运行参考安装器。共享Contracts仍以97d696a版本为准，两个实现任务不需追随UI提交修改接口。

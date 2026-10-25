@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-25",
+  "entries": [
+    {
+      "id": "small-business-2011-base-2026-snapshot",
+      "regime": "SmallBusiness",
+      "path": "packages/small-business.json",
+      "sha256": "f81bb952bbbc89895e6408bbbde115c66cfd01b5f102c84bc350c6e35b6e39aa",
+      "status": "OfficialCurrent",
+      "selectable": true
+    },
+    {
+      "id": "enterprise-nonfinancial-2019-appendix2-sample",
+      "regime": "Enterprise",
+      "path": "packages/enterprise.json",
+      "sha256": "a280b0a7ac090219cdd8cd6b7f6e08f15f12b364c97f2fbfe60cd5033ec31a83",
+      "status": "OfficialCurrent",
+      "selectable": true
+    },
+    {
+      "id": "nonprofit-2026-official",
+      "regime": "Nonprofit",
+      "path": "packages/nonprofit.json",
+      "sha256": "0730548fdc4cd1db74f587ba050c2fd8849b32804e50c9eefa1394c561d3a4df",
+      "status": "OfficialCurrent",
+      "selectable": true
+    },
+    {
+      "id": "enterprise-cas30-2026-phased-unimplemented",
+      "regime": "Enterprise",
+      "path": null,
+      "sha256": null,
+      "status": "OfficialFuturePhased",
+      "selectable": false
+    },
+    {
+      "id": "enterprise-chart-2026-consultation",
+      "regime": "Enterprise",
+      "path": null,
+      "sha256": null,
+      "status": "Draft",
+      "selectable": false
+    }
+  ],
+  "enterprisePresentationChange": {
+    "sourceRefs": [
+      {
+        "sourceId": "enterprise-cas30-notice",
+        "locator": "财会〔2026〕11号通知分阶段执行安排；主站通知HTTP502，使用官方转载全文"
+      }
+    ],
+    "officialNoticeUrl": "https://kjs.mof.gov.cn/zhengcefabu/202608/t20260805_3994927.htm",
+    "earlyAdoptionAllowed": true,
+    "earliestKnownPublicationDate": "2026-08-05",
+    "newRulesImplemented": false,
+    "mandatoryFrom": {
+      "DualListedOrSpecifiedOverseas": "2027-01-01",
+      "OtherDomesticListed": "2029-01-01",
+      "NonfinancialUnlisted": "2030-01-01"
+    }
+  },
+  "limitations": [
+    "规则证据截止2026-10-25；选择日期不是适用性审定或法规永续有效保证。",
+    "未来强制期或提前采用新第30号时明确阻断，不静默回退2019样表。"
+  ]
+}
