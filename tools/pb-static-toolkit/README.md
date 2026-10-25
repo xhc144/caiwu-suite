@@ -51,6 +51,10 @@ A PBSELECT projection that differs from the structural table's column sequence i
 
 An optional caller-owned JSON profile has `schema_version: "pb-dw-slots-1"`, `layout: "PDW0900"`, `evidence_status: "caller_verified_against_matching_runtime"`, and `groups` containing `column`, `compute`, `compute_visual`, and `text_visual` maps. Each named property entry has an integer `slot` and may retain the consumer's local evidence. No actual profile is bundled. The evidence string is an explicit trust boundary, not verification performed by the loader: the consumer must independently prove offsets against its own matching runtime before supplying it. Never borrow a profile merely because a DLL filename looks similar.
 
+A separately verified crosstab extension can add `groups.crosstab` with `columns`, `rows`, `values` and `sourcenames` slot entries, plus a top-level `crosstab_layout` object containing integer `root_processing_slot`, `processing_value`, `foreground_root_slot`, `visual_tag`, `record_bytes` and `expression_list_tag`. No real crosstab profile is bundled. Only when that profile is supplied does the decoder traverse the profiled foreground band and read its bounded expression-list records.
+
+A crosstab can have three query input fields but two rendered prototype columns. The decoder keeps both schemas and accepts a distinct crosstab source binding only when the complete source-name list matches every unique query projection basename in order, row and column expressions name those inputs, and a supported `sum(field for crosstab)` expression accounts for the remaining input. It never pads the rendered column count or relabels an arbitrary disagreement. Unknown mappings retain the failed cross-check. Source database result datatypes, dynamic pivot execution and effective runtime layouts remain unknown.
+
 ## Validation and provenance
 
 ```sh

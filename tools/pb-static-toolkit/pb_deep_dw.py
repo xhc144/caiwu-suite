@@ -100,7 +100,7 @@ def runtime_slots(profile_path=None):
     A profile must be independently verified against the caller's matching runtime.
     """
     import json
-    groups = {name: {} for name in ('column', 'compute', 'compute_visual', 'text_visual')}
+    groups = {name: {} for name in ('column', 'compute', 'compute_visual', 'text_visual', 'crosstab')}
     if profile_path is None:
         settings = get_settings(required=False)
         profile_path = settings.dw_profile if settings else None
@@ -121,10 +121,70 @@ def runtime_slots(profile_path=None):
             if not isinstance(slot, int) or slot < 0 or slot % 4 or slot > 4096:
                 raise Invalid('invalid_external_profile_offset')
             groups[group][label] = dict(proof)
+    cross = raw.get('crosstab_layout')
+    if cross is not None:
+        required = {'root_processing_slot', 'processing_value', 'foreground_root_slot',
+                    'visual_tag', 'record_bytes', 'expression_list_tag'}
+        if not isinstance(cross, dict) or set(cross) != required or any(
+                type(v) is not int or not 0 <= v <= 4096 for v in cross.values()):
+            raise Invalid('invalid_external_crosstab_layout')
+        if cross['root_processing_slot']+2 > 938 or cross['foreground_root_slot'] % 4 or cross['foreground_root_slot']+4 > 938:
+            raise Invalid('invalid_external_crosstab_root_offsets')
+        if set(groups['crosstab']) != {'columns', 'rows', 'values', 'sourcenames'}:
+            raise Invalid('external_crosstab_property_set_incomplete')
+        groups['_crosstab_layout'] = dict(cross)
     groups['_provenance'] = {'external_profile_sha256': sha(Path(profile_path).read_bytes()),
                              'evidence_status': raw['evidence_status'],
                              'target_profile_is_bundled': False}
     return groups
+
+
+def crosstab_definition(view, rows, row, slots):
+    """Caller-profiled rendered/source schema mapping; no pivot execution."""
+    layout = slots['_crosstab_layout']
+    if row['bytes'] != layout['record_bytes'] or u32(row['data'], 32) & 0xffff != layout['visual_tag']:
+        raise Invalid('unsupported_profiled_crosstab_record')
+    properties = slots['crosstab']
+    result = {'record_id': row['id'], 'expressions': {}, 'execution_status': 'not_executed'}
+    for name in ('columns', 'rows', 'values'):
+        reference = ref_field(view, rows, row, properties[name]['slot'])
+        expr = record_at(rows, reference['value'])
+        tag, count = u32(expr['data'], 0), u32(expr['data'], 8)
+        if tag & 0x7fffffff != layout['expression_list_tag'] or expr['bytes'] != 12+4*count:
+            raise Invalid('unsupported_profiled_crosstab_expression_list')
+        expression_text = ref_field(view, rows, expr, 4, text=True)
+        if not expression_text.get('text'):
+            raise Invalid('profiled_crosstab_expression_text_missing')
+        result['expressions'][name] = {'reference': reference,
+            'text': expression_text,
+            'auxiliary_references': [ref_field(view, rows, expr, 12+4*i) for i in range(count)],
+            'expression_VM_semantics': 'unknown'}
+    result['sourcenames'] = ref_field(view, rows, row, properties['sourcenames']['slot'], text=True)
+    if not result['sourcenames'].get('text'):
+        raise Invalid('profiled_crosstab_sourcenames_missing')
+    return result
+
+
+def cross_source_binding(definition, projection):
+    """Prove only a narrow row/category/sum mapping, without count padding."""
+    names = [s.strip() for s in definition['sourcenames']['text']['value'].split(',')]
+    basenames = [s.rsplit('.', 1)[-1] for s in projection]
+    if not names or names != basenames or len(set(basenames)) != len(basenames):
+        return None
+    expressions = {name: value['text']['text']['value'].strip()
+                   for name, value in definition['expressions'].items()}
+    value_match = re.fullmatch(r'(?i)sum\(\s*([A-Za-z_][A-Za-z0-9_]*)\s+for\s+crosstab\s*\)', expressions['values'])
+    if not value_match or expressions['rows'] not in names or expressions['columns'] not in names:
+        return None
+    value_column = value_match.group(1)
+    if value_column not in names or {expressions['rows'], expressions['columns'], value_column} != set(names):
+        return None
+    return {'status': 'exact_profiled_crosstab_source_projection_mapping',
+            'source_names': names, 'query_projection_basenames': basenames,
+            'rows_source_name': expressions['rows'], 'columns_source_name': expressions['columns'],
+            'values_source_name': value_column, 'aggregation': 'sum',
+            'rendered_schema_is_distinct_from_query_input_schema': True,
+            'database_result_datatypes': 'unknown_not_executed_or_queried'}
 
 
 def analyze(view, slots):
@@ -184,7 +244,18 @@ def analyze(view, slots):
                                                    'column_count': ncols, 'columns': columns, 'query': query}
         controls = {}
         bands = []
-        for root_slot in (32, 36, 40, 44):
+        cross_layout = slots.get('_crosstab_layout')
+        cross_active = False
+        if cross_layout:
+            offset = cross_layout['root_processing_slot']
+            processing = struct.unpack_from('<H', root['data'], offset)[0]
+            result['decoded_fields']['processing_code'] = view.field(root['offset']+offset, 2,
+                processing, 'caller_verified_matching_runtime_processing_field')
+            cross_active = processing == cross_layout['processing_value']
+        root_slots = (32, 36, 40, 44)
+        if cross_active:
+            root_slots += (cross_layout['foreground_root_slot'],)
+        for root_slot in dict.fromkeys(root_slots):
             band_ref = ref_field(view, rows, root, root_slot)
             if not band_ref['value']:
                 continue
@@ -217,10 +288,17 @@ def analyze(view, slots):
                     raise Invalid('visual_column_id_differs_from_bound_column_ordinal')
                 controls[number] = row
         visuals = []
+        cross_definitions = []
         for number, row in sorted(controls.items()):
             raw_type = u32(row['data'], 32)
             code = raw_type & 0xffff
             kind = {1: 'column', 2: 'compute', 7: 'text'}.get(code, 'structural_tag_' + str(code))
+            if cross_active and code == cross_layout['visual_tag']:
+                kind = 'crosstab'
+                try:
+                    cross_definitions.append(crosstab_definition(view, rows, row, slots))
+                except Invalid as exc:
+                    result['errors'].append(str(exc))
             props = slots['column'] if kind == 'column' and row['bytes'] == 132 else (
                     {**slots['compute_visual'], **slots['compute']} if kind == 'compute' and row['bytes'] == 110 else (
                     slots['text_visual'] if kind == 'text' and row['bytes'] == 96 else {}))
@@ -242,18 +320,29 @@ def analyze(view, slots):
                             'properties': decoded, 'property_errors': errors})
         result['decoded_fields']['bands_by_root_slot'] = bands
         result['decoded_fields']['visual_objects'] = visuals
+        if cross_definitions:
+            result['decoded_fields']['crosstab_definitions'] = cross_definitions
+            if len(cross_definitions) == 1 and query.get('PBSELECT_columns'):
+                binding = cross_source_binding(cross_definitions[0], query['PBSELECT_columns'])
+                if binding:
+                    result['decoded_fields']['data_source']['column_schema_role'] = 'rendered_crosstab_schema'
+                    query['crosstab_source_binding'] = binding
+                    query['PBSELECT_column_order_verification'] = 'crosstab_source_projection_exact_match'
+                    result['errors'] = [e for e in result['errors'] if e != 'PBSELECT_column_sequence_differs_from_table_binding']
         result['status'] = 'partial'
         result['dimension_status'] = {'record_envelope': 'parsed', 'columns_and_database_name_binding': 'parsed',
                                       'bound_query_text': 'parsed', 'named_visual_properties': 'partial' if any(slots[g] for g in ('column','compute','compute_visual','text_visual')) else 'unknown',
                                       'complete_canonical_DataWindow_source': 'unknown', 'expression_pcode': 'unknown'}
         if query.get('PBSELECT_column_order_verification') == 'mismatch_to_table_column_database_names':
             result['dimension_status']['query_column_sequence_binding'] = 'mismatch'
+        elif query.get('crosstab_source_binding'):
+            result['dimension_status']['query_column_sequence_binding'] = 'crosstab_source_projection_verified'
         result['unknowns'] = [{'region': 'root_record', 'record_id': 1, 'object_offset': root['offset'], 'bytes': root['bytes'],
                                'reason': 'most_root_property_slots_not_yet_named_or_decoded'},
                               {'region': 'table_record_prefix', 'record_id': table['id'], 'object_offset': table['offset'], 'bytes': 338,
                                'reason': 'retrieval_arguments_update_flags_and_column_type_names_not_fully_decoded'},
                               {'region': 'group_bands_and_non_text_column_compute_visual_properties',
-                               'reason': 'only_four_root_band_lists_and_bound_columns_are_traversed'},
+                               'reason': 'unprofiled_band_lists_and_visual_property_layouts_remain_unknown'},
                               {'region': 'scalar_compiled_expression_reference',
                                'reason': 'complete_referenced_expression_text_recovered_but_expression_VM_bytes_not_decoded'}]
     except (Invalid, KeyError, struct.error) as exc:
