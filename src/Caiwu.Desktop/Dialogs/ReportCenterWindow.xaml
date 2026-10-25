@@ -16,6 +16,7 @@
         <Button Content="生成" Click="Generate_Click" Padding="14,6" />
       </WrapPanel>
       <WrapPanel Margin="0,0,0,12">
+        <Button x:Name="BackButton" Content="返回余额表" Click="Back_Click" Visibility="Collapsed" Padding="14,6" Margin="0,0,8,0"/>
         <Button Content="导出 CSV" Click="ExportCsv_Click" Padding="14,6" Margin="0,0,8,0"/>
         <Button Content="导出分页 HTML" Click="ExportHtml_Click" Padding="14,6" Margin="0,0,8,0"/>
         <Button Content="Windows 打印" Click="Print_Click" Padding="14,6" Margin="0,0,16,0"/>

@@ -3,6 +3,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
 using Caiwu.Contracts;
 using Caiwu.Desktop.Presentation;
 using Caiwu.Reporting;
@@ -15,6 +17,10 @@ public partial class ReportCenterWindow : Window
     private readonly Func<ReportKind, string?, DateOnly, DateOnly, ReportDocument> _build;
     private readonly Action<Guid, Window> _openVoucher;
     private ReportDocument? _document;
+    private sealed record ViewState(int Kind, string? Account, DateTime? From, DateTime? To,
+        string? RowKey, int Occurrence, double Vertical, double Horizontal);
+    private ViewState? _parentView;
+    private long _renderVersion;
 
     public ReportCenterWindow(IReadOnlyList<Account> accounts, DateOnly from, DateOnly to,
         Func<ReportKind, string?, DateOnly, DateOnly, ReportDocument> build, Action<Guid, Window> openVoucher)
@@ -33,6 +39,7 @@ public partial class ReportCenterWindow : Window
         {
             if (FromInput.SelectedDate is not { } from || ToInput.SelectedDate is not { } to) throw new LedgerValidationException("请选择完整期间。");
             _document = _build(Kind, AccountInput.SelectedValue as string, DateOnly.FromDateTime(from), DateOnly.FromDateTime(to));
+            _renderVersion++;
             ReportGrid.Columns.Clear();
             for (var i = 0; i < _document.Columns.Count; i++)
             {
@@ -48,7 +55,55 @@ public partial class ReportCenterWindow : Window
         }
         catch (Exception ex) { ErrorText.Text = ex.Message; return false; }
     }
-    private void Generate_Click(object sender, RoutedEventArgs e) => Generate();
+    private void Generate_Click(object sender, RoutedEventArgs e)
+    { _parentView = null; BackButton.Visibility = Visibility.Collapsed; Generate(); }
+    private static IEnumerable<T> Visuals<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        {
+            var child = VisualTreeHelper.GetChild(root, i);
+            if (child is T found) yield return found;
+            foreach (var descendant in Visuals<T>(child)) yield return descendant;
+        }
+    }
+    private string RowKey(ReportRow row) => row.VoucherId is { } id
+        ? Kind == ReportKind.VoucherList ? "voucher:" + id : "ledger:" + id + ":" + row.AccountCode + ":" + string.Join("\u001f", row.Cells.Select(c => c.DisplayText))
+        : "account:" + row.AccountCode;
+    private ViewState CaptureView()
+    {
+        var scroll = Visuals<ScrollViewer>(ReportGrid).FirstOrDefault();
+        var selected = ReportGrid.SelectedItem as ReportRow; var key = selected is null ? null : RowKey(selected);
+        var occurrence = selected is null ? 0 : ReportGrid.Items.Cast<ReportRow>().TakeWhile(r => !ReferenceEquals(r, selected)).Count(r => RowKey(r) == key);
+        return new(KindInput.SelectedIndex, AccountInput.SelectedValue as string, FromInput.SelectedDate, ToInput.SelectedDate,
+            key, occurrence, scroll?.VerticalOffset ?? 0, scroll?.HorizontalOffset ?? 0);
+    }
+    private void RestoreView(ViewState view)
+    {
+        var version = _renderVersion;
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+        {
+            if (version != _renderVersion) return;
+            ReportGrid.UpdateLayout();
+            var selected = view.RowKey is null ? null : ReportGrid.Items.Cast<ReportRow>().Where(r => RowKey(r) == view.RowKey).Skip(view.Occurrence).FirstOrDefault();
+            ReportGrid.SelectedItem = selected;
+            if (selected is not null) ReportGrid.ScrollIntoView(selected);
+            Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() =>
+            {
+                if (version != _renderVersion) return;
+                ReportGrid.UpdateLayout();
+                var scroll = Visuals<ScrollViewer>(ReportGrid).FirstOrDefault();
+                scroll?.ScrollToVerticalOffset(view.Vertical); scroll?.ScrollToHorizontalOffset(view.Horizontal);
+            }));
+        }));
+    }
+    private void Back_Click(object sender, RoutedEventArgs e)
+    {
+        if (_parentView is not { } view) return;
+        KindInput.SelectedIndex = view.Kind; AccountInput.SelectedValue = view.Account;
+        FromInput.SelectedDate = view.From; ToInput.SelectedDate = view.To;
+        if (!Generate()) return;
+        _parentView = null; BackButton.Visibility = Visibility.Collapsed; RestoreView(view);
+    }
     private void ExportCsv_Click(object sender, RoutedEventArgs e) => Export(false);
     private void ExportHtml_Click(object sender, RoutedEventArgs e) => Export(true);
     private void Export(bool html)
@@ -76,9 +131,16 @@ public partial class ReportCenterWindow : Window
         if (ReportGrid.SelectedItem is not ReportRow row) return;
         try
         {
-            if (row.VoucherId is { } id) { _openVoucher(id, this); Generate(); }
+            if (row.VoucherId is { } id)
+            {
+                var detailView = CaptureView(); _openVoucher(id, this);
+                if (Generate()) RestoreView(detailView);
+            }
             else if (row.AccountCode is { } account && Kind == ReportKind.TrialBalance)
-            { KindInput.SelectedIndex = 1; AccountInput.SelectedValue = account; Generate(); }
+            {
+                var parent = CaptureView(); KindInput.SelectedIndex = 1; AccountInput.SelectedValue = account;
+                if (Generate()) { _parentView = parent; BackButton.Visibility = Visibility.Visible; }
+            }
         }
         catch (Exception ex) { ErrorText.Text = ex.Message; }
     }
