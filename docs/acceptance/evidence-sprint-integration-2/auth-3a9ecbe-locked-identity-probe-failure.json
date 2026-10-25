@@ -1,0 +1,499 @@
+{
+  "success": false,
+  "actualWindowsWpf": true,
+  "syntheticOnly": true,
+  "captureMethod": "Win32 PrintWindow, complete native window including non-client frame; no image resize or crop",
+  "checkoutCommit": "3a9ecbe168a0e255028936b36de62d8bcc2d0e01",
+  "sourceTree": "febb3c197fb37b1195711442f384abb5ff86039f",
+  "generatedAtUtc": "2026-10-25T10:53:51.1058578+00:00",
+  "installedUiFonts": [
+    "Microsoft YaHei",
+    "Microsoft YaHei UI",
+    "NSimSun",
+    "Segoe Fluent Icons",
+    "Segoe MDL2 Assets",
+    "Segoe Print",
+    "Segoe Script",
+    "Segoe UI",
+    "Segoe UI Emoji",
+    "Segoe UI Historic",
+    "Segoe UI Symbol",
+    "Segoe UI Variable Display",
+    "Segoe UI Variable Small",
+    "Segoe UI Variable Text",
+    "SimSun",
+    "SimSun-ExtB",
+    "SimSun-ExtG"
+  ],
+  "checks": [
+    "Original navigation and readable voucher columns",
+    "Actual rendered Chinese body uses YaHei UI and amount glyphs use Segoe, with neutral normal-weight body text",
+    "Modern button template, native automation peer and keyboard focus traversal"
+  ],
+  "fontObservations": [
+    {
+      "file": "01-workspace.png",
+      "text": "\u5F53\u524D\u64CD\u4F5C\u5458",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u865A\u6784\u6D4B\u8BD5\u5236\u5355\u4EBA",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#5C000000",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\uE70D",
+      "declaredFamily": "Segoe Fluent Icons, Segoe MDL2 Assets",
+      "size": 10,
+      "weight": "Normal",
+      "foreground": "#5C000000",
+      "actualFamilies": [
+        "Segoe Fluent Icons"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u65B0\u5EFA\u8D26\u5957",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u6253\u5F00\u8D26\u5957",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "SemiBold",
+      "foreground": "#FFFFFFFF",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u793A\u4F8B\u5355\u4F4D \u00B7 \u754C\u9762\u9A8C\u8BC1",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 25,
+      "weight": "SemiBold",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u5C0F\u4F01\u4E1A \u00B7 2026\u5E74\u5EA6 \u00B7 \u5F53\u524D\u671F\u95F4 2026-10 \u00B7 \u5B9E\u9A8C\u6A21\u677F",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u5F53\u524D\u671F\u95F4 2026-10    \u8D26\u5957\uFF1Asynthetic-visual-fffa43dfc55c43e6a503deea801d",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 12,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u5F00\u53D1\u9884\u89C8 \u00B7 \u5C1A\u672A\u5B8C\u6210\u751F\u4EA7\u8D26\u52A1\u9A8C\u6536",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 12,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "Ctrl\u002BN \u65B0\u589E\u51ED\u8BC1 \u00B7 F4 \u79D1\u76EE\u67E5\u627E \u00B7 F7 \u5E73\u8861\u590D\u5236 \u00B7 F10 \u5907\u4EFD",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF405C73",
+      "actualFamilies": [
+        "Segoe UI Variable",
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u5DE5\u4F5C\u53F0",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "SemiBold",
+      "foreground": "#FF174FAC",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u51ED\u8BC1\u5E8F\u65F6\u7C3F",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u4F1A\u8BA1\u79D1\u76EE",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u671F\u521D\u4F59\u989D",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u79D1\u76EE\u4F59\u989D\u8868",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "01-workspace.png",
+      "text": "\u660E\u7EC6\u5206\u7C7B\u8D26",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "2026-10-12",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u8BB0-0001",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u8D2D\u5165\u6750\u6599\uFF08\u65E0\u7A0E\u6D4B\u8BD5\uFF09",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "10,000.00",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5DF2\u8BB0\u8D26",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 12,
+      "weight": "SemiBold",
+      "foreground": "#FF22684B",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5236\u5355\u5458",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5BA1\u6838\u5458",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5F53\u524D\u64CD\u4F5C\u5458",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u865A\u6784\u6D4B\u8BD5\u5236\u5355\u4EBA",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#5C000000",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\uE70D",
+      "declaredFamily": "Segoe Fluent Icons, Segoe MDL2 Assets",
+      "size": 10,
+      "weight": "Normal",
+      "foreground": "#5C000000",
+      "actualFamilies": [
+        "Segoe Fluent Icons"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u65B0\u5EFA\u8D26\u5957",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u6253\u5F00\u8D26\u5957",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "SemiBold",
+      "foreground": "#FFFFFFFF",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u793A\u4F8B\u5355\u4F4D \u00B7 \u754C\u9762\u9A8C\u8BC1",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 25,
+      "weight": "SemiBold",
+      "foreground": "#FF202938",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5C0F\u4F01\u4E1A \u00B7 2026\u5E74\u5EA6 \u00B7 \u5F53\u524D\u671F\u95F4 2026-10 \u00B7 \u5B9E\u9A8C\u6A21\u677F",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5F53\u524D\u671F\u95F4 2026-10    \u8D26\u5957\uFF1Asynthetic-visual-fffa43dfc55c43e6a503deea801d",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 12,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5F00\u53D1\u9884\u89C8 \u00B7 \u5C1A\u672A\u5B8C\u6210\u751F\u4EA7\u8D26\u52A1\u9A8C\u6536",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 12,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI",
+        "Segoe UI Variable"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "Ctrl\u002BN \u65B0\u589E\u51ED\u8BC1 \u00B7 F4 \u79D1\u76EE\u67E5\u627E \u00B7 F7 \u5E73\u8861\u590D\u5236 \u00B7 F10 \u5907\u4EFD",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF405C73",
+      "actualFamilies": [
+        "Segoe UI Variable",
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u5DE5\u4F5C\u53F0",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u51ED\u8BC1\u5E8F\u65F6\u7C3F",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "SemiBold",
+      "foreground": "#FF174FAC",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u4F1A\u8BA1\u79D1\u76EE",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u671F\u521D\u4F59\u989D",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u79D1\u76EE\u4F59\u989D\u8868",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    },
+    {
+      "file": "02-vouchers.png",
+      "text": "\u660E\u7EC6\u5206\u7C7B\u8D26",
+      "declaredFamily": "Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI",
+      "size": 14,
+      "weight": "Normal",
+      "foreground": "#FF596B82",
+      "actualFamilies": [
+        "Microsoft YaHei UI"
+      ]
+    }
+  ],
+  "reportCellMeasurements": [],
+  "screenshots": [
+    {
+      "file": "01-workspace.png",
+      "width": 1920,
+      "height": 1080,
+      "dpiX": 96,
+      "dpiY": 96,
+      "contentWidthDip": 1904,
+      "contentHeightDip": 1041,
+      "sha256": "89c81cba92e3db6b735848d5355b8174a742c68d905c81ac557676989bbd0563"
+    },
+    {
+      "file": "02-vouchers.png",
+      "width": 1920,
+      "height": 1080,
+      "dpiX": 96,
+      "dpiY": 96,
+      "contentWidthDip": 1904,
+      "contentHeightDip": 1041,
+      "sha256": "08b83d5d8c8f89a0674f61d1ecc8706afb84decda699b2a6b4b4610efaf9dd0b"
+    }
+  ],
+  "error": "System.InvalidOperationException: Editable ComboBox fell back to a legacy template.\r\n   at Program.Require(Boolean condition, String message) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.VisualReview\\Program.cs:line 279\r\n   at Program.Main(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.VisualReview\\Program.cs:line 88"
+}

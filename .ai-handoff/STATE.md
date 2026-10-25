@@ -2,6 +2,8 @@
 
 ## 本分支第二阶段接续
 
+2026-10-25 10:57 UTC本阶段收尾：核心完整Windows基线1f4e9ea14aad44de3a2c6673811808260ee43922/run40184804270成功；额外认证候选生产树74fc20d、最终测试代码10e38ff65313aae5106a6b55c42790d47345b8fb定点40186708406成功（旧窗口6/焦点2/视觉10），但14新窗口/真实产品启动/候选全量/安装尚未验。Managed9ca1deb和Feature新末段未接入。后续QA先读docs/acceptance/evidence-sprint-integration-2/candidate-packaging-handoff.md；不解除暂停、不把未暂停RID打包路径称为clean。
+
 `codex/sprint-integration-2` 的当前状态、导入来源、实际 Windows 证据和未完成项见 [第二阶段集成记录](../docs/acceptance/sprint-integration-2.md)，草稿 PR16 目标是 `codex/windows-revalidation`。以下原有记录描述较早的 `codex/windows-mvp` 阶段，不能代替第二阶段实际验证。交付暂停门槛仍在，未生成新分发包或合并 main。
 
 2026-10-25；实际工作树 `/workspace/caiwu-suite-dev`，仅 `codex/windows-mvp` / 草稿 PR1，不合main、不改私有权限或原安装包。更早的中间状态已由git历史保留，此处只记当前事实。

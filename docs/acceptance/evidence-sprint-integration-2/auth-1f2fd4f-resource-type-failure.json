@@ -1,0 +1,39 @@
+{
+  "checkoutCommit": "1f2fd4f4eba7ee25f64c359b8ee9353358e19f32",
+  "actualWindowsWpf": true,
+  "mechanism": "Six isolated real production WPF processes, actual SQLite competing writers and same-process native confirmations; individual watchdogs preserve partial failures.",
+  "physicalKeyboardImeTested": false,
+  "failures": 6,
+  "results": [
+    {
+      "id": "OPENING",
+      "status": "FAIL",
+      "detail": "Process exited -532462766 without source-bound evidence."
+    },
+    {
+      "id": "ACCOUNT",
+      "status": "FAIL",
+      "detail": "Process exited -532462766 without source-bound evidence."
+    },
+    {
+      "id": "DELETE",
+      "status": "FAIL",
+      "detail": "Process exited -532462766 without source-bound evidence."
+    },
+    {
+      "id": "REVIEW",
+      "status": "FAIL",
+      "detail": "Process exited -532462766 without source-bound evidence."
+    },
+    {
+      "id": "POST",
+      "status": "FAIL",
+      "detail": "Process exited -532462766 without source-bound evidence."
+    },
+    {
+      "id": "SAME-IDENTITY-RESTORE",
+      "status": "FAIL",
+      "detail": "Process exited -532462766 without source-bound evidence."
+    }
+  ]
+}

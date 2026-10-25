@@ -1,0 +1,59 @@
+{
+  "checkoutCommit": "10e38ff65313aae5106a6b55c42790d47345b8fb",
+  "productionSourceTree": "febb3c197fb37b1195711442f384abb5ff86039f",
+  "actualWindowsWpf": true,
+  "nativeKeyboardInput": true,
+  "physicalKeyboardOrImeTested": false,
+  "mechanism": "Actual production MainWindow/editor/account picker and SQLite; native SendInput F4/Escape/Enter/Unicode. Focus is prepared only before each scenario, never restored by the probe after a modal closes.",
+  "os": "Microsoft Windows 10.0.26100",
+  "executedAtUtc": "2026-10-25T10:56:31.8928456+00:00",
+  "failures": 0,
+  "results": [
+    {
+      "id": "F4-CANCEL-RETAINS-FOCUS-INPUT",
+      "status": "PASS"
+    },
+    {
+      "id": "F4-ACCEPT-NEXT-CELL-NATIVE-INPUT",
+      "status": "PASS"
+    }
+  ],
+  "observations": [
+    {
+      "id": "F4-CANCEL-RETAINS-FOCUS-INPUT",
+      "stage": "picker-search",
+      "search": "1002",
+      "focused": "TextBox",
+      "dpi": 96
+    },
+    {
+      "id": "F4-CANCEL-RETAINS-FOCUS-INPUT",
+      "stage": "returned-editor",
+      "Summary": "focus-input-keep-314",
+      "AccountCode": "",
+      "DebitText": "",
+      "column": 0,
+      "focused": "DataGridCell",
+      "gridFocusWithin": true,
+      "dpi": 96
+    },
+    {
+      "id": "F4-ACCEPT-NEXT-CELL-NATIVE-INPUT",
+      "stage": "picker-search",
+      "search": "1002",
+      "focused": "TextBox",
+      "dpi": 96
+    },
+    {
+      "id": "F4-ACCEPT-NEXT-CELL-NATIVE-INPUT",
+      "stage": "returned-editor",
+      "Summary": "focus-input-keep-314",
+      "AccountCode": "1002",
+      "DebitText": "42.75",
+      "column": 3,
+      "focused": "TextBox",
+      "gridFocusWithin": true,
+      "dpi": 96
+    }
+  ]
+}
