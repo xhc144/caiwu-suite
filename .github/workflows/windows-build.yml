@@ -32,6 +32,10 @@ jobs:
         if: always()
         shell: pwsh
         run: ./tests/Caiwu.Acceptance/HighResolution/run.ps1 -OutputDirectory artifacts/high-resolution
+      - name: Inspect modern resources and native controls with six actual window captures
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.VisualReview/run.ps1 -OutputDirectory artifacts/verification/modern
       - name: Run independent eight WPF interaction regressions despite component failures
         if: always()
         shell: pwsh

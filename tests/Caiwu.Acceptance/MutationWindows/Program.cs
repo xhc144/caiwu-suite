@@ -26,8 +26,12 @@ internal static class Program
         output = Path.GetFullPath(args[0]); Directory.CreateDirectory(output);
         var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         backend = (DesktopBackend)typeof(App).GetMethod("CreateBackend", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
-        foreach (var name in new[] { "OPENING", "ACCOUNT", "DELETE", "REVIEW", "POST", "SAME-IDENTITY-RESTORE" })
+        var supported = new[] { "OPENING", "ACCOUNT", "DELETE", "REVIEW", "POST", "SAME-IDENTITY-RESTORE" };
+        var selected = args.Length > 1 ? new[] { args[1] } : supported;
+        if (selected.Any(name => !supported.Contains(name))) throw new ArgumentException("Unknown mutation scenario.");
+        foreach (var name in selected)
         {
+            Console.WriteLine("START " + name);
             try { Run(name); results.Add(new { id = name, status = "PASS" }); }
             catch (Exception e) { results.Add(new { id = name, status = "FAIL", detail = e.ToString() }); Console.Error.WriteLine(name + ": " + e); }
             finally
@@ -163,12 +167,21 @@ internal static class Program
             var text = new StringBuilder(); EnumChildWindows(dialog, (child, _) => { var part = new StringBuilder(2048); GetWindowText(child, part, part.Capacity); text.AppendLine(part.ToString()); return true; }, IntPtr.Zero);
             File.AppendAllText(Path.Combine(output, "native-dialogs.jsonl"), JsonSerializer.Serialize(new { title = item.Title, text = text.ToString() }) + Environment.NewLine);
             if (item.Title == "确认记账") Check(text.ToString().Contains("10.00"), "Actual native confirmation did not show the original ten-unit amount.");
-            item.BeforeClick?.Invoke(); var button = GetDlgItem(dialog, item.Button); Check(button != IntPtr.Zero, "Native confirmation button missing."); PostMessage(button, 0x00F5, IntPtr.Zero, IntPtr.Zero);
+            item.BeforeClick?.Invoke(); var button = GetDlgItem(dialog, item.Button);
+            Check(button != IntPtr.Zero && IsWindowVisible(button) && IsWindowEnabled(button), "Native confirmation button missing/disabled/hidden.");
+            // BM_CLICK requires an active dialog (Microsoft's documented precondition).
+            // Only the same-process dialog found above can receive this native activation/click.
+            SetForegroundWindow(dialog);
+            Check(SendMessageTimeout(button, 0x00F5, IntPtr.Zero, IntPtr.Zero, 0x0002, 5000, out _) != IntPtr.Zero,
+                "Native confirmation click did not complete within five seconds.");
+            var closeDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (FindDialog(item.Title) == dialog && DateTime.UtcNow < closeDeadline) Thread.Sleep(30);
+            Check(FindDialog(item.Title) != dialog, "Native confirmation remained visible after clicking its real button.");
         }
     });
     private static IntPtr FindDialog(string title)
     {
-        var found = IntPtr.Zero; EnumWindows((h, _) => { GetWindowThreadProcessId(h, out var pid); var text = new StringBuilder(256); GetWindowText(h, text, text.Capacity); var cls = new StringBuilder(64); GetClassName(h, cls, cls.Capacity); if (pid == Environment.ProcessId && text.ToString() == title && cls.ToString() == "#32770") { found = h; return false; } return true; }, IntPtr.Zero); return found;
+        var found = IntPtr.Zero; EnumWindows((h, _) => { GetWindowThreadProcessId(h, out var pid); var text = new StringBuilder(256); GetWindowText(h, text, text.Capacity); var cls = new StringBuilder(64); GetClassName(h, cls, cls.Capacity); if (pid == Environment.ProcessId && IsWindowVisible(h) && text.ToString() == title && cls.ToString() == "#32770") { found = h; return false; } return true; }, IntPtr.Zero); return found;
     }
     private static void Capture(Window window, string name)
     {
@@ -182,5 +195,8 @@ internal static class Program
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int count);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder text, int count);
     [DllImport("user32.dll")] private static extern IntPtr GetDlgItem(IntPtr window, int id);
-    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
+    [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] private static extern bool IsWindowEnabled(IntPtr window);
+    [DllImport("user32.dll", SetLastError = true)] private static extern IntPtr SendMessageTimeout(IntPtr window, uint message, IntPtr wparam, IntPtr lparam, uint flags, uint timeout, out UIntPtr result);
 }
