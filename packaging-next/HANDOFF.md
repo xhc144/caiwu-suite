@@ -30,3 +30,23 @@
 5. 既有可信签名设施、可控HTTPS feed、发布者pin与人工审批前置到位后再启用检查/暂存；当前无自动应用更新闭环。没有生成/索取密钥证书，没有导入信任、购买许可、改安全设置或访问真实账务。
 
 本轮没有审批拒绝、没有参考安装器执行，也没有公开发布。分支/草稿PR若成功，准确链接由任务最终回复提供；不会合入main。
+
+## 最终干净构建与远端交付
+
+- 实现提交：`983e2e31ee9f66a4204dcddc154c1a0ab097d4f9`，已推送私有 `codex/windows-delivery`，草稿PR为 https://github.com/xhc144/caiwu-suite/pull/6 ，base仍是codex/windows-mvp；未合main。
+- 两个独立干净源码目录（原工作区与detached clean worktree）使用常规locked mode完整发布成功，安装器、便携包及payload manifest字节相同。`evidence/983e2e3/`提交准确manifest、80项逐项报告、SHA256SUMS与reproducibility.json。二进制按该实现提交构建，后续本交接/证据提交不属于该产物的源commit。
+- Installer 129,530,445 bytes；SHA256 `468d959f23d8e7d301de975d5f139a9d78412305030d59905dd9760d421fefbe`。Portable ZIP 225,085,301 bytes；SHA256 `2ac2533b537f7ff33a1558e0cc57733fc27d9d64144c8e7f4f80bd6488316441`。标准SHA256SUMS校验全部通过。
+- 本环境二进制及报告：`artifacts/delivery/clean-first/`。另有聚合ZIP `artifacts/delivery/caiwu-windows-delivery-983e2e3.zip`，354,698,701 bytes，SHA256 `f4e805d9fcf5fa7264986e9e1684c1d1aece6d2edb34be6d73372e664d778218`，包含installer/portable/manifest/tests/rebuild证据。
+- Library保存 blocked，结果已知未执行上传：当前技能的library_upload.py在hosted apps tools/list返回HTTP401，尚未进行prepare/transfer/finalize；无Library文件ID，无部分上传或不确定结果。未改用direct upload，因为Library技能明确禁止开始helper流程后切换direct action。此为助手鉴权错误，并非自动审批拒绝；后续仅在helper鉴权修复后重试相同文件，不盲目重复。该阻断不影响已完成私有分支/草稿PR与可复现源码交付。
+
+## 有限 Windows 验收准备续作
+
+- 按用户续令，只改 delivery/test ownership，未重试 Library401，也没有换上传路径；旧包仍保留。主集成已在不可变 `0377ce764bc5a191c232c3f50da602a5ca2c0c0c` 暂停分发。发现后本模块在 build.py/workflow 加同等暂停门槛，无绕过开关；不再生成新分发包以替代独审复查。
+- 原Windows脚本两处不足已修：busy测试从人为持锁改成真实安装 launcher+WPF 窗口在用时调用native升级；新增安装目录工具的SQLite inspect/backup/restore语义验证和卸载后三类文件SHA保留。全部runtime命令均来自安装目录，不运行源项目或参考EXE。
+- 新 `BookOperations`/CLI 显式单账套命令内部持两租约，只向新的backup/recovered文件写入，不覆盖、拒越界/链接。该工具没有声明完整Desktop登记或开启升级；辅助银行余额对歧义同名账户返回null。
+- success：110项.NET10组件/托管CLI回归通过；Linux上托管CLI实际子进程含中文/空格路径、错误参数、危险目标及跨进程租约。明确publishedWindowsArtifactExecuted=false。
+- success：官方PowerShell7.6.7 Linux tarball实际下载，对照官方GitHub资产SHA256验证；标准XDG缓存放工作区，未改HOME/系统。PowerShell parser验证3个交付脚本，抽取真实Same-Book断言做7个独立正确/错误值检查通过；4个Python暂停门槛测试通过（含确保任何tool/output产生前阻断）。这些不是Windows行为实测。
+- 具体主Desktop文件/方法/最小改法已合并进README的适配表，尤其指出launcher已持锁时Desktop不能再次获取同名非共享锁；恢复副本要正式Open/登记。最新主packaging已有通用Exe测试调度，不再提出过时的文件名白名单要求。
+- unverified：Windows native安装、真实窗口忙态、安装EXE备份恢复、签名门槛与卸载均待GitHub Windows runner。在暂停独审门槛存在时，候选workflow故意不产新包、不启动安装验收。严格managedDesktop输入只读观察真实清单，不制造清单或切换标记；正向版本升级依然未完成。
+- success：在隔离worktree只把本模块两目录覆盖到主集成不可变0377ce764bc5a191c232c3f50da602a5ca2c0c0c，针对其最新Contracts（含ExpectedRevision）和SQLite再次跑相同110项，全部通过；其他owner源码未改。该worktree真实暂停文件也实际阻断build.py，且在任何tool执行或输出目录创建前返回非零。
+- evidence/windows-harness-preparation记录两份110项报告、官方PowerShell下载证据及验证摘要。候选workflow的true/false两个严格模式渲染后共14个PowerShell run块均解析通过。窗口忙态probe同时校对实际安装路径、非零窗口句柄与已核对的主窗口标题，避免把启动错误消息框算作主窗口成功。

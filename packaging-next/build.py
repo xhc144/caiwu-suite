@@ -29,6 +29,12 @@ def sha(path):
         return hashlib.file_digest(stream, 'sha256').hexdigest()
 
 
+def ensure_delivery_allowed(root):
+    pause = Path(root) / 'docs/acceptance/DELIVERY_PAUSED.md'
+    if pause.exists() or pause.is_symlink():
+        raise RuntimeError('Independent acceptance has paused distribution. Resolve docs/acceptance/DELIVERY_PAUSED.md through its owning review; no installer or distribution ZIP is generated.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', required=True, help='Explicit four-part Windows product version')
@@ -39,6 +45,7 @@ def main():
     parser.add_argument('--allow-dirty', action='store_true', help='Local preview only; recorded in build provenance')
     parser.add_argument('--skip-tests', action='store_true')
     options = parser.parse_args()
+    ensure_delivery_allowed(ROOT)
     if run([options.dotnet, '--version'], capture=True) != SDK:
         raise RuntimeError(f'Exact official SDK {SDK} is required')
     if run([options.makensis, '-VERSION'], capture=True) != NSIS:

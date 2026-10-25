@@ -2,6 +2,11 @@
 name: Windows delivery acceptance
 on:
   workflow_dispatch:
+    inputs:
+      require_managed_desktop:
+        description: Fail unless the installed Desktop actually registers its synthetic book and advertises the audited managed-data contract
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -16,6 +21,18 @@ jobs:
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: 10.0.402
+      - name: Parse acceptance scripts and check independent assertion failures
+        shell: pwsh
+        run: |
+          ./tests/Caiwu.Delivery.Tests/Test-WindowsHarness.ps1
+          python tests/Caiwu.Delivery.Tests/test_build_gate.py
+          if ($LASTEXITCODE -ne 0) { throw 'Distribution-pause regression failed.' }
+      - name: Enforce independent acceptance distribution pause
+        shell: pwsh
+        run: |
+          if (Test-Path -LiteralPath 'docs/acceptance/DELIVERY_PAUSED.md') {
+            throw 'Distribution is paused by independent acceptance. This workflow must not generate a new installer or ZIP until the owning review removes the pause.'
+          }
       - name: Fetch hash-pinned official NSIS without installing it
         shell: pwsh
         run: python packaging-next/bootstrap-nsis.py --destination .tools/nsis
@@ -39,22 +56,29 @@ jobs:
           python packaging-next/build.py --version 0.1.0.2
           --makensis .tools/nsis/nsis-3.13/makensis.exe
           --out artifacts/delivery/next --skip-tests
-      - name: Install, run self-authored WPF, enforce update gates and uninstall
+      - name: Install actual artifacts, reject in-use upgrade, verify backup recovery and uninstall retention
         shell: pwsh
         run: >-
           ./packaging-next/Test-WindowsDelivery.ps1
           -Installer "${{ github.workspace }}/artifacts/delivery/first/caiwu-0.1.0.1-win-x64-setup.exe"
           -UpgradeInstaller "${{ github.workspace }}/artifacts/delivery/next/caiwu-0.1.0.2-win-x64-setup.exe"
           -OutputDirectory "${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}"
+          -RequireManagedDesktop:([bool]::Parse('${{ inputs.require_managed_desktop }}'))
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
           name: caiwu-delivery-${{ github.run_id }}
           path: |
+            docs/acceptance/DELIVERY_PAUSED.md
             artifacts/delivery/first/*setup.exe
             artifacts/delivery/first/*portable.zip
             artifacts/delivery/first/*.json
             artifacts/delivery/first/SHA256SUMS
             ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/windows-acceptance.json
-            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/wpf/
+            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/book-before.json
+            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/backup-restore.json
+            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/data/verification/
+            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/data/.delivery-backups/
+            ${{ runner.temp }}/caiwu-delivery-acceptance-${{ github.run_id }}-${{ github.run_attempt }}/data/recovered/
+          include-hidden-files: true
           if-no-files-found: warn
