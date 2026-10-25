@@ -14,7 +14,7 @@
 4. **缺可编译原工程，不等于不能保留原软件的使用方式。** 已有菜单树、PBU 控件位置、窗口祖先、快捷键和事件摘要，为保留布局与操作路径提供了具体依据。但“全部行为和原账套兼容”仍须经过源码／恢复完整性及运行回归验证，不能仅凭描述保证。
 5. **优先核实原 PB 源工程，暂不切换实现路线。** 若现存材料只有编译 EXE/PBD，先判断能否恢复成可编译 PB 工程；若最终只能行为保持式重建，应把它作为改变底层实现的独立方案交用户决定。本说明没有采用重建，也没有批准继续扩展旧 WPF 预览。
 
-结论的范围是本提交、远端可见分支／Release 元数据和本环境。它不证明用户、原作者或其他已授权工作区绝对没有源码；也不假设我们已经拥有这些未见材料、凭据或工具许可。
+结论的范围是本提交、远端可见分支／Release 元数据、本环境，以及下述补查的 archive 标签及其可达历史。它不证明用户、原作者或其他已授权工作区绝对没有源码；也不假设我们已经拥有这些未见材料、凭据或工具许可。
 
 ## 2. 证据清单：有什么，不能据此声称什么
 
@@ -33,9 +33,67 @@
 | [reference-static 说明](../reference-static/README.md)、[provenance](../reference-static/provenance.json) | 记录原提取工作区位置、哈希及未上传原载荷；这些路径仅对原任务容器有效 | 本环境检查该提取目录不存在。DB/PBD/资源是清单可见，原件本轮不可读；不能冒称已测试连接或可恢复 |
 | [原 UI 证据入口](../reference-ui/README.md) | 11 张历史手册截图的私有研究包；旧 Wine32 观察失败，未见原程序窗口 | 手册和静态布局可以参考，不能标为本版原程序实机基线。已有失败不再描述成“尚未获授权”，本轮也没有重新运行安装器 |
 
-本轮另用只读 GitHub 元数据核查：仓库为私有；远端当时只列出 `main`；Release `reference-installers` 仅列三份安装器，分别为 `chengben-kuaiji-setup.exe`（57,426,599 B）、`minfeiqi-setup.exe`（52,616,430 B）、`qingsong-kuaiji-setup.exe`（48,368,416 B），没有源工程资产。没有下载这些资产。未遍历全部历史提交，不能据此断言历史从未保存过源码。
+首轮只读 GitHub 元数据核查：仓库为私有；当时 `git ls-remote --heads` 只列出 `main`，这只说明分支情况，不包含 archive 标签；Release `reference-installers` 仅列三份安装器，分别为 `chengben-kuaiji-setup.exe`（57,426,599 B）、`minfeiqi-setup.exe`（52,616,430 B）、`qingsong-kuaiji-setup.exe`（48,368,416 B），没有源工程资产。没有下载这些资产。首轮未检查历史的限制，已按下述有界补查收窄。
 
 [旧 gap-analysis](../original-analysis/gap-analysis.md) 比较的是 0.1.0.4 旧实现，不是本次升级授权。它可以揭示旧实现遗漏，不能把“原账套导入可选”、缺少反过账／反结账、删减模块或改变报表体系作为本次允许的范围。
+
+### archive 引用与历史树补查（2026-10-25 17:03 UTC）
+
+补查 `git ls-remote origin`，发现 **38 个 `refs/tags/archive/*`**。使用 `--filter=blob:none --no-tags --unshallow` 把这些已存在标签及 `reference-installers` 的提交／树取到本地专用 `refs/task-archive/*`／`refs/task-reference/*`，不检出历史产品版本，不改远端引用；随后针对性读取已有说明与脚本。检查范围是这些引用及固定 main 可达的 **287 个不同提交的每一份完整文件树，共 1,502 个历史路径**，不是只看标签顶端或仅按提交标题猜测。
+
+| 已枚举标签（均为 `refs/tags/archive/` 下） | 当时目标提交前缀 |
+|---|---|
+| `codex/accounting-rules` | `9956ec2d023a` |
+| `codex/book-copy-tools` | `8bbf8428ccd0` |
+| `codex/costing` | `398ed4a69480` |
+| `codex/costing-sprint` | `af0d0e34ab99` |
+| `codex/desktop-feature-wiring` | `9ec65f84ee47` |
+| `codex/final-private-packaging` | `977602081898` |
+| `codex/independent-acceptance` | `49de1be88c69` |
+| `codex/installed-bookflows-qa` | `a80f82acefcf` |
+| `codex/installed-financial-qa` | `e8ed1ce5f8e2` |
+| `codex/ledger-core` | `b2f59e3c93c7` |
+| `codex/local-operators` | `195743536539` |
+| `codex/managed-module-data` | `795f6d636a8d` |
+| `codex/minfeiqi-static-local-20261025` | `f260449781e9` |
+| `codex/modern-visuals` | `14f283ed3eb9` |
+| `codex/module-copy-summary-qa` | `079bfb62cbb6` |
+| `codex/module-financial-ui-qa` | `801e145b9c33` |
+| `codex/module-operators-qa` | `d7c43a063ee6` |
+| `codex/nonprofit-core` | `7b8e8b74dfa4` |
+| `codex/nonprofit-statements` | `cb71350b2b19` |
+| `codex/pb-static-toolkit-20261025` | `af4768dcecb7` |
+| `codex/reference-dialogs` | `bf75d563a325` |
+| `codex/release-candidate` | `2707a72ffe1b` |
+| `codex/report-designer` | `03ee6dac47a7` |
+| `codex/reporting` | `1a1f2810399f` |
+| `codex/sprint-integration-2` | `8cf5d4335af7` |
+| `codex/sqlite-create-race` | `4e8664d5db71` |
+| `codex/sqlite-store` | `d69a8b7c0c10` |
+| `codex/sqlite-windows-fixtures` | `9ea3c4ef3a86` |
+| `codex/storage-readback` | `ecc5225f7aaf` |
+| `codex/summary-catalog` | `dcda051a0c9e` |
+| `codex/ui-navigation-regressions` | `0f8fb850c75a` |
+| `codex/user-guide` | `4460fec7a9d3` |
+| `codex/voucher-copy` | `54871a004a83` |
+| `codex/windows-backup-sharing` | `aac622b12980` |
+| `codex/windows-delivery` | `ef17e64d18f7` |
+| `codex/windows-mvp` | `a49d426d8513` |
+| `codex/windows-revalidation` | `6a155a5b2dee` |
+| `docs/original-static-analysis` | `7317b6ce2cb9` |
+
+另查普通标签 `reference-installers@e240621e31a0071c61153818ef50a21b3c01faf8`，顶端只有两个跟踪文件，没有源工程。
+
+**历史树结果：**
+
+- 这 287 份提交树中，文件名以 `.pbl/.pbt/.pbw/.pbr` 或 `.sr[a-z0-9]+` 结尾的候选为 **0**；`project.json`、`libraries/`、`pbwork/`、`named/`、`ex/`、`datawindows-compact.json`、`template-schemas.json` 这些既有导出报告／输出路径候选为 **0**。
+- 同一范围没有 `.pbd/.exe/.dll/.db/.acd` 或 `.zip/.7z/.rar/.tgz/.tar/.gz/.bz2/.xz` 路径；因此没有通过这些常见部署／归档文件名发现另一份原载荷、源工程包或导出包。本次是文件树与路径核查，不声称已逐字解码所有任意命名 blob，也不覆盖不可达／服务器未公布的对象、外部制品和别的工作区。
+- [原版分析归档 `7317b6c`](https://github.com/xhc144/caiwu-suite/tree/7317b6ce2cb9c154e3fc4b13fb0bb2c8dfe0b1d3)包含当前的 `tools/pbdviewer-export`、`tools/original-analysis` 和结构说明，没有入库的原始 `project.json`／`libraries/*.json` 或恢复出的 PB 工程。[静态工具归档 `af4768d`](https://github.com/xhc144/caiwu-suite/tree/af4768dcecb715df84b24e70211af130ac997b6c)及[本地静态任务归档 `f260449`](https://github.com/xhc144/caiwu-suite/tree/f260449781e92c9e22ff6a188f28914b6a593e7c)保留通用只读解析器、合成测试和研究元数据；没有发现 main 以外新增的 `tools/` 脚本路径。
+- **发现 main 外的既有材料：** [独立验收归档 `49de1be` 的 `docs/reference-ui/static-templates/`](https://github.com/xhc144/caiwu-suite/tree/49de1be88c69138e2ab49d922f92ec9c1f51b0c1/docs/reference-ui/static-templates)有五个文件：`README.md`、`source-audit.json`、`source-index.csv`、`required-materials.csv` 和 `build_catalog.py`。前四份为早期材料入口／审计／需求清单，审计明确 `pending_original_materials`、原模板已核记录 0、未读取原空白 schema；它们不是可用源对象或完整导出结果。这个早期状态不抵消后来已入库的 220 表／44 模板分析。
+- 上述 `build_catalog.py`（历史加入提交 `e74407b5928ef9ec0892f8c6176bcd319f77ed0a`）从固定提交的**既有载荷清单和 PE 元数据**生成模板候选目录、同哈希分组和待解析请求。已读其全部代码；没有读取原载荷、恢复 SR*、导入 PB 或编译源工程的步骤。其拟生成的 `content-groups.json`／`parse-requests.json`／`template-data-records.csv`／`acd-name-matrix.csv` 等文件不在本次可达历史路径中；脚本存在不代表输出已经保存，更不代表原工程已恢复。本轮未执行它或重生成目录。
+- 对旧说明中实际出现的 `/workspace/caiwu-suite-investigation`、`/workspace/caiwu-static-program`、`/workspace/caiwu-suite-dev` 再次核查：本环境都不存在。`<pbwork>` 是文档占位符，没有可直接读取的真实路径；没有据此假定跨容器共享，没有访问拒绝后重试或绕过。
+
+**补查后的结论：** 已排查现存 archive 标签及上述可达历史，发现一套旧材料目录／生成脚本，仍未找到可编译原源对象、已存完整 PB 导出结果或额外的 PB 源工程恢复入口。下一步仍是核实已持有原材料的实际可读工作区及源／导出完整性，而非重跑安装包或转向功能子集。
 
 ## 3. 原程序结构及依赖：已知事实与待核项
 
@@ -173,7 +231,7 @@ PBU 是布局依据，不能用统一猜测倍率宣称已经还原像素。字�
 ## 9. 本轮完成与未完成
 
 - **完成：** 独立 `/workspace/caiwu-suite` checkout；固定 main 提交及私有仓库元数据；完整 Git 树的 PB 工程／源文件扩展名核查；现存产品项目、PB 导出器、生成脚本、原版分析 README／差距／数据／产品窗口／JSON、reference 清单和依赖元数据针对性核读；本说明。
-- **检查依据：** `git ls-tree -r --name-only HEAD` 为 1,144 个跟踪文件；按 PB 源／工程扩展名检查为空；CSV 453 行记录的扩展名统计与已存研究摘要相符；JSON 模板／表计数分别为 44／220。分支与 Release 检查为只读元数据请求。没有运行编译器、产品测试、原程序或安装器。
+- **检查依据：** 基线 `git ls-tree -r --name-only` 为 1,144 个跟踪文件；按 PB 源／工程扩展名检查为空；CSV 453 行记录的扩展名统计与已存研究摘要相符；JSON 模板／表计数分别为 44／220。补查 38 个 archive 标签、普通 `reference-installers` 标签和固定 main 可达的 287 个不同提交树，共 1,502 个历史路径，按源对象、既有报告和归档名称筛查，并针对性读取旧材料说明／脚本。没有运行编译器、产品测试、原程序或安装器。
 - **工作区说明：** `/workspace/.agents` 没有文件；固定仓库树未发现适用 `AGENTS.md`／`SKILL.md`／`.agents` 指令。使用工程交接技能，以已有记录和真实文件为证；遵守本次“只写此文件”，没有另建交接文件。环境挂载 `book-project` 未修改。
 - **尚缺：** 原 PB 开发源／可编译恢复结果、该批已有完整导出报告的可读位置、匹配的构建／Windows 基准环境、数据库连接及测试账套证据、实机逐窗口和部署回归。
 - **状态：** 路线核查完成；原工程直接 UI 修改因上述材料／环境未到位而未实施。无自动审批拒绝、无待决工具操作或结果不明的写入；材料缺失不伪装成权限拒绝。
