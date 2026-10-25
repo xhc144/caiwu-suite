@@ -71,6 +71,9 @@ internal static partial class Program
         var focused = AutomationElement.FocusedElement;
         if (focused.Current.ControlType != ControlType.Edit) throw new InvalidDataException("Native filename mnemonic did not focus an edit control.");
         ControlKey(0x41); Type(path);
+        // SendInput enqueues long UTF-16 paths; wait for actual native edit consumption.
+        // Do not accept a prefix or confirm before exact full-path readback.
+        Until(() => string.Equals(((ValuePattern)focused.GetCurrentPattern(ValuePattern.Pattern)).Current.Value.Trim('"'), path, StringComparison.OrdinalIgnoreCase), "native filename consumes the entire requested path", 15000);
         var entered = ((ValuePattern)focused.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
         var normalized = Path.GetFullPath(entered.Trim('"'));
         File.WriteAllText(Path.Combine(evidence, "native-path-" + Guid.NewGuid().ToString("N") + ".json"), JsonSerializer.Serialize(new { title, controlName = focused.Current.Name, automationId = focused.Current.AutomationId, entered, normalized, expected = path }, PayloadManifest.Json));

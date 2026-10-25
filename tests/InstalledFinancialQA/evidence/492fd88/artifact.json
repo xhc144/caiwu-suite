@@ -1,0 +1,13 @@
+{
+  "sourceCommit": "492fd887cdafb98fd67b8ddffdd43b5c1f07ce8e",
+  "runUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40192430675",
+  "conclusion": "failure",
+  "classification": "Controller path-input timing failure; no product defect demonstrated",
+  "artifactId": 12598538659,
+  "artifactBytes": 1583164,
+  "artifactSha256": "e4626a14d371ba57d0d973f28bbfdf7c5539202fb02bc0abee7cc3d979f1cb14",
+  "downloadedThroughSupportedGitHubTool": true,
+  "zipSha256Verified": true,
+  "costAlreadyObserved": "actual installed normal login, edit80→84, final250→254, allocation, managed save/register and independent JSON readback",
+  "notCompleted": ["cost UI reopen", "nonprofit", "designer", "four-codec restore"]
+}
