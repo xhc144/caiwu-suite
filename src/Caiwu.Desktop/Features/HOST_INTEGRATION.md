@@ -1,120 +1,63 @@
-# 新功能桌面接入交接
+# 实际桌面接线与交接
 
-## 10:20 UTC 接线更新（优先于下文最初 hook 交接）
+本分支已经实施 App 登录组合、Desktop 项目引用、MainWindow 初始化/身份菜单、四功能薄适配和民非预览。主 XAML/Themes、Contracts/Core/Storage、安装保护和仓库权限未改。生产接线所有权由根在本轮明确移交；没有另造插件框架或身份实现。
 
-根已明确移交 Desktop 项目引用、MainWindow 行为、App 组合根及相关测试适配。本分支现在已经实际加好五个项目引用、构造函数初始化与登录组合，不再仅留 hook。新增第五个依赖为 Operators `1957435365390756fd8267937fd0ec408b1e498f`（先 `7a1e673`），实际采用 `AuthorizedLedgerServiceFactory.BindSession`。原四个作者模块仍由根集成其源码，不在本任务重写。
+## 集成顺序
 
-App 在 `LocalApplicationData/CaiwuSuite/Operators` 使用真实 FileOperatorStore/LocalOperatorService，先首次设置，再显式登录；取消不创建 backend/MainWindow/可写账套会话。生产没有默认密码或跳过认证参数；旧 `--smoke-test` 现在拒绝并以 exit 2 结束，原 `Verification/**` 从发行程序集排除。`packaging/build.ps1` 的旧 smoke 调用须由 packaging owner 改成独立测试宿主，不能恢复产品认证后门。
+根先采用以下作者源码，再拣选本分支提交。Desktop 已有六个 ProjectReference，MainWindow 构造函数已自动调用 InitializeDesktopFeatures；不要再加第二处初始化。
 
-`App.CreateAuthenticatedBackend(operators, fixedLogin)` 是真实组合 API：Open→ReadLedger，Create/Restore→RestoreLedger，原 Delivery 源文件检查与 Storage 不覆盖规则保留；Core 只在固定登录的授权 factory 闭包内创建，九写三读集中守卫。现有 Backup handler 额外检查 BackupLedger。MainWindow 构造接受该真实 backend 与 `FeatureAuthentication`；没有认证时不创建 LedgerSession，四个新业务入口全部禁用并显示原因。顶栏 ComboBox 在行为代码中禁用任意姓名并显示本次登录的 DisplayName，`OperatorName()` 不读 UI 文本。系统管理菜单已接真实管理/本人改密/注销换人窗口。
+| 模块 | 固定源码 SHA |
+| --- | --- |
+| VoucherTools/WPF | 54871a004a836d76824b2c29959e5b22139f4e86 |
+| Summaries | dcda051a0c9ee364ccff4c2b4c7085f446fac39d |
+| BookTools/WPF，含并发发布 P1 修复 | 8bbf8428ccd0b656fec83c7a1ede828cd5691442 |
+| Costing/WPF | af0d0e34ab9963fc91cabb8a58aed558b34390f0 |
+| Operators/WPF，含集中授权适配 | 1957435365390756fd8267937fd0ec408b1e498f |
+| Nonprofit.Reporting/WPF | cb71350b2b19067e7a8704b74985d8cf0f15e1aa |
 
-注销/换人先撤销原 OperatorSession、关闭原 LedgerSession 增加 generation，再关闭主窗并由 App 重新登录、创建全新固定 backend；取消保持未登录。新窗口绑定原登录对象，复制计划只使用可信 ActorKey，保存通过集中装饰器传空旧姓名参数。摘要管理权限由注册明确指定（默认 PrepareVoucher），账套复制额外检查 RestoreLedger，成本只读预览检查 ReadLedger。后台授权轮询不会在 UI 线程读身份文件。
+Costing 若已有 398ed4a，只补 1d0ff00、af0d0e3。BookTools 必须保留 86a10e6→eb8f150→8bbf842 的修复结果，不能用旧发布代码。模块源码由其 owner 提交，本分支不重写它们。现有 solution 可经 ProjectReference 构建；根收齐模块后可由 root owner 把独立模块/测试加入 solution。
 
-`tests/Caiwu.Desktop.FeatureTests/Shared/SyntheticDesktopIdentity.cs` 仅在独立测试项目编译：正常创建虚构身份并登录，再调用真实组合 API；没有产品测试开关。既有 VisualReview、NativeFocus、HighResolution、MutationWindows、DualWindows、Wpf 与导航宿主已改用该夹具，保留原焦点、金额、快照、数据无变化与窗口输入断言；双进程共享虚构身份目录，并仍各自正常登录。产品主 XAML/Themes 未改。
+实际读取的集成基线为 5e21ac3，后续核对 b3b85eb 的 MainWindow/session 接口未变：_session、_displayOrigin、_voucherOrigin、Snapshot、VoucherGrid、VoucherListRow.Value。主窗口行为改动和 partial 已在固定模块组合里实际编译。
 
-**仍保留禁用：**App 没有伪造摘要附件登记或 BookTools Delivery 租约。当前 Delivery 的完整安装/数据校验作用域是 internal `Installation.WithExclusiveData`，public `AcquireLease` 仅安装锁，不能代替数据锁；本任务不复制这套内部协议或放宽保护。因此默认账套复制仍显示未配置原因。摘要目录/附件的整体备份恢复也没有现成宿主登记协议，当前保留清楚的实际配置接点和默认禁用，不能把任意字符串当成登记完成。
+## 生产登录与会话
 
-下文旧四引用/一处 hook 是最初的集成说明，当前源码已实施它们；当前必须使用以上第五依赖和真实登录组合，禁止回退为可编辑姓名。
+App 使用 LocalApplicationData/CaiwuSuite/Operators 的 FileOperatorStore/LocalOperatorService，位于安装目录之外。首次设置管理员后仍须显式登录；取消时不创建 backend、MainWindow 或可写账套会话。没有生产默认密码、任意身份输入或跳过认证参数。
 
-10:24 UTC：已追加第六个生产引用 `Caiwu.Nonprofit.Reporting/Wpf/Caiwu.Nonprofit.Reporting.Wpf.csproj`，固定源码 `cb71350b2b19067e7a8704b74985d8cf0f15e1aa`。真实分类面板进入“报表”菜单，仅民非制度可用；使用当前凭证查询中明确的完整月份，用户目录为 App 显式指定的 LocalPreviews/Nonprofit，再按 physical path + BookId 分隔。面板和宿主持续标记 JSON 尚未登记/备份，缺维度不猜测或默填零。受管数据 owner 所需的精确委托、租约作用域和附件收据见 [MANAGED_MODULE_API_REQUEST.md](MANAGED_MODULE_API_REQUEST.md)，不等待其 11:30 交付而延长本阶段。
+App.CreateAuthenticatedBackend(operators, fixedLogin) 是真实组合 API：Open 检查 ReadLedger；Create/Restore 检查 RestoreLedger，继续调用原 LedgerFilePolicy 和 Storage 不覆盖规则。AuthorizedLedgerServiceFactory.BindSession 把九个写入口、三个查询集中绑定到该次 OperatorSession；原 Core 只存在于 trustedFactory 闭包，UI 仅拿包装服务。Backup 额外检查 BackupLedger 和原显示会话，不在身份锁内弹窗。
 
-本改动只新增 `Features/**`、`MainWindow.Features.cs` 和 `tests/Caiwu.Desktop.FeatureTests/**`。主窗口行为及视觉 owner 仍独占原 `.xaml/.xaml.cs`、App、Theme、项目引用和 workflow。未接触书库、原安装包、真实账套或新派生 catalog。
+MainWindow(backend, authentication, featureOptions) 自动接线。authentication 缺失时不创建 LedgerSession，四个新业务入口全部禁用并说明原因。顶栏在行为代码中锁定为登录 DisplayName；OperatorName() 返回可信 ActorKey，不读取 ComboBox.Text。系统管理已接真实操作员管理、本人改密、注销换人窗口。管理员没有隐式账务特权，应创建/分配实际制单、审核等角色。
 
-## 根需要应用的最小接线
+注销/换人先撤销精确的旧 OperatorSession，再关闭 LedgerSession 增加 generation，随后关闭主窗；App 创建新的登录、backend、主窗。取消新登录保持未登录。角色/密码变化、注销或过期使旧服务失败；不会在保存瞬间取全局新登录者。原账号目录与单本账套附件分开，恢复一本账套不能覆盖全局身份库。旧自由姓名不自动映射或重写。
 
-基线实际读取的是 `codex/sprint-integration-2` 的 `5e21ac3`，10:00 UTC 再取到 `b3b85eb` 并核对主窗口/会话接口未变。字段为 `_session`、`_displayOrigin`、`_voucherOrigin`、`Snapshot`、`VoucherGrid`、`OperatorName()`；列表项为 `VoucherListRow.Value`。没有假定新的宿主接口。partial 与当前 MainWindow 已实际组合编译。
+新功能捕获 FeatureSessionBinding：原显示 Snapshot、physical path、generation、原服务、FeatureAuthentication。后台权限检查与最终集中授权都使用同一登录对象；不在 UI 线程轮询身份文件，不以新 GetSnapshot 替换待提交 token。
 
-先采用作者生产模块：
+## 四功能行为
 
-| 模块 | 本轮实际验证的源码版本 | 说明 |
-| --- | --- | --- |
-| VoucherTools / WPF | `54871a004a836d76824b2c29959e5b22139f4e86` | 含 `dab8681` 及真实复制对话框 |
-| Summaries | `dcda051a0c9ee364ccff4c2b4c7085f446fac39d` | 含 `649df9e`、管理状态机、query 修复 |
-| BookTools / WPF | `8bbf8428ccd0b656fec83c7a1ede828cd5691442` | 包含 `86a10e6`、失败回归 `eb8f150` 和 P1 修复；不可回退旧发布代码 |
-| Costing / WPF | `af0d0e34ab9963fc91cabb8a58aed558b34390f0` | 若已有 `398ed4a`，只补 `1d0ff00`、`af0d0e3` |
+“实务操作”增加复制凭证、成本工作表；“会计档案”增加常用摘要管理、复制账套。
 
-Desktop owner 在现有 `Caiwu.Desktop.csproj` 加四个引用（本分支没有越权改它）：
+- 复制凭证使用作者真实 VoucherCopyWindow，当前可信 ActorKey 不可编辑。确认计划后进入宿主可编辑的新 Draft 工作区，只有“保存新草稿”写账。Id=null，原 ExpectedBookId/ExpectedRevision 保留；新制单身份来自集中装饰器，不继承审核/记账身份。错误和冲突保留输入；成功先消费计划再刷新，刷新失败明确区分已经保存。取消无写入，保存期间不能关闭。
+- 摘要复用作者 SummaryManagerState。AsyncSummaryStateAdapter 仅把 catalog I/O 放 worker，所有状态机转换和属性通知回 UI context；保留开始编辑的 ID/CatalogVersion，搜索清除当前选择也不改变编辑对象。缺少真实 catalog/备份附件配置时禁用，打开失败不会自动创建空库。注册可明确 ManagementPermission，默认 PrepareVoucher。
+- 账套复制直接调用 8bbf842 的 BookCopyWindow/BookCopyService，固定原快照、不临时刷新。必须提供真实数据租约、受管新目标策略和新账套登记，额外检查 RestoreLedger；源/捕获副本调用 LedgerFilePolicy。操作人字段锁为宿主 actor。成功默认保留源会话；文件已发布但登记失败时保留新文件并报告路径，不能删除或盲目重试。
+- 成本直接承载 CostWorksheetPage(bookId, date)，只生成计算/人工审核建议，没有 ledger 保存或记账回调。作者页面大工作表计算/导入导出延迟尚未量测，不承诺任意规模都无卡顿。
 
-```xml
-<ProjectReference Include="../Caiwu.VoucherTools.Wpf/Caiwu.VoucherTools.Wpf.csproj" />
-<ProjectReference Include="../Caiwu.Summaries/Caiwu.Summaries.csproj" />
-<ProjectReference Include="../Caiwu.Costing/Wpf/Caiwu.Costing.Wpf.csproj" />
-<ProjectReference Include="../Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj" />
-```
+会话切换、关闭、同 BookId 恢复/重新打开或来源刷新后，旧窗口禁用并保留可见输入。原服务最终授权与 Core CAS 仍在保存时复验，不用 UI 菜单状态代替服务保护。
 
-在 MainWindow 构造函数 `_session` 赋值之后，加一处明确的初始化调用；不需改 XAML 菜单或 App：
+## 受管数据门槛
 
-```csharp
-InitializeDesktopFeatures(new Caiwu.Desktop.Features.DesktopFeatureOptions());
-```
+App 当前未配置 OpenSummaryCatalog / BookCopy，两个菜单保留明确 disabled reason。根已另行委派 codex/managed-module-data；本任务不建立第二套登记或备份协议，也不等待其预计 11:30 交付而越过本阶段 11:00 截止。
 
-这会在“实务操作”追加复制凭证、成本工作表，在“会计档案”追加摘要管理、复制账套。凭证选中且账套可写才启用复制。默认摘要/账套复制保留明确的 disabled reason，不把缺配置伪装成可用操作。不能仅拣选此 partial 而不收作者模块/补引用；验证脚本会在临时 checkout 应用上述引用，不触碰本分支的 owner 文件。
+精确委托、租约生命期、physical path + BookId 映射、摘要独立收据和恢复要求见 MANAGED_MODULE_API_REQUEST.md。当前 public Installation.AcquireLease 只有安装锁，完整 WithExclusiveData 还是 internal；不能把安装锁当数据锁，不能往仅接受 .caiwu 的 managed-books 清单塞 JSON。
 
-## 复制凭证
+## 民非预览
 
-从列表原 `_voucherOrigin` 和同一 `Snapshot` 捕获 `FeatureSessionBinding`，不调用 Refresh/GetSnapshot 来更新待提交 token。作者的 `VoucherCopyWindow` 只返回 `VoucherCopyPlan`；宿主 `CopiedDraftWindow` 显示可编辑的新 Draft，日期/类别/编号/附件数及所有原分录可核对。只有“保存新草稿”调用捕获的 `ILedgerService.SaveDraft`，后台执行，传原 `ExpectedBookId/ExpectedRevision`，`Id=null`、当前制单身份，不能继承原审核/记账身份。
+“报表”菜单已有真实 NonprofitClassificationPanel，仅民非制度启用。期间取当前凭证查询中明确的完整同一月份；不支持的日期范围会报错，不猜分类、限制维度或缺失金额。App 显式给出 LocalApplicationData/CaiwuSuite/LocalPreviews/Nonprofit，再按 physical path + BookId 分隔；模块继续校验安装目录、路径和源指纹。
 
-取消/关闭没有隐含写入。验证错误、SQLite 错误和冲突保留当前字段。原计划成功后先消费再刷新；刷新失败明确提示“已保存，显示刷新失败”，不会再次保存该计划。保存期间禁止关闭，避免用户取消时仍有未知后台提交。未实现自动审核或自动记账。
+宿主和面板持续显示“仅本地预览，分类 JSON 未纳入受管附件/账套备份”。分类可另存新文件、来源改变会失效；未完成 Delivery 登记前不能改称已保护。Designer 尚未接入，不等待它。
 
-## 摘要路径、版本与备份附件
+## 测试宿主与发行边界
 
-宿主只有在**已经完成独立附件登记**后，才提供 `OpenSummaryCatalog`。回调在 worker 执行，返回 `SummaryFeatureRegistration`：已经打开的 `ISummaryCatalog`、宿主清单中的附件 key、实际备份策略说明。不能用随便填一个 key 代替真正登记；当前 Delivery 的 `managed-books.json` 只接收 `.caiwu`，不得塞入 JSON 或放宽升级保护。
+Verification/** 已从生产程序集排除；产品拒绝旧 --smoke-test 并以 exit 2 结束。packaging/build.ps1 的旧调用须由 packaging owner 换成独立测试宿主，不能恢复产品认证后门。其余打包暂停保护未改，未生成安装包。
 
-```csharp
-// ownerCatalogLocation 与 registeredAttachmentKey 必须来自宿主自己的登记。
-// 工厂按 binding.DatabasePath + binding.Shown.Book.Id 查找该物理账套的映射；
-// 恢复同 BookId 到新文件时，不能仅按 BookId 猜用旧副本的摘要路径。
-OpenSummaryCatalog = binding => new SummaryFeatureRegistration(
-    JsonSummaryCatalog.Open(ownerCatalogLocation),
-    registeredAttachmentKey,
-    "说明宿主真实的独立摘要备份/恢复登记策略")
-```
+Shared/SyntheticDesktopIdentity.cs 只在独立测试工程编译，正常创建虚构身份、登录并调用真实组合 API；密码仅为该临时测试身份使用。VisualReview、NativeFocus、HighResolution、MutationWindows、DualWindows、Wpf、导航宿主均已适配，保留原焦点、金额、原 token、数据不变和输入保留断言。双进程共享虚构身份目录但各自正常登录。
 
-用户数据根和 catalog 绝对路径由宿主明确决定，禁止安装目录。工厂只读打开既有库；打开失败不能自动重建为空库。新建摘要库应由宿主单独的明确初始化操作调用 `JsonSummaryCatalog.Create`，并登记后再开放菜单。备份应在宿主现有租约/忙态中调用 `ExportBackup`，登记 `Path/BookId/CatalogId/Revision/Sha256`；恢复到新的明确路径，核验登记哈希和同一 BookId 后才更新映射。账套备份成功不能冒称摘要附件也已备份。
-
-界面复用作者 `SummaryManagerState`，不是另一套摘要规则。`AsyncSummaryStateAdapter` 只把 catalog I/O 放到 worker，原状态机的开始编辑、版本保留、保存结果及属性通知都回 UI context；不在后台直接修改 WPF 状态。保存保留开始编辑时的条目/分类 ID 与 CatalogVersion，搜索改变当前选择也不会改写编辑对象。取消只丢弃未保存编辑；已经显式保存的分类/摘要保留。窗口提供管理，不把选择隐式填入凭证；F7 选择器接入仍归原 Controls/编辑器 owner。
-
-**剩余宿主工作：**真实的摘要附件清单、整体备份/恢复登记尚在本任务目录之外，因此默认禁用。这是明确的集成门槛，没有权限拒绝或不确定的远端操作。
-
-## 复制账套的三项强制宿主配置
-
-仅在根认可的 `8bbf842` 上配置 `BookCopyFeatureOptions`，三个委托缺一不可：
-
-```csharp
-BookCopy = new BookCopyFeatureOptions(
-    AcquireDataLease: binding => /* 取得并返回宿主真实 Delivery 数据租约 */,
-    ValidateManagedDestination: (binding, path) => /* 验证受管数据根与全新目标 */,
-    RegisterCreatedBook: (binding, result) => /* 在仍持租约时登记新账套 */)
-```
-
-这些注释是 owner 必须实现的接点，不是可提交的假委托或默认绕过。三个委托在 worker 运行，不能操作 WPF 对象；接入 Operators 后还须捕获并重验原 OperatorSession 的宿主复制/登记权限，不用新的全局登录对象替换它。租约贯穿窗口预览、明确确认、执行、结果登记；源和捕获副本固定调用现有 `LedgerFilePolicy.Validate`，目标策略在实际服务规定的两处复验。窗口固定原显示快照，所谓重新预览也只返回原快照，不临时刷新 token；来源变化应关闭重开。会话更换时窗口失效，服务策略回调也再次拒绝旧会话。宿主把 BookTools 原有的操作人文本框锁成只读，始终使用打开窗口时的 actor。
-
-复制成功默认仍停在源账套，不调用 `_session.Open(newPath)`。文件已发布但登记失败时保留新文件并明确报告其路径，不能删除副本或提示用户盲目重复复制。**Windows 并发发布和真实数据租约尚未运行验证**，默认门控保持；不能以 Unix P1 闭合替代 Windows 验收。
-
-## 成本工作表
-
-直接承载作者真实的 `CostWorksheetPage(bookId, date)`，bookId 和期间来自宿主已显示快照。只计算、导入/导出人工审核工作表和凭证建议，没有 `ILedgerService` 保存/记账回调。会话切换、关闭、同 BookId 副本恢复或宿主刷新至不同来源修订时，窗口整体失效，原输入仍可见。作者页面现有计算和本地导入/导出实现保持原样，超大工作表的 UI 延迟没有测量；本任务不能宣称所有规模下均无卡顿。
-
-## Operators 生命周期预留
-
-已读取 `7a1e67318194c14ebad865e5d412fbdd72f9f734` 的实际 README。集中授权 `ILedgerService` adapter 尚待作者交付，当前测试是合成业务调用，不是全应用身份验收。不要把旧 `OperatorName()` 的自由文本视为认证。
-
-最小组合根顺序：宿主在安装目录之外创建一个稳定 `LocalOperatorService`；首次设置后仍须显式 `OperatorDialogs.Login`；取消不创建可写账务会话。登录成功后由作者授权 adapter 包装原 ledger service，backend 仅向 UI 暴露该受守卫服务，捕获本次 `OperatorSession`；`OperatorName()` 改由可信授权上下文返回 ActorKey，顶栏仅显示 DisplayName 并禁用任意姓名输入。旧自由姓名不自动映射为新 actor。
-
-注销/换人时先 `Logout(oldOperatorSession)`，然后 `_session.Close()` 并清理宿主当前显示 origin，再开始新登录；新身份若重新打开原账套，必须走 `_session.Open` 生成新 generation。这样本 partial 已捕获的旧服务/原 OperatorSession 不能被新身份替换，旧复制草稿、摘要、账套复制、成本窗口立即失效并保留输入。取消新登录保持未登录，不回退旧身份。若根希望注销后保持账套只读，应由主入口 owner 另建明确的只读路径，不能复用旧可写会话。不要在保存时从全局变量临取新 OperatorSession。
-
-作者的同步 `Execute*` 持身份锁；先完成窗口采集，再在 worker 内同步调用集中授权 ledger adapter，不传 async 授权回调，不在身份锁内弹窗。本任务不抢改 App、OperatorInput 或原 Core；集中 adapter 到达后根只需在现有组合根接线，四功能不需要各自复制权限判断。
-
-## 验证与限制
-
-`tests/Caiwu.Desktop.FeatureTests/validate-combination.sh` 从当前提交和四个固定作者 SHA 建临时组合，补上四个引用，实际编译 Desktop、运行真实 SQLite 的合成服务探针、交叉编译 Windows 窗口探针。临时 checkout 保留证据，不改另一个 owner 的源文件。SDK 为官方 10.0.402，已核对仓库 SDK SHA512。
-
-在 owner 已合并引用的真实 Windows checkout：
-
-```powershell
-pwsh -File tests/Caiwu.Desktop.FeatureTests/Windows/run.ps1
-```
-
-脚本有 90 秒进程 watchdog，真实显示 WPF 模态窗口、走实际 Routed Button.Click、真实 Core/SQLite/摘要文件并产出带 checkout SHA 的 JSON 和 WPF PNG。覆盖菜单位置/禁用原因、取消无写入、复制错误留窗及更正保存、同身份重开/恢复旧窗口失效、摘要后台 I/O 与 Dispatcher 状态通知、摘要冲突/无效 Unicode、成本建议不记账，以及 BookTools 真窗口取消/明确确认复制后保持源会话。它不声称物理鼠标、键盘、中文 IME、多 DPI 或原生屏幕截图验收。本轮仅 Linux 交叉编译，**Windows 窗口未执行**。
-
-初次同时启动两个共享输出目录的 build/run 导致 `GenerateDepsFile` 文件占用失败；已改为顺序执行并成功。不是生产源码失败，也没有删测试或放宽错误。
+Windows/run.ps1 包含真实首次设置取消/设置后取消登录/显式登录、新功能模态窗口、主题、后台 I/O、旧登录/账套失效、民非缺维度及未保护标记。Routed Button.Click 与实际 WPF PNG 不等同物理键盘/IME、多 DPI 或原生屏幕验收。本环境为 Linux，Windows 执行未跑；编译不能代替这些结果。validate-combination.sh 可重建固定六模块组合并运行合成服务检查、编译现有测试宿主；实际结果与源码哈希见测试目录 VALIDATION.md/evidence。
