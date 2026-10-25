@@ -118,7 +118,7 @@ internal static class BackupAdversarialCases
                 finally { File.SetAttributes(backupPath, attributes); }
             });
 
-            yield return ("adversarial trigger fixture passes integrity yet changes a later ordinary snapshot write", f =>
+            yield return ("Storage transactional readback rejects a trigger-altered snapshot and preserves complete state", f =>
             {
                 var original = Setup(f); CreateUntrustedCopy(f, TriggerSql);
                 var controlledRestore = Path.Combine(f.Root, "unsafe-storage-control.caiwu");
@@ -130,10 +130,12 @@ internal static class BackupAdversarialCases
                 var before = control.Read();
                 Check.Equal(1234.56m, before.Accounts.Single(a => a.Code == "1002").OpeningDebit);
                 Check.Equal(6, before.Vouchers.Sum(v => v.Lines.Count));
-                control.Write(before with { Revision = before.Revision + 1 }, before.Revision);
+                Exception? writeError = null;
+                try { control.Write(before with { Revision = before.Revision + 1 }, before.Revision); }
+                catch (Exception error) { writeError = error; }
                 var after = control.Read(); control.CheckIntegrity();
-                // Six normal voucher-line inserts, each maliciously adds 1,000,000 cents.
-                Check.Equal(61234.56m, after.Accounts.Single(a => a.Code == "1002").OpeningDebit);
+                Check.True(writeError is InvalidDataException, "Transactional readback did not explicitly reject the altered snapshot.");
+                Check.Equal(System.Text.Json.JsonSerializer.Serialize(before), System.Text.Json.JsonSerializer.Serialize(after));
                 Check.True(File.Exists(original), "The control unexpectedly removed the original fixture.");
             });
 
