@@ -33,6 +33,10 @@ try {
         if ($process.ExitCode -ne 0) { throw "WPF verification failed ($($process.ExitCode)); see artifacts/verification." }
         if (-not (Test-Path (Join-Path $verificationDirectory 'ui-verification.json'))) { throw 'WPF verification did not produce its result.' }
     }
+    if (Test-Path (Join-Path $projectRoot 'docs/acceptance/DELIVERY_PAUSED.md')) {
+        Write-Warning 'Independent acceptance has paused delivery. Tests and WPF evidence were generated; no distribution archive or installer is produced.'
+        return
+    }
     Copy-Item 'packaging/Install-Preview.ps1' $publishDirectory
     Copy-Item 'packaging/使用说明.txt' $publishDirectory
     $revision = (& git rev-parse --short HEAD).Trim()

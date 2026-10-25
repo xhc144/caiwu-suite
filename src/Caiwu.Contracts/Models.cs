@@ -19,7 +19,7 @@ public sealed record Voucher(Guid Id, DateOnly Date, string Kind, int Number,
     VoucherStatus Status, IReadOnlyList<VoucherLine> Lines);
 
 public sealed record VoucherDraft(Guid? Id, DateOnly Date, string Kind, int? Number,
-    int AttachmentCount, IReadOnlyList<VoucherLine> Lines);
+    int AttachmentCount, IReadOnlyList<VoucherLine> Lines, long? ExpectedRevision = null);
 
 public sealed record OpeningBalance(string AccountCode, decimal Debit, decimal Credit);
 
