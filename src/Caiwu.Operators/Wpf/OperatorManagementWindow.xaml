@@ -1,0 +1,44 @@
+<Window x:Class="Caiwu.Operators.Wpf.OperatorManagementWindow"
+ xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ Title="本地操作员管理" Width="1000" Height="710" MinWidth="840" MinHeight="620">
+ <Grid Margin="24">
+  <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+  <TextBlock Text="停用会保留历史身份。密码、角色或资料变更会使该操作员原会话失效。" TextWrapping="Wrap" Margin="0,0,0,16"/>
+  <Grid Grid.Row="1"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="320"/></Grid.ColumnDefinitions>
+   <DataGrid x:Name="OperatorGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" SelectionMode="Single" SelectionChanged="Selection_Changed" Margin="0,0,20,0">
+    <DataGrid.Columns>
+     <DataGridTextColumn Header="登录名" Binding="{Binding LoginName}" Width="*"/>
+     <DataGridTextColumn Header="显示名" Binding="{Binding DisplayName}" Width="*"/>
+     <DataGridCheckBoxColumn Header="启用" Binding="{Binding IsEnabled}" Width="60"/>
+    </DataGrid.Columns>
+   </DataGrid>
+   <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto"><StackPanel>
+    <TextBlock x:Name="EditorTitle" Text="新增操作员" FontSize="18" Margin="0,0,0,10"/>
+    <Label Content="登录名（创建后不可变更）" Target="{Binding ElementName=LoginInput}"/><TextBox x:Name="LoginInput" MaxLength="64"/>
+    <Label Content="显示名" Target="{Binding ElementName=DisplayInput}"/><TextBox x:Name="DisplayInput" MaxLength="80"/>
+    <CheckBox x:Name="EnabledInput" Content="启用账户" IsChecked="True" Margin="0,12,0,8"/>
+    <TextBlock Text="角色（可多选）" Margin="0,4,0,4"/>
+    <CheckBox x:Name="AdministratorRole" Content="管理员：管理操作员、恢复账套"/>
+    <CheckBox x:Name="AccountantRole" Content="会计：科目、期初和备份账套"/>
+    <CheckBox x:Name="PreparerRole" Content="制单：新增、修改和删除草稿"/>
+    <CheckBox x:Name="ReviewerRole" Content="审核：审核和取消审核"/>
+    <CheckBox x:Name="PosterRole" Content="记账：记账已审核凭证"/>
+    <CheckBox x:Name="PeriodCloserRole" Content="结账：关闭会计期间"/>
+    <CheckBox x:Name="ReaderRole" Content="只读：查询与报表"/>
+    <TextBlock Text="所有启用角色均可查询。兼任制单和审核仍不能审核本人制单凭证。" TextWrapping="Wrap" Margin="0,8,0,8"/>
+    <Label Content="初始密码 / 新密码（12–128字符）" Target="{Binding ElementName=PasswordInput}"/><PasswordBox x:Name="PasswordInput" MaxLength="128"/>
+    <Label Content="再次输入密码" Target="{Binding ElementName=ConfirmInput}"/><PasswordBox x:Name="ConfirmInput" MaxLength="128"/>
+    <TextBlock x:Name="ActorText" TextWrapping="Wrap" Margin="0,12,0,0"/>
+   </StackPanel></ScrollViewer>
+  </Grid>
+  <TextBlock Grid.Row="2" x:Name="ErrorText" TextWrapping="Wrap" Margin="0,12,0,8" AutomationProperties.LiveSetting="Assertive"/>
+  <WrapPanel Grid.Row="3" HorizontalAlignment="Right">
+   <Button Content="刷新" Click="Refresh_Click" MinWidth="70" Margin="0,0,8,0"/>
+   <Button Content="新增" Click="New_Click" MinWidth="70" Margin="0,0,8,0"/>
+   <Button x:Name="SaveButton" Content="保存资料" Click="Save_Click" MinWidth="90" Margin="0,0,8,0"/>
+   <Button x:Name="ResetButton" Content="重设所选密码" Click="Reset_Click" MinWidth="110" Margin="0,0,8,0"/>
+   <Button Content="关闭" IsCancel="True" MinWidth="70"/>
+  </WrapPanel>
+ </Grid>
+</Window>

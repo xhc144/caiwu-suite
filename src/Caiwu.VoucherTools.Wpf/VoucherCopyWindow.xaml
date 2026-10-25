@@ -1,0 +1,118 @@
+<Window x:Class="Caiwu.VoucherTools.Wpf.VoucherCopyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="复制为新草稿" Width="1120" Height="800" MinWidth="980" MinHeight="700"
+        WindowStartupLocation="CenterOwner" UseLayoutRounding="True"
+        Background="{DynamicResource Caiwu.Copy.Background}" Foreground="{DynamicResource Caiwu.Copy.Foreground}"
+        PreviewKeyDown="Window_PreviewKeyDown">
+  <Grid Margin="28,22">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+      <RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <StackPanel Margin="0,0,0,18">
+      <TextBlock Text="复制为新草稿" FontSize="27" FontWeight="SemiBold" />
+      <TextBlock Text="确认新凭证的信息，并核对下方全部分录。" Margin="0,6,0,0"
+                 Foreground="{DynamicResource Caiwu.Copy.Muted}" />
+    </StackPanel>
+    <Border Grid.Row="1" Padding="16,12" CornerRadius="10" Margin="0,0,0,18"
+            Background="{DynamicResource Caiwu.Copy.Surface}" BorderThickness="1" BorderBrush="{DynamicResource Caiwu.Copy.Border}">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock x:Name="BookText" FontWeight="SemiBold" />
+          <TextBlock x:Name="SourceText" Margin="0,5,0,0" Foreground="{DynamicResource Caiwu.Copy.Muted}" TextWrapping="Wrap" />
+        </StackPanel>
+        <Border Grid.Column="1" CornerRadius="6" Padding="12,7" VerticalAlignment="Center" Margin="12,0,0,0"
+                Background="{DynamicResource Caiwu.Copy.Background}">
+          <TextBlock Text="新草稿 · 未保存" FontWeight="SemiBold" />
+        </Border>
+      </Grid>
+    </Border>
+    <Grid Grid.Row="2" Margin="0,0,0,14">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.3*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" /><ColumnDefinition Width="1.2*" />
+      </Grid.ColumnDefinitions>
+      <StackPanel Margin="0,0,14,0">
+        <Label Content="新日期（yyyy-MM-dd）" Target="{Binding ElementName=DateInput}" Padding="0,0,0,7" />
+        <TextBox x:Name="DateInput" AutomationProperties.AutomationId="CopyDate" MinHeight="36" Padding="9,6"
+                 ToolTip="请明确填写完整日期，例如 2026-02-01" />
+        <TextBlock x:Name="DateError" Foreground="{DynamicResource Caiwu.Copy.Error}" TextWrapping="Wrap" Margin="0,5,0,0" />
+      </StackPanel>
+      <StackPanel Grid.Column="1" Margin="0,0,14,0">
+        <Label Content="凭证类型" Target="{Binding ElementName=KindInput}" Padding="0,0,0,7" />
+        <TextBox x:Name="KindInput" AutomationProperties.AutomationId="CopyKind" MinHeight="36" Padding="9,6"
+                 ToolTip="明确填写凭证字，例如 记 或 转" />
+        <TextBlock x:Name="KindError" Foreground="{DynamicResource Caiwu.Copy.Error}" TextWrapping="Wrap" Margin="0,5,0,0" />
+      </StackPanel>
+      <StackPanel Grid.Column="2" Margin="0,0,14,0">
+        <Label Content="新编号" Target="{Binding ElementName=NumberInput}" Padding="0,0,0,7" />
+        <TextBox x:Name="NumberInput" AutomationProperties.AutomationId="CopyNumber" MinHeight="36" Padding="9,6" />
+        <TextBlock x:Name="NumberError" Foreground="{DynamicResource Caiwu.Copy.Error}" TextWrapping="Wrap" Margin="0,5,0,0" />
+      </StackPanel>
+      <StackPanel Grid.Column="3" Margin="0,0,14,0">
+        <Label Content="附件张数" Target="{Binding ElementName=AttachmentInput}" Padding="0,0,0,7" />
+        <TextBox x:Name="AttachmentInput" AutomationProperties.AutomationId="CopyAttachments" MinHeight="36" Padding="9,6" />
+        <TextBlock x:Name="AttachmentError" Foreground="{DynamicResource Caiwu.Copy.Error}" TextWrapping="Wrap" Margin="0,5,0,0" />
+      </StackPanel>
+      <StackPanel Grid.Column="4">
+        <TextBlock Text="本次制单人" Margin="0,0,0,7" />
+        <Border MinHeight="36" Padding="9,6" CornerRadius="5" Background="{DynamicResource Caiwu.Copy.Surface}">
+          <TextBlock x:Name="PreparedByText" AutomationProperties.AutomationId="CopyPreparedBy" TextWrapping="Wrap" />
+        </Border>
+        <TextBlock x:Name="PreparedByError" Foreground="{DynamicResource Caiwu.Copy.Error}" TextWrapping="Wrap" Margin="0,5,0,0" />
+      </StackPanel>
+    </Grid>
+    <Border Grid.Row="3" BorderBrush="{DynamicResource Caiwu.Copy.Border}" BorderThickness="1" CornerRadius="10" Padding="1">
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+        <TextBlock Text="将复制的分录" FontWeight="SemiBold" FontSize="15" Margin="14,12" />
+        <DataGrid x:Name="LinesGrid" Grid.Row="1" AutomationProperties.AutomationId="CopyLines"
+                  AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
+                  CanUserSortColumns="False" CanUserReorderColumns="False" HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal" BorderThickness="0" RowHeight="38" ColumnHeaderHeight="36"
+                  HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+          <DataGrid.Columns>
+            <DataGridTextColumn Header="行" Binding="{Binding Number}" Width="44" MinWidth="44" />
+            <DataGridTextColumn Header="摘要" Binding="{Binding Summary}" Width="2*" MinWidth="180">
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock"><Setter Property="ToolTip" Value="{Binding Summary}" /><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="Margin" Value="8,0" /></Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="科目代码" Binding="{Binding AccountCode}" Width="100" MinWidth="90" />
+            <DataGridTextColumn Header="科目名称" Binding="{Binding AccountName}" Width="1.3*" MinWidth="120" />
+            <DataGridTextColumn Header="借方金额" Binding="{Binding Debit, StringFormat={}{0:N2}}" Width="220" MinWidth="200">
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextAlignment" Value="Right" /><Setter Property="VerticalAlignment" Value="Center" />
+                  <Setter Property="Margin" Value="8,0" /><Setter Property="ToolTip" Value="{Binding Debit, StringFormat={}{0:G29}}" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+            <DataGridTextColumn Header="贷方金额" Binding="{Binding Credit, StringFormat={}{0:N2}}" Width="220" MinWidth="200">
+              <DataGridTextColumn.ElementStyle>
+                <Style TargetType="TextBlock">
+                  <Setter Property="TextAlignment" Value="Right" /><Setter Property="VerticalAlignment" Value="Center" />
+                  <Setter Property="Margin" Value="8,0" /><Setter Property="ToolTip" Value="{Binding Credit, StringFormat={}{0:G29}}" />
+                </Style>
+              </DataGridTextColumn.ElementStyle>
+            </DataGridTextColumn>
+          </DataGrid.Columns>
+        </DataGrid>
+        <TextBlock x:Name="TotalsText" Grid.Row="2" Margin="14,12" FontWeight="SemiBold" TextWrapping="Wrap" />
+      </Grid>
+    </Border>
+    <ScrollViewer Grid.Row="4" MaxHeight="100" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+      <TextBlock x:Name="GeneralError" AutomationProperties.AutomationId="CopyErrors" Foreground="{DynamicResource Caiwu.Copy.Error}" TextWrapping="Wrap" />
+    </ScrollViewer>
+    <Grid Grid.Row="5" Margin="0,18,0,0">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <TextBlock Text="确认后生成未审核的新草稿，保存由凭证工作区完成。" TextWrapping="Wrap" VerticalAlignment="Center"
+                 Foreground="{DynamicResource Caiwu.Copy.Muted}" Margin="0,0,16,0" />
+      <Button x:Name="CancelButton" Grid.Column="1" Content="取消" IsCancel="True" Click="Cancel_Click" MinWidth="90" Padding="16,8" Margin="0,0,10,0" />
+      <Button x:Name="ConfirmButton" Grid.Column="2" Content="确认复制  Ctrl+Enter" Click="Confirm_Click" MinWidth="170" Padding="16,8" FontWeight="SemiBold"
+              AutomationProperties.AutomationId="ConfirmCopy" />
+    </Grid>
+  </Grid>
+</Window>

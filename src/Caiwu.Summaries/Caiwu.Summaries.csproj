@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Caiwu.Summaries.Tests" />
+    <Compile Remove="Wpf/**/*.cs" />
+    <None Remove="Wpf/**/*.xaml" />
+  </ItemGroup>
+</Project>
