@@ -4,7 +4,7 @@
 
 ## 项目与依赖
 
-- `Caiwu.Operators.csproj`：`net10.0`，独立本地身份存储、会话及权限服务，不依赖账套。
+- `Caiwu.Operators.csproj`：`net10.0`，本地身份存储、会话、权限及完整 `ILedgerService` 授权装饰器；只引用 Contracts，不依赖 Core/账套 SQLite/Desktop。
 - `Wpf/Caiwu.Operators.Wpf.csproj`：`net10.0-windows`，引用服务层，不依赖 Desktop。宿主添加此 ProjectReference 即可使用。
 - 密码直接使用官方 `Microsoft.Extensions.Identity.Core` **10.0.13** 的 `PasswordHasher<T>`，Identity V3 默认配置；没有自写密码算法。依赖精确固定并附锁文件。官方依据：[PasswordHasher API](https://learn.microsoft.com/en-us/dotnet/api/microsoft.aspnetcore.identity.passwordhasher-1?view=aspnetcore-10.0)、[Identity 配置](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/identity-configuration?view=aspnetcore-10.0)。存储校验只检查 V3 包络与损坏工作因子上限，不代替官方校验。
 - 无生产默认账户/密码、无网络身份服务、无自动登录。测试中的凭据仅用于自动创建并删除的虚构临时账户。
@@ -15,36 +15,34 @@
 2. 应用启动时构造一个 `LocalOperatorService`，用户数据目录由宿主确定。例如 `Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CaiwuSuite", "Operators")`。保持安装更新后位置不变；不要按账套或窗口创建新身份库。
 3. 用 `OperatorDialogs.Login(owner, operators)` 完成首次设置及登录。返回 `null` 表示取消，不能建立账务会话或回退到可编辑姓名下拉。首次设置只创建管理员，仍需显式登录。管理员只具备账户管理、恢复与查询权限，账务角色需要另行分配。
 4. 移除/禁用 `MainWindow.OperatorInput` 的任意名称切换。顶栏显示 `session.Identity.DisplayName`。切换操作员时先 `Logout(oldSession)` 并关闭/废弃旧编辑器，再显示登录窗口；取消切换保持未登录。退出应用或退出登录也调用 `Logout`。
-5. **每个实际入口**都通过服务检查，包括快捷键、菜单、工具条、命令、编辑器保存回调、后台任务。菜单启用状态可用 `RequirePermission` 探测，但不能只隐藏按钮。不要向普通 UI 暴露未守卫的 `ILedgerService`。
-6. 传给 Core 所有 `operatorName` / `reviewer` 参数的值必须是授权回调返回的 **`actor.ActorKey`**。显示名、登录文本或从 UI 传来的 Guid 均不能作为认证凭据。显示时通过 `ResolveActor(session, actorKey)` 查只读身份（含停用身份），不要求管理权限；未映射历史值返回 null，要清楚标示。
-7. 编辑器捕获打开时的 `OperatorSession`、账套会话和 `LedgerMutationContext`；保存必须再次检查这些原始对象。不要在保存瞬间偷偷换成当前登录者或刷新修订号。`ExecuteDraftEdit` 防止当前 Core 在保存草稿时把制单人改成其他编辑者；新草稿使用 `Execute(PrepareVoucher, ...)`。
+5. 组合根用 `AuthorizedLedgerServiceFactory.BindSession` 替换 `DesktopBackend.CreateService`，UI 只拿包装后的 `ILedgerService`。**九个写入口及三个查询均由装饰器集中守卫**，快捷键、菜单、编辑器保存回调不能保留另一个原始 Core 服务。菜单启用状态可用 `RequirePermission` 探测，真实操作仍通过装饰器。
+6. 装饰器忽略接口里 UI 传入的 `operatorName` / `reviewer`，只传授权服务给出的 **`actor.ActorKey`** 给 Core；调用方传空字符串即可。显示时通过 `ResolveActor(session, actorKey)` 查只读身份（含停用身份），不要求管理权限；未映射历史值返回 null，要清楚标示。
+7. 每个 factory 与装饰器捕获一个不可替换的 `OperatorSession`，不接受“获取当前登录者”函数。编辑器仍捕获打开时的账套会话和原 `LedgerMutationContext`；保存不刷新令牌。注销/角色变化后旧服务会失效，新登录必须新建 backend/账套会话；旧窗口不能偷偷切到新登录者。
 
 ```csharp
-// 假定 shownVoucher / shownSnapshot 是用户实际核对的同一快照。
+// 在 Desktop 组合根里创建，原始 Core 服务不出此闭包。
+Func<ILedgerStore, ILedgerService> createService =
+    AuthorizedLedgerServiceFactory.BindSession(operators, fixedLogin,
+        store => new PreviewLedgerService(new LedgerService(store)));
+// 赋给 DesktopBackend.CreateService；该 factory 不能重定向到另一个登录者。
+
+// UI 只调用包装后服务，保留原始显示快照令牌；不再手工套 Execute。
 var shownContext = new LedgerMutationContext(shownSnapshot.Book.Id, shownSnapshot.Revision);
-var editorSession = currentSession; // 打开编辑器时捕获，退出后该对象失效
-var saved = operators.Execute(editorSession, OperatorPermission.PrepareVoucher,
-    actor => originLedger.SaveDraft(newDraftWithOriginalTokens, actor.ActorKey));
-
-var edited = operators.ExecuteDraftEdit(editorSession, shownVoucher.PreparedBy,
-    actor => originLedger.SaveDraft(editedDraftWithOriginalTokens, actor.ActorKey));
-
-operators.ExecuteReview(currentSession, shownVoucher.PreparedBy, actor =>
-{
-    originLedger.Review(shownVoucher.Id, actor.ActorKey, shownContext);
-    return true;
-});
+var saved = origin.GetService().SaveDraft(draftWithOriginalTokens, string.Empty);
+origin.GetService().Review(shownVoucher.Id, string.Empty, shownContext);
 ```
 
-所有 `Execute*` 回调是**同步**的，身份文件锁贯穿回调；请直接调用现有同步 Core API。不要传 `async` / Task 回调，不要在回调内再次调用本模块，也不要在锁内弹窗等待用户。先采集和确认输入，再进入守卫。授权与账务分别存储，不宣称跨文件事务；账套冲突仍由原 v1.2 快照令牌保护。
+完整可编译的真实 Desktop factory、首次登录/注销、新建主窗口、凭证编辑器捕获和账套备份接法见 [`DesktopCompositionExample.cs`](../../tests/Caiwu.Operators.Tests/WindowsSmoke/DesktopCompositionExample.cs)，作为 WindowsSmoke 一部分编译，不是另一个主入口。登录流程、所有窗口捕获点及未覆盖的 store 入口详见 [`ADAPTER_INTEGRATION.md`](ADAPTER_INTEGRATION.md)。
+
+所有 `Execute*` 回调及装饰器调用均**同步**，身份文件锁贯穿读取归属与调用 Core；不要对已包装的 `ILedgerService` 再套 `Execute*`（会造成同一文件的嵌套加锁）。确认弹窗必须先结束再调用服务，锁内不弹窗、不传 async。授权与账务分别存储，不宣称跨文件事务；账套冲突仍由原 v1.2 快照令牌保护。
 
 | 宿主操作 | 权限 / 守卫 |
 |---|---|
 | 查询、报表、打印、只读联查、打开账套 | `ReadLedger` |
 | 科目新增/编辑/删除 | `EditAccounts` |
 | 设置期初 | `EditOpeningBalances` |
-| 新草稿、删除本人草稿 | `PrepareVoucher`；已有草稿保存用 `ExecuteDraftEdit`，删除也应限制原制单身份 |
-| 审核 | `ExecuteReview`，传持久凭证的 `PreparedBy` |
+| 新草稿、编辑/删除本人草稿 | 装饰器 `PrepareVoucher`，编辑/删除读取原持久身份并强制同 actor |
+| 审核 | 装饰器 `ReviewVoucher`，读取原持久 `PreparedBy`，拒绝本人或未知身份 |
 | 取消审核 | `ReviewVoucher` |
 | 记账 | `PostVoucher` |
 | 结账 | `ClosePeriod` |
@@ -58,9 +56,9 @@ operators.ExecuteReview(currentSession, shownVoucher.PreparedBy, actor =>
 
 已检查的 `MainWindow.OperatorName()` 读取可编辑下拉；Core `SameActor` 只对字符串作 NFKC 与忽略大小写比较。稳定键 `operator:<Guid N>` 能直接被现接口保存，并在 Core 自审校验中保持稳定。测试使用真实当前 `LedgerService` 验证此接点。
 
-当前 `ILedgerService` **本身不认识会话/角色**，直接调用仍可绕过宿主守卫；因此本模块不能声称已完成全应用身份集成或安全合规。若需要在领域层强制保障，最小后续契约是接收由可信授权服务验证的 actor 上下文，并把未授权原服务留在组合根内部，由 Contracts/Core owner 统一调整。
+当前原始 Core **本身不认识会话/角色**，直接调用仍可绕过授权；集中装饰器已完成，宿主接线仍待 owner 实施，不能声称已完成全应用身份集成或安全合规。原始服务必须留在组合根闭包内部。若需要在领域层也强制保障，最小后续契约是接收由可信授权服务验证的 actor 上下文，由 Contracts/Core owner 统一调整。
 
-旧凭证中的自由文本姓名不能自动证明归属。`ExecuteReview` 对未映射的旧姓名拒绝审核；`ExecuteDraftEdit` 同样拒绝不同或旧身份。主集成需提供明确、人工核实的旧身份→稳定 actor 映射和受控迁移，保留原审计文本/迁移记录，不能根据显示名静默猜测或批量覆盖。此模块不改账套 SQL。当前 Core 编辑会重写 `PreparedBy`，宿主应使用本模块的原制单人编辑守卫；若要允许他人代改又保留原始制单身份，需要 owner 增加原始制单/最后修改身份字段。
+旧凭证中的自由文本姓名不能自动证明归属。装饰器对未映射的旧姓名拒绝审核/草稿编辑/草稿删除。主集成需提供明确、人工核实的旧身份→稳定 actor 映射和受控迁移，保留原审计文本/迁移记录，不能根据显示名静默猜测或批量覆盖。此模块不改账套 SQL。当前 Core 编辑会重写 `PreparedBy`，装饰器已限制只能原制单身份保存；若要允许他人代改又保留原始制单身份，需要 owner 增加原始制单/最后修改身份字段。
 
 ID 与 actor 键均系统生成、不可编辑；登录名不可改、不可重用。停用只改变状态，身份与历史显示名永久保留；改名不改变 actor，旧显示名也不能给另一账户使用。管理员可为不同人建不同身份，软件无法证明两个不同账户背后是否同一自然人，角色审批与账户归属仍由管理员负责。
 

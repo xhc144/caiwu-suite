@@ -103,12 +103,19 @@ public sealed class LocalOperatorService
 
     /// <summary>Legacy names are rejected. Pass the actual persisted voucher PreparedBy, not UI text.</summary>
     public T ExecuteReview<T>(OperatorSession session, string preparedActorKey, Func<OperatorIdentity, T> operation)
+        => ExecuteReviewFrom(session, () => preparedActorKey, operation);
+
+    // The adapter obtains persisted PreparedBy and validates the caller's original book/revision
+    // inside this same authorization lock. No nested call back into this service is required.
+    internal T ExecuteReviewFrom<T>(OperatorSession session, Func<string> readPreparedActorKey, Func<OperatorIdentity, T> operation)
     {
+        ArgumentNullException.ThrowIfNull(readPreparedActorKey);
         ArgumentNullException.ThrowIfNull(operation);
         RequireSynchronous<T>();
         lock (_gate) return _store.Access(doc =>
         {
             var reviewer = Require(doc, session, OperatorPermission.ReviewVoucher);
+            var preparedActorKey = readPreparedActorKey();
             if (!doc!.Operators.Any(x => x.ActorKey == preparedActorKey))
                 throw new OperatorAuthorizationException("制单身份未映射到可信操作员；请先完成历史身份迁移。");
             if (reviewer.ActorKey == preparedActorKey)
@@ -119,12 +126,17 @@ public sealed class LocalOperatorService
 
     /// <summary>Current Core replaces PreparedBy when saving edits. Keep draft editing with its original actor.</summary>
     public T ExecuteDraftEdit<T>(OperatorSession session, string preparedActorKey, Func<OperatorIdentity, T> operation)
+        => ExecuteDraftEditFrom(session, () => preparedActorKey, operation);
+
+    internal T ExecuteDraftEditFrom<T>(OperatorSession session, Func<string> readPreparedActorKey, Func<OperatorIdentity, T> operation)
     {
+        ArgumentNullException.ThrowIfNull(readPreparedActorKey);
         ArgumentNullException.ThrowIfNull(operation);
         RequireSynchronous<T>();
         lock (_gate) return _store.Access(doc =>
         {
             var preparer = Require(doc, session, OperatorPermission.PrepareVoucher);
+            var preparedActorKey = readPreparedActorKey();
             if (preparer.ActorKey != preparedActorKey)
                 throw new OperatorAuthorizationException("只能由原制单身份修改草稿；历史姓名须先完成可信映射。");
             return operation(preparer.Identity);

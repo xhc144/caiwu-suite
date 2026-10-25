@@ -254,6 +254,7 @@
       "caiwu.operators": {
         "type": "Project",
         "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )",
           "Microsoft.Extensions.Identity.Core": "[10.0.13, 10.0.13]"
         }
       }

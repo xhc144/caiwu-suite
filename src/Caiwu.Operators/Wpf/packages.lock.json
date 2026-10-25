@@ -128,9 +128,13 @@
         "resolved": "10.0.13",
         "contentHash": "ZjTwxzhiw2TMEzIbUDkMF0dfDB2I4NQgIfKD0ELu9/5Mk+SRGdKZcD0/lvBrRCAPo6KN2r0BW86MRancoyJkoA=="
       },
+      "caiwu.contracts": {
+        "type": "Project"
+      },
       "caiwu.operators": {
         "type": "Project",
         "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )",
           "Microsoft.Extensions.Identity.Core": "[10.0.13, 10.0.13]"
         }
       }
