@@ -25,7 +25,10 @@ internal static class Program
 {
     private static readonly List<object> Captures = [];
     private static readonly List<string> Checks = [];
+    private static readonly List<object> FontObservations = [];
     private static string output = "";
+    private static nint displayMode;
+    private static byte[]? originalDisplay;
 
     [STAThread]
     private static int Main(string[] args)
@@ -36,7 +39,7 @@ internal static class Program
         App? app = null;
         try
         {
-            using var desktop = NativeDesktopMode.EnsureFullHd();
+            PrepareDesktop();
             app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var backend = new DesktopBackend(SqliteLedgerStore.Open, SqliteLedgerStore.Create,
                 SqliteLedgerStore.RestoreBackup, s => new LedgerService(s), TemplateCatalog.All);
@@ -72,7 +75,14 @@ internal static class Program
             button.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)); Pump();
             Require(Keyboard.FocusedElement is not null, "Keyboard traversal lost focus.");
             Checks.Add("Modern button template, native automation peer and keyboard focus traversal");
+            Require(main.FontSize == 14, "Custom main Window did not receive the application typography.");
+            var searchBox = (TextBox)main.FindName("VoucherSearch");
+            Require(ReferenceEquals(searchBox.Template, app.FindResource("DefaultTextBoxControlTemplate")), "Search input fell back to a legacy TextBox template.");
+            var operatorInput = (ComboBox)main.FindName("OperatorInput");
+            Require(ReferenceEquals(operatorInput.Template, app.FindResource("EditableComboBoxTemplate")), "Editable ComboBox fell back to a legacy template.");
             var date = (DatePicker)main.FindName("VoucherFrom");
+            Require(date.Template.FindName("BorderElement", date) is Border, "DatePicker fell back to a legacy template.");
+            Checks.Add("Application typography and actual Fluent TextBox, editable ComboBox and DatePicker templates");
             date.IsDropDownOpen = true; Pump();
             Require(date.Template.FindName("PART_Popup", date) is Popup { IsOpen: true }, "DatePicker calendar popup did not open.");
             date.IsDropDownOpen = false; Pump(); Checks.Add("Native DatePicker calendar popup opens and closes");
@@ -111,13 +121,23 @@ internal static class Program
             Call(main, "ShowVerificationPage", 5); Pump(); Capture(main, "05-bank-ledger.png");
             var report = new ReportCenterWindow(snapshot.Accounts, new(2026, 10, 1), new(2026, 10, 31),
                 (kind, account, from, to) => ReportingQueries.Build(service, kind, account, from, to), (_, _) => { }) { Owner = main };
-            report.Show(); Pump(); SizeNative(report); Capture(report, "06-reports.png"); report.Close(); Pump();
+            report.Show(); Pump(); SizeNative(report); Capture(report, "06-reports.png");
+            var reportGrid = (DataGrid)report.FindName("ReportGrid");
+            var reportAmount = reportGrid.Columns.Single(c => c.Header?.ToString() == "期初借方");
+            Require(reportAmount.GetCellContent(reportGrid.Items[0]) is TextBlock { TextAlignment: TextAlignment.Right }, "Generated report amount cells are not aligned right.");
+            Checks.Add("Generated report amount cells align right without changing report bindings");
+            report.Close(); Pump();
             main.Close(); Pump();
             SaveResult(true, null); app.Shutdown(0); return 0;
         }
         catch (Exception ex)
         {
             SaveResult(false, ex.ToString()); app?.Shutdown(1); return 1;
+        }
+        finally
+        {
+            if (originalDisplay is not null) { Marshal.Copy(originalDisplay, 0, displayMode, 220); ChangeDisplaySettings(displayMode, 0); }
+            if (displayMode != 0) Marshal.FreeHGlobal(displayMode);
         }
     }
 
@@ -126,20 +146,36 @@ internal static class Program
             captureMethod = "Win32 PrintWindow, complete native window including non-client frame; no image resize or crop",
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_VISUAL_COMMIT"),
             sourceTree = Environment.GetEnvironmentVariable("CAIWU_VISUAL_SOURCE_TREE"),
-            generatedAtUtc = DateTimeOffset.UtcNow, checks = Checks, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
+            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, fontObservations = FontObservations, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
 
+    private static void PrepareDesktop()
+    {
+        // Same native mode protocol as the existing independent Acceptance high-resolution runner.
+        displayMode = Marshal.AllocHGlobal(220); Marshal.Copy(new byte[220], 0, displayMode, 220);
+        Marshal.WriteInt16(displayMode, 68, 220);
+        Require(EnumDisplaySettings(null, -1, displayMode), "Cannot read actual Windows display mode.");
+        originalDisplay = new byte[220]; Marshal.Copy(displayMode, originalDisplay, 0, 220);
+        if (GetSystemMetrics(0) < 1920 || GetSystemMetrics(1) < 1080)
+        {
+            Marshal.WriteInt32(displayMode, 72, Marshal.ReadInt32(displayMode, 72) | 0x180000);
+            Marshal.WriteInt32(displayMode, 172, 1920); Marshal.WriteInt32(displayMode, 176, 1080);
+            Require(ChangeDisplaySettings(displayMode, 2) == 0 && ChangeDisplaySettings(displayMode, 0) == 0,
+                "Runner display does not support native 1920x1080; no upscaled capture allowed.");
+        }
+        Require(GetSystemMetrics(0) >= 1920 && GetSystemMetrics(1) >= 1080, "Native display mode change was ineffective.");
+    }
     private static void SizeNative(Window window)
     {
         window.WindowState = WindowState.Normal; window.Activate(); Pump();
         var hwnd = new WindowInteropHelper(window).Handle;
         Require(SetWindowPos(hwnd, 0, 0, 0, 1920, 1080, 0x0004 | 0x0010), "SetWindowPos failed."); Pump();
-        Require(GetWindowRect(hwnd, out var rect), "Cannot measure the resized native window.");
-        Require(rect.Right - rect.Left == 1920 && rect.Bottom - rect.Top == 1080,
-            $"Runner returned native {rect.Right - rect.Left}x{rect.Bottom - rect.Top} instead of 1920x1080; no upscale is allowed.");
+        Require(GetWindowRect(hwnd, out var rect) && rect.Right - rect.Left == 1920 && rect.Bottom - rect.Top == 1080,
+            "Runner did not create a native 1920x1080 window; no upscale is allowed.");
     }
     private static void Capture(Window window, string file)
     {
         window.Activate(); window.UpdateLayout(); Pump();
+        ObserveFonts(window, file);
         var hwnd = new WindowInteropHelper(window).Handle;
         Require(GetWindowRect(hwnd, out var rect), "Cannot measure native window.");
         int width = rect.Right - rect.Left, height = rect.Bottom - rect.Top;
@@ -161,6 +197,24 @@ internal static class Program
         }
         finally { SelectObject(memory, old); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(hwnd, dc); }
     }
+    private static void ObserveFonts(Window window, string file)
+    {
+        foreach (var text in Descendants<TextBlock>(window).Where(t => t.IsVisible && !string.IsNullOrWhiteSpace(t.Text)).Take(28))
+        {
+            var glyphs = Glyphs(VisualTreeHelper.GetDrawing(text)).ToArray();
+            FontObservations.Add(new { file, text = text.Text.Length > 64 ? text.Text[..64] : text.Text,
+                declaredFamily = text.FontFamily.Source, size = text.FontSize, weight = text.FontWeight.ToString(),
+                foreground = text.Foreground?.ToString(),
+                actualFamilies = glyphs.SelectMany(g => g.FamilyNames.Values).Distinct().ToArray() });
+        }
+    }
+    private static IEnumerable<GlyphTypeface> Glyphs(Drawing? drawing)
+    {
+        if (drawing is GlyphRunDrawing glyph) yield return glyph.GlyphRun.GlyphTypeface;
+        if (drawing is DrawingGroup group)
+            foreach (var child in group.Children)
+                foreach (var face in Glyphs(child)) yield return face;
+    }
     private static object? Call(object target, string name, params object[] args)
     {
         try { return target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(target, args); }
@@ -181,6 +235,9 @@ internal static class Program
     }
     private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EnumDisplaySettings(string? device, int mode, nint settings);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ChangeDisplaySettings(nint settings, int flags);
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetWindowPos(nint hwnd, nint after, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetWindowRect(nint hwnd, out Rect rect);
     [DllImport("user32.dll")] private static extern nint GetWindowDC(nint hwnd);

@@ -2,8 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:dialogs="clr-namespace:Caiwu.Desktop.Dialogs">
   <ResourceDictionary.MergedDictionaries>
-    <!-- Keep Microsoft's complete editing, calendar, menu and accessibility templates. -->
-    <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
+    <!-- Use the complete light dictionary: Fluent.xaml alone has templates but omits the colour resources. -->
+    <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.Light.xaml" />
   </ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="AppCanvas" Color="#F2F5FA" />
   <SolidColorBrush x:Key="AppSurface" Color="#FFFFFF" />
@@ -18,8 +18,9 @@
     </ControlTemplate></Setter.Value></Setter>
   </Style>
   <Style TargetType="Window">
-    <Setter Property="FontFamily" Value="Segoe UI Variable, Microsoft YaHei UI, Segoe UI" />
+    <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI" />
     <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="Foreground" Value="{DynamicResource AppInk}" />
     <Setter Property="Background" Value="{DynamicResource AppCanvas}" />
     <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
@@ -67,25 +68,25 @@
   <Style x:Key="QuietButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
     <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent" />
   </Style>
-  <!-- BasedOn is essential: setters alone replace the implicit Fluent style. -->
-  <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+  <!-- Named Fluent keys avoid resolving an overriding implicit type key back to a legacy style. -->
+  <Style TargetType="TextBox" BasedOn="{StaticResource DefaultTextBoxStyle}">
     <Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="10,6"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="BorderBrush" Value="{DynamicResource AppLine}" />
     <Setter Property="Foreground" Value="{DynamicResource AppInk}" />
   </Style>
-  <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+  <Style TargetType="ComboBox" BasedOn="{StaticResource DefaultComboBoxStyle}">
     <Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="10,6"/>
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
-  <Style TargetType="DatePicker" BasedOn="{StaticResource {x:Type DatePicker}}">
+  <Style TargetType="DatePicker" BasedOn="{StaticResource DefaultDatePickerStyle}">
     <Setter Property="MinHeight" Value="36"/><Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Language" Value="zh-CN"/><Setter Property="SelectedDateFormat" Value="Short" />
   </Style>
-  <Style TargetType="Menu" BasedOn="{StaticResource {x:Type Menu}}">
+  <Style TargetType="Menu" BasedOn="{StaticResource DefaultMenuStyle}">
     <Setter Property="Background" Value="{DynamicResource AppSurface}"/><Setter Property="Padding" Value="14,5" />
   </Style>
-  <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+  <Style TargetType="MenuItem" BasedOn="{StaticResource DefaultMenuItemStyle}">
     <Setter Property="Padding" Value="12,7"/>
   </Style>
   <Style TargetType="ToolBar" BasedOn="{StaticResource {x:Type ToolBar}}">
@@ -95,7 +96,7 @@
       <Style x:Key="{x:Static ToolBar.ButtonStyleKey}" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}" />
     </Style.Resources>
   </Style>
-  <Style TargetType="TabControl" BasedOn="{StaticResource {x:Type TabControl}}">
+  <Style TargetType="TabControl" BasedOn="{StaticResource DefaultTabControlStyle}">
     <Setter Property="Background" Value="{DynamicResource AppSurface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AppLine}" />
     <Setter Property="BorderThickness" Value="1" />
@@ -110,7 +111,7 @@
       </Grid>
     </ControlTemplate></Setter.Value></Setter>
   </Style>
-  <Style TargetType="TabItem" BasedOn="{StaticResource {x:Type TabItem}}">
+  <Style TargetType="TabItem" BasedOn="{StaticResource DefaultTabItemStyle}">
     <Setter Property="Foreground" Value="{DynamicResource AppMuted}"/><Setter Property="Background" Value="Transparent"/>
     <Setter Property="Padding" Value="19,10"/><Setter Property="Margin" Value="0,0,5,0"/>
     <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusRing}" />
@@ -126,7 +127,9 @@
       </ControlTemplate.Triggers>
     </ControlTemplate></Setter.Value></Setter>
   </Style>
-  <Style TargetType="DataGrid" BasedOn="{StaticResource {x:Type DataGrid}}">
+  <Style TargetType="DataGrid" BasedOn="{StaticResource DefaultDataGridStyle}">
+    <Setter Property="CellStyle" Value="{DynamicResource {x:Type DataGridCell}}"/>
+    <Setter Property="ColumnHeaderStyle" Value="{DynamicResource {x:Type DataGridColumnHeader}}"/>
     <Setter Property="Background" Value="White"/><Setter Property="Foreground" Value="{DynamicResource AppInk}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource AppLine}"/><Setter Property="BorderThickness" Value="1"/>
     <Setter Property="RowBackground" Value="White"/><Setter Property="AlternatingRowBackground" Value="#F8FAFD"/>
@@ -135,17 +138,34 @@
     <Setter Property="RowHeaderWidth" Value="0"/><Setter Property="MinColumnWidth" Value="90"/>
     <Setter Property="EnableRowVirtualization" Value="True"/><Setter Property="EnableColumnVirtualization" Value="True"/>
   </Style>
-  <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+  <Style TargetType="DataGridColumnHeader" BasedOn="{StaticResource DefaultDataGridColumnHeaderStyle}">
     <Setter Property="Background" Value="#EEF3FA"/><Setter Property="Foreground" Value="#445B77"/>
     <Setter Property="Padding" Value="12,9"/><Setter Property="FontWeight" Value="SemiBold"/>
     <Setter Property="BorderBrush" Value="{DynamicResource AppLine}"/><Setter Property="BorderThickness" Value="0,0,0,1"/>
   </Style>
-  <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+  <Style TargetType="DataGridCell" BasedOn="{StaticResource DefaultDataGridCellStyle}">
     <Setter Property="Padding" Value="10,4"/><Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="BorderThickness" Value="1"/><Setter Property="BorderBrush" Value="Transparent"/>
     <Style.Triggers>
       <Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="#E8F0FF"/><Setter Property="Foreground" Value="#173E7D"/></Trigger>
       <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource AppAccent}"/></Trigger>
+    </Style.Triggers>
+  </Style>
+  <!-- ReportCenter generates columns in its behavior owner; style current amount headers without changing those bindings. -->
+  <Style x:Key="ReportCell" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+    <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
+    <Style.Triggers>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期初借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期初贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="本期借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="本期贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期末借方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="期末贷方"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="借方合计"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="贷方合计"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="借方发生额"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="贷方发生额"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
+      <DataTrigger Binding="{Binding Column.Header, RelativeSource={RelativeSource Self}}" Value="余额（借正贷负）"><Setter Property="TextBlock.TextAlignment" Value="Right"/></DataTrigger>
     </Style.Triggers>
   </Style>
   <Style x:Key="AmountCell" TargetType="TextBlock">
