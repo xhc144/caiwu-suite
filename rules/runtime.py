@@ -53,7 +53,7 @@ def read_json(path: Path) -> Any:
 
 
 def _schema(data: dict, kind: str, root: Path = ROOT) -> None:
-    _require(kind in {"package", "catalog", "sources", "migration"}, "Unknown schema kind")
+    _require(kind in {"package", "catalog", "sources", "migration", "nonprofit-scenarios", "enterprise-evidence"}, "Unknown schema kind")
     schema = read_json(root / "schema" / f"{kind}.schema.json")
     Draft202012Validator.check_schema(schema)
     errors = sorted(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(data),
@@ -228,9 +228,17 @@ def load_bundle(root: Path = ROOT) -> tuple[dict, dict[str, dict], dict]:
 
 def validate_bundle(root: Path = ROOT) -> dict:
     catalog, packages, migration = load_bundle(root)
-    return {"valid": True, "asOf": catalog["asOf"], "packages": len(packages),
+    result = {"valid": True, "asOf": catalog["asOf"], "packages": len(packages),
             "accountCounts": {p["regime"]: len(p["accounts"]) for p in packages.values()},
             "allVerifiedForProduction": False, "completeMigrationValidated": migration["completeMigrationValidated"]}
+    from rules.nonprofit_scenarios import validate_scenario_pack
+    sources = {s["id"]: s for s in read_json(root / "sources.json")["sources"]}
+    nonprofit = next(p for p in packages.values() if p["regime"] == "Nonprofit")
+    result["nonprofitSyntheticAcceptance"] = validate_scenario_pack(read_json(root / "scenarios/nonprofit-v2.json"), nonprofit, sources, root)
+    from rules.enterprise_evidence import validate_enterprise_evidence
+    enterprise = next(p for p in packages.values() if p["regime"] == "Enterprise")
+    result["enterpriseOfficialEvidence"] = validate_enterprise_evidence(read_json(_local_path(root, enterprise["officialNameEvidencePath"])), sources, enterprise, root)
+    return result
 
 
 def _date(value: str) -> date:

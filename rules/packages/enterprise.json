@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "enterprise-nonfinancial-2019-appendix2-sample",
-  "version": "2026.10.25.1",
+  "version": "2026.10.25.2",
   "regime": "Enterprise",
-  "displayName": "企业：2019附件2报表元数据与9个工程样例科目",
+  "displayName": "企业：25个正式具名科目证据与9个未核编码工程样例",
   "legalStatus": "OfficialCurrent",
   "legalEffectiveFrom": null,
   "supportedPeriodsFrom": "2026-01-01",
@@ -352,9 +352,11 @@
     }
   ],
   "limitations": [
+    "v2新增25个有正式页码的具名科目证据；全部数字编码仍为空。accounts中9项只保留v1工程演示，不得转换成官方已核编号。2006原表RAR403停止，完整替代及现行编号指南尚缺。",
     "企业9个科目编码均为待核工程约定；其中5个名称同属未核工程样例，另4个名称可由正式报表附件核实；官方完整现行科目指南未取得。",
     "2019附件2不是全行业、集团合并或2026新第30号报表包；未完整审阅累计解释及各专项业务。",
     "不能使用2026科目征求意见稿替代现行指南；未来正式准则、草案和现行科目分开存储。",
     "真实财务合规不能保证。"
-  ]
+  ],
+  "officialNameEvidencePath": "enterprise/current-official-evidence.json"
 }

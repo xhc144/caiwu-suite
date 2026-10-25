@@ -1,0 +1,3614 @@
+{
+  "schemaVersion": 1,
+  "id": "nonprofit-contracts-v2-synthetic-acceptance",
+  "version": "2026.10.25.2",
+  "packageId": "nonprofit-2026-official",
+  "purpose": "ContractsV2SpecificationOnly",
+  "isProductionCertified": false,
+  "allAmountsSynthetic": true,
+  "sourceRefs": [
+    {
+      "sourceId": "nonprofit-standard",
+      "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+    },
+    {
+      "sourceId": "nonprofit-standard",
+      "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+    }
+  ],
+  "cases": [
+    {
+      "id": "gift-restricted",
+      "title": "相同1000捐赠及200支出，Restricted分别影响对应净资产",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": null,
+        "result": {
+          "metrics": {
+            "incomeUnrestricted": "0.00",
+            "incomeRestricted": "1000.00",
+            "expenseUnrestricted": "0.00",
+            "expenseRestricted": "200.00",
+            "cashChange": "800.00",
+            "releasedToUnrestricted": "0.00",
+            "releasedFromRestricted": "0.00",
+            "assets": "800.00",
+            "liabilities": "0.00",
+            "unrestrictedNetAssets": "0.00",
+            "restrictedNetAssets": "800.00",
+            "totalNetAssets": "800.00"
+          },
+          "incomeExpenseClosingZero": true,
+          "allocations": {}
+        }
+      }
+    },
+    {
+      "id": "gift-unrestricted",
+      "title": "相同1000捐赠及200支出，Unrestricted分别影响对应净资产",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": null,
+        "result": {
+          "metrics": {
+            "incomeUnrestricted": "1000.00",
+            "incomeRestricted": "0.00",
+            "expenseUnrestricted": "200.00",
+            "expenseRestricted": "0.00",
+            "cashChange": "800.00",
+            "releasedToUnrestricted": "0.00",
+            "releasedFromRestricted": "0.00",
+            "assets": "800.00",
+            "liabilities": "0.00",
+            "unrestrictedNetAssets": "800.00",
+            "restrictedNetAssets": "0.00",
+            "totalNetAssets": "800.00"
+          },
+          "incomeExpenseClosingZero": true,
+          "allocations": {}
+        }
+      }
+    },
+    {
+      "id": "shared-cost-dual-net-assets",
+      "title": "有据3:2分配1000，共同费用功能与限制双维度独立，期末净资产3600/2400",
+      "kind": "Ledger",
+      "assumptions": [
+        "期初现金2000=限定净资产1200+非限定800。",
+        "已确认捐赠分别3000/2000；共同费用1000受益于A项目与一般管理，工时证据及捐赠协议允许A负担600，复核批准3:2分配。",
+        "期末限定=1200+3000-600=3600；非限定=800+2000-400=2400；资产=2000+5000-1000=6000。分配法是本例选择，不是法定比例。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [
+        {
+          "id": "common-cost",
+          "voucherId": "common-expense",
+          "total": "1000.00",
+          "basisApproved": true,
+          "basisEvidenceId": "synthetic-hours-approved-3-to-2",
+          "roundingPolicy": "LargestRemainderThenRowId",
+          "rows": [
+            {
+              "id": "slice-r",
+              "accountCode": "5101",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A",
+              "weight": 3,
+              "amount": "600.00"
+            },
+            {
+              "id": "slice-u",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 2,
+              "amount": "400.00"
+            }
+          ]
+        }
+      ],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "2000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-r",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "800.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "gift-r",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "3000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "gift",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "3000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "gift-u",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "2000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "gift",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "2000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "common-expense",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "slice-r",
+              "accountCode": "5101",
+              "debit": "600.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "slice-u",
+              "accountCode": "5301",
+              "debit": "400.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-r-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-r-income-pl",
+              "accountCode": "4101",
+              "debit": "3000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-r-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "3000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-u-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-u-income-pl",
+              "accountCode": "4101",
+              "debit": "2000.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-u-income-net",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "2000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-r-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-r-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "600.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-r-expense-net",
+              "accountCode": "3102",
+              "debit": "600.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-u-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-u-expense-pl",
+              "accountCode": "5301",
+              "debit": "0.00",
+              "credit": "400.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-u-expense-net",
+              "accountCode": "3101",
+              "debit": "400.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": null,
+        "result": {
+          "metrics": {
+            "incomeUnrestricted": "2000.00",
+            "incomeRestricted": "3000.00",
+            "expenseUnrestricted": "400.00",
+            "expenseRestricted": "600.00",
+            "cashChange": "4000.00",
+            "releasedToUnrestricted": "0.00",
+            "releasedFromRestricted": "0.00",
+            "assets": "6000.00",
+            "liabilities": "0.00",
+            "unrestrictedNetAssets": "2400.00",
+            "restrictedNetAssets": "3600.00",
+            "totalNetAssets": "6000.00"
+          },
+          "incomeExpenseClosingZero": true,
+          "allocations": {
+            "common-cost": {
+              "slice-r": "600.00",
+              "slice-u": "400.00"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "allocation-cent-conservation",
+      "title": "101分按1:1:1分配，余数按稳定ID归属",
+      "kind": "Allocation",
+      "assumptions": [
+        "合理性已经合成人工审批；算法仅为工程选项。101=34+34+33，不产生尾差填平凭证。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [],
+      "allocations": [
+        {
+          "id": "rounding-101",
+          "voucherId": null,
+          "total": "1.01",
+          "basisApproved": true,
+          "basisEvidenceId": "synthetic-equal-benefit",
+          "roundingPolicy": "LargestRemainderThenRowId",
+          "rows": [
+            {
+              "id": "a",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.34"
+            },
+            {
+              "id": "b",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.34"
+            },
+            {
+              "id": "c",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.33"
+            }
+          ]
+        }
+      ],
+      "vouchers": [],
+      "expected": {
+        "errorCode": null,
+        "result": {
+          "allocations": {
+            "rounding-101": {
+              "a": "0.34",
+              "b": "0.34",
+              "c": "0.33"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "full-release-only-reclassifies",
+      "title": "限制完全解除300，只重分净资产，不制造收入或现金",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": null,
+        "result": {
+          "metrics": {
+            "incomeUnrestricted": "0.00",
+            "incomeRestricted": "0.00",
+            "expenseUnrestricted": "0.00",
+            "expenseRestricted": "0.00",
+            "cashChange": "0.00",
+            "releasedToUnrestricted": "300.00",
+            "releasedFromRestricted": "-300.00",
+            "assets": "1000.00",
+            "liabilities": "0.00",
+            "unrestrictedNetAssets": "300.00",
+            "restrictedNetAssets": "700.00",
+            "totalNetAssets": "1000.00"
+          },
+          "incomeExpenseClosingZero": true,
+          "allocations": {}
+        }
+      }
+    },
+    {
+      "id": "reliable-service-donation-noncash",
+      "title": "可靠凭据服务捐赠同时收入费用1000，现金和净资产变动均零",
+      "kind": "Ledger",
+      "assumptions": [
+        "服务凭据金额反映公允价值、确认条件已由会计师判定成立；本例不是无凭据志愿工时估价。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "service-donation",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "service-expense",
+              "accountCode": "5101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "service-income",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-service-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-service-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-service-income-net",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-service-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-service-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-service-expense-net",
+              "accountCode": "3101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": null,
+        "result": {
+          "metrics": {
+            "incomeUnrestricted": "1000.00",
+            "incomeRestricted": "0.00",
+            "expenseUnrestricted": "1000.00",
+            "expenseRestricted": "0.00",
+            "cashChange": "0.00",
+            "releasedToUnrestricted": "0.00",
+            "releasedFromRestricted": "0.00",
+            "assets": "0.00",
+            "liabilities": "0.00",
+            "unrestrictedNetAssets": "0.00",
+            "restrictedNetAssets": "0.00",
+            "totalNetAssets": "0.00"
+          },
+          "incomeExpenseClosingZero": true,
+          "allocations": {}
+        }
+      }
+    },
+    {
+      "id": "reject-missing-class",
+      "title": "捐赠收入缺限定性分类应拒绝",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": null,
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_CLASS_REQUIRED",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-unknown-agreement",
+      "title": "限定捐赠缺协议证据应拒绝",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RESTRICTION_EVIDENCE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-internal-budget",
+      "title": "理事会预算不能被当作制度限定性",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "InternalBudget",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_INTERNAL_BUDGET",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-expense-wrong-close",
+      "title": "限定费用不能结到非限定净资产",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_CLOSE_TARGET",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-time-only-release",
+      "title": "时间到期但用途未解除，不能重分",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": false,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RESTRICTION_NOT_FULLY_RELEASED",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-automatic-spending-release",
+      "title": "使用受限资产支出200不能自动沿旧法重分200",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "old-style-release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RELEASE_EVIDENCE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-cent-loss",
+      "title": "三份均分0.33会丢2分，不能静默接受",
+      "kind": "Allocation",
+      "assumptions": [
+        "合理性已经合成人工审批；算法仅为工程选项。101=34+34+33，不产生尾差填平凭证。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [],
+      "allocations": [
+        {
+          "id": "rounding-101",
+          "voucherId": null,
+          "total": "1.01",
+          "basisApproved": true,
+          "basisEvidenceId": "synthetic-equal-benefit",
+          "roundingPolicy": "LargestRemainderThenRowId",
+          "rows": [
+            {
+              "id": "a",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.33"
+            },
+            {
+              "id": "b",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.33"
+            },
+            {
+              "id": "c",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.33"
+            }
+          ]
+        }
+      ],
+      "vouchers": [],
+      "expected": {
+        "errorCode": "NP_ALLOCATION_AMOUNT",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-allocation-bridge",
+      "title": "分配底稿600不能过账为599.99",
+      "kind": "Ledger",
+      "assumptions": [
+        "期初现金2000=限定净资产1200+非限定800。",
+        "已确认捐赠分别3000/2000；共同费用1000受益于A项目与一般管理，工时证据及捐赠协议允许A负担600，复核批准3:2分配。",
+        "期末限定=1200+3000-600=3600；非限定=800+2000-400=2400；资产=2000+5000-1000=6000。分配法是本例选择，不是法定比例。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [
+        {
+          "id": "common-cost",
+          "voucherId": "common-expense",
+          "total": "1000.00",
+          "basisApproved": true,
+          "basisEvidenceId": "synthetic-hours-approved-3-to-2",
+          "roundingPolicy": "LargestRemainderThenRowId",
+          "rows": [
+            {
+              "id": "slice-r",
+              "accountCode": "5101",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A",
+              "weight": 3,
+              "amount": "600.00"
+            },
+            {
+              "id": "slice-u",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 2,
+              "amount": "400.00"
+            }
+          ]
+        }
+      ],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "2000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-r",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "800.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "gift-r",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "3000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "gift",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "3000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "gift-u",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "2000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "gift",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "2000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "common-expense",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "slice-r",
+              "accountCode": "5101",
+              "debit": "599.99",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "slice-u",
+              "accountCode": "5301",
+              "debit": "400.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "999.99",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-r-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-r-income-pl",
+              "accountCode": "4101",
+              "debit": "3000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-r-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "3000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-u-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-u-income-pl",
+              "accountCode": "4101",
+              "debit": "2000.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-u-income-net",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "2000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-r-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-r-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "600.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-r-expense-net",
+              "accountCode": "3102",
+              "debit": "600.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-u-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-u-expense-pl",
+              "accountCode": "5301",
+              "debit": "0.00",
+              "credit": "400.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-u-expense-net",
+              "accountCode": "3101",
+              "debit": "400.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_ALLOCATION_POSTING",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-restricted-tax-automation",
+      "title": "5601限定所得税自动处理仍需复核",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5601",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_MANUAL_TAX_REVIEW",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-unapproved-basis",
+      "title": "共同费用分配依据未审定不能自动认可",
+      "kind": "Allocation",
+      "assumptions": [
+        "未取得共同费用分配依据审批，应拒绝。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [],
+      "allocations": [
+        {
+          "id": "rounding-101",
+          "voucherId": null,
+          "total": "1.01",
+          "basisApproved": false,
+          "basisEvidenceId": "synthetic-equal-benefit",
+          "roundingPolicy": "LargestRemainderThenRowId",
+          "rows": [
+            {
+              "id": "a",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.34"
+            },
+            {
+              "id": "b",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.34"
+            },
+            {
+              "id": "c",
+              "accountCode": "5301",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null,
+              "weight": 1,
+              "amount": "0.33"
+            }
+          ]
+        }
+      ],
+      "vouchers": [],
+      "expected": {
+        "errorCode": "NP_ALLOCATION_BASIS",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-closing-class-flip",
+      "title": "收入结转改非限定分类不能因科目总额结零而通过",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_CLOSE_CLASS_BALANCE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-closing-grant-swap",
+      "title": "A捐赠不能以B限制ID结转，即使均属限定",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_CLOSE_CLASS_BALANCE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-hidden-activity-release",
+      "title": "改称日常Activity也不能绕过净资产重分类审查",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_NET_ASSET_OPERATION",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-release-wrong-grant",
+      "title": "B解除证据不能释放A净资产",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-B",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RELEASE_RESTRICTION_ID",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-release-internal-budget",
+      "title": "期初和重分类也不能将内部预算当外部限定",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "InternalBudget",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_INTERNAL_BUDGET",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-release-empty-conditions",
+      "title": "没有具体限制条件不能凭空宣告解除",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RESTRICTION_EVIDENCE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-release-exceeds-grant",
+      "title": "A只有300，不能借用B700释放400",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "400.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "400.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RELEASE_EXCEEDS_AVAILABLE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-double-release",
+      "title": "同一300不能释放两次",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "release-again",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RELEASE_EXCEEDS_AVAILABLE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-unspecified-partial-release",
+      "title": "全部解除A300不能无单独证据范围只转100",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Release",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": {
+            "restrictionId": "grant-A",
+            "timeSatisfied": true,
+            "purposeSatisfied": true,
+            "providerRevoked": false,
+            "evidenceId": "synthetic-release-review"
+          },
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "100.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "100.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_RELEASE_AMOUNT_SCOPE",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-opening-disguise",
+      "title": "不能把第二笔净资产重分类伪装成Opening",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        },
+        {
+          "id": "grant-B",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-B",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "另一个仍有用途及时间限制的700，不属于已全部解除的grant-A300。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "opening",
+          "kind": "Opening",
+          "date": "2026-01-01",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "net-a",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "net-b",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "700.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-B"
+            }
+          ]
+        },
+        {
+          "id": "release",
+          "kind": "Opening",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "from-r",
+              "accountCode": "3102",
+              "debit": "300.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "to-u",
+              "accountCode": "3101",
+              "debit": "0.00",
+              "credit": "300.00",
+              "restrictionClass": "Unrestricted",
+              "restrictionId": null
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_OPENING_ORDER",
+        "result": null
+      }
+    },
+    {
+      "id": "reject-pre-2026-period",
+      "title": "2026新分类不能套入2025交易",
+      "kind": "Ledger",
+      "assumptions": [
+        "全部金额/协议/审批均为合成；收入确认前提及限制证据经人工判定成立；不涉及税费、退还、减值或前期调整。"
+      ],
+      "sourceRefs": [
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第67—70、74—79条；PDF第28—35页；3101/3102说明第103—107页"
+        },
+        {
+          "sourceId": "nonprofit-standard",
+          "locator": "第18条第（四）项；PDF第7页；4101说明第108页"
+        }
+      ],
+      "restrictions": [
+        {
+          "id": "grant-A",
+          "sourceKind": "ExternalProvider",
+          "evidenceId": "synthetic-agreement-A",
+          "conditions": [
+            "Time",
+            "Purpose"
+          ],
+          "description": "合成协议：限定用于A项目，期间和用途限制需分别判断；不是实际协议。"
+        }
+      ],
+      "allocations": [],
+      "vouchers": [
+        {
+          "id": "gift",
+          "kind": "Activity",
+          "date": "2025-12-31",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            },
+            {
+              "id": "donation",
+              "accountCode": "4101",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "spend",
+          "kind": "Activity",
+          "date": "2026-06-30",
+          "cashNature": "Cash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "cost",
+              "accountCode": "5101",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "bank",
+              "accountCode": "1002",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": null,
+              "restrictionId": null
+            }
+          ]
+        },
+        {
+          "id": "close-income",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-income-pl",
+              "accountCode": "4101",
+              "debit": "1000.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-income-net",
+              "accountCode": "3102",
+              "debit": "0.00",
+              "credit": "1000.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        },
+        {
+          "id": "close-expense",
+          "kind": "Closing",
+          "date": "2026-06-30",
+          "cashNature": "Noncash",
+          "releaseAssessment": null,
+          "lines": [
+            {
+              "id": "close-expense-pl",
+              "accountCode": "5101",
+              "debit": "0.00",
+              "credit": "200.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            },
+            {
+              "id": "close-expense-net",
+              "accountCode": "3102",
+              "debit": "200.00",
+              "credit": "0.00",
+              "restrictionClass": "Restricted",
+              "restrictionId": "grant-A"
+            }
+          ]
+        }
+      ],
+      "expected": {
+        "errorCode": "NP_PERIOD_UNSUPPORTED",
+        "result": null
+      }
+    }
+  ],
+  "limitations": [
+    "合成业务前提是人工提供的事实，不自动判定组织资格、捐赠条件、限制解除、分配合理性或计量可靠性。",
+    "本验算器验证这些有限正反样例和整数分算术，不实现生产账务、完整报表/迁移、全部合法更正和实际合规认证。"
+  ]
+}

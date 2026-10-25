@@ -217,6 +217,80 @@
       "limitations": [
         "采标版权限制；归档的是官方限制说明页，不是标准全文。"
       ]
+    },
+    {
+      "id": "enterprise-revenue-2017-notice",
+      "title": "关于修订印发企业会计准则第14号——收入的通知",
+      "documentNumber": "财会〔2017〕22号",
+      "url": "https://m.mof.gov.cn/zcfb/201707/t20170719_2653110.htm",
+      "noticeUrl": null,
+      "issuedOn": "2017-07-05",
+      "effectiveFrom": null,
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/revenue-2017-notice.html",
+      "sha256": "b7dad165342ec95fefc3b1d2342488daca0cd0aee7a63fef790ca4808ef9be5c",
+      "bytes": 7148,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": [
+        "按适用主体分阶段执行，不能把成文日作为统一生效日；具体见企业更新证据。"
+      ]
+    },
+    {
+      "id": "enterprise-revenue-2017-standard",
+      "title": "企业会计准则第14号——收入（2017修订正式）",
+      "documentNumber": "财会〔2017〕22号附件",
+      "url": "https://www.mof.gov.cn/zcsjtsgb/gfxwj/201707/P020200907398079240429.pdf",
+      "noticeUrl": null,
+      "issuedOn": "2017-07-05",
+      "effectiveFrom": null,
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/revenue-2017.pdf",
+      "sha256": "86297590f9fcf6e20315fb41b0da2cf7cca9af4802a00710a579811d72f02204",
+      "bytes": 550912,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": [
+        "按适用主体分阶段执行，不能把成文日作为统一生效日；具体见企业更新证据。"
+      ]
+    },
+    {
+      "id": "enterprise-lease-2018-notice",
+      "title": "关于修订印发企业会计准则第21号——租赁的通知",
+      "documentNumber": "财会〔2018〕35号",
+      "url": "https://www.mof.gov.cn/zcsjtsgb/gfxwj/201812/t20181207_3583635.htm",
+      "noticeUrl": null,
+      "issuedOn": "2018-12-07",
+      "effectiveFrom": null,
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/lease-2018-notice.html",
+      "sha256": "163f88ea608de590af60a63358cf2ff23ef7238b7e9f7031516db2af01b0f59f",
+      "bytes": 24571,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": [
+        "按适用主体分阶段执行，不能把成文日作为统一生效日；具体见企业更新证据。"
+      ]
+    },
+    {
+      "id": "enterprise-2006-notice-read",
+      "title": "2006企业准则应用指南印发通知（上海财政局转载）",
+      "documentNumber": "财会〔2006〕18号",
+      "url": "https://czj.sh.gov.cn/zys_8908/zcfg_8983/zcfb_8985/hj_9035/cwhjjbzdgf/20061201/0017-156907.html",
+      "noticeUrl": null,
+      "issuedOn": null,
+      "effectiveFrom": "2007-01-01",
+      "status": "HistoricalBasePartiallySuperseded",
+      "retrievedOn": "2026-10-25",
+      "localPath": null,
+      "sha256": null,
+      "bytes": null,
+      "verification": "OfficialWebTextRead",
+      "limitations": [
+        "仅读取通知，附件RAR首次HTTP403已停止；未取得2006科目原表。",
+        "转载页面落款2006-11-06与后续正式文件引用原2006-10-30不同，不据此覆盖原始成文日。",
+        "2006收入/租赁等规则已有正式替代，不能整包当2026现行。"
+      ]
     }
   ],
   "researchInputs": [
