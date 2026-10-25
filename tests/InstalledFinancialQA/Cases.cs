@@ -62,7 +62,7 @@ internal static partial class Program
         Cell(columns, row, 1, "合成差额"); Cell(columns, row, 2, "[periodDebit]-[periodCredit]");
         Invoke(window, Name("重新预览")); Require(HasText(window, "预览已更新"), "actual installed designer calculates native edited decimal formula");
         var preview = Grid(window, "PreviewGrid"); var pattern = (GridPattern)preview.GetCurrentPattern(GridPattern.Pattern);
-        Require(pattern.Current.RowCount > 0 && HasText(preview, "10.00"), "actual designer formula preview contains expected synthetic debit-credit10"); Capture("designer-formula");
+        Require(pattern.Current.RowCount > 0 && FormulaCellIsTen(preview), "actual designer calculated-column bank cell equals independent debit-credit10"); Capture("designer-formula");
         templateFile = Path.Combine(Path.GetDirectoryName(moduleRoot)!, "Reports", "installed-template.json");
         Invoke(window, Name("保存模板")); ChooseFile(templateFile, true); Until(() => HasText(window, "模板已原子保存"), "normal designer template atomic save");
         var loaded = TemplateStore.Load(templateFile);
@@ -70,7 +70,7 @@ internal static partial class Program
         var savedHash = PayloadManifest.Hash(templateFile); Close(window); Until(() => Text(main!, "NotificationText").Contains("登记 1 个模板 JSON", StringComparison.Ordinal), "actual MainWindow template attachment registration");
         Menu("报表", "自定义当前账表…"); window = Window(t => t == "自定义当前账表"); Invoke(window, Name("载入模板")); ChooseFile(templateFile, false);
         Until(() => HasText(window, "模板已读回并校验当前来源"), "reopened installed designer reads saved native template");
-        Require(((ValuePattern)window.FindFirst(TreeScope.Descendants, Id("TitleEditor"))!.GetCurrentPattern(ValuePattern.Pattern)).Current.Value == "合成安装报表计算模板" && PayloadManifest.Hash(templateFile) == savedHash, "reopened designer retains saved title formula and file hash"); Capture("designer-reopened"); Close(window);
+        Require(((ValuePattern)window.FindFirst(TreeScope.Descendants, Id("TitleEditor"))!.GetCurrentPattern(ValuePattern.Pattern)).Current.Value == "合成安装报表计算模板" && PayloadManifest.Hash(templateFile) == savedHash && FormulaCellIsTen(Grid(window, "PreviewGrid")), "reopened designer retains saved title and file hash and recalculates actual formula cell10"); Capture("designer-reopened"); Close(window);
         Until(() => Text(main!, "NotificationText").Contains("模板 JSON", StringComparison.Ordinal), "designer closes and validates attachments again");
     }
     private static void Restore()
@@ -115,6 +115,14 @@ internal static partial class Program
             evidenceRows.Add(new { x.Key, x.Codec, source = x.RelativePath, restored = y.RelativePath, sourceSha256 = PayloadManifest.Hash(xp), restoredSha256 = PayloadManifest.Hash(yp), sourceVersion = xv, restoredVersion = yv });
         }
         File.WriteAllText(Path.Combine(evidence, "actual-restored-readback.json"), JsonSerializer.Serialize(new { source = a, actualRestoredTarget = b, originalLedgerSha256 = sourceBookHash, identityUnchanged = PayloadManifest.Hash(identityPath) == identityHash, attachments = evidenceRows }, PayloadManifest.Json));
+    }
+    private static bool FormulaCellIsTen(AutomationElement grid)
+    {
+        var pattern = (GridPattern)grid.GetCurrentPattern(GridPattern.Pattern);
+        var cell = pattern.GetItem(0, pattern.Current.ColumnCount - 1);
+        if (cell.TryGetCurrentPattern(ScrollItemPattern.Pattern, out var scroll)) ((ScrollItemPattern)scroll).ScrollIntoView();
+        Thread.Sleep(150);
+        return cell.Current.Name == "10.00" || cell.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text)).Cast<AutomationElement>().Any(e => e.Current.Name == "10.00");
     }
     private static ManagedModuleInventory Inventory() => JsonSerializer.Deserialize<ManagedModuleInventory>(File.ReadAllText(Path.Combine(data, "managed-modules.json")), PayloadManifest.Json)!;
     private static AutomationElement Grid(AutomationElement window, string id) => window.FindFirst(TreeScope.Descendants, Id(id)) ?? throw new InvalidDataException("Grid absent: " + id);
