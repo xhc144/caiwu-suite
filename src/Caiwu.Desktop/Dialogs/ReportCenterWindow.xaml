@@ -3,9 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="基础账务报表" Width="1220" Height="760" MinWidth="1020" MinHeight="620"
         WindowStartupLocation="CenterOwner" UseLayoutRounding="True">
-  <DockPanel Margin="20">
+  <Border Margin="20" Background="White" BorderBrush="{DynamicResource AppLine}" BorderThickness="1" CornerRadius="10" Padding="22">
+  <DockPanel>
     <StackPanel DockPanel.Dock="Top">
-      <TextBlock Text="基础账务报表" FontSize="25" FontWeight="SemiBold" Foreground="#174568" />
+      <TextBlock Text="基础账务报表" FontSize="25" FontWeight="SemiBold" Foreground="{DynamicResource AppInk}" />
       <TextBlock Text="凭证与账簿数据输出。完整法定财务报表及报表设计器尚未开放。" Margin="0,6,0,16" Foreground="#53677B" />
       <WrapPanel Margin="0,0,0,12">
         <ComboBox x:Name="KindInput" Width="150" SelectedIndex="0" Margin="0,0,10,0">
@@ -13,7 +14,7 @@
         </ComboBox>
         <ComboBox x:Name="AccountInput" Width="205" DisplayMemberPath="Caption" SelectedValuePath="Code" Margin="0,0,10,0" />
         <DatePicker x:Name="FromInput" Width="145"/><TextBlock Text=" 至 " VerticalAlignment="Center"/><DatePicker x:Name="ToInput" Width="145" Margin="0,0,10,0"/>
-        <Button Content="生成" Click="Generate_Click" Padding="14,6" />
+        <Button Content="生成报表" Style="{StaticResource PrimaryButton}" Click="Generate_Click" Padding="14,6" />
       </WrapPanel>
       <WrapPanel Margin="0,0,0,12">
         <Button x:Name="BackButton" Content="返回余额表" Click="Back_Click" Visibility="Collapsed" Padding="14,6" Margin="0,0,8,0"/>
@@ -28,8 +29,9 @@
       <TextBlock x:Name="NoteText" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#53677B" />
       <TextBlock x:Name="ErrorText" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="#B42318" />
     </StackPanel>
-    <DataGrid x:Name="ReportGrid" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
+    <DataGrid x:Name="ReportGrid" RowHeight="36" AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
               SelectionMode="Single" SelectionUnit="FullRow" GridLinesVisibility="Horizontal" HeadersVisibility="Column"
               AlternatingRowBackground="#F4F8FB" MouseDoubleClick="ReportGrid_MouseDoubleClick" />
   </DockPanel>
+  </Border>
 </Window>
