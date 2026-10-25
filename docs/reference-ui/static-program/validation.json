@@ -2,8 +2,23 @@
   "date": "2026-10-25",
   "scope": "metadata_and_synthetic_container_validation_only",
   "tests": {
-    "synthetic_container_tests": 10,
-    "result": "passed",
+    "author": {
+      "tested_code_commit": "ca59dabf1f3c0fe358f4fea478e7dfb42006be32",
+      "command": "python3 -W error::ResourceWarning -m unittest -v test_pb_container_probe.py",
+      "actually_executed_total": 29,
+      "in_memory_container_tests_executed": 19,
+      "temporary_fixture_batch_tests_executed": 10,
+      "result": "passed",
+      "resource_warnings_as_errors": true
+    },
+    "independent_review": {
+      "evidence_source": "coordinator_delegated_review_report_received_2026-10-25",
+      "actually_executed_in_memory_container_tests": 19,
+      "executed_result": "passed",
+      "temporary_fixture_tests_code_review_only": 10,
+      "temporary_fixture_tests_executed": 0,
+      "review_result": "no_blocking_parser_issue_reported"
+    },
     "real_PB9_inputs_tested": 0
   },
   "metadata_checks": [
@@ -19,8 +34,8 @@
   "files": [
     {
       "path": "README.md",
-      "bytes": 5734,
-      "sha256": "c2c2d8b8f78b63741327520009f16a0988d846b299ed54fdba3a432674bd47ff"
+      "bytes": 6600,
+      "sha256": "a6c3727b97596e47a4e6fb1ff63bbcddb03204c3a1cff9919d41f6d38796c344"
     },
     {
       "path": "RUNBOOK.md",
@@ -59,8 +74,8 @@
     },
     {
       "path": "pb_container_probe.py",
-      "bytes": 16645,
-      "sha256": "5c2469fc95054678e1469f5c6aacd49184bfc63be0a0c01925f2e8acd113ad63"
+      "bytes": 25464,
+      "sha256": "ffa86364960b999a93ef687707602b8481b5176ee7de606c87bc2b7a6b79dd50"
     },
     {
       "path": "summary.json",
@@ -69,8 +84,8 @@
     },
     {
       "path": "test_pb_container_probe.py",
-      "bytes": 4760,
-      "sha256": "e2350d8ebb19b969719c0f70cf7805dd68fc4aa764e14a4ffbae730dd73a4196"
+      "bytes": 14014,
+      "sha256": "e5919f015a55645c48e1d6cb2ec95f05eb86a5df08f584e1a891a5ef435441c6"
     },
     {
       "path": "tool-route.json",
@@ -79,5 +94,7 @@
     }
   ],
   "remaining_blocker": "pending_existing_extraction_owner_container_probe_reports",
-  "original_program_executed": false
+  "original_program_executed": false,
+  "probe_version": "1.1",
+  "probe_output_schema_version": 2
 }

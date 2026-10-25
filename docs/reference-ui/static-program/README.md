@@ -28,7 +28,7 @@
 - `package-comparison.json`：PBD 逐族差异、PE 资源分布。
 - `behavior-research-specs.json`：六条关键业务研究链的证据要求、待定位入口和严格未知项。手册仅用于稳定 page-id 定位，不当作程序调用事实。
 - `coordinator-request.json`：精确到哈希、记录和落盘路径的就地分析请求。无需传原字节；优先三个主 EXE，再处理不同内容的业务 PBD。
-- `pb_container_probe.py`、`test_pb_container_probe.py`、[RUNBOOK.md](RUNBOOK.md)：标准库只读容器探针、10 项合成测试和执行指令。探针不导出对象本体或完整字符串，不执行原文件。
+- `pb_container_probe.py`、`test_pb_container_probe.py`、[RUNBOOK.md](RUNBOOK.md)：标准库只读容器探针、29 项作者实跑测试和执行指令。探针不导出对象本体或完整字符串，不执行原文件。
 - `build_research.py`：从固定哈希源清单重建本批五份派生 JSON。
 
 ## 事实、推断与未知
@@ -48,6 +48,10 @@ python3 -m unittest -v test_pb_container_probe.py
 ```
 
 生成器核对两个源文件 SHA256 后才运行；输出顺序固定。源文件更新必须审查差异并显式更新固定值。PB 容器格式、可信工具比较和原字节处理命令见 RUNBOOK。原源码未取得；没有复制商业实现代码，没有运行原 EXE、搭建兼容环境或处理授权/激活。
+
+探针修复提交 `ca59dabf1f3c0fe358f4fea478e7dfb42006be32` 的作者验证：`python3 -W error::ResourceWarning -m unittest -v test_pb_container_probe.py` 实际运行29项全过，其中19项内存容器测试、10项临时夹具批处理测试。主协调转述的独审结果须分别理解：19项内存容器测试由独审实际运行并通过；另10项临时夹具测试仅审阅代码，未由独审执行。真实 PB9 输入验证仍为 **0**，不能把这些测试作为真实对象或业务解码验收。
+
+当前探针版本1.1、输出 schema 2；探针 SHA256 `ffa86364960b999a93ef687707602b8481b5176ee7de606c87bc2b7a6b79dd50`，测试文件 SHA256 `e5919f015a55645c48e1d6cb2ec95f05eb86a5df08f584e1a891a5ef435441c6`。完整文件大小及哈希见 `validation.json`；等待主协调取得真实结构结果后再推进函数/事件表。
 
 ## 交接状态
 
