@@ -20,7 +20,7 @@ public abstract class CostEditorRow : INotifyPropertyChanged
 }
 public sealed class CostStageRow : CostEditorRow
 {
-    public CostStageRow() { SharedMaterials = "0"; MaterialBasis = AllocationBasis.OutputQuantity.ToString(); DirectLabor = "0"; ManufacturingOverhead = "0"; LaborBasis = AllocationBasis.OutputQuantity.ToString(); OverheadBasis = AllocationBasis.OutputQuantity.ToString(); }
+    public CostStageRow() { MaterialBasis = AllocationBasis.OutputQuantity.ToString(); LaborBasis = AllocationBasis.OutputQuantity.ToString(); OverheadBasis = AllocationBasis.OutputQuantity.ToString(); }
     public string StageId { get => Get(); set => Set(value); }
     public string Name { get => Get(); set => Set(value); }
     public string SharedMaterials { get => Get(); set => Set(value); }
@@ -32,7 +32,6 @@ public sealed class CostStageRow : CostEditorRow
 }
 public sealed class CostObjectRow : CostEditorRow
 {
-    public CostObjectRow() { OutputQuantity = "1"; DirectMaterials = "0"; LaborHours = "0"; MachineHours = "0"; }
     public string StageId { get => Get(); set => Set(value); }
     public string CostObject { get => Get(); set => Set(value); }
     public string ProductName { get => Get(); set => Set(value); }

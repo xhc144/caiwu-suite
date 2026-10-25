@@ -56,7 +56,7 @@ public sealed class CostWorksheetPage : UserControl
         AddEditorTab(tabs, "2 成本对象及基础", objects,
             () => Editor.Objects.Add(new() { StageId = Editor.Stages.LastOrDefault()?.StageId ?? "" }),
             () => { if (objects.SelectedItem is CostObjectRow row) Editor.Objects.Remove(row); },
-            "金额最多2位；产量与工时最多4位。零费用可配零基础；非零费用配零基础会拒绝。负数和冲回暂不支持。");
+            "所有数值须明确填写，已确认无成本/工时才填0。金额最多2位；产量与工时最多4位。零费用可配零基础；非零费用配零基础会拒绝。负数和冲回暂不支持。");
 
         var carry = Grid(nameof(Editor.CarryIns), false);
         TextColumn(carry, "目标阶段", nameof(CostCarryRow.TargetStageId)); TextColumn(carry, "来源阶段", nameof(CostCarryRow.SourceStageId));

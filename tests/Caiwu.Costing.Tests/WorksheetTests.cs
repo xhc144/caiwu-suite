@@ -267,6 +267,28 @@ public sealed class WorksheetTests
     }
 
     [Fact]
+    public void Blank_editor_accepts_explicit_manual_rows_and_does_not_default_unknown_costs_to_zero()
+    {
+        var editor = new CostWorksheetEditor(Book, new(2026, 10, 1))
+            { PreparedBy = "合成手工制表人", SourceReference = "合成手工输入依据" };
+        var stage = new CostStageRow { StageId = "S1", Name = "合成手工阶段" };
+        editor.Stages.Add(stage);
+        Assert.Equal("", stage.SharedMaterials); Assert.Equal("", stage.DirectLabor);
+        var a = new CostObjectRow { StageId = "S1", CostObject = "A", ProductName = "甲" };
+        Assert.Equal("", a.DirectMaterials); editor.Objects.Add(a);
+        Assert.False(editor.Calculate()); Assert.False(editor.CanExport);
+        stage.SharedMaterials = ".05"; stage.DirectLabor = ".03"; stage.ManufacturingOverhead = ".02";
+        a.OutputQuantity = "1"; a.DirectMaterials = ".10"; a.LaborHours = "0"; a.MachineHours = "0";
+        editor.Objects.Add(new() { StageId = "S1", CostObject = "C", ProductName = "丙", OutputQuantity = "1", DirectMaterials = ".30", LaborHours = "0", MachineHours = "0" });
+        editor.Objects.Add(new() { StageId = "S1", CostObject = "B", ProductName = "乙", OutputQuantity = "1", DirectMaterials = ".20", LaborHours = "0", MachineHours = "0" });
+        Assert.True(editor.Calculate());
+        // Independently: common material.05->.02/.02/.01; labor.03->.01each; overhead.02->.01/.01/0.
+        Assert.Equal(.70m, editor.Result!.FinishedCost);
+        Assert.Equal(new[] { .14m, .24m, .32m }, editor.CalculationRows.Select(o => o.TotalCost));
+        Assert.Equal(.70m, CostWorksheetExport.FromJson(CostWorksheetExport.ToJson(editor.GetCalculatedInput()), Book).FinishedCost);
+    }
+
+    [Fact]
     public void Editor_actual_input_recalculate_export_import_loop_has_independent_expected_totals()
     {
         var editor = new CostWorksheetEditor(Book, new(2026, 10, 1));
