@@ -1,0 +1,842 @@
+[
+  {
+    "name": "\u5B89\u88C5\u5408\u6210\u8D26\u5957 \u2014 \u8D22\u52A1\u5957\u4EF6 \u00B7 \u5F00\u53D1\u9884\u89C8",
+    "automationId": "",
+    "type": "ControlType.Window",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B89\u88C5\u5408\u6210\u8D26\u5957 \u2014 \u8D22\u52A1\u5957\u4EF6 \u00B7 \u5F00\u53D1\u9884\u89C8",
+    "automationId": "TitleBar",
+    "type": "ControlType.TitleBar",
+    "isEnabled": true
+  },
+  {
+    "name": "System Menu Bar",
+    "automationId": "SystemMenuBar",
+    "type": "ControlType.MenuBar",
+    "isEnabled": true
+  },
+  {
+    "name": "System",
+    "automationId": "Item 1",
+    "type": "ControlType.MenuItem",
+    "isEnabled": true
+  },
+  {
+    "name": "Minimize",
+    "automationId": "Minimize",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "Maximize",
+    "automationId": "Maximize",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "Close",
+    "automationId": "Close",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "",
+    "type": "ControlType.Menu",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6587\u4EF6(F)",
+    "automationId": "",
+    "type": "ControlType.MenuItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6587\u4EF6(_F)",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B9E\u52A1\u64CD\u4F5C(B)",
+    "automationId": "",
+    "type": "ControlType.MenuItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B9E\u52A1\u64CD\u4F5C(_B)",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u4F1A\u8BA1\u6863\u6848(A)",
+    "automationId": "",
+    "type": "ControlType.MenuItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u4F1A\u8BA1\u6863\u6848(_A)",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u62A5\u8868(R)",
+    "automationId": "",
+    "type": "ControlType.MenuItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u62A5\u8868(_R)",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u7CFB\u7EDF\u7BA1\u7406(S)",
+    "automationId": "",
+    "type": "ControlType.MenuItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u7CFB\u7EDF\u7BA1\u7406(_S)",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5E2E\u52A9(H)",
+    "automationId": "",
+    "type": "ControlType.MenuItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5E2E\u52A9(_H)",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5F53\u524D\u64CD\u4F5C\u5458",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "OperatorInput",
+    "type": "ControlType.ComboBox",
+    "isEnabled": false
+  },
+  {
+    "name": "\u65B0\u5EFA\u8D26\u5957",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u65B0\u5EFA\u8D26\u5957",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6253\u5F00\u8D26\u5957",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6253\u5F00\u8D26\u5957",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B89\u88C5\u5408\u6210\u8D26\u5957",
+    "automationId": "BookNameText",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5C0F\u4F01\u4E1A \u00B7 2026\u5E74\u5EA6 \u00B7 \u5F53\u524D\u671F\u95F4 2026-01 \u00B7 \u5B9E\u9A8C\u6A21\u677F",
+    "automationId": "BookSubtitleText",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "",
+    "type": "ControlType.StatusBar",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5F53\u524D\u671F\u95F4 2026-01    \u8D26\u5957\uFF1A\u5B89\u88C5 \u5408\u6210\u8D26\u5957.caiwu",
+    "automationId": "StatusText",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "",
+    "type": "ControlType.Separator",
+    "isEnabled": false
+  },
+  {
+    "name": "\u5F00\u53D1\u9884\u89C8 \u00B7 \u5C1A\u672A\u5B8C\u6210\u751F\u4EA7\u8D26\u52A1\u9A8C\u6536",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5F00\u53D1\u9884\u89C8 \u00B7 \u5C1A\u672A\u5B8C\u6210\u751F\u4EA7\u8D26\u52A1\u9A8C\u6536",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u590D\u5236\u51ED\u8BC1\u5DF2\u4FDD\u5B58\u4E3A\u65B0\u8349\u7A3F\uFF1B\u5C1A\u672A\u5BA1\u6838\u6216\u8BB0\u8D26\u3002",
+    "automationId": "NotificationText",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "Pages",
+    "type": "ControlType.Tab",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5DE5\u4F5C\u53F0",
+    "automationId": "",
+    "type": "ControlType.TabItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5DE5\u4F5C\u53F0",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u51ED\u8BC1\u5E8F\u65F6\u7C3F",
+    "automationId": "",
+    "type": "ControlType.TabItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u51ED\u8BC1\u5E8F\u65F6\u7C3F",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u65B0\u589E Ctrl\u002BN",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u65B0\u589E Ctrl\u002BN",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u67E5\u770B / \u4FEE\u6539",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u67E5\u770B / \u4FEE\u6539",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BA1\u6838 F4",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BA1\u6838 F4",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u53D6\u6D88\u5BA1\u6838",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u53D6\u6D88\u5BA1\u6838",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8BB0\u8D26",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8BB0\u8D26",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5220\u9664\u8349\u7A3F",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5220\u9664\u8349\u7A3F",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BFC\u51FA CSV",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BFC\u51FA CSV",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BFC\u51FA HTML",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BFC\u51FA HTML",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6253\u5370",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6253\u5370",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "VoucherFrom",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_TextBox",
+    "type": "ControlType.Edit",
+    "isEnabled": true
+  },
+  {
+    "name": "\u003CEnter text here\u003E",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "Show Calendar",
+    "automationId": "PART_Button",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": " \u81F3 ",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "VoucherTo",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_TextBox",
+    "type": "ControlType.Edit",
+    "isEnabled": true
+  },
+  {
+    "name": "\u003CEnter text here\u003E",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "Show Calendar",
+    "automationId": "PART_Button",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "VoucherStatusInput",
+    "type": "ControlType.ComboBox",
+    "isEnabled": true
+  },
+  {
+    "name": "\u641C\u7D22\u6458\u8981\u3001\u51ED\u8BC1\u7F16\u53F7\u6216\u5236\u5355\u4EBA",
+    "automationId": "VoucherSearch",
+    "type": "ControlType.Edit",
+    "isEnabled": true
+  },
+  {
+    "name": "\u67E5\u8BE2",
+    "automationId": "",
+    "type": "ControlType.Button",
+    "isEnabled": true
+  },
+  {
+    "name": "\u67E5\u8BE2",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5F53\u524D\u67E5\u8BE2 2 \u5F20\u51ED\u8BC1 \u00B7 \u91D1\u989D\u5408\u8BA1 246.90\uFF08\u542B\u6240\u9009\u72B6\u6001\uFF09",
+    "automationId": "VoucherCountText",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "VoucherGrid",
+    "type": "ControlType.DataGrid",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_ColumnHeadersPresenter",
+    "type": "ControlType.Header",
+    "isEnabled": true
+  },
+  {
+    "name": "\u65E5\u671F",
+    "automationId": "",
+    "type": "ControlType.HeaderItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u65E5\u671F",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_RightHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "\u51ED\u8BC1\u53F7",
+    "automationId": "",
+    "type": "ControlType.HeaderItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u51ED\u8BC1\u53F7",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_LeftHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_RightHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6458\u8981",
+    "automationId": "",
+    "type": "ControlType.HeaderItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u6458\u8981",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_LeftHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_RightHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "\u91D1\u989D",
+    "automationId": "",
+    "type": "ControlType.HeaderItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u91D1\u989D",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_LeftHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_RightHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "\u72B6\u6001",
+    "automationId": "",
+    "type": "ControlType.HeaderItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u72B6\u6001",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_LeftHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_RightHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5236\u5355\u4EBA",
+    "automationId": "",
+    "type": "ControlType.HeaderItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5236\u5355\u4EBA",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_LeftHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_RightHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BA1\u6838\u4EBA",
+    "automationId": "",
+    "type": "ControlType.HeaderItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5BA1\u6838\u4EBA",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_LeftHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "PART_RightHeaderGripper",
+    "type": "ControlType.Thumb",
+    "isEnabled": true
+  },
+  {
+    "name": "VoucherListRow { Value = Voucher { Id = 18c578e1-27b3-4358-b899-3d490adc2642, Date = 1/1/2026, Kind = \u8BB0, Number = 1, AttachmentCount = 0, PreparedBy = operator:74a3e18137f44d82a1c17fe552c262d3, ReviewedBy = operator:9c9124c41a8146918a7b56ea425c88b5, Status = Posted, Lines = System.Collections.ObjectModel.ReadOnlyCollection\u00601[Caiwu.Contracts.VoucherLine] }, Id = 18c578e1-27b3-4358-b899-3d490adc2642, Date = 2026-01-01, Number = \u8BB0-0001, Summary = \u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9\uFF1B\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9, Amount = 123.45, Status = \u5DF2\u8BB0\u8D26, PreparedBy = operator:74a3e18137f44d82a1c17fe552c262d3, ReviewedBy = operator:9c9124c41a8146918a7b56ea425c88b5 }",
+    "automationId": "",
+    "type": "ControlType.DataItem",
+    "isEnabled": true
+  },
+  {
+    "name": "2026-01-01",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "2026-01-01",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8BB0-0001",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8BB0-0001",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9\uFF1B\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9\uFF1B\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "123.45",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "123.45",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5DF2\u8BB0\u8D26",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5DF2\u8BB0\u8D26",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "operator:74a3e18137f44d82a1c17fe552c262d3",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "operator:74a3e18137f44d82a1c17fe552c262d3",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "operator:9c9124c41a8146918a7b56ea425c88b5",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "operator:9c9124c41a8146918a7b56ea425c88b5",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "VoucherListRow { Value = Voucher { Id = 1e750820-d376-49d2-819d-2d302aaabe12, Date = 1/1/2026, Kind = \u8BB0, Number = 2, AttachmentCount = 0, PreparedBy = operator:9c9124c41a8146918a7b56ea425c88b5, ReviewedBy = , Status = Draft, Lines = System.Collections.ObjectModel.ReadOnlyCollection\u00601[Caiwu.Contracts.VoucherLine] }, Id = 1e750820-d376-49d2-819d-2d302aaabe12, Date = 2026-01-01, Number = \u8BB0-0002, Summary = \u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9\uFF1B\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9, Amount = 123.45, Status = \u8349\u7A3F, PreparedBy = operator:9c9124c41a8146918a7b56ea425c88b5, ReviewedBy =  }",
+    "automationId": "",
+    "type": "ControlType.DataItem",
+    "isEnabled": true
+  },
+  {
+    "name": "2026-01-01",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "2026-01-01",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8BB0-0002",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8BB0-0002",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9\uFF1B\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "\u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9\uFF1B\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "123.45",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "123.45",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8349\u7A3F",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "\u8349\u7A3F",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "operator:9c9124c41a8146918a7b56ea425c88b5",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "operator:9c9124c41a8146918a7b56ea425c88b5",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "Item: VoucherListRow { Value = Voucher { Id = 1e750820-d376-49d2-819d-2d302aaabe12, Date = 1/1/2026, Kind = \u8BB0, Number = 2, AttachmentCount = 0, PreparedBy = operator:9c9124c41a8146918a7b56ea425c88b5, ReviewedBy = , Status = Draft, Lines = System.Collections.ObjectModel.ReadOnlyCollection\u00601[Caiwu.Contracts.VoucherLine] }, Id = 1e750820-d376-49d2-819d-2d302aaabe12, Date = 2026-01-01, Number = \u8BB0-0002, Summary = \u5B89\u88C5\u9A8C\u8BC1\u501F\u65B9\uFF1B\u5B89\u88C5\u9A8C\u8BC1\u8D37\u65B9, Amount = 123.45, Status = \u8349\u7A3F, PreparedBy = operator:9c9124c41a8146918a7b56ea425c88b5, ReviewedBy =  }, Column Display Index: 6",
+    "automationId": "",
+    "type": "ControlType.Custom",
+    "isEnabled": true
+  },
+  {
+    "name": "",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u4F1A\u8BA1\u79D1\u76EE",
+    "automationId": "",
+    "type": "ControlType.TabItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u4F1A\u8BA1\u79D1\u76EE",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u671F\u521D\u4F59\u989D",
+    "automationId": "",
+    "type": "ControlType.TabItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u671F\u521D\u4F59\u989D",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u79D1\u76EE\u4F59\u989D\u8868",
+    "automationId": "",
+    "type": "ControlType.TabItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u79D1\u76EE\u4F59\u989D\u8868",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u660E\u7EC6\u5206\u7C7B\u8D26",
+    "automationId": "",
+    "type": "ControlType.TabItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u660E\u7EC6\u5206\u7C7B\u8D26",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  },
+  {
+    "name": "\u64CD\u4F5C\u65E5\u5FD7",
+    "automationId": "",
+    "type": "ControlType.TabItem",
+    "isEnabled": true
+  },
+  {
+    "name": "\u64CD\u4F5C\u65E5\u5FD7",
+    "automationId": "",
+    "type": "ControlType.Text",
+    "isEnabled": true
+  }
+]
