@@ -1,0 +1,16 @@
+costing PASS inherits exact modern Window style
+costing PASS inherits Chinese font family
+costing PASS inherits modern foreground brush
+costing PASS inherits exact modern Button template
+costing PASS author sample independently totals250.00
+costing PASS native Unicode input has exact foreground textbox focus
+costing PASS ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed
+costing PASS native metadata edit updates binding and invalidates calculation
+costing PASS actual DataGrid begins edit: ?????(?)
+costing PASS actual DataGrid commits cell and row
+costing PASS actual labor cell edit recalculates250->254
+costing PASS actual editor reads back JSON and recalculates254
+costing PASS existing audit JSON preserved on duplicate destination
+costing PASS cross-book JSON refused without mutating current editor
+costing PASS native save cancellation retains calculation and editor
+costing PASS native save cancellation creates no files

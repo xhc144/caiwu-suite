@@ -1,0 +1,100 @@
+{
+  "sourceSha": "576bd7311613fb3a613eabc50eb75c9f6dee6818",
+  "syntheticDataOnly": true,
+  "actualWindows": true,
+  "passed": false,
+  "framework": ".NET 10.0.13",
+  "cases": [
+    {
+      "name": "costing",
+      "passed": false,
+      "error": "System.InvalidOperationException: inherits exact modern Button template\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.Check(Boolean condition, String label) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\Program.cs:line 90\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.Show(FrameworkElement content, String title) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\Program.cs:line 100\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.Costing() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\CostingCase.cs:line 16\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.RunCase(String name, Func\u00601 action) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\Program.cs:line 62",
+      "checks": [
+        "inherits exact modern Window style",
+        "inherits Chinese font family",
+        "inherits modern foreground brush",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping"
+      ]
+    },
+    {
+      "name": "nonprofit",
+      "passed": false,
+      "error": "System.InvalidOperationException: native Save button creates actual classified JSON\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.Check(Boolean condition, String label) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\Program.cs:line 90\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.Nonprofit() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\NonprofitCase.cs:line 66\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.RunCase(String name, Func\u00601 action) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\Program.cs:line 62",
+      "checks": [
+        "inherits exact modern Window style",
+        "inherits Chinese font family",
+        "inherits modern foreground brush",
+        "inherits exact modern Button template",
+        "unclassified source remains incomplete with missing values",
+        "actual enum editor begins edit",
+        "actual DataGrid commits cell and row",
+        "actual ComboBox writes explicit account semantic",
+        "actual DataGrid begins edit: \u590D\u6838\u4F9D\u636E",
+        "native Unicode input has exact foreground textbox focus",
+        "ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed",
+        "actual DataGrid commits cell and row",
+        "native Chinese input reaches nonprofit evidence row",
+        "actual enum editor begins edit",
+        "actual DataGrid commits cell and row",
+        "nullable activity enum persists through real ComboBox",
+        "explicit classifications produce reconciled two-table calculation preview, never formal issue",
+        "independent oracle: assets110 and unrestricted donation10",
+        "actual native dialog cancelled",
+        "native classification save cancellation leaves no files",
+        "actual native dialog cancelled",
+        "reset confirmation cancellation retains classification and preview",
+        "actual native dialog selected permitted synthetic path",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping"
+      ]
+    },
+    {
+      "name": "designer",
+      "passed": false,
+      "error": "System.Windows.Markup.XamlParseException: Provide value on \u0027System.Windows.Baml2006.TypeConverterMarkupExtension\u0027 threw an exception.\r\n ---\u003E System.ArgumentException: Auto is not a valid value for Double. (Parameter \u0027value\u0027)\r\n ---\u003E System.FormatException: The input string \u0027Auto\u0027 was not in a correct format.\r\n   at System.Number.ThrowFormatException[TChar](ReadOnlySpan\u00601 value)\r\n   at System.Double.Parse(String s, NumberStyles style, IFormatProvider provider)\r\n   at System.ComponentModel.DoubleConverter.FromString(String value, NumberFormatInfo formatInfo)\r\n   at System.ComponentModel.BaseNumberConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)\r\n   --- End of inner exception stack trace ---\r\n   at System.ComponentModel.BaseNumberConverter.ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, Object value)\r\n   at MS.Internal.Xaml.Runtime.ClrObjectRuntime.CallProvideValue(MarkupExtension me, IServiceProvider serviceProvider)\r\n   --- End of inner exception stack trace ---\r\n   at System.Windows.Markup.XamlReader.RewrapException(Exception e, IXamlLineInfo lineInfo, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.Load(XamlReader xamlReader, IXamlObjectWriterFactory writerFactory, Boolean skipJournaledProperties, Object rootObject, XamlObjectWriterSettings settings, Uri baseUri)\r\n   at System.Windows.Markup.WpfXamlLoader.LoadBaml(XamlReader xamlReader, Boolean skipJournaledProperties, Object rootObject, XamlAccessLevel accessLevel, Uri baseUri)\r\n   at System.Windows.Markup.XamlReader.LoadBaml(Stream stream, ParserContext parserContext, Object parent, Boolean closeStream)\r\n   at System.Windows.Application.LoadComponent(Object component, Uri resourceLocator)\r\n   at Caiwu.ReportDesigner.Wpf.ReportDesignerControl.InitializeComponent() in D:\\a\\caiwu-suite\\caiwu-suite\\src\\Caiwu.ReportDesigner\\Wpf\\ReportDesignerControl.xaml:line 1\r\n   at Caiwu.ReportDesigner.Wpf.ReportDesignerControl..ctor(ReportInputSnapshot input, ReportDesignerHost host, ReportTemplate initialTemplate) in D:\\a\\caiwu-suite\\caiwu-suite\\src\\Caiwu.ReportDesigner\\Wpf\\ReportDesignerControl.xaml.cs:line 32\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.Designer() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\DesignerCase.cs:line 32\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.RunCase(String name, Func\u00601 action) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\Program.cs:line 62",
+      "checks": []
+    }
+  ],
+  "captures": [
+    {
+      "name": "costing-failure.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "9d0d482a2e58d33d5c7d0a2e2f8c93621f40cae2fdd15b742b18879bc7411c3d",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      }
+    },
+    {
+      "name": "nonprofit-failure.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "db657c61a5e9cf3c5faad88d337f25be94cd0dbcd538cac367ae1ab3086f319b",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      }
+    }
+  ],
+  "bindingErrors": "",
+  "host": "Independent explicit synthetic component host. Production MainWindow/login/session integration not exercised.",
+  "inputMechanism": "Actual WPF DataGrid editors and routed button events; verified native SendInput Unicode for ordinary Chinese text; native file dialogs via UIAutomation.",
+  "notCovered": [
+    "physical keyboard",
+    "IME composition",
+    "printer submission",
+    "PDF output",
+    "production Desktop integration",
+    "installation/update/account-set retention"
+  ]
+}

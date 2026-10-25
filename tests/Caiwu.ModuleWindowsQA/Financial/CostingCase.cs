@@ -45,7 +45,7 @@ internal static partial class Program
             [new("S", "尾差阶段", AllocationBasis.OutputQuantity, AllocationBasis.OutputQuantity, .01m, 0,
                 [new("A", "甲", 1, 0, 0, 0), new("B", "乙", 1, 0, 0, 0), new("C", "丙", 1, 0, 0, 0)], [])]));
         Click(page, "计算 / 复算");
-        var result = page.Editor.Result!; var labor = result.Stages.Single().AllocationDetails.Where(d => d.CostElement == "人工").ToArray();
+        var result = page.Editor.Result!;
         // Use actual output identity and exact cents rather than reimplementing the allocator.
         Check(result.FinishedCost == .01m && result.Stages.Single().Objects.Single(o => o.CostObject == "A").AllocatedLabor == .01m &&
             result.Stages.Single().Objects.Where(o => o.CostObject != "A").All(o => o.AllocatedLabor == 0), "equal-weight one-cent remainder goes to A; total conserved");

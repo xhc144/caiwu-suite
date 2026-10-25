@@ -89,6 +89,10 @@ internal static partial class Program
     {
         if (!condition) throw new InvalidOperationException(label);
         checks.Add(label); Console.WriteLine(currentCase + " PASS " + label);
+        File.WriteAllText(Path.Combine(output, "financial-progress.json"), JsonSerializer.Serialize(new {
+            sourceSha = Environment.GetEnvironmentVariable("CAIWU_QA_SHA"), currentCase, completedChecks = checks, completedCases = cases.Count,
+            finished = false, passed = false
+        }, new JsonSerializerOptions { WriteIndented = true }));
     }
     private static async Task<Window> Show(FrameworkElement content, string title)
     {

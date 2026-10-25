@@ -33,6 +33,7 @@ jobs:
           name: financial-windows-${{ github.sha }}
           path: |
             artifacts/financial-windows/*.json
+            artifacts/financial-windows/*.jsonl
             artifacts/financial-windows/*.png
             artifacts/financial-windows/*.log
             artifacts/financial-windows/*.txt
