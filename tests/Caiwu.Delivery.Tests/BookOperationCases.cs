@@ -23,7 +23,7 @@ internal static class BookOperationCases
                 var inspection = BookOperations.Inspect(f.Install, BookName);
                 ExpectedSample(inspection);
                 Check.Equal(Path.GetFullPath(book), inspection.DatabasePath);
-                Check.Equal(original, inspection.FileSha256.ToUpperInvariant());
+                Check.Equal("sqlite-consistent-copy", inspection.FileSha256Basis);
                 Check.Equal(original, Fixture.Hash(book));
             });
             yield return ("book backup preserves semantic content and leaves the original byte-identical", f =>
@@ -33,6 +33,8 @@ internal static class BookOperationCases
                 ExpectedSample(result.Source); ExpectedSample(result.Copy); SameSnapshot(result.Source, result.Copy);
                 Check.Equal(Path.Combine(f.Data, ".delivery-backups", "cli-sample.caiwu"), result.Copy.DatabasePath);
                 Check.Equal(Fixture.Hash(result.Copy.DatabasePath), result.Copy.FileSha256.ToUpperInvariant());
+                Check.Equal("database-file", result.Copy.FileSha256Basis);
+                Check.Equal("sqlite-consistent-copy", result.Source.FileSha256Basis);
                 Check.Equal(original, Fixture.Hash(book));
                 using var backup = SqliteLedgerStore.Open(result.Copy.DatabasePath); backup.CheckIntegrity();
             });

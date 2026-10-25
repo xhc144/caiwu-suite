@@ -14,7 +14,8 @@ var cases = (Environment.GetEnvironmentVariable("CAIWU_DELIVERY_TEST_SCOPE") swi
 {
     "security-boundaries" => SecurityBoundaryCases.All.Concat(BackupAdversarialCases.All),
     "schema-constraints" => SchemaConstraintCases.All,
-    _ => DeliveryCases.All
+    "windows-backup-sharing" => WindowsBackupSharingCases.All,
+    _ => DeliveryCases.All.Concat(WindowsBackupSharingCases.All)
 }).ToArray();
 foreach (var (name, action) in cases)
 {
@@ -43,6 +44,7 @@ var report = new
     success = failed == 0, total = cases.Length, passed = cases.Length - failed - skipped,
     failed, skipped, runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
     os = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+    sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"),
     publishedWindowsArtifactExecuted = false,
     scope = "Synthetic self-authored delivery components only. No reference installer or real accounting data.",
     results
