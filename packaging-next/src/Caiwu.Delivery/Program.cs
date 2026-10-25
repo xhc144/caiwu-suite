@@ -3,7 +3,7 @@ using Caiwu.Delivery;
 
 try
 {
-    if (args.Length == 0) throw new ArgumentException("Commands: manifest, verify, install, uninstall, launch, inspect-book, backup-book, restore-book, check-update, stage-update. Arguments are positional; see packaging-next/README.md.");
+    if (args.Length == 0) throw new ArgumentException("Commands: manifest, verify, install, uninstall, launch, launch-managed, inspect-book, backup-book, restore-book, check-update, stage-update. Arguments are positional; see packaging-next/README.md.");
     switch (args[0])
     {
         case "manifest" when args.Length == 4:
@@ -14,6 +14,8 @@ try
             Installation.Install(args[1], args[2], args[3]); break;
         case "uninstall" when args.Length == 2:
             Installation.Uninstall(args[1]); break;
+        case "launch-managed" when args.Length >= 2:
+            return ManagedDesktopLaunch.Launch(args[1], args.Skip(2).ToArray());
         case "launch" when args.Length >= 2:
             return Installation.Launch(args[1], args.Skip(2).ToArray());
         case "inspect-book" when args.Length == 3:

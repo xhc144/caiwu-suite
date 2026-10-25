@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><RestorePackagesWithLockFile>true</RestorePackagesWithLockFile></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Caiwu.Delivery.csproj" />
+    <ProjectReference Include="../../../../src/Caiwu.Summaries/Caiwu.Summaries.csproj" />
+    <ProjectReference Include="../../../../src/Caiwu.Nonprofit.Reporting/Caiwu.Nonprofit.Reporting.csproj" />
+    <ProjectReference Include="../../../../src/Caiwu.Costing/Caiwu.Costing.csproj" />
+    <ProjectReference Include="../../../../src/Caiwu.Operators/Caiwu.Operators.csproj" />
+    <ProjectReference Include="../../../../src/Caiwu.ReportDesigner/Caiwu.ReportDesigner.csproj" />
+  </ItemGroup>
+</Project>

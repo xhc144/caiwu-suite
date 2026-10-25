@@ -42,10 +42,31 @@ public static class UpgradeSafety
 
     // Caller must hold Installation.AcquireLease throughout preparation and activation.
     // Migrations run on restored copies only. No live-ledger replacement is implemented.
-    public static UpgradePreparation Prepare(string dataRoot, IReadOnlyList<string> databasePaths, Action<string>? migrateStaged = null)
+    public static UpgradePreparation Prepare(string dataRoot, IReadOnlyList<string> databasePaths, Action<string>? migrateStaged = null,
+        ManagedDataSession? managedData = null, IEnumerable<IManagedAttachmentCodec>? moduleCodecs = null)
     {
         dataRoot = SafePaths.Full(dataRoot);
         var sources = ValidateSources(dataRoot, databasePaths);
+        var moduleBackups = new List<ManagedBookBackupResult>();
+        if (File.Exists(SafePaths.Child(dataRoot, "managed-modules.json")))
+        {
+            if (managedData == null || !SafePaths.Full(managedData.DataRoot).Equals(dataRoot, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Registered module data requires the live managed session and validated module codecs before upgrade.");
+            managedData.Execute(() =>
+            {
+                var inventory = managedData.ReadInventory();
+                managedData.RequireCompleteModuleFiles();
+                var backupService = new ManagedBookBackup(managedData, moduleCodecs ?? []);
+                foreach (var book in inventory.Books)
+                {
+                    if (!sources.Contains(managedData.DatabasePath(book), StringComparer.OrdinalIgnoreCase))
+                        throw new InvalidDataException("Upgrade omitted a registered physical book.");
+                    moduleBackups.Add(backupService.Backup(book));
+                }
+                return true;
+            });
+        }
+
         var backupRoot = SafePaths.Child(dataRoot, ".delivery-backups");
         Directory.CreateDirectory(backupRoot);
         var directory = SafePaths.Child(backupRoot, Guid.NewGuid().ToString("N"));
@@ -89,13 +110,13 @@ public static class UpgradeSafety
                     throw new InvalidDataException("Migrated copy changed the ledger identity or moved its revision backward.");
             }
             File.WriteAllText(Path.Combine(directory, "backup-receipt.json"), JsonSerializer.Serialize(new
-            { status = "validated", schema = 1, liveDatabasesModified = false, entries }, PayloadManifest.Json));
+            { status = "validated", schema = 1, liveDatabasesModified = false, entries, moduleBackups, globalIdentitiesIncluded = false }, PayloadManifest.Json));
             return new(directory, copies.ToArray());
         }
         catch
         {
             File.WriteAllText(Path.Combine(directory, "backup-receipt.json"), JsonSerializer.Serialize(new
-            { status = "blocked", liveDatabasesModified = false, entries }, PayloadManifest.Json));
+            { status = "blocked", liveDatabasesModified = false, entries, moduleBackups, globalIdentitiesIncluded = false }, PayloadManifest.Json));
             throw;
         }
     }

@@ -43,22 +43,36 @@ public static class Installation
     }
     internal static T WithExclusiveData<T>(string installRoot, Func<CurrentInstallation, T> action)
     {
+        using var session = OpenManagedData(installRoot);
+        return session.Execute(() => action(session.Current));
+    }
+
+    /// <summary>Acquire the existing install/data leases and validate all ownership receipts.</summary>
+    public static ManagedDataSession OpenManagedData(string installRoot, string? expectedDataRoot = null)
+    {
         installRoot = SafePaths.Full(installRoot);
-        using var installLease = AcquireLease(installRoot);
-        RequireNoPendingUninstall(installRoot);
-        var owner = ReadOwner(installRoot);
-        var current = ReadCurrent(installRoot);
-        if (!SafePaths.Full(owner.DataRoot).Equals(SafePaths.Full(current.DataRoot), StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("Installation and data receipts disagree; recovery is required.");
-        using var dataLease = AcquireDataLease(current.DataRoot);
-        var receipt = JsonSerializer.Deserialize<DataRootOwner>(File.ReadAllText(SafePaths.Child(current.DataRoot, DataOwnerFile)), PayloadManifest.Json)
-            ?? throw new InvalidDataException("Invalid data ownership receipt.");
-        var manifest = PayloadManifest.Read(SafePaths.Child(installRoot, $"versions/{current.Version}/{PayloadManifest.FileName}"));
-        if (receipt.Product != Product || !SafePaths.Full(receipt.InstallRoot).Equals(installRoot, StringComparison.OrdinalIgnoreCase) ||
-            receipt.Version != current.Version || receipt.ManifestSha256 != manifest.Digest())
-            throw new InvalidDataException("Installation and data receipts disagree; recovery is required.");
-        RequireOwnedManifest(owner, current.Version, manifest);
-        return action(current);
+        var installLease = AcquireLease(installRoot);
+        IDisposable? dataLease = null;
+        try
+        {
+            RequireNoPendingUninstall(installRoot);
+            var owner = ReadOwner(installRoot);
+            var current = ReadCurrent(installRoot);
+            if (expectedDataRoot != null && (!Path.IsPathFullyQualified(expectedDataRoot) || !SafePaths.Full(expectedDataRoot).Equals(SafePaths.Full(current.DataRoot), StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("Host data root does not match the installation ownership receipt.");
+            if (!SafePaths.Full(owner.DataRoot).Equals(SafePaths.Full(current.DataRoot), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Installation and data receipts disagree; recovery is required.");
+            dataLease = AcquireDataLease(current.DataRoot);
+            var receipt = JsonSerializer.Deserialize<DataRootOwner>(File.ReadAllText(SafePaths.Child(current.DataRoot, DataOwnerFile)), PayloadManifest.Json)
+                ?? throw new InvalidDataException("Invalid data ownership receipt.");
+            var manifest = PayloadManifest.Read(SafePaths.Child(installRoot, $"versions/{current.Version}/{PayloadManifest.FileName}"));
+            if (receipt.Product != Product || !SafePaths.Full(receipt.InstallRoot).Equals(installRoot, StringComparison.OrdinalIgnoreCase) ||
+                receipt.Version != current.Version || receipt.ManifestSha256 != manifest.Digest())
+                throw new InvalidDataException("Installation and data receipts disagree; recovery is required.");
+            RequireOwnedManifest(owner, current.Version, manifest);
+            return new ManagedDataSession(current with { DataRoot = SafePaths.Full(current.DataRoot) }, installLease, dataLease);
+        }
+        catch { dataLease?.Dispose(); installLease.Dispose(); throw; }
     }
 
     private static void RequireNoPendingUninstall(string installRoot)
@@ -81,7 +95,7 @@ public static class Installation
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
 
-    public static void Install(string payload, string installRoot, string dataRoot)
+    public static void Install(string payload, string installRoot, string dataRoot, IEnumerable<IManagedAttachmentCodec>? moduleCodecs = null)
     {
         installRoot = SafePaths.Full(installRoot); dataRoot = SafePaths.Full(dataRoot); payload = SafePaths.Full(payload);
         SafePaths.RequireSeparateRoots(installRoot, dataRoot);
@@ -129,7 +143,10 @@ public static class Installation
             if (dataOwner!.ManifestSha256 != oldManifest.Digest()) throw new InvalidDataException("Data receipt does not match the active payload.");
             if (!manifest.ManagedDataContract || !oldManifest.ManagedDataContract)
                 throw new InvalidOperationException("Desktop data inventory and launch lease are not integrated. Upgrade is blocked before activation.");
-            safety = UpgradeSafety.Prepare(dataRoot, UpgradeSafety.ReadInventory(dataRoot));
+            // These are the real install/data handles already held by this method. The bounded
+            // facade does not own/dispose them and cannot escape preparation.
+            using var managedData = new ManagedDataSession(old with { DataRoot = dataRoot }, lease, dataLease, ownsLeases: false);
+            safety = UpgradeSafety.Prepare(dataRoot, UpgradeSafety.ReadInventory(dataRoot), managedData: managedData, moduleCodecs: moduleCodecs);
         }
         using (safety)
         {
