@@ -21,6 +21,9 @@ public sealed record DesktopFeatureOptions
     public FeatureAuthentication? Authentication { get; init; }
     /// <summary>Called on a worker thread. Must not create a catalog implicitly on cancel/open.</summary>
     public Func<FeatureSessionBinding, SummaryFeatureRegistration>? OpenSummaryCatalog { get; init; }
+    public Func<FeatureSessionBinding, bool>? CanInitializeSummaryCatalog { get; init; }
+    public Func<FeatureSessionBinding, SummaryFeatureRegistration>? InitializeSummaryCatalog { get; init; }
+    public ManagedFeatureContext? Managed { get; init; }
     public BookCopyFeatureOptions? BookCopy { get; init; }
     /// <summary>Explicit user-data preview root. Classification JSON remains outside the ledger backup until registered by Delivery.</summary>
     public string? NonprofitPreviewRoot { get; init; }

@@ -140,6 +140,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() != true || dialog.Book is null || dialog.SelectedTemplate is null) { _newBookDraft = null; return; }
         _newBookDraft = dialog.Book; // Native path cancellation/failure must retain the accepted form fields.
         var save = new SaveFileDialog { Title = "保存新账套", Filter = "财务账套 (*.caiwu)|*.caiwu", DefaultExt = ".caiwu",
+            InitialDirectory = managedFeatureContext?.Data.DataRoot ?? "",
             FileName = SafeFileName(dialog.Book.Name) + ".caiwu", AddExtension = true };
         if (save.ShowDialog(this) != true) return;
         if (File.Exists(save.FileName)) throw new LedgerValidationException("新账套不能覆盖已有文件，请选择新的文件名。");
@@ -149,7 +150,7 @@ public partial class MainWindow : Window
 
     private void OpenBook_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
-        var open = new OpenFileDialog { Title = "打开账套", Filter = "财务账套 (*.caiwu)|*.caiwu|所有文件|*.*", CheckFileExists = true };
+        var open = new OpenFileDialog { Title = "打开账套", InitialDirectory = managedFeatureContext?.Data.DataRoot ?? "", Filter = "财务账套 (*.caiwu)|*.caiwu|所有文件|*.*", CheckFileExists = true };
         if (open.ShowDialog(this) != true) return;
         _session!.Open(open.FileName); BookOpened(); NotificationText.Text = "账套已打开，数据已从本地文件载入。";
     }, requireBook: false, discardOpening: true);
@@ -158,7 +159,8 @@ public partial class MainWindow : Window
     { _session!.Close(); _openingDirty = false; Reload(); }, "账套已关闭。", discardOpening: true);
     private void Exit_Click(object sender, RoutedEventArgs e) => Close();
 
-    private void Backup_Click(object sender, RoutedEventArgs e) => Run(() =>
+    private async void Backup_Click(object sender, RoutedEventArgs e)
+    { if (managedFeatureContext is not null) { await ManagedBackupAsync(); return; } Run(() =>
     {
         var origin = RequireOrigin(_displayOrigin); origin.GetService();
         var save = new SaveFileDialog { Title = "备份当前账套", Filter = "账套备份 (*.caiwubak)|*.caiwubak", DefaultExt = ".caiwubak",
@@ -167,9 +169,10 @@ public partial class MainWindow : Window
         WithBusy(() => featureAuthentication!.Operators.Execute(featureAuthentication.Session, OperatorPermission.BackupLedger,
             _ => { origin.GetService(); _session!.BackupTo(save.FileName); return true; }));
         NotificationText.Text = "备份已保存：" + save.FileName;
-    });
+    }); }
 
-    private void Restore_Click(object sender, RoutedEventArgs e) => Run(() =>
+    private async void Restore_Click(object sender, RoutedEventArgs e)
+    { if (managedFeatureContext is not null) { await ManagedRestoreAsync(); return; } Run(() =>
     {
         var open = new OpenFileDialog { Title = "选择账套备份", Filter = "账套备份 (*.caiwubak)|*.caiwubak|财务账套 (*.caiwu)|*.caiwu|所有文件|*.*" };
         if (open.ShowDialog(this) != true) return;
@@ -180,7 +183,7 @@ public partial class MainWindow : Window
         WithBusy(() => _session!.RestoreTo(open.FileName, save.FileName));
         _session!.Open(save.FileName); BookOpened();
         NotificationText.Text = "备份已恢复到新文件并打开，原账套保持不变。";
-    }, requireBook: false, discardOpening: true);
+    }, requireBook: false, discardOpening: true); }
 
     private void WithBusy(Action action)
     {
