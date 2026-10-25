@@ -1,5 +1,14 @@
 name: Native WPF visual capture
 on:
+  push:
+    branches: [codex/modern-visuals]
+    paths:
+      - '.github/workflows/visual-capture.yml'
+      - 'src/Caiwu.Desktop/Themes/**'
+      - 'src/Caiwu.Desktop/App.xaml'
+      - 'src/Caiwu.Desktop/MainWindow.xaml'
+      - 'src/Caiwu.Desktop/Dialogs/*.xaml'
+      - 'tests/Caiwu.VisualReview/**'
   workflow_dispatch:
 permissions:
   contents: read
