@@ -1,5 +1,7 @@
 # ACC-002编辑token独立定点回归
 
+v1.2更新：当前Program已迁移正常创建fixture，并将原“兼容无token新建”改为必须拒绝；本轮仅锁定restore及Release构建，未重跑这13条。当前来源上下文修复及95项SQLite/149项单测结果见[VALIDATION_V1_2.md](../MutationSafetyProbe/VALIDATION_V1_2.md)。下面13项运行结果均属于各自明确标注的v1.1及更早历史SHA，不代表v1.2仍允许无token新建。
+
 更新：Core现已按v1.1强制校验两个token。在基于34f065b集成契约的修复源码上，**同一13项真实SQLite探针全部通过**，原先8个失败全部转PASS；store CAS间隙用例继续通过。[新结果](result-token-enforced.json)及完整返修命令见 [TOKEN_ENFORCEMENT.md](../AcceptanceRepair/TOKEN_ENFORCEMENT.md)。下文保留0377/0d2/34f的修复前证据，不表示当前修复后的状态。
 
 2026-10-25。这里只补测试与证据，未修改Contracts、生产Core、SQLite或UI。主协调决定强制检查代码的改动归属后再实施，避免同时改同一SaveDraft点。

@@ -1,0 +1,421 @@
+{
+  "targetCommit": "66621203066488c7e7a4115ede508e88ec58e3fa",
+  "actualSqlite": true,
+  "saveDraftThirteenCasesRepeated": false,
+  "wpfExecuted": false,
+  "risksConfirmed": 0,
+  "risksAlreadyBlocked": 5,
+  "safetyPassed": 90,
+  "safetyFailed": 0,
+  "results": [
+    {
+      "id": "STALE-OPENING-BALANCES",
+      "status": "PROTECTED",
+      "details": {
+        "shownToB": 100,
+        "newerSavedByA": 200,
+        "finalBank": 200,
+        "revisionBeforeB": 2,
+        "revisionAfterB": 2
+      }
+    },
+    {
+      "id": "STALE-ACCOUNT-REACTIVATION",
+      "status": "PROTECTED",
+      "details": {
+        "oldActive": true,
+        "newerSavedActive": false,
+        "finalActive": false,
+        "finalName": "\u5E93\u5B58\u73B0\u91D1"
+      }
+    },
+    {
+      "id": "STALE-DELETE-UPDATED-DRAFT",
+      "status": "PROTECTED",
+      "details": {
+        "shownToB": 10,
+        "newerSavedByA": 20,
+        "finalVoucherCount": 1
+      }
+    },
+    {
+      "id": "STALE-REVIEW-UNSEEN-AMOUNT",
+      "status": "PROTECTED",
+      "details": {
+        "shownToReviewer": 10,
+        "reviewedAmount": 20,
+        "status": "Draft"
+      }
+    },
+    {
+      "id": "POST-CONFIRMATION-AMOUNT-MISMATCH",
+      "status": "PROTECTED",
+      "details": {
+        "shownInConfirmation": 10,
+        "postedAmount": 20,
+        "currentVersionHasIndependentReview": true,
+        "status": "Reviewed"
+      }
+    },
+    {
+      "id": "REAL-CAS-SaveAccount",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-DeleteAccount",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-SetOpeningBalances",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-DeleteDraft",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-Review",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-CancelReview",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-Post",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-CloseMonth",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-OPENING-POSTED-LOCK",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-ACCOUNT-OPENING-BALANCE-GUARD",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-DELETE-ACCOUNT-NOW-REFERENCED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-Review-NOW-POSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-CancelReview-NOW-POSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-DeleteDraft-NOW-POSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-POST-NOW-CANCELED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-CLOSE-NEW-UNPOSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-Review",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-CancelReview",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-Post",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-DeleteDraft",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SaveAccount-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteAccount-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-SetOpeningBalances-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-DeleteDraft-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Review-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CancelReview-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-Post-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-legacy",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-explicit-null",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-empty-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-negative",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-future",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-CloseMonth-current",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-NewDraft-missing-both",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-NewDraft-missing-book",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-NewDraft-missing-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-NewDraft-stale",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-NewDraft-foreign-same-revision",
+      "status": "PASS"
+    },
+    {
+      "id": "V12-NewDraft-current",
+      "status": "PASS"
+    }
+  ]
+}

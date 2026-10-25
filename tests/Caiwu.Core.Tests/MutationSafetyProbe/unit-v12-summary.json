@@ -1,0 +1,32 @@
+{
+  "command": "dotnet test tests/Caiwu.Core.Tests/Caiwu.Core.Tests.csproj --no-restore -c Release -p:TreatWarningsAsErrors=true --logger 'trx;LogFileName=context-v12-unit.trx' --results-directory /tmp/caiwu-core-v12-results",
+  "functionalImplementationCommit": "66621203066488c7e7a4115ede508e88ec58e3fa",
+  "runPhase": "precommit; the only later Core difference before commit was its class summary comment",
+  "sdk": "10.0.402",
+  "runtime": "10.0.13",
+  "exitCode": 0,
+  "times": {
+    "creation": "2026-10-25T08:34:18.4708882+00:00",
+    "queuing": "2026-10-25T08:34:18.4708883+00:00",
+    "start": "2026-10-25T08:34:16.7151705+00:00",
+    "finish": "2026-10-25T08:34:18.7234745+00:00"
+  },
+  "counters": {
+    "total": "149",
+    "executed": "149",
+    "passed": "149",
+    "failed": "0",
+    "error": "0",
+    "timeout": "0",
+    "aborted": "0",
+    "inconclusive": "0",
+    "passedButRunAborted": "0",
+    "notRunnable": "0",
+    "notExecuted": "0",
+    "disconnected": "0",
+    "warning": "0",
+    "completed": "0",
+    "inProgress": "0",
+    "pending": "0"
+  }
+}
