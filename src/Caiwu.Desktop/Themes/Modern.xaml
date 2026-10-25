@@ -18,8 +18,9 @@
     </ControlTemplate></Setter.Value></Setter>
   </Style>
   <Style TargetType="Window">
-    <Setter Property="FontFamily" Value="Segoe UI Variable, Microsoft YaHei UI, Segoe UI" />
+    <Setter Property="FontFamily" Value="Segoe UI Variable Text, Microsoft YaHei UI, Segoe UI" />
     <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="Foreground" Value="{DynamicResource AppInk}" />
     <Setter Property="Background" Value="{DynamicResource AppCanvas}" />
     <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
