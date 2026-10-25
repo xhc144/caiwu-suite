@@ -1,0 +1,36 @@
+  Determining projects to restore...
+  Restored /workspace/caiwu/src/Caiwu.Summaries/Wpf/Caiwu.Summaries.Wpf.csproj (in 238 ms).
+  26 of 27 projects are up-to-date for restore.
+  Caiwu.Contracts -> /workspace/caiwu/src/Caiwu.Contracts/bin/Release/net10.0/Caiwu.Contracts.dll
+  Caiwu.Costing -> /workspace/caiwu/src/Caiwu.Costing/bin/Release/net10.0/Caiwu.Costing.dll
+  Caiwu.Summaries -> /workspace/caiwu/src/Caiwu.Summaries/bin/Release/net10.0/Caiwu.Summaries.dll
+  Caiwu.VoucherTools -> /workspace/caiwu/src/Caiwu.VoucherTools/bin/Release/net10.0/Caiwu.VoucherTools.dll
+  Caiwu.Reporting -> /workspace/caiwu/src/Caiwu.Reporting/bin/Release/net10.0/Caiwu.Reporting.dll
+  Caiwu.Operators -> /workspace/caiwu/src/Caiwu.Operators/bin/Release/net10.0/Caiwu.Operators.dll
+  Caiwu.Nonprofit.Reporting -> /workspace/caiwu/src/Caiwu.Nonprofit.Reporting/bin/Release/net10.0/Caiwu.Nonprofit.Reporting.dll
+  Caiwu.Core -> /workspace/caiwu/src/Caiwu.Core/bin/Release/net10.0/Caiwu.Core.dll
+  Caiwu.Persistence.Sqlite -> /workspace/caiwu/src/Caiwu.Persistence.Sqlite/bin/Release/net10.0/Caiwu.Persistence.Sqlite.dll
+  Caiwu.VoucherTools.Wpf -> /workspace/caiwu/src/Caiwu.VoucherTools.Wpf/bin/Release/net10.0-windows/Caiwu.VoucherTools.Wpf.dll
+  Caiwu.Costing.Wpf -> /workspace/caiwu/src/Caiwu.Costing/Wpf/bin/Release/net10.0-windows/Caiwu.Costing.Wpf.dll
+  Caiwu.Operators.Wpf -> /workspace/caiwu/src/Caiwu.Operators/Wpf/bin/Release/net10.0-windows/Caiwu.Operators.Wpf.dll
+  Caiwu.Nonprofit.Reporting.Wpf -> /workspace/caiwu/src/Caiwu.Nonprofit.Reporting/Wpf/bin/Release/net10.0-windows/Caiwu.Nonprofit.Reporting.Wpf.dll
+  Caiwu.Core.Tests -> /workspace/caiwu/tests/Caiwu.Core.Tests/bin/Release/net10.0/Caiwu.Core.Tests.dll
+  Caiwu.Persistence.Sqlite.Tests -> /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll
+  IntegrationProbe -> /workspace/caiwu/tests/Caiwu.Core.Tests/SqliteIntegrationProbe/bin/Release/net10.0/IntegrationProbe.dll
+  Caiwu.BookTools -> /workspace/caiwu/src/Caiwu.BookTools/bin/Release/net10.0/Caiwu.BookTools.dll
+  Caiwu.Reporting.Tests -> /workspace/caiwu/tests/Caiwu.Reporting.Tests/bin/Release/net10.0/Caiwu.Reporting.Tests.dll
+  Caiwu.Reporting.Integration.Tests -> /workspace/caiwu/tests/Caiwu.Reporting.Tests/Integration/bin/Release/net10.0/Caiwu.Reporting.Integration.Tests.dll
+  Caiwu.Integration.Tests -> /workspace/caiwu/tests/Caiwu.Integration.Tests/bin/Release/net10.0/Caiwu.Integration.Tests.dll
+  Caiwu.Desktop.Logic.Tests -> /workspace/caiwu/tests/Caiwu.Desktop.Logic.Tests/bin/Release/net10.0/Caiwu.Desktop.Logic.Tests.dll
+  Caiwu.Summaries.Wpf -> /workspace/caiwu/src/Caiwu.Summaries/Wpf/bin/Release/net10.0-windows/Caiwu.Summaries.Wpf.dll
+  Caiwu.Desktop.FeatureTests -> /workspace/caiwu/tests/Caiwu.Desktop.FeatureTests/Logic/bin/Release/net10.0/Caiwu.Desktop.FeatureTests.dll
+  Caiwu.BookTools.Wpf -> /workspace/caiwu/src/Caiwu.BookTools/Wpf/bin/Release/net10.0-windows/Caiwu.BookTools.Wpf.dll
+  Caiwu.Delivery -> /workspace/caiwu/packaging-next/src/Caiwu.Delivery/bin/Debug/net10.0/Caiwu.Delivery.dll
+  Caiwu.Desktop -> /workspace/caiwu/src/Caiwu.Desktop/bin/Release/net10.0-windows/Caiwu.Desktop.dll
+  Caiwu.Acceptance.Wpf -> /workspace/caiwu/tests/Caiwu.Acceptance/Wpf/bin/Release/net10.0-windows/Caiwu.Acceptance.Wpf.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.19

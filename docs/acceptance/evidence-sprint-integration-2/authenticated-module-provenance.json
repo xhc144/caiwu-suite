@@ -1,0 +1,58 @@
+{
+  "integrationCodeCommit": "74fc20d6029f4626554356aff002d6cd18c8037b",
+  "results": [
+    {
+      "sourceCommit": "54871a004a836d76824b2c29959e5b22139f4e86",
+      "paths": [
+        "src/Caiwu.VoucherTools",
+        "src/Caiwu.VoucherTools.Wpf"
+      ],
+      "exactAuthorTree": true
+    },
+    {
+      "sourceCommit": "dcda051a0c9ee364ccff4c2b4c7085f446fac39d",
+      "paths": [
+        "src/Caiwu.Summaries"
+      ],
+      "exactAuthorTree": true
+    },
+    {
+      "sourceCommit": "8bbf8428ccd0b656fec83c7a1ede828cd5691442",
+      "paths": [
+        "src/Caiwu.BookTools"
+      ],
+      "exactAuthorTree": true
+    },
+    {
+      "sourceCommit": "af0d0e34ab9963fc91cabb8a58aed558b34390f0",
+      "paths": [
+        "src/Caiwu.Costing"
+      ],
+      "exactAuthorTree": true
+    },
+    {
+      "sourceCommit": "1957435365390756fd8267937fd0ec408b1e498f",
+      "paths": [
+        "src/Caiwu.Operators"
+      ],
+      "exactAuthorTree": true
+    },
+    {
+      "sourceCommit": "cb71350b2b19067e7a8704b74985d8cf0f15e1aa",
+      "paths": [
+        "src/Caiwu.Nonprofit.Reporting"
+      ],
+      "exactAuthorTree": true
+    },
+    {
+      "sourceCommit": "2586fed12b14e0659f83c5849dc1f848ddc0d06c",
+      "paths": [
+        "src/Caiwu.Desktop/Themes",
+        "src/Caiwu.Desktop/Dialogs",
+        "src/Caiwu.Desktop/MainWindow.xaml",
+        "src/Caiwu.Desktop/App.xaml"
+      ],
+      "exactAuthorTree": true
+    }
+  ]
+}
