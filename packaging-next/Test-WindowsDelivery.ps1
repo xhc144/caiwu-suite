@@ -163,6 +163,13 @@ try {
     Assert-Retained $retained
     [ordered]@{ success = $true; classification = 'INTERNAL-UNVALIDATED'; sourceCommit = $manifest.commit; windowsExecuted = $true; nativeInstallerExecuted = $true; completeManagedUpgradeValidated = $true; portableBackupRestoreSupported = $false; crossRootRecoveryProbeExecuted = $true; approvedForUserDelivery = $false; signed = $false; trustedProductionUpdateFeed = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
 } catch {
+    if ($null -ne $control) {
+        try {
+            if (-not $control.HasExited) { $control.Kill($true); [void]$control.WaitForExit(10000) }
+            $control.StandardOutput.ReadToEnd() | Set-Content (Join-Path $evidence 'controller-stdout.log')
+            $control.StandardError.ReadToEnd() | Set-Content (Join-Path $evidence 'controller-stderr.log')
+        } catch { }
+    }
     [ordered]@{ success = $false; classification = 'INTERNAL-UNVALIDATED'; windowsExecuted = $true; failure = $_.Exception.Message; approvedForUserDelivery = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
     throw
 } finally {

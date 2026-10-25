@@ -207,9 +207,20 @@ internal static class Program
     }
     private static AutomationElement Window(Func<string, bool> matches)
     {
-        AutomationElement? found = null; Until(() => { found = AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, desktop!.Id)).Cast<AutomationElement>().FirstOrDefault(e => matches(e.Current.Name)); return found is not null; }, "product window"); return found!;
+        AutomationElement? found = null; Until(() => { found = ProductWindows().FirstOrDefault(e => matches(e.Current.Name)); return found is not null; }, "product window"); return found!;
     }
-    private static bool HasWindow(string title) => AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, desktop!.Id)).Cast<AutomationElement>().Any(e => e.Current.Name == title);
+    private static IEnumerable<AutomationElement> ProductWindows()
+    {
+        // WPF owned ShowDialog windows are children of their owner in the UIA
+        // tree even though they have native HWNDs. Native file dialogs may be roots.
+        var roots = AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, desktop!.Id)).Cast<AutomationElement>();
+        foreach (var root in roots)
+        {
+            yield return root;
+            foreach (var child in root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Window)).Cast<AutomationElement>()) yield return child;
+        }
+    }
+    private static bool HasWindow(string title) => ProductWindows().Any(e => e.Current.Name == title);
     private static void Invoke(AutomationElement root, Condition condition) { var item = root.FindFirst(TreeScope.Descendants, condition) ?? throw new InvalidDataException("Control absent: " + condition); ((InvokePattern)item.GetCurrentPattern(InvokePattern.Pattern)).Invoke(); Thread.Sleep(150); }
     private static void SetValue(AutomationElement element, string text) => ((ValuePattern)element.GetCurrentPattern(ValuePattern.Pattern)).SetValue(text);
     private static void Close(AutomationElement window) { ((WindowPattern)window.GetCurrentPattern(WindowPattern.Pattern)).Close(); Thread.Sleep(150); }
