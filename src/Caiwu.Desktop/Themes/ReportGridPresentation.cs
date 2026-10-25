@@ -1,5 +1,6 @@
 using System.Collections.Specialized;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -73,6 +74,13 @@ public static class ReportGridPresentation
                 var headerStyle = new Style(typeof(DataGridColumnHeader), grid.TryFindResource(typeof(DataGridColumnHeader)) as Style);
                 headerStyle.Setters.Add(new Setter(Control.HorizontalContentAlignmentProperty, HorizontalAlignment.Right));
                 column.HeaderStyle = headerStyle;
+            }
+            if (Window.GetWindow(grid)?.FindName("TotalText") is TextBlock total && !BindingOperations.IsDataBound(total, TextBlock.TextProperty))
+            {
+                var grouped = Regex.Replace(total.Text, @"(?<![0-9.,])-?[0-9]+(?:,[0-9]{3})*\.[0-9]{2}(?![0-9.,])", m =>
+                    decimal.TryParse(m.Value, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint | NumberStyles.AllowThousands,
+                        CultureInfo.InvariantCulture, out var value) ? value.ToString("N2", CultureInfo.InvariantCulture) : m.Value);
+                if (grouped != total.Text) total.Text = grouped;
             }
         }
     }
