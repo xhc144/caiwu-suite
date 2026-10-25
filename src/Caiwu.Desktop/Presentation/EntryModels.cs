@@ -98,7 +98,7 @@ public sealed record VoucherListRow(Voucher Value)
     public Guid Id => Value.Id;
     public string Date => Value.Date.ToString("yyyy-MM-dd");
     public string Number => $"{Value.Kind}-{Value.Number:0000}";
-    public string Summary => Value.Lines.FirstOrDefault()?.Summary ?? "";
+    public string Summary => string.Join("；", Value.Lines.Select(line => line.Summary).Where(summary => summary.Length > 0).Distinct());
     public decimal Amount => Value.Lines.Sum(line => line.Debit);
     public string Status => Value.Status switch { VoucherStatus.Draft => "草稿", VoucherStatus.Reviewed => "已审核", _ => "已记账" };
     public string PreparedBy => Value.PreparedBy;

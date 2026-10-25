@@ -8,6 +8,7 @@ using Caiwu.Contracts;
 using Caiwu.Desktop.Dialogs;
 using Caiwu.Desktop.Presentation;
 using Microsoft.Win32;
+using Caiwu.Reporting;
 
 namespace Caiwu.Desktop;
 
@@ -179,7 +180,7 @@ public partial class MainWindow : Window
     private Voucher SelectedVoucher() => VoucherGrid.SelectedItem is VoucherListRow row ? row.Value
         : throw new LedgerValidationException("请先选择一张凭证。");
 
-    private void EditVoucher(Voucher? voucher)
+    private void EditVoucher(Voucher? voucher, Window? owner = null)
     {
         // Both data and edit token must come from this one fresh snapshot, never a stale grid row.
         var editSnapshot = Service.GetSnapshot();
@@ -189,7 +190,7 @@ public partial class MainWindow : Window
         var operatorName = OperatorName();
         var dialog = new VoucherEditorWindow(editSnapshot.Book, editSnapshot.Accounts, voucher, operatorName,
             draft => Service.SaveDraft(draft, operatorName), forceReadOnly: !PreviewLedgerService.AllowsWrites(editSnapshot.Book),
-            expectedRevision: voucher is null ? null : editSnapshot.Revision) { Owner = this };
+            expectedRevision: voucher is null ? null : editSnapshot.Revision) { Owner = owner ?? this };
         if (dialog.ShowDialog() == true)
         {
             Reload(); Pages.SelectedIndex = 1;
@@ -224,8 +225,7 @@ public partial class MainWindow : Window
         if (from > to) throw new LedgerValidationException("查询开始日期不能晚于结束日期。");
         var query = VoucherSearch.Text.Trim(); var state = VoucherStatusInput.SelectedIndex;
         _voucherRows = Snapshot.Vouchers.Where(v => v.Date >= from && v.Date <= to && (state <= 0 || (int)v.Status == state - 1))
-            .Select(v => new VoucherListRow(v)).Where(v => query.Length == 0 || v.Summary.Contains(query, StringComparison.OrdinalIgnoreCase)
-                || v.Number.Contains(query, StringComparison.OrdinalIgnoreCase) || v.PreparedBy.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .Where(v => ReportingQueries.Matches(v, query)).Select(v => new VoucherListRow(v))
             .OrderBy(v => v.Value.Date).ThenBy(v => v.Value.Kind, StringComparer.Ordinal).ThenBy(v => v.Value.Number).ToArray();
         VoucherGrid.ItemsSource = _voucherRows;
         VoucherCountText.Text = $"当前查询 {_voucherRows.Count} 张凭证 · 金额合计 {AmountInput.Display(_voucherRows.Sum(v => v.Amount))}（含所选状态）";
@@ -342,33 +342,57 @@ public partial class MainWindow : Window
         Service.CloseMonth(month, OperatorName()); Reload(); NotificationText.Text = $"{book.FiscalYear}-{month:00}已结账。";
     }, discardOpening: true);
 
-    private sealed record ReportData(string Title, IReadOnlyList<string> Headers, IReadOnlyList<IReadOnlyList<object?>> Rows, string Footnote = "");
-    private static IReadOnlyList<object?> Row(params object?[] values) => values;
-    private ReportData CurrentReport() => Pages.SelectedIndex switch
+    private ReportDocument CurrentReport()
     {
-        1 => new("凭证序时簿", ["日期", "凭证号", "摘要", "金额", "状态", "制单人", "审核人"],
-            _voucherRows.Select(v => Row(v.Date, v.Number, v.Summary, v.Amount, v.Status, v.PreparedBy, v.ReviewedBy)).ToArray(), "按当前查询期间与状态导出。"),
-        2 => new("会计科目", ["代码", "名称", "上级", "方向", "层级", "状态"],
-            _accountRows.Select(a => Row(a.Code, a.Name, a.Parent, a.Side, a.Level, a.State)).ToArray()),
-        4 => new("科目余额表", ["代码", "名称", "期初借方", "期初贷方", "本期借方", "本期贷方", "期末借方", "期末贷方"],
-            _trialRows.Select(r => Row(r.AccountCode, r.AccountName, r.OpeningDebit, r.OpeningCredit, r.PeriodDebit, r.PeriodCredit, r.ClosingDebit, r.ClosingCredit)).ToArray(), TrialTotalsText.Text),
-        5 => new("明细分类账", ["日期", "凭证号", "摘要", "借方", "贷方", "方向", "余额"],
-            _ledgerRows.Select(r => Row(r.Date, r.Number, r.Summary, r.Debit, r.Credit, r.Side, r.Balance)).ToArray(), "仅含已记账分录。"),
-        _ => throw new LedgerValidationException("请在凭证列表、会计科目、余额表或明细账页面导出或打印。")
-    };
-    private void Export_Click(object sender, RoutedEventArgs e) => Run(() =>
+        var range = Pages.SelectedIndex switch
+        {
+            1 => Range(VoucherFrom, VoucherTo),
+            4 => Range(TrialFrom, TrialTo),
+            5 => Range(LedgerFrom, LedgerTo),
+            _ => throw new LedgerValidationException("请在凭证列表、余额表或明细账页面导出。")
+        };
+        var kind = Pages.SelectedIndex switch { 1 => ReportKind.VoucherList, 4 => ReportKind.TrialBalance, _ => ReportKind.Ledger };
+        return ReportingQueries.Build(Service, kind, LedgerAccountInput.SelectedValue as string, range.From, range.To,
+            kind == ReportKind.VoucherList ? VoucherSearch.Text : "",
+            kind == ReportKind.VoucherList && VoucherStatusInput.SelectedIndex > 0 ? (VoucherStatus)(VoucherStatusInput.SelectedIndex - 1) : null);
+    }
+    private void Export_Click(object sender, RoutedEventArgs e) => ExportCurrent(false);
+    private void ExportHtml_Click(object sender, RoutedEventArgs e) => ExportCurrent(true);
+    private void ExportCurrent(bool html) => Run(() =>
     {
-        QueryCurrent(); var report = CurrentReport();
-        var save = new SaveFileDialog { Title = "导出 " + report.Title, Filter = "CSV 文件 (*.csv)|*.csv", DefaultExt = ".csv",
-            FileName = SafeFileName(Snapshot.Book.Name + "-" + report.Title) + ".csv" };
+        var report = CurrentReport(); var extension = html ? ".html" : ".csv";
+        var save = new SaveFileDialog { Title = "导出 " + report.Title,
+            Filter = html ? "分页 HTML (*.html)|*.html" : "CSV 文件 (*.csv)|*.csv", DefaultExt = extension,
+            FileName = SafeFileName(report.Metadata.Book.Name + "-" + report.Title) + extension };
         if (save.ShowDialog(this) != true) return;
-        CsvExporter.Write(save.FileName, report.Headers, report.Rows); NotificationText.Text = "CSV已导出：" + save.FileName;
+        using (var output = File.Create(save.FileName))
+        {
+            if (html) ReportExporter.WriteHtml(report, output, new HtmlExportOptions(12));
+            else ReportExporter.WriteCsv(report, output);
+        }
+        NotificationText.Text = "已导出：" + save.FileName;
     });
     private void Print_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
-        QueryCurrent(); var report = CurrentReport();
-        ReportPrinter.PrintTable(Snapshot.Book.Name + " · " + report.Title, $"{Snapshot.Book.FiscalYear}年度 · 开发预览", report.Headers, report.Rows, report.Footnote);
+        if (Pages.SelectedIndex == 2)
+        {
+            var snapshot = Service.GetSnapshot();
+            ReportPrinter.PrintTable(snapshot.Book.Name + " · 会计科目", snapshot.Book.TemplateVersion,
+                ["代码", "名称", "上级", "方向", "状态"], snapshot.Accounts.Select(a =>
+                    (IReadOnlyList<object?>)new object?[] { a.Code, a.Name, a.ParentCode, a.Direction == BalanceDirection.Debit ? "借" : "贷", a.IsActive ? "启用" : "停用" }));
+        }
+        else ReportPrinter.PrintReport(CurrentReport());
     });
+    private void ReportCenter_Click(object sender, RoutedEventArgs e) => Run(() =>
+    {
+        var snapshot = Service.GetSnapshot();
+        var from = new DateOnly(snapshot.Book.FiscalYear, Math.Min(snapshot.Book.ClosedThroughMonth + 1, 12), 1);
+        var to = new DateOnly(from.Year, from.Month, DateTime.DaysInMonth(from.Year, from.Month));
+        var dialog = new ReportCenterWindow(snapshot.Accounts, from, to,
+            (kind, account, first, last) => ReportingQueries.Build(Service, kind, account, first, last),
+            (id, owner) => EditVoucher(Service.GetSnapshot().Vouchers.Single(v => v.Id == id), owner)) { Owner = this };
+        dialog.ShowDialog();
+    }, discardOpening: true);
 
     private void ShowPage(int index) => Run(() => { Pages.SelectedIndex = index; QueryCurrent(); });
     private void VoucherPage_Click(object sender, RoutedEventArgs e) => ShowPage(1);

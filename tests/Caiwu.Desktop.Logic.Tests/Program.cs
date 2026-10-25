@@ -1,6 +1,7 @@
 using System.Globalization;
 using Caiwu.Contracts;
 using Caiwu.Desktop.Presentation;
+using Caiwu.Reporting;
 
 CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("zh-CN");
 var passed = 0;
@@ -52,12 +53,16 @@ Directory.CreateDirectory(folder);
 try
 {
     var file = Path.Combine(folder, "export.csv");
-    CsvExporter.Write(file, ["摘要", "金额"], [new object?[] { "=HYPERLINK(\"https://invalid.example\")", 0.30m },
-        new object?[] { "中文,\"引号\"\n第二行", 1234.50m }]);
+    var report = ReportBuilder.VoucherList(new ReportMetadata(book, new(2026, 10, 1), new(2026, 10, 31), DateTimeOffset.Now),
+        [new(Guid.NewGuid(), new(2026, 10, 1), "记", 1, 0, "测试", null, VoucherStatus.Draft,
+            [new("1002", "\u200B＝HYPERLINK(\"https://invalid.example\")", 0.30m, 0),
+                new("3001", "中文,\"引号\"\n第二行", 0, .30m)])]);
+    using (var output = File.Create(file)) ReportExporter.WriteCsv(report, output);
     var bytes = File.ReadAllBytes(file); var text = File.ReadAllText(file);
     Check(bytes.Take(3).SequenceEqual(new byte[] { 0xEF, 0xBB, 0xBF }), "中文CSV带UTF-8 BOM");
-    Check(text.Contains("\"'=HYPERLINK("), "摘要公式按文本导出，避免表格执行");
-    Check(text.Contains("中文,\"\"引号\"\"\n第二行") && text.Contains(",1234.50"), "CSV保留逗号换行引号与独立金额格式");
+    Check(text.Contains("\"'\u200B＝HYPERLINK("), "摘要不可见字符和全角公式按文本导出");
+    Check(text.Contains("中文,\"\"引号\"\"\n第二行") && text.Contains(",0.30"), "CSV保留全部分录摘要与独立金额格式");
+    Check(text.Contains(book.Id.ToString()) && text.Contains(book.TemplateVersion), "导出保留账套及版本元数据");
 }
 finally { Directory.Delete(folder, true); }
 Console.WriteLine($"Desktop presentation checks passed: {passed}");

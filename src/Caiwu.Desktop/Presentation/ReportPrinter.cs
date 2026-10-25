@@ -4,11 +4,21 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Media;
 using Caiwu.Contracts;
+using Caiwu.Reporting;
 
 namespace Caiwu.Desktop.Presentation;
 
 public static class ReportPrinter
 {
+    public static void PrintReport(ReportDocument report)
+    {
+        var visible = report.Columns.Select((column, index) => (column, index)).Where(x => x.column.Key != "voucherId").ToArray();
+        var rows = report.Rows.Concat([report.Total]).Select(row => (IReadOnlyList<object?>)visible.Select(x =>
+            row.Cells[x.index].Amount is { } amount ? (object)amount : row.Cells[x.index].DisplayText).ToArray());
+        PrintTable(report.Metadata.Book.Name + " · " + report.Title,
+            $"{report.Metadata.From:yyyy-MM-dd} 至 {report.Metadata.To:yyyy-MM-dd} · {report.Metadata.RegimeName} · {report.Metadata.Book.TemplateVersion}\n生成时间：{report.Metadata.GeneratedAt:yyyy-MM-dd HH:mm:ss zzz} · 账套ID：{report.Metadata.Book.Id}",
+            visible.Select(x => x.column.Title).ToArray(), rows, report.Note + string.Join("\n", report.Metadata.Sources.Select(s => "\n" + s.Title + " " + s.Address)));
+    }
     public static void PrintVoucher(BookInfo book, Voucher voucher)
     {
         var status = voucher.Status == VoucherStatus.Posted ? "已记账" : "未记账";
@@ -23,6 +33,7 @@ public static class ReportPrinter
         IEnumerable<IReadOnlyList<object?>> rows, string footer = "")
     {
         var dialog = new PrintDialog();
+        if (headers.Count > 7 && dialog.PrintTicket is not null) dialog.PrintTicket.PageOrientation = System.Printing.PageOrientation.Landscape;
         if (dialog.ShowDialog() != true) return;
         var document = new FlowDocument
         {

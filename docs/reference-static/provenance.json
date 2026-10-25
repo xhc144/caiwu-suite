@@ -1,0 +1,18 @@
+{
+  "file_count": 453,
+  "all_payload_hashes_verified": true,
+  "catalog_uncompressed_bytes": 3838868,
+  "catalog_sha256": "4426e4940dad60b6593eb622dcbf76237243285102fb210c27403773a63a325d",
+  "catalog_gzip_bytes": 644806,
+  "catalog_gzip_sha256": "0bd9f7c37f1fa04d1e573f72983be2501fcdd187e08a0f47ba3c0b471f0a1d39",
+  "raw_payloads_uploaded": false,
+  "full_manual_archive": {
+    "archive": "/workspace/caiwu-suite-investigation/evidence/complete-manuals-private-20261025.zip",
+    "bytes": 15840078,
+    "sha256": "b75134e262844f0bee7efde255af26a6541b83e28dd6ce6c314a2ab12649b4ad",
+    "files": 482,
+    "images": 472,
+    "html_documents": 4
+  },
+  "library_upload_status": "not_started_tools_list_http401_no_id"
+}

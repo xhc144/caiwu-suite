@@ -34,6 +34,9 @@
         <MenuItem Header="会计科目" Click="AccountPage_Click" />
         <MenuItem Header="期初余额" Click="OpeningPage_Click" />
       </MenuItem>
+      <MenuItem Header="报表(_R)">
+        <MenuItem Header="账簿报表与导出…" Click="ReportCenter_Click" />
+      </MenuItem>
       <MenuItem Header="系统管理(_S)">
         <MenuItem Header="账套信息" Click="BookInfo_Click" />
         <MenuItem Header="操作日志" Click="AuditPage_Click" />
@@ -111,6 +114,7 @@
                 <Button Content="记账" Click="Post_Click" Tag="WriteOperation" />
                 <Button Content="删除草稿" Click="DeleteVoucher_Click" Tag="WriteOperation" />
                 <Button Content="导出 CSV" Click="Export_Click" />
+                <Button Content="导出 HTML" Click="ExportHtml_Click" />
                 <Button Content="打印" Click="Print_Click" />
               </WrapPanel>
               <WrapPanel Margin="0,0,0,10">
@@ -194,6 +198,7 @@
                 <DatePicker x:Name="TrialTo" Width="140" Margin="0,0,12,0" />
                 <Button Content="查询" Click="Query_Click" />
                 <Button Content="导出 CSV" Click="Export_Click" />
+                <Button Content="导出 HTML" Click="ExportHtml_Click" />
                 <Button Content="打印" Click="Print_Click" />
                 <TextBlock Text="仅含已记账凭证 · 双击查看明细" VerticalAlignment="Center" Margin="8,0" />
               </WrapPanel>
@@ -224,6 +229,7 @@
                 <Button Content="查询" Click="Query_Click" />
                 <Button Content="返回余额表" Click="TrialPage_Click" />
                 <Button Content="导出 CSV" Click="Export_Click" />
+                <Button Content="导出 HTML" Click="ExportHtml_Click" />
                 <Button Content="打印" Click="Print_Click" />
               </WrapPanel>
             </StackPanel>

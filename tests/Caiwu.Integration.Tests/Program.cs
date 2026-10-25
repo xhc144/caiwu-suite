@@ -3,6 +3,7 @@ using Caiwu.Core;
 using Caiwu.Persistence.Sqlite;
 using Caiwu.Desktop.Presentation;
 using Caiwu.Desktop.Verification;
+using Caiwu.Reporting;
 
 var backend = new DesktopBackend(SqliteLedgerStore.Open, SqliteLedgerStore.Create,
     SqliteLedgerStore.RestoreBackup, store => new LedgerService(store), TemplateCatalog.All);
@@ -35,6 +36,16 @@ try
         Check(session.Snapshot!.Book.ClosedThroughMonth == 10, "真实存储下月结期间锁已持久化");
         using var immutableBackup = SqliteLedgerStore.Open(restored);
         Check(immutableBackup.Read().Book.ClosedThroughMonth == 9, "后续源账变化不影响恢复副本");
+        var trialReport = ReportingQueries.Build(session.Service, ReportKind.TrialBalance, null, new(2026, 10, 1), new(2026, 10, 31));
+        Check(trialReport.Metadata.Book.Id == session.Snapshot.Book.Id && trialReport.Rows.Count == rows.Count,
+            "Desktop报表适配器用真实账套和查询结果生成元数据");
+        var emptyReport = ReportingQueries.Build(session.Service, ReportKind.VoucherList, null, new(2026, 10, 1), new(2026, 10, 31), status: VoucherStatus.Draft);
+        Check(emptyReport.Rows.Count == 0, "当前状态筛选导出不混入已记账凭证");
+        var latest = session.Service.GetSnapshot();
+        var secondSummary = latest.Vouchers.First().Lines.Last().Summary;
+        var filtered = ReportingQueries.Build(session.Service, ReportKind.VoucherList, null, new(2026, 10, 1), new(2026, 10, 31), secondSummary, VoucherStatus.Posted);
+        Check(filtered.Rows.Count > 0 && filtered.Rows.All(r => r.VoucherId is { } id && latest.Vouchers.Single(v => v.Id == id).Lines.Any(l => l.Summary.Contains(secondSummary))),
+            "凭证导出搜索覆盖全部分录而不是首行摘要");
     }
     Console.WriteLine($"Real SQLite/Core/session integration checks passed: {passed}");
 }
