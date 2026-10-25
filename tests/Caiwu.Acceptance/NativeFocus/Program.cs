@@ -25,7 +25,7 @@ internal static class Program
     {
         if (!OperatingSystem.IsWindows()) { Console.Error.WriteLine("BLOCKED: native Windows input required."); return 2; }
         output = Path.GetFullPath(args[0]); Directory.CreateDirectory(output);
-        var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var app = new IndependentDesktopApplication(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
         var run = RunAsync(); var frame = new DispatcherFrame();
         _ = run.ContinueWith(_ => app.Dispatcher.BeginInvoke(() => frame.Continue = false), TaskScheduler.Default);

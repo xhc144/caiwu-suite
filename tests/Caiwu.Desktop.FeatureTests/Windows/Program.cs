@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -38,7 +39,7 @@ internal static class Program
         using var watchdog = new System.Threading.Timer(_ => Environment.FailFast("Desktop feature probe exceeded 90 seconds."), null, 90000, Timeout.Infinite);
         evidence = Path.GetFullPath(args.Length > 0 ? args[0] : "artifacts/desktop-features-windows"); Directory.CreateDirectory(evidence);
         var temporary = Path.Combine(Path.GetTempPath(), "caiwu-feature-windows-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(temporary);
-        var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var app = new IndependentDesktopApplication(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
         var book = new BookInfo(Guid.NewGuid(), "合成桌面窗口探针", AccountingRegime.SmallBusiness, "synthetic-wpf", 2026, 1, 0, DateTimeOffset.UtcNow);
         var accounts = new Account[] { new("1002", "银行存款", null, BalanceDirection.Debit, true, 0, 0), new("3001", "实收资本", null, BalanceDirection.Credit, true, 0, 0) };

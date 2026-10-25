@@ -42,7 +42,7 @@ internal static class Program
         try
         {
             PrepareDesktop();
-            app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            app = new IndependentDesktopApplication(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var backend = SyntheticDesktopIdentity.Backend;
             var path = Path.Combine(output, "synthetic-visual-" + Guid.NewGuid().ToString("N") + ".caiwu");
             var postedId = SyntheticDesktopIdentity.SeedSample(path);

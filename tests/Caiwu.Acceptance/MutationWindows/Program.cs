@@ -25,7 +25,7 @@ internal static class Program
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Actual Windows WPF required.");
         output = Path.GetFullPath(args[0]); Directory.CreateDirectory(output);
-        var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var app = new IndependentDesktopApplication(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         backend = SyntheticDesktopIdentity.Backend;
         var supported = new[] { "OPENING", "ACCOUNT", "DELETE", "REVIEW", "POST", "SAME-IDENTITY-RESTORE" };
         var selected = args.Length > 1 ? new[] { args[1] } : supported;

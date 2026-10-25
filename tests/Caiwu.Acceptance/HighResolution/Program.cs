@@ -38,7 +38,7 @@ internal static class Program
                     throw new InvalidOperationException("BLOCKED: native desktop does not support 1920x1080; no upscaled image produced.");
             }
             if (GetSystemMetrics(0) < 1920 || GetSystemMetrics(1) < 1080) throw new InvalidOperationException("BLOCKED: desktop mode change was ineffective.");
-            var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            var app = new IndependentDesktopApplication(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             var backend = SyntheticDesktopIdentity.Backend;
             var path = Path.Combine(output, "synthetic.caiwu"); SyntheticDesktopIdentity.SeedSample(path);
             var main = SyntheticDesktopIdentity.CreateMain(backend); app.MainWindow = main; main.Show(); Call(main, "OpenVerificationBook", path);

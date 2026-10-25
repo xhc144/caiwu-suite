@@ -64,3 +64,13 @@ internal static class SyntheticDesktopIdentity
     private sealed record Fixture(string Root, LocalOperatorService Operators, OperatorSession Maker, OperatorSession Reviewer,
         FeatureAuthentication Authentication, FeatureAuthentication ReviewerAuthentication);
 }
+
+// Independent executable only: reuse product resources without scheduling the product
+// login lifecycle a second time. Every backend/window below still uses normal setup/login.
+internal sealed class IndependentDesktopApplication : App
+{
+    protected override void OnStartup(System.Windows.StartupEventArgs e)
+    {
+        ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+    }
+}

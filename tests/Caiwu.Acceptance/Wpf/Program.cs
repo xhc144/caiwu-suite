@@ -32,7 +32,7 @@ internal static class Program
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Actual WPF runtime required.");
         directory = Path.GetFullPath(args.Length == 0 ? "tests/Caiwu.Acceptance/evidence/runtime/wpf" : args[0]);
         Directory.CreateDirectory(directory);
-        var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var app = new IndependentDesktopApplication(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var backend = SyntheticDesktopIdentity.Backend;
         var path = Path.Combine(directory, "acceptance-" + Guid.NewGuid().ToString("N") + ".caiwu");
         var book = new BookInfo(Guid.NewGuid(), "独立验收", AccountingRegime.SmallBusiness, "acceptance", 2026, 10, 9, DateTimeOffset.UtcNow);

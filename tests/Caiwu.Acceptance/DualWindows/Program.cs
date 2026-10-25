@@ -159,7 +159,7 @@ internal static class Program
     }
     private static int Child(string role, string path, string output)
     {
-        var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        var app = new IndependentDesktopApplication(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var seen = new List<SeenMutation>(); var actualBackend = Backend();
         var backend = actualBackend with { CreateService = store => new ObservedLedgerService(actualBackend.CreateService(store), seen) };
         var main = SyntheticDesktopIdentity.CreateMain(backend); app.MainWindow = main; main.Show();

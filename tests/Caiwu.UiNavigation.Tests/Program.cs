@@ -38,7 +38,7 @@ internal static class Program
         }
         output = Path.GetFullPath(args.Length == 0 ? "artifacts/ui-navigation" : args[0]);
         Directory.CreateDirectory(output);
-        var app = new App();
+        var app = new IndependentDesktopApplication();
         app.InitializeComponent();
         app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext());
