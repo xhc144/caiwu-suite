@@ -66,6 +66,25 @@ class DWTests(unittest.TestCase):
     def test_PBSELECT_must_match_structural_database_names(self):
         result = analyze(view(fixture(b'PBSELECT(COLUMN(NAME="other"))\0')), SLOTS)
         self.assertIn('PBSELECT_column_sequence_differs_from_table_binding', result['errors'])
+        self.assertEqual(result['status'], 'partial')
+        data = result['decoded_fields']['data_source']
+        self.assertEqual(data['columns'][0]['database_name']['text']['value'], 'example.amount')
+        self.assertEqual(data['query']['PBSELECT_columns'], ['other'])
+        self.assertEqual(data['query']['PBSELECT_column_order_verification'],
+                         'mismatch_to_table_column_database_names')
+        self.assertEqual(result['dimension_status']['query_column_sequence_binding'], 'mismatch')
+
+    def test_extra_projection_preserves_query_and_structural_columns(self):
+        query = b'PBSELECT(COLUMN(NAME="example.amount") COLUMN(NAME="extra"))\0'
+        result = analyze(view(fixture(query)), SLOTS)
+        data = result['decoded_fields']['data_source']
+        self.assertEqual(data['column_count'], 1)
+        self.assertEqual(data['query']['text']['value'], query[:-1].decode())
+        self.assertEqual(data['query']['PBSELECT_columns'], ['example.amount', 'extra'])
+        self.assertEqual(data['query']['execution_status'], 'not_executed')
+        self.assertEqual(result['dimension_status']['record_envelope'], 'parsed')
+        self.assertEqual(result['dimension_status']['query_column_sequence_binding'], 'mismatch')
+        self.assertEqual(result['decoded_fields']['visual_objects'], [])
 
     def test_record_reference_not_nearby_string(self):
         payload = bytearray(fixture());rows = records(payload)

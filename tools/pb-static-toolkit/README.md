@@ -37,13 +37,17 @@ python3 toolkit.py analyze \
   --output /local/work/analysis
 ```
 
-`probe` preserves missing/rejected record statuses in its index. `analyze` consumes only complete verified reports, rechecks file SHA256 and raw ENT/DAT chains, and parses each unique file hash once. `record_aliases` preserves all verified manifest record IDs for repeated content. Output must be outside the input payload tree. Use `--stages classify windows dw functions calls cfb relations` to select stages.
+`probe` preserves missing/rejected record statuses in its index. `analyze` consumes only complete verified reports, rechecks file SHA256 and raw ENT/DAT chains, and parses each unique file hash once. `record_aliases` preserves all verified manifest record IDs for repeated content. Output must be outside the input payload tree. Use `--stages classify windows literals dw functions calls cfb relations` to select stages.
+
+The selectable `literals` stage recognizes only an adjacent PB90 self-property string assignment shape in windows and menus. It requires a complete routine boundary audit, rejects branches entering the shape, and checks the exact property descriptor constant-map entry and both string pointers. Output retains the own-class slot, raw member index, instruction bytes and physical spans. These are static assignment candidates; execution, effective captions, system member binding and event dispatch remain unproven. It does not simulate arbitrary stack operations or merge property defaults. It emits `literal-assignment-analysis.json` and `literal-assignment-coverage.json` using `pb-local-deep-1`; all generated results remain local to the consumer.
 
 The container reader supports bounded HDR/NOD/ENT/DAT metadata and logical-to-physical maps. The compiled-object readers gate the supported object profile, separate own/inherited/container types and local/GlobalIndex/RefIndex domains, and retain descriptor-only slots without pretending to decode their semantics. The PB90 length walker stops on unknown/truncated instructions; jump/debug targets are checked before broad call-descriptor reading. Candidate references remain separate from unique callee edges.
 
 ## DataWindow profile boundary
 
 Without `--dw-profile`, PDW0900 record boundaries, structural columns, query references and raw visual tags are available. Named visual property offsets remain unknown. Column `+52` is an uninterpreted dword; it is not labeled a storage type or used to infer numeric precision. This first export does not include the separate runtime-backed datatype/scale specification layer.
+
+A PBSELECT projection that differs from the structural table's column sequence is retained verbatim with a failed binding cross-check. Independently bounded columns and visual records remain available; the mismatch is not treated as a verified result-column binding or silently repaired. A partial report is never proof that the query executes successfully.
 
 An optional caller-owned JSON profile has `schema_version: "pb-dw-slots-1"`, `layout: "PDW0900"`, `evidence_status: "caller_verified_against_matching_runtime"`, and `groups` containing `column`, `compute`, `compute_visual`, and `text_visual` maps. Each named property entry has an integer `slot` and may retain the consumer's local evidence. No actual profile is bundled. The evidence string is an explicit trust boundary, not verification performed by the loader: the consumer must independently prove offsets against its own matching runtime before supplying it. Never borrow a profile merely because a DLL filename looks similar.
 

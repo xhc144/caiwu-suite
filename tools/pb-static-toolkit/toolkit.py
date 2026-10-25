@@ -8,6 +8,7 @@ from pathlib import Path
 from pb_deep_common import configure
 
 STAGES={'classify':('pb_deep_classify','main'),'windows':('pb_deep_window','main'),
+        'literals':('pb_deep_literals','main'),
         'dw':('pb_deep_dw','main'),'functions':('pb_deep_functions','main'),
         'calls':('pb_deep_calls','run'),'cfb':('pb_deep_cfb','main'),
         'relations':('pb_deep_relations','main')}

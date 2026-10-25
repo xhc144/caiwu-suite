@@ -164,8 +164,14 @@ def analyze(view, slots):
                 names = re.findall(r'COLUMN\(NAME="([^"]*)"\s*\)', sql)
                 expected = [c['database_name']['text']['value'] for c in columns]
                 if names != expected:
-                    raise Invalid('PBSELECT_column_sequence_differs_from_table_binding')
-                query['PBSELECT_column_order_verification'] = 'exact_match_to_all_table_column_database_names'
+                    # A query projection disagreement does not invalidate the
+                    # independently bounded table/column or visual records.
+                    # Keep both declarations and make the failed cross-check
+                    # explicit; never repair, truncate or relabel the query.
+                    result['errors'].append('PBSELECT_column_sequence_differs_from_table_binding')
+                    query['PBSELECT_column_order_verification'] = 'mismatch_to_table_column_database_names'
+                else:
+                    query['PBSELECT_column_order_verification'] = 'exact_match_to_all_table_column_database_names'
                 query['PBSELECT_columns'] = names
                 query['representation'] = 'PBSELECT_definition_complete_text'
             elif re.match(r'(?is)^\s*select\b', sql):
@@ -240,6 +246,8 @@ def analyze(view, slots):
         result['dimension_status'] = {'record_envelope': 'parsed', 'columns_and_database_name_binding': 'parsed',
                                       'bound_query_text': 'parsed', 'named_visual_properties': 'partial' if any(slots[g] for g in ('column','compute','compute_visual','text_visual')) else 'unknown',
                                       'complete_canonical_DataWindow_source': 'unknown', 'expression_pcode': 'unknown'}
+        if query.get('PBSELECT_column_order_verification') == 'mismatch_to_table_column_database_names':
+            result['dimension_status']['query_column_sequence_binding'] = 'mismatch'
         result['unknowns'] = [{'region': 'root_record', 'record_id': 1, 'object_offset': root['offset'], 'bytes': root['bytes'],
                                'reason': 'most_root_property_slots_not_yet_named_or_decoded'},
                               {'region': 'table_record_prefix', 'record_id': table['id'], 'object_offset': table['offset'], 'bytes': 338,
@@ -259,6 +267,7 @@ def main():
     counts = collections.Counter(o['status'] for o in objects)
     cols = sum(o.get('decoded_fields', {}).get('data_source', {}).get('column_count', 0) for o in objects)
     queries = collections.Counter(o.get('decoded_fields', {}).get('data_source', {}).get('query', {}).get('representation', 'unknown') for o in objects)
+    query_checks = collections.Counter(o.get('decoded_fields', {}).get('data_source', {}).get('query', {}).get('PBSELECT_column_order_verification', 'not_checked') for o in objects)
     visuals = collections.Counter(c['kind_from_structural_tag'] for o in objects for c in o.get('decoded_fields', {}).get('visual_objects', []))
     props = sum(len(c['properties']) for o in objects for c in o.get('decoded_fields', {}).get('visual_objects', []))
     prop_errors = sum(len(c['property_errors']) for o in objects for c in o.get('decoded_fields', {}).get('visual_objects', []))
@@ -266,11 +275,11 @@ def main():
         for o in objects for c in o.get('decoded_fields', {}).get('visual_objects', [])
         for key, value in c['properties'].items() if value['scalar'] is not None)
     summary = {'objects': len(objects), 'statuses': dict(counts), 'serialized_records': sum(len(o.get('record_index', [])) for o in objects),
-               'columns': cols, 'query_representations': dict(queries), 'visuals': dict(visuals),
+               'columns': cols, 'query_representations': dict(queries), 'query_column_order_checks': dict(query_checks), 'visuals': dict(visuals),
                'named_property_slots': props, 'property_decode_errors': prop_errors,
                'explicit_property_texts': sum(explicit.values()), 'explicit_properties_by_kind_and_name': dict(explicit),
                'property_profile_provenance': slots.get('_provenance'), 'complete_source_recovered': False,
-               'layout_basis': 'PDW0900_record_boundaries_references_column_ordinals_PBSELECT_exact_columns;_named_properties_require_caller_profile',
+               'layout_basis': 'PDW0900_record_boundaries_references_column_ordinals;_PBSELECT_order_crosscheck_retained;_named_properties_require_caller_profile',
                'query_text_never_executed': True}
     path = write_report('dw-analysis.json', objects, summary)
     write_report('dw-runtime-layout.json', [], {'external_profile_provenance': slots.get('_provenance'), 'verified_property_slots': slots})
@@ -288,7 +297,9 @@ def main():
                                     'expression_texts_recovered': sum(p.get('scalar') is not None for c in controls for p in c['properties'].values()),
                                     'property_decode_errors': sum(len(c['property_errors']) for c in controls)},
                          'query_representation': datasource.get('query', {}).get('representation', 'unknown'),
-                         'PBSELECT_columns_exact_match': datasource.get('query', {}).get('PBSELECT_column_order_verification'),
+                         'PBSELECT_columns_exact_match': ('exact_match_to_all_table_column_database_names'
+                             if datasource.get('query', {}).get('PBSELECT_column_order_verification') == 'exact_match_to_all_table_column_database_names' else None),
+                         'PBSELECT_column_order_verification': datasource.get('query', {}).get('PBSELECT_column_order_verification'),
                          'unknowns': obj['unknowns'], 'errors': obj['errors']})
     write_report('dw-coverage.json', coverage, summary)
     print(summary)
