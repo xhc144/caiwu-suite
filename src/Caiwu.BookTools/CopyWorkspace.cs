@@ -19,13 +19,14 @@ internal sealed class CopyWorkspace : IDisposable
     internal string Capture => Path.Combine(directory, "captured.caiwu");
     internal string Candidate => Path.Combine(directory, "candidate.caiwu");
     internal string Ready => Path.Combine(directory, "ready.caiwu");
-    internal void Disown(string path) => owned.Remove(path);
 
     internal IReadOnlyList<string> Cleanup()
     {
         if (cleaned) return [];
         cleaned = true;
         var warnings = new List<string>();
+        // On Unix publication adds a hard link; unlinking our ready name leaves
+        // the winner's destination intact. On Windows the moved name is absent.
         foreach (var path in owned)
             foreach (var suffix in new[] { "", "-wal", "-shm", "-journal" })
                 Try(() => File.Delete(path + suffix), path + suffix, warnings);

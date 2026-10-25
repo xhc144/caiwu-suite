@@ -1,9 +1,10 @@
 using Caiwu.Persistence.Sqlite;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Caiwu.BookTools.Tests;
 
-public sealed class ConcurrentPublicationTests
+public sealed class ConcurrentPublicationTests(ITestOutputHelper output)
 {
     [Fact]
     public async Task Two_independent_services_copying_different_sources_to_one_target_have_exactly_one_winner()
@@ -34,8 +35,12 @@ public sealed class ConcurrentPublicationTests
             var planB = serviceB.Preview(b.Read(), new(b.Source, targetPath, "并发目标B", BookCopyScope.FullLedger, "合成B"));
             Task<Outcome> Run(BookCopyService service, BookCopyPlan plan) => Task.Factory.StartNew(() =>
             {
-                try { return new Outcome(service.Execute(plan), null); }
-                catch (Exception error) { return new Outcome(null, error); }
+                try
+                {
+                    var result = service.Execute(plan);
+                    return new Outcome(result, null, SyntheticBook.Hash(result.DestinationPath));
+                }
+                catch (Exception error) { return new Outcome(null, error, null); }
             }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
             var results = await Task.WhenAll(Run(serviceA, planA), Run(serviceB, planB));
             using var saved = SqliteLedgerStore.Open(targetPath);
@@ -44,12 +49,14 @@ public sealed class ConcurrentPublicationTests
             observations.Add($"iteration={iteration + 1}; successes={successes.Length}; savedBookId={actual.Book.Id:D}; " +
                 $"A={results[0].Result?.Book.Id.ToString() ?? results[0].Error?.GetType().Name}; " +
                 $"B={results[1].Result?.Book.Id.ToString() ?? results[1].Error?.GetType().Name}");
+            output.WriteLine(observations[^1]);
             if (successes.Length != 1) violations.Add($"iteration {iteration + 1}: {successes.Length} callers reported success");
             else
             {
                 Assert.Equal(successes[0].Result!.Book, actual.Book);
                 Assert.IsType<IOException>(Assert.Single(results, r => r.Error is not null).Error);
                 var winnerHash = SyntheticBook.Hash(targetPath);
+                Assert.Equal(successes[0].PublishedHash, winnerHash);
                 saved.CheckIntegrity();
                 Assert.Equal(winnerHash, SyntheticBook.Hash(targetPath));
             }
@@ -61,5 +68,5 @@ public sealed class ConcurrentPublicationTests
         Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations.Concat(observations)));
     }
 
-    private sealed record Outcome(BookCopyResult? Result, Exception? Error);
+    private sealed record Outcome(BookCopyResult? Result, Exception? Error, string? PublishedHash);
 }

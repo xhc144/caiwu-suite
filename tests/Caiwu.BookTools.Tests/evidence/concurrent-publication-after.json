@@ -1,0 +1,26 @@
+{
+  "observedAtUtc": "2026-10-25T09:44:34Z",
+  "priorBookToolsCommit": "eb8f150fcc718ca98811acf08414aeabfdd6ee5a",
+  "publicationRuleSource": "Storage repair 4e8664d5db711b6fe8543a1bf3c689f3f39c2a30, tests/Caiwu.Persistence.Sqlite.Tests/CreateRace/README.md",
+  "environment": ".NET SDK 10.0.402/runtime 10.0.13 on Debian 13 x64",
+  "before": { "trials": 30, "doubleSuccess": 10, "evidence": "concurrent-publication-before.trx" },
+  "after": {
+    "fullSuite": { "passed": 41, "failed": 0, "skipped": 0, "evidence": "booktools-after.trx" },
+    "tmpfs": { "trials": 30, "exactlyOneSuccess": 30, "doubleSuccess": 0, "evidence": "booktools-after.trx" },
+    "overlayfs": { "trials": 30, "exactlyOneSuccess": 30, "doubleSuccess": 0, "evidence": "concurrent-publication-after-overlay.trx" },
+    "nativeTrace": { "successfulLink": 30, "linkRejectedWithEexist": 30, "renameToFinalDestination": 0, "evidence": "booktools-publication-after.strace" }
+  },
+  "assertions": [
+    "Different source books and independent BookCopyService instances target one new destination",
+    "Both parties pass final path prechecks before Barrier release; no lock or sleep serializes publication",
+    "Exactly one result reports success; the other is IOException",
+    "Final BookId equals the successful caller's returned BookInfo",
+    "Final bytes equal the hash captured by the successful caller when Execute returned",
+    "Losing cleanup leaves winner's destination in place and both sources byte-unchanged",
+    "Both operation-owned temporary directories are empty and removed"
+  ],
+  "ownership": "Unix ready staging link remains owned by its CopyWorkspace after publication; cleanup unlinks only that staging name, never the destination. Windows successful move leaves no ready name.",
+  "fallback": "No replacing rename, File.Copy, in-process lock, or sleep fallback. Unsupported Unix hard links fail safely.",
+  "scope": "Only src/Caiwu.BookTools/** and tests/Caiwu.BookTools.Tests/** changed; Storage untouched",
+  "windows": "Not executed. Windows branch follows fixed runtime MoveFileEx without MOVEFILE_REPLACE_EXISTING; Unix results are not Windows validation."
+}

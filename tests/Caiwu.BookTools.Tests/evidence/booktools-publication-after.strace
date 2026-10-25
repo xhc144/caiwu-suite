@@ -1,0 +1,447 @@
+3614  +++ exited with 0 +++
+3613  --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=3614, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+3613  +++ exited with 0 +++
+3612  --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=3613, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+3615  +++ exited with 0 +++
+3612  --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=3615, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+3616  +++ exited with 0 +++
+3612  --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=3616, si_uid=1000, si_status=0, si_utime=0, si_stime=0} ---
+3665  +++ exited with 0 +++
+3666  +++ exited with 0 +++
+3663  rename("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-6ee7b467d3974727820cbadf5150df40.tmp", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/source.caiwu") = 0
+3663  rename("/tmp/caiwu-booktools-tests-22971652df6649b0b293e24b55b6d5f7/.caiwu-370e765389ac4f4a8ea903e0c5ee25d2.tmp", "/tmp/caiwu-booktools-tests-22971652df6649b0b293e24b55b6d5f7/source.caiwu") = 0
+3669  rename("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3904bbbaf64c4dcfa44c777d32eb52a6/.caiwu-2816f59d61504603bbb1c2486caae1c9.tmp", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3904bbbaf64c4dcfa44c777d32eb52a6/captured.caiwu") = 0
+3668  rename("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3305dd7756d64f04a34dec1c00eb814b/.caiwu-f8575472aab74d30b3276655c71ab92a.tmp", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3305dd7756d64f04a34dec1c00eb814b/captured.caiwu") = 0
+3669  rename("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3904bbbaf64c4dcfa44c777d32eb52a6/.caiwu-0cc09227be6e47bdbbcd7c395c309953.tmp", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3904bbbaf64c4dcfa44c777d32eb52a6/candidate.caiwu") = 0
+3668  rename("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3305dd7756d64f04a34dec1c00eb814b/.caiwu-07e0bc664e974e97bfbf7e6ec8c94fae.tmp", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3305dd7756d64f04a34dec1c00eb814b/candidate.caiwu") = 0
+3669  rename("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3904bbbaf64c4dcfa44c777d32eb52a6/.caiwu-16e26457cc514d8f8ffab2115a8cdb19.tmp", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3904bbbaf64c4dcfa44c777d32eb52a6/ready.caiwu") = 0
+3668  rename("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3305dd7756d64f04a34dec1c00eb814b/.caiwu-4609786c90ce4647bee4a1b57d0acd15.tmp", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3305dd7756d64f04a34dec1c00eb814b/ready.caiwu") = 0
+3669  link("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3904bbbaf64c4dcfa44c777d32eb52a6/ready.caiwu", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/new.caiwu") = 0
+3668  link("/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/.caiwu-copy-3305dd7756d64f04a34dec1c00eb814b/ready.caiwu", "/tmp/caiwu-booktools-tests-256a9763f46843a4b5faa30ca55b767f/new.caiwu") = -1 EEXIST (File exists)
+3668  +++ exited with 0 +++
+3669  +++ exited with 0 +++
+3670  rename("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-47ccb40078d548669d64c5912bf2ed64.tmp", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/source.caiwu") = 0
+3670  rename("/tmp/caiwu-booktools-tests-6590493ad9494df787aa682fb180621b/.caiwu-e2e3d96c83b04387a4fa5b1eda091cb7.tmp", "/tmp/caiwu-booktools-tests-6590493ad9494df787aa682fb180621b/source.caiwu") = 0
+3670  +++ exited with 0 +++
+3671  rename("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-8dd640c0b2a644cfb2ff2e73643f8971/.caiwu-a7a545e871904fad8801e9d5733e197b.tmp", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-8dd640c0b2a644cfb2ff2e73643f8971/captured.caiwu") = 0
+3672  rename("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-c1033b96b8ce4408aa17d44c9d2d1d81/.caiwu-680073c25caa4c1ab2e3a84f1b40bae1.tmp", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-c1033b96b8ce4408aa17d44c9d2d1d81/captured.caiwu") = 0
+3672  rename("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-c1033b96b8ce4408aa17d44c9d2d1d81/.caiwu-949974a072c8408ea634c6fac47deafe.tmp", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-c1033b96b8ce4408aa17d44c9d2d1d81/candidate.caiwu") = 0
+3671  rename("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-8dd640c0b2a644cfb2ff2e73643f8971/.caiwu-02dfbd986fa148109450cc7e53da57bc.tmp", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-8dd640c0b2a644cfb2ff2e73643f8971/candidate.caiwu") = 0
+3672  rename("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-c1033b96b8ce4408aa17d44c9d2d1d81/.caiwu-b1b64cd571de4ab2aacbc5fafc06e8b7.tmp", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-c1033b96b8ce4408aa17d44c9d2d1d81/ready.caiwu") = 0
+3671  rename("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-8dd640c0b2a644cfb2ff2e73643f8971/.caiwu-cb8f58571e144760aecfd7a7fbf0c1ab.tmp", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-8dd640c0b2a644cfb2ff2e73643f8971/ready.caiwu") = 0
+3671  link("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-8dd640c0b2a644cfb2ff2e73643f8971/ready.caiwu", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/new.caiwu" <unfinished ...>
+3672  link("/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/.caiwu-copy-c1033b96b8ce4408aa17d44c9d2d1d81/ready.caiwu", "/tmp/caiwu-booktools-tests-f2618bc4ea954f6b8ba405063d2fc49c/new.caiwu" <unfinished ...>
+3671  <... link resumed>)               = 0
+3672  <... link resumed>)               = -1 EEXIST (File exists)
+3672  +++ exited with 0 +++
+3671  rename("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-670d9b8805b54f38a27145e053565ccf.tmp", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/source.caiwu") = 0
+3671  rename("/tmp/caiwu-booktools-tests-945b37013af446bebd85dd15b9f0bc73/.caiwu-9b6b0a6f034844b298d7a7d4d0d0538b.tmp", "/tmp/caiwu-booktools-tests-945b37013af446bebd85dd15b9f0bc73/source.caiwu") = 0
+3671  +++ exited with 0 +++
+3673  rename("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-350366f51a024edfa0245895b4297feb/.caiwu-5a405f2bd0204a679d87d44259efbea4.tmp", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-350366f51a024edfa0245895b4297feb/captured.caiwu") = 0
+3674  rename("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-7c01e54c401743ca9263bf720812d6f0/.caiwu-a3b0d3b007d84a3ea094ae95b9a8a91f.tmp", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-7c01e54c401743ca9263bf720812d6f0/captured.caiwu") = 0
+3673  rename("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-350366f51a024edfa0245895b4297feb/.caiwu-ddd7e4556e7344da900cb50ae39a62bc.tmp", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-350366f51a024edfa0245895b4297feb/candidate.caiwu") = 0
+3674  rename("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-7c01e54c401743ca9263bf720812d6f0/.caiwu-bb0cf4bea383422aa62f31758f771ba3.tmp", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-7c01e54c401743ca9263bf720812d6f0/candidate.caiwu") = 0
+3674  rename("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-7c01e54c401743ca9263bf720812d6f0/.caiwu-849222c8426b4249be149130afe9e1fb.tmp", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-7c01e54c401743ca9263bf720812d6f0/ready.caiwu") = 0
+3673  rename("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-350366f51a024edfa0245895b4297feb/.caiwu-8980b9ba4c8442a8bac330bed65a7d7c.tmp", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-350366f51a024edfa0245895b4297feb/ready.caiwu") = 0
+3673  link("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-350366f51a024edfa0245895b4297feb/ready.caiwu", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/new.caiwu") = 0
+3674  link("/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/.caiwu-copy-7c01e54c401743ca9263bf720812d6f0/ready.caiwu", "/tmp/caiwu-booktools-tests-9d07ed21b18d40beadefb5e743b4fa73/new.caiwu") = -1 EEXIST (File exists)
+3674  +++ exited with 0 +++
+3673  rename("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-d5b601bc524940cfab55cd34302d579f.tmp", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/source.caiwu") = 0
+3673  rename("/tmp/caiwu-booktools-tests-b217c546d56d461091130320fa0c3bed/.caiwu-55dcd40b4a604b5eb7b85cb1c1597769.tmp", "/tmp/caiwu-booktools-tests-b217c546d56d461091130320fa0c3bed/source.caiwu") = 0
+3673  +++ exited with 0 +++
+3675  rename("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-e88cd5ce3af44a5390ff5b46fc27ac24/.caiwu-d9fd092341f04129af3dee1dd59eb213.tmp", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-e88cd5ce3af44a5390ff5b46fc27ac24/captured.caiwu") = 0
+3676  rename("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-8df68e8741474a9080daf26114f86aec/.caiwu-951fb322234b4dc388db1e7c0c36bf90.tmp", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-8df68e8741474a9080daf26114f86aec/captured.caiwu") = 0
+3675  rename("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-e88cd5ce3af44a5390ff5b46fc27ac24/.caiwu-357d2f5f0caa40eea2271ec25bd89d85.tmp", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-e88cd5ce3af44a5390ff5b46fc27ac24/candidate.caiwu") = 0
+3676  rename("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-8df68e8741474a9080daf26114f86aec/.caiwu-bbc8d0ba246b4c1080345ae7b0c5fc30.tmp", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-8df68e8741474a9080daf26114f86aec/candidate.caiwu") = 0
+3676  rename("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-8df68e8741474a9080daf26114f86aec/.caiwu-413e9585bef543088ad90bc46e16ed5d.tmp", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-8df68e8741474a9080daf26114f86aec/ready.caiwu") = 0
+3675  rename("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-e88cd5ce3af44a5390ff5b46fc27ac24/.caiwu-862f21a05d6e465f9bd55ddedfda8698.tmp", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-e88cd5ce3af44a5390ff5b46fc27ac24/ready.caiwu") = 0
+3675  link("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-e88cd5ce3af44a5390ff5b46fc27ac24/ready.caiwu", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/new.caiwu") = 0
+3676  link("/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/.caiwu-copy-8df68e8741474a9080daf26114f86aec/ready.caiwu", "/tmp/caiwu-booktools-tests-d8058ec33fc9462d973e0468f2adf166/new.caiwu") = -1 EEXIST (File exists)
+3675  +++ exited with 0 +++
+3676  rename("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-6c0fe1eea54048cb8dd1349879363c6f.tmp", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/source.caiwu") = 0
+3676  rename("/tmp/caiwu-booktools-tests-cf812b0de5f74b04af5e294fd6f0437f/.caiwu-1bbffb60eebe4cd4a6ac3f6f6f1fe2df.tmp", "/tmp/caiwu-booktools-tests-cf812b0de5f74b04af5e294fd6f0437f/source.caiwu") = 0
+3676  +++ exited with 0 +++
+3677  rename("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-d88685f070e042ad806aa6035494c6f4/.caiwu-0a8298c0163140de8ae6692e4a88683e.tmp", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-d88685f070e042ad806aa6035494c6f4/captured.caiwu") = 0
+3678  rename("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-96816de6d90e4ebfb684d56d0a4ec5c6/.caiwu-28804eb0b1b24822af0ed5729d6a681d.tmp", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-96816de6d90e4ebfb684d56d0a4ec5c6/captured.caiwu") = 0
+3678  rename("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-96816de6d90e4ebfb684d56d0a4ec5c6/.caiwu-2416fbd03728489b907f119b07cf93d5.tmp", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-96816de6d90e4ebfb684d56d0a4ec5c6/candidate.caiwu") = 0
+3677  rename("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-d88685f070e042ad806aa6035494c6f4/.caiwu-88b3fc9a2120434596f1d3880f170dd1.tmp", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-d88685f070e042ad806aa6035494c6f4/candidate.caiwu") = 0
+3678  rename("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-96816de6d90e4ebfb684d56d0a4ec5c6/.caiwu-f03ad7e33c174804b876efe3a497b032.tmp", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-96816de6d90e4ebfb684d56d0a4ec5c6/ready.caiwu") = 0
+3677  rename("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-d88685f070e042ad806aa6035494c6f4/.caiwu-ca51a6d19eb74528aad4da1feddb53cf.tmp", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-d88685f070e042ad806aa6035494c6f4/ready.caiwu") = 0
+3677  link("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-d88685f070e042ad806aa6035494c6f4/ready.caiwu", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/new.caiwu") = 0
+3678  link("/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/.caiwu-copy-96816de6d90e4ebfb684d56d0a4ec5c6/ready.caiwu", "/tmp/caiwu-booktools-tests-f04f49bee07d4b2d89cc843d4c28a114/new.caiwu") = -1 EEXIST (File exists)
+3678  +++ exited with 0 +++
+3677  rename("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-69ffa2f70ea04c619b337f1397981812.tmp", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/source.caiwu") = 0
+3677  rename("/tmp/caiwu-booktools-tests-baa2e524df814ed2a22c5a6afc67283f/.caiwu-265439e1ec0d423cb280be0c56c3bf3d.tmp", "/tmp/caiwu-booktools-tests-baa2e524df814ed2a22c5a6afc67283f/source.caiwu") = 0
+3677  +++ exited with 0 +++
+3679  rename("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-fbc9bb7bbb344c7eb4e119381a01def7/.caiwu-248e25c8790540208271e8a8b4012e16.tmp", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-fbc9bb7bbb344c7eb4e119381a01def7/captured.caiwu") = 0
+3680  rename("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-71f145dbbdd24f909d5857e8b6d328da/.caiwu-fd086e96cc8f4f9a8dd0532405a24f52.tmp", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-71f145dbbdd24f909d5857e8b6d328da/captured.caiwu") = 0
+3679  rename("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-fbc9bb7bbb344c7eb4e119381a01def7/.caiwu-28477a65565d40d9ac8afde28465560a.tmp", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-fbc9bb7bbb344c7eb4e119381a01def7/candidate.caiwu") = 0
+3680  rename("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-71f145dbbdd24f909d5857e8b6d328da/.caiwu-ca6fb43ff7164b09a49af6b1d403543e.tmp", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-71f145dbbdd24f909d5857e8b6d328da/candidate.caiwu") = 0
+3679  rename("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-fbc9bb7bbb344c7eb4e119381a01def7/.caiwu-c73a4445f15342ff8cef393db518112d.tmp", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-fbc9bb7bbb344c7eb4e119381a01def7/ready.caiwu") = 0
+3680  rename("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-71f145dbbdd24f909d5857e8b6d328da/.caiwu-c75bfbbb152e4079b96f7f80669f1af7.tmp", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-71f145dbbdd24f909d5857e8b6d328da/ready.caiwu") = 0
+3680  link("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-71f145dbbdd24f909d5857e8b6d328da/ready.caiwu", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/new.caiwu") = 0
+3679  link("/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/.caiwu-copy-fbc9bb7bbb344c7eb4e119381a01def7/ready.caiwu", "/tmp/caiwu-booktools-tests-710cf59dfa2142888a195943ee57ae2b/new.caiwu") = -1 EEXIST (File exists)
+3679  +++ exited with 0 +++
+3680  rename("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-4878ce0a5b0c4433ad073d1e49b39219.tmp", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/source.caiwu") = 0
+3680  rename("/tmp/caiwu-booktools-tests-21184b2bbab24d049e32bce62e5251e5/.caiwu-247e01007e0a4df69a08eb41a789ee3d.tmp", "/tmp/caiwu-booktools-tests-21184b2bbab24d049e32bce62e5251e5/source.caiwu") = 0
+3680  +++ exited with 0 +++
+3682  rename("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-baaca45c0e294977b61fb4792cfc1fdd/.caiwu-705e67125210416db20e0b9245476888.tmp", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-baaca45c0e294977b61fb4792cfc1fdd/captured.caiwu") = 0
+3681  rename("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-5e8d44b1283446688071f89e76ebe714/.caiwu-e398775b45af4b1b88d43202d59c7e8a.tmp", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-5e8d44b1283446688071f89e76ebe714/captured.caiwu") = 0
+3682  rename("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-baaca45c0e294977b61fb4792cfc1fdd/.caiwu-54703c678f3c4014af6363033142b7bc.tmp", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-baaca45c0e294977b61fb4792cfc1fdd/candidate.caiwu") = 0
+3681  rename("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-5e8d44b1283446688071f89e76ebe714/.caiwu-ad7e0b63628644b09ae742c8170c4803.tmp", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-5e8d44b1283446688071f89e76ebe714/candidate.caiwu") = 0
+3682  rename("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-baaca45c0e294977b61fb4792cfc1fdd/.caiwu-0c5d721773214501899b6f828cfc266f.tmp", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-baaca45c0e294977b61fb4792cfc1fdd/ready.caiwu") = 0
+3681  rename("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-5e8d44b1283446688071f89e76ebe714/.caiwu-a7f4177809a4487d9e7492ffadc714c2.tmp", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-5e8d44b1283446688071f89e76ebe714/ready.caiwu") = 0
+3681  link("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-5e8d44b1283446688071f89e76ebe714/ready.caiwu", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/new.caiwu") = 0
+3682  link("/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/.caiwu-copy-baaca45c0e294977b61fb4792cfc1fdd/ready.caiwu", "/tmp/caiwu-booktools-tests-5613c2ae0f4041a7bad7fd44525a9589/new.caiwu") = -1 EEXIST (File exists)
+3682  +++ exited with 0 +++
+3681  rename("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-18041a3dee444933905326f2ceb750af.tmp", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/source.caiwu") = 0
+3681  rename("/tmp/caiwu-booktools-tests-c943c96730644312a2681eceb51bd9c6/.caiwu-a3772484ba8e4ea4a02ab48082b72c6f.tmp", "/tmp/caiwu-booktools-tests-c943c96730644312a2681eceb51bd9c6/source.caiwu") = 0
+3681  +++ exited with 0 +++
+3683  rename("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-0e1a7e2d1c654e8abcfa7fb57ffe928d/.caiwu-8a362662db7d4bb0bb6468ae82ad5ab8.tmp", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-0e1a7e2d1c654e8abcfa7fb57ffe928d/captured.caiwu") = 0
+3684  rename("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-8c231c75bff44b0e91981de77d5a0f7b/.caiwu-c124ccce272b45f4af490b3b48190b54.tmp", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-8c231c75bff44b0e91981de77d5a0f7b/captured.caiwu") = 0
+3684  rename("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-8c231c75bff44b0e91981de77d5a0f7b/.caiwu-a08c78d74d3a4590a0a0da8a5ebdc6a9.tmp", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-8c231c75bff44b0e91981de77d5a0f7b/candidate.caiwu") = 0
+3683  rename("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-0e1a7e2d1c654e8abcfa7fb57ffe928d/.caiwu-b82670dd48e041418f5ffd56a8438b87.tmp", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-0e1a7e2d1c654e8abcfa7fb57ffe928d/candidate.caiwu") = 0
+3684  rename("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-8c231c75bff44b0e91981de77d5a0f7b/.caiwu-070e73d5b5564997be8a685070e6c49b.tmp", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-8c231c75bff44b0e91981de77d5a0f7b/ready.caiwu") = 0
+3683  rename("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-0e1a7e2d1c654e8abcfa7fb57ffe928d/.caiwu-6f56419e78cb42919e18b36447ec3019.tmp", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-0e1a7e2d1c654e8abcfa7fb57ffe928d/ready.caiwu") = 0
+3683  link("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-0e1a7e2d1c654e8abcfa7fb57ffe928d/ready.caiwu", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/new.caiwu" <unfinished ...>
+3684  link("/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/.caiwu-copy-8c231c75bff44b0e91981de77d5a0f7b/ready.caiwu", "/tmp/caiwu-booktools-tests-fbf9b42209984e2e889eccdec6c765f5/new.caiwu" <unfinished ...>
+3683  <... link resumed>)               = 0
+3684  <... link resumed>)               = -1 EEXIST (File exists)
+3684  +++ exited with 0 +++
+3683  rename("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-370f6d71f3fa48df8de30c49ac53fbc6.tmp", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/source.caiwu") = 0
+3683  rename("/tmp/caiwu-booktools-tests-2b96094872f541008f2fc79c15454b58/.caiwu-3ad45af32f494c6ca46608775e75a673.tmp", "/tmp/caiwu-booktools-tests-2b96094872f541008f2fc79c15454b58/source.caiwu") = 0
+3683  +++ exited with 0 +++
+3685  rename("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-f769fb6784b040c1a1d1d6e20e61e367/.caiwu-907e7bf3739b4bfc97b64645532624af.tmp", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-f769fb6784b040c1a1d1d6e20e61e367/captured.caiwu") = 0
+3686  rename("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-98834f61efdf493da95d64b4be109d5d/.caiwu-7ae0c77b6f504b72a9e2f42f66ca6408.tmp", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-98834f61efdf493da95d64b4be109d5d/captured.caiwu") = 0
+3685  rename("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-f769fb6784b040c1a1d1d6e20e61e367/.caiwu-581c758ad19143c8bc395f8a6d4e403c.tmp", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-f769fb6784b040c1a1d1d6e20e61e367/candidate.caiwu") = 0
+3686  rename("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-98834f61efdf493da95d64b4be109d5d/.caiwu-997b81703ff84b82901bdf4632767bf1.tmp", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-98834f61efdf493da95d64b4be109d5d/candidate.caiwu") = 0
+3686  rename("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-98834f61efdf493da95d64b4be109d5d/.caiwu-229d203ecaa84deeafcd34c9019e2c48.tmp", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-98834f61efdf493da95d64b4be109d5d/ready.caiwu") = 0
+3685  rename("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-f769fb6784b040c1a1d1d6e20e61e367/.caiwu-06c62ed7cfd74ebcad42389d411e5386.tmp", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-f769fb6784b040c1a1d1d6e20e61e367/ready.caiwu") = 0
+3685  link("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-f769fb6784b040c1a1d1d6e20e61e367/ready.caiwu", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/new.caiwu") = 0
+3686  link("/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/.caiwu-copy-98834f61efdf493da95d64b4be109d5d/ready.caiwu", "/tmp/caiwu-booktools-tests-9bcf79e217214515979b11178b5925d2/new.caiwu") = -1 EEXIST (File exists)
+3686  +++ exited with 0 +++
+3685  rename("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-93bf0a0b6e674eec853da992d511d9bc.tmp", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/source.caiwu") = 0
+3685  rename("/tmp/caiwu-booktools-tests-df492bdf122c44549fa58b535d877a3a/.caiwu-484ece241fea4c8faccc68013fbb3c03.tmp", "/tmp/caiwu-booktools-tests-df492bdf122c44549fa58b535d877a3a/source.caiwu") = 0
+3685  +++ exited with 0 +++
+3687  rename("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-0088436fb3464202a78090b6c9c5d0bd/.caiwu-69da841a4c474f6d881275f348df3e77.tmp", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-0088436fb3464202a78090b6c9c5d0bd/captured.caiwu") = 0
+3688  rename("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-715ef7d3ccad4a89b9c22d72cda3a079/.caiwu-5c5dd0c4237c4d0893e8ba2971528af4.tmp", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-715ef7d3ccad4a89b9c22d72cda3a079/captured.caiwu") = 0
+3687  rename("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-0088436fb3464202a78090b6c9c5d0bd/.caiwu-e14beafdcd0a44d09c4ddb16a4a9fd8a.tmp", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-0088436fb3464202a78090b6c9c5d0bd/candidate.caiwu") = 0
+3688  rename("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-715ef7d3ccad4a89b9c22d72cda3a079/.caiwu-2d59c2eac9c44c4092691a8385a033fe.tmp", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-715ef7d3ccad4a89b9c22d72cda3a079/candidate.caiwu") = 0
+3687  rename("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-0088436fb3464202a78090b6c9c5d0bd/.caiwu-4ace8e1e0521448e8461fbf2083b1f19.tmp", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-0088436fb3464202a78090b6c9c5d0bd/ready.caiwu") = 0
+3688  rename("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-715ef7d3ccad4a89b9c22d72cda3a079/.caiwu-6a89e22c63aa43588d5c4903960954e2.tmp", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-715ef7d3ccad4a89b9c22d72cda3a079/ready.caiwu") = 0
+3688  link("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-715ef7d3ccad4a89b9c22d72cda3a079/ready.caiwu", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/new.caiwu") = 0
+3687  link("/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/.caiwu-copy-0088436fb3464202a78090b6c9c5d0bd/ready.caiwu", "/tmp/caiwu-booktools-tests-0088e6efb33746d18c0c26d1083e1e65/new.caiwu") = -1 EEXIST (File exists)
+3687  +++ exited with 0 +++
+3688  rename("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-db2e46cf0229402dbb0a736b27971306.tmp", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/source.caiwu") = 0
+3688  rename("/tmp/caiwu-booktools-tests-e5c918f3c5aa400ba5b06254b4095dd2/.caiwu-c7a769dfa07d451684869ec4ad56c514.tmp", "/tmp/caiwu-booktools-tests-e5c918f3c5aa400ba5b06254b4095dd2/source.caiwu") = 0
+3688  +++ exited with 0 +++
+3690  rename("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-e8f32364e9d14d91b080c7ce05c50f81/.caiwu-2b9aa1184419469fba7d553b07f922ce.tmp", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-e8f32364e9d14d91b080c7ce05c50f81/captured.caiwu") = 0
+3689  rename("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-dd812d471b704c019dc7364532150d31/.caiwu-0dfefcf1769b47b698ff7714c18e0230.tmp", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-dd812d471b704c019dc7364532150d31/captured.caiwu") = 0
+3690  rename("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-e8f32364e9d14d91b080c7ce05c50f81/.caiwu-a0c53e3f0e0242f38474d8487402e272.tmp", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-e8f32364e9d14d91b080c7ce05c50f81/candidate.caiwu") = 0
+3689  rename("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-dd812d471b704c019dc7364532150d31/.caiwu-c6d117e7694243d0900d6fdf50af4391.tmp", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-dd812d471b704c019dc7364532150d31/candidate.caiwu") = 0
+3690  rename("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-e8f32364e9d14d91b080c7ce05c50f81/.caiwu-8fb08bf8263f452fbb26d2affee0c9e7.tmp", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-e8f32364e9d14d91b080c7ce05c50f81/ready.caiwu") = 0
+3689  rename("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-dd812d471b704c019dc7364532150d31/.caiwu-ac53e04be5ba46ca813e957f3079c6ed.tmp", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-dd812d471b704c019dc7364532150d31/ready.caiwu") = 0
+3689  link("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-dd812d471b704c019dc7364532150d31/ready.caiwu", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/new.caiwu") = 0
+3690  link("/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/.caiwu-copy-e8f32364e9d14d91b080c7ce05c50f81/ready.caiwu", "/tmp/caiwu-booktools-tests-68635b6f98394ae8bb93f896ab6b274e/new.caiwu") = -1 EEXIST (File exists)
+3690  +++ exited with 0 +++
+3689  rename("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-c767aa68ddaa446bbad819b1402a9566.tmp", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/source.caiwu") = 0
+3689  rename("/tmp/caiwu-booktools-tests-b568a34c7a6e49ae8d10cb97efeb7c58/.caiwu-e42b5df421c64f2099cb83edc854a069.tmp", "/tmp/caiwu-booktools-tests-b568a34c7a6e49ae8d10cb97efeb7c58/source.caiwu") = 0
+3689  +++ exited with 0 +++
+3691  rename("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-e80e637dd2fe41958fc57d58d36d0bc6/.caiwu-f3e7b23534bf49ab9ddf0c8e5685f070.tmp", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-e80e637dd2fe41958fc57d58d36d0bc6/captured.caiwu") = 0
+3691  rename("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-e80e637dd2fe41958fc57d58d36d0bc6/.caiwu-83d66cd3dc1a4848b2477a29008e372a.tmp", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-e80e637dd2fe41958fc57d58d36d0bc6/candidate.caiwu") = 0
+3692  rename("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-475a0757f0234e46be575f5ceb84dfbc/.caiwu-2a6db92ed0f94fa9bbce017724f17ab0.tmp", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-475a0757f0234e46be575f5ceb84dfbc/captured.caiwu") = 0
+3692  rename("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-475a0757f0234e46be575f5ceb84dfbc/.caiwu-964430725f46483ab3997afa0d74f5ad.tmp", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-475a0757f0234e46be575f5ceb84dfbc/candidate.caiwu") = 0
+3691  rename("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-e80e637dd2fe41958fc57d58d36d0bc6/.caiwu-2b81c55a00c545b0a851abb1cd6c1084.tmp", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-e80e637dd2fe41958fc57d58d36d0bc6/ready.caiwu") = 0
+3692  rename("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-475a0757f0234e46be575f5ceb84dfbc/.caiwu-b1534e5df4124986af7540d434c71ccb.tmp", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-475a0757f0234e46be575f5ceb84dfbc/ready.caiwu") = 0
+3692  link("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-475a0757f0234e46be575f5ceb84dfbc/ready.caiwu", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/new.caiwu") = 0
+3691  link("/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/.caiwu-copy-e80e637dd2fe41958fc57d58d36d0bc6/ready.caiwu", "/tmp/caiwu-booktools-tests-aa3ee6b6fea14156a59cf58639bb7843/new.caiwu") = -1 EEXIST (File exists)
+3691  +++ exited with 0 +++
+3692  rename("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-dc7b2a9ec3c244e69ce2954e19358ccb.tmp", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/source.caiwu") = 0
+3692  rename("/tmp/caiwu-booktools-tests-a31ce5fb5db24c73bb8e308106302538/.caiwu-0094c0b429c04fe5887ba80ba323755b.tmp", "/tmp/caiwu-booktools-tests-a31ce5fb5db24c73bb8e308106302538/source.caiwu") = 0
+3692  +++ exited with 0 +++
+3693  rename("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-f12d7dddb9ef481293d58fc03c82fa8b/.caiwu-b0f3f9b88b564179b18cdc0f2c7d2dd9.tmp", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-f12d7dddb9ef481293d58fc03c82fa8b/captured.caiwu") = 0
+3694  rename("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-b4e1298fdc704862a026efcdf2a8dc20/.caiwu-19c8c259b3d64219ab7ee6e19f106d19.tmp", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-b4e1298fdc704862a026efcdf2a8dc20/captured.caiwu") = 0
+3694  rename("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-b4e1298fdc704862a026efcdf2a8dc20/.caiwu-8ff77178f42d4773a79e79f80c20d863.tmp", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-b4e1298fdc704862a026efcdf2a8dc20/candidate.caiwu") = 0
+3693  rename("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-f12d7dddb9ef481293d58fc03c82fa8b/.caiwu-2ce845fce1274a5bac8f8ca6265056d4.tmp", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-f12d7dddb9ef481293d58fc03c82fa8b/candidate.caiwu") = 0
+3694  rename("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-b4e1298fdc704862a026efcdf2a8dc20/.caiwu-d814de6c623445379a6e3c7efe7d1ab5.tmp", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-b4e1298fdc704862a026efcdf2a8dc20/ready.caiwu") = 0
+3693  rename("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-f12d7dddb9ef481293d58fc03c82fa8b/.caiwu-76e703ce33c842c989c45528413a18b7.tmp", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-f12d7dddb9ef481293d58fc03c82fa8b/ready.caiwu") = 0
+3693  link("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-f12d7dddb9ef481293d58fc03c82fa8b/ready.caiwu", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/new.caiwu") = 0
+3694  link("/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/.caiwu-copy-b4e1298fdc704862a026efcdf2a8dc20/ready.caiwu", "/tmp/caiwu-booktools-tests-07f8b29706f7414f80f17dcbff86674d/new.caiwu") = -1 EEXIST (File exists)
+3694  +++ exited with 0 +++
+3693  rename("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-71363bf0180a42f3b298d7b569e492ab.tmp", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/source.caiwu") = 0
+3693  rename("/tmp/caiwu-booktools-tests-c64bca9cc6b14ad6a57506c1ce42d7b6/.caiwu-286abd69b0754415b5aa606ef2048090.tmp", "/tmp/caiwu-booktools-tests-c64bca9cc6b14ad6a57506c1ce42d7b6/source.caiwu") = 0
+3693  +++ exited with 0 +++
+3695  rename("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-271c251a166a45a8bb9286d58b75ab6a/.caiwu-174480800ef14b7cab076a76ca7aabc4.tmp", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-271c251a166a45a8bb9286d58b75ab6a/captured.caiwu") = 0
+3696  rename("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-d23ccf80ad464b428ae90761e6568520/.caiwu-f63f6657866c4792bd82490d66cefeda.tmp", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-d23ccf80ad464b428ae90761e6568520/captured.caiwu") = 0
+3695  rename("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-271c251a166a45a8bb9286d58b75ab6a/.caiwu-395a478948824bd499be27e447ff5c25.tmp", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-271c251a166a45a8bb9286d58b75ab6a/candidate.caiwu") = 0
+3696  rename("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-d23ccf80ad464b428ae90761e6568520/.caiwu-8c9d4f0538aa4ebb8635be873942ce19.tmp", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-d23ccf80ad464b428ae90761e6568520/candidate.caiwu") = 0
+3696  rename("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-d23ccf80ad464b428ae90761e6568520/.caiwu-d6019ffa6e964245958195dd6a40057d.tmp", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-d23ccf80ad464b428ae90761e6568520/ready.caiwu") = 0
+3695  rename("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-271c251a166a45a8bb9286d58b75ab6a/.caiwu-017b893b081b4c2894269989aafc0288.tmp", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-271c251a166a45a8bb9286d58b75ab6a/ready.caiwu") = 0
+3695  link("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-271c251a166a45a8bb9286d58b75ab6a/ready.caiwu", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/new.caiwu" <unfinished ...>
+3696  link("/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/.caiwu-copy-d23ccf80ad464b428ae90761e6568520/ready.caiwu", "/tmp/caiwu-booktools-tests-d6e3639017c64b7796543ee914301cdf/new.caiwu" <unfinished ...>
+3695  <... link resumed>)               = 0
+3696  <... link resumed>)               = -1 EEXIST (File exists)
+3696  +++ exited with 0 +++
+3695  rename("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-167178e68a814e098dd374058a992bd4.tmp", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/source.caiwu") = 0
+3695  rename("/tmp/caiwu-booktools-tests-adf52b621e3b43089c498765203f77c5/.caiwu-1abc229760234805baab4bdecbea3178.tmp", "/tmp/caiwu-booktools-tests-adf52b621e3b43089c498765203f77c5/source.caiwu") = 0
+3695  +++ exited with 0 +++
+3697  rename("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-19657f10b435400cbc65d8a2a99f879c/.caiwu-e4d52427648143968d8b2c037054c2e4.tmp", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-19657f10b435400cbc65d8a2a99f879c/captured.caiwu") = 0
+3698  rename("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-1950913dcfcf4a368c4068f894d15132/.caiwu-3722f54a5ce74087af0647718a7cc204.tmp", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-1950913dcfcf4a368c4068f894d15132/captured.caiwu") = 0
+3698  rename("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-1950913dcfcf4a368c4068f894d15132/.caiwu-34088473bfc448c6a2d696aecec78e1f.tmp", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-1950913dcfcf4a368c4068f894d15132/candidate.caiwu" <unfinished ...>
+3697  rename("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-19657f10b435400cbc65d8a2a99f879c/.caiwu-2ebb073d8e0f47d2957d6f0612bd5b0e.tmp", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-19657f10b435400cbc65d8a2a99f879c/candidate.caiwu" <unfinished ...>
+3698  <... rename resumed>)             = 0
+3697  <... rename resumed>)             = 0
+3698  rename("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-1950913dcfcf4a368c4068f894d15132/.caiwu-08085bfc7d254728818c503bf8a96891.tmp", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-1950913dcfcf4a368c4068f894d15132/ready.caiwu") = 0
+3697  rename("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-19657f10b435400cbc65d8a2a99f879c/.caiwu-a886ec8d60424057a3d9eef3d836d6f2.tmp", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-19657f10b435400cbc65d8a2a99f879c/ready.caiwu") = 0
+3697  link("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-19657f10b435400cbc65d8a2a99f879c/ready.caiwu", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/new.caiwu" <unfinished ...>
+3698  link("/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/.caiwu-copy-1950913dcfcf4a368c4068f894d15132/ready.caiwu", "/tmp/caiwu-booktools-tests-abbb83d5149040568a3290a8bc0f02e4/new.caiwu" <unfinished ...>
+3697  <... link resumed>)               = 0
+3698  <... link resumed>)               = -1 EEXIST (File exists)
+3698  +++ exited with 0 +++
+3697  rename("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-b1b5513afff946e7bebba39d737e41db.tmp", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/source.caiwu") = 0
+3697  rename("/tmp/caiwu-booktools-tests-fed923c3926b40a48869c01226cc0d4d/.caiwu-22b707dc783347379369ddb597d0e31c.tmp", "/tmp/caiwu-booktools-tests-fed923c3926b40a48869c01226cc0d4d/source.caiwu") = 0
+3697  +++ exited with 0 +++
+3699  rename("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-3cd9ea5fc41e468e8995a54bd5a3a4e6/.caiwu-e1caf039084f4adca8a53299fa182c56.tmp", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-3cd9ea5fc41e468e8995a54bd5a3a4e6/captured.caiwu") = 0
+3700  rename("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-d84c89990b61442b8fd1f5d872a05e9a/.caiwu-44812dd1192341e5ba28eb05df8457f6.tmp", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-d84c89990b61442b8fd1f5d872a05e9a/captured.caiwu") = 0
+3699  rename("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-3cd9ea5fc41e468e8995a54bd5a3a4e6/.caiwu-985accc3f759401c83bfe865ba8ed298.tmp", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-3cd9ea5fc41e468e8995a54bd5a3a4e6/candidate.caiwu") = 0
+3700  rename("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-d84c89990b61442b8fd1f5d872a05e9a/.caiwu-ea18ae24bb1d4e06a420d4e1fb877342.tmp", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-d84c89990b61442b8fd1f5d872a05e9a/candidate.caiwu") = 0
+3699  rename("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-3cd9ea5fc41e468e8995a54bd5a3a4e6/.caiwu-ef907729ae4b4d73a27ae4d762d78a3d.tmp", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-3cd9ea5fc41e468e8995a54bd5a3a4e6/ready.caiwu") = 0
+3700  rename("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-d84c89990b61442b8fd1f5d872a05e9a/.caiwu-f90f7812b96f46238e1befbd8fa449d1.tmp", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-d84c89990b61442b8fd1f5d872a05e9a/ready.caiwu") = 0
+3700  link("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-d84c89990b61442b8fd1f5d872a05e9a/ready.caiwu", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/new.caiwu") = 0
+3699  link("/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/.caiwu-copy-3cd9ea5fc41e468e8995a54bd5a3a4e6/ready.caiwu", "/tmp/caiwu-booktools-tests-8149da1c0eff42c49eeaf7a262091ea8/new.caiwu") = -1 EEXIST (File exists)
+3699  +++ exited with 0 +++
+3700  rename("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-71975033775e4cd396ccb5708a68bc85.tmp", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/source.caiwu") = 0
+3700  rename("/tmp/caiwu-booktools-tests-7a47f78664a84bddac621a90af7dd507/.caiwu-009508317e13470ea5bbe8b63504c4ce.tmp", "/tmp/caiwu-booktools-tests-7a47f78664a84bddac621a90af7dd507/source.caiwu") = 0
+3700  +++ exited with 0 +++
+3702  rename("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-c210c907bdbc40359e0d977ea794de14/.caiwu-0d83edcc01094c609e9f983b7c5714e0.tmp", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-c210c907bdbc40359e0d977ea794de14/captured.caiwu" <unfinished ...>
+3701  rename("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-ea5327fdcee642ecbf101c43276035f5/.caiwu-8b795f4dc52e45a98665bbb0d86111c9.tmp", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-ea5327fdcee642ecbf101c43276035f5/captured.caiwu" <unfinished ...>
+3702  <... rename resumed>)             = 0
+3701  <... rename resumed>)             = 0
+3702  rename("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-c210c907bdbc40359e0d977ea794de14/.caiwu-52fd49b252d44b6893aa68bed8c2cc63.tmp", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-c210c907bdbc40359e0d977ea794de14/candidate.caiwu") = 0
+3701  rename("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-ea5327fdcee642ecbf101c43276035f5/.caiwu-292c00aaf73d43aca4d44f1a1ea3ba0d.tmp", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-ea5327fdcee642ecbf101c43276035f5/candidate.caiwu") = 0
+3702  rename("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-c210c907bdbc40359e0d977ea794de14/.caiwu-ab8e5b01acc74fcd85574b660aa994af.tmp", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-c210c907bdbc40359e0d977ea794de14/ready.caiwu") = 0
+3701  rename("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-ea5327fdcee642ecbf101c43276035f5/.caiwu-5a78c6595aca4e9a937006ffa035aa11.tmp", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-ea5327fdcee642ecbf101c43276035f5/ready.caiwu") = 0
+3701  link("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-ea5327fdcee642ecbf101c43276035f5/ready.caiwu", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/new.caiwu") = 0
+3702  link("/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/.caiwu-copy-c210c907bdbc40359e0d977ea794de14/ready.caiwu", "/tmp/caiwu-booktools-tests-654ca50348db43cd9429fd6dbcf6ac3f/new.caiwu") = -1 EEXIST (File exists)
+3702  +++ exited with 0 +++
+3701  rename("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-0d069c4f6593420480a815c725e0d38a.tmp", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/source.caiwu") = 0
+3701  rename("/tmp/caiwu-booktools-tests-43f9cd85bc94483ca9ae3ca2ba3db6d2/.caiwu-4923717b8ec04499ac0d3fbc83aad61c.tmp", "/tmp/caiwu-booktools-tests-43f9cd85bc94483ca9ae3ca2ba3db6d2/source.caiwu") = 0
+3701  +++ exited with 0 +++
+3703  rename("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-7eece8dc66304d119a824e7df7b15bc3/.caiwu-e2b8df63cf854c85873b83b90dc4ad68.tmp", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-7eece8dc66304d119a824e7df7b15bc3/captured.caiwu") = 0
+3704  rename("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-c6b03595b6ed47f3b6ca1c68750a7ae5/.caiwu-4fe75761be464d95ad56c193cf9a15b8.tmp", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-c6b03595b6ed47f3b6ca1c68750a7ae5/captured.caiwu") = 0
+3703  rename("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-7eece8dc66304d119a824e7df7b15bc3/.caiwu-1d763b51416f482080ec20be4a703dce.tmp", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-7eece8dc66304d119a824e7df7b15bc3/candidate.caiwu") = 0
+3704  rename("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-c6b03595b6ed47f3b6ca1c68750a7ae5/.caiwu-bb0469c860aa4ee3919183d9a896ebf9.tmp", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-c6b03595b6ed47f3b6ca1c68750a7ae5/candidate.caiwu") = 0
+3704  rename("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-c6b03595b6ed47f3b6ca1c68750a7ae5/.caiwu-ff39c1f7a72e4f6aacd720003b560962.tmp", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-c6b03595b6ed47f3b6ca1c68750a7ae5/ready.caiwu") = 0
+3703  rename("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-7eece8dc66304d119a824e7df7b15bc3/.caiwu-7440df9a400a4ea6b71d52b1467a3a92.tmp", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-7eece8dc66304d119a824e7df7b15bc3/ready.caiwu") = 0
+3704  link("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-c6b03595b6ed47f3b6ca1c68750a7ae5/ready.caiwu", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/new.caiwu" <unfinished ...>
+3703  link("/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/.caiwu-copy-7eece8dc66304d119a824e7df7b15bc3/ready.caiwu", "/tmp/caiwu-booktools-tests-bcbe01a3f4e84a16a679d0053aebff75/new.caiwu" <unfinished ...>
+3704  <... link resumed>)               = 0
+3703  <... link resumed>)               = -1 EEXIST (File exists)
+3704  +++ exited with 0 +++
+3703  rename("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-9de909893bfe439f92db5f7c6a358921.tmp", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/source.caiwu") = 0
+3703  rename("/tmp/caiwu-booktools-tests-1522bacbe46f4f1bb373135d923f6bcd/.caiwu-8fd0c198b3e6430a8169984599f980d4.tmp", "/tmp/caiwu-booktools-tests-1522bacbe46f4f1bb373135d923f6bcd/source.caiwu") = 0
+3703  +++ exited with 0 +++
+3706  rename("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-4eef978ad5fb4dbaa6769ecc52c073c4/.caiwu-7674fd227155460bb73474e37ea522fc.tmp", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-4eef978ad5fb4dbaa6769ecc52c073c4/captured.caiwu") = 0
+3705  rename("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-249e628179514a06b9da06140150207f/.caiwu-e0ecc96a8b57453eb9dfcedea6aca1db.tmp", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-249e628179514a06b9da06140150207f/captured.caiwu") = 0
+3706  rename("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-4eef978ad5fb4dbaa6769ecc52c073c4/.caiwu-17c4e3f0c57545cba23a10851c1ee531.tmp", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-4eef978ad5fb4dbaa6769ecc52c073c4/candidate.caiwu") = 0
+3705  rename("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-249e628179514a06b9da06140150207f/.caiwu-56bc09a9e94b4a90bf7f73bc1503ba14.tmp", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-249e628179514a06b9da06140150207f/candidate.caiwu") = 0
+3706  rename("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-4eef978ad5fb4dbaa6769ecc52c073c4/.caiwu-07ca3f36dc65417f98b5ef49764795ac.tmp", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-4eef978ad5fb4dbaa6769ecc52c073c4/ready.caiwu") = 0
+3705  rename("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-249e628179514a06b9da06140150207f/.caiwu-9ab351aef79543669c4747dc1238972a.tmp", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-249e628179514a06b9da06140150207f/ready.caiwu") = 0
+3705  link("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-249e628179514a06b9da06140150207f/ready.caiwu", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/new.caiwu" <unfinished ...>
+3706  link("/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/.caiwu-copy-4eef978ad5fb4dbaa6769ecc52c073c4/ready.caiwu", "/tmp/caiwu-booktools-tests-5971da4eb3744b6fa56772035dda4d52/new.caiwu" <unfinished ...>
+3705  <... link resumed>)               = 0
+3706  <... link resumed>)               = -1 EEXIST (File exists)
+3706  +++ exited with 0 +++
+3705  rename("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-da601ff2230e4cea9c681bbacc9c3ddc.tmp", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/source.caiwu") = 0
+3705  rename("/tmp/caiwu-booktools-tests-99efeda94b2b4d119bc4ef298c5e1e39/.caiwu-ee3b1ae7673d41c5b37a40760418ab2a.tmp", "/tmp/caiwu-booktools-tests-99efeda94b2b4d119bc4ef298c5e1e39/source.caiwu") = 0
+3705  +++ exited with 0 +++
+3708  rename("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-1e1aa8417bf143afaaf44bc6e9caacfe/.caiwu-1cc6dc764467481fa590b3f76aedd15f.tmp", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-1e1aa8417bf143afaaf44bc6e9caacfe/captured.caiwu") = 0
+3707  rename("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-eb6aeab57da24267972c32564171cade/.caiwu-c77ed1113c9341119b3e028d919a9503.tmp", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-eb6aeab57da24267972c32564171cade/captured.caiwu") = 0
+3708  rename("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-1e1aa8417bf143afaaf44bc6e9caacfe/.caiwu-7cc45701d6f941b89c4b76f2afafe2cb.tmp", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-1e1aa8417bf143afaaf44bc6e9caacfe/candidate.caiwu") = 0
+3707  rename("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-eb6aeab57da24267972c32564171cade/.caiwu-49ba90ba21744dd081284b529b705149.tmp", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-eb6aeab57da24267972c32564171cade/candidate.caiwu") = 0
+3708  rename("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-1e1aa8417bf143afaaf44bc6e9caacfe/.caiwu-a894eeed3a0a45c081b774fd94573556.tmp", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-1e1aa8417bf143afaaf44bc6e9caacfe/ready.caiwu") = 0
+3707  rename("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-eb6aeab57da24267972c32564171cade/.caiwu-f38fcfcf18d54486b08e33fe30d47274.tmp", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-eb6aeab57da24267972c32564171cade/ready.caiwu") = 0
+3707  link("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-eb6aeab57da24267972c32564171cade/ready.caiwu", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/new.caiwu") = 0
+3708  link("/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/.caiwu-copy-1e1aa8417bf143afaaf44bc6e9caacfe/ready.caiwu", "/tmp/caiwu-booktools-tests-1eebfcbadd5a4bf7952b0c7b0384aca2/new.caiwu") = -1 EEXIST (File exists)
+3708  +++ exited with 0 +++
+3707  rename("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-d459660e7b4d4a7c84d7b701b1b0fd9c.tmp", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/source.caiwu") = 0
+3707  rename("/tmp/caiwu-booktools-tests-c2749c6bb7214243ad4ba801212d64d3/.caiwu-47ac5cbbef944ad2873961116e3abe3c.tmp", "/tmp/caiwu-booktools-tests-c2749c6bb7214243ad4ba801212d64d3/source.caiwu") = 0
+3707  +++ exited with 0 +++
+3709  rename("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-0e13558cc5234061adbecb2f6ccd6a25/.caiwu-86538e4f4ac64a0db76d10606d0ffda8.tmp", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-0e13558cc5234061adbecb2f6ccd6a25/captured.caiwu") = 0
+3710  rename("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-f3bb59108002444d8fc1de932d5818b5/.caiwu-ee9a12423f264e2fa9165e988dba27bb.tmp", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-f3bb59108002444d8fc1de932d5818b5/captured.caiwu") = 0
+3709  rename("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-0e13558cc5234061adbecb2f6ccd6a25/.caiwu-0c8bf1cf261146459bab7abdcb2bb2c3.tmp", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-0e13558cc5234061adbecb2f6ccd6a25/candidate.caiwu") = 0
+3710  rename("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-f3bb59108002444d8fc1de932d5818b5/.caiwu-b718d5a107624237bc612e6c230ed8f6.tmp", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-f3bb59108002444d8fc1de932d5818b5/candidate.caiwu") = 0
+3709  rename("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-0e13558cc5234061adbecb2f6ccd6a25/.caiwu-ea84310c987c4ebeb20aceb20f84ab93.tmp", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-0e13558cc5234061adbecb2f6ccd6a25/ready.caiwu") = 0
+3710  rename("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-f3bb59108002444d8fc1de932d5818b5/.caiwu-30998de936f843bab007576a79690bba.tmp", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-f3bb59108002444d8fc1de932d5818b5/ready.caiwu") = 0
+3710  link("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-f3bb59108002444d8fc1de932d5818b5/ready.caiwu", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/new.caiwu") = 0
+3709  link("/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/.caiwu-copy-0e13558cc5234061adbecb2f6ccd6a25/ready.caiwu", "/tmp/caiwu-booktools-tests-a9519c178fb744efa0a2b86a55805688/new.caiwu") = -1 EEXIST (File exists)
+3709  +++ exited with 0 +++
+3710  rename("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-d0b23f1b9185478f921dc1fb29ebb16e.tmp", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/source.caiwu") = 0
+3710  rename("/tmp/caiwu-booktools-tests-e1de33f0349b4509889fbdefd2c3e098/.caiwu-142560c333f24b48bd942ba71c5a35e1.tmp", "/tmp/caiwu-booktools-tests-e1de33f0349b4509889fbdefd2c3e098/source.caiwu") = 0
+3710  +++ exited with 0 +++
+3712  rename("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-588408e582ff42419a1a1dba75ca4532/.caiwu-125c3c2e8d74429a96a7a7a125fd6259.tmp", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-588408e582ff42419a1a1dba75ca4532/captured.caiwu") = 0
+3711  rename("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-2a8e9cc245d34f61bf42b13324c5c59f/.caiwu-685bdff01e374369860614636956f08e.tmp", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-2a8e9cc245d34f61bf42b13324c5c59f/captured.caiwu") = 0
+3712  rename("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-588408e582ff42419a1a1dba75ca4532/.caiwu-ec402aac86954b92a5cb6620f2fbf62c.tmp", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-588408e582ff42419a1a1dba75ca4532/candidate.caiwu") = 0
+3711  rename("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-2a8e9cc245d34f61bf42b13324c5c59f/.caiwu-7517e820f2b14139841c0e5e997c23a6.tmp", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-2a8e9cc245d34f61bf42b13324c5c59f/candidate.caiwu") = 0
+3712  rename("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-588408e582ff42419a1a1dba75ca4532/.caiwu-238ea6bcd8eb4ac58990302a27ef1a0d.tmp", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-588408e582ff42419a1a1dba75ca4532/ready.caiwu") = 0
+3711  rename("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-2a8e9cc245d34f61bf42b13324c5c59f/.caiwu-1a853eff58fa428a8fb829a765a3c18c.tmp", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-2a8e9cc245d34f61bf42b13324c5c59f/ready.caiwu") = 0
+3711  link("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-2a8e9cc245d34f61bf42b13324c5c59f/ready.caiwu", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/new.caiwu") = 0
+3712  link("/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/.caiwu-copy-588408e582ff42419a1a1dba75ca4532/ready.caiwu", "/tmp/caiwu-booktools-tests-7bd3ac9b749d42698d60635b41dd6497/new.caiwu") = -1 EEXIST (File exists)
+3712  +++ exited with 0 +++
+3711  rename("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-3d7d6cdd9da8464093afb6d0e04be196.tmp", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/source.caiwu") = 0
+3711  rename("/tmp/caiwu-booktools-tests-ba374e9544374ebfbd29f9452e22592a/.caiwu-764a2c413a1c4e7ebc360485e6fb7492.tmp", "/tmp/caiwu-booktools-tests-ba374e9544374ebfbd29f9452e22592a/source.caiwu") = 0
+3711  +++ exited with 0 +++
+3713  rename("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-906392d97ee84c27b35cf960ca6b679b/.caiwu-58893a0e774746999e96065550d02a7b.tmp", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-906392d97ee84c27b35cf960ca6b679b/captured.caiwu") = 0
+3714  rename("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-56884d70ed3c40ec926adf992898b9f7/.caiwu-1e28e283007c4f1eba6790b2e90eb11c.tmp", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-56884d70ed3c40ec926adf992898b9f7/captured.caiwu") = 0
+3714  rename("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-56884d70ed3c40ec926adf992898b9f7/.caiwu-26ac6a1d48064f1494cbd0f7291d94a9.tmp", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-56884d70ed3c40ec926adf992898b9f7/candidate.caiwu") = 0
+3713  rename("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-906392d97ee84c27b35cf960ca6b679b/.caiwu-3a8d3a9b24844026bfe3a6b381a7e799.tmp", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-906392d97ee84c27b35cf960ca6b679b/candidate.caiwu") = 0
+3714  rename("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-56884d70ed3c40ec926adf992898b9f7/.caiwu-a913932fd99a4f9cafb3d1d7d5034936.tmp", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-56884d70ed3c40ec926adf992898b9f7/ready.caiwu") = 0
+3713  rename("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-906392d97ee84c27b35cf960ca6b679b/.caiwu-949d901dfc534fb8bb1bc613351e5b7d.tmp", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-906392d97ee84c27b35cf960ca6b679b/ready.caiwu") = 0
+3713  link("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-906392d97ee84c27b35cf960ca6b679b/ready.caiwu", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/new.caiwu") = 0
+3714  link("/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/.caiwu-copy-56884d70ed3c40ec926adf992898b9f7/ready.caiwu", "/tmp/caiwu-booktools-tests-b744ef401e2e4f1bb915528c5ae11b4b/new.caiwu") = -1 EEXIST (File exists)
+3714  +++ exited with 0 +++
+3713  rename("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-b8e5152abb9c4b0a8f63df4f8609ad4e.tmp", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/source.caiwu") = 0
+3713  rename("/tmp/caiwu-booktools-tests-4f6f4d2c0de2414cad96e0da42ee5ac8/.caiwu-f788862356704c2babbabf353c48941d.tmp", "/tmp/caiwu-booktools-tests-4f6f4d2c0de2414cad96e0da42ee5ac8/source.caiwu") = 0
+3713  +++ exited with 0 +++
+3715  rename("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-8f88070179df4debbd3d65ea9fd9d99d/.caiwu-cb14e61953bc4a75a307ed56e4df14c7.tmp", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-8f88070179df4debbd3d65ea9fd9d99d/captured.caiwu") = 0
+3716  rename("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-339ff4ea15084f4e8fe78c8919bfca4d/.caiwu-e8ad4128f2504958bae048c3a812db8e.tmp", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-339ff4ea15084f4e8fe78c8919bfca4d/captured.caiwu") = 0
+3715  rename("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-8f88070179df4debbd3d65ea9fd9d99d/.caiwu-3ad3df697055405fa3f2a06f9a0d55fc.tmp", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-8f88070179df4debbd3d65ea9fd9d99d/candidate.caiwu") = 0
+3716  rename("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-339ff4ea15084f4e8fe78c8919bfca4d/.caiwu-0f1e91814d674913aa813a85525155f3.tmp", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-339ff4ea15084f4e8fe78c8919bfca4d/candidate.caiwu") = 0
+3716  rename("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-339ff4ea15084f4e8fe78c8919bfca4d/.caiwu-3b35ff857ccf4d7180631aa098cef40a.tmp", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-339ff4ea15084f4e8fe78c8919bfca4d/ready.caiwu") = 0
+3715  rename("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-8f88070179df4debbd3d65ea9fd9d99d/.caiwu-a24d53dbed1b4e9e8ce8b45e3a148eed.tmp", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-8f88070179df4debbd3d65ea9fd9d99d/ready.caiwu") = 0
+3715  link("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-8f88070179df4debbd3d65ea9fd9d99d/ready.caiwu", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/new.caiwu") = 0
+3716  link("/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/.caiwu-copy-339ff4ea15084f4e8fe78c8919bfca4d/ready.caiwu", "/tmp/caiwu-booktools-tests-cdb0510d74874121bc04aa0664d83121/new.caiwu") = -1 EEXIST (File exists)
+3716  +++ exited with 0 +++
+3715  rename("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-454ccf44475c440c8d8c51a589075e68.tmp", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/source.caiwu") = 0
+3715  rename("/tmp/caiwu-booktools-tests-e5a3d2a6110a463486296fda7709c9ab/.caiwu-e9d96ee20ce243e6b03560280b7f8bb3.tmp", "/tmp/caiwu-booktools-tests-e5a3d2a6110a463486296fda7709c9ab/source.caiwu") = 0
+3715  +++ exited with 0 +++
+3718  rename("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-89dd9b19b037479d947f9623497c0e44/.caiwu-e59b8175d2d14619a03467e0df8d1d65.tmp", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-89dd9b19b037479d947f9623497c0e44/captured.caiwu") = 0
+3717  rename("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-27eb31a1d9894fe9812c3a028c3f8e42/.caiwu-25ef77bed506487d9e1e2b1ea022230d.tmp", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-27eb31a1d9894fe9812c3a028c3f8e42/captured.caiwu") = 0
+3718  rename("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-89dd9b19b037479d947f9623497c0e44/.caiwu-84d605e378da4f75a5b301c5d5b8d660.tmp", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-89dd9b19b037479d947f9623497c0e44/candidate.caiwu") = 0
+3717  rename("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-27eb31a1d9894fe9812c3a028c3f8e42/.caiwu-0f1589196f4a415db5fad3adc3f1d7c7.tmp", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-27eb31a1d9894fe9812c3a028c3f8e42/candidate.caiwu") = 0
+3718  rename("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-89dd9b19b037479d947f9623497c0e44/.caiwu-e3b9babc1f8a4a88aa0b92c3d34cdf7f.tmp", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-89dd9b19b037479d947f9623497c0e44/ready.caiwu") = 0
+3717  rename("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-27eb31a1d9894fe9812c3a028c3f8e42/.caiwu-832b5cdfe6ee4eada22922880c701999.tmp", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-27eb31a1d9894fe9812c3a028c3f8e42/ready.caiwu") = 0
+3717  link("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-27eb31a1d9894fe9812c3a028c3f8e42/ready.caiwu", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/new.caiwu") = 0
+3718  link("/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/.caiwu-copy-89dd9b19b037479d947f9623497c0e44/ready.caiwu", "/tmp/caiwu-booktools-tests-6ace9e1efc68494c95e43040a73b5b36/new.caiwu") = -1 EEXIST (File exists)
+3718  +++ exited with 0 +++
+3717  rename("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-5dcef122bb5843cf915ea22c832551ab.tmp", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/source.caiwu") = 0
+3717  rename("/tmp/caiwu-booktools-tests-feb40da1caf6494ab23331ab7276490e/.caiwu-74d2adb331154befa95bb13b905c73de.tmp", "/tmp/caiwu-booktools-tests-feb40da1caf6494ab23331ab7276490e/source.caiwu") = 0
+3717  +++ exited with 0 +++
+3720  rename("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-370cf171dec441d886b3e191eed47367/.caiwu-9fcfe971e6d94fb5bcdb8377a4d15d35.tmp", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-370cf171dec441d886b3e191eed47367/captured.caiwu") = 0
+3719  rename("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-a7f420e29ce54e38b228f1a03c36e828/.caiwu-87c0dae9560d4496976abb596e237154.tmp", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-a7f420e29ce54e38b228f1a03c36e828/captured.caiwu") = 0
+3720  rename("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-370cf171dec441d886b3e191eed47367/.caiwu-e3874be0bb2947c485a4db424fe10792.tmp", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-370cf171dec441d886b3e191eed47367/candidate.caiwu") = 0
+3719  rename("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-a7f420e29ce54e38b228f1a03c36e828/.caiwu-134546ce3d744432932fc8d6454107a1.tmp", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-a7f420e29ce54e38b228f1a03c36e828/candidate.caiwu") = 0
+3720  rename("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-370cf171dec441d886b3e191eed47367/.caiwu-00f236a9c08d4d73b017785dd86e5f40.tmp", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-370cf171dec441d886b3e191eed47367/ready.caiwu") = 0
+3719  rename("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-a7f420e29ce54e38b228f1a03c36e828/.caiwu-ebed6e3f82014433a33421e06694babc.tmp", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-a7f420e29ce54e38b228f1a03c36e828/ready.caiwu") = 0
+3719  link("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-a7f420e29ce54e38b228f1a03c36e828/ready.caiwu", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/new.caiwu") = 0
+3720  link("/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/.caiwu-copy-370cf171dec441d886b3e191eed47367/ready.caiwu", "/tmp/caiwu-booktools-tests-70e9e88f37fe464d95d56ba92b273af7/new.caiwu") = -1 EEXIST (File exists)
+3720  +++ exited with 0 +++
+3719  rename("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-2b33b45ef26645d0a90d9fe6510215cb.tmp", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/source.caiwu") = 0
+3719  rename("/tmp/caiwu-booktools-tests-8028e3a97e58488f8169f35f2665592d/.caiwu-cda3b682835b49a58f908df2f61192de.tmp", "/tmp/caiwu-booktools-tests-8028e3a97e58488f8169f35f2665592d/source.caiwu") = 0
+3719  +++ exited with 0 +++
+3722  rename("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-5d34bd7ffd5f4646af57809b83395412/.caiwu-4fcde5601b2747e1b9bc749cd445cc50.tmp", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-5d34bd7ffd5f4646af57809b83395412/captured.caiwu") = 0
+3721  rename("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-ae1b926aa06e4bfba69964192191eb83/.caiwu-6b27ca640ff246958203c74075f0da5b.tmp", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-ae1b926aa06e4bfba69964192191eb83/captured.caiwu") = 0
+3722  rename("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-5d34bd7ffd5f4646af57809b83395412/.caiwu-d46ae7f8a3f24b849eaa28f0e41ca626.tmp", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-5d34bd7ffd5f4646af57809b83395412/candidate.caiwu") = 0
+3721  rename("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-ae1b926aa06e4bfba69964192191eb83/.caiwu-c258bec8f8c542b4b6f90da5f5c58242.tmp", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-ae1b926aa06e4bfba69964192191eb83/candidate.caiwu") = 0
+3721  rename("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-ae1b926aa06e4bfba69964192191eb83/.caiwu-e01f6b961ab0433f82fe017e06086bfc.tmp", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-ae1b926aa06e4bfba69964192191eb83/ready.caiwu") = 0
+3722  rename("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-5d34bd7ffd5f4646af57809b83395412/.caiwu-3551463faa7c4ef3a16fa02cc2763f1d.tmp", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-5d34bd7ffd5f4646af57809b83395412/ready.caiwu") = 0
+3721  link("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-ae1b926aa06e4bfba69964192191eb83/ready.caiwu", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/new.caiwu" <unfinished ...>
+3722  link("/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/.caiwu-copy-5d34bd7ffd5f4646af57809b83395412/ready.caiwu", "/tmp/caiwu-booktools-tests-185acec7051a436cb4b91f101c7c53c0/new.caiwu" <unfinished ...>
+3721  <... link resumed>)               = 0
+3722  <... link resumed>)               = -1 EEXIST (File exists)
+3722  +++ exited with 0 +++
+3721  rename("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-71cd2cfe805d4cd29c812245dbf55d53.tmp", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/source.caiwu") = 0
+3721  rename("/tmp/caiwu-booktools-tests-796a8244605b430ab378ced41944ab35/.caiwu-91c6d94ad8bc497eb0eed045d15f0327.tmp", "/tmp/caiwu-booktools-tests-796a8244605b430ab378ced41944ab35/source.caiwu") = 0
+3721  +++ exited with 0 +++
+3723  rename("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-08d2e5571550467e8d1afd0b430c2f9b/.caiwu-14e59121633e471295fc5aed09d8a8d1.tmp", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-08d2e5571550467e8d1afd0b430c2f9b/captured.caiwu") = 0
+3725  rename("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-6f86b35e33f7483ab1dbc0ffe76fa412/.caiwu-37fd3aab00ee419f89c99c624eb9d9cc.tmp", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-6f86b35e33f7483ab1dbc0ffe76fa412/captured.caiwu") = 0
+3723  rename("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-08d2e5571550467e8d1afd0b430c2f9b/.caiwu-95b053e429cf476488f6d33167871fae.tmp", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-08d2e5571550467e8d1afd0b430c2f9b/candidate.caiwu") = 0
+3725  rename("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-6f86b35e33f7483ab1dbc0ffe76fa412/.caiwu-4a41da7bc1db4ffe8d283dedb519bcd8.tmp", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-6f86b35e33f7483ab1dbc0ffe76fa412/candidate.caiwu") = 0
+3725  rename("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-6f86b35e33f7483ab1dbc0ffe76fa412/.caiwu-03fe116e581f468587a4ada6efb824af.tmp", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-6f86b35e33f7483ab1dbc0ffe76fa412/ready.caiwu") = 0
+3723  rename("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-08d2e5571550467e8d1afd0b430c2f9b/.caiwu-c09140f2383145869f7a963d25ea685e.tmp", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-08d2e5571550467e8d1afd0b430c2f9b/ready.caiwu") = 0
+3723  link("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-08d2e5571550467e8d1afd0b430c2f9b/ready.caiwu", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/new.caiwu") = 0
+3725  link("/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/.caiwu-copy-6f86b35e33f7483ab1dbc0ffe76fa412/ready.caiwu", "/tmp/caiwu-booktools-tests-cf783185724d4201aa3747f380e3d019/new.caiwu") = -1 EEXIST (File exists)
+3725  +++ exited with 0 +++
+3723  rename("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-c61f5fe40c9d4af984b29ee72b59db06.tmp", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/source.caiwu") = 0
+3723  rename("/tmp/caiwu-booktools-tests-01e0ec7b8ec74e04980b10a37f302494/.caiwu-9bf1746ebf8149cc8dd15f78031294d9.tmp", "/tmp/caiwu-booktools-tests-01e0ec7b8ec74e04980b10a37f302494/source.caiwu") = 0
+3723  +++ exited with 0 +++
+3726  rename("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-8607076bf1464f11a4894a88d277692b/.caiwu-ffc52ef408794b51b3df1641a19395c0.tmp", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-8607076bf1464f11a4894a88d277692b/captured.caiwu") = 0
+3727  rename("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-b4620e87a2774412883c909b9fad88c2/.caiwu-80e8a5c16cc6427ca24a23bd654ccd3f.tmp", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-b4620e87a2774412883c909b9fad88c2/captured.caiwu") = 0
+3726  rename("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-8607076bf1464f11a4894a88d277692b/.caiwu-4a1a5f56eac043cbbb1b6f05ba0fc715.tmp", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-8607076bf1464f11a4894a88d277692b/candidate.caiwu") = 0
+3727  rename("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-b4620e87a2774412883c909b9fad88c2/.caiwu-e9892bc3e1a84832a1e0e773af452dd0.tmp", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-b4620e87a2774412883c909b9fad88c2/candidate.caiwu") = 0
+3727  rename("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-b4620e87a2774412883c909b9fad88c2/.caiwu-113ea318fa6f432a85c0ade9bb07903b.tmp", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-b4620e87a2774412883c909b9fad88c2/ready.caiwu") = 0
+3726  rename("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-8607076bf1464f11a4894a88d277692b/.caiwu-bf7986e9fa33433eb6a28fc4b83ca798.tmp", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-8607076bf1464f11a4894a88d277692b/ready.caiwu") = 0
+3726  link("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-8607076bf1464f11a4894a88d277692b/ready.caiwu", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/new.caiwu") = 0
+3727  link("/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/.caiwu-copy-b4620e87a2774412883c909b9fad88c2/ready.caiwu", "/tmp/caiwu-booktools-tests-cd641fac3ea14896b6dff6fb3783109e/new.caiwu") = -1 EEXIST (File exists)
+3727  +++ exited with 0 +++
+3726  rename("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-004cf95e84654bd2801a2dbfcb602e9b.tmp", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/source.caiwu") = 0
+3726  rename("/tmp/caiwu-booktools-tests-472892d0256f4b14b17d2ba77cf4836e/.caiwu-2c5b52d5cba9453baac20359889ae420.tmp", "/tmp/caiwu-booktools-tests-472892d0256f4b14b17d2ba77cf4836e/source.caiwu") = 0
+3726  +++ exited with 0 +++
+3728  rename("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-7b5b82d981b74a7e98d9a17b8403eeb7/.caiwu-313d613e17734ffaa26c6f94126b1997.tmp", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-7b5b82d981b74a7e98d9a17b8403eeb7/captured.caiwu") = 0
+3729  rename("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-cebae88630e24012976850f777c16e68/.caiwu-93cad14cded84c8680dca2de33026a7f.tmp", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-cebae88630e24012976850f777c16e68/captured.caiwu") = 0
+3728  rename("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-7b5b82d981b74a7e98d9a17b8403eeb7/.caiwu-b2713f01419d4fef81926a2065632200.tmp", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-7b5b82d981b74a7e98d9a17b8403eeb7/candidate.caiwu") = 0
+3729  rename("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-cebae88630e24012976850f777c16e68/.caiwu-903bf18451454d5db2adaf2fd4c9fa83.tmp", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-cebae88630e24012976850f777c16e68/candidate.caiwu") = 0
+3728  rename("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-7b5b82d981b74a7e98d9a17b8403eeb7/.caiwu-645cd8c97fc84b09b32e2924b43a6287.tmp", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-7b5b82d981b74a7e98d9a17b8403eeb7/ready.caiwu") = 0
+3729  rename("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-cebae88630e24012976850f777c16e68/.caiwu-0dce87282ea94cc182d729a016b9a7d5.tmp", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-cebae88630e24012976850f777c16e68/ready.caiwu") = 0
+3729  link("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-cebae88630e24012976850f777c16e68/ready.caiwu", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/new.caiwu") = 0
+3728  link("/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/.caiwu-copy-7b5b82d981b74a7e98d9a17b8403eeb7/ready.caiwu", "/tmp/caiwu-booktools-tests-8cfbbf8117a548a8bd224092505fbc13/new.caiwu") = -1 EEXIST (File exists)
+3728  +++ exited with 0 +++
+3729  +++ exited with 0 +++
+3730  +++ exited with 0 +++
+3731  +++ exited with 0 +++
+3732  +++ exited with 0 +++
+3667  +++ exited with 0 +++
+3733  +++ exited with 0 +++
+3662  +++ exited with 0 +++
+3661  +++ exited with 0 +++
+3663  +++ exited with 0 +++
+3660  +++ exited with 0 +++
+3658  +++ exited with 0 +++
+3659  +++ exited with 0 +++
+3657  +++ exited with 0 +++
+3653  +++ exited with 0 +++
+3650  +++ exited with 0 +++
+3649  +++ exited with 0 +++
+3724  +++ exited with 0 +++
+3655  +++ exited with 0 +++
+3654  +++ exited with 0 +++
+3664  +++ exited with 0 +++
+3656  +++ exited with 0 +++
+3652  +++ exited with 0 +++
+3651  +++ exited with 0 +++
+3645  +++ exited with 0 +++
+3644  --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=3645, si_uid=1000, si_status=0, si_utime=154 /* 1.54 s */, si_stime=142 /* 1.42 s */} ---
+3639  +++ exited with 0 +++
+3734  +++ exited with 0 +++
+3648  +++ exited with 0 +++
+3647  +++ exited with 0 +++
+3644  +++ exited with 0 +++
+3646  +++ exited with 0 +++
+3643  +++ exited with 0 +++
+3640  +++ exited with 0 +++
+3638  +++ exited with 0 +++
+3637  +++ exited with 0 +++
+3636  +++ exited with 0 +++
+3634  +++ exited with 0 +++
+3633  +++ exited with 0 +++
+3642  +++ exited with 0 +++
+3641  +++ exited with 0 +++
+3635  +++ exited with 0 +++
+3632  +++ exited with 0 +++
+3631  --- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=3632, si_uid=1000, si_status=0, si_utime=70 /* 0.70 s */, si_stime=13 /* 0.13 s */} ---
+3628  +++ exited with 0 +++
+3627  +++ exited with 0 +++
+3631  +++ exited with 0 +++
+3630  +++ exited with 0 +++
+3629  +++ exited with 0 +++
+3626  +++ exited with 0 +++
+3625  +++ exited with 0 +++
+3624  +++ exited with 0 +++
+3623  +++ exited with 0 +++
+3622  +++ exited with 0 +++
+3621  +++ exited with 0 +++
+3619  +++ exited with 0 +++
+3618  +++ exited with 0 +++
+3617  +++ exited with 0 +++
+3620  +++ exited with 0 +++
+3612  +++ exited with 0 +++

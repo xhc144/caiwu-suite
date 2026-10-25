@@ -101,13 +101,12 @@ public sealed class BookCopyService
             }
             progress?.Report(BookCopyStage.ReadyVerified);
             var savedFingerprint = SnapshotData.Fingerprint(confirmedPlan.Target);
-            // Recheck sidecars/existing destinations after staging; Move never overwrites a race winner.
+            // Recheck sidecars and host policy, then atomically reject any competing destination.
             if (CopyPaths.NewDestination(source, destination) != destination)
                 throw new IOException("目标目录已变化，请重新预览。");
             validateDestination?.Invoke(destination);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(work.Ready, destination, overwrite: false);
-            work.Disown(work.Ready);
+            NewBookPublication.Publish(work.Ready, destination);
             // Publication is the last fallible functional step; cancellation after it means success.
             var warnings = work.Cleanup();
             return new(confirmedPlan.PlanId, destination, confirmedPlan.NewBook, 1,
