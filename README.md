@@ -12,9 +12,21 @@
 
 ## 技术选型（暂定）
 
-- C# .NET 8 WinForms（Windows 原生控件，贴近传统财务软件的操作手感）
+- C# .NET 10 LTS + WPF（现代桌面外观，保留熟悉的菜单、凭证表格与键盘流程）
 - SQLite（单文件账套，便于备份）
 
 ## 参考资料
 
 原版安装包放在本仓库的 Release「reference-installers」中，仅供内部研究对照，**不得公开分发**。仓库请保持私有。
+
+## 开发状态
+
+当前为公共契约与桌面骨架，尚不能用于正式记账。尚未声称符合任何财务制度或完成原版专用界面的实机验证。
+
+工程职责与API契约见 [docs/IMPLEMENTATION_CONTRACT.md](docs/IMPLEMENTATION_CONTRACT.md)。UI、账务领域和SQLite存储互相隔离。使用.NET SDK 10.0.402；构建命令：
+
+```sh
+dotnet build Caiwu.slnx -c Release
+```
+
+Linux可以还原Windows引用包并交叉编译，实际桌面操作、打印和安装仍须Windows验收。
