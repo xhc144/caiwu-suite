@@ -18,6 +18,21 @@
       "sha256": "e0a92e78de3df130bc47b6e4e21800de0512390c11768586b01d6dacd70738e2"
     },
     {
+      "path": "event-binding-checks.json",
+      "bytes": 4659,
+      "sha256": "dff61107ddc436e3c9854c1c508eabd644a59df3ec308f10693569aa5b9bd822"
+    },
+    {
+      "path": "event-binding-evidence.md",
+      "bytes": 7528,
+      "sha256": "2cfc7c605b8ade9c67431d0de05c27c50f8a210abc980a824bd2db76ca5886fc"
+    },
+    {
+      "path": "event-binding-sources.json",
+      "bytes": 6853,
+      "sha256": "83f6b1d35688815c6481d2d9dd2bcc72e8097df9b8a7a1fa0b8772c720b140d5"
+    },
+    {
       "path": "format-spec.json",
       "bytes": 12297,
       "sha256": "3f8086332f1ab2bd1ec1213d9aa178b56857869bc1631824c4711440de7a0222"
@@ -48,5 +63,17 @@
       "sha256": "c3cf15f760cca48479dbc4514af77d3564713c9b64cdc2eb59244a48cfa85b2e"
     }
   ],
-  "remaining_gate": "byte-owning recovery thread must validate candidate version, table boundaries and reference domains locally before treating any field meaning or call target as confirmed"
+  "remaining_gate": "byte-owning recovery thread must validate candidate version, table boundaries and reference domains locally before treating any field meaning or call target as confirmed",
+  "targeted_event_binding_followup": {
+    "scope": "read-only external source and test-code inspection",
+    "external_tests_executed": 0,
+    "new_parser_tests_claimed": 0,
+    "six_byte_event_semantics_confirmed": false,
+    "cross_library_RefIndex_mapping_confirmed": false,
+    "deliverables": [
+      "event-binding-evidence.md",
+      "event-binding-checks.json",
+      "event-binding-sources.json"
+    ]
+  }
 }
