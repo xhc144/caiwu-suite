@@ -1,0 +1,1721 @@
+{
+  "schemaVersion": 1,
+  "id": "small-business-2011-base-2026-snapshot",
+  "version": "2026.10.25.1",
+  "regime": "SmallBusiness",
+  "displayName": "小企业：正式2011一级表快照及有限更名",
+  "legalStatus": "OfficialCurrent",
+  "legalEffectiveFrom": "2013-01-01",
+  "supportedPeriodsFrom": "2026-01-01",
+  "effectiveUntil": null,
+  "isVerifiedForProduction": false,
+  "scope": {
+    "description": "境内依法设立且符合小型企业划型条件；微型企业参照需人工确认。资格不等同税收小规模纳税人。",
+    "includedProfiles": [
+      "EligibleSmallBusiness"
+    ],
+    "exclusions": [
+      "公开交易股票或债券",
+      "金融或具有金融性质",
+      "企业集团母公司或子公司",
+      "已执行企业准则者不得转入"
+    ],
+    "requiresHumanEligibilityReview": true
+  },
+  "coverage": {
+    "firstLevelAccounts": "CompleteOfficialBaseSnapshot",
+    "officialBaseCount": 66,
+    "allCurrentRequirementsCovered": false,
+    "reports": "MetadataAndRepresentativeRows",
+    "migration": "Unsupported"
+  },
+  "sourceRefs": [
+    {
+      "sourceId": "small-standard",
+      "locator": "第2—4、89—90条"
+    },
+    {
+      "sourceId": "small-appendix",
+      "locator": "PDF第1—3页"
+    }
+  ],
+  "accounts": [
+    {
+      "id": "sb-1001",
+      "code": "1001",
+      "name": "库存现金",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 1,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号1；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1002",
+      "code": "1002",
+      "name": "银行存款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 2,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号2；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1012",
+      "code": "1012",
+      "name": "其他货币资金",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 3,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号3；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1101",
+      "code": "1101",
+      "name": "短期投资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 4,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号4；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1121",
+      "code": "1121",
+      "name": "应收票据",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 5,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号5；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1122",
+      "code": "1122",
+      "name": "应收账款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 6,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号6；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1123",
+      "code": "1123",
+      "name": "预付账款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 7,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号7；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1131",
+      "code": "1131",
+      "name": "应收股利",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 8,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号8；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1132",
+      "code": "1132",
+      "name": "应收利息",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 9,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号9；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1221",
+      "code": "1221",
+      "name": "其他应收款",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 10,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号10；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1401",
+      "code": "1401",
+      "name": "材料采购",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 11,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号11；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1402",
+      "code": "1402",
+      "name": "在途物资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 12,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第1页，序号12；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1403",
+      "code": "1403",
+      "name": "原材料",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 13,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号13；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1404",
+      "code": "1404",
+      "name": "材料成本差异",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 14,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号14；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": [
+        "可出现反向余额；通常方向仅供初始化，不能据此禁止反向业务。"
+      ]
+    },
+    {
+      "id": "sb-1405",
+      "code": "1405",
+      "name": "库存商品",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 15,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号15；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1407",
+      "code": "1407",
+      "name": "商品进销差价",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 16,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号16；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1408",
+      "code": "1408",
+      "name": "委托加工物资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 17,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号17；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1411",
+      "code": "1411",
+      "name": "周转材料",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 18,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号18；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1421",
+      "code": "1421",
+      "name": "消耗性生物资产",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 19,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号19；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1501",
+      "code": "1501",
+      "name": "长期债券投资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 20,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号20；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1511",
+      "code": "1511",
+      "name": "长期股权投资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 21,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号21；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1601",
+      "code": "1601",
+      "name": "固定资产",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 22,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号22；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1602",
+      "code": "1602",
+      "name": "累计折旧",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 23,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号23；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1604",
+      "code": "1604",
+      "name": "在建工程",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 24,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号24；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1605",
+      "code": "1605",
+      "name": "工程物资",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 25,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号25；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1606",
+      "code": "1606",
+      "name": "固定资产清理",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 26,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号26；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": [
+        "可出现反向余额；通常方向仅供初始化，不能据此禁止反向业务。"
+      ]
+    },
+    {
+      "id": "sb-1621",
+      "code": "1621",
+      "name": "生产性生物资产",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 27,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号27；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1622",
+      "code": "1622",
+      "name": "生产性生物资产累计折旧",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 28,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号28；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1701",
+      "code": "1701",
+      "name": "无形资产",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 29,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号29；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1702",
+      "code": "1702",
+      "name": "累计摊销",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": true,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 30,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号30；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1801",
+      "code": "1801",
+      "name": "长期待摊费用",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 31,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号31；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-1901",
+      "code": "1901",
+      "name": "待处理财产损溢",
+      "parentCode": null,
+      "category": "Asset",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 32,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号32；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": [
+        "可出现反向余额；通常方向仅供初始化，不能据此禁止反向业务。"
+      ]
+    },
+    {
+      "id": "sb-2001",
+      "code": "2001",
+      "name": "短期借款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 33,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号33；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2201",
+      "code": "2201",
+      "name": "应付票据",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 34,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号34；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2202",
+      "code": "2202",
+      "name": "应付账款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 35,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号35；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2203",
+      "code": "2203",
+      "name": "预收账款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 36,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号36；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2211",
+      "code": "2211",
+      "name": "应付职工薪酬",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 37,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号37；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2221",
+      "code": "2221",
+      "name": "应交税费",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 38,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号38；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2231",
+      "code": "2231",
+      "name": "应付利息",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 39,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号39；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2232",
+      "code": "2232",
+      "name": "应付利润",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 40,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号40；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2241",
+      "code": "2241",
+      "name": "其他应付款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 41,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号41；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2401",
+      "code": "2401",
+      "name": "递延收益",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 42,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号42；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2501",
+      "code": "2501",
+      "name": "长期借款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 43,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号43；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-2701",
+      "code": "2701",
+      "name": "长期应付款",
+      "parentCode": null,
+      "category": "Liability",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 44,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号44；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-3001",
+      "code": "3001",
+      "name": "实收资本",
+      "parentCode": null,
+      "category": "Equity",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 45,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号45；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-3002",
+      "code": "3002",
+      "name": "资本公积",
+      "parentCode": null,
+      "category": "Equity",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 46,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号46；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-3101",
+      "code": "3101",
+      "name": "盈余公积",
+      "parentCode": null,
+      "category": "Equity",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 47,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号47；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-3103",
+      "code": "3103",
+      "name": "本年利润",
+      "parentCode": null,
+      "category": "Equity",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 48,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号48；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": [
+        "可出现反向余额；通常方向仅供初始化，不能据此禁止反向业务。"
+      ]
+    },
+    {
+      "id": "sb-3104",
+      "code": "3104",
+      "name": "利润分配",
+      "parentCode": null,
+      "category": "Equity",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 49,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第2页，序号49；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": [
+        "可出现反向余额；通常方向仅供初始化，不能据此禁止反向业务。"
+      ]
+    },
+    {
+      "id": "sb-4001",
+      "code": "4001",
+      "name": "生产成本",
+      "parentCode": null,
+      "category": "Cost",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 50,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号50；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-4101",
+      "code": "4101",
+      "name": "制造费用",
+      "parentCode": null,
+      "category": "Cost",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 51,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号51；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-4301",
+      "code": "4301",
+      "name": "研发支出",
+      "parentCode": null,
+      "category": "Cost",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 52,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号52；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-4401",
+      "code": "4401",
+      "name": "工程施工",
+      "parentCode": null,
+      "category": "Cost",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 53,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号53；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-4403",
+      "code": "4403",
+      "name": "机械作业",
+      "parentCode": null,
+      "category": "Cost",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 54,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号54；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5001",
+      "code": "5001",
+      "name": "主营业务收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 55,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号55；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5051",
+      "code": "5051",
+      "name": "其他业务收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 56,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号56；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5111",
+      "code": "5111",
+      "name": "投资收益",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 57,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号57；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": [
+        "可出现反向余额；通常方向仅供初始化，不能据此禁止反向业务。"
+      ]
+    },
+    {
+      "id": "sb-5301",
+      "code": "5301",
+      "name": "营业外收入",
+      "parentCode": null,
+      "category": "Income",
+      "normalDirection": "Credit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 58,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号58；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5401",
+      "code": "5401",
+      "name": "主营业务成本",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 59,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号59；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5402",
+      "code": "5402",
+      "name": "其他业务成本",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 60,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号60；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5403",
+      "code": "5403",
+      "name": "税金及附加",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 61,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号61；主要账务处理按本科目说明"
+        },
+        {
+          "sourceId": "vat-rename",
+          "locator": "第二（二）第3项后：科目及利润表项目更名"
+        }
+      ],
+      "notes": [
+        "2011原表名称为营业税金及附加；当前名称采用财会〔2016〕22号更名，不声称实现其全部税务处理。"
+      ],
+      "officialBaseName": "营业税金及附加"
+    },
+    {
+      "id": "sb-5601",
+      "code": "5601",
+      "name": "销售费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 62,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号62；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5602",
+      "code": "5602",
+      "name": "管理费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 63,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号63；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5603",
+      "code": "5603",
+      "name": "财务费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 64,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号64；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5711",
+      "code": "5711",
+      "name": "营业外支出",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 65,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号65；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "id": "sb-5801",
+      "code": "5801",
+      "name": "所得税费用",
+      "parentCode": null,
+      "category": "Expense",
+      "normalDirection": "Debit",
+      "normalDirectionIsExclusive": false,
+      "isContra": false,
+      "origin": "OfficialFirstLevel",
+      "ordinal": 66,
+      "restrictionPolicy": "NotApplicable",
+      "nameVerification": "OfficialTable",
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第3页，序号66；主要账务处理按本科目说明"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "reports": [
+    {
+      "id": "sb-bs",
+      "officialForm": "会小企01表",
+      "title": "资产负债表",
+      "periods": [
+        "Monthly",
+        "Annual"
+      ],
+      "columns": [
+        "期末余额",
+        "年初余额"
+      ],
+      "coverage": "MetadataAndRepresentativeRows",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第68—85页，三、财务报表"
+        }
+      ],
+      "rows": [
+        {
+          "id": "cash",
+          "label": "货币资金",
+          "officialRowNumber": 1,
+          "terms": [
+            {
+              "accountCode": "1001",
+              "measure": "closing_net_debit",
+              "coefficient": 1
+            },
+            {
+              "accountCode": "1002",
+              "measure": "closing_net_debit",
+              "coefficient": 1
+            },
+            {
+              "accountCode": "1012",
+              "measure": "closing_net_debit",
+              "coefficient": 1
+            }
+          ],
+          "restrictionColumns": [],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第69页第3（1）项"
+            }
+          ],
+          "limitations": [
+            "仅此行代表性取数；输入为未结转发生额或期末净额，按measure。"
+          ]
+        },
+        {
+          "id": "fixed-net",
+          "label": "固定资产账面价值",
+          "officialRowNumber": 20,
+          "terms": [
+            {
+              "accountCode": "1601",
+              "measure": "closing_net_debit",
+              "coefficient": 1
+            },
+            {
+              "accountCode": "1602",
+              "measure": "closing_net_debit",
+              "coefficient": 1
+            }
+          ],
+          "restrictionColumns": [],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第71页第3（14）项"
+            }
+          ],
+          "limitations": [
+            "净额均借正贷负，因此累计折旧直接相加；不得把贷方净额再次扣减。"
+          ]
+        }
+      ],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ]
+    },
+    {
+      "id": "sb-income",
+      "officialForm": "会小企02表",
+      "title": "利润表",
+      "periods": [
+        "Monthly",
+        "Annual"
+      ],
+      "columns": [
+        "本年累计金额",
+        "本月金额"
+      ],
+      "coverage": "MetadataAndRepresentativeRows",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第68—85页，三、财务报表"
+        }
+      ],
+      "rows": [
+        {
+          "id": "revenue",
+          "label": "营业收入",
+          "officialRowNumber": 1,
+          "terms": [
+            {
+              "accountCode": "5001",
+              "measure": "period_net_debit",
+              "coefficient": -1
+            },
+            {
+              "accountCode": "5051",
+              "measure": "period_net_debit",
+              "coefficient": -1
+            }
+          ],
+          "restrictionColumns": [],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第75—77页"
+            }
+          ],
+          "limitations": [
+            "仅此行代表性取数；输入为未结转发生额或期末净额，按measure。"
+          ]
+        },
+        {
+          "id": "admin",
+          "label": "管理费用",
+          "officialRowNumber": 14,
+          "terms": [
+            {
+              "accountCode": "5602",
+              "measure": "period_net_debit",
+              "coefficient": 1
+            }
+          ],
+          "restrictionColumns": [],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第75—77页"
+            }
+          ],
+          "limitations": [
+            "仅此行代表性取数；输入为未结转发生额或期末净额，按measure。"
+          ]
+        }
+      ],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ],
+      "columnVariants": [
+        {
+          "period": "Monthly",
+          "status": "DefinedMetadata",
+          "columns": [
+            "本年累计金额",
+            "本月金额"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第76页或79页第2项"
+            }
+          ]
+        },
+        {
+          "period": "Annual",
+          "status": "DefinedMetadata",
+          "columns": [
+            "本年累计金额",
+            "上年金额"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第76页或79页第2项：年度更换本月金额栏"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sb-cashflow",
+      "officialForm": "会小企03表",
+      "title": "现金流量表",
+      "periods": [
+        "Monthly",
+        "Annual"
+      ],
+      "columns": [
+        "本年累计金额",
+        "本月金额"
+      ],
+      "coverage": "MetadataOnly",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "small-appendix",
+          "locator": "PDF第68—85页，三、财务报表"
+        }
+      ],
+      "rows": [],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ],
+      "columnVariants": [
+        {
+          "period": "Monthly",
+          "status": "DefinedMetadata",
+          "columns": [
+            "本年累计金额",
+            "本月金额"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第76页或79页第2项"
+            }
+          ]
+        },
+        {
+          "period": "Annual",
+          "status": "DefinedMetadata",
+          "columns": [
+            "本年累计金额",
+            "上年金额"
+          ],
+          "sourceRefs": [
+            {
+              "sourceId": "small-appendix",
+              "locator": "PDF第76页或79页第2项：年度更换本月金额栏"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sb-notes",
+      "officialForm": null,
+      "title": "附注",
+      "periods": [
+        "Annual"
+      ],
+      "columns": [],
+      "coverage": "MetadataOnly",
+      "isCompleteFormulaSet": false,
+      "sourceRefs": [
+        {
+          "sourceId": "small-standard",
+          "locator": "第81—86条；PDF第27—32页"
+        }
+      ],
+      "rows": [],
+      "limitations": [
+        "报表名称/期间/列元数据取自正式附件；行、重分类、附注及全套勾稽未完整实现，不可直接生成法定报表。"
+      ]
+    }
+  ],
+  "limitations": [
+    "66项仅指2011正式附录一级科目快照（含5403有限更名），不是所有法定可选科目或2026全部专项规则；不含法定/自定义明细穷尽表。",
+    "不实现计量、税务申报、工业成本分配、全套报表与累计专项规定；真实财务合规不能保证。"
+  ]
+}

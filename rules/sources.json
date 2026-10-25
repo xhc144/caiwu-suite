@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-25",
+  "sources": [
+    {
+      "id": "small-standard",
+      "title": "小企业会计准则",
+      "documentNumber": "财会〔2011〕17号",
+      "url": "https://kjs.mof.gov.cn/zhengcefabu/201111/P020111118325852319878.pdf",
+      "noticeUrl": "https://kjs.mof.gov.cn/zhengcefabu/201111/t20111107_605525.htm",
+      "issuedOn": "2011-10-18",
+      "effectiveFrom": "2013-01-01",
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/small-standard.pdf",
+      "sha256": "da08abfb2797240bf41330b7ac57122d44a182c1a99a957294997ade7b933a71",
+      "bytes": 353525,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "small-appendix",
+      "title": "小企业会计准则——会计科目、主要账务处理和财务报表",
+      "documentNumber": "财会〔2011〕17号附录",
+      "url": "https://kjs.mof.gov.cn/zhengcefabu/201111/P020111118325852734144.pdf",
+      "noticeUrl": null,
+      "issuedOn": "2011-10-18",
+      "effectiveFrom": "2013-01-01",
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/small-appendix.pdf",
+      "sha256": "5e0b73597f57f3eb4d3a22ffcd5a1043df6ab852e1e852b5fc7212f6dfa17a65",
+      "bytes": 738546,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "vat-rename",
+      "title": "增值税会计处理规定（本包仅采用税金及附加更名）",
+      "documentNumber": "财会〔2016〕22号",
+      "url": "https://czj.sh.gov.cn/zys_8908/zcfg_8983/zcfb_8985/hj_9035/qt_9046/20161230/0017-174539.html",
+      "noticeUrl": null,
+      "issuedOn": "2016-12-03",
+      "effectiveFrom": null,
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": null,
+      "sha256": null,
+      "bytes": null,
+      "verification": "OfficialWebTextRead",
+      "limitations": [
+        "官方网页正文经web工具读取；本地HTTP请求403，未重试或绕过，未取得可归档原始字节/hash。"
+      ]
+    },
+    {
+      "id": "nonprofit-standard",
+      "title": "民间非营利组织会计制度",
+      "documentNumber": "财会〔2024〕25号",
+      "url": "https://yn.mof.gov.cn/caizhengjiancha/202504/P020250415689506085583.pdf",
+      "noticeUrl": "https://kjs.mof.gov.cn/zhengcefabu/202501/t20250103_3951055.htm",
+      "issuedOn": "2024-12-20",
+      "effectiveFrom": "2026-01-01",
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/nonprofit-2026.pdf",
+      "sha256": "35b47fb928e167293150187fff4b03cfc0b8c814b978b5dcbbb750650a4417c6",
+      "bytes": 595725,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "nonprofit-transition",
+      "title": "民间非营利组织新旧会计制度有关衔接问题的处理规定",
+      "documentNumber": "财会〔2025〕6号",
+      "url": "https://www.mof.gov.cn/jrttts/202505/P020250521563512745169.pdf",
+      "noticeUrl": null,
+      "issuedOn": "2025-04-16",
+      "effectiveFrom": "2026-01-01",
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/transition-2025-6.pdf",
+      "sha256": "bdc2a3b37dc85d73ddf347a27679d854a448b176ce43c838168f53c5ac17aadf",
+      "bytes": 179393,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "enterprise-reports",
+      "title": "一般企业财务报表格式（已执行新金融准则、新收入准则和新租赁准则的企业）",
+      "documentNumber": "财会〔2019〕6号附件2",
+      "url": "https://kjs.mof.gov.cn/zhengcefabu/201905/P020190510359607790104.pdf",
+      "noticeUrl": "https://kjs.mof.gov.cn/zhengcefabu/201905/t20190510_3254992.htm",
+      "issuedOn": "2019-04-30",
+      "effectiveFrom": null,
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/enterprise-2019-appendix2.pdf",
+      "sha256": "cf442fbfd7f4b17e07c2de5b4499e8a82e0983ff09a7d7e8f02fcde455508e8f",
+      "bytes": 410563,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "enterprise-guide-access",
+      "title": "财政部关于企业会计准则应用指南出版物的答复",
+      "documentNumber": "无独立文号",
+      "url": "https://www.mof.gov.cn/bd/mhwzzxly/hjs/202301/t20230104_3861967.htm",
+      "noticeUrl": null,
+      "issuedOn": null,
+      "effectiveFrom": null,
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/enterprise-guide-2023-reply.html",
+      "sha256": "936b367f023ea6aa3e5f33c24eb50c3fe1cb2bfe34e0af1fda8d383a02613e14",
+      "bytes": 10753,
+      "verification": "OfficialAccessStatementOnly",
+      "limitations": [
+        "未取得完整现行企业科目及主要账务处理出版物；本包企业9个编码与其中5个名称均为待核工程样例，仅4个名称可由报表附件核实。"
+      ]
+    },
+    {
+      "id": "enterprise-cas30-notice",
+      "title": "企业会计准则第30号2026正式通知（辽宁财政厅转载）",
+      "documentNumber": "财会〔2026〕11号",
+      "url": "https://czt.ln.gov.cn/czt/lnkjw/zcfb/2026080616225213399/index.shtml",
+      "noticeUrl": null,
+      "issuedOn": "2026-07-24",
+      "effectiveFrom": null,
+      "status": "OfficialFuturePhased",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/enterprise-cas30-2026-notice-ln.html",
+      "sha256": "f0092039c5bed49920d6655cb153d7aad83d2a8d78e9816c46b5a359e1378c50",
+      "bytes": 77091,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "enterprise-cas30",
+      "title": "企业会计准则第30号——财务报表列报（2026）",
+      "documentNumber": "财会〔2026〕11号",
+      "url": "https://kjs.mof.gov.cn/zt/kjzzss/kuaijizhunzeshishi/202608/t20260806_3995008.htm",
+      "noticeUrl": null,
+      "issuedOn": "2026-07-24",
+      "effectiveFrom": null,
+      "status": "OfficialFuturePhased",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/enterprise-cas30-2026-body.html",
+      "sha256": "4de9a8f39aaf2aa5a5328c8b68f0c0cc1f7a0f4900ac9f0c33a12eeb299c7f20",
+      "bytes": 65098,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "enterprise-chart-draft",
+      "title": "企业会计准则——会计科目和主要账务处理（修订征求意见稿）征求函",
+      "documentNumber": "财办会〔2026〕35号",
+      "url": "https://kjs.mof.gov.cn/gongzuotongzhi/202609/t20260930_3998445.htm",
+      "noticeUrl": null,
+      "issuedOn": "2026-09-28",
+      "effectiveFrom": null,
+      "status": "Draft",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/enterprise-chart-2026-draft-notice.html",
+      "sha256": "58ae080acbb72d8195d19d15e9301e1c45c95eda37ae0b8df29f5dff97ca6711",
+      "bytes": 16326,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "software-norm",
+      "title": "会计软件基本功能和服务规范",
+      "documentNumber": "财会〔2024〕12号",
+      "url": "https://www.mof.gov.cn/jrttts/202408/P020240809318551591785.pdf",
+      "noticeUrl": null,
+      "issuedOn": "2024-07-29",
+      "effectiveFrom": "2025-01-01",
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/software-basic-functions-2024.pdf",
+      "sha256": "bc4c523bf025684f373100f6b0dac0a4d9cd8191b04adda7f5e67ba6a9dbcb34",
+      "bytes": 171990,
+      "verification": "OfficialBytesRetrieved",
+      "limitations": []
+    },
+    {
+      "id": "interface-standard-status",
+      "title": "财经信息技术 会计核算软件数据接口 第1部分：企业（仅元信息）",
+      "documentNumber": "GB/T 24589.1-2024",
+      "url": "https://std.samr.gov.cn/gb/search/gbDetailed?id=2AD0270638D2091BE06397BE0A0A2D62",
+      "noticeUrl": null,
+      "issuedOn": "2024-12-31",
+      "effectiveFrom": "2025-07-01",
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/interface-standard-2024-status.html",
+      "sha256": "29d1f2cd1743bed28ee64d75e5784df9958434114295c52add3eaa2fac840512",
+      "bytes": 74306,
+      "verification": "MetadataOnly",
+      "limitations": [
+        "标准全文未取得；不提供接口字段或标准符合性声明。"
+      ]
+    },
+    {
+      "id": "interface-standard-access",
+      "title": "GB/T 24589.1-2024全文平台版权限制页",
+      "documentNumber": "GB/T 24589.1-2024",
+      "url": "https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=19CE9E504A6293ED573EF88D4ADF15B4",
+      "noticeUrl": null,
+      "issuedOn": null,
+      "effectiveFrom": null,
+      "status": "OfficialCurrent",
+      "retrievedOn": "2026-10-25",
+      "localPath": "sources/official/interface-standard-2024-access.html",
+      "sha256": "08355d222ead7ff18bb7f1d9c7d299409d1d5a0b1024d8e1c354d89ea8a8a7d8",
+      "bytes": 24117,
+      "verification": "OfficialAccessStatementOnly",
+      "limitations": [
+        "采标版权限制；归档的是官方限制说明页，不是标准全文。"
+      ]
+    }
+  ],
+  "researchInputs": [
+    {
+      "name": "enterprise-cost.md",
+      "sha256": "56eb53d6a4411b0cd435fbf565201d31e07b0e8843d207608e320bd45d07a6d7"
+    },
+    {
+      "name": "nonprofit.md",
+      "sha256": "ee66f8a2fa76c21b001fc17b0e498fe638e20ecd1f249245ce0614fa1015f15a"
+    },
+    {
+      "name": "software-records.md",
+      "sha256": "106058c6ed9c9554a31c530dd05f264ad953f1a3e7d58332b0c29f1dac1b09ea"
+    }
+  ],
+  "researchArchiveSha256": "7975d686cfc8467b3d926963f820cfaa30a6a2cfc2e8867433cbdf420dcde3be",
+  "researchLocationNote": "基线docs/rules-source/unpacked未跟踪（远端404）；按IMPLEMENTATION_CONTRACT中的Library身份取回同hash研究ZIP，只读后继续核官方原文。"
+}
