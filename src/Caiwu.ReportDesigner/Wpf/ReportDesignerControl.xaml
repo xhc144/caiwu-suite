@@ -35,7 +35,7 @@
    <TextBlock x:Name="StatusText" TextWrapping="Wrap" FontWeight="SemiBold" Margin="0,4"/>
   </StackPanel>
   <TabControl Grid.Row="5">
-   <TabItem Header="数据预览"><DataGrid x:Name="PreviewGrid" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" RowHeight="Auto" MinRowHeight="28"/></TabItem>
+   <TabItem Header="数据预览"><DataGrid x:Name="PreviewGrid" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column" GridLinesVisibility="Horizontal" MinRowHeight="28"/></TabItem>
    <TabItem Header="A4 页面预览"><FlowDocumentPageViewer x:Name="PagePreview"/></TabItem>
   </TabControl>
  </Grid>
