@@ -1,0 +1,592 @@
+{
+  "success": false,
+  "total": 141,
+  "passed": 126,
+  "failed": 11,
+  "skipped": 4,
+  "runtime": ".NET 10.0.13",
+  "os": "Microsoft Windows 10.0.26100",
+  "publishedWindowsArtifactExecuted": false,
+  "scope": "Synthetic self-authored delivery components only. No reference installer or real accounting data.",
+  "results": [
+    {
+      "name": "install and data roots cannot overlap in either direction",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: ../escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: nested/../../escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: ..\\escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: /absolute",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: C:\\absolute",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: \\\\server\\share",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: a:stream",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: nested/../escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: CON.txt",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: folder./file",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: trailing ",
+      "status": "passed"
+    },
+    {
+      "name": "symlinked ancestor cannot redirect a managed child",
+      "status": "passed"
+    },
+    {
+      "name": "manifest hashes actual payload and round-trips its identity",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects byte tampering with unchanged file length",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects missing files",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects files added after sealing",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects Windows case-insensitive path collisions",
+      "status": "skipped",
+      "detail": "Host filesystem cannot represent two paths differing only by case."
+    },
+    {
+      "name": "manifest rejects a payload file symlink",
+      "status": "passed"
+    },
+    {
+      "name": "program payload cannot accidentally contain an accounting book",
+      "status": "passed"
+    },
+    {
+      "name": "first install activates verified program without moving a book",
+      "status": "passed"
+    },
+    {
+      "name": "a temporary payload cannot contain the chosen persistent data root",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade is blocked for Desktop without the managed-data contract",
+      "status": "passed"
+    },
+    {
+      "name": "a missing activation pointer cannot turn an existing installation into an unchecked first install",
+      "status": "passed"
+    },
+    {
+      "name": "another installation directory cannot bypass the active data-root upgrade gate",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade rejects a missing managed-book inventory",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade cannot omit a real managed book from the inventory",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade cannot redirect its inventory to another data root",
+      "status": "passed"
+    },
+    {
+      "name": "active application lease prevents uninstall",
+      "status": "passed"
+    },
+    {
+      "name": "active application lease prevents upgrade before mutation",
+      "status": "passed"
+    },
+    {
+      "name": "the shared data-root lease prevents an upgrade through another installation coordinator",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall preserves external books backups and unowned installation files",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall preserves a modified file at an owned payload path",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall refuses an arbitrary directory without an ownership marker",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall followed by a newer install cannot bypass pre-upgrade backup gates",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall permits reinstalling the identical payload at its original program root",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall cannot permit a different payload merely by reusing its version number",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall does not release a data root for another installation directory",
+      "status": "passed"
+    },
+    {
+      "name": "verified upgrade backups preserve independent SQLite balances",
+      "status": "failed",
+      "detail": "System.IO.IOException: The process cannot access the file \u0027C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-delivery-tests-6070521893334d2eaaa5cdcf49bcda71\\books\\.delivery-backups\\7de8bfafabae4875a98234b1f249f135\\book-0000.caiwu\u0027 because it is being used by another process.\r\n   at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable\u00601 unixCreateMode)\r\n   at System.IO.File.OpenRead(String path)\r\n   at Caiwu.Delivery.PayloadManifest.Hash(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\PayloadManifest.cs:line 21\r\n   at Caiwu.Delivery.UpgradeSafety.Prepare(String dataRoot, IReadOnlyList\u00601 databasePaths, Action\u00601 migrateStaged) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\UpgradeSafety.cs:line 70\r\n   at DeliveryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_27(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 302\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "backup captures committed SQLite WAL records without copying only the main file",
+      "status": "failed",
+      "detail": "System.IO.IOException: The process cannot access the file \u0027C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-delivery-tests-dcbf577902c148658d71e7c9ad41454b\\books\\.delivery-backups\\0f6e4d294ec84dafa5243d7578406ce5\\book-0000.caiwu\u0027 because it is being used by another process.\r\n   at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable\u00601 unixCreateMode)\r\n   at System.IO.File.OpenRead(String path)\r\n   at Caiwu.Delivery.PayloadManifest.Hash(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\PayloadManifest.cs:line 21\r\n   at Caiwu.Delivery.UpgradeSafety.Prepare(String dataRoot, IReadOnlyList\u00601 databasePaths, Action\u00601 migrateStaged) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\UpgradeSafety.cs:line 70\r\n   at DeliveryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_28(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 327\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "successful staged migration does not mutate the live book",
+      "status": "failed",
+      "detail": "System.IO.IOException: The process cannot access the file \u0027C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-delivery-tests-366e86881cd8466081ab50aa34c93f83\\books\\.delivery-backups\\76d1ec7a174c4aae8da5a9eac2ec75bc\\book-0000.caiwu\u0027 because it is being used by another process.\r\n   at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable\u00601 unixCreateMode)\r\n   at System.IO.File.OpenRead(String path)\r\n   at Caiwu.Delivery.PayloadManifest.Hash(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\PayloadManifest.cs:line 21\r\n   at Caiwu.Delivery.UpgradeSafety.Prepare(String dataRoot, IReadOnlyList\u00601 databasePaths, Action\u00601 migrateStaged) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\UpgradeSafety.cs:line 70\r\n   at DeliveryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_29(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 338\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "migration failure leaves every source unchanged and retains backup evidence",
+      "status": "passed"
+    },
+    {
+      "name": "a migration returning a corrupt stage is rejected",
+      "status": "passed"
+    },
+    {
+      "name": "backup preparation rejects corrupt source before migration",
+      "status": "passed"
+    },
+    {
+      "name": "backup preparation rejects source outside its data root",
+      "status": "passed"
+    },
+    {
+      "name": "backup preparation rejects duplicate source identities",
+      "status": "passed"
+    },
+    {
+      "name": "same-schema managed upgrade activates only after backup validation",
+      "status": "failed",
+      "detail": "System.IO.IOException: The process cannot access the file \u0027C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-delivery-tests-ea2d2dc58fd044fb964f97fe7215750c\\books\\.delivery-backups\\63711ae4377447b3ab4879818fbfba44\\book-0000.caiwu\u0027 because it is being used by another process.\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable\u00601 unixCreateMode)\r\n   at System.IO.File.OpenRead(String path)\r\n   at Caiwu.Delivery.PayloadManifest.Hash(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\PayloadManifest.cs:line 21\r\n   at Caiwu.Delivery.UpgradeSafety.Prepare(String dataRoot, IReadOnlyList\u00601 databasePaths, Action\u00601 migrateStaged) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\UpgradeSafety.cs:line 70\r\n   at Caiwu.Delivery.Installation.Install(String payload, String installRoot, String dataRoot) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\Installation.cs:line 132\r\n   at DeliveryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_35(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 393\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "a subsequent upgrade does not mistake protected backups for unregistered books",
+      "status": "failed",
+      "detail": "System.IO.IOException: The process cannot access the file \u0027C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-delivery-tests-768ca2fcae1e40ffb925fcd3d71879df\\books\\.delivery-backups\\ebe4b558f74c42ccb1b43850f86bdea8\\book-0000.caiwu\u0027 because it is being used by another process.\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable\u00601 unixCreateMode)\r\n   at System.IO.File.OpenRead(String path)\r\n   at Caiwu.Delivery.PayloadManifest.Hash(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\PayloadManifest.cs:line 21\r\n   at Caiwu.Delivery.UpgradeSafety.Prepare(String dataRoot, IReadOnlyList\u00601 databasePaths, Action\u00601 migrateStaged) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\UpgradeSafety.cs:line 70\r\n   at Caiwu.Delivery.Installation.Install(String payload, String installRoot, String dataRoot) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\Installation.cs:line 132\r\n   at DeliveryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_36(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 403\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "invalid upgrade payload cannot replace an active version",
+      "status": "passed"
+    },
+    {
+      "name": "installation cannot downgrade an existing version",
+      "status": "passed"
+    },
+    {
+      "name": "updates disabled by default cannot stage a candidate",
+      "status": "passed"
+    },
+    {
+      "name": "update feed must use HTTPS",
+      "status": "passed"
+    },
+    {
+      "name": "update candidate cannot use HTTP",
+      "status": "passed"
+    },
+    {
+      "name": "update candidate cannot execute a local file URI",
+      "status": "passed"
+    },
+    {
+      "name": "update candidate must use an explicitly trusted host",
+      "status": "passed"
+    },
+    {
+      "name": "update host suffix does not satisfy an exact host pin",
+      "status": "passed"
+    },
+    {
+      "name": "update URL cannot carry userinfo",
+      "status": "passed"
+    },
+    {
+      "name": "update host allowlist cannot be empty",
+      "status": "passed"
+    },
+    {
+      "name": "update publisher pins cannot be empty",
+      "status": "passed"
+    },
+    {
+      "name": "update publisher pins must identify a certificate",
+      "status": "passed"
+    },
+    {
+      "name": "update feed must also use a trusted host",
+      "status": "passed"
+    },
+    {
+      "name": "update checksum must be a full SHA256",
+      "status": "passed"
+    },
+    {
+      "name": "update checksum cannot contain nonhex characters",
+      "status": "passed"
+    },
+    {
+      "name": "update size must be positive",
+      "status": "passed"
+    },
+    {
+      "name": "update version cannot move backward",
+      "status": "passed"
+    },
+    {
+      "name": "update version cannot replay current version",
+      "status": "passed"
+    },
+    {
+      "name": "update version cannot contain a path",
+      "status": "passed"
+    },
+    {
+      "name": "update policy permits a newer pinned-host candidate for later signature verification",
+      "status": "passed"
+    },
+    {
+      "name": "disabled update checks make no HTTP request",
+      "status": "passed"
+    },
+    {
+      "name": "update checks reject a redirect without requesting its destination",
+      "status": "passed"
+    },
+    {
+      "name": "update checks return a safe newer candidate from the configured feed",
+      "status": "passed"
+    },
+    {
+      "name": "valid current-version feed returns no available update",
+      "status": "passed"
+    },
+    {
+      "name": "current-version feed still must provide a valid checksum",
+      "status": "passed"
+    },
+    {
+      "name": "update feed is bounded when Content-Length is absent",
+      "status": "passed"
+    },
+    {
+      "name": "download produces only a hash-verified untrusted staging file",
+      "status": "passed"
+    },
+    {
+      "name": "download refuses a redirect and leaves no executable staging artifact",
+      "status": "passed"
+    },
+    {
+      "name": "bad download SHA256 removes only its incomplete candidate",
+      "status": "passed"
+    },
+    {
+      "name": "streamed download with 127 bytes cannot satisfy 128-byte declaration",
+      "status": "passed"
+    },
+    {
+      "name": "streamed download with 129 bytes cannot satisfy 128-byte declaration",
+      "status": "passed"
+    },
+    {
+      "name": "cancelled download leaves no staging artifact",
+      "status": "passed"
+    },
+    {
+      "name": "book inspection reports independent posted-only bank balance and identity",
+      "status": "passed"
+    },
+    {
+      "name": "book backup preserves semantic content and leaves the original byte-identical",
+      "status": "passed"
+    },
+    {
+      "name": "book restore creates a complete new copy and leaves source plus backup unchanged",
+      "status": "passed"
+    },
+    {
+      "name": "book semantic fingerprint changes when audit content changes",
+      "status": "passed"
+    },
+    {
+      "name": "book backup cannot overwrite an existing backup target",
+      "status": "passed"
+    },
+    {
+      "name": "book restore cannot overwrite the original live book",
+      "status": "passed"
+    },
+    {
+      "name": "book restore cannot overwrite another existing destination",
+      "status": "passed"
+    },
+    {
+      "name": "book backup destination must be inside the protected backup directory",
+      "status": "passed"
+    },
+    {
+      "name": "book restore source must come from the protected backup directory",
+      "status": "passed"
+    },
+    {
+      "name": "book restore destination cannot be inside protected backups",
+      "status": "passed"
+    },
+    {
+      "name": "book operations reject traversal to an existing external database",
+      "status": "passed"
+    },
+    {
+      "name": "book operations accept only relative managed paths",
+      "status": "passed"
+    },
+    {
+      "name": "book inspection and backup reject a linked source database",
+      "status": "passed"
+    },
+    {
+      "name": "book backup rejects a linked destination ancestor",
+      "status": "passed"
+    },
+    {
+      "name": "book restore rejects a linked backup source",
+      "status": "passed"
+    },
+    {
+      "name": "book restore rejects a destination link without touching its external target",
+      "status": "passed"
+    },
+    {
+      "name": "an active installation lease blocks every book operation",
+      "status": "passed"
+    },
+    {
+      "name": "an active data-root lease blocks every book operation",
+      "status": "passed"
+    },
+    {
+      "name": "uninstalled applications cannot use retained data through book operations",
+      "status": "passed"
+    },
+    {
+      "name": "book operations require the retained data ownership receipt",
+      "status": "passed"
+    },
+    {
+      "name": "book operations refuse disagreeing active and data receipt versions",
+      "status": "passed"
+    },
+    {
+      "name": "missing book operations do not initialize an empty source database",
+      "status": "passed"
+    },
+    {
+      "name": "corrupt backup cannot create a restored book",
+      "status": "passed"
+    },
+    {
+      "name": "corrupt live book is rejected without creating a backup",
+      "status": "passed"
+    },
+    {
+      "name": "book backup and restore include committed WAL data",
+      "status": "failed",
+      "detail": "System.IO.IOException: The process cannot access the file \u0027C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-delivery-tests-f3bb2546b0b6478d9b3a13098aaedc8b\\books\\synthetic.caiwu\u0027 because it is being used by another process.\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable\u00601 unixCreateMode)\r\n   at Caiwu.Delivery.PayloadManifest.Hash(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\PayloadManifest.cs:line 21\r\n   at Caiwu.Delivery.BookOperations.InspectWritableCopy(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\BookOperations.cs:line 101\r\n   at Caiwu.Delivery.BookOperations.InspectPath(String path, String dataRoot) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\BookOperations.cs:line 60\r\n   at Caiwu.Delivery.BookOperations.\u003C\u003Ec__DisplayClass1_0.\u003CBackup\u003Eb__0(CurrentInstallation current) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\BookOperations.cs:line 30\r\n   at Caiwu.Delivery.Installation.WithExclusiveData[T](String installRoot, Func\u00602 action) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\Installation.cs:line 61\r\n   at Caiwu.Delivery.BookOperations.Backup(String installRoot, String relativeSource, String relativeBackup) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\BookOperations.cs:line 20\r\n   at BookOperationCases.\u003C\u003Ec.\u003Cget_All\u003Eb__4_24(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\BookOperationCases.cs:line 227\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "ambiguous bank names do not prevent inspection backup or restore",
+      "status": "passed"
+    },
+    {
+      "name": "host-built managed CLI inspects backs up and restores JSON using paths containing spaces",
+      "status": "passed"
+    },
+    {
+      "name": "host-built managed CLI rejects invalid argument count with nonzero exit",
+      "status": "passed"
+    },
+    {
+      "name": "host-built managed CLI applies backup destination safety without writing a result",
+      "status": "passed"
+    },
+    {
+      "name": "host-built managed CLI respects the parent process installation lease",
+      "status": "passed"
+    },
+    {
+      "name": "security: a forged active manifest cannot turn a user book into uninstall-owned content",
+      "status": "passed"
+    },
+    {
+      "name": "security: an unknown version directory with a valid forged manifest stays user-owned",
+      "status": "passed"
+    },
+    {
+      "name": "security: an unknown directory link cannot leave an active pointer after program deletion",
+      "status": "passed"
+    },
+    {
+      "name": "security: a data-only session lease prevents uninstall before any mutation",
+      "status": "passed"
+    },
+    {
+      "name": "security: interrupted data receipt advancement cannot launch an older active program",
+      "status": "skipped",
+      "detail": "This execution sentinel is a self-authored POSIX script; no Windows executable is substituted or run."
+    },
+    {
+      "name": "security: interrupted data receipt advancement cannot uninstall the older active program",
+      "status": "passed"
+    },
+    {
+      "name": "security: a valid migrated stage for a different book must not be marked upgrade-ready",
+      "status": "failed",
+      "detail": "System.InvalidOperationException: Identity counterexample did not reach its migration callback.\r\n   at Check.True(Boolean value, String message) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 659\r\n   at SecurityBoundaryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_6(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\SecurityBoundaryCases.cs:line 163\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "security: an inactive owned manifest is preflighted before deleting the newer current program",
+      "status": "failed",
+      "detail": "System.IO.IOException: The process cannot access the file \u0027C:\\Users\\runneradmin\\AppData\\Local\\Temp\\caiwu-delivery-tests-61dd99e05ea947979d819d99728d6fc6\\books\\.delivery-backups\\b4c9e461c48a43469b6476d9bc125695\\book-0000.caiwu\u0027 because it is being used by another process.\r\n   at System.IO.Strategies.OSFileStreamStrategy..ctor(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable\u00601 unixCreateMode)\r\n   at Caiwu.Delivery.PayloadManifest.Hash(String path) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\PayloadManifest.cs:line 21\r\n   at Caiwu.Delivery.UpgradeSafety.Prepare(String dataRoot, IReadOnlyList\u00601 databasePaths, Action\u00601 migrateStaged) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\UpgradeSafety.cs:line 70\r\n   at Caiwu.Delivery.Installation.Install(String payload, String installRoot, String dataRoot) in D:\\a\\caiwu-suite\\caiwu-suite\\packaging-next\\src\\Caiwu.Delivery\\Installation.cs:line 132\r\n   at SecurityBoundaryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_7(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\SecurityBoundaryCases.cs:line 189\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "security: a same-identity migration cannot move the ledger revision backward",
+      "status": "failed",
+      "detail": "System.InvalidOperationException: Revision counterexample did not reach migration.\r\n   at Check.True(Boolean value, String message) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 659\r\n   at SecurityBoundaryCases.\u003C\u003Ec.\u003Cget_All\u003Eb__1_8(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\SecurityBoundaryCases.cs:line 238\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "security: caiwubak and rollback-journal files cannot enter a program payload",
+      "status": "passed"
+    },
+    {
+      "name": "security: a pending uninstall blocks launch install and book operations without side effects",
+      "status": "skipped",
+      "detail": "The positive launch control uses a self-authored POSIX script; no Windows artifact is run."
+    },
+    {
+      "name": "security: cross-platform lexical guard rejects Windows device namespace roots",
+      "status": "passed"
+    },
+    {
+      "name": "Linux read-only backup directory still permits recovery through a writable data-root scratch area",
+      "status": "skipped",
+      "detail": "Linux Unix-mode directory probe only; Windows ACL behavior is not exercised."
+    },
+    {
+      "name": "valid read-only backup restores successfully without post-copy failure or source mutation",
+      "status": "passed"
+    },
+    {
+      "name": "Storage transactional readback rejects a trigger-altered snapshot and preserves complete state",
+      "status": "passed"
+    },
+    {
+      "name": "delivery rejects a schema-one trigger backup before creating any restored book",
+      "status": "passed"
+    },
+    {
+      "name": "delivery rejects an extra schema-one view rather than silently treating it as the supported layout",
+      "status": "passed"
+    },
+    {
+      "name": "delivery backup refuses a trigger-bearing source without replacing a known good backup",
+      "status": "passed"
+    },
+    {
+      "name": "future-schema backup is rejected while the valid older backup and original remain unchanged",
+      "status": "passed"
+    },
+    {
+      "name": "explicit new-copy restore reports a different valid book identity and never substitutes the original",
+      "status": "passed"
+    },
+    {
+      "name": "second-book preparation failure retains the completed first backup and all earlier valid backups",
+      "status": "failed",
+      "detail": "System.InvalidOperationException: Expected 1; actual 0.\r\n   at Check.Equal[T](T expected, T actual) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 661\r\n   at BackupAdversarialCases.\u003C\u003Ec.\u003Cget_All\u003Eb__6_8(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\BackupAdversarialCases.cs:line 226\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "staged migration adding an unsupported trigger blocks preparation without mutating the live source",
+      "status": "failed",
+      "detail": "System.InvalidOperationException: Migration did not run, so this did not exercise the post-migration schema boundary.\r\n   at Check.True(Boolean value, String message) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 659\r\n   at BackupAdversarialCases.\u003C\u003Ec.\u003Cget_All\u003Eb__6_9(Fixture f) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\BackupAdversarialCases.cs:line 242\r\n   at Program.\u003CMain\u003E$(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\Program.cs:line 24"
+    },
+    {
+      "name": "schema constraint control: Storage readback rolls back extra UNIQUE REPLACE without durable loss",
+      "status": "passed"
+    },
+    {
+      "name": "schema constraint safety: read-only layout gate rejects a same-column UNIQUE REPLACE backup",
+      "status": "passed"
+    },
+    {
+      "name": "schema constraint safety: Delivery restore must reject UNIQUE REPLACE before creating a live copy",
+      "status": "passed"
+    },
+    {
+      "name": "schema compatibility control: canonical whitespace and comments remain accepted and preserve two lines",
+      "status": "passed"
+    },
+    {
+      "name": "schema layout pin rejects metadata-only change: declared type INTEGER to INT",
+      "status": "passed"
+    },
+    {
+      "name": "schema layout pin rejects metadata-only change: ordinal CHECK omitted",
+      "status": "passed"
+    },
+    {
+      "name": "schema layout pin rejects metadata-only change: STRICT table flag omitted",
+      "status": "passed"
+    },
+    {
+      "name": "schema layout pin rejects metadata-only change: same named index targets summary instead of account_code",
+      "status": "passed"
+    },
+    {
+      "name": "schema comment boundary: a CR inside a SQLite line comment cannot resurrect an omitted CHECK",
+      "status": "passed"
+    }
+  ]
+}

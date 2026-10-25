@@ -1,0 +1,74 @@
+Fresh Windows baseline (run 40180521070, SHA 6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5)
+2026-10-25T09:30:52.4257005Z FAIL verified upgrade backups preserve independent SQLite balances: System.IO.IOException: The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-delivery-tests-6070521893334d2eaaa5cdcf49bcda71\books\.delivery-backups\7de8bfafabae4875a98234b1f249f135\book-0000.caiwu' because it is being used by another process.
+2026-10-25T09:30:53.0601009Z FAIL backup captures committed SQLite WAL records without copying only the main file: System.IO.IOException: The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-delivery-tests-dcbf577902c148658d71e7c9ad41454b\books\.delivery-backups\0f6e4d294ec84dafa5243d7578406ce5\book-0000.caiwu' because it is being used by another process.
+2026-10-25T09:30:53.1969092Z FAIL successful staged migration does not mutate the live book: System.IO.IOException: The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-delivery-tests-366e86881cd8466081ab50aa34c93f83\books\.delivery-backups\76d1ec7a174c4aae8da5a9eac2ec75bc\book-0000.caiwu' because it is being used by another process.
+2026-10-25T09:30:54.3446373Z FAIL same-schema managed upgrade activates only after backup validation: System.IO.IOException: The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-delivery-tests-ea2d2dc58fd044fb964f97fe7215750c\books\.delivery-backups\63711ae4377447b3ab4879818fbfba44\book-0000.caiwu' because it is being used by another process.
+2026-10-25T09:30:54.7194179Z FAIL a subsequent upgrade does not mistake protected backups for unregistered books: System.IO.IOException: The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-delivery-tests-768ca2fcae1e40ffb925fcd3d71879df\books\.delivery-backups\ebe4b558f74c42ccb1b43850f86bdea8\book-0000.caiwu' because it is being used by another process.
+2026-10-25T09:31:05.3843536Z FAIL book backup and restore include committed WAL data: System.IO.IOException: The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-delivery-tests-f3bb2546b0b6478d9b3a13098aaedc8b\books\synthetic.caiwu' because it is being used by another process.
+2026-10-25T09:31:09.2114618Z FAIL security: a valid migrated stage for a different book must not be marked upgrade-ready: System.InvalidOperationException: Identity counterexample did not reach its migration callback.
+2026-10-25T09:31:09.3938260Z FAIL security: an inactive owned manifest is preflighted before deleting the newer current program: System.IO.IOException: The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-delivery-tests-61dd99e05ea947979d819d99728d6fc6\books\.delivery-backups\b4c9e461c48a43469b6476d9bc125695\book-0000.caiwu' because it is being used by another process.
+2026-10-25T09:31:09.7039845Z FAIL security: a same-identity migration cannot move the ledger revision backward: System.InvalidOperationException: Revision counterexample did not reach migration.
+2026-10-25T09:31:12.2379575Z FAIL second-book preparation failure retains the completed first backup and all earlier valid backups: System.InvalidOperationException: Expected 1; actual 0.
+2026-10-25T09:31:12.3676660Z FAIL staged migration adding an unsupported trigger blocks preparation without mutating the live source: System.InvalidOperationException: Migration did not run, so this did not exercise the post-migration schema boundary.
+2026-10-25T09:31:14.5236069Z 126 passed; 11 failed; 4 skipped.
+
+Windows implementation run 40181053280 (SHA d6f92dcd9361260eb5a6eced7fc4909fa914311e)
+2026-10-25T09:34:50.6802049Z PASS verified upgrade backups preserve independent SQLite balances
+2026-10-25T09:34:50.9172048Z PASS backup captures committed SQLite WAL records without copying only the main file
+2026-10-25T09:34:51.1671692Z PASS successful staged migration does not mutate the live book
+2026-10-25T09:34:52.2373712Z PASS same-schema managed upgrade activates only after backup validation
+2026-10-25T09:34:52.7629253Z PASS a subsequent upgrade does not mistake protected backups for unregistered books
+2026-10-25T09:35:00.4709973Z PASS book backup and restore include committed WAL data
+2026-10-25T09:35:04.4302891Z PASS security: a valid migrated stage for a different book must not be marked upgrade-ready
+2026-10-25T09:35:04.7693253Z PASS security: an inactive owned manifest is preflighted before deleting the newer current program
+2026-10-25T09:35:05.0225446Z PASS security: a same-identity migration cannot move the ledger revision backward
+2026-10-25T09:35:07.9039009Z PASS second-book preparation failure retains the completed first backup and all earlier valid backups
+2026-10-25T09:35:08.1189082Z PASS staged migration adding an unsupported trigger blocks preparation without mutating the live source
+2026-10-25T09:35:11.0925472Z SHARING-EVIDENCE {"win32Error":32,"hashAfterDispose":true,"relaxedProductionFileShare":false}
+2026-10-25T09:35:11.0927364Z PASS sharing: Windows strict hash rejects an open SQLite writer and succeeds after disposal
+2026-10-25T09:35:11.3028410Z PASS sharing: upgrade receipt hashes a closed self-contained backup with committed WAL content
+2026-10-25T09:35:11.5721351Z SHARING-EVIDENCE {"Revision":3,"BankBalance":1315.71,"FileSha256Basis":"sqlite-consistent-copy","uncommittedRevision":4,"sourceMainAndWalUnchanged":true}
+2026-10-25T09:35:11.5805002Z PASS sharing: inspection reads the committed snapshot while a WAL write transaction remains open
+2026-10-25T09:35:11.9803683Z PASS sharing: backup binds its source report and output to one committed snapshot during a WAL write
+2026-10-25T09:35:13.6737196Z PASS sharing: failed source access creates no backup and preserves old valid backup and unrelated scratch
+2026-10-25T09:35:13.7070831Z PASS sharing: strict payload hashing still refuses a conflicting Windows write handle
+2026-10-25T09:35:13.7076896Z 143 passed; 0 failed; 4 skipped.
+2026-10-25T09:35:41.6018877Z Failed!  - Failed:    45, Passed:    64, Skipped:     0, Total:   109, Duration: 10 s - Caiwu.Persistence.Sqlite.Tests.dll (net10.0)
+2026-10-25T09:39:14.4481672Z   15 |  … ill($true); throw 'Mutation UI probes timed out; no passing result in …
+2026-10-25T09:39:14.4484522Z      | Mutation UI probes timed out; no passing result inferred.
+2026-10-25T09:39:33.2306643Z PASS verified upgrade backups preserve independent SQLite balances
+2026-10-25T09:39:33.4562180Z PASS backup captures committed SQLite WAL records without copying only the main file
+2026-10-25T09:39:33.6487438Z PASS successful staged migration does not mutate the live book
+2026-10-25T09:39:34.4786552Z PASS same-schema managed upgrade activates only after backup validation
+2026-10-25T09:39:35.3990381Z PASS a subsequent upgrade does not mistake protected backups for unregistered books
+2026-10-25T09:39:41.9777627Z PASS book backup and restore include committed WAL data
+2026-10-25T09:39:46.2328431Z PASS security: a valid migrated stage for a different book must not be marked upgrade-ready
+2026-10-25T09:39:46.5418795Z PASS security: an inactive owned manifest is preflighted before deleting the newer current program
+2026-10-25T09:39:46.8022923Z PASS security: a same-identity migration cannot move the ledger revision backward
+2026-10-25T09:39:49.3826755Z PASS second-book preparation failure retains the completed first backup and all earlier valid backups
+2026-10-25T09:39:49.5947895Z PASS staged migration adding an unsupported trigger blocks preparation without mutating the live source
+2026-10-25T09:39:52.2950403Z SHARING-EVIDENCE {"win32Error":32,"hashAfterDispose":true,"relaxedProductionFileShare":false}
+2026-10-25T09:39:52.2952639Z PASS sharing: Windows strict hash rejects an open SQLite writer and succeeds after disposal
+2026-10-25T09:39:52.4958369Z PASS sharing: upgrade receipt hashes a closed self-contained backup with committed WAL content
+2026-10-25T09:39:52.7491933Z SHARING-EVIDENCE {"Revision":3,"BankBalance":1315.71,"FileSha256Basis":"sqlite-consistent-copy","uncommittedRevision":4,"sourceMainAndWalUnchanged":true}
+2026-10-25T09:39:52.7599103Z PASS sharing: inspection reads the committed snapshot while a WAL write transaction remains open
+2026-10-25T09:39:53.1563426Z PASS sharing: backup binds its source report and output to one committed snapshot during a WAL write
+2026-10-25T09:39:54.8263220Z PASS sharing: failed source access creates no backup and preserves old valid backup and unrelated scratch
+2026-10-25T09:39:54.8500647Z PASS sharing: strict payload hashing still refuses a conflicting Windows write handle
+2026-10-25T09:39:54.8563375Z 143 passed; 0 failed; 4 skipped.
+
+Outside-scope first Storage fixture failure (Storage/Storage.Tests are unchanged):
+2026-10-25T09:35:33.0309254Z   Failed Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: "voucher-status", trigger: "CREATE TRIGGER silent AFTER INSERT ON vouchers WHE"···) [315 ms]
+2026-10-25T09:35:33.0311904Z   Error Message:
+2026-10-25T09:35:33.0314314Z    System.IO.IOException : The process cannot access the file 'C:\Users\runneradmin\AppData\Local\Temp\caiwu-readback-4da67f41f6fc4c0faef48523807ba72d\synthetic.caiwu' because it is being used by another process.
+2026-10-25T09:35:33.0316902Z   Stack Trace:
+2026-10-25T09:35:33.0318334Z      at Microsoft.Win32.SafeHandles.SafeFileHandle.CreateFile(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options)
+2026-10-25T09:35:33.0321929Z [xUnit.net 00:00:03.10]     Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: "voucher-prepared_by", trigger: "CREATE TRIGGER silent AFTER INSERT ON vouchers WHE"···) [FAIL]
+2026-10-25T09:35:33.0328269Z    at Microsoft.Win32.SafeHandles.SafeFileHandle.Open(String fullPath, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize, Nullable`1 unixCreateMode)
+2026-10-25T09:35:33.0330565Z    at System.IO.File.OpenHandle(String path, FileMode mode, FileAccess access, FileShare share, FileOptions options, Int64 preallocationSize)
+2026-10-25T09:35:33.0331821Z    at System.IO.File.ReadAllBytes(String path)
+2026-10-25T09:35:33.0334107Z    at Caiwu.Persistence.Sqlite.Tests.ReadbackTests.RefusedAndUnchanged(SqliteLedgerStore store, LedgerSnapshot next) in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.Persistence.Sqlite.Tests\ReadbackTests.cs:line 72
+2026-10-25T09:35:33.0337420Z    at Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(String category, String trigger) in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.Persistence.Sqlite.Tests\ReadbackTests.cs:line 162
+2026-10-25T09:35:33.0350584Z    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+2026-10-25T09:35:33.0352465Z    at System.Reflection.MethodBaseInvoker.InvokeDirectByRefWithFewArgs(Object obj, Span`1 copyOfArgs, BindingFlags invokeAttr)
+2026-10-25T09:35:33.0355980Z   Failed Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: "audit-operator_name", trigger: "CREATE TRIGGER silent AFTER INSERT ON audit_events"···) [342 ms]

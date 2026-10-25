@@ -1,0 +1,75 @@
+{
+  "runId": 40177493350,
+  "jobId": 121121250377,
+  "url": "https://github.com/xhc144/caiwu-suite/actions/runs/40177493350",
+  "sourceCommit": "6a4683955267306f8eb9544635560d214b5921f9",
+  "deliveryTree": "12563875bf0f6057dec891dc57a9cfbb69f8e0f5",
+  "storageTree": "fa09da23acb4764e2d9006b59f988dbccbc04c70",
+  "contractsTree": "c88d36ff051dd784e92d96e66fd8ab37d0100adc",
+  "platform": "Windows Server 2025 10.0.26100",
+  "sdk": "10.0.402",
+  "runtime": ".NET 10.0.13",
+  "delivery": {
+    "total": 132,
+    "passed": 117,
+    "failed": 11,
+    "skipped": 4
+  },
+  "commonStack": [
+    "System.IO.File.OpenRead",
+    "Caiwu.Delivery.PayloadManifest.Hash:21",
+    "Caiwu.Delivery.UpgradeSafety.Prepare:70"
+  ],
+  "failures": [
+    {
+      "name": "verified upgrade backups preserve independent SQLite balances",
+      "exception": "System.IO.IOException"
+    },
+    {
+      "name": "backup captures committed SQLite WAL records without copying only the main file",
+      "exception": "System.IO.IOException"
+    },
+    {
+      "name": "successful staged migration does not mutate the live book",
+      "exception": "System.IO.IOException"
+    },
+    {
+      "name": "same-schema managed upgrade activates only after backup validation",
+      "exception": "System.IO.IOException"
+    },
+    {
+      "name": "a subsequent upgrade does not mistake protected backups for unregistered books",
+      "exception": "System.IO.IOException"
+    },
+    {
+      "name": "book backup and restore include committed WAL data",
+      "exception": "System.IO.IOException"
+    },
+    {
+      "name": "security: a valid migrated stage for a different book must not be marked upgrade-ready",
+      "exception": "System.InvalidOperationException"
+    },
+    {
+      "name": "security: an inactive owned manifest is preflighted before deleting the newer current program",
+      "exception": "System.IO.IOException"
+    },
+    {
+      "name": "security: a same-identity migration cannot move the ledger revision backward",
+      "exception": "System.InvalidOperationException"
+    },
+    {
+      "name": "second-book preparation failure retains the completed first backup and all earlier valid backups",
+      "exception": "System.InvalidOperationException"
+    },
+    {
+      "name": "staged migration adding an unsupported trigger blocks preparation without mutating the live source",
+      "exception": "System.InvalidOperationException"
+    }
+  ],
+  "artifact": {
+    "id": 12593102445,
+    "sha256": "1a627f551794337904945324fe528906dcbc8be3e44e6a52c611b0677915d1be"
+  },
+  "evidenceKind": "Direct GitHub job log read; self-authored components and synthetic accounting data only.",
+  "wholeRunConclusion": "failure"
+}

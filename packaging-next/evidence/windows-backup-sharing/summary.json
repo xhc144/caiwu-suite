@@ -1,0 +1,177 @@
+{
+  "status": "Delivery P1 fixed and verified on native Windows; whole-product acceptance remains incomplete",
+  "repository": "xhc144/caiwu-suite",
+  "privateRepositoryVerified": true,
+  "branch": "codex/windows-backup-sharing",
+  "draftPr": "https://github.com/xhc144/caiwu-suite/pull/18",
+  "implementationCommit": "d6f92dcd9361260eb5a6eced7fc4909fa914311e",
+  "baseline": {
+    "commit": "6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5",
+    "deliveryCommit": "ef17e64d18f7bc85fd6cfe452d1d0418b018f568",
+    "storageCommit": "ecc5225f7aaf9e9d0fd79c13a8a14059dde6df4b",
+    "deliveryTree": "ca481bc3672aad019b46c225939a1e0167615533",
+    "storageTree": "8901b46316cd14fd1e70e3b01cbc3a3c535d074c"
+  },
+  "implementationTrees": {
+    "delivery": "2653f4e3727fbbfa075d00b59291c998170b2849",
+    "tests": "6ee505a01b1cd50dcfa2898ac902e7aeafdb11ef",
+    "storage": "8901b46316cd14fd1e70e3b01cbc3a3c535d074c",
+    "contracts": "5282011ae8b5e38250e22310c3006a5a02dc373d"
+  },
+  "windowsBefore": {
+    "runId": 40180521070,
+    "jobId": 121130411587,
+    "url": "https://github.com/xhc144/caiwu-suite/actions/runs/40180521070",
+    "total": 141,
+    "passed": 126,
+    "failed": 11,
+    "skipped": 4,
+    "artifactId": 12594283229,
+    "artifactSha256": "6ceb73ed27af7934996c4a1010e310b0fe54e4fdc87a8c2602fff4a53547ce42",
+    "rawReportSha256": "e02917bed7329ba25d814adf7e19af6d08dd4793be025971f99d8ccb429195fe",
+    "wholeRunConclusion": "failure"
+  },
+  "windowsAfter": {
+    "runId": 40181053280,
+    "jobId": 121132011044,
+    "url": "https://github.com/xhc144/caiwu-suite/actions/runs/40181053280",
+    "sourceCommit": "d6f92dcd9361260eb5a6eced7fc4909fa914311e",
+    "os": "Microsoft Windows 10.0.26100",
+    "runtime": ".NET 10.0.13",
+    "total": 147,
+    "passed": 143,
+    "failed": 0,
+    "skipped": 4,
+    "deliveryStepConclusion": "success",
+    "componentExecutionsWithSameResult": 2,
+    "artifactId": 12594409190,
+    "artifactSha256": "20f7adff54b601cef312efa922d318778793c157c61e90c973ccd6fdecfb854b",
+    "rawReportSha256": "0c015f334802aa6cb0146f7ca57f4ab5ac31200192ee9997ed492c685bb2b725",
+    "wholeRunConclusion": "failure"
+  },
+  "fixedOriginalConditions": [
+    {
+      "name": "verified upgrade backups preserve independent SQLite balances",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "backup captures committed SQLite WAL records without copying only the main file",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "successful staged migration does not mutate the live book",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "same-schema managed upgrade activates only after backup validation",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "a subsequent upgrade does not mistake protected backups for unregistered books",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "book backup and restore include committed WAL data",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "security: a valid migrated stage for a different book must not be marked upgrade-ready",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "security: an inactive owned manifest is preflighted before deleting the newer current program",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "security: a same-identity migration cannot move the ledger revision backward",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "second-book preparation failure retains the completed first backup and all earlier valid backups",
+      "before": "failed",
+      "after": "passed"
+    },
+    {
+      "name": "staged migration adding an unsupported trigger blocks preparation without mutating the live source",
+      "before": "failed",
+      "after": "passed"
+    }
+  ],
+  "newNativeConditions": [
+    {
+      "name": "sharing: Windows strict hash rejects an open SQLite writer and succeeds after disposal",
+      "status": "passed"
+    },
+    {
+      "name": "sharing: upgrade receipt hashes a closed self-contained backup with committed WAL content",
+      "status": "passed"
+    },
+    {
+      "name": "sharing: inspection reads the committed snapshot while a WAL write transaction remains open",
+      "status": "passed"
+    },
+    {
+      "name": "sharing: backup binds its source report and output to one committed snapshot during a WAL write",
+      "status": "passed"
+    },
+    {
+      "name": "sharing: failed source access creates no backup and preserves old valid backup and unrelated scratch",
+      "status": "passed"
+    },
+    {
+      "name": "sharing: strict payload hashing still refuses a conflicting Windows write handle",
+      "status": "passed"
+    }
+  ],
+  "unchangedNativeSkips": [
+    "Linux read-only backup directory still permits recovery through a writable data-root scratch area",
+    "manifest rejects Windows case-insensitive path collisions",
+    "security: a pending uninstall blocks launch install and book operations without side effects",
+    "security: interrupted data receipt advancement cannot launch an older active program"
+  ],
+  "nativeObservations": {
+    "openSqliteWriterStrictHashWin32Error": 32,
+    "hashSucceedsAfterDispose": true,
+    "committedRevision": 3,
+    "uncommittedRevision": 4,
+    "bankBalance": 1315.71,
+    "sourceMainAndWalUnchanged": true,
+    "productionFileShareRelaxed": false
+  },
+  "integration": {
+    "checkedCommit": "e9c436803d287937d5314e6bd3f7360e71b219ff",
+    "relatedDependencyTreesEqual": true,
+    "isolatedIndexPatchCheckExitCode": 0,
+    "cherryPick": "d6f92dcd9361260eb5a6eced7fc4909fa914311e"
+  },
+  "outsideScopeFollowup": [
+    {
+      "target": "tests/Caiwu.Persistence.Sqlite.Tests/ReadbackTests.cs:72",
+      "observed": "Windows 45 failed / 64 passed / 0 skipped. File.ReadAllBytes(Database) runs while the store connection is alive; first failure occurs before store.Write is tested.",
+      "minimalSuggestion": "Storage test owner should capture physical bytes only after all corresponding SQLite handles are closed/reopened in the fixture; retain the semantic rollback and adversarial write assertions. Do not relax production hashing or claim the actual write assertions passed.",
+      "modified": false
+    },
+    {
+      "target": "tests/Caiwu.Acceptance/MutationWindows/run.ps1:15",
+      "observed": "Mutation UI probe exceeded its 150000ms process wait, on both the fresh baseline and implementation run.",
+      "minimalSuggestion": "Acceptance owner should inspect native-dialog logs and bound/complete the dialog flow independently.",
+      "modified": false
+    }
+  ],
+  "limits": [
+    "No Windows installer or update-install acceptance",
+    "No distribution archive or installer produced",
+    "No real books or reference program data used",
+    "Delivery pause retained",
+    "Linux report is supplemental, not native Windows proof"
+  ]
+}
