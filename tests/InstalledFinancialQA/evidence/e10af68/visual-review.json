@@ -1,0 +1,79 @@
+{
+  "sourceCommit": "e10af681d276c1067e013f1e259c2d921239b9c3",
+  "nativeCapture": true,
+  "resizedOrGenerated": false,
+  "images": [
+    {
+      "name": "cost-allocation.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "16adc1089d71bd8e528f3ad2f2684e648683d545a00d777771fbfe88fec22a31",
+      "visuallyInspected": true,
+      "observation": "Actual cost allocation audit grid shows labor pool84 and final cost254."
+    },
+    {
+      "name": "cost-reopened.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "74c9c7c35f6b361e9781cfde903903d22ed773f8c37e5dfbe0e72cd7f89bd57c",
+      "visuallyInspected": true,
+      "observation": "Reopened cost calculation shows final254 and per-object labor21/63/20."
+    },
+    {
+      "name": "designer-formula.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "9e560892d142e322da73f095923b14ed1c0f47b67a7e50b99e2c34275be0a7e3",
+      "visuallyInspected": true,
+      "observation": "Actual formula [periodDebit]-[periodCredit], bank calculated cell10, source context and revision visible."
+    },
+    {
+      "name": "designer-reopened.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "b931dc54196b29ea68f79bd9b2ebc3ce9e3144c39293634a4129aca83c9f42e4",
+      "visuallyInspected": true,
+      "observation": "Native template readback status and bank calculated cell10, loaded title retained."
+    },
+    {
+      "name": "four-codec-restored.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "ef3265808d7ca383ae10cb76d2f1671fa4cef03a381631ae61dada6f74e9fb00",
+      "visuallyInspected": true,
+      "observation": "Actual main Desktop displays restored new-instance success and active two-voucher ledger; independent target readback supplies content proof."
+    },
+    {
+      "name": "nonprofit-activity.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "8dffea196b5d2537e4af67cf65529f854b157c68f2290841833021dc64ec8bf5",
+      "visuallyInspected": true,
+      "observation": "Actual activity preview shows donation10 and explicit preview-only status."
+    },
+    {
+      "name": "nonprofit-balance.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "1a347f6443f77e5a1ee234487221d09c9ec64dee4acc84631249f9a03134eada",
+      "visuallyInspected": true,
+      "observation": "Actual balance-sheet preview shows opening100 and closing110 with calculation-preview limitation."
+    },
+    {
+      "name": "nonprofit-error-cleared.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "990fec64098530ce31e35da5a67c9df76e67323731ed2044d9d44b00578cce9a",
+      "visuallyInspected": true,
+      "observation": "Invalid account validation visible, both export buttons disabled, old activity report grid empty; both grids zero-row checked by UIA."
+    },
+    {
+      "name": "normal-login-source.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "4481bd7af3434726e4f028bee390de9924d102c3fb85cd91aa5780bd0172d743",
+      "visuallyInspected": true,
+      "observation": "Actual full Desktop, fixed operator control, experimental nonprofit read-only source, two posted synthetic vouchers."
+    }
+  ]
+}

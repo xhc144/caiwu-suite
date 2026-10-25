@@ -1,0 +1,90 @@
+{
+  "status": "partial",
+  "sourceCommit": "5440cf8bfb862c0a2e4219a4c695b9ef9ad94fb2",
+  "runUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40193307029",
+  "artifactUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40193307029/artifacts/12599081483",
+  "cases": [
+    {
+      "name": "voucher-cancel",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "voucher-execute-save-repeat",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "voucher-duplicate-refused",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "summary-manage",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "summary-refill",
+      "status": "failed",
+      "reason": "System.IO.InvalidDataException: PRODUCT GAP: installed voucher editor has no summary selection/refill control; saved summaries cannot be returned to a voucher through the normal UI\r\n   at Program.Require(Boolean value, String name) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 302\r\n   at Program.<>c.<Main>b__18_18() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 180\r\n   at Program.Case(String name, Action action) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 285"
+    },
+    {
+      "name": "book-preview-cancel-stale-approval",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "book-copy-new-identity",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "book-duplicate-destination-refused",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "backup-restore-same-identity",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "physical-instance-summary-isolation",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "trial-balance-visible-native",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "independent-readback",
+      "status": "passed",
+      "reason": null
+    },
+    {
+      "name": "stale-source-revision",
+      "status": "not-run",
+      "reason": "No supported normal installed UI action changes a source revision while its owned modal editor remains open. Do not mutate SQLite behind the App-owned managed-data lease or change credentials/permissions to manufacture expiry. Preview approval invalidation is verified separately and is not claimed as this case."
+    }
+  ],
+  "assertionsObserved": 53,
+  "independentReadback": {
+    "physicalLedgers": 3,
+    "sourceAndRestoreSameIdentityRevisionAndSemanticHash": true,
+    "copyHasNewIdentityAndRevisionOne": true,
+    "eachHasTwoVouchersOnePostedAndBank123_45": true,
+    "uninstallRetention": true
+  },
+  "productBlocker": "Normal installed voucher editor has no summary choose/refill entry. Root-owned production fix required.",
+  "unexecutedAction": {
+    "target": "actual installed modal copy/summary editors after external source revision/session expiry",
+    "status": "not-run",
+    "reason": "No supported normal UI operation mutates the source while owned modal editor remains open; no write behind App-owned managed lease or credential/permission alteration was used.",
+    "deniedByApproval": false,
+    "outcomeUncertain": false
+  },
+  "rawEvidenceFolder": "evidence/5440cf8-installed"
+}

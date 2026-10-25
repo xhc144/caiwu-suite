@@ -1,0 +1,3 @@
+# Preserve exact Windows evidence bytes/hashes and recognize their native CRLF.
+evidence/**/*.json -text whitespace=cr-at-eol
+evidence/**/*.log -text whitespace=cr-at-eol

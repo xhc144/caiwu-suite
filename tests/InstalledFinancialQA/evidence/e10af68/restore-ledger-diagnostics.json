@@ -1,0 +1,27 @@
+{
+  "source": {
+    "databasePath": "D:\\a\\_temp\\installed-financial-40193277510-1\\\u5408\u6210 \u7528\u6237\u6570\u636E\\\u5408\u6210 \u5B89\u88C5\u91D1\u878D\u8D26\u5957.caiwu",
+    "bookId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "revision": 1,
+    "voucherCount": 2,
+    "postedVoucherCount": 2,
+    "bankBalance": null,
+    "snapshotSha256": "3738393efec2ff3ccec20da27c668fe968ad270ac6eddbe9fce0497ae52a8959",
+    "fileSha256": "540cca96d61b4f2262752d9cb251c4df8da9886f23b6bec7f507f0eeb1e314be",
+    "fileSha256Basis": "sqlite-consistent-copy"
+  },
+  "actualRestoredTarget": {
+    "databasePath": "D:\\a\\_temp\\installed-financial-40193277510-1\\\u5408\u6210 \u7528\u6237\u6570\u636E\\Books\\9462d1dc7d554de7965ba418c7a10163\\ledger.caiwu",
+    "bookId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "revision": 1,
+    "voucherCount": 2,
+    "postedVoucherCount": 2,
+    "bankBalance": null,
+    "snapshotSha256": "3738393efec2ff3ccec20da27c668fe968ad270ac6eddbe9fce0497ae52a8959",
+    "fileSha256": "540cca96d61b4f2262752d9cb251c4df8da9886f23b6bec7f507f0eeb1e314be",
+    "fileSha256Basis": "sqlite-consistent-copy"
+  },
+  "explicitAccountCode": "1002",
+  "sourceAccountBalance": 110,
+  "restoredAccountBalance": 110
+}

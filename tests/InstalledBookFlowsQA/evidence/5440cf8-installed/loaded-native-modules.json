@@ -1,0 +1,534 @@
+[
+  {
+    "name": "Caiwu.Desktop.exe",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Desktop.exe"
+  },
+  {
+    "name": "ntdll.dll",
+    "path": "C:\\Windows\\SYSTEM32\\ntdll.dll"
+  },
+  {
+    "name": "KERNEL32.DLL",
+    "path": "C:\\Windows\\System32\\KERNEL32.DLL"
+  },
+  {
+    "name": "KERNELBASE.dll",
+    "path": "C:\\Windows\\System32\\KERNELBASE.dll"
+  },
+  {
+    "name": "apphelp.dll",
+    "path": "C:\\Windows\\SYSTEM32\\apphelp.dll"
+  },
+  {
+    "name": "SHELL32.dll",
+    "path": "C:\\Windows\\System32\\SHELL32.dll"
+  },
+  {
+    "name": "msvcp_win.dll",
+    "path": "C:\\Windows\\System32\\msvcp_win.dll"
+  },
+  {
+    "name": "ucrtbase.dll",
+    "path": "C:\\Windows\\System32\\ucrtbase.dll"
+  },
+  {
+    "name": "USER32.dll",
+    "path": "C:\\Windows\\System32\\USER32.dll"
+  },
+  {
+    "name": "win32u.dll",
+    "path": "C:\\Windows\\System32\\win32u.dll"
+  },
+  {
+    "name": "GDI32.dll",
+    "path": "C:\\Windows\\System32\\GDI32.dll"
+  },
+  {
+    "name": "gdi32full.dll",
+    "path": "C:\\Windows\\System32\\gdi32full.dll"
+  },
+  {
+    "name": "wintypes.dll",
+    "path": "C:\\Windows\\System32\\wintypes.dll"
+  },
+  {
+    "name": "combase.dll",
+    "path": "C:\\Windows\\System32\\combase.dll"
+  },
+  {
+    "name": "RPCRT4.dll",
+    "path": "C:\\Windows\\System32\\RPCRT4.dll"
+  },
+  {
+    "name": "ADVAPI32.dll",
+    "path": "C:\\Windows\\System32\\ADVAPI32.dll"
+  },
+  {
+    "name": "msvcrt.dll",
+    "path": "C:\\Windows\\System32\\msvcrt.dll"
+  },
+  {
+    "name": "sechost.dll",
+    "path": "C:\\Windows\\System32\\sechost.dll"
+  },
+  {
+    "name": "IMM32.DLL",
+    "path": "C:\\Windows\\System32\\IMM32.DLL"
+  },
+  {
+    "name": "hostfxr.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\hostfxr.dll"
+  },
+  {
+    "name": "hostpolicy.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\hostpolicy.dll"
+  },
+  {
+    "name": "coreclr.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\coreclr.dll"
+  },
+  {
+    "name": "ole32.dll",
+    "path": "C:\\Windows\\System32\\ole32.dll"
+  },
+  {
+    "name": "OLEAUT32.dll",
+    "path": "C:\\Windows\\System32\\OLEAUT32.dll"
+  },
+  {
+    "name": "bcryptPrimitives.dll",
+    "path": "C:\\Windows\\System32\\bcryptPrimitives.dll"
+  },
+  {
+    "name": "kernel.appcore.dll",
+    "path": "C:\\Windows\\SYSTEM32\\kernel.appcore.dll"
+  },
+  {
+    "name": "System.Private.CoreLib.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Private.CoreLib.dll"
+  },
+  {
+    "name": "clrjit.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\clrjit.dll"
+  },
+  {
+    "name": "icu.dll",
+    "path": "C:\\Windows\\SYSTEM32\\icu.dll"
+  },
+  {
+    "name": "Caiwu.Desktop.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Desktop.dll"
+  },
+  {
+    "name": "PresentationFramework.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\PresentationFramework.dll"
+  },
+  {
+    "name": "WindowsBase.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\WindowsBase.dll"
+  },
+  {
+    "name": "System.Runtime.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Runtime.dll"
+  },
+  {
+    "name": "System.Xaml.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Xaml.dll"
+  },
+  {
+    "name": "uxtheme.dll",
+    "path": "C:\\Windows\\system32\\uxtheme.dll"
+  },
+  {
+    "name": "System.IO.Packaging.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.IO.Packaging.dll"
+  },
+  {
+    "name": "System.Private.Uri.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Private.Uri.dll"
+  },
+  {
+    "name": "System.Collections.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Collections.dll"
+  },
+  {
+    "name": "PresentationCore.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\PresentationCore.dll"
+  },
+  {
+    "name": "System.Runtime.InteropServices.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Runtime.InteropServices.dll"
+  },
+  {
+    "name": "Microsoft.Win32.Primitives.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Microsoft.Win32.Primitives.dll"
+  },
+  {
+    "name": "dwrite.dll",
+    "path": "C:\\Windows\\SYSTEM32\\dwrite.dll"
+  },
+  {
+    "name": "DirectWriteForwarder.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\DirectWriteForwarder.dll"
+  },
+  {
+    "name": "System.Runtime.Extensions.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Runtime.Extensions.dll"
+  },
+  {
+    "name": "System.Diagnostics.Debug.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Diagnostics.Debug.dll"
+  },
+  {
+    "name": "System.Runtime.CompilerServices.VisualC.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Runtime.CompilerServices.VisualC.dll"
+  },
+  {
+    "name": "System.Threading.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Threading.dll"
+  },
+  {
+    "name": "System.Collections.NonGeneric.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Collections.NonGeneric.dll"
+  },
+  {
+    "name": "BCrypt.dll",
+    "path": "C:\\Windows\\SYSTEM32\\BCrypt.dll"
+  },
+  {
+    "name": "Microsoft.Win32.Registry.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Microsoft.Win32.Registry.dll"
+  },
+  {
+    "name": "System.Collections.Specialized.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Collections.Specialized.dll"
+  },
+  {
+    "name": "System.Memory.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Memory.dll"
+  },
+  {
+    "name": "System.ComponentModel.Primitives.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.ComponentModel.Primitives.dll"
+  },
+  {
+    "name": "System.Threading.Thread.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Threading.Thread.dll"
+  },
+  {
+    "name": "PresentationNative_cor3.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\PresentationNative_cor3.dll"
+  },
+  {
+    "name": "System.Configuration.ConfigurationManager.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Configuration.ConfigurationManager.dll"
+  },
+  {
+    "name": "System.Xml.ReaderWriter.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Xml.ReaderWriter.dll"
+  },
+  {
+    "name": "System.Private.Xml.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Private.Xml.dll"
+  },
+  {
+    "name": "System.Net.WebClient.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Net.WebClient.dll"
+  },
+  {
+    "name": "System.Text.Encoding.Extensions.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Text.Encoding.Extensions.dll"
+  },
+  {
+    "name": "System.Threading.ThreadPool.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Threading.ThreadPool.dll"
+  },
+  {
+    "name": "System.Diagnostics.TraceSource.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Diagnostics.TraceSource.dll"
+  },
+  {
+    "name": "System.ComponentModel.TypeConverter.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.ComponentModel.TypeConverter.dll"
+  },
+  {
+    "name": "System.Windows.Extensions.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Windows.Extensions.dll"
+  },
+  {
+    "name": "System.ComponentModel.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.ComponentModel.dll"
+  },
+  {
+    "name": "System.Collections.Concurrent.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Collections.Concurrent.dll"
+  },
+  {
+    "name": "System.ObjectModel.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.ObjectModel.dll"
+  },
+  {
+    "name": "clbcatq.dll",
+    "path": "C:\\Windows\\System32\\clbcatq.dll"
+  },
+  {
+    "name": "Windows.UI.dll",
+    "path": "C:\\Windows\\System32\\Windows.UI.dll"
+  },
+  {
+    "name": "Windows.UI.Immersive.dll",
+    "path": "C:\\Windows\\System32\\Windows.UI.Immersive.dll"
+  },
+  {
+    "name": "System.Net.Requests.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Net.Requests.dll"
+  },
+  {
+    "name": "System.Net.Primitives.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Net.Primitives.dll"
+  },
+  {
+    "name": "System.Net.WebHeaderCollection.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Net.WebHeaderCollection.dll"
+  },
+  {
+    "name": "PresentationFramework.Fluent.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\PresentationFramework.Fluent.dll"
+  },
+  {
+    "name": "System.Linq.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Linq.dll"
+  },
+  {
+    "name": "System.Diagnostics.Process.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Diagnostics.Process.dll"
+  },
+  {
+    "name": "shcore.dll",
+    "path": "C:\\Windows\\System32\\shcore.dll"
+  },
+  {
+    "name": "MSCTF.dll",
+    "path": "C:\\Windows\\System32\\MSCTF.dll"
+  },
+  {
+    "name": "PresentationFramework.Aero2.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\PresentationFramework.Aero2.dll"
+  },
+  {
+    "name": "System.Runtime.Loader.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Runtime.Loader.dll"
+  },
+  {
+    "name": "Caiwu.Delivery.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Delivery.dll"
+  },
+  {
+    "name": "Caiwu.Operators.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Operators.dll"
+  },
+  {
+    "name": "System.Text.Json.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Text.Json.dll"
+  },
+  {
+    "name": "System.Text.Encodings.Web.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Text.Encodings.Web.dll"
+  },
+  {
+    "name": "System.Numerics.Vectors.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Numerics.Vectors.dll"
+  },
+  {
+    "name": "System.Reflection.Emit.Lightweight.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Reflection.Emit.Lightweight.dll"
+  },
+  {
+    "name": "System.Reflection.Primitives.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Reflection.Primitives.dll"
+  },
+  {
+    "name": "System.Reflection.Emit.ILGeneration.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Reflection.Emit.ILGeneration.dll"
+  },
+  {
+    "name": "System.Text.RegularExpressions.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Text.RegularExpressions.dll"
+  },
+  {
+    "name": "System.Security.Cryptography.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Security.Cryptography.dll"
+  },
+  {
+    "name": "System.IO.Pipelines.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.IO.Pipelines.dll"
+  },
+  {
+    "name": "Caiwu.Delivery.Modules.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Delivery.Modules.dll"
+  },
+  {
+    "name": "Caiwu.Contracts.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Contracts.dll"
+  },
+  {
+    "name": "Microsoft.Extensions.Identity.Core.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Microsoft.Extensions.Identity.Core.dll"
+  },
+  {
+    "name": "Microsoft.Extensions.Options.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Microsoft.Extensions.Options.dll"
+  },
+  {
+    "name": "Caiwu.Operators.Wpf.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Operators.Wpf.dll"
+  },
+  {
+    "name": "UIAutomationTypes.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\UIAutomationTypes.dll"
+  },
+  {
+    "name": "wpfgfx_cor3.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\wpfgfx_cor3.dll"
+  },
+  {
+    "name": "D3DCompiler_47_cor3.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\D3DCompiler_47_cor3.dll"
+  },
+  {
+    "name": "DWMAPI.dll",
+    "path": "C:\\Windows\\SYSTEM32\\DWMAPI.dll"
+  },
+  {
+    "name": "d3d9.dll",
+    "path": "C:\\Windows\\SYSTEM32\\d3d9.dll"
+  },
+  {
+    "name": "VERSION.dll",
+    "path": "C:\\Windows\\SYSTEM32\\VERSION.dll"
+  },
+  {
+    "name": "dxcore.dll",
+    "path": "C:\\Windows\\SYSTEM32\\dxcore.dll"
+  },
+  {
+    "name": "d3d10warp.dll",
+    "path": "C:\\Windows\\SYSTEM32\\d3d10warp.dll"
+  },
+  {
+    "name": "directxdatabasehelper.dll",
+    "path": "C:\\Windows\\SYSTEM32\\directxdatabasehelper.dll"
+  },
+  {
+    "name": "UIAutomationProvider.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\UIAutomationProvider.dll"
+  },
+  {
+    "name": "wtsapi32.dll",
+    "path": "C:\\Windows\\SYSTEM32\\wtsapi32.dll"
+  },
+  {
+    "name": "CRYPT32.dll",
+    "path": "C:\\Windows\\System32\\CRYPT32.dll"
+  },
+  {
+    "name": "SspiCli.dll",
+    "path": "C:\\Windows\\SYSTEM32\\SspiCli.dll"
+  },
+  {
+    "name": "WINSTA.dll",
+    "path": "C:\\Windows\\SYSTEM32\\WINSTA.dll"
+  },
+  {
+    "name": "powrprof.dll",
+    "path": "C:\\Windows\\SYSTEM32\\powrprof.dll"
+  },
+  {
+    "name": "UMPDC.dll",
+    "path": "C:\\Windows\\SYSTEM32\\UMPDC.dll"
+  },
+  {
+    "name": "dataexchange.dll",
+    "path": "C:\\Windows\\system32\\dataexchange.dll"
+  },
+  {
+    "name": "twinapi.appcore.dll",
+    "path": "C:\\Windows\\system32\\twinapi.appcore.dll"
+  },
+  {
+    "name": "Windows.Storage.dll",
+    "path": "C:\\Windows\\SYSTEM32\\Windows.Storage.dll"
+  },
+  {
+    "name": "TextShaping.dll",
+    "path": "C:\\Windows\\SYSTEM32\\TextShaping.dll"
+  },
+  {
+    "name": "PresentationFramework-SystemXml.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\PresentationFramework-SystemXml.dll"
+  },
+  {
+    "name": "textinputframework.dll",
+    "path": "C:\\Windows\\SYSTEM32\\textinputframework.dll"
+  },
+  {
+    "name": "CoreMessaging.dll",
+    "path": "C:\\Windows\\SYSTEM32\\CoreMessaging.dll"
+  },
+  {
+    "name": "CoreUIComponents.dll",
+    "path": "C:\\Windows\\SYSTEM32\\CoreUIComponents.dll"
+  },
+  {
+    "name": "CRYPTBASE.DLL",
+    "path": "C:\\Windows\\SYSTEM32\\CRYPTBASE.DLL"
+  },
+  {
+    "name": "msctfui.dll",
+    "path": "C:\\Windows\\system32\\msctfui.dll"
+  },
+  {
+    "name": "UIAutomationCore.dll",
+    "path": "C:\\Windows\\SYSTEM32\\UIAutomationCore.dll"
+  },
+  {
+    "name": "WINMM.dll",
+    "path": "C:\\Windows\\SYSTEM32\\WINMM.dll"
+  },
+  {
+    "name": "twinapi.dll",
+    "path": "C:\\Windows\\System32\\twinapi.dll"
+  },
+  {
+    "name": "XmlLite.dll",
+    "path": "C:\\Windows\\System32\\XmlLite.dll"
+  },
+  {
+    "name": "System.Diagnostics.StackTrace.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\System.Diagnostics.StackTrace.dll"
+  },
+  {
+    "name": "dcomp.dll",
+    "path": "C:\\Windows\\SYSTEM32\\dcomp.dll"
+  },
+  {
+    "name": "Microsoft.Internal.WarpPal.dll",
+    "path": "C:\\Windows\\SYSTEM32\\Microsoft.Internal.WarpPal.dll"
+  },
+  {
+    "name": "DPAPI.DLL",
+    "path": "C:\\Windows\\SYSTEM32\\DPAPI.DLL"
+  },
+  {
+    "name": "Microsoft.AspNetCore.Cryptography.KeyDerivation.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Microsoft.AspNetCore.Cryptography.KeyDerivation.dll"
+  },
+  {
+    "name": "Caiwu.BookTools.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.BookTools.dll"
+  },
+  {
+    "name": "Caiwu.Core.dll",
+    "path": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Installed BookFlows \u5408\u6210 c0c41840c1074a618b278a22e51f95ea\\versions\\0.1.0.1\\Caiwu.Core.dll"
+  }
+]

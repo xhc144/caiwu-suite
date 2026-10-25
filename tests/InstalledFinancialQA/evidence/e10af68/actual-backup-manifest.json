@@ -1,0 +1,58 @@
+{
+  "formatVersion": 1,
+  "sourceInstanceId": "a513c8e4-f8da-41e1-bfea-2e038b2f753a",
+  "bookId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+  "ledgerRevision": 1,
+  "ledgerSnapshotSha256": "3738393efec2ff3ccec20da27c668fe968ad270ac6eddbe9fce0497ae52a8959",
+  "ledgerLength": 57344,
+  "ledgerSha256": "540cca96d61b4f2262752d9cb251c4df8da9886f23b6bec7f507f0eeb1e314be",
+  "attachments": [
+    {
+      "key": "costing-18c03a43fe804ad5529f0943",
+      "codec": "cost-worksheet-v1",
+      "modulePath": "Costing/worksheet-6ffbf62bc5f54c0091bac7a8c4ff1ba6.json",
+      "backupPath": "attachments/000000.json",
+      "version": "108beb2604df01c05f2b745fd6a83d0e41e6e6eb3d5241c54848237f35c2f231",
+      "length": 13602,
+      "sha256": "108beb2604df01c05f2b745fd6a83d0e41e6e6eb3d5241c54848237f35c2f231"
+    },
+    {
+      "key": "nonprofit-6ff03ad4a6caa3750951d700",
+      "codec": "nonprofit-classification-v1",
+      "modulePath": "Nonprofit/installed-reviewed.json",
+      "backupPath": "attachments/000001.json",
+      "version": "e9db7e6d6f71c69f65021159f2b14008d15ec032d8624bfe77881b20ea187ce5",
+      "length": 20573,
+      "sha256": "e9db7e6d6f71c69f65021159f2b14008d15ec032d8624bfe77881b20ea187ce5"
+    },
+    {
+      "key": "nonprofit-8cc19dfb284c0e96997ff81f",
+      "codec": "nonprofit-classification-v1",
+      "modulePath": "Nonprofit/synthetic-input.json",
+      "backupPath": "attachments/000002.json",
+      "version": "ba67116f346766f1a04dbf3de4ed9817751c33ef724e35f2036aa6c1ce4637a2",
+      "length": 20543,
+      "sha256": "ba67116f346766f1a04dbf3de4ed9817751c33ef724e35f2036aa6c1ce4637a2"
+    },
+    {
+      "key": "reports-36ea36320f0d1d59298f7af7",
+      "codec": "report-template-v1",
+      "modulePath": "Reports/installed-template.json",
+      "backupPath": "attachments/000003.json",
+      "version": "808df5d9-00d7-433c-942f-7c732cd677ec/1/D496969394E89736AA0F2A36C9640B09E528042ABE4B72DCDF6A0AFD5151A485",
+      "length": 2662,
+      "sha256": "d496969394e89736aa0f2a36c9640b09e528042abe4b72dcdf6a0afd5151a485"
+    },
+    {
+      "key": "summaries",
+      "codec": "summary-v1",
+      "modulePath": "Summaries/catalog.json",
+      "backupPath": "attachments/000004.json",
+      "version": "05369c5a-ccd2-4b69-86ff-67ea53f32aec/0/bd13337f9233c142f188fa24d9384142df13c0001432ec15f403472b14991abc",
+      "length": 192,
+      "sha256": "bd13337f9233c142f188fa24d9384142df13c0001432ec15f403472b14991abc"
+    }
+  ],
+  "includesGlobalIdentities": false,
+  "identityRecoveryBoundary": "Global Operators are excluded; use separately authorized identity backup/recovery."
+}

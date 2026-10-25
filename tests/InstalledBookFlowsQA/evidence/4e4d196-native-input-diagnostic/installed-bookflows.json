@@ -1,0 +1,101 @@
+{
+  "success": false,
+  "failure": "System.IO.InvalidDataException: Native filename input did not read back as the exact requested path.\r\n   at Program.FileDialog(String title, String path) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 394\r\n   at Program.Main(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledBookFlowsQA\\Program.cs:line 91",
+  "windowsExecuted": true,
+  "normalProductLogin": true,
+  "sourceProjectsExecutedAsProduct": false,
+  "sourceCommit": "4e4d196857dd0c2df3f72f6dff4d53fda51b5bcc",
+  "productionBaseline": "dece298946d03ad88c5031eb02dab8f87c330046",
+  "checks": [
+    "installed pointer binds the isolated data root",
+    "installed payload advertises the reviewed managed App contract",
+    "fixture uses a fresh synthetic identity store",
+    "normal product rejects a wrong synthetic password",
+    "actual product login locks the current actor control",
+    "installed process resolves coreclr.dll from its own payload",
+    "installed process resolves hostfxr.dll from its own payload",
+    "actual product process loads no native/managed image from the source checkout"
+  ],
+  "cases": [
+    {
+      "name": "voucher-cancel",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "voucher-execute-save-repeat",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "voucher-duplicate-refused",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "summary-manage",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "summary-refill",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "book-preview-cancel-stale-approval",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "book-copy-new-identity",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "book-duplicate-destination-refused",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "backup-restore-same-identity",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "physical-instance-summary-isolation",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "trial-balance-visible-native",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "independent-readback",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    },
+    {
+      "name": "stale-source-revision",
+      "status": "not-run",
+      "reason": "Controller has not reached this case."
+    }
+  ],
+  "expectedCases": [
+    "voucher-cancel",
+    "voucher-execute-save-repeat",
+    "voucher-duplicate-refused",
+    "summary-manage",
+    "summary-refill",
+    "book-preview-cancel-stale-approval",
+    "book-copy-new-identity",
+    "book-duplicate-destination-refused",
+    "backup-restore-same-identity",
+    "physical-instance-summary-isolation",
+    "trial-balance-visible-native",
+    "independent-readback",
+    "stale-source-revision"
+  ]
+}

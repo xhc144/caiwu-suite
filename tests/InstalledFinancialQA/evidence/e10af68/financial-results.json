@@ -1,0 +1,202 @@
+{
+  "success": true,
+  "failure": null,
+  "currentCase": "fourCodecRestore",
+  "windowsExecuted": true,
+  "normalProductLogin": true,
+  "actorLogin": "financial-maker",
+  "sourceCommit": "e10af681d276c1067e013f1e259c2d921239b9c3",
+  "productionBaseline": "dece298946d03ad88c5031eb02dab8f87c330046",
+  "runUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40193277510",
+  "installedProduct": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Caiwu Financial QA \u5408\u6210 3623c441777143a4afb7bc43272b741e\\versions\\0.1.0.1\\Caiwu.Desktop.exe",
+  "sourceProjectsExecutedAsProduct": false,
+  "formalStatementComplianceClaimed": false,
+  "cases": {
+    "costing": "passed",
+    "nonprofit": "passed",
+    "designer": "passed",
+    "fourCodecRestore": "passed"
+  },
+  "checks": [
+    "installed pointer binds the isolated synthetic data root",
+    "verified installed manifest binds this exact clean source SHA and managed contract",
+    "fixture begins in a fresh synthetic identity directory",
+    "synthetic fixture independent oracle: assets110 donation10, calculation preview only",
+    "normal product rejects a wrong synthetic password",
+    "normal authenticated product locks the session actor",
+    "actual installed App holds non-shareable OS lease: .delivery.lock",
+    "actual installed App holds non-shareable OS lease: .delivery-data.lock",
+    "installed native dependency resolves inside verified payload: coreclr.dll",
+    "installed native dependency resolves inside verified payload: hostfxr.dll",
+    "installed native dependency resolves inside verified payload: e_sqlite3.dll",
+    "actual product loads no image from the source checkout",
+    "installed cost sample calculates actual 250.00 before editing",
+    "native DataGrid edit labor80 to84 recalculates actual final cost254",
+    "actual installed allocation audit rows are rendered",
+    "independent registered cost JSON readback matches edited input84 and finished254",
+    "reopened installed cost window imports saved managed JSON and recalculates254 without changing file",
+    "normal installed nonprofit explicit classification edit produces reconciled two-table preview",
+    "actual installed balance preview contains independent expected assets110",
+    "actual installed activity preview contains independent expected donation10",
+    "saved classification contains the actual edited review evidence",
+    "reopened actual installed nonprofit classification restores complete preview",
+    "invalid explicit classification surfaces the actual product validation error",
+    "classification error disables both actual export controls",
+    "nonprofit validation error leaves zero old balance preview rows",
+    "nonprofit validation error leaves zero old activity preview rows",
+    "classification validation failure preserves saved reviewed JSON",
+    "actual installed designer calculates native edited decimal formula",
+    "actual designer calculated-column bank cell equals independent debit-credit10",
+    "independent template native-codec readback verifies edited title and formula",
+    "reopened designer retains saved title and file hash and recalculates actual formula cell10",
+    "actual App saved and registered five attachments covering all four native codecs including two classification files",
+    "actual backup manifest matches the independently retained trusted receipt hash",
+    "actual restore target exists while original ledger and global identities remain byte-identical",
+    "installed product exits normally",
+    "independent actual-restored SQLite readback matches full snapshot revision identity two posted vouchers and explicit bank1002 balance110",
+    "restored target has exact complete registered attachment membership across all four codecs",
+    "exact restored attachment key codec and SHA256: costing-18c03a43fe804ad5529f0943",
+    "native codec content/version equality: costing-18c03a43fe804ad5529f0943",
+    "exact restored attachment key codec and SHA256: nonprofit-6ff03ad4a6caa3750951d700",
+    "native codec content/version equality: nonprofit-6ff03ad4a6caa3750951d700",
+    "exact restored attachment key codec and SHA256: nonprofit-8cc19dfb284c0e96997ff81f",
+    "native codec content/version equality: nonprofit-8cc19dfb284c0e96997ff81f",
+    "exact restored attachment key codec and SHA256: reports-36ea36320f0d1d59298f7af7",
+    "native codec content/version equality: reports-36ea36320f0d1d59298f7af7",
+    "exact restored attachment key codec and SHA256: summaries",
+    "native codec content/version equality: summaries",
+    "all financial preview persistence and restore leave original ledger and global identities byte-identical"
+  ],
+  "artifacts": [
+    {
+      "name": "actual-backup-manifest.json",
+      "bytes": 2640,
+      "sha256": "73cf6fa2fd94b979109ccd4637909575a23fcf4e03204d817f9b2f9c2ba79c80"
+    },
+    {
+      "name": "actual-restored-readback.json",
+      "bytes": 4945,
+      "sha256": "29951e75ee309a7812845ca86ec3c281b327484f17d1002086cec469a3721e17"
+    },
+    {
+      "name": "actual-trusted-receipt.json",
+      "bytes": 308,
+      "sha256": "ceaed1cb1d84b464928846dd9f5b0d612cba8312d0bc65e38b213a3a4eed3549"
+    },
+    {
+      "name": "cost-allocation.png",
+      "bytes": 554680,
+      "sha256": "16adc1089d71bd8e528f3ad2f2684e648683d545a00d777771fbfe88fec22a31"
+    },
+    {
+      "name": "cost-reopened.png",
+      "bytes": 542725,
+      "sha256": "74c9c7c35f6b361e9781cfde903903d22ed773f8c37e5dfbe0e72cd7f89bd57c"
+    },
+    {
+      "name": "designer-formula.png",
+      "bytes": 529544,
+      "sha256": "9e560892d142e322da73f095923b14ed1c0f47b67a7e50b99e2c34275be0a7e3"
+    },
+    {
+      "name": "designer-reopened.png",
+      "bytes": 526185,
+      "sha256": "b931dc54196b29ea68f79bd9b2ebc3ce9e3144c39293634a4129aca83c9f42e4"
+    },
+    {
+      "name": "fixture-provenance.json",
+      "bytes": 617,
+      "sha256": "6aff15da817ec01ec4287ccd3a560857cd2902f9d21b6990eda478f259cd8fb4"
+    },
+    {
+      "name": "four-codec-restored.png",
+      "bytes": 501720,
+      "sha256": "ef3265808d7ca383ae10cb76d2f1671fa4cef03a381631ae61dada6f74e9fb00"
+    },
+    {
+      "name": "launcher-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "launcher-stdout.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "loaded-modules.json",
+      "bytes": 29681,
+      "sha256": "b17677d2a3c697fd03296bc6f6baa14aa8eb2ace122914ce1108a1915168adf6"
+    },
+    {
+      "name": "native-path-2f12734f1e3e4951a18b18f821d162c8.json",
+      "bytes": 589,
+      "sha256": "e373c8eb00aa730d17cf0f7a790efdf9078948c506d172b79f6c347810a4bad9"
+    },
+    {
+      "name": "native-path-32b38e2163f6499193c65c6af6476d1b.json",
+      "bytes": 653,
+      "sha256": "afb13211cf9d828652d1ba70cd0e83f699a086d9df68377bbe171777102432f6"
+    },
+    {
+      "name": "native-path-b9ac238860414f5aa8baf0bcb07521b2.json",
+      "bytes": 721,
+      "sha256": "b008fa3ac1bbfda93e2a6a1a0df5dc0305964d5b37d80db2c273f1a7b5602dfc"
+    },
+    {
+      "name": "native-path-da5d79897c3648a6a091c89e7d90a1ba.json",
+      "bytes": 650,
+      "sha256": "dc5f464fddfa6f9d3c9bf8cd79e20b8a9e525c2c8c18616a786c019d9c50638d"
+    },
+    {
+      "name": "native-path-e6eef56bf3ab45a98acf2828c9233176.json",
+      "bytes": 685,
+      "sha256": "227c38456cf395ca5fb15edfff3d73dece362f313696c365b43213a89bbd165e"
+    },
+    {
+      "name": "native-path-f2e1d640e6b64cc79f4112d950a48de9.json",
+      "bytes": 730,
+      "sha256": "8b2cd35dd80d36e202c03d516fefedd56a152a15e7f51186ad7c592ff7539b65"
+    },
+    {
+      "name": "native-path-f3025a3f15a0488d81dbb16d6cf83674.json",
+      "bytes": 730,
+      "sha256": "33458370bbd535f5387032a829014ea4f2841b5f0f2e167347313d7aa54a75f0"
+    },
+    {
+      "name": "native-path-fb46e401ef844d66957803787432beb7.json",
+      "bytes": 722,
+      "sha256": "7bec046081b77e9c11053e2b023017fc9826ae7641dde6970999c8a84b3d0881"
+    },
+    {
+      "name": "nonprofit-activity.png",
+      "bytes": 520645,
+      "sha256": "8dffea196b5d2537e4af67cf65529f854b157c68f2290841833021dc64ec8bf5"
+    },
+    {
+      "name": "nonprofit-balance.png",
+      "bytes": 517023,
+      "sha256": "1a347f6443f77e5a1ee234487221d09c9ec64dee4acc84631249f9a03134eada"
+    },
+    {
+      "name": "nonprofit-error-cleared.png",
+      "bytes": 484074,
+      "sha256": "990fec64098530ce31e35da5a67c9df76e67323731ed2044d9d44b00578cce9a"
+    },
+    {
+      "name": "normal-login-source.png",
+      "bytes": 501330,
+      "sha256": "4481bd7af3434726e4f028bee390de9924d102c3fb85cd91aa5780bd0172d743"
+    },
+    {
+      "name": "registered-before-backup.json",
+      "bytes": 1409,
+      "sha256": "a45e72a380eb07cf68ad8df543ac2745800e694ccd0ac04f51a15fba73781dad"
+    },
+    {
+      "name": "restore-ledger-diagnostics.json",
+      "bytes": 1257,
+      "sha256": "efea4b885439dbb31daf2e811af4cbbd0f19f493205951afcadc1226136d3b2d"
+    }
+  ]
+}

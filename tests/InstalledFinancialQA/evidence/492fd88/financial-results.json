@@ -1,0 +1,79 @@
+{
+  "success": false,
+  "failure": "System.IO.InvalidDataException: Native filename input did not read back as the exact requested path.\r\n   at Program.FileDialog(String title, String path) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledFinancialQA\\Native.cs:line 77\r\n   at Program.ChooseFile(String path, Boolean saving) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledFinancialQA\\Cases.cs:line 127\r\n   at Program.Costing() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledFinancialQA\\Cases.cs:line 28\r\n   at Program.RunCase(String name, Action action) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledFinancialQA\\Program.cs:line 88\r\n   at Program.Main(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\InstalledFinancialQA\\Program.cs:line 68",
+  "currentCase": "costing",
+  "windowsExecuted": true,
+  "normalProductLogin": true,
+  "sourceCommit": "492fd887cdafb98fd67b8ddffdd43b5c1f07ce8e",
+  "productionBaseline": "dece298946d03ad88c5031eb02dab8f87c330046",
+  "runUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40192430675",
+  "installedProduct": "C:\\Users\\runneradmin\\AppData\\Local\\Programs\\Caiwu Financial QA \u5408\u6210 65f0447e36504f5182b04657205cd349\\versions\\0.1.0.1\\Caiwu.Desktop.exe",
+  "sourceProjectsExecutedAsProduct": false,
+  "formalStatementComplianceClaimed": false,
+  "cases": {
+    "costing": "failed",
+    "nonprofit": "not-run",
+    "designer": "not-run",
+    "fourCodecRestore": "not-run"
+  },
+  "checks": [
+    "installed pointer binds the isolated synthetic data root",
+    "verified installed manifest binds this exact clean source SHA and managed contract",
+    "fixture begins in a fresh synthetic identity directory",
+    "synthetic fixture independent oracle: assets110 donation10, calculation preview only",
+    "normal product rejects a wrong synthetic password",
+    "normal authenticated product locks the session actor",
+    "actual installed App holds non-shareable OS lease: .delivery.lock",
+    "actual installed App holds non-shareable OS lease: .delivery-data.lock",
+    "installed native dependency resolves inside verified payload: coreclr.dll",
+    "installed native dependency resolves inside verified payload: hostfxr.dll",
+    "installed native dependency resolves inside verified payload: e_sqlite3.dll",
+    "actual product loads no image from the source checkout",
+    "installed cost sample calculates actual 250.00 before editing",
+    "native DataGrid edit labor80 to84 recalculates actual final cost254",
+    "actual installed allocation audit rows are rendered",
+    "independent registered cost JSON readback matches edited input84 and finished254"
+  ],
+  "artifacts": [
+    {
+      "name": "cost-allocation.png",
+      "bytes": 557684,
+      "sha256": "0791fbb6a93ed77ea44f3ecf037b3cfd365c1239c27d567faa79f922f048cd3e"
+    },
+    {
+      "name": "failure-ui-tree.json",
+      "bytes": 24062,
+      "sha256": "ba93bd376510e3d7fc1a31490073e43006e8cfdfb8e58645476b75e627a56b80"
+    },
+    {
+      "name": "failure.png",
+      "bytes": 530080,
+      "sha256": "63fc4329c7f31114cee7b9bf53f7b0a1b36c064500d3dad25e86759eeaabe637"
+    },
+    {
+      "name": "fixture-provenance.json",
+      "bytes": 617,
+      "sha256": "cda628726b765286d282f9363ff3bb32454eebfd05be5e4236c08f042d34acdf"
+    },
+    {
+      "name": "loaded-modules.json",
+      "bytes": 29600,
+      "sha256": "15a4c8557bd75ef156f6416744bf79feb05ae96502b9926bef651e649fa4b783"
+    },
+    {
+      "name": "native-path-6cfe2f0d06a44c7688c595e8909e3ab2.json",
+      "bytes": 586,
+      "sha256": "a4984dcaaded151e92920f74d68b0d18fef8872da322b4781803d6ff63d8e255"
+    },
+    {
+      "name": "native-path-a1520550bf244bdaa8c9431100d25fbb.json",
+      "bytes": 589,
+      "sha256": "a59e1fbb6bea7c1dd982aa5404601edc2d765c53cb314fffd251eb9114328bb0"
+    },
+    {
+      "name": "normal-login-source.png",
+      "bytes": 504672,
+      "sha256": "dc4d8097fc6e0f24b462218e6a250ee81af8368c5e55703b3b180a5bc1f5f957"
+    }
+  ]
+}

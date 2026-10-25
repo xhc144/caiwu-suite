@@ -1,0 +1,180 @@
+{
+  "sourceCommit": "5440cf8bfb862c0a2e4219a4c695b9ef9ad94fb2",
+  "files": [
+    {
+      "path": "installation-and-independent-readback.json",
+      "bytes": 2590,
+      "sha256": "2ca77aa96d06ab4402037ebe560f2c72fb08eed39dc22d8709ef9ad8dcfee6a1"
+    },
+    {
+      "path": "runtime\\book-copy-approved.png",
+      "bytes": 567172,
+      "sha256": "ad0088dea1f368f0b11a19ed27aa61284915614b4ae5e0ed0d121af7f5ac61c4"
+    },
+    {
+      "path": "runtime\\book-copy-saved.png",
+      "bytes": 507482,
+      "sha256": "793e7ef33c94797b7be46c116e6b218b231133214c654f99860566a956797353"
+    },
+    {
+      "path": "runtime\\book-duplicate-target-rejected.png",
+      "bytes": 561763,
+      "sha256": "217ee5ef2f6b1732d3f124e2e23f038d2a10cdd39b720fc13a82acab4eb0e742"
+    },
+    {
+      "path": "runtime\\book-stale-preview-rejected.png",
+      "bytes": 556616,
+      "sha256": "23371ab00f7246e18726e6f51a6343428a2ca13255f46c65284fc0e8622e7b6f"
+    },
+    {
+      "path": "runtime\\controller-stderr.log",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "runtime\\controller-stdout.log",
+      "bytes": 2,
+      "sha256": "7eb70257593da06f682a3ddda54a9d260d4fc514f645237f5ca74b08f8da61a6"
+    },
+    {
+      "path": "runtime\\installed-bookflows.json",
+      "bytes": 7211,
+      "sha256": "1750e305d0a389acc2724015160bc80870580a799aabe6f9fcd87753a9e5c5ed"
+    },
+    {
+      "path": "runtime\\loaded-native-modules.json",
+      "bytes": 22672,
+      "sha256": "b4f40bb1cefd009f19d93e75ec713c0da43b19d8d6f5e719bab103038b671f67"
+    },
+    {
+      "path": "runtime\\native-path-032bb2b300074be390966bd84a981235.json",
+      "bytes": 517,
+      "sha256": "0a0c7dcabfdc206363bd9b8164ff3b6aaabc429f12e07fd11e0fb33dc614aa01"
+    },
+    {
+      "path": "runtime\\native-path-046ab17e52a348bdb680afaf34b47f3b.json",
+      "bytes": 517,
+      "sha256": "0a0c7dcabfdc206363bd9b8164ff3b6aaabc429f12e07fd11e0fb33dc614aa01"
+    },
+    {
+      "path": "runtime\\native-path-0841d0c84e344bbd9997e7b868848e70.json",
+      "bytes": 523,
+      "sha256": "6a57c439b15dc75871374235caaceadd7d1713bb2b30469a4172cb605a2f7652"
+    },
+    {
+      "path": "runtime\\native-path-8689f61482d74568ac6d15ba31fd7009.json",
+      "bytes": 517,
+      "sha256": "0a0c7dcabfdc206363bd9b8164ff3b6aaabc429f12e07fd11e0fb33dc614aa01"
+    },
+    {
+      "path": "runtime\\native-path-b82c5f11cd2c4154973520d2e3589dee.json",
+      "bytes": 649,
+      "sha256": "7227b9b10c7049fe2189d2acb984f4de18d7cec2912ca2b9262586cbfb0d4d73"
+    },
+    {
+      "path": "runtime\\new-book.png",
+      "bytes": 500566,
+      "sha256": "b8b5080b96d0f6ef014ffec37cb381049564160f7089f1528546541491d820cb"
+    },
+    {
+      "path": "runtime\\normal-login.png",
+      "bytes": 482813,
+      "sha256": "f910eb79bcc5cb6c5ff6e3c46054fb3335970757e7d9c515182d3266834f3d72"
+    },
+    {
+      "path": "runtime\\posted-voucher.png",
+      "bytes": 498716,
+      "sha256": "710f2e65d0aead98c7b7ef668ea03256c3a2d2ce39244b7aeca4f2a02c57c41f"
+    },
+    {
+      "path": "runtime\\readback.json",
+      "bytes": 16990,
+      "sha256": "a08e43381358246ed1c6b9c314e94ae6c8e938228b58a4eaf65981787a196c3c"
+    },
+    {
+      "path": "runtime\\same-identity-restored.png",
+      "bytes": 503502,
+      "sha256": "62ee67c54b8950289c155eaa30a1cc44b5075b7d31b52b17d7393daf112d4a4a"
+    },
+    {
+      "path": "runtime\\second-instance-summary-saved.png",
+      "bytes": 520000,
+      "sha256": "cc3d14a5f703c299673dbca396a657521153b47c40da4231341cb68d1ded0872"
+    },
+    {
+      "path": "runtime\\source-instance-still-isolated.png",
+      "bytes": 519890,
+      "sha256": "e32367ae2e813f24dd9677400a8df5922b52c85335161261a1d94366dcfae933"
+    },
+    {
+      "path": "runtime\\summary-persisted.png",
+      "bytes": 523434,
+      "sha256": "7e41dc47ee5c29a1901e8e9e2d604a1b382029b4d4a61d2aee77b571e185a29f"
+    },
+    {
+      "path": "runtime\\summary-refill-controls.json",
+      "bytes": 881,
+      "sha256": "a3c5e7b4e709eee3eeb63317e073267464c1b637535126ff36c34856f3f402a7"
+    },
+    {
+      "path": "runtime\\summary-refill-failure.png",
+      "bytes": 504753,
+      "sha256": "c3e56dd38987a589762234aaac2fb8de909b3e58b8774e62f6a8a81e700dbe63"
+    },
+    {
+      "path": "runtime\\summary-refill-missing-entry.png",
+      "bytes": 504748,
+      "sha256": "256d4fa3b7ea186fe80fe574aa20d43a8726ea6ef28bef6fc70187d06e9472e2"
+    },
+    {
+      "path": "runtime\\summary-refill-ui-tree.json",
+      "bytes": 21120,
+      "sha256": "047fff70d56408c723d1253d87916e1a67fc4e9a96b4ce802cb5dad4a46bad2a"
+    },
+    {
+      "path": "runtime\\summary-reopened.png",
+      "bytes": 522364,
+      "sha256": "99d2347d44e4a25dd349f5d69ac482b35b28a3ea3823016853ddb674e0b5155b"
+    },
+    {
+      "path": "runtime\\trial-balance-confirmed-native.png",
+      "bytes": 502583,
+      "sha256": "3ba5d9171959649516a8ab480091977438df13fcbe736f66b3e6ab2dd95790ff"
+    },
+    {
+      "path": "runtime\\trial-balance-visible-receipt.json",
+      "bytes": 623,
+      "sha256": "93ed1ef780b81511cb9feb59230528b046a1c4c79e2d5f0b0d295e31549a8834"
+    },
+    {
+      "path": "runtime\\voucher-choice-cancel.png",
+      "bytes": 532126,
+      "sha256": "32475e4bc409d81d13bef8e5cf66d33bce0679a0e2a176b671b7f165381fedd0"
+    },
+    {
+      "path": "runtime\\voucher-copy-before-save.png",
+      "bytes": 501958,
+      "sha256": "326f3e237a3743dbf4fc9663fe67f4040dda6a26306c2007c12b04def28d3443"
+    },
+    {
+      "path": "runtime\\voucher-copy-saved.png",
+      "bytes": 504526,
+      "sha256": "d39c6a9378125e989b3ea08b952b8750422934e4d6cbb54fca219817aa96ef42"
+    },
+    {
+      "path": "runtime\\voucher-duplicate-rejected.png",
+      "bytes": 542163,
+      "sha256": "4510f17435a643f329f6b0943b90a4110928a3c31f05abe2da8db30f23b9096f"
+    },
+    {
+      "path": "runtime\\voucher-editor-cancel.png",
+      "bytes": 501958,
+      "sha256": "326f3e237a3743dbf4fc9663fe67f4040dda6a26306c2007c12b04def28d3443"
+    },
+    {
+      "path": "runtime\\voucher-input.png",
+      "bytes": 509260,
+      "sha256": "c1d417b31461eb7bc8b5ced8c2165bf753ab3ac850e86da9460cf709b36a1290"
+    }
+  ]
+}
