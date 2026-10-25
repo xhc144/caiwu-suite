@@ -44,7 +44,7 @@ try {
             $project = "$PSScriptRoot/BookTools/Caiwu.CopySummaryBook.WindowsQA.csproj"
             Invoke-Bounded (Get-Command dotnet).Source @('build', $project, '-c', 'Release', '-warnaserror', '--nologo') 'build' 240
             $dll = "$PSScriptRoot/BookTools/bin/Release/net10.0-windows/Caiwu.CopySummaryBook.WindowsQA.dll"
-            $caseNames = @('book-preview-cancel','book-full','book-opening','book-stale','book-busy-cancel','book-race','voucher-focus-sqlite','voucher-stale-sqlite','summary-bad-query')
+            $caseNames = @('book-workarea-1024','book-workarea-1920','book-preview-cancel','book-full','book-opening','book-stale','book-busy-cancel','book-race','voucher-focus-sqlite','voucher-stale-sqlite','summary-bad-query')
             foreach ($caseName in $caseNames) {
                 # Each modal flow owns a fresh process; continue independent cases after failure.
                 try {
@@ -76,6 +76,6 @@ finally {
         $trees[$path] = (& git -C $root rev-parse "${sha}:$path").Trim()
     }
     $files = @(Get-ChildItem $OutputDirectory -File | ForEach-Object { @{ file = $_.Name; bytes = $_.Length; sha256 = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() } })
-    @{ checkoutCommit = $sha; module = $Module; passed = ($null -eq $failed); error = $failed; cases = $cases; sourceTrees = $trees; files = $files; actualWindows = $IsWindows; inputMethod = 'WPF RoutedEvent/property driving; no native keyboard, mouse or IME claim'; timestampUtc = [DateTime]::UtcNow.ToString('O') } | ConvertTo-Json -Depth 12 | Set-Content -Encoding utf8 (Join-Path $OutputDirectory 'evidence-manifest.json')
+    @{ checkoutCommit = $sha; module = $Module; passed = ($null -eq $failed); error = $failed; cases = $cases; sourceTrees = $trees; files = $files; actualWindows = $IsWindows; inputMethod = 'See per-case receipts: workarea cases use native SendInput mouse; other cases use WPF RoutedEvent/property driving; no native keyboard/IME or multi-DPI claim'; timestampUtc = [DateTime]::UtcNow.ToString('O') } | ConvertTo-Json -Depth 12 | Set-Content -Encoding utf8 (Join-Path $OutputDirectory 'evidence-manifest.json')
 }
 if ($failed) { throw $failed }

@@ -4,6 +4,7 @@ on:
     branches: [codex/module-copy-summary-qa]
     paths:
       - 'tests/Caiwu.ModuleWindowsQA/CopySummaryBook/**'
+      - 'src/Caiwu.BookTools/Wpf/**'
       - '.github/workflows/module-copy-summary-qa.yml'
   workflow_dispatch:
 permissions:

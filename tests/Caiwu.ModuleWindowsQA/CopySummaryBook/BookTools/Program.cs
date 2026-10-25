@@ -28,10 +28,13 @@ internal static class Program
         var root = Path.Combine(Path.GetTempPath(), "caiwu-module-qa-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(root);
         Application? app = null;
+        NativeDisplayMode? display = null;
         string? error = null;
         try
         {
             Need(OperatingSystem.IsWindows(), "actual Windows required");
+            if (name == "book-workarea-1024") display = new(1024, 768);
+            if (name == "book-workarea-1920") display = new(1920, 1080);
             app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             app.Resources.MergedDictionaries.Add(new ResourceDictionary { Source = new Uri("/Caiwu.Desktop;component/Themes/Modern.xaml", UriKind.Relative) });
             Need(app.Resources["AppCanvas"] is SolidColorBrush, "exact production Modern.xaml resources loaded without product startup");
@@ -43,6 +46,8 @@ internal static class Program
                 case "book-stale": BookStale(root); break;
                 case "book-busy-cancel": BookBusyCancel(root); break;
                 case "book-race": BookRace(root); break;
+                case "book-workarea-1024": WorkAreaFlow(root, "1024"); break;
+                case "book-workarea-1920": WorkAreaFlow(root, "1920"); break;
                 case "voucher-focus-sqlite": Voucher(root, false); break;
                 case "voucher-stale-sqlite": Voucher(root, true); break;
                 case "summary-bad-query": SummaryBadQuery(root); break;
@@ -53,6 +58,7 @@ internal static class Program
         finally
         {
             app?.Shutdown();
+            try { display?.Dispose(); } catch (Exception ex) { error = (error ?? "") + "\nDisplay restore failed: " + ex; }
             try { Directory.Delete(root, true); }
             catch (Exception ex) { error = (error ?? "") + "\nSynthetic cleanup failed: " + ex; }
             File.WriteAllText(Path.Combine(Output, name + ".json"), JsonSerializer.Serialize(new
@@ -60,11 +66,49 @@ internal static class Program
                 name, passed = error is null, error, checks, observations,
                 checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_MODULE_QA_COMMIT"),
                 actualWindowsWpf = OperatingSystem.IsWindows(),
-                inputMethod = "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+                inputMethod = name.StartsWith("book-workarea-", StringComparison.Ordinal)
+                    ? "Actual work-area bounds/hit tests and native SendInput mouse preview/approval/confirm/cancel; fields set through WPF properties. Native keyboard/IME and other DPI values not exercised."
+                    : "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
                 data = "new synthetic temporary books only", captures = NativeCapture.Captures
             }, new JsonSerializerOptions { WriteIndented = true }));
         }
         return error is null ? 0 : 1;
+    }
+    private static void WorkAreaFlow(string root, string size)
+    {
+        var source = CreateBook(root, "workarea"); var shown = Read(source); var hash = Hash(source);
+        foreach (var accept in new[] { false, true })
+        {
+            var target = Path.Combine(root, accept ? "accepted.caiwu" : "cancelled.caiwu");
+            var dialog = new BookCopyWindow(new(), shown, source, "合成窗口验收员");
+            Drive(dialog, () =>
+            {
+                observations.Add(NativeWorkArea.Verify(dialog));
+                var name = BookBox(dialog, "NewBookName"); name.BringIntoView(); name.Focus(); NativeWorkArea.Pump();
+                Need(name.IsKeyboardFocused, "scrollable input can receive actual keyboard focus");
+                NativeWorkArea.Click(dialog, Descendants<Button>(dialog).Single(b => b.Content as string == "生成复制前预览"));
+                Need(dialog.IsVisible && !string.IsNullOrWhiteSpace(Find<TextBlock>(dialog, "StatusText").Text), "native invalid preview retains visible window and error");
+                SetBook(dialog, target);
+                NativeWorkArea.Click(dialog, Descendants<Button>(dialog).Single(b => b.Content as string == "生成复制前预览"));
+                Need(Find<TextBlock>(dialog, "PreviewText").Text.Contains(target), "native preview displays exact target before approval");
+                var scroll = Find<ScrollViewer>(dialog, "ContentScroll");
+                Need(scroll.ScrollableHeight > 0, "long form and complete plan remain scrollable instead of clipped");
+                scroll.ScrollToTop(); NativeWorkArea.Pump(); observations.Add(NativeWorkArea.Verify(dialog));
+                scroll.ScrollToBottom(); NativeWorkArea.Pump(); observations.Add(NativeWorkArea.Verify(dialog));
+                NativeWorkArea.Click(dialog, Find<CheckBox>(dialog, "Confirmation"));
+                Need(Find<Button>(dialog, "ExecuteButton").IsEnabled, "native approval enables visible execute button");
+                observations.Add(NativeWorkArea.Verify(dialog));
+                NativeCapture.Save(dialog, "book-workarea-" + size + (accept ? "-confirm.png" : "-cancel.png"));
+                NativeWorkArea.Click(dialog, Find<Button>(dialog, accept ? "ExecuteButton" : "CancelButton"));
+            }, waitsForAsyncClose: true);
+            if (accept)
+            {
+                Need(dialog.Result is not null && File.Exists(target), "native visible confirmation creates target");
+                Need(Read(target).Book.Id == dialog.Result!.Book.Id && Read(target).Vouchers.Count == shown.Vouchers.Count, "native confirmed copy reopens with planned identity and content");
+            }
+            else Need(dialog.Result is null && !File.Exists(target), "native visible cancellation publishes nothing");
+            Need(Hash(source) == hash, "work-area interaction leaves source bytes unchanged");
+        }
     }
     private static void BookPreview(string root)
     {
