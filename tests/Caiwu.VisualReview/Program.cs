@@ -132,7 +132,7 @@ internal static class Program
             captureMethod = "Win32 PrintWindow, complete native window including non-client frame; no image resize or crop",
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_VISUAL_COMMIT"),
             sourceTree = Environment.GetEnvironmentVariable("CAIWU_VISUAL_SOURCE_TREE"),
-            generatedAtUtc = DateTimeOffset.UtcNow, checks = Checks, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
+            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
 
     private static void SizeNative(Window window)
     {

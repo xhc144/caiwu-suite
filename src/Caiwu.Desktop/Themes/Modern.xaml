@@ -2,8 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:dialogs="clr-namespace:Caiwu.Desktop.Dialogs">
   <ResourceDictionary.MergedDictionaries>
-    <!-- Keep Microsoft's complete editing, calendar, menu and accessibility templates. -->
-    <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.xaml" />
+    <!-- Use the complete light dictionary: Fluent.xaml alone has templates but omits the colour resources. -->
+    <ResourceDictionary Source="pack://application:,,,/PresentationFramework.Fluent;component/Themes/Fluent.Light.xaml" />
   </ResourceDictionary.MergedDictionaries>
   <SolidColorBrush x:Key="AppCanvas" Color="#F2F5FA" />
   <SolidColorBrush x:Key="AppSurface" Color="#FFFFFF" />
