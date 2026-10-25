@@ -63,7 +63,7 @@ def main():
     if out.exists() and any(out.iterdir()):
         raise RuntimeError('Artifact output must be empty; existing files are never deleted')
     out.mkdir(parents=True, exist_ok=True)
-    helper_project = ROOT / 'packaging-next/src/Caiwu.Delivery/Caiwu.Delivery.csproj'
+    helper_project = ROOT / 'packaging-next/src/Caiwu.Delivery.Host/Caiwu.Delivery.Host.csproj'
     desktop_project = ROOT / 'src/Caiwu.Desktop/Caiwu.Desktop.csproj'
     if not options.skip_tests:
         run([options.dotnet, 'restore', ROOT / 'tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj', '--locked-mode'], env=environment)
@@ -72,7 +72,10 @@ def main():
     else:
         run([options.dotnet, 'restore', helper_project, '--locked-mode'], env=environment)
         run([options.dotnet, 'build', helper_project, '-c', 'Release', '--no-restore', '--nologo'], env=environment)
-    cli = helper_project.parent / 'bin/Release/net10.0/Caiwu.Delivery.dll'
+    # Component tests build the codec-free library CLI; build the composition host explicitly.
+    run([options.dotnet, 'restore', helper_project, '--locked-mode'], env=environment)
+    run([options.dotnet, 'build', helper_project, '-c', 'Release', '--no-restore', '--nologo'], env=environment)
+    cli = helper_project.parent / 'bin/Release/net10.0/Caiwu.Delivery.Host.dll'
     # This import redirects graph-wide lock files into this owner's directory. Root projects remain untouched.
     base_common = [f'-p:CustomAfterMicrosoftCommonTargets={ROOT / "packaging-next/Delivery.restore.targets"}',
               f'-p:RuntimeFrameworkVersion={RUNTIME}', '-p:TargetLatestRuntimePatch=false']
@@ -83,7 +86,7 @@ def main():
     payload = out / 'payload'
     helper = out / 'helper'
     for project, destination, single in [(desktop_project, payload, False), (helper_project, helper, True)]:
-        common = [*base_common, '-p:DeliveryLockGraph=' + ('helper' if single else 'desktop')]
+        common = [*base_common, '-p:DeliveryLockGraph=' + ('host' if single else 'desktop')]
         special = [f'-p:PublishSingleFile={str(single).lower()}']
         if single:
             special += ['-p:IncludeNativeLibrariesForSelfExtract=true']
@@ -93,7 +96,7 @@ def main():
         run(restore, env=environment)
         run([options.dotnet, 'publish', project, '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true',
              '--no-restore', '-o', destination, *common, *version, *special], env=environment)
-    shutil.copy2(helper / 'Caiwu.Delivery.exe', payload / 'Caiwu.Delivery.exe')
+    shutil.copy2(helper / 'Caiwu.Delivery.Host.exe', payload / 'Caiwu.Delivery.exe')
     shutil.copy2(ROOT / 'packaging-next/update-policy.disabled.json', payload / 'update-policy.json')
     notices = payload / 'delivery-notices'
     notices.mkdir()
@@ -120,8 +123,12 @@ def main():
             raise RuntimeError(f'Expected a Windows x64 PE host: {executable}')
     run([options.dotnet, cli, 'manifest', payload, options.version, commit], env=environment)
     run([options.dotnet, cli, 'verify', payload], env=environment)
+    if not options.allow_dirty and (run(['git', 'rev-parse', 'HEAD'], capture=True) != commit or
+                                   run(['git', 'status', '--porcelain', '--untracked-files=normal'], capture=True)):
+        raise RuntimeError('Source changed during publish; freeze changed dependencies in a commit before packaging')
+    ensure_delivery_allowed(ROOT)
     installer = out / f'caiwu-{options.version}-win-x64-setup.exe'
-    definitions = {'PAYLOAD': payload, 'HELPER': helper / 'Caiwu.Delivery.exe', 'OUTPUT': installer,
+    definitions = {'PAYLOAD': payload, 'HELPER': helper / 'Caiwu.Delivery.Host.exe', 'OUTPUT': installer,
                    'PRODUCT_VERSION': options.version}
     run([options.makensis, '-V2', '-NOCONFIG', *[f'-D{k}={v}' for k, v in definitions.items()],
          ROOT / 'packaging-next/installer/Caiwu.nsi'], env=environment)

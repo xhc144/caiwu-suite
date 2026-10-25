@@ -1,0 +1,55 @@
+name: Windows candidate preparation under delivery hold
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: caiwu-candidate-validation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 10.0.402
+      - name: Require independent review hold
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'This preparatory workflow requires the independent delivery hold.' }
+      - name: Publish exact clean source with frozen RID graphs without installer or archive
+        shell: pwsh
+        timeout-minutes: 7
+        run: ./packaging-next/Prepare-WindowsCandidate.ps1 -OutputDirectory artifacts/candidate-preparation
+      - name: Exercise the actual self-contained helper process and native module codecs
+        shell: pwsh
+        timeout-minutes: 4
+        run: |
+          dotnet run --project tests/Caiwu.Delivery.Tests/HostIntegration -c Release -- artifacts/candidate-preparation/helper/Caiwu.Delivery.Host.exe artifacts/candidate-preparation/host-integration-windows.json
+          if ($LASTEXITCODE -ne 0) { throw 'Published helper integration failed.' }
+          dotnet run --project tests/Caiwu.Delivery.Tests/ModuleIntegration -c Release -- artifacts/candidate-preparation/module-integration-windows.json
+          if ($LASTEXITCODE -ne 0) { throw 'Four native attachment integration failed.' }
+      - name: Exercise independent normal synthetic login and feature windows
+        shell: pwsh
+        timeout-minutes: 4
+        run: ./tests/Caiwu.Desktop.FeatureTests/Windows/run.ps1 -Evidence artifacts/candidate-authentication
+      - name: Confirm source identity and distribution hold
+        if: always()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Delivery hold disappeared.' }
+          if (@(git status --porcelain --untracked-files=normal).Count -ne 0) { git status --short; throw 'Source changed while validating.' }
+          if (@(Get-ChildItem artifacts -Recurse -File | Where-Object { $_.Extension -eq '.zip' -or $_.Name -like '*setup*.exe' }).Count -ne 0) { throw 'Preparation produced a distribution archive or installer.' }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: candidate-preparation-evidence-${{ github.sha }}
+          path: |
+            artifacts/candidate-preparation/*.json
+            artifacts/candidate-authentication/*.json
+            artifacts/candidate-authentication/*.png
+            artifacts/candidate-authentication/*.txt
+            artifacts/candidate-authentication/*.log
+          if-no-files-found: warn
