@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="src/Caiwu.Contracts/Caiwu.Contracts.csproj" />
   <Project Path="src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
+  <Project Path="tests/Caiwu.Desktop.Logic.Tests/Caiwu.Desktop.Logic.Tests.csproj" />
 </Solution>
