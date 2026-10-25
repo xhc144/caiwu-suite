@@ -14,7 +14,12 @@ import re
 import struct
 from pathlib import Path
 
-VERSION = "1.0"
+VERSION = "1.1"
+DEFAULT_MAX_FILE_BYTES = 128 * 1024 * 1024
+DEFAULT_MAX_TOTAL_FILE_BYTES = 1024 * 1024 * 1024
+DEFAULT_MAX_OBJECTS = 10000
+DEFAULT_MAX_TRAVERSAL_STEPS = 1000000
+DEFAULT_MAX_TOTAL_OBJECT_BYTES = 256 * 1024 * 1024
 FORMAT_SOURCE = "https://www.dwox.com/PBL_File_Format.txt"
 TERMS = ["sqlca", "sqlcode", "commit", "rollback", "connect", "disconnect",
          "dbbackup", "dbunload", "dbvalid", "dbeng8", "dbeng9", "saveas",
@@ -30,6 +35,45 @@ def sha(data):
 
 class Invalid(ValueError):
     pass
+
+
+class LimitExceeded(Invalid):
+    pass
+
+
+class Budget:
+    """Shared across every library/file in a batch, including repeated DAT reads.
+
+    Traversal steps charge aligned block scans, node visits, entries and DAT hops.
+    Reconstructed bytes separately bound work done by keyword/regex scans. These
+    are work counters, not a wall-clock deadline or a guarantee of full recovery.
+    """
+    def __init__(self, max_objects=DEFAULT_MAX_OBJECTS,
+                 max_traversal_steps=DEFAULT_MAX_TRAVERSAL_STEPS,
+                 max_total_object_bytes=DEFAULT_MAX_TOTAL_OBJECT_BYTES,
+                 max_total_file_bytes=DEFAULT_MAX_TOTAL_FILE_BYTES):
+        self.limits = {"objects": max_objects, "traversal_steps": max_traversal_steps,
+                       "reconstructed_object_bytes": max_total_object_bytes,
+                       "input_file_bytes": max_total_file_bytes}
+        if any(v <= 0 for v in self.limits.values()):
+            raise ValueError("budget limits must be positive")
+        self.used = {key: 0 for key in self.limits}
+        self.exhausted = set()
+
+    def take(self, key, amount=1):
+        if amount < 0:
+            raise ValueError("negative budget charge")
+        if self.used[key] + amount > self.limits[key]:
+            self.exhausted.add(key)
+            raise LimitExceeded("budget_exhausted:" + key)
+        self.used[key] += amount
+
+    def snapshot(self):
+        return {"scope": "entire_batch_when_shared_otherwise_single_probe",
+                "limits": dict(self.limits), "used": dict(self.used),
+                "exhausted": sorted(self.exhausted),
+                "traversal_step_unit": "aligned block scan, node visit, ENT entry or DAT hop",
+                "wall_clock_deadline_enforced": False}
 
 
 def u16(data, off):
@@ -51,6 +95,31 @@ def physical_spans(segments, start, size):
         if b > a:
             spans.append({"file_offset": s["file_offset"] + a - s["object_offset"], "bytes": b - a})
     return spans
+
+
+def datawindow_signature(data, segments, complete):
+    """Detect a text signature in either encoding; absence remains unproven."""
+    matches = []
+    if data is not None:
+        lowered = data.lower()
+        for encoding in ("ascii", "utf-16le"):
+            positions = []
+            for term in ("datawindow", "table", "column"):
+                needle = term.encode(encoding)
+                offset = lowered.find(needle)
+                if offset < 0:
+                    break
+                positions.append({"term": term, "object_offset": offset,
+                                  "file_spans": physical_spans(segments, offset, len(needle))})
+            else:
+                matches.append({"encoding": encoding, "occurrences": positions})
+    status = "not_evaluated" if data is None else "detected" if matches else "not_detected_in_available_bytes"
+    return {"datawindow_text_signature_candidate": True if matches else None,
+            "datawindow_text_signature_detection": {
+                "status": status, "input_complete": complete,
+                "encodings_checked": ["ascii", "utf-16le"] if data is not None else [],
+                "matches": matches, "absence_proven": False,
+                "is_parsed_DataWindow_definition": False}}
 
 
 def string_hints(data, segments, limit):
@@ -93,9 +162,11 @@ def string_hints(data, segments, limit):
 
 
 class Library:
-    def __init__(self, data, header, max_object_bytes=32 * 1024 * 1024, hint_limit=100):
+    def __init__(self, data, header, max_object_bytes=32 * 1024 * 1024, hint_limit=100,
+                 budget=None):
         self.data, self.header = data, header
         self.max_object_bytes, self.hint_limit = max_object_bytes, hint_limit
+        self.budget = budget if budget is not None else Budget()
         self.errors, self.objects, self.nodes = [], [], []
         if data[header:header + 4] != b"HDR*":
             raise Invalid("missing_HDR")
@@ -116,6 +187,11 @@ class Library:
             return None, [], ["object_exceeds_byte_limit"]
         out, spans, errors, seen = bytearray(), [], [], set()
         while pointer:
+            try:
+                self.budget.take("traversal_steps")
+            except LimitExceeded as exc:
+                errors.append(str(exc))
+                break
             if pointer in seen:
                 errors.append("DAT_chain_cycle")
                 break
@@ -133,6 +209,11 @@ class Library:
             if len(out) + length > declared:
                 errors.append("DAT_bytes_exceed_declared_size")
                 break
+            try:
+                self.budget.take("reconstructed_object_bytes", length)
+            except LimitExceeded as exc:
+                errors.append(str(exc))
+                break
             spans.append({"object_offset": len(out), "file_offset": pointer + 10,
                           "bytes": length, "block_offset": pointer, "next_block_raw": next_pointer})
             out.extend(self.data[pointer + 10:pointer + 10 + length])
@@ -142,6 +223,7 @@ class Library:
         return bytes(out), spans, errors
 
     def node(self, offset):
+        self.budget.take("traversal_steps")
         if offset % 512 or offset + 3072 > len(self.data) or self.data[offset:offset + 4] != b"NOD*":
             raise Invalid("invalid_NOD_pointer_or_signature")
         count, free = u16(self.data, offset + 20), u16(self.data, offset + 16)
@@ -152,6 +234,7 @@ class Library:
                 "entry_count": count, "free_bytes": free, "entries_parsed": 0}
         pos = offset + 32
         for _ in range(count):
+            self.budget.take("traversal_steps")
             if pos + self.entry_size > offset + 3072 or self.data[pos:pos + 4] != b"ENT*":
                 self.errors.append({"offset": pos, "error": "invalid_ENT_signature_or_bounds"})
                 break
@@ -163,6 +246,7 @@ class Library:
                 break
             raw_name = self.data[pos + self.entry_size:pos + self.entry_size + name_size]
             name = raw_name.decode(self.encoding, errors="replace").rstrip("\x00")
+            self.budget.take("objects")
             blob, spans, errors = self.chain(pointer, size)
             obj = {"entry_offset": pos, "node_offset": offset, "name": name,
                    "evidence_class": "container_field_observation", "confidence": "medium",
@@ -176,9 +260,9 @@ class Library:
                    "chain_status": "complete" if not errors else "incomplete", "errors": errors,
                    "logical_data_sha256": sha(blob) if blob is not None and not errors else None,
                    "function_event_table_status": "not_decoded"}
+            obj.update(datawindow_signature(blob, spans, complete=blob is not None and not errors))
             if blob is not None:
                 obj.update(string_hints(blob, spans, self.hint_limit))
-                obj["datawindow_text_signature_candidate"] = all(x in blob.lower() for x in (b"datawindow", b"table", b"column"))
                 if obj["entry_extension"] in {"win", "men", "fun", "udo", "app", "str"} and len(blob) >= 12:
                     obj["compiled_header_observation"] = {
                         "object_offset": 0, "first_six_u16_le": list(struct.unpack_from("<6H", blob)),
@@ -187,6 +271,9 @@ class Library:
             self.objects.append(obj)
             info["entries_parsed"] += 1
             pos += self.entry_size + name_size
+            if self.budget.exhausted:
+                self.errors.append({"offset": pos, "error": "shared_budget_exhausted_remaining_entries_unprocessed"})
+                break
         return info
 
     def parse(self):
@@ -194,8 +281,15 @@ class Library:
         if self.data[start:start + 4] != b"FRE*":
             self.errors.append({"offset": start, "error": "expected_FRE_after_header"})
         # Locate first physical NOD after header/bitmap. Tree links then define reachability.
-        root = next((p for p in range(start, len(self.data) - 3071, 512)
-                     if self.data[p:p + 4] == b"NOD*"), None)
+        root = None
+        try:
+            for p in range(start, len(self.data) - 3071, 512):
+                self.budget.take("traversal_steps")
+                if self.data[p:p + 4] == b"NOD*":
+                    root = p
+                    break
+        except LimitExceeded as exc:
+            self.errors.append({"offset": start, "error": str(exc)})
         pending, visited = ([root] if root is not None else []), set()
         if root is None:
             self.errors.append({"offset": start, "error": "no_NOD_found"})
@@ -210,6 +304,8 @@ class Library:
                 pending.extend(p for p in (node["left_raw"], node["parent_raw"], node["right_raw"]) if p and p not in visited)
             except Invalid as exc:
                 self.errors.append({"offset": off, "error": str(exc)})
+            if self.budget.exhausted:
+                break
         names = collections.defaultdict(list)
         for obj in self.objects:
             names[obj["name"].lower()].append(obj["entry_offset"])
@@ -230,29 +326,59 @@ class Library:
                 "call_graph": {"status": "not_decoded", "edges": []}}
 
 
-def probe_bytes(data, max_object_bytes=32 * 1024 * 1024, hint_limit=100):
-    libraries, rejected = [], []
-    for off in range(0, len(data), 512):
-        if data[off:off + 4] == b"HDR*":
-            try:
-                libraries.append(Library(data, off, max_object_bytes, hint_limit).parse())
-            except Invalid as exc:
-                rejected.append({"offset": off, "error": str(exc)})
-    trailers = [{"offset": p, "header_pointer_raw": u32(data, p + 4)}
-                for p in range(0, max(0, len(data) - 7), 512) if data[p:p + 4] == b"TRL*"]
+def probe_bytes(data, max_object_bytes=32 * 1024 * 1024, hint_limit=100,
+                max_file_bytes=DEFAULT_MAX_FILE_BYTES, max_objects=DEFAULT_MAX_OBJECTS,
+                max_traversal_steps=DEFAULT_MAX_TRAVERSAL_STEPS,
+                max_total_object_bytes=DEFAULT_MAX_TOTAL_OBJECT_BYTES, budget=None):
+    if min(max_object_bytes, hint_limit, max_file_bytes) <= 0:
+        raise ValueError("limits must be positive")
+    budget = budget if budget is not None else Budget(max_objects, max_traversal_steps, max_total_object_bytes)
+    libraries, rejected, trailers, budget_errors = [], [], [], []
+    if len(data) > max_file_bytes:
+        return {"schema_version": 2, "bytes": len(data), "sha256": None,
+                "status": "file_size_limit_rejected", "libraries": [],
+                "max_file_bytes": max_file_bytes, "budget": budget.snapshot()}
+    try:
+        for off in range(0, len(data), 512):
+            budget.take("traversal_steps")
+            if data[off:off + 4] == b"HDR*":
+                try:
+                    libraries.append(Library(data, off, max_object_bytes, hint_limit, budget).parse())
+                except Invalid as exc:
+                    rejected.append({"offset": off, "error": str(exc)})
+            if budget.exhausted:
+                break
+        if not budget.exhausted:
+            for p in range(0, max(0, len(data) - 7), 512):
+                budget.take("traversal_steps")
+                if data[p:p + 4] == b"TRL*":
+                    trailers.append({"offset": p, "header_pointer_raw": u32(data, p + 4)})
+    except LimitExceeded as exc:
+        budget_errors.append(str(exc))
     for trailer in trailers:
         trailer["matches_valid_header"] = trailer["header_pointer_raw"] in {l["header_offset"] for l in libraries}
-    return {"bytes": len(data), "sha256": sha(data), "libraries": libraries,
+    return {"schema_version": 2, "bytes": len(data), "sha256": sha(data), "libraries": libraries,
             "trailer_candidates": trailers, "rejected_headers": rejected,
-            "status": "no_supported_container" if not libraries else "partial" if any(l["status"] == "partial" for l in libraries) else "container_parsed"}
+            "budget_errors": budget_errors, "budget": budget.snapshot(),
+            "status": "partial" if budget.exhausted or budget_errors or any(l["status"] == "partial" for l in libraries)
+                      else "no_supported_container" if not libraries else "container_parsed"}
 
 
-def batch(manifest, payload_root, output, max_object_bytes, hint_limit):
+def batch(manifest, payload_root, output, max_object_bytes, hint_limit,
+          max_file_bytes=DEFAULT_MAX_FILE_BYTES, max_total_file_bytes=DEFAULT_MAX_TOTAL_FILE_BYTES,
+          max_objects=DEFAULT_MAX_OBJECTS, max_traversal_steps=DEFAULT_MAX_TRAVERSAL_STEPS,
+          max_total_object_bytes=DEFAULT_MAX_TOTAL_OBJECT_BYTES):
     import csv
-    rows = list(csv.DictReader(manifest.open(encoding="utf-8-sig", newline="")))
+    with manifest.open(encoding="utf-8-sig", newline="") as stream:
+        rows = list(csv.DictReader(stream))
     selected = [r for r in rows if Path(r["original_destination"].replace("\\", "/")).suffix.lower() == ".pbd"
                 or Path(r["original_destination"].replace("\\", "/")).name.lower() in
                 {"run_zw8.exe", "rhzw8_mfq.exe", "rhzw8_cb.exe", "rhzw9_cn0.exe", "rhzw9_fp0.exe", "rh_hlp.exe", "filesmove.exe"}]
+    if output.resolve().is_relative_to(payload_root.resolve()):
+        raise ValueError("output must be outside the input payload tree")
+    if min(max_object_bytes, hint_limit, max_file_bytes) <= 0:
+        raise ValueError("limits must be positive")
+    budget = Budget(max_objects, max_traversal_steps, max_total_object_bytes, max_total_file_bytes)
     output.mkdir(parents=True, exist_ok=True)
     index, cache = [], {}
     root = payload_root.resolve()
@@ -264,25 +390,55 @@ def batch(manifest, payload_root, output, max_object_bytes, hint_limit):
             entry["status"] = "path_outside_payload_root_rejected"
         elif not path.is_file():
             entry["status"] = "missing_bytes"
+        elif budget.exhausted:
+            entry["status"] = "batch_budget_exhausted_unprocessed"
         else:
-            data = path.read_bytes()
-            if len(data) != int(row["bytes"]) or sha(data) != row["sha256"]:
+            size = path.stat().st_size
+            remaining_bytes = budget.limits["input_file_bytes"] - budget.used["input_file_bytes"]
+            if size > max_file_bytes:
+                entry["status"] = "file_size_limit_rejected"
+                index.append(entry)
+                continue
+            if size != int(row["bytes"]):
+                entry["status"] = "hash_or_size_mismatch_rejected"
+                index.append(entry)
+                continue
+            if size > remaining_bytes:
+                budget.exhausted.add("input_file_bytes")
+                entry["status"] = "total_file_bytes_limit_rejected"
+                index.append(entry)
+                continue
+            # Bound the read even if the file grows after stat().
+            with path.open("rb") as stream:
+                data = stream.read(min(max_file_bytes, remaining_bytes) + 1)
+            try:
+                budget.take("input_file_bytes", len(data))
+            except LimitExceeded:
+                entry["status"] = "total_file_bytes_limit_rejected"
+                index.append(entry)
+                continue
+            if len(data) > max_file_bytes:
+                entry["status"] = "file_size_limit_rejected"
+            elif len(data) != int(row["bytes"]) or sha(data) != row["sha256"]:
                 entry["status"] = "hash_or_size_mismatch_rejected"
             else:
                 if row["sha256"] not in cache:
-                    report = probe_bytes(data, max_object_bytes, hint_limit)
+                    report = probe_bytes(data, max_object_bytes, hint_limit, max_file_bytes,
+                                         budget=budget)
                     name = row["sha256"] + ".json"
                     (output / name).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                     cache[row["sha256"]] = (name, report["status"])
                 entry["report"], entry["status"] = cache[row["sha256"]]
         index.append(entry)
-    result = {"schema_version": 1, "probe_version": VERSION, "format_source": FORMAT_SOURCE,
+    result = {"schema_version": 2, "probe_version": VERSION, "format_source": FORMAT_SOURCE,
               "script_sha256": sha(Path(__file__).read_bytes()), "manifest_sha256": sha(manifest.read_bytes()),
-              "limits": {"max_object_bytes": max_object_bytes, "name_hint_limit_per_object": hint_limit},
+              "limits": {"max_object_bytes": max_object_bytes, "max_file_bytes": max_file_bytes,
+                         "name_hint_limit_per_object": hint_limit}, "budget": budget.snapshot(),
               "raw_objects_exported": False, "original_program_executed": False,
               "records": index, "status_counts": dict(collections.Counter(r["status"] for r in index))}
     (output / "index.json").write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"records": len(index), "unique_reports": len(cache), "status_counts": result["status_counts"]}))
+    return result
 
 
 def main():
@@ -293,12 +449,25 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--max-object-bytes", type=int, default=32 * 1024 * 1024)
     parser.add_argument("--hint-limit", type=int, default=100)
+    parser.add_argument("--max-file-bytes", type=int, default=DEFAULT_MAX_FILE_BYTES,
+                        help="Per physical file; rejects before reading oversized inputs")
+    parser.add_argument("--max-total-file-bytes", type=int, default=DEFAULT_MAX_TOTAL_FILE_BYTES,
+                        help="Total physical bytes read across the entire batch, including duplicates")
+    parser.add_argument("--max-objects", type=int, default=DEFAULT_MAX_OBJECTS,
+                        help="Total ENT entries analyzed across all libraries/files in this batch")
+    parser.add_argument("--max-traversal-steps", type=int, default=DEFAULT_MAX_TRAVERSAL_STEPS,
+                        help="Total block scans, node visits, entries and DAT hops across this batch")
+    parser.add_argument("--max-total-object-bytes", type=int, default=DEFAULT_MAX_TOTAL_OBJECT_BYTES,
+                        help="Total reconstructed DAT bytes, including overlapping chains")
     args = parser.parse_args()
-    if args.max_object_bytes <= 0 or args.hint_limit <= 0:
+    if min(args.max_object_bytes, args.hint_limit, args.max_file_bytes, args.max_total_file_bytes,
+           args.max_objects, args.max_traversal_steps, args.max_total_object_bytes) <= 0:
         parser.error("limits must be positive")
     if args.output.resolve().is_relative_to(args.payload_root.resolve()):
         parser.error("output must be outside the input payload tree")
-    batch(args.manifest, args.payload_root, args.output, args.max_object_bytes, args.hint_limit)
+    batch(args.manifest, args.payload_root, args.output, args.max_object_bytes, args.hint_limit,
+          args.max_file_bytes, args.max_total_file_bytes, args.max_objects,
+          args.max_traversal_steps, args.max_total_object_bytes)
 
 
 if __name__ == "__main__":
