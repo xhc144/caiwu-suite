@@ -1,0 +1,319 @@
+# 民非企 · 账务主程序（民非专版） — 启动流程、工作台与可达性
+
+从主框架 `w_frame` 与登录窗口出发，沿“菜单项 → 窗口”“按钮/事件 → 窗口”“全局函数 → 窗口”“内嵌用户对象”静态边计算可达性。
+
+## 启动流程
+
+- 应用对象 `rh_pos.apl` 的 open 事件：读取 `rhzw8.ini`，检查加密狗/注册（`f_check_usbid`、`w_login_ts`），再打开主框架 `w_frame`（MDI）。
+- `w_frame` 的 open 事件把标题设为软件名，打开登录窗口 `w_login`（OEM 版为 `w_login_oem`）。
+- 登录窗口按钮「搜索」→ `w_xt_tz_find`「套账查找」
+- 登录窗口按钮「N. 新增套账」→ `w_tzjl`「套帐管理」、`w_main1`「主窗口」、`w_xt_kgzb_0`「系统初始化--向导选择」
+- 登录窗口按钮「Y. 确 认」→ `w_main1`「主窗口」、`w_main1_zc`「主窗口」、`w_main1_gz`「主窗口」
+- 登录窗口按钮「rhmfq_login.jpg」→ `w_xtzc_1`「系统注册」
+- 登录窗口按钮「公众号二维码.bmp」→ `w_xtzc_1`「系统注册」
+- 登录窗口按钮「sle_id」→ `w_xtzc_del`「清除版本号」
+- 登录窗口按钮「sle_password」→ `w_xt_pass0`「系统密码设定」
+
+## 工作台 `w_main1`「主窗口」
+
+图标式导航首页（sheet）。图标是图片（文字画在图里），下面按控件列出点击后打开的窗口：
+
+- 图标（rhcb_m_gz_0.bmp） `p_gz` → `w_login_qhmk`「用户登录（继承自祖先）」
+- 图标（rjsj_1.jpg） `p_rjsj` → `w_login`「用户登录」、`w_login_oem`「用户登录」、`w_bakupdata`「切换套账（取自菜单文字）」
+- 图标（rhcb_m_zc_0.bmp） `p_zc` → `w_login_qhmk`「用户登录（继承自祖先）」
+- 文字「报       表」 `st_1_bb` → `w_bb_main`「报表管理」
+- 文字「数据备份」 `st_1_bf` → `w_bf`「数据备份」
+- 文字「凭证查询」 `st_1_cx` → `w_pz_see`「凭证浏览查看」
+- 文字「凭证过账」 `st_1_gz` → `w_zw_jz`「凭证过账」
+- 文字「合同账款查询」 `st_1_ht` → `w_ht_httj`「合同账款查询」
+- 文字「汇总余额表」 `st_1_hz` → `w_zw_ye`「汇总余额表」
+- 文字「月度结转」 `st_1_jz` → `w_zw_ydjz`「月度结转」
+- 文字「凭证汇总表」 `st_1_km` → `w_pz_kmhz`「凭证汇总」
+- 文字「明   细   账」 `st_1_mx` → `w_zc_slz`「明细账」
+- 文字「凭证录入」 `st_1_pz` → `w_pz_pzxsb`「凭证序时簿」
+- 文字「凭证审核」 `st_1_sh` → `w_pz_tjsh`「批量审核」
+- 文字「财务费用」 `st_2_cw` → `w_fx_km`「财务分析表」
+- 文字「自定义分析」 `st_2_dy` → `w_fx_main`「财务分析」
+- 文字「管理费用」 `st_2_gl` → `w_fx_km`「财务分析表」
+- 文字「其它科目分析」 `st_2_qt` → `w_fx_km`「财务分析表」
+- 文字「销售费用」 `st_2_xs` → `w_fx_km`「财务分析表」
+- 文字「应付账款」 `st_2_yf` → `w_fx_km`「财务分析表」
+- 文字「应收账款」 `st_2_ys` → `w_fx_km`「财务分析表」
+- 文字「账龄分析」 `st_2_zl` → `w_fx_zl`「账龄分析」
+- 文字「自动备份设置」 `st_3_bf` → `w_autobak`「系统自动备份设置」
+- 文字「用户管理」 `st_3_cz` → `w_xt_users`「用户管理」
+- 文字「辅助档案」 `st_3_fz` → `w_xt_fhwh`「辅助档案」
+- 文字「套账管理」 `st_3_gl` → `w_tzjl`「套帐管理」
+- 文字「合同档案」 `st_3_ht` → `w_ht_htda`「合同档案管理」
+- 文字「结转类型」 `st_3_jz` → `w_xt_jzwh`「结转类型维护」
+- 文字「科目维护」 `st_3_km` → `w_xt_kmwh`「科目维护」
+- 文字「凭证类型」 `st_3_lx` → `w_xt_pzlx`「凭证类型管理」
+- 文字「自改密码」 `st_3_mm` → `w_pass`「自改密码」
+- 文字「期初录入」 `st_3_qc` → `w_xt_ye_nf`「选择年份」、`w_xt_ye`「期初余额录入」
+- 文字「套账信息」 `st_3_tz` → `w_xt_tz`「套账信息」
+- 文字「外币类型」 `st_3_wb` → `w_xt_fbwh`「外币管理」
+- 文字「凭证账册设置」 `st_3_zc` → `w_xt_tz_zc`「账册设置」
+- 标签控件 `tab_1`
+  - 标签页 `tabpage_1`
+    - 图标（rhcb_zw_11_zzs_0.jpg） `p_t_1_zzs` → `w_zc_zzs`「增值税明细帐」
+    - 图标（rhcb_zw_1_lr_0.bmp） `p_t_1_lr` → `w_pz_pzxsb`「凭证序时簿」
+    - 图标（rhcb_zw_1_yr_0.bmp） `p_t_1_yr` → `w_login_1`「切换用户」
+    - 图标（rhcb_zw_1_sh_0.bmp） `p_t_1_sh` → `w_pz_tjsh`「批量审核」
+    - 图标（rhcb_zw_1_gz_0.bmp） `p_t_1_gz` → `w_zw_jz`「凭证过账」
+    - 图标（rhcb_zw_1_yj_0.bmp） `p_t_1_yj` → `w_zw_ydjz`「月度结转」
+    - 图标（rhcb_zw_1_bb_0.bmp） `p_t_1_bb` → `w_bb_main`「报表管理」
+    - 图标（rhcb_zw_1_jz_0.bmp） `p_t_1_jz` → `w_zw_fz`「结账」
+    - 图标（rhcb_zw_1_bf_0.bmp） `p_t_1_bf` → `w_bf`「数据备份」
+    - 图标（rhcb_zw_1_cx_0.bmp） `p_t_1_cx` → `w_pz_see`「凭证浏览查看」
+    - 图标（rhcb_zw_11_zz_0.bmp） `p_t_1_zz` → `w_zc_zc`「总分类账」
+    - 图标（rhcb_zw_11_xj_0.bmp） `p_t_1_xj` → `w_zc_xjrjz`「日记账」
+    - 图标（rhcb_zw_11_yh_0.bmp） `p_t_1_yh` → `w_zc_yhrjz`「银行日记帐」
+    - 图标（rhcb_zw_11_km_0.bmp） `p_t_1_km` → `w_pz_kmhz`「凭证汇总」
+    - 图标（rhcb_zw_11_hz_0.bmp） `p_t_1_hz` → `w_zw_ye`「汇总余额表」
+    - 图标（rhcb_zw_11_wb_0.bmp） `p_t_1_wb` → `w_zw_wbye`「外币余额表」
+    - 图标（rhcb_zw_11_fz_0.bmp） `p_t_1_fz` → `w_zw_fhye`「辅助项目余额表」
+    - 图标（rhcb_zw_11_fzwb_0.bmp） `p_t_1_fzwb` → `w_zw_fhwbye`「辅助项目外币余额表」
+    - 图标（rhcb_zw_11_mx_0.bmp） `p_t_1_mx` → `w_zc_slz`「明细账」
+    - 图标（rhcb_zw_11_dl_0.bmp） `p_t_1_dl` → `w_zc_dlz`「多栏账」
+    - 图标（rhcb_zw_11_fzmx_0.bmp） `p_t_1_fzmx` → `w_zc_fhslz`「辅助明细账」
+    - 图标（rhcb_zw_11_fzdl_0.bmp） `p_t_1_fzdl` → `w_zc_fhdlz`「辅助多栏账」
+    - 图标（rhcb_zw_11_kc_0.bmp） `p_t_1_kc` → `w_zw_slye`「库存数量金额表」
+    - 图标（rhcb_zw_11_fzkc_0.bmp） `p_t_1_fzkc` → `w_zw_fhslye`「辅助项目库存数量金额表」
+    - 图标（rhcb_zw_11_ht_0.bmp） `p_t_1_ht` → `w_ht_httj`「合同账款查询」
+    - 图标（rhcb_zw_11_ph_0.bmp） `p_t_1_ph` → `w_zc_xjll`「现金流量试算平衡表」
+  - 标签页 `tabpage_2`
+    - 图标（rhcb_zw_2_gl_0.bmp） `p_t_2_gl` → `w_fx_km`「财务分析表」
+    - 图标（rhcb_zw_2_xs_0.bmp） `p_t_2_xs` → `w_fx_km`「财务分析表」
+    - 图标（rhcb_zw_2_cw_0.bmp） `p_t_2_cw` → `w_fx_km`「财务分析表」
+    - 图标（rhcb_zw_2_ys_0.bmp） `p_t_2_ys` → `w_fx_km`「财务分析表」
+    - 图标（rhcb_zw_2_yf_0.bmp） `p_t_2_yf` → `w_fx_km`「财务分析表」
+    - 图标（rhcb_zw_2_qt_0.bmp） `p_t_2_qt` → `w_fx_km`「财务分析表」
+    - 图标（rhcb_zw_2_dy_0.bmp） `p_t_2_dy` → `w_fx_main`「财务分析」
+  - 标签页 `tabpage_3`
+    - 图标（rhcb_zw_3_km_0.bmp） `p_t_3_km` → `w_xt_kmwh`「科目维护」
+    - 图标（rhcb_zw_3_zy_0.bmp） `p_t_3_zy` → `w_xt_zy`「摘要管理」
+    - 图标（rhcb_zw_3_lx_0.bmp） `p_t_3_lx` → `w_xt_pzlx`「凭证类型管理」
+    - 图标（rhcb_zw_3_jz_0.bmp） `p_t_3_jz` → `w_xt_jzwh`「结转类型维护」
+    - 图标（rhcb_zw_3_js_0.bmp） `p_t_3_js` → `w_xt_jslb`「结算类别管理」
+    - 图标（rhcb_zw_3_wb_0.bmp） `p_t_3_wb` → `w_xt_fbwh`「外币管理」
+    - 图标（rhcb_zw_3_ht_0.bmp） `p_t_3_ht` → `w_ht_htda`「合同档案管理」
+    - 图标（rhcb_zw_3_tz_0.bmp） `p_t_3_tz` → `w_tzjl`「套帐管理」
+    - 图标（rhcb_zw_3_xx_0.bmp） `p_t_3_xx` → `w_xt_tz`「套账信息」
+    - 图标（rhcb_zw_3_zc_0.bmp） `p_t_3_zc` → `w_xt_tz_zc`「账册设置」
+    - 图标（rhcb_zw_3_mm_0.bmp） `p_t_3_mm` → `w_pass`「自改密码」
+    - 图标（rhcb_zw_3_cz_0.bmp） `p_t_3_cz` → `w_xt_users`「用户管理」
+    - 图标（rhcb_zw_3_bf_0.bmp） `p_t_3_bf` → `w_autobak`「系统自动备份设置」
+    - 图标（rhcb_zw_3_rz_0.bmp） `p_t_3_rz` → `w_xt_dlxx`「操作日志」
+    - 图标（rhcb_zw_3_fz_0.bmp） `p_t_3_fz` → `w_xt_fhwh`「辅助档案」
+
+## 工作台 `w_main1_gz`「主窗口」
+
+图标式导航首页（sheet）。图标是图片（文字画在图里），下面按控件列出点击后打开的窗口：
+
+- 图标（rjsj_1.jpg） `p_rjsj` → `w_login`「用户登录」、`w_login_oem`「用户登录」、`w_bakupdata`「切换套账（取自菜单文字）」
+- 图标（rhcb_m_zc_0.bmp） `p_zc` → `w_login_qhmk`「用户登录（继承自祖先）」
+- 图标（rhcb_m_zw_0.bmp） `p_zw` → `w_login_qhmk`「用户登录（继承自祖先）」
+- 文字「结  账」 `st_1_gz` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_jz`「工资结账」
+- 文字「工资表」 `st_1_gzb` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+- 文字「工资管理」 `st_1_gzgl` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+- 文字「工资条」 `st_1_gzt` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+- 文字「工资汇总表」 `st_1_hzb` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+- 文字「凭证生成」 `st_1_pz` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」、`w_pz_build_gz`「凭证生成」
+- 文字「部门维护」 `st_3_bm` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_bmwh`「部门维护」
+- 文字「打印格式」 `st_3_gs` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_xt_dysz`「打印宽度设置」
+- 文字「工资结构」 `st_3_jg` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_xt_gzsz`「工资栏目定义」
+- 文字「公式设置」 `st_3_js` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_xt_gssz`「计算公式定义」
+- 文字「自改密码」 `st_3_mm` → `w_pass`「自改密码」
+- 文字「凭证设置」 `st_3_pz` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_pz_sz`「制作凭证信息设置」
+- 文字「人事管理」 `st_3_rs` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_rsgl`「人事管理」
+- 文字「个税起征点」 `st_3_ss` → `w_xt_kgzb_1_gz`「套帐信息」
+- 文字「套账信息」 `st_3_tz` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_xt_kgzb_1_gz`「套帐信息」
+- 标签控件 `tab_1`
+  - 标签页 `tabpage_1`
+    - 图标（rhcb_gz_1_pz_0.bmp） `p_t_1_pz` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」、`w_pz_build_gz`「凭证生成」
+    - 图标（rhcb_gz_1_gz_0.bmp） `p_t_1_gz` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_jz`「工资结账」
+    - 图标（rhcb_gz_1_gzgl_0.bmp） `p_t_1_gzgl` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+    - 图标（rhcb_gz_1_ydb_0.bmp） `p_t_1_ydb` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」、`w_gzgl_lshz`「查询累计汇总表」
+    - 图标（rhcb_gz_1_gzb_0.bmp） `p_t_1_gzb` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+    - 图标（rhcb_gz_1_gzt_0.bmp） `p_t_1_gzt` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+    - 图标（rhcb_gz_1_hzb_0.bmp） `p_t_1_hzb` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+    - 图标（rhcb_gz_1_pm_0.bmp） `p_t_1_pm` → `w_xt_kgzb_gz`「人事工资系统初始化」、`w_gz_gzgl`「工资管理」
+  - 标签页 `tabpage_2`
+  - 标签页 `tabpage_3`
+    - 图标（rhcb_gz_3_bm_0.bmp） `p_t_3_bm` → `w_gz_bmwh`「部门维护」
+    - 图标（rhcb_gz_3_rs_0.bmp） `p_t_3_rs` → `w_gz_rsgl`「人事管理」
+    - 图标（rhcb_gz_3_jg_0.bmp） `p_t_3_jg` → `w_xt_gzsz`「工资栏目定义」
+    - 图标（rhcb_gz_3_js_0.bmp） `p_t_3_js` → `w_xt_gssz`「计算公式定义」
+    - 图标（rhcb_gz_3_ss_0.bmp） `p_t_3_ss` → `w_xt_kgzb_1_gz`「套帐信息」
+    - 图标（rhcb_gz_3_gs_0.bmp） `p_t_3_gs` → `w_xt_dysz`「打印宽度设置」
+    - 图标（rhcb_gz_3_tz_0.bmp） `p_t_3_tz` → `w_xt_kgzb_1_gz`「套帐信息」
+    - 图标（rhcb_gz_3_pz_0.bmp） `p_t_3_pz` → `w_pz_sz`「制作凭证信息设置」
+
+## 工作台 `w_main1_zc`「主窗口」
+
+图标式导航首页（sheet）。图标是图片（文字画在图里），下面按控件列出点击后打开的窗口：
+
+- 图标（rhcb_m_gz_0.bmp） `p_gz` → `w_login_qhmk`「用户登录（继承自祖先）」
+- 图标（rjsj_1.jpg） `p_rjsj` → `w_login`「用户登录」、`w_login_oem`「用户登录」、`w_bakupdata`「切换套账（取自菜单文字）」
+- 图标（rhcb_m_zw_0.bmp） `p_zw` → `w_login_qhmk`「用户登录（继承自祖先）」
+- 文字「资产分布表」 `st_1_cx` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「打印资产标签」 `st_1_fb` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「附属设备表」 `st_1_fz` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「资产减少清单」 `st_1_jt` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「资产明细账」 `st_1_mx` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「资产清单」 `st_1_qd` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「固定资产台帐」 `st_1_tz` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「到期资产清单」 `st_1_zj` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「资产增加清单」 `st_1_zx` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+- 文字「部门设置」 `st_3_bm` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_sydw`「部门维护」
+- 文字「资产初始化」 `st_3_csh` → `w_xt_kgzb_zc`「固定资产初始化」
+- 文字「资产类别」 `st_3_lb` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_sblb`「设备类别维护」
+- 文字「自改密码」 `st_3_mm` → `w_pass`「自改密码」
+- 文字「凭证设置」 `st_3_pz` → `w_xt_kgzb_zc`「固定资产初始化」、`w_xt_kgzb_1_zc`「套帐信息」
+- 文字「套账信息」 `st_3_tz` → `w_xt_kgzb_zc`「固定资产初始化」、`w_xt_kgzb_1_zc`「套帐信息」
+- 文字「资产用途」 `st_3_yt` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_sbyt`「用途维护」
+- 文字「使用状态」 `st_3_zt` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_sbzt`「设备状态维护」
+- 文字「注销原因」 `st_3_zx` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_sbzx`「注销原因维护」
+- 标签控件 `tab_1`
+  - 标签页 `tabpage_1`
+    - 图标（rhcb_zc_1_zj_0.bmp） `p_t_1_zj` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_qxfz`「取消折旧」
+    - 图标（rhcb_zC_1_TZ_0.bmp） `p_t_1_tz` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zc_zcgl`「固定资产管理」
+    - 图标（rhcb_zc_1_jt_0.bmp） `p_t_1_jt` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zjjs`「计提折旧」
+    - 图标（rhcb_zc_1_cx_0.bmp） `p_t_1_cx` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zjgl`「折旧查询」
+    - 图标（rhcb_zc_1_zx_0.bmp） `p_t_1_zx` → `w_xt_kgzb_zc`「固定资产初始化」、`w_zjgl`「折旧查询」
+  - 标签页 `tabpage_2`
+  - 标签页 `tabpage_3`
+    - 图标（rhcb_zc_3_bm_0.bmp） `p_t_3_bm` → `w_zc_sydw`「部门维护」
+    - 图标（rhcb_zc_3_lb_0.bmp） `p_t_3_lb` → `w_zc_sblb`「设备类别维护」
+    - 图标（rhcb_zc_3_yt_0.bmp） `p_t_3_yt` → `w_zc_sbyt`「用途维护」
+    - 图标（rhcb_zc_3_zt_0.bmp） `p_t_3_zt` → `w_zc_sbzt`「设备状态维护」
+    - 图标（rhcb_zc_3_zx_0.bmp） `p_t_3_zx` → `w_zc_sbzx`「注销原因维护」
+    - 图标（rhcb_zc_3_pz_0.bmp） `p_t_3_pz` → `w_xt_kgzb_1_zc`「套帐信息」
+    - 图标（rhcb_zc_3_tz_0.bmp） `p_t_3_tz` → `w_xt_kgzb_1_zc`「套帐信息」
+
+## 统计
+
+- 本程序独有窗口 340 个，静态可达 222 个，未发现静态入口 118 个。
+
+## 未发现静态入口的窗口
+
+可能原因：字符串拼接后动态打开、由其他 EXE 打开、作为祖先被继承、或历史残留。
+
+- `w_bakupdata_bak`
+- `w_bb_def_cn`「格式定义」
+- `w_bb_proc_gs`「报表生成」（被继承的祖先窗口）
+- `w_bb_proc_pos_bak`「报表生成」
+- `w_bb_saveas`「数据导出」
+- `w_bf_2010_xzsy`「单位基本信息」
+- `w_bf_98001_bak`「审计接口」
+- `w_err_view`「错误查看」
+- `w_fx_demo`「财务分析」
+- `w_fx_demo_open`「打开」
+- `w_fx_demo_tx`「图形分析」
+- `w_fx_nd_1`「年度分析表」
+- `w_fx_txxz`「图形选择」
+- `w_fx_yd_1`「年度分析表」
+- `w_grant`「分配权限」
+- `w_gz_pz`「辅助档案」
+- `w_idle`
+- `w_ini_bf`「数据备份」
+- `w_logo`
+- `w_paste`「请选择粘贴值」
+- `w_preview_bak`「打印预览」
+- `w_preview_base_r`「打印预览」（被继承的祖先窗口）
+- `w_preview_base_r1`「打印预览」
+- `w_preview_base_r_bak`「打印预览」
+- `w_preview_dlz`「多栏帐打印」
+- `w_preview_report_base`「报表查询」（被继承的祖先窗口）
+- `w_preview_zc`「帐册打印」
+- `w_print_1`「打印」
+- `w_print_2`「打印」
+- `w_print_2_zw`「连续打印选择」
+- `w_print_root`「打印预览」
+- `w_print_xjll`「帐册打印」
+- `w_print_zc`「账册打印」
+- `w_print_zc_pg`「明细账页码」
+- `w_pz_get_bak`「凭证导入」
+- `w_pz_get_bb`「凭证导入」
+- `w_pz_jccx_1`「辅助项交叉查询汇总表」
+- `w_pz_modify`「修改制单人」
+- `w_pz_prn_1_a4`「打印凭证-1」
+- `w_pz_prn_1_bak`「打印凭证-1」
+- `w_pz_pzedit`「凭证录入」（被继承的祖先窗口）
+- `w_pz_pzedit_b`「凭证修改（运行时设置）」
+- `w_pz_pzedit_bak`「凭证录入」
+- `w_pz_pzxsb_bak`「凭证序时簿」
+- `w_retrieve_wait`「提示窗口」
+- `w_root_xt`（被继承的祖先窗口）
+- `w_system_error`「System Error」
+- `w_test`
+- `w_tzjl_2_bak`「套帐复制」
+- `w_users`「操作员管理」
+- `w_wb_gn`
+- `w_wb_pz`
+- `w_wb_zc`
+- `w_xt_kc_sc`「库存速查」
+- `w_xt_kmbm_edit_bak`「修改科目编码」
+- `w_xt_kmbm_len_bak`「修改科目编码长度」
+- `w_xt_kmbm_replace_bak`「科目编码字符替换」
+- `w_xt_ptb_xf`「温馨提示」
+- `w_xt_pup`「今日焦点」
+- `w_xt_pup_bak`「今日焦点」
+- `w_xt_szb_xf`「系统续费提示」
+- `w_xt_szb_zc`「时钟版新用户注册」
+- `w_xt_user`「操作易人」
+- `w_zc_dlz_1`「多栏账」
+- `w_zc_dz`「对账」
+- `w_zc_fhdlz_1`「多栏账」
+- `w_zc_fhdlz_1_bak`「多栏账」
+- `w_zc_fhslz_1`「三栏明细账（继承自祖先）」
+- `w_zc_fhslz_1_bak`「三栏明细账（继承自祖先）」
+- `w_zc_fzslz_fb`「三栏复币明细账」
+- `w_zc_fzslz_sl`「三栏明细账（继承自祖先）」
+- `w_zc_saveas`「批量转出选择」
+- `w_zc_sblb_bak`「设备类别」
+- `w_zc_sbyt_bak`「用途维护」
+- `w_zc_sbzt_bak`「设备状态」
+- `w_zc_sbzx_bak`「设备状态」
+- `w_zc_slz_1`「三栏明细账」（被继承的祖先窗口）
+- `w_zc_slz_1_bak`「三栏明细账」
+- `w_zc_slz_fb`「三栏明细账（继承自祖先）」（被继承的祖先窗口）
+- `w_zc_slz_sl`「三栏明细账（继承自祖先）」（被继承的祖先窗口）
+- `w_zc_slz_slfb`「三栏明细账（继承自祖先）」
+- `w_zc_sydw_bak`「部门维护」
+- `w_zc_xjll_1`「现金流量试算平衡表」
+- `w_zc_xjrjz_1`「现金日记账」
+- `w_zc_xjrjz_fb`「现金复币日记账」
+- `w_zc_yhrjz_1`「银行日记账」
+- `w_zc_yhrjz_fb`「银行复币日记账」
+- `w_zc_zc_1`「总分类账」
+- `w_zcgl_fb_bak`「资产分布表」
+- `w_zcgl_prtmxz`「打印固定资产明细帐」
+- `w_zcgl_prtmxz_bak`「打印固定资产明细帐」
+- `w_zjgl_sj`「折旧查询」
+- `w_zoom`「定制」
+- `w_zw_fhslye_1`「辅助项目库存数量金额表」
+- `w_zw_fhwbye_1`「辅助项目外币余额表」
+- `w_zw_fhye_1`「辅助项目余额表」
+- `w_zw_fhye_1_bak`「辅助汇总余额表(（运行时设置）」
+- `w_zw_jz_pl`「凭证过帐」
+- `w_zw_slye_1`「库存数量金额表」
+- `w_zw_wbye_1`「外币余额表」
+- `w_zw_ydjz_1_bak`「月度结转——生成凭证」
+- `w_zw_ydjz_1_bak1`「月度结转」
+- `w_zw_ye_1`「汇总余额表」（被继承的祖先窗口）
+- `w_zw_ye_bak`「汇总余额表」
+- `w_zw_ye_kmxz`「打印科目选择」
+- `w_zw_ye_ts`「系统提示」
+- `wroot_fix_query`「固定查询及统计」
+- `wroot_md`「主从式应用示例」
+- `wroot_md2`「wroot_sheet（继承自祖先）」
+- `wroot_md2_1`「wroot_sheet（继承自祖先）」
+- `wroot_md_2`「主从式应用示例」
+- `wroot_mds`「共享式 + 主从式应用示例」
+- `wroot_query`「综合查询」（被继承的祖先窗口）
+- `wroot_share`「共享式应用」（被继承的祖先窗口）
+- `wroot_share_tab`「共享式应用(TAB)」（被继承的祖先窗口）
+- `wroot_sheet`「wroot_sheet」（被继承的祖先窗口）
+- `wroot_single`「单一式应用」（被继承的祖先窗口）
+- `wroot_single_1`「单一式应用」（被继承的祖先窗口）
