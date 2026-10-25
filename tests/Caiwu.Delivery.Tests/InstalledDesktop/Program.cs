@@ -168,7 +168,7 @@ internal static class Program
 
             Key(0x79); Yes("受管完整备份"); // F10.
             var receipts = Path.Combine(data, "Global", "BackupReceipts");
-            Until(() => Directory.Exists(receipts) && Directory.GetFiles(receipts, "*.json").Length == 1, "normal complete backup receipt");
+            Until(() => Directory.Exists(receipts) && Directory.GetFiles(receipts, "*.json").Length == 1 && Text(main!, "NotificationText").Contains("独立可信哈希收据已保存", StringComparison.Ordinal), "normal complete backup receipt and UI completion");
             var receipt = Directory.GetFiles(receipts, "*.json").Single();
             Menu("文件", "从备份恢复副本…"); FileDialog("选择本机受管完整备份的可信哈希收据", receipt); Yes("完整恢复");
             Until(() => Text(main!, "NotificationText").Contains("登记附件已恢复", StringComparison.Ordinal), "normal complete restore and open");
@@ -222,7 +222,12 @@ internal static class Program
         }
     }
     private static bool HasWindow(string title) => ProductWindows().Any(e => e.Current.Name == title);
-    private static void Invoke(AutomationElement root, Condition condition) { var item = root.FindFirst(TreeScope.Descendants, condition) ?? throw new InvalidDataException("Control absent: " + condition); ((InvokePattern)item.GetCurrentPattern(InvokePattern.Pattern)).Invoke(); Thread.Sleep(150); }
+    private static void Invoke(AutomationElement root, Condition condition)
+    {
+        AutomationElement? item = null;
+        Until(() => { item = root.FindFirst(TreeScope.Descendants, condition); return item?.Current.IsEnabled == true; }, "actual enabled control: " + condition);
+        ((InvokePattern)item!.GetCurrentPattern(InvokePattern.Pattern)).Invoke(); Thread.Sleep(150);
+    }
     private static void SetValue(AutomationElement element, string text) => ((ValuePattern)element.GetCurrentPattern(ValuePattern.Pattern)).SetValue(text);
     private static void Close(AutomationElement window) { ((WindowPattern)window.GetCurrentPattern(WindowPattern.Pattern)).Close(); Thread.Sleep(150); }
     private static void Login(string login, bool rejectWrongFirst = false)
