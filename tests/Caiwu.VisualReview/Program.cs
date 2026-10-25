@@ -38,7 +38,7 @@ internal static class Program
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("An actual Windows WPF desktop is required.");
         output = Path.GetFullPath(args.Length > 0 ? args[0] : "artifacts/verification/modern");
         Directory.CreateDirectory(output);
-        App? app = null;
+        IndependentDesktopApplication? app = null;
         try
         {
             PrepareDesktop();

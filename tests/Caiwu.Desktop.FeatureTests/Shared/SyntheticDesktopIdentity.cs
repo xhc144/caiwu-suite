@@ -67,10 +67,15 @@ internal static class SyntheticDesktopIdentity
 
 // Independent executable only: reuse product resources without scheduling the product
 // login lifecycle a second time. Every backend/window below still uses normal setup/login.
-internal sealed class IndependentDesktopApplication : App
+internal sealed class IndependentDesktopApplication : System.Windows.Application
 {
-    protected override void OnStartup(System.Windows.StartupEventArgs e)
+    public void InitializeComponent()
     {
-        ShutdownMode = System.Windows.ShutdownMode.OnExplicitShutdown;
+        // App.xaml contains this single dictionary. Load its exact production BAML
+        // without trying to load the App component onto a different CLR type.
+        Resources.MergedDictionaries.Add(new System.Windows.ResourceDictionary
+        {
+            Source = new Uri("/Caiwu.Desktop;component/Themes/Modern.xaml", UriKind.Relative)
+        });
     }
 }
