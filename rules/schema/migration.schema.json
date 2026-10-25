@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caiwu.invalid/rules/migration.schema.json",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fromRegimeVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "toPackageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fromDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "toDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "completeMigrationValidated": {
+      "const": false
+    },
+    "automaticMigrationSupported": {
+      "const": false
+    },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fromCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "fromName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "toCode": {
+            "type": "string",
+            "minLength": 1
+          },
+          "toName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "action": {
+            "enum": [
+              "BalanceCandidate",
+              "ZeroBalanceOnly",
+              "ManualClassification"
+            ]
+          },
+          "requiresManualReview": {
+            "const": true
+          },
+          "sourceRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "locator": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "sourceId",
+                "locator"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "fromCode",
+          "fromName",
+          "toCode",
+          "toName",
+          "action",
+          "requiresManualReview",
+          "sourceRefs"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "sameCodeConflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "oldName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "newName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sourceRefs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "locator": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": [
+                "sourceId",
+                "locator"
+              ],
+              "additionalProperties": false
+            },
+            "minItems": 1
+          }
+        },
+        "required": [
+          "code",
+          "oldName",
+          "newName",
+          "sourceRefs"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "requiredControls": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "id",
+    "fromRegimeVersion",
+    "toPackageId",
+    "fromDate",
+    "toDate",
+    "completeMigrationValidated",
+    "automaticMigrationSupported",
+    "mappings",
+    "sameCodeConflicts",
+    "requiredControls",
+    "limitations"
+  ],
+  "additionalProperties": false
+}
