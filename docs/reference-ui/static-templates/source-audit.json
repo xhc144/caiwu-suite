@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "scope": "original_static_report_templates_and_blank_sample_structure_only",
+  "observed_at_utc": "2026-10-25T08:04:03.865560+00:00",
+  "repository_commit_examined": "34f065b6028ebd2102f0520263bae8bd3b7ec09f",
+  "source_status": "pending_original_materials",
+  "sources": [
+    {
+      "source_id": "repository-reference-readme",
+      "repository": "xhc144/caiwu-suite",
+      "commit": "34f065b6028ebd2102f0520263bae8bd3b7ec09f",
+      "path": "docs/reference-ui/README.md",
+      "git_blob_sha1": "e85df2e256661a179f133b651faa4d53dde8c423",
+      "sha256": "bf8bb95535e0df6828792be4450b7f246d3f2110b5ddc44ceddba67232c9823b",
+      "bytes": 2840,
+      "read_status": "read_entire_file",
+      "origin": "secondary_project_reference_index",
+      "original_template_bytes_read": false
+    },
+    {
+      "source_id": "repository-reference-pages",
+      "repository": "xhc144/caiwu-suite",
+      "commit": "34f065b6028ebd2102f0520263bae8bd3b7ec09f",
+      "path": "docs/reference-ui/pages.json",
+      "git_blob_sha1": "74abbf266dc805a8a98af23374a1ceeca52c2c9a",
+      "sha256": "f5374b758218f38e97bee7dddac1457642ded809c343cacb4b14d5a5568c742b",
+      "bytes": 27256,
+      "read_status": "read_entire_file",
+      "origin": "secondary_project_reference_index",
+      "original_template_bytes_read": false
+    }
+  ],
+  "verified_original_template_records": 0,
+  "total_original_template_count": null,
+  "original_blank_schema_read": false,
+  "formula_semantics_verified": false,
+  "available_evidence": {
+    "report_designer_index": {
+      "page_id": "reference.report-designer",
+      "manual_evidence": "manual_text_read_image_unreviewed",
+      "runtime_state": "not_observed_wine32_load_failure",
+      "fields_count": 0,
+      "source": "轻松会计说明书2006；非2026实机",
+      "interpretation": "Index entry only; no template body/formula/data schema is present."
+    },
+    "shared_reference": {
+      "library_file_id": "libfile_442a588c36dc8191bf833338100c9a0e",
+      "file_id": "file_000000005aa481fdaf3aa99cfb4ac0cf",
+      "version": 0,
+      "sha256": "b686e5b13011b1615fbf33b991940795a60c643624b34eb1aae8ef43047ccd20",
+      "bytes": 193504,
+      "contents_claim_from_readme": "11 old manual screenshots and navigation/field/source-hash notes; no EXE, DLL/PBD or account books.",
+      "downloaded_by_this_task": false
+    },
+    "excluded_inventory": {
+      "path": "tests/Caiwu.Acceptance/evidence/ci/package-manifest.json",
+      "reason": "Self-authored Windows preview package inventory; not original software source inventory."
+    }
+  },
+  "prohibited_inferences": [
+    "UI labels are not database columns or foreign keys.",
+    "A template filename containing 2026 does not establish 2026 formula behavior.",
+    "A report label is not an available report definition.",
+    "Zero verified records here is not evidence that the original product has zero templates.",
+    "Unpacked binaries are not source code."
+  ],
+  "required_materials": [
+    {
+      "request_id": "MAT-001",
+      "priority": 1,
+      "target": "existing extracted installer file inventory (actual path/name not yet supplied)",
+      "required_content": [
+        "original relative paths",
+        "file sizes",
+        "SHA256 where already computed",
+        "which product/archive each entry came from",
+        "extracted-file location or immutable shared reference"
+      ],
+      "why": "Locate and deduplicate report definitions and blank sample structures without downloading or reparsing installers.",
+      "status": "pending_material_transfer",
+      "ask_for_original_installer": false
+    },
+    {
+      "request_id": "MAT-002",
+      "priority": 1,
+      "target": "already extracted report template/definition files or their complete readable exports",
+      "required_content": [
+        "actual file names/extensions",
+        "raw template bytes or full structured/text export",
+        "encoding if known",
+        "source relative path and hash",
+        "existing parser/tool/version and export provenance if applicable"
+      ],
+      "why": "Prove report fields, columns, expressions and formula syntax. Filenames or template-year labels alone cannot prove formula behavior.",
+      "status": "pending_material_transfer",
+      "ask_for_original_installer": false
+    },
+    {
+      "request_id": "MAT-003",
+      "priority": 1,
+      "target": "confirmed vendor-distributed blank/synthetic sample schema or already exported structure only",
+      "required_content": [
+        "explicit confirmation sample is blank/synthetic, not real user account data",
+        "actual structure format and file path",
+        "DDL/table/field/type/index/constraint export if available",
+        "relationships explicitly declared by the sample or export",
+        "hash and product/version provenance"
+      ],
+      "why": "Prove physical book structure and distinguish declared relationships from name-based hypotheses. Schema-only transfer is sufficient.",
+      "status": "pending_material_transfer",
+      "ask_for_original_installer": false,
+      "real_user_book_allowed": false
+    },
+    {
+      "request_id": "MAT-004",
+      "priority": 2,
+      "target": "existing static extraction notes and format signatures covering MAT-001..003",
+      "required_content": [
+        "which files were actually inspected",
+        "which files remain opaque",
+        "format/container/encoding observations backed by signatures",
+        "known failure/limitations without credentials or commercial code"
+      ],
+      "why": "Reuse the primary thread analysis and avoid repeating extraction; opaque content must remain unknown.",
+      "status": "pending_material_transfer",
+      "ask_for_original_installer": false
+    }
+  ],
+  "priority_rule": "Resume independent P1 acceptance first when root supplies a repair immutable commit."
+}
