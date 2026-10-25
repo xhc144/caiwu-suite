@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "caiwu.contracts": {
+        "type": "Project"
+      },
+      "caiwu.reporting": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

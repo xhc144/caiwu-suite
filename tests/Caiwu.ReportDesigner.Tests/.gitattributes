@@ -1,0 +1,2 @@
+# Preserve actual RFC4180 CRLF/BOM evidence; CR at end of a CSV record is intentional.
+evidence/*.csv -text whitespace=trailing-space,space-before-tab,cr-at-eol
