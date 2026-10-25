@@ -1,0 +1,36 @@
+  Determining projects to restore...
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Costing/Caiwu.Costing.csproj (in 138 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Costing/Wpf/Caiwu.Costing.Wpf.csproj (in 226 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Desktop.Controls/Caiwu.Desktop.Controls.csproj (in 226 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Reporting/Caiwu.Reporting.csproj (in 3 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj (in 5 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.BookTools/Caiwu.BookTools.csproj (in 9 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/tests/Caiwu.VisualReview/Caiwu.VisualReview.csproj (in 201 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/packaging-next/src/Caiwu.Delivery/Caiwu.Delivery.csproj (in 3 ms).
+  Restored /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Desktop/Caiwu.Desktop.csproj (in 76 ms).
+  10 of 19 projects are up-to-date for restore.
+  Caiwu.Costing -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Costing/bin/Release/net10.0/Caiwu.Costing.dll
+  Caiwu.Contracts -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Contracts/bin/Release/net10.0/Caiwu.Contracts.dll
+  Caiwu.Persistence.Sqlite -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Persistence.Sqlite/bin/Release/net10.0/Caiwu.Persistence.Sqlite.dll
+  Caiwu.Summaries -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Summaries/bin/Release/net10.0/Caiwu.Summaries.dll
+  Caiwu.VoucherTools -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.VoucherTools/bin/Release/net10.0/Caiwu.VoucherTools.dll
+  Caiwu.Core -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Core/bin/Release/net10.0/Caiwu.Core.dll
+  Caiwu.Operators -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Operators/bin/Release/net10.0/Caiwu.Operators.dll
+  Caiwu.Reporting -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Reporting/bin/Release/net10.0/Caiwu.Reporting.dll
+  Caiwu.Delivery -> /tmp/caiwu-desktop-feature-validation.ughhlj/packaging-next/src/Caiwu.Delivery/bin/Release/net10.0/Caiwu.Delivery.dll
+  Caiwu.BookTools -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.BookTools/bin/Release/net10.0/Caiwu.BookTools.dll
+  Caiwu.VoucherTools.Wpf -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.VoucherTools.Wpf/bin/Release/net10.0-windows/Caiwu.VoucherTools.Wpf.dll
+  Caiwu.Costing.Wpf -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Costing/Wpf/bin/Release/net10.0-windows/Caiwu.Costing.Wpf.dll
+  Caiwu.Operators.Wpf -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Operators/Wpf/bin/Release/net10.0-windows/Caiwu.Operators.Wpf.dll
+  Caiwu.Nonprofit.Reporting -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Nonprofit.Reporting/bin/Release/net10.0/Caiwu.Nonprofit.Reporting.dll
+  Caiwu.Nonprofit.Reporting.Wpf -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Nonprofit.Reporting/Wpf/bin/Release/net10.0-windows/Caiwu.Nonprofit.Reporting.Wpf.dll
+  Caiwu.BookTools.Wpf -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.BookTools/Wpf/bin/Release/net10.0-windows/Caiwu.BookTools.Wpf.dll
+  Caiwu.Desktop -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Desktop/bin/Release/net10.0-windows/Caiwu.Desktop.dll
+  Caiwu.Desktop.Controls -> /tmp/caiwu-desktop-feature-validation.ughhlj/src/Caiwu.Desktop.Controls/bin/Release/net10.0-windows/Caiwu.Desktop.Controls.dll
+  Caiwu.VisualReview -> /tmp/caiwu-desktop-feature-validation.ughhlj/tests/Caiwu.VisualReview/bin/Release/net10.0-windows/Caiwu.VisualReview.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.79

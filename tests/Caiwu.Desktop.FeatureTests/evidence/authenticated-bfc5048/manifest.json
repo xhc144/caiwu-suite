@@ -1,0 +1,105 @@
+{
+  "sourceCommit": "bfc50481fc75c20da254f8daade9b25fdf076666",
+  "baselineCommit": "5e21ac321f119efd30a4a11780b27ee651f58221",
+  "syntheticOnly": true,
+  "sdk": "10.0.402",
+  "runtime": ".NET 10.0.13",
+  "platform": "Linux",
+  "windowsExecuted": false,
+  "windowScenarioCount": 14,
+  "dependencyCommits": {
+    "VoucherTools": "54871a004a836d76824b2c29959e5b22139f4e86",
+    "Summaries": "dcda051a0c9ee364ccff4c2b4c7085f446fac39d",
+    "BookTools": "8bbf8428ccd0b656fec83c7a1ede828cd5691442",
+    "Costing": "af0d0e34ab9963fc91cabb8a58aed558b34390f0",
+    "Operators": "1957435365390756fd8267937fd0ec408b1e498f",
+    "NonprofitReporting": "cb71350b2b19067e7a8704b74985d8cf0f15e1aa"
+  },
+  "checks": {
+    "syntheticServices": {
+      "passed": 16,
+      "failed": 0
+    },
+    "combinedBuildLogs": [
+      "Caiwu.Acceptance.DualWindows.log",
+      "Caiwu.Acceptance.HighResolution.log",
+      "Caiwu.Acceptance.MutationWindows.log",
+      "Caiwu.Acceptance.NativeFocus.log",
+      "Caiwu.UiNavigation.Tests.log",
+      "Caiwu.VisualReview.log",
+      "desktop-build.log",
+      "solution-build.log",
+      "windows-cross-build.log"
+    ],
+    "actualWindows": {
+      "status": "not-run",
+      "reason": "Linux environment; no Windows runtime"
+    },
+    "managedModuleData": {
+      "status": "pending-owner",
+      "branch": "codex/managed-module-data",
+      "reason": "Real Delivery scope and attachment registration not delivered; default Summary/BookCopy gates remain disabled"
+    },
+    "designer": {
+      "status": "not-integrated",
+      "reason": "Prioritize authenticated primary flow; template data path/version/backup configuration pending"
+    },
+    "legacyPackagingSmoke": {
+      "status": "pending-packaging-owner",
+      "target": "packaging/build.ps1",
+      "reason": "Product rejects obsolete --smoke-test; run independent authenticated test host instead"
+    }
+  },
+  "sourceSha256": {
+    "src/Caiwu.Desktop/App.xaml.cs": "e2783d7d71e8916b43bc30e7164e0460f966c3bae76712b1c8ba19037acca080",
+    "src/Caiwu.Desktop/Caiwu.Desktop.csproj": "fb6447534275b0180fa94260b7f73779d8b8a2ec90f4178d3bbee48f2589f7e6",
+    "src/Caiwu.Desktop/Features/AsyncSummaryManagerWindow.cs": "011a0559e509f8f9dd4a36d348036b19464f0c54a36eb7af20f2752f5101e24d",
+    "src/Caiwu.Desktop/Features/AsyncSummaryStateAdapter.cs": "d046ac511f3ee50c856508f55da67793d9b94465240d4c08abe7ef1b23c7561b",
+    "src/Caiwu.Desktop/Features/CopiedDraftWindow.cs": "72aeedee2a91d47f617d452c55dfd761db51d585347f93fb07591e60a11d592d",
+    "src/Caiwu.Desktop/Features/DesktopFeatureOptions.cs": "593084b1eef590c240e27d6504c056e9d3bbd0d0db11679304e917c33e68f3be",
+    "src/Caiwu.Desktop/Features/FeatureAuthentication.cs": "bd5ae36699ac726460479cb8f1d3e7a014816f0e6721846a0adc5fcd95843f15",
+    "src/Caiwu.Desktop/Features/FeatureSessionBinding.cs": "a12c6dd09b89333451f96df3f0ba117fbf0127a8a7ac7aa0023385349cfe7c2c",
+    "src/Caiwu.Desktop/Features/FeatureWindowMonitor.cs": "9c46911a15513e9979f7de6e3ecbbf592c61c7150a0b2f57d47db5f428cd8600",
+    "src/Caiwu.Desktop/Features/MainWindow.Authentication.cs": "f1b2e7fe61d6177dc0a9f3f4db95403f95591211fcbde7ffb4488d9b7d67acc8",
+    "src/Caiwu.Desktop/Features/PendingVoucherCopy.cs": "5f774bd83301c0caaf4e459d905becb1dc603e5024cc8b4270f20629e7f0a6bb",
+    "src/Caiwu.Desktop/Features/SessionFeatureWindow.cs": "995b4ef9d594b40f322f536f7734784a13d7baca4e58b18890cacf4052ba3e81",
+    "src/Caiwu.Desktop/Features/SessionSummaryCatalog.cs": "60fe3d6a93e6735a96d051a428a8b810fcb102b5cc9047cda3758c1734782eeb",
+    "src/Caiwu.Desktop/MainWindow.Features.cs": "a337e98c84a44b617ccdddfe00136c56f3842468daa6d86b79dca0a306c57388",
+    "src/Caiwu.Desktop/MainWindow.xaml.cs": "15fe00b1068aea30428d9fcc6bff7741b162f1eedc316752a159fe8d2a6cad8b",
+    "tests/Caiwu.Acceptance/DualWindows/Caiwu.Acceptance.DualWindows.csproj": "0cee4d5651384c16f6cf8ce0fc8cb06968080c35b0dd85053bc28523952aa510",
+    "tests/Caiwu.Acceptance/DualWindows/Program.cs": "d26dab40c518c5933a7356264034d05f9a82b3a13955cd2fd48bdb0a2b60922f",
+    "tests/Caiwu.Acceptance/HighResolution/Caiwu.Acceptance.HighResolution.csproj": "501e12752524ff6a7709231d6c3011159a0290d08370821a90f21d35872d7f2d",
+    "tests/Caiwu.Acceptance/HighResolution/Program.cs": "4afc4f48db309663974eca894af942c1b2772f7f7bfb8fc2aefa5880ab038998",
+    "tests/Caiwu.Acceptance/MutationWindows/Caiwu.Acceptance.MutationWindows.csproj": "0cee4d5651384c16f6cf8ce0fc8cb06968080c35b0dd85053bc28523952aa510",
+    "tests/Caiwu.Acceptance/MutationWindows/Program.cs": "446ff9e8831427fda49bd450ff3d10c01edb9de23a76113c02339b5c176014d8",
+    "tests/Caiwu.Acceptance/NativeFocus/Caiwu.Acceptance.NativeFocus.csproj": "c49d57d4aaec455e76bd673efc57a60af42948669237f0a04e7097238572c483",
+    "tests/Caiwu.Acceptance/NativeFocus/Program.cs": "1d54933155d09465b5f3da737be28c0e415e28b13e4a123c4612303794718bc7",
+    "tests/Caiwu.Acceptance/Wpf/Caiwu.Acceptance.Wpf.csproj": "632ae6395319a7545ecdbb9a972b966c9b34ebcf8a1c7e5f785e9e93bf20964a",
+    "tests/Caiwu.Acceptance/Wpf/Program.cs": "04cc383384468eaa76a49cb5375ac60e04d79897f4d219878c130a6163882690",
+    "tests/Caiwu.Desktop.FeatureTests/Logic/Caiwu.Desktop.FeatureTests.csproj": "ff6fc545af387126935a9f642347b5e5ca97056b6e2d46074a5ec6ff2501107f",
+    "tests/Caiwu.Desktop.FeatureTests/Logic/Program.cs": "47f85d420d2a1b701d5c552d6ddd2c37f0242d98c9a7262ae66ea88a357bb08d",
+    "tests/Caiwu.Desktop.FeatureTests/Shared/SyntheticDesktopIdentity.cs": "1dd5e3097cdef10a771c708f7db148e30f17834ae4ed63522d5d26382ce35e70",
+    "tests/Caiwu.Desktop.FeatureTests/Windows/Caiwu.Desktop.FeatureTests.Windows.csproj": "0190c6c59a7285aff4c8a65d561d63e2f01d8b5678110170274628e53187d2f5",
+    "tests/Caiwu.Desktop.FeatureTests/Windows/Program.cs": "b962ecd192a9269e5ef467f85609607e01864ceb59c415a49036f5fac6eddc36",
+    "tests/Caiwu.Desktop.FeatureTests/Windows/run.ps1": "262ff37c12b61cdf6754f3c4f6f9bbf6c5dfe6d54e88a3012575581cb54ad5fb",
+    "tests/Caiwu.Desktop.FeatureTests/validate-combination.sh": "6162fe2f5910dde26b9b681910633a6f193edd2c435aee2f6cdd818009d2046b",
+    "tests/Caiwu.UiNavigation.Tests/Caiwu.UiNavigation.Tests.csproj": "c6be309f1192c43423963bf1d243f876ed05d4bf3e159fd402b9e8359ed49e98",
+    "tests/Caiwu.UiNavigation.Tests/Program.cs": "a06300a168bc3408e1f38fa6e2a419972b27dc67ebad179b2588437aa0a29660",
+    "tests/Caiwu.VisualReview/Caiwu.VisualReview.csproj": "440bd154ec76d519252194458a68a5c066ce5af4e2853ea0d718413ed8c9e6d3",
+    "tests/Caiwu.VisualReview/Program.cs": "ab27dd2e374da71ae907c3cb9f90bfd05f901e896b7be0c75fa22e5aebc3e913"
+  },
+  "evidenceSha256": {
+    "Caiwu.Acceptance.DualWindows.log": "af57ff82633fb1828d210c0aa6713b24dc56616d0724f3262d58f6045cf727ad",
+    "Caiwu.Acceptance.HighResolution.log": "2c8b2c22710403e7c5d7bf4094c58696bfcabcbf21790be206db25a2e6d37f59",
+    "Caiwu.Acceptance.MutationWindows.log": "5f49d25869a4908dffb51465a2a2b80da1ef10a908647ab9652e89ce171cb32c",
+    "Caiwu.Acceptance.NativeFocus.log": "07fc52ead07ecaf59a32a3098ce19e7b6e9b2a88882ffce3d4cf9591c537d100",
+    "Caiwu.UiNavigation.Tests.log": "83bf50980174da8992318660fca0c2a84296e858662bbc7cdf327f3622d49a3e",
+    "Caiwu.VisualReview.log": "2697af068ab466481d22302024ed373b53c4db16ddc541ed7e39af38c17c2508",
+    "checkout-sha.txt": "e431b09066f7ef3f32722cc63bbbb8f0bcdf0fef83b4496de2e361bee89d8842",
+    "desktop-build.log": "41399601917af2c65ab7a04352ec2171bcd6e47fe11d27e9a32d2797940507cf",
+    "logic.json": "d4c4d4ad766b96283504ddc88943b1ff77ce12df7616a3f1e532311c18ede0cd",
+    "logic.log": "866a63ff1f8423d694c18aa72bb14a9f5b0cba4525a9c90cdff7c5b99e6703b1",
+    "solution-build.log": "09d7ed693251137850524e29ae693e5020bc6e8b4612064b4fec887761bb4cea",
+    "windows-cross-build.log": "5ba55e82f0ce7d6a0f00c2ce08c9d0564f87b9548fbb57ec823b98e860d3d3be"
+  }
+}
