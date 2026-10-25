@@ -1,0 +1,81 @@
+{
+  "source": {
+    "databasePath": "D:\\a\\_temp\\installed-financial-40193277510-1\\\u5408\u6210 \u7528\u6237\u6570\u636E\\\u5408\u6210 \u5B89\u88C5\u91D1\u878D\u8D26\u5957.caiwu",
+    "bookId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "revision": 1,
+    "voucherCount": 2,
+    "postedVoucherCount": 2,
+    "bankBalance": null,
+    "snapshotSha256": "3738393efec2ff3ccec20da27c668fe968ad270ac6eddbe9fce0497ae52a8959",
+    "fileSha256": "540cca96d61b4f2262752d9cb251c4df8da9886f23b6bec7f507f0eeb1e314be",
+    "fileSha256Basis": "sqlite-consistent-copy"
+  },
+  "actualRestoredTarget": {
+    "databasePath": "D:\\a\\_temp\\installed-financial-40193277510-1\\\u5408\u6210 \u7528\u6237\u6570\u636E\\Books\\9462d1dc7d554de7965ba418c7a10163\\ledger.caiwu",
+    "bookId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+    "revision": 1,
+    "voucherCount": 2,
+    "postedVoucherCount": 2,
+    "bankBalance": null,
+    "snapshotSha256": "3738393efec2ff3ccec20da27c668fe968ad270ac6eddbe9fce0497ae52a8959",
+    "fileSha256": "540cca96d61b4f2262752d9cb251c4df8da9886f23b6bec7f507f0eeb1e314be",
+    "fileSha256Basis": "sqlite-consistent-copy"
+  },
+  "explicitAccountCode": "1002",
+  "sourceAccountBalance": 110,
+  "restoredAccountBalance": 110,
+  "originalLedgerSha256": "5f6bf1ace9c9d22c19105485bbd14365f506a937fa1348acec1c4e7360d675f9",
+  "identityUnchanged": true,
+  "attachments": [
+    {
+      "key": "costing-18c03a43fe804ad5529f0943",
+      "codec": "cost-worksheet-v1",
+      "source": "Books/a513c8e4f8da41e1bfea2e038b2f753a/Modules/Costing/worksheet-6ffbf62bc5f54c0091bac7a8c4ff1ba6.json",
+      "restored": "Books/9462d1dc7d554de7965ba418c7a10163/Modules/Costing/worksheet-6ffbf62bc5f54c0091bac7a8c4ff1ba6.json",
+      "sourceSha256": "108beb2604df01c05f2b745fd6a83d0e41e6e6eb3d5241c54848237f35c2f231",
+      "restoredSha256": "108beb2604df01c05f2b745fd6a83d0e41e6e6eb3d5241c54848237f35c2f231",
+      "sourceVersion": "108beb2604df01c05f2b745fd6a83d0e41e6e6eb3d5241c54848237f35c2f231",
+      "restoredVersion": "108beb2604df01c05f2b745fd6a83d0e41e6e6eb3d5241c54848237f35c2f231"
+    },
+    {
+      "key": "nonprofit-6ff03ad4a6caa3750951d700",
+      "codec": "nonprofit-classification-v1",
+      "source": "Books/a513c8e4f8da41e1bfea2e038b2f753a/Modules/Nonprofit/installed-reviewed.json",
+      "restored": "Books/9462d1dc7d554de7965ba418c7a10163/Modules/Nonprofit/installed-reviewed.json",
+      "sourceSha256": "e9db7e6d6f71c69f65021159f2b14008d15ec032d8624bfe77881b20ea187ce5",
+      "restoredSha256": "e9db7e6d6f71c69f65021159f2b14008d15ec032d8624bfe77881b20ea187ce5",
+      "sourceVersion": "e9db7e6d6f71c69f65021159f2b14008d15ec032d8624bfe77881b20ea187ce5",
+      "restoredVersion": "e9db7e6d6f71c69f65021159f2b14008d15ec032d8624bfe77881b20ea187ce5"
+    },
+    {
+      "key": "nonprofit-8cc19dfb284c0e96997ff81f",
+      "codec": "nonprofit-classification-v1",
+      "source": "Books/a513c8e4f8da41e1bfea2e038b2f753a/Modules/Nonprofit/synthetic-input.json",
+      "restored": "Books/9462d1dc7d554de7965ba418c7a10163/Modules/Nonprofit/synthetic-input.json",
+      "sourceSha256": "ba67116f346766f1a04dbf3de4ed9817751c33ef724e35f2036aa6c1ce4637a2",
+      "restoredSha256": "ba67116f346766f1a04dbf3de4ed9817751c33ef724e35f2036aa6c1ce4637a2",
+      "sourceVersion": "ba67116f346766f1a04dbf3de4ed9817751c33ef724e35f2036aa6c1ce4637a2",
+      "restoredVersion": "ba67116f346766f1a04dbf3de4ed9817751c33ef724e35f2036aa6c1ce4637a2"
+    },
+    {
+      "key": "reports-36ea36320f0d1d59298f7af7",
+      "codec": "report-template-v1",
+      "source": "Books/a513c8e4f8da41e1bfea2e038b2f753a/Modules/Reports/installed-template.json",
+      "restored": "Books/9462d1dc7d554de7965ba418c7a10163/Modules/Reports/installed-template.json",
+      "sourceSha256": "d496969394e89736aa0f2a36c9640b09e528042abe4b72dcdf6a0afd5151a485",
+      "restoredSha256": "d496969394e89736aa0f2a36c9640b09e528042abe4b72dcdf6a0afd5151a485",
+      "sourceVersion": "808df5d9-00d7-433c-942f-7c732cd677ec/1/D496969394E89736AA0F2A36C9640B09E528042ABE4B72DCDF6A0AFD5151A485",
+      "restoredVersion": "808df5d9-00d7-433c-942f-7c732cd677ec/1/D496969394E89736AA0F2A36C9640B09E528042ABE4B72DCDF6A0AFD5151A485"
+    },
+    {
+      "key": "summaries",
+      "codec": "summary-v1",
+      "source": "Books/a513c8e4f8da41e1bfea2e038b2f753a/Modules/Summaries/catalog.json",
+      "restored": "Books/9462d1dc7d554de7965ba418c7a10163/Modules/Summaries/catalog.json",
+      "sourceSha256": "bd13337f9233c142f188fa24d9384142df13c0001432ec15f403472b14991abc",
+      "restoredSha256": "bd13337f9233c142f188fa24d9384142df13c0001432ec15f403472b14991abc",
+      "sourceVersion": "05369c5a-ccd2-4b69-86ff-67ea53f32aec/0/bd13337f9233c142f188fa24d9384142df13c0001432ec15f403472b14991abc",
+      "restoredVersion": "05369c5a-ccd2-4b69-86ff-67ea53f32aec/0/bd13337f9233c142f188fa24d9384142df13c0001432ec15f403472b14991abc"
+    }
+  ]
+}
