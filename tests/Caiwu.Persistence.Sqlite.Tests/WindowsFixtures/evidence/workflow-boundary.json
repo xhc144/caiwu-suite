@@ -1,0 +1,22 @@
+{
+  "runId": 40183699168,
+  "jobId": 121139911172,
+  "implementationCommit": "549b4e6f90f1a62df6e34ad2a84a2c0f67c6cf02",
+  "overallWorkflowConclusion": "failure",
+  "sqliteFullSuite": { "passed": 117, "failed": 0, "skipped": 0 },
+  "originalWindowsFailuresRecovered": 45,
+  "originalRaceRepetitions": { "passed": 12, "failed": 0 },
+  "outsideScopeFailure": {
+    "step": "Build, test and render self-authored software under delivery hold",
+    "timeUtc": "2026-10-25T10:14:40Z",
+    "path": "tests/Caiwu.Acceptance/Wpf/run.ps1",
+    "line": 12,
+    "message": "Reviewed production sources have local edits; refusing ambiguous source identity.",
+    "exactDirtyFilesKnown": false,
+    "owner": "integration",
+    "guardModifiedOrBypassedByThisTask": false
+  },
+  "independentWpfStepConclusion": "success",
+  "independentSqliteStepConclusion": "success",
+  "noDistributionArchiveStepConclusion": "success"
+}

@@ -1,0 +1,203 @@
+{
+  "counters": {
+    "total": 117,
+    "executed": 117,
+    "passed": 117,
+    "failed": 0,
+    "error": 0,
+    "timeout": 0,
+    "aborted": 0,
+    "inconclusive": 0,
+    "passedButRunAborted": 0,
+    "notRunnable": 0,
+    "notExecuted": 0,
+    "disconnected": 0,
+    "warning": 0,
+    "completed": 0,
+    "inProgress": 0,
+    "pending": 0
+  },
+  "previousFailures": [
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-code\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-reviewed_by\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON vouchers WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-fiscal_year\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-parent_code\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-prepared_by\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON vouchers WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022audit-at\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Silent_line_conflict_must_reject_and_roll_back_the_complete_original_book(conflict: \u0022REPLACE\u0022)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-is_active\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-identity\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-kind\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON vouchers WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-start_month\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-attachment_count\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON vouchers WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022drop-audit\u0022, trigger: \u0022CREATE TRIGGER silent BEFORE INSERT ON audit_event\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Extra_unowned_lines_cannot_disappear_during_snapshot_materialization",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-closed_through_month\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Silent_line_conflict_must_reject_and_roll_back_the_complete_original_book(conflict: \u0022IGNORE\u0022)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-order\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022audit-order\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-created_at\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022audit-id\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-name\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022audit-voucher_id\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022audit-action\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022drop-unused-account\u0022, trigger: \u0022CREATE TRIGGER silent BEFORE INSERT ON accounts WH\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.An_extra_ledger_row_cannot_be_hidden_by_a_singleton_filter",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-status\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON vouchers WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-opening_credit_cents\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-opening_debit_cents\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022line-summary\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON voucher_line\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-name\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022audit-detail\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-template_version\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-date\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON vouchers WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Equal_counts_and_balanced_equal_totals_do_not_hide_redistributed_line_amounts",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-direction\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Fractional_cents_cannot_be_hidden_by_integer_getter_coercion(fractionalCents: \u0022\u00273000.5\u0027\u0022)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-revision\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022line-account_code\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON voucher_line\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Fractional_cents_cannot_be_hidden_by_integer_getter_coercion(fractionalCents: \u00223000.5\u0022)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022line-order\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON voucher_line\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-book_id\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022voucher-number\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON vouchers WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022account-order\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON accounts WHE\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022audit-operator_name\u0022, trigger: \u0022CREATE TRIGGER silent AFTER INSERT ON audit_events\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    },
+    {
+      "test": "Caiwu.Persistence.Sqlite.Tests.ReadbackTests.Every_persistent_field_and_list_order_is_verified_before_commit(category: \u0022ledger-regime\u0022, trigger: \u0022CREATE TRIGGER silent AFTER UPDATE OF name ON ledg\u0022\u00B7\u00B7\u00B7)",
+      "after": "Passed"
+    }
+  ],
+  "failures": []
+}
