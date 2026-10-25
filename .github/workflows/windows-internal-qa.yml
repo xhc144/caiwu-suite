@@ -68,6 +68,7 @@ jobs:
             artifacts/internal-qa/*/preparation.json
             artifacts/internal-qa/*/payload/payload-manifest.json
             ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/windows-acceptance.json
+            ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/restored-readback.json
             ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/installed-runtime/*.json
             ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/installed-runtime/*.png
             ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/installed-runtime/*.log

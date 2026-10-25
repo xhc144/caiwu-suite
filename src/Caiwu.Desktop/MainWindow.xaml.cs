@@ -443,12 +443,17 @@ public partial class MainWindow : Window
         "本版范围与快捷键", MessageBoxButton.OK, MessageBoxImage.Information);
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (Keyboard.Modifiers == ModifierKeys.None &&
+            (e.Key == Key.F10 || (e.Key == Key.System && e.SystemKey == Key.F10)))
+        {
+            e.Handled = true; // F10 is a system key; consume it before opening the modal confirmation.
+            Backup_Click(sender, e); return;
+        }
         if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.N) NewBook_Click(sender, e);
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.O) OpenBook_Click(sender, e);
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.N) NewVoucher_Click(sender, e);
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.L) VoucherPage_Click(sender, e);
         else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S && Pages.SelectedIndex == 3) SaveOpening_Click(sender, e);
-        else if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.F10) Backup_Click(sender, e);
         else if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.F4 && Pages.SelectedIndex == 1) Review_Click(sender, e);
         else return;
         e.Handled = true;

@@ -52,6 +52,17 @@ function Same-Book($Expected, $Actual) {
     Assert ($Actual.voucherCount -eq 1 -and $Actual.postedVoucherCount -eq 1) 'The single synthetic posted voucher is incomplete.'
     Assert ([decimal]$Actual.bankBalance -eq [decimal]123.45) 'Independent expected synthetic bank balance is 123.45.'
 }
+function Run-InstalledJson([string[]]$CommandArguments) {
+    $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $installRoot 'versions/0.1.0.1/Caiwu.Delivery.exe'))
+    $start.UseShellExecute = $false; $start.WorkingDirectory = $output
+    $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
+    foreach ($argument in $CommandArguments) { $start.ArgumentList.Add($argument) }
+    $process = [Diagnostics.Process]::Start($start)
+    $stdout = $process.StandardOutput.ReadToEndAsync(); $stderr = $process.StandardError.ReadToEndAsync()
+    if (-not $process.WaitForExit(30000)) { $process.Kill($true); throw 'Installed independent readback exceeded 30 seconds.' }
+    Assert ($process.ExitCode -eq 0) ('Installed readback failed: ' + $stderr.GetAwaiter().GetResult())
+    return ($stdout.GetAwaiter().GetResult() | ConvertFrom-Json)
+}
 function Data-Hashes {
     $hashes = @{}
     foreach ($file in Get-ChildItem -LiteralPath $dataRoot -Recurse -File -Force | Where-Object { $_.Name -notlike '*.lock' -and $_.Name -notlike '*-wal' -and $_.Name -notlike '*-shm' }) {
@@ -95,6 +106,11 @@ try {
     New-Item -ItemType File (Join-Path $evidence 'stop') | Out-Null
     Wait-Controller $control $evidence; $control = $null
     Pass 'normal installed login create save distinct-actor review post book modules complete backup and restore' @{ report = 'installed-runtime/installed-runtime.json' }
+    $sourceReadback = Run-InstalledJson @('inspect-book', $installRoot, [IO.Path]::GetRelativePath($dataRoot, $ready.bookPath))
+    $restoredReadback = Run-InstalledJson @('inspect-book', $installRoot, [IO.Path]::GetRelativePath($dataRoot, $ready.restoredBookPath))
+    Same-Book $sourceReadback $restoredReadback
+    @{ source = $sourceReadback; actualRestoredTarget = $restoredReadback } | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $output 'restored-readback.json') -Encoding utf8
+    Pass 'installed self-contained helper independently verifies actual restored target identity revision full snapshot posted voucher and balance'
 
     $retained = Data-Hashes
     $retained.Remove((Join-Path $dataRoot '.delivery-data-owner.json'))

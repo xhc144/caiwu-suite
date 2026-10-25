@@ -7,6 +7,7 @@ using System.Windows.Interop;
 using System.Windows.Media.Imaging;
 using Caiwu.Contracts;
 using Caiwu.Delivery;
+using Caiwu.Delivery.Modules;
 using Caiwu.Operators;
 using Caiwu.Persistence.Sqlite;
 
@@ -170,25 +171,60 @@ internal static class Program
             File.WriteAllText(Path.Combine(evidence, "loaded-after-posting.json"), JsonSerializer.Serialize(loadedAfterPosting, PayloadManifest.Json));
             Require(loadedAfterPosting.Any(m => string.Equals(m.name, "e_sqlite3.dll", StringComparison.OrdinalIgnoreCase) && SafePaths.Contains(versionRoot, m.path)), "actual installed SQLite native dependency resolves from the payload");
 
-            Menu("文件", "备份当前账套…"); Yes("受管完整备份");
             var receipts = Path.Combine(data, "Global", "BackupReceipts");
-            Until(() => Directory.Exists(receipts) && Directory.GetFiles(receipts, "*.json").Length == 1 && Text(main!, "NotificationText").Contains("独立可信哈希收据已保存", StringComparison.Ordinal), "normal complete backup receipt and UI completion");
-            var receipt = Directory.GetFiles(receipts, "*.json").Single();
-            Menu("文件", "从备份恢复副本…"); FileDialog("选择本机受管完整备份的可信哈希收据", receipt); Yes("完整恢复");
+            SetForegroundWindow((IntPtr)main.Current.NativeWindowHandle); Key(0x79);
+            var cancelBackup = Window(title => title == "受管完整备份");
+            var no = cancelBackup.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button)).Cast<AutomationElement>().Single(e => e.Current.Name.StartsWith("No", StringComparison.OrdinalIgnoreCase) || e.Current.Name.StartsWith("否", StringComparison.Ordinal));
+            ((InvokePattern)no.GetCurrentPattern(InvokePattern.Pattern)).Invoke();
+            Until(() => !HasWindow("受管完整备份"), "native F10 backup cancellation");
+            Require(!Directory.Exists(receipts) || Directory.GetFiles(receipts, "*.json").Length == 0, "plain native F10 opens confirmation and cancellation creates no receipt");
+            SetForegroundWindow((IntPtr)main.Current.NativeWindowHandle); Key(0x79); Yes("受管完整备份");
+            Until(() => Directory.Exists(receipts) && Directory.GetFiles(receipts, "*.json").Length == 1 && Text(main!, "NotificationText").Contains("独立可信哈希收据已保存", StringComparison.Ordinal), "accepted native F10 complete backup and UI completion");
+            var f10Receipt = Directory.GetFiles(receipts, "*.json").Single();
+            Pass("plain native F10 acceptance creates a complete managed backup");
+            Menu("文件", "备份当前账套…"); Yes("受管完整备份");
+            string? receipt = null;
+            Until(() => { var files = Directory.GetFiles(receipts, "*.json"); receipt = files.SingleOrDefault(p => p != f10Receipt); return files.Length == 2 && receipt is not null && Text(main!, "NotificationText").Contains(receipt, StringComparison.Ordinal); }, "separate normal menu backup completion");
+            Menu("文件", "从备份恢复副本…"); FileDialog("选择本机受管完整备份的可信哈希收据", receipt!); Yes("完整恢复");
             Until(() => Text(main!, "NotificationText").Contains("登记附件已恢复", StringComparison.Ordinal), "normal complete restore and open");
+            var restoredInventory = JsonSerializer.Deserialize<ManagedBooks>(File.ReadAllText(Path.Combine(data, "managed-books.json")), PayloadManifest.Json)!;
+            var restoredBookPath = restoredInventory.DatabasePaths.Single(p => !p.Equals(bookPath, StringComparison.OrdinalIgnoreCase));
             Require(PayloadManifest.Hash(identityPath) == identityBefore, "normal single-book restore leaves active global operators unchanged");
             Pass("installed App complete backup/restore uses a trusted receipt and preserves global identities"); Capture("restored-book");
-            File.WriteAllText(Path.Combine(evidence, "ready.json"), JsonSerializer.Serialize(new { desktopPid = desktop.Id, launcherPid = launcher.Id, bookPath, checkoutCommit = manifest.Commit }, PayloadManifest.Json));
+            File.WriteAllText(Path.Combine(evidence, "ready.json"), JsonSerializer.Serialize(new { desktopPid = desktop.Id, launcherPid = launcher.Id, bookPath, restoredBookPath, checkoutCommit = manifest.Commit }, PayloadManifest.Json));
             if (args.Length == 4 && args[3] == "hold") Until(() => File.Exists(Path.Combine(evidence, "stop")), "external in-use-upgrade probe completion", 120000);
             Close(main);
             if (!launcher.WaitForExit(30000)) throw new TimeoutException("Actual App launcher did not exit.");
             if (launcher.ExitCode != 0) throw new IOException("Installed App exited unsuccessfully: " + stderr.GetAwaiter().GetResult());
             _ = stdout.GetAwaiter().GetResult(); _ = stderr.GetAwaiter().GetResult();
+            LedgerSnapshot sourceStored, restoredStored;
             using (var store = SqliteLedgerStore.Open(bookPath))
             {
-                var snapshot = store.Read(); var v = snapshot.Vouchers.Single();
+                var snapshot = sourceStored = store.Read(); var v = snapshot.Vouchers.Single();
                 Require(v.Status == VoucherStatus.Posted && v.Lines.Count == 2 && v.Lines.Sum(l => l.Debit) == 123.45m && v.Lines.Sum(l => l.Credit) == 123.45m && v.PreparedBy != v.ReviewedBy, "independent persisted readback confirms exact posted two-line voucher and distinct actors");
             }
+            using (var restoredStore = SqliteLedgerStore.Open(restoredBookPath)) { restoredStore.CheckIntegrity(); restoredStored = restoredStore.Read(); }
+            var sourceInspection = BookOperations.Inspect(install, Path.GetRelativePath(data, bookPath));
+            var restoredInspection = BookOperations.Inspect(install, Path.GetRelativePath(data, restoredBookPath));
+            Require(sourceInspection.BookId == restoredInspection.BookId && sourceInspection.Revision == restoredInspection.Revision && sourceInspection.SnapshotSha256 == restoredInspection.SnapshotSha256 && restoredInspection.VoucherCount == 1 && restoredInspection.PostedVoucherCount == 1 && restoredInspection.BankBalance == 123.45m, "actual restored target independently matches book identity revision full snapshot posted voucher and balance");
+            using (var managedInspection = Installation.OpenManagedData(install))
+            {
+                var inv = managedInspection.ReadInventory();
+                var originalBook = managedInspection.FindBook(bookPath, sourceStored.Book.Id); var recoveredBook = managedInspection.FindBook(restoredBookPath, restoredStored.Book.Id);
+                var originals = inv.Attachments.Where(a => a.InstanceId == originalBook.InstanceId).OrderBy(a => a.Key).ToArray();
+                var recovered = inv.Attachments.Where(a => a.InstanceId == recoveredBook.InstanceId).OrderBy(a => a.Key).ToArray();
+                Require(originals.Length > 0 && originals.Length == recovered.Length, "actual restored physical instance has the complete registered attachment set");
+                var codecs = new ManagedModuleHost(managedInspection).Codecs;
+                for (var index = 0; index < originals.Length; index++)
+                {
+                    var left = originals[index]; var right = recovered[index];
+                    var leftPath = SafePaths.Child(data, left.RelativePath); var rightPath = SafePaths.Child(data, right.RelativePath);
+                    Require(left.Key == right.Key && left.Codec == right.Codec && PayloadManifest.Hash(leftPath) == PayloadManifest.Hash(rightPath), "actual restored attachment key codec and file hash match: " + left.Key);
+                    var codec = codecs.Single(c => c.Id == left.Codec);
+                    Require(codec.ReadVersion(leftPath, sourceStored) == codec.ReadVersion(rightPath, restoredStored), "actual restored native attachment content/version matches: " + left.Key);
+                }
+            }
+            File.WriteAllText(Path.Combine(evidence, "actual-restored-readback.json"), JsonSerializer.Serialize(new { source = sourceInspection, restored = restoredInspection }, PayloadManifest.Json));
             Save(true, null); return 0;
         }
         catch (Exception ex) { try { Capture("failure"); } catch { } try { DumpTree(); } catch { } Save(false, ex.ToString()); Console.Error.WriteLine(ex.Message); return 1; }
