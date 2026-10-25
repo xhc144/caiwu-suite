@@ -70,6 +70,8 @@ helper 在关闭后用 Dispatcher 的 Input 优先级恢复同一 Owner 中仍�
 
 ↑/↓ 跳过不可选行并在边界停住；Enter 仅确认当前有效选择；Esc 取消。双击只对真实数据行/树项生效，不接受列头或空白区的双击。中文输入组合期间不把 Enter、Esc、↑/↓ 当窗口命令；组合完成事件即使已被文本框处理，也会解除保护。Windows smoke 包含组合事件路由检查；这不代替真实中文 IME 候选词人工测试。
 
+结束模态窗口时锁定第一个确认/取消决定，忽略后续排队的重复或相反命令，避免窗口已关闭后再次设置 DialogResult 或取消掉已确认结果。同名不同编码仍是不同科目，搜索和树中都保留，以代码确认。无结果时清除旧选中与预览，恢复搜索结果也不会自动提交旧值。
+
 空科目源显示“暂无可选科目”；无匹配显示搜索提示。重复代码、空代码/名称、缺上级、循环、超过64层等无效目录显示错误并禁止确认。即使注入数据错误地标记了“启用子科目/停用父科目”，也不会选中。金额、期间与账务状态不由选择器修改或校验。
 
 摘要支持独立分类与内容搜索、完整预览、↑/↓/Enter/Esc；分类列表有焦点时 ↑/↓ 保持原生分类导航。实际类别叫“全部分类”也不会与“全部”过滤器冲突。来源为空、标识重复或内容/分类缺失都有明确状态。选中摘要返回完整原文（含Unicode/换行），不截断为列表预览。
@@ -80,7 +82,7 @@ helper 在关闭后用 Dispatcher 的 Input 优先级恢复同一 Owner 中仍�
 
 ## 已运行验证及 Windows CI
 
-已在 Linux 使用官方 .NET SDK10.0.402、官方 NuGet 固定版本/锁文件运行：纯逻辑14项通过，0失败/跳过；控件双目标与 Windows smoke Release 交叉编译通过，警告视为错误，0警告/错误。覆盖 active 末级、父/子停用、树祖先、Unicode/全角搜索、组合条件、键盘方向边界、取消不改原值、错误目录、摘要分类/原文返回及10000科目检索。
+已在 Linux 使用官方 .NET SDK10.0.402、官方 NuGet 固定版本/锁文件运行：纯逻辑15项通过，0失败/跳过；控件双目标与 Windows smoke Release 交叉编译通过，警告视为错误，0警告/错误。覆盖 active 末级、父/祖先停用、同名不同代码、树祖先、Unicode/全角搜索、组合条件、键盘方向边界、无结果后恢复、取消不改原值、错误目录、摘要分类/原文返回及10000科目检索。此次仅新增同名科目一个用例，其余边界扩展原有用例，未重复充数。
 
 ```sh
 dotnet restore tests/Caiwu.Desktop.Controls.Tests/Caiwu.Desktop.Controls.Tests.csproj --configfile tests/Caiwu.Desktop.Controls.Tests/NuGet.Config --locked-mode
@@ -94,6 +96,6 @@ Windows CI 用 `pwsh` 运行（由主协调加入其 workflow，本任务没有�
 ./tests/Caiwu.Desktop.Controls.Tests/Run-WindowsSmoke.ps1 -Artifacts "$PWD/artifacts/reference-dialogs"
 ```
 
-smoke 是真实 STA WPF 程序：显示 Owner 和两个实际 ShowDialog 窗口，检查搜索/列表/树选择、停用项不可确认、键盘路由、组合输入保护、摘要分类/完整预览、取消保持原值、空源/错误源及 helper 焦点恢复，失败退出非零；每窗保存 RenderTargetBitmap PNG 与 `smoke.json`（检查数、渲染尺寸和DPI）。数据全部为合成，不调用原软件、浏览器、后台服务或账务模块。它使用 WPF 路由输入事件，不能冒称真实硬件键盘/IME、原软件相似度或打印验收。
+smoke 是真实 STA WPF 程序：显示 Owner 和两个实际 ShowDialog 窗口，检查搜索/列表/树选择、停用项不可确认、键盘路由、组合输入保护、摘要分类/完整预览、无结果再恢复、取消保持原值、空源/错误源。两个 helper 各检查确认/取消四种路径、重复及相反结束命令、返回值和编辑框焦点恢复；各有15秒失败超时。失败退出非零，每窗保存 RenderTargetBitmap PNG 与 `smoke.json`（检查数、渲染尺寸和DPI）。数据全部为合成，不调用原软件、浏览器、后台服务或账务模块。它使用 WPF 路由输入事件，不能冒称真实硬件键盘/IME、原软件相似度或打印验收。
 
 当前容器是 Linux，**尚未实际运行 Windows smoke、取得其渲染图或人工验收高DPI/真实IME**；交叉编译成功只证明编译，不证明这些运行结果。无其他阻塞。

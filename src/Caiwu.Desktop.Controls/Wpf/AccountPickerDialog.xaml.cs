@@ -10,6 +10,7 @@ public partial class AccountPickerDialog : Window
 {
     private AccountPickerState? state;
     private bool synchronizing;
+    private bool finishing;
     private readonly PickerComposition composition;
     public Account? SelectedAccount { get; private set; }
 
@@ -20,6 +21,7 @@ public partial class AccountPickerDialog : Window
         state = new(accounts, initialAccountCode);
         RefreshItems();
         Loaded += (_, _) => { AccountSearch.Focus(); AccountSearch.SelectAll(); SyncSelection(); };
+        Closed += (_, _) => finishing = true;
     }
 
     private void Search_Changed(object sender, TextChangedEventArgs e)
@@ -75,11 +77,22 @@ public partial class AccountPickerDialog : Window
     private void Choose_Click(object sender, RoutedEventArgs e) => Choose();
     private void Choose()
     {
+        if (finishing) return;
         var result = state?.AcceptSelection();
         if (result?.Accepted != true) { SelectionStatus.Text = state?.StatusText ?? "科目目录尚未载入。"; return; }
-        SelectedAccount = result.Value; DialogResult = true;
+        SelectedAccount = result.Value; Finish(true);
     }
     private void Cancel_Click(object sender, RoutedEventArgs e) => Cancel();
-    private void Cancel() { SelectedAccount = null; DialogResult = false; }
+    private void Cancel() { if (finishing) return; SelectedAccount = null; Finish(false); }
+    private void Finish(bool accepted)
+    {
+        finishing = true;
+        try { DialogResult = accepted; }
+        finally
+        {
+            // A host may veto Closing. Keep that live dialog usable without leaking a tentative choice.
+            if (IsVisible) { finishing = false; SelectedAccount = null; }
+        }
+    }
     private void Window_Closing(object? sender, CancelEventArgs e) { if (DialogResult != true) SelectedAccount = null; }
 }

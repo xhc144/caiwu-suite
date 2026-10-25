@@ -44,7 +44,14 @@ internal static class Program
                 Find<TextBox>(window, "AccountSearch").Text = "100202";
                 Key(window, System.Windows.Input.Key.Down); Key(window, System.Windows.Input.Key.Enter);
                 Check(window.IsVisible && !Find<Button>(window, "ChooseButton").IsEnabled, "disabled leaf cannot close as accepted");
-                Capture(window, "account-disabled"); Key(window, System.Windows.Input.Key.Escape);
+                Capture(window, "account-disabled");
+                Find<TextBox>(window, "AccountSearch").Text = "完全无匹配";
+                Key(window, System.Windows.Input.Key.Enter);
+                Check(window.IsVisible && Find<TextBlock>(window, "SelectionStatus").Text.Contains("没有匹配", StringComparison.Ordinal), "no account results cannot confirm a stale selection");
+                Find<TextBox>(window, "AccountSearch").Text = "100201";
+                Key(window, System.Windows.Input.Key.Down);
+                Check(Find<Button>(window, "ChooseButton").IsEnabled, "account search recovers from no results");
+                Key(window, System.Windows.Input.Key.Escape);
             });
             Check(blocked.SelectedAccount is null && chart[1].Code == "100201", "cancel does not mutate original account");
 
@@ -91,7 +98,15 @@ internal static class Program
             Check(summary.SelectedSummary?.Id == "b", "summary category and search return injected item");
 
             var cancelledSummary = new SummaryPickerDialog(summaries, "b") { Owner = owner };
-            Drive(cancelledSummary, "summary-cancel", w => { Find<TextBox>(w, "SummarySearch").Text = "收款"; Key(w, System.Windows.Input.Key.Escape); });
+            Drive(cancelledSummary, "summary-cancel", w =>
+            {
+                Find<TextBox>(w, "SummarySearch").Text = "完全无匹配"; Key(w, System.Windows.Input.Key.Enter);
+                Check(w.IsVisible && Find<TextBox>(w, "SummaryPreview").Text.Length == 0 &&
+                    Find<TextBlock>(w, "SelectionStatus").Text.Contains("没有匹配", StringComparison.Ordinal), "no summary results clear stale preview and cannot confirm");
+                Find<TextBox>(w, "SummarySearch").Text = "办公"; Key(w, System.Windows.Input.Key.Down);
+                Check(Find<TextBox>(w, "SummaryPreview").Text == "支付办公费", "summary search recovers from no results");
+                Key(w, System.Windows.Input.Key.Escape);
+            });
             Check(cancelledSummary.SelectedSummary is null && field.Text == "原摘要", "summary cancellation preserves existing host text");
 
             foreach (var empty in new Window[] { new AccountPickerDialog([]) { Owner = owner }, new SummaryPickerDialog([]) { Owner = owner } })
@@ -109,19 +124,8 @@ internal static class Program
                 Key(w, System.Windows.Input.Key.Escape);
             });
 
-            field.Focus();
-            EventHandler focusCancel = (_, _) =>
-            {
-                var modal = app.Windows.OfType<AccountPickerDialog>().SingleOrDefault(w => w.IsVisible);
-                if (modal is not null) modal.Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(() => { if (modal.IsVisible) Key(modal, System.Windows.Input.Key.Escape); }));
-            };
-            app.Activated += focusCancel;
-            var cancelTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
-            cancelTimer.Tick += focusCancel; cancelTimer.Start();
-            var result = SelectionDialogs.PickAccount(owner, chart, "100201", field);
-            cancelTimer.Stop(); app.Activated -= focusCancel;
-            Pump();
-            Check(!result.Accepted && field.IsKeyboardFocused, "modal helper restores owner field keyboard focus");
+            foreach (var (account, accept) in new[] { (true, true), (true, false), (false, true), (false, false) })
+                HelperFocusCase(app, owner, field, chart, summaries, account, accept);
             owner.Close(); app.Shutdown();
             File.WriteAllText(Path.Combine(artifacts, "smoke.json"), JsonSerializer.Serialize(new { passed = checks, renders, platform = Environment.OSVersion.ToString() }, new JsonSerializerOptions { WriteIndented = true }));
             Console.WriteLine($"WPF dialog smoke passed: {checks}; artifacts: {artifacts}");
@@ -148,6 +152,54 @@ internal static class Program
     }
     private static void Key(Window window, Key key) => window.RaiseEvent(new KeyEventArgs(Keyboard.PrimaryDevice,
         PresentationSource.FromVisual(window), Environment.TickCount, key) { RoutedEvent = Keyboard.PreviewKeyDownEvent });
+    private static void HelperFocusCase(Application app, Window owner, TextBox field, Account[] chart,
+        SummaryLibraryItem[] summaries, bool account, bool accept)
+    {
+        field.Focus();
+        var originalText = field.Text;
+        var label = (account ? "account" : "summary") + (accept ? "-accept" : "-cancel");
+        Window? Modal() => app.Windows.OfType<Window>().SingleOrDefault(w => w.IsVisible && w.IsLoaded &&
+            (account ? w is AccountPickerDialog : w is SummaryPickerDialog));
+        Exception? error = null;
+        var driver = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+        var deadline = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        driver.Tick += (_, _) =>
+        {
+            if (Modal() is not { } modal) return;
+            driver.Stop();
+            try
+            {
+                Capture(modal, "helper-" + label);
+                var first = Find<Button>(modal, accept ? "ChooseButton" : "CancelButton");
+                var opposite = Find<Button>(modal, accept ? "CancelButton" : "ChooseButton");
+                first.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                // Exercise queued duplicate and opposite commands after closing began. The first decision must win.
+                first.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                opposite.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            }
+            catch (Exception ex) { error = ex; if (modal.IsVisible) modal.Close(); }
+        };
+        deadline.Tick += (_, _) => { error = new TimeoutException("Helper modal timed out: " + label); Modal()?.Close(); };
+        driver.Start(); deadline.Start();
+        try
+        {
+            if (account)
+            {
+                var result = SelectionDialogs.PickAccount(owner, chart, "100201", field);
+                if (error is not null) throw new InvalidOperationException(label, error);
+                Check(result.Accepted == accept && result.Value?.Code == (accept ? "100201" : null), label + " keeps first modal decision");
+            }
+            else
+            {
+                var result = SelectionDialogs.PickSummary(owner, summaries, "b", field);
+                if (error is not null) throw new InvalidOperationException(label, error);
+                Check(result.Accepted == accept && result.Value?.Id == (accept ? "b" : null), label + " keeps first modal decision");
+            }
+        }
+        finally { driver.Stop(); deadline.Stop(); }
+        Pump();
+        Check(field.IsKeyboardFocused && field.Text == originalText, label + " restores owner focus without writing host text");
+    }
     private static TreeViewItem? TreeContainer(ItemsControl parent, string code)
     {
         parent.UpdateLayout();

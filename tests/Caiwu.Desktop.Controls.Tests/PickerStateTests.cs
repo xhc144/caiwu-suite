@@ -46,6 +46,10 @@ public sealed class PickerStateTests
         Assert.Equal("100201", original[1].Code);
         model.SetQuery("不存在"); Assert.False(model.CanAccept); Assert.Null(model.SelectedItem);
         model.MoveSelection(1); Assert.False(model.AcceptSelection().Accepted);
+        Assert.Empty(model.VisibleItems); Assert.Empty(model.TreeItems); Assert.Null(model.LoadError);
+        Assert.Contains("没有匹配", model.StatusText);
+        model.SetQuery("100201"); Assert.False(model.CanAccept); // Recovering results does not auto-confirm an old choice.
+        model.MoveSelection(1); Assert.Equal("100201", model.AcceptSelection().Value!.Code);
     }
 
     [Fact]
@@ -80,7 +84,24 @@ public sealed class PickerStateTests
         }
         var disabled = new AccountPickerState([A("1", "停用上级", active: false), A("11", "未同步的启用明细", "1")]);
         disabled.Select("11"); Assert.False(disabled.CanAccept); Assert.Contains("上级", disabled.SelectedItem!.SelectionHint);
+        var grandparent = new AccountPickerState([A("1002", "停用根", active: false), A("100201", "启用父级", "1002"),
+            A("10020101", "启用末级", "100201")]);
+        grandparent.Select("10020101"); Assert.False(grandparent.CanAccept);
+        grandparent.SetOnlySelectable(true); Assert.Empty(grandparent.VisibleItems);
         var empty = new AccountPickerState([]); Assert.Contains("暂无", empty.StatusText); Assert.False(empty.CanAccept);
+    }
+
+    [Fact]
+    public void SameNamedAccountsRemainDistinctByCodeAcrossListTreeAndKeyboard()
+    {
+        var model = new AccountPickerState([A("1002", "银行存款"), A("100201", "基本账户", "1002"),
+            A("100202", "基本账户", "1002")], "100202");
+        model.SetQuery("基本账户");
+        Assert.Equal(new[] { "100201", "100202" }, model.VisibleItems.Select(i => i.Code));
+        Assert.Equal(new[] { "100201", "100202" }, Assert.Single(model.TreeItems).Children.Select(i => i.Choice.Code));
+        Assert.Equal("100202", model.AcceptSelection().Value!.Code);
+        model.MoveSelection(-1); Assert.Equal("100201", model.AcceptSelection().Value!.Code);
+        model.Select("100202"); Assert.Equal("100202", model.AcceptSelection().Value!.Code);
     }
 
     [Fact]
@@ -124,6 +145,10 @@ public sealed class PickerStateTests
         var result = model.CancelSelection(); Assert.False(result.Accepted); Assert.Null(result.Value);
         var value = result.Accepted ? result.Value!.Text : originalText; Assert.Equal(originalText, value);
         model.SetQuery("不存在"); model.MoveSelection(-1); Assert.False(model.CanAccept);
+        Assert.Empty(model.VisibleItems); Assert.Null(model.SelectedItem); Assert.Null(model.LoadError);
+        Assert.Contains("没有匹配", model.StatusText);
+        model.SetQuery("差旅"); Assert.False(model.CanAccept);
+        model.MoveSelection(1); Assert.Equal("travel", model.AcceptSelection().Value!.Id);
     }
 
     [Fact]
