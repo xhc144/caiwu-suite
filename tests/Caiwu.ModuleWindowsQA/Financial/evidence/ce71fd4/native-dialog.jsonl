@@ -1,0 +1,29 @@
+{"at":"2026-10-25T11:15:05.4122802+00:00","stage":"opening","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:15:07.6184671+00:00","stage":"closed","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:15:07.6223055+00:00","stage":"opening","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:15:08.3338869+00:00","stage":"closed","currentCase":"costing","path":null}
+{"at":"2026-10-25T11:15:12.8998294+00:00","stage":"opening","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:15:13.6762413+00:00","stage":"closed","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:15:13.677763+00:00","stage":"opening","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:15:13.8216813+00:00","stage":"closed","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:15:13.82323+00:00","stage":"opening","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"fileNameEditId":"1001","fileNameEditLabel":"File name:"}
+{"requested":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json","actual":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"at":"2026-10-25T11:15:15.1314656+00:00","stage":"closed","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"at":"2026-10-25T11:15:15.1333011+00:00","stage":"opening","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"fileNameEditId":"1148","fileNameEditLabel":"File name:"}
+{"requested":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json","actual":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"at":"2026-10-25T11:15:16.5096294+00:00","stage":"closed","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-reviewed.json"}
+{"at":"2026-10-25T11:15:16.9926213+00:00","stage":"opening","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-balance.html"}
+{"fileNameEditId":"1001","fileNameEditLabel":"File name:"}
+{"requested":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-balance.html","actual":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-balance.html"}
+{"at":"2026-10-25T11:15:18.3537689+00:00","stage":"closed","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-balance.html"}
+{"at":"2026-10-25T11:15:19.2578578+00:00","stage":"opening","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-activity.csv"}
+{"fileNameEditId":"1001","fileNameEditLabel":"File name:"}
+{"requested":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-activity.csv","actual":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-activity.csv"}
+{"at":"2026-10-25T11:15:20.6224568+00:00","stage":"closed","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-activity.csv"}
+{"at":"2026-10-25T11:15:20.6261259+00:00","stage":"opening","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:15:21.4006271+00:00","stage":"closed","currentCase":"nonprofit","path":null}
+{"at":"2026-10-25T11:15:22.4128856+00:00","stage":"opening","currentCase":"nonprofit","path":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-stale-should-not-exist.csv"}
+{"fileNameEditId":"1001","fileNameEditLabel":"File name:"}
+{"requested":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\synthetic-stale-should-not-exist.csv","actual":"D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\syntheti"}

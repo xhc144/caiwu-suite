@@ -1,0 +1,864 @@
+{
+  "sourceSha": "ce71fd4010a9976a1b6e2b7f583020d5aa745efc",
+  "syntheticDataOnly": true,
+  "actualWindows": true,
+  "passed": false,
+  "framework": ".NET 10.0.13",
+  "cases": [
+    {
+      "name": "costing",
+      "passed": true,
+      "checks": [
+        "inherits exact modern Window style",
+        "inherits Chinese font family",
+        "inherits modern foreground brush",
+        "inherits exact modern Button template",
+        "author sample independently totals250.00",
+        "native Unicode input has exact foreground textbox focus",
+        "ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed",
+        "native metadata edit updates binding and invalidates calculation",
+        "actual DataGrid begins edit: \u4EBA\u5DE5\u8D39\u7528\u6C60\uFF08\u5143\uFF09",
+        "actual DataGrid commits cell and row",
+        "actual labor cell edit recalculates250-\u003E254",
+        "actual editor reads back JSON and recalculates254",
+        "existing audit JSON preserved on duplicate destination",
+        "cross-book JSON refused without mutating current editor",
+        "actual native dialog cancelled",
+        "native save cancellation retains calculation and editor",
+        "native save cancellation creates no files",
+        "actual native dialog cancelled",
+        "native open cancellation creates no files",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "equal-weight one-cent remainder goes to A; total conserved",
+        "one-cent remainder visible in audit rows",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "actual DataGrid begins edit: \u4EBA\u5DE5\u8D39\u7528\u6C60\uFF08\u5143\uFF09",
+        "actual DataGrid commits cell and row",
+        "invalid numeric input stays in window with error and no stale calculation/suggestions",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "actual DataGrid begins edit: \u4EBA\u5DE5\u8D39\u7528\u6C60\uFF08\u5143\uFF09",
+        "actual DataGrid commits cell and row",
+        "rendered amount column right aligned: \u603B\u6210\u672C",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "no WPF binding errors in this component"
+      ]
+    },
+    {
+      "name": "nonprofit",
+      "passed": false,
+      "error": "System.InvalidOperationException: Native file-name textbox did not accept the exact synthetic path: D:\\a\\caiwu-suite\\caiwu-suite\\artifacts\\financial-windows\\nonprofit\\user-data\\syntheti\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.\u003C\u003Ec__DisplayClass6_0.\u003CNativeDialog\u003Eb__0() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\NativeWindows.cs:line 107\r\n   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)\r\n--- End of stack trace from previous location ---\r\n   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)\r\n   at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task\u0026 currentTaskSlot, Thread threadPoolThread)\r\n--- End of stack trace from previous location ---\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.NativeDialog(Action open, String path, Action whileOpen) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\NativeWindows.cs:line 134\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.Nonprofit() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\NonprofitCase.cs:line 90\r\n   at Caiwu.ModuleWindowsQA.Financial.Program.RunCase(String name, Func\u00601 action) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\Financial\\Program.cs:line 64",
+      "checks": [
+        "inherits exact modern Window style",
+        "inherits Chinese font family",
+        "inherits modern foreground brush",
+        "inherits exact modern Button template",
+        "unclassified source remains incomplete with missing values",
+        "actual enum editor begins edit",
+        "actual DataGrid commits cell and row",
+        "actual ComboBox writes explicit account semantic",
+        "actual DataGrid begins edit: \u590D\u6838\u4F9D\u636E",
+        "native Unicode input has exact foreground textbox focus",
+        "ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed",
+        "actual DataGrid commits cell and row",
+        "native Chinese input reaches nonprofit evidence row",
+        "actual enum editor begins edit",
+        "actual DataGrid commits cell and row",
+        "nullable activity enum persists through real ComboBox",
+        "explicit classifications produce reconciled two-table calculation preview, never formal issue",
+        "independent oracle: assets110 and unrestricted donation10",
+        "actual native dialog cancelled",
+        "native classification save cancellation leaves no files",
+        "actual native dialog cancelled",
+        "reset confirmation cancellation retains classification and preview",
+        "actual native dialog selected permitted synthetic path",
+        "native Save button creates actual classified JSON",
+        "actual native dialog selected permitted synthetic path",
+        "native classification load restores explicit reviewed two-table preview",
+        "actual native dialog selected permitted synthetic path",
+        "native HTML export contains actual balance110",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "actual native dialog selected permitted synthetic path",
+        "native CSV export contains actual donation10",
+        "actual native dialog cancelled",
+        "native export cancellation has no side effect",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "actual DataGrid begins edit: \u590D\u6838\u4F9D\u636E",
+        "actual DataGrid commits cell and row",
+        "classification edit refuses stale export and removes old complete-looking preview",
+        "changed classification creates no export file",
+        "classification, preview, save, load and export never write the saved ledger",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client"
+      ]
+    },
+    {
+      "name": "designer",
+      "passed": true,
+      "checks": [
+        "inherits exact modern Window style",
+        "inherits Chinese font family",
+        "inherits modern foreground brush",
+        "inherits exact modern Button template",
+        "independent initial leaf-only total100.20",
+        "modern format ComboBox fits its real grid cell without vertical or value-label clipping",
+        "actual DataGrid begins edit: \u5B57\u6BB5 / decimal\u516C\u5F0F",
+        "actual DataGrid commits cell and row",
+        "real formula cell edit clears stale preview/export",
+        "actual DataGrid begins edit: \u6807\u9898",
+        "actual DataGrid commits cell and row",
+        "actual DataGrid begins edit: \u5BBD\u5EA6DIP",
+        "actual DataGrid commits cell and row",
+        "native Unicode input has exact foreground textbox focus",
+        "ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed",
+        "edited formula independently totals100.60",
+        "explicit host cancellation of save/load/exports creates no files",
+        "cancelled host path selection retains exact preview",
+        "actual Save button writes validated template JSON",
+        "actual DataGrid begins edit: \u5B57\u6BB5 / decimal\u516C\u5F0F",
+        "actual DataGrid commits cell and row",
+        "second actual edit changes visible calculation",
+        "actual Load button restores formula and width then re-previews",
+        "actual HTML/CSV buttons export reloaded values",
+        "HTML encodes user-entered header markup",
+        "rendered amount column right aligned: \u4FEE\u6539\u540E\u51C0\u989D",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "duplicate export refuses overwrite, stays open and clears stale preview",
+        "actual DataGrid begins edit: \u6807\u9898",
+        "actual DataGrid commits cell and row",
+        "concurrent template save conflict preserves file and user edit in window",
+        "actual DataGrid begins edit: \u5B57\u6BB5 / decimal\u516C\u5F0F",
+        "actual DataGrid commits cell and row",
+        "division error is located; no pseudo-complete report or stale export",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "limited preview explicitly disables full export and printing",
+        "source changed during path selection rejects export without modifying existing files",
+        "path-selection source race visibly invalidates old preview",
+        "changed book/period/session refuses save and preview in same window",
+        "changed book/period/session leaves saved files unchanged",
+        "changed book/period/session refuses save and preview in same window",
+        "changed book/period/session leaves saved files unchanged",
+        "changed book/period/session refuses save and preview in same window",
+        "changed book/period/session leaves saved files unchanged",
+        "capture foreground is intended component window",
+        "complete native client fits desktop without clipping",
+        "visible action buttons fit complete component client",
+        "no WPF binding errors in this component"
+      ]
+    }
+  ],
+  "captures": [
+    {
+      "name": "costing-stages.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "8e58233910ec9a613d4ed0b589ba5501cf41095d055391d5ed0cd30af4f88394",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u8BA1\u7B97 / \u590D\u7B97",
+          "x": 12,
+          "y": 132,
+          "width": 93,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5BA1\u6838 JSON",
+          "x": 111,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u660E\u7EC6 CSV",
+          "x": 234,
+          "y": 132,
+          "width": 109,
+          "height": 36
+        },
+        {
+          "label": "\u6253\u5F00\u5BA1\u6838 JSON",
+          "x": 349,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u8F7D\u5165\u5408\u6210\u6837\u4F8B",
+          "x": 472,
+          "y": 132,
+          "width": 108,
+          "height": 36
+        },
+        {
+          "label": "\u589E\u52A0\u884C",
+          "x": 27,
+          "y": 302,
+          "width": 66,
+          "height": 36
+        },
+        {
+          "label": "\u5220\u9664\u6240\u9009\u884C",
+          "x": 99,
+          "y": 302,
+          "width": 94,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "costing-remainder.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "1f2fbf96b558fcbe774c1e87ee0ebf0b48159ddd973e2584c0a9cd6cc2d6883c",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u8BA1\u7B97 / \u590D\u7B97",
+          "x": 12,
+          "y": 132,
+          "width": 93,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5BA1\u6838 JSON",
+          "x": 111,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u660E\u7EC6 CSV",
+          "x": 234,
+          "y": 132,
+          "width": 109,
+          "height": 36
+        },
+        {
+          "label": "\u6253\u5F00\u5BA1\u6838 JSON",
+          "x": 349,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u8F7D\u5165\u5408\u6210\u6837\u4F8B",
+          "x": 472,
+          "y": 132,
+          "width": 108,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "costing-invalid.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "c78e6d0b6277570c8bbaac18dcf408791e73b3db32361c50b011f28d7eb2e866",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u8BA1\u7B97 / \u590D\u7B97",
+          "x": 12,
+          "y": 132,
+          "width": 93,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5BA1\u6838 JSON",
+          "x": 111,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u660E\u7EC6 CSV",
+          "x": 234,
+          "y": 132,
+          "width": 109,
+          "height": 36
+        },
+        {
+          "label": "\u6253\u5F00\u5BA1\u6838 JSON",
+          "x": 349,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u8F7D\u5165\u5408\u6210\u6837\u4F8B",
+          "x": 472,
+          "y": 132,
+          "width": 108,
+          "height": 36
+        },
+        {
+          "label": "\u589E\u52A0\u884C",
+          "x": 27,
+          "y": 302,
+          "width": 66,
+          "height": 36
+        },
+        {
+          "label": "\u5220\u9664\u6240\u9009\u884C",
+          "x": 99,
+          "y": 302,
+          "width": 94,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "costing-calculation.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "cb1092e5b1fba6c4c3142c2d6969c92c18086372d7118d5edcc970815bcfe098",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u8BA1\u7B97 / \u590D\u7B97",
+          "x": 12,
+          "y": 132,
+          "width": 93,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5BA1\u6838 JSON",
+          "x": 111,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u660E\u7EC6 CSV",
+          "x": 234,
+          "y": 132,
+          "width": 109,
+          "height": 36
+        },
+        {
+          "label": "\u6253\u5F00\u5BA1\u6838 JSON",
+          "x": 349,
+          "y": 132,
+          "width": 117,
+          "height": 36
+        },
+        {
+          "label": "\u8F7D\u5165\u5408\u6210\u6837\u4F8B",
+          "x": 472,
+          "y": 132,
+          "width": 108,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "nonprofit-balance.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "81da7c80726973c7b14fc41b6f5c2d9b0a05d6b0ea211dc8f6e8849f2b246e8a",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u6821\u9A8C\u5E76\u9884\u89C8",
+          "x": 8,
+          "y": 85,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u5165\u5206\u7C7BJSON",
+          "x": 106,
+          "y": 85,
+          "width": 109,
+          "height": 36
+        },
+        {
+          "label": "\u53E6\u5B58\u65B0\u5206\u7C7BJSON",
+          "x": 223,
+          "y": 85,
+          "width": 123,
+          "height": 36
+        },
+        {
+          "label": "\u8BFB\u53D6\u65B0\u5FEB\u7167\u5E76\u91CD\u65B0\u5206\u7C7B",
+          "x": 354,
+          "y": 85,
+          "width": 160,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5F53\u524D\u8868CSV",
+          "x": 522,
+          "y": 85,
+          "width": 115,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5F53\u524D\u8868HTML",
+          "x": 645,
+          "y": 85,
+          "width": 127,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "nonprofit-activity.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "a7c029aa7cf2bd755c1b1baebbe9420941feaf442a293d5e69009e3f781ef289",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u6821\u9A8C\u5E76\u9884\u89C8",
+          "x": 8,
+          "y": 85,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u5165\u5206\u7C7BJSON",
+          "x": 106,
+          "y": 85,
+          "width": 109,
+          "height": 36
+        },
+        {
+          "label": "\u53E6\u5B58\u65B0\u5206\u7C7BJSON",
+          "x": 223,
+          "y": 85,
+          "width": 123,
+          "height": 36
+        },
+        {
+          "label": "\u8BFB\u53D6\u65B0\u5FEB\u7167\u5E76\u91CD\u65B0\u5206\u7C7B",
+          "x": 354,
+          "y": 85,
+          "width": 160,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5F53\u524D\u8868CSV",
+          "x": 522,
+          "y": 85,
+          "width": 115,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5F53\u524D\u8868HTML",
+          "x": 645,
+          "y": 85,
+          "width": 127,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "nonprofit-failure.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "6fa9fa41a6a2b627f55e6663873ba7d1a84f6121973a80e3da1ef7824992b55b",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u6821\u9A8C\u5E76\u9884\u89C8",
+          "x": 8,
+          "y": 85,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u5165\u5206\u7C7BJSON",
+          "x": 106,
+          "y": 85,
+          "width": 109,
+          "height": 36
+        },
+        {
+          "label": "\u53E6\u5B58\u65B0\u5206\u7C7BJSON",
+          "x": 223,
+          "y": 85,
+          "width": 123,
+          "height": 36
+        },
+        {
+          "label": "\u8BFB\u53D6\u65B0\u5FEB\u7167\u5E76\u91CD\u65B0\u5206\u7C7B",
+          "x": 354,
+          "y": 85,
+          "width": 160,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5F53\u524D\u8868CSV",
+          "x": 522,
+          "y": 85,
+          "width": 115,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA\u5F53\u524D\u8868HTML",
+          "x": 645,
+          "y": 85,
+          "width": 127,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "designer-preview.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "327e9f84e0f72e158df31efe9a3125a1308863fbfaff6113a0a53a46ac4a91c2",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u8F7D\u5165\u6A21\u677F",
+          "x": 1334,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u4FDD\u5B58\u6A21\u677F",
+          "x": 1422,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u91CD\u65B0\u9884\u89C8",
+          "x": 1510,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA HTML",
+          "x": 1598,
+          "y": 20,
+          "width": 93,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA CSV",
+          "x": 1699,
+          "y": 20,
+          "width": 81,
+          "height": 36
+        },
+        {
+          "label": "Windows \u6253\u5370",
+          "x": 1788,
+          "y": 20,
+          "width": 112,
+          "height": 36
+        },
+        {
+          "label": "\u6DFB\u52A0\u5B57\u6BB5\u5217",
+          "x": 256,
+          "y": 133,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u6DFB\u52A0\u8BA1\u7B97\u5217",
+          "x": 356,
+          "y": 133,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u4E0A\u79FB",
+          "x": 456,
+          "y": 133,
+          "width": 48,
+          "height": 36
+        },
+        {
+          "label": "\u4E0B\u79FB",
+          "x": 514,
+          "y": 133,
+          "width": 48,
+          "height": 36
+        },
+        {
+          "label": "\u5220\u9664\u5217",
+          "x": 572,
+          "y": 133,
+          "width": 62,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "designer-formula-error.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "c8152691e10189b6df9ebb625f2a8f5a78fad348b7bdae1cceec55031d05d479",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u8F7D\u5165\u6A21\u677F",
+          "x": 1334,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u4FDD\u5B58\u6A21\u677F",
+          "x": 1422,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u91CD\u65B0\u9884\u89C8",
+          "x": 1510,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA HTML",
+          "x": 1598,
+          "y": 20,
+          "width": 93,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA CSV",
+          "x": 1699,
+          "y": 20,
+          "width": 81,
+          "height": 36
+        },
+        {
+          "label": "Windows \u6253\u5370",
+          "x": 1788,
+          "y": 20,
+          "width": 112,
+          "height": 36
+        },
+        {
+          "label": "\u6DFB\u52A0\u5B57\u6BB5\u5217",
+          "x": 256,
+          "y": 133,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u6DFB\u52A0\u8BA1\u7B97\u5217",
+          "x": 356,
+          "y": 133,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u4E0A\u79FB",
+          "x": 456,
+          "y": 133,
+          "width": 48,
+          "height": 36
+        },
+        {
+          "label": "\u4E0B\u79FB",
+          "x": 514,
+          "y": 133,
+          "width": 48,
+          "height": 36
+        },
+        {
+          "label": "\u5220\u9664\u5217",
+          "x": 572,
+          "y": 133,
+          "width": 62,
+          "height": 36
+        }
+      ]
+    },
+    {
+      "name": "designer-stale-session.png",
+      "width": 1920,
+      "height": 1080,
+      "dpi": 96,
+      "sha256": "4e616c639008c382ed91d5b36c87332c5251f4dc0506153b19f588fec234de6d",
+      "mechanism": "Native primary-desktop BitBlt; no crop/resize",
+      "client": {
+        "X": 0,
+        "Y": 23,
+        "Right": 1920,
+        "Bottom": 1009
+      },
+      "actions": [
+        {
+          "label": "\u8F7D\u5165\u6A21\u677F",
+          "x": 1334,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u4FDD\u5B58\u6A21\u677F",
+          "x": 1422,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u91CD\u65B0\u9884\u89C8",
+          "x": 1510,
+          "y": 20,
+          "width": 80,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA HTML",
+          "x": 1598,
+          "y": 20,
+          "width": 93,
+          "height": 36
+        },
+        {
+          "label": "\u5BFC\u51FA CSV",
+          "x": 1699,
+          "y": 20,
+          "width": 81,
+          "height": 36
+        },
+        {
+          "label": "Windows \u6253\u5370",
+          "x": 1788,
+          "y": 20,
+          "width": 112,
+          "height": 36
+        },
+        {
+          "label": "\u6DFB\u52A0\u5B57\u6BB5\u5217",
+          "x": 256,
+          "y": 133,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u6DFB\u52A0\u8BA1\u7B97\u5217",
+          "x": 356,
+          "y": 133,
+          "width": 90,
+          "height": 36
+        },
+        {
+          "label": "\u4E0A\u79FB",
+          "x": 456,
+          "y": 133,
+          "width": 48,
+          "height": 36
+        },
+        {
+          "label": "\u4E0B\u79FB",
+          "x": 514,
+          "y": 133,
+          "width": 48,
+          "height": 36
+        },
+        {
+          "label": "\u5220\u9664\u5217",
+          "x": 572,
+          "y": 133,
+          "width": 62,
+          "height": 36
+        }
+      ]
+    }
+  ],
+  "bindingErrors": "",
+  "host": "Independent explicit synthetic component host. Production MainWindow/login/session integration not exercised.",
+  "inputMechanism": "Actual WPF DataGrid editors and routed button events; verified native SendInput Unicode for ordinary Chinese text; native file dialogs via UIAutomation.",
+  "notCovered": [
+    "physical keyboard",
+    "IME composition",
+    "printer submission",
+    "PDF output",
+    "production Desktop integration",
+    "installation/update/account-set retention"
+  ]
+}

@@ -101,8 +101,12 @@ internal static partial class Program
                         if (GetForegroundWindow() != handle) throw new InvalidOperationException("Native file dialog lost foreground before typing.");
                         Send([KeyInput(0x11, 0, 0), KeyInput(0x41, 0, 0), KeyInput(0x41, 0, 2), KeyInput(0x11, 0, 2)]);
                         Send(path.SelectMany(c => new[] { KeyInput(0, c, 4), KeyInput(0, c, 6) }).ToArray());
-                        Thread.Sleep(150);
-                        var actual = ((ValuePattern)edit.GetCurrentPattern(ValuePattern.Pattern)).Current.Value;
+                        // SendInput queues keystrokes; busy CI desktops can expose a transient prefix before the edit consumes them all.
+                        var valuePattern = (ValuePattern)edit.GetCurrentPattern(ValuePattern.Pattern);
+                        var typedDeadline = DateTime.UtcNow.AddSeconds(5);
+                        var actual = valuePattern.Current.Value;
+                        while (actual != path && DateTime.UtcNow < typedDeadline)
+                        { Thread.Sleep(50); actual = valuePattern.Current.Value; }
                         File.AppendAllText(Path.Combine(output, "native-dialog.jsonl"), System.Text.Json.JsonSerializer.Serialize(new { requested = path, actual }) + "\n");
                         if (actual != path) throw new InvalidOperationException("Native file-name textbox did not accept the exact synthetic path: " + actual);
                         Send([KeyInput(0x09, 0, 0), KeyInput(0x09, 0, 2)]); Thread.Sleep(100);
