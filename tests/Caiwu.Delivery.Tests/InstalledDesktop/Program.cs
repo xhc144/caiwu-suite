@@ -35,6 +35,7 @@ internal static class Program
         install = Path.GetFullPath(args[0]); data = Path.GetFullPath(args[1]); evidence = Path.GetFullPath(args[2]); Directory.CreateDirectory(evidence);
         try
         {
+            using var display = new DesktopMode();
             var current = Installation.ReadCurrent(install);
             Require(Path.GetFullPath(current.DataRoot) == data, "installed pointer binds the isolated data root");
             var versionRoot = Path.Combine(install, "versions", current.Version);
@@ -278,6 +279,35 @@ internal static class Program
         try { if (!BitBlt(memory, 0, 0, width, height, screen, 0, 0, 0x40CC0020)) throw new IOException("Native capture failed."); var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, IntPtr.Zero, System.Windows.Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions()); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source)); using var file = File.Create(Path.Combine(evidence, name + ".png")); encoder.Save(file); }
         finally { SelectObject(memory, old); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(IntPtr.Zero, screen); }
     }
+    private sealed class DesktopMode : IDisposable
+    {
+        private IntPtr mode = Marshal.AllocHGlobal(220);
+        private byte[]? original;
+        public DesktopMode()
+        {
+            try
+            {
+                SetProcessDpiAwarenessContext(new IntPtr(-4));
+                Marshal.Copy(new byte[220], 0, mode, 220); Marshal.WriteInt16(mode, 68, 220);
+                if (!EnumDisplaySettings(null, -1, mode)) throw new InvalidOperationException("Cannot read native desktop display mode.");
+                original = new byte[220]; Marshal.Copy(mode, original, 0, 220);
+                if (GetSystemMetrics(0) < 1920 || GetSystemMetrics(1) < 1080)
+                {
+                    Marshal.WriteInt32(mode, 72, Marshal.ReadInt32(mode, 72) | 0x180000);
+                    Marshal.WriteInt32(mode, 172, 1920); Marshal.WriteInt32(mode, 176, 1080);
+                    if (ChangeDisplaySettings(mode, 2) != 0 || ChangeDisplaySettings(mode, 0) != 0) throw new InvalidOperationException("Disposable runner cannot provide a real 1920x1080 desktop.");
+                }
+                if (GetSystemMetrics(0) < 1920 || GetSystemMetrics(1) < 1080) throw new InvalidOperationException("Native desktop is too small for the actual voucher grid; no resized image/input substitute is used.");
+            }
+            catch { Dispose(); throw; }
+        }
+        public void Dispose()
+        {
+            if (mode == IntPtr.Zero) return;
+            if (original is not null) { Marshal.Copy(original, 0, mode, 220); ChangeDisplaySettings(mode, 0); }
+            Marshal.FreeHGlobal(mode); mode = IntPtr.Zero;
+        }
+    }
     [StructLayout(LayoutKind.Explicit, Size = 40)] private struct Input { [FieldOffset(0)] public uint Type; [FieldOffset(8)] public Keyboard Keyboard; [FieldOffset(8)] public Mouse Mouse; }
     [StructLayout(LayoutKind.Sequential)] private struct Keyboard { public ushort VirtualKey, Scan; public uint Flags, Time; public UIntPtr Extra; }
     [StructLayout(LayoutKind.Sequential)] private struct Mouse { public int X, Y; public uint Data, Flags, Time; public UIntPtr Extra; }
@@ -286,6 +316,9 @@ internal static class Program
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll")] private static extern bool SetProcessDpiAwarenessContext(IntPtr context);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern bool EnumDisplaySettings(string? device, int mode, IntPtr settings);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ChangeDisplaySettings(IntPtr settings, int flags);
     [DllImport("user32.dll")] private static extern IntPtr GetDC(IntPtr window);
     [DllImport("user32.dll")] private static extern int ReleaseDC(IntPtr window, IntPtr dc);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
