@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
@@ -32,17 +33,17 @@ internal static class Program
         directory = Path.GetFullPath(args.Length == 0 ? "tests/Caiwu.Acceptance/evidence/runtime/wpf" : args[0]);
         Directory.CreateDirectory(directory);
         var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        var backend = (DesktopBackend)typeof(App).GetMethod("CreateBackend", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
+        var backend = SyntheticDesktopIdentity.Backend;
         var path = Path.Combine(directory, "acceptance-" + Guid.NewGuid().ToString("N") + ".caiwu");
         var book = new BookInfo(Guid.NewGuid(), "独立验收", AccountingRegime.SmallBusiness, "acceptance", 2026, 10, 9, DateTimeOffset.UtcNow);
         using var store = SqliteLedgerStore.Create(path, book, TemplateCatalog.Get(AccountingRegime.SmallBusiness).Accounts);
-        var service = new LedgerService(store);
+        var service = backend.CreateService(store);
         var seedPlan = service.GetSnapshot();
         var saved = service.SaveDraft(new(null, new(2026, 10, 1), "记", null, 0,
             [new("1002", "独立数据", 123456.78m, 0), new("3001", "独立数据", 0, 123456.78m)], seedPlan.Revision, seedPlan.Book.Id), "甲");
-        var reviewPlan = service.GetSnapshot(); service.Review(saved.Id, "乙", new(reviewPlan.Book.Id, reviewPlan.Revision));
+        var reviewPlan = service.GetSnapshot(); SyntheticDesktopIdentity.ReviewerBackend.CreateService(store).Review(saved.Id, string.Empty, new(reviewPlan.Book.Id, reviewPlan.Revision));
         var postPlan = service.GetSnapshot(); service.Post(saved.Id, "乙", new(postPlan.Book.Id, postPlan.Revision));
-        var window = new MainWindow(backend); app.MainWindow = window; window.Show(); Pump();
+        var window = SyntheticDesktopIdentity.CreateMain(backend); app.MainWindow = window; window.Show(); Pump();
         Call(window, "OpenVerificationBook", path); Pump();
         VoucherEditorWindow OpenNewEditorFromOneSnapshot(Func<VoucherDraft, Voucher>? save = null)
         {

@@ -12,5 +12,14 @@
     <ProjectReference Include="../Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />
     <ProjectReference Include="../Caiwu.Reporting/Caiwu.Reporting.csproj" />
     <ProjectReference Include="../../packaging-next/src/Caiwu.Delivery/Caiwu.Delivery.csproj" />
+    <ProjectReference Include="../Caiwu.VoucherTools.Wpf/Caiwu.VoucherTools.Wpf.csproj" />
+    <ProjectReference Include="../Caiwu.Summaries/Caiwu.Summaries.csproj" />
+    <ProjectReference Include="../Caiwu.Costing/Wpf/Caiwu.Costing.Wpf.csproj" />
+    <ProjectReference Include="../Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj" />
+    <ProjectReference Include="../Caiwu.Operators/Wpf/Caiwu.Operators.Wpf.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Synthetic verification is compiled only by independent test hosts, never the shipped application. -->
+    <Compile Remove="Verification/**/*.cs" />
   </ItemGroup>
 </Project>

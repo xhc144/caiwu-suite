@@ -9,7 +9,7 @@ git -C "$caiwu_source_root" archive 54871a004a836d76824b2c29959e5b22139f4e86 src
 git -C "$caiwu_source_root" archive dcda051a0c9ee364ccff4c2b4c7085f446fac39d src/Caiwu.Summaries | tar -x -C "$caiwu_validation_root"
 git -C "$caiwu_source_root" archive 8bbf8428ccd0b656fec83c7a1ede828cd5691442 src/Caiwu.BookTools | tar -x -C "$caiwu_validation_root"
 git -C "$caiwu_source_root" archive af0d0e34ab9963fc91cabb8a58aed558b34390f0 src/Caiwu.Costing | tar -x -C "$caiwu_validation_root"
-sed -i '/<\/Project>/i\  <ItemGroup>\n    <ProjectReference Include="../Caiwu.VoucherTools.Wpf/Caiwu.VoucherTools.Wpf.csproj" />\n    <ProjectReference Include="../Caiwu.Summaries/Caiwu.Summaries.csproj" />\n    <ProjectReference Include="../Caiwu.Costing/Wpf/Caiwu.Costing.Wpf.csproj" />\n    <ProjectReference Include="../Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj" />\n  </ItemGroup>' "$caiwu_validation_root/src/Caiwu.Desktop/Caiwu.Desktop.csproj"
+git -C "$caiwu_source_root" archive 1957435365390756fd8267937fd0ec408b1e498f src/Caiwu.Operators | tar -x -C "$caiwu_validation_root"
 export CAIWU_DOTNET_ROOT="${CAIWU_DOTNET_ROOT:-$caiwu_source_root/.tools/dotnet}"
 cd "$caiwu_validation_root"
 mkdir -p artifacts/desktop-features

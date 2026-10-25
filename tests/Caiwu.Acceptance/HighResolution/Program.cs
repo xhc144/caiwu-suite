@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
@@ -38,9 +39,9 @@ internal static class Program
             }
             if (GetSystemMetrics(0) < 1920 || GetSystemMetrics(1) < 1080) throw new InvalidOperationException("BLOCKED: desktop mode change was ineffective.");
             var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            var backend = (DesktopBackend)typeof(App).GetMethod("CreateBackend", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
-            var path = Path.Combine(output, "synthetic.caiwu"); SampleLedger.Create(backend, path);
-            var main = new MainWindow(backend); app.MainWindow = main; main.Show(); Call(main, "OpenVerificationBook", path);
+            var backend = SyntheticDesktopIdentity.Backend;
+            var path = Path.Combine(output, "synthetic.caiwu"); SyntheticDesktopIdentity.SeedSample(path);
+            var main = SyntheticDesktopIdentity.CreateMain(backend); app.MainWindow = main; main.Show(); Call(main, "OpenVerificationBook", path);
             main.WindowState = WindowState.Maximized; Idle(main);
             Call(main, "ShowVerificationPage", 1); Capture(main, "main-window.png");
             ((ComboBox)main.FindName("LedgerAccountInput")).SelectedValue = "1002";

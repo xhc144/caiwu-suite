@@ -9,4 +9,5 @@
   <ItemGroup>
     <ProjectReference Include="$(ReviewedSourceRoot)/src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
   </ItemGroup>
+<ItemGroup><Compile Include="../../Caiwu.Desktop.FeatureTests/Shared/SyntheticDesktopIdentity.cs" Link="SyntheticDesktopIdentity.cs" /><Compile Include="../../../src/Caiwu.Desktop/Verification/SampleLedger.cs" Link="SampleLedger.cs" /></ItemGroup>
 </Project>

@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -27,7 +28,7 @@ internal static class Program
         try { return args[0] == "--child" ? Child(args[1], args[2], args[3]) : Parent(args[0]); }
         catch (Exception ex) { Console.Error.WriteLine(ex); return 1; }
     }
-    private static DesktopBackend Backend() => (DesktopBackend)typeof(App).GetMethod("CreateBackend", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, null)!;
+    private static DesktopBackend Backend() => SyntheticDesktopIdentity.Backend;
     private static string Digest(object value) => Convert.ToHexStringLower(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value)));
     private static void Require(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
     private static void Write(string path, object value)
@@ -90,7 +91,9 @@ internal static class Program
                 var directory = Path.Combine(root, scenario); Directory.CreateDirectory(directory);
                 var (aPath, _) = Seed(directory, "book-a"); var bPath = separateBooks ? Seed(directory, "book-b").Item1 : aPath;
                 var aDir = Path.Combine(directory, "A"); var bDir = Path.Combine(directory, "B"); Directory.CreateDirectory(aDir); Directory.CreateDirectory(bDir);
-                using var a = StartChild("A", aPath, aDir); using var b = StartChild("B", bPath, bDir);
+                using var a = StartChild("A", aPath, aDir);
+                WaitFile(Path.Combine(aDir, "ready.json"), a); // Authenticate fixture A before B; mutation/concurrency assertions below are unchanged.
+                using var b = StartChild("B", bPath, bDir);
                 try
                 {
                     WaitFile(Path.Combine(aDir, "ready.json"), a, b); WaitFile(Path.Combine(bDir, "ready.json"), a, b);
@@ -147,6 +150,7 @@ internal static class Program
     private static Process StartChild(string role, string path, string output)
     {
         var start = new ProcessStartInfo("dotnet") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true };
+        start.Environment["CAIWU_SYNTHETIC_OPERATOR_ROOT"] = SyntheticDesktopIdentity.DataRoot; // Test-host-only virtual directory; no production switch.
         foreach (var arg in new[] { Assembly.GetExecutingAssembly().Location, "--child", role, path, output }) start.ArgumentList.Add(arg);
         var process = Process.Start(start)!;
         process.OutputDataReceived += (_, e) => { if (e.Data is not null) File.AppendAllText(Path.Combine(output, "stdout.log"), e.Data + Environment.NewLine); };
@@ -158,7 +162,7 @@ internal static class Program
         var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var seen = new List<SeenMutation>(); var actualBackend = Backend();
         var backend = actualBackend with { CreateService = store => new ObservedLedgerService(actualBackend.CreateService(store), seen) };
-        var main = new MainWindow(backend); app.MainWindow = main; main.Show();
+        var main = SyntheticDesktopIdentity.CreateMain(backend); app.MainWindow = main; main.Show();
         Call(main, "OpenVerificationBook", path);
         var session = (LedgerSession)typeof(MainWindow).GetField("_session", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(main)!;
         var opening = session.Service!.GetSnapshot(); var original = opening.Vouchers.Single();

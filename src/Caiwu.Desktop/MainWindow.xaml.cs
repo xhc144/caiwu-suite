@@ -9,6 +9,8 @@ using Caiwu.Desktop.Dialogs;
 using Caiwu.Desktop.Presentation;
 using Microsoft.Win32;
 using Caiwu.Reporting;
+using Caiwu.Desktop.Features;
+using Caiwu.Operators;
 
 namespace Caiwu.Desktop;
 
@@ -25,17 +27,22 @@ public partial class MainWindow : Window
     private SessionBoundMutation? _voucherOrigin, _accountOrigin, _openingOrigin, _displayOrigin;
     private BookInfo? _displayBook, _newBookDraft;
 
-    public MainWindow(DesktopBackend? backend = null)
+    public MainWindow(DesktopBackend? backend = null, FeatureAuthentication? authentication = null,
+        DesktopFeatureOptions? featureOptions = null)
     {
         InitializeComponent(); _backend = backend;
-        _session = backend is null ? null : new LedgerSession(backend);
+        _session = backend is null || authentication is null ? null : new LedgerSession(backend);
         OpeningGrid.ItemsSource = _opening;
-        if (backend is null) BackendNoticeText.Text = "此启动骨架尚未接入账务模块，暂不能创建或保存账套。";
+        OperatorInput.Items.Clear(); OperatorInput.Items.Add(authentication?.Session.Identity.DisplayName ?? "尚未登录");
+        OperatorInput.IsEditable = false; OperatorInput.SelectedIndex = 0; OperatorInput.IsEnabled = false;
+        if (backend is null || authentication is null) BackendNoticeText.Text = "尚未完成真实操作员登录，业务动作已禁用；任意姓名不能作为认证。";
+        InitializeDesktopFeatures((featureOptions ?? new()) with { Authentication = authentication });
         Loaded += (_, _) => { _ready = true; Reload(); };
     }
 
     private bool HasBook => _session?.Snapshot is not null;
-    private bool CanWriteBook => HasBook && PreviewLedgerService.AllowsWrites(Snapshot.Book);
+    private bool CanWriteBook => featureAuthentication?.IsPotentiallyCurrent == true &&
+        HasBook && PreviewLedgerService.AllowsWrites(Snapshot.Book);
     internal void OpenVerificationBook(string path) { _session!.Open(path); BookOpened(); }
     internal void ShowVerificationPage(int index) { Pages.SelectedIndex = index; QueryCurrent(); UpdateLayout(); }
     internal VoucherEditorWindow OpenVerificationVoucher(Guid id)
@@ -49,15 +56,16 @@ public partial class MainWindow : Window
     private ILedgerService Service => _session?.Service ?? throw new LedgerValidationException("请先打开账套。");
     private string OperatorName()
     {
-        var value = OperatorInput.Text.Trim();
-        if (value.Length == 0) throw new LedgerValidationException("请填写当前操作员名称。");
-        return value;
+        return featureAuthentication?.IsPotentiallyCurrent == true ? featureAuthentication.ActorKey
+            : throw new OperatorAuthorizationException("请使用真实操作员登录；任意姓名不能授权账务操作。");
     }
 
     private bool Run(Action action, string? success = null, bool requireBook = true, bool discardOpening = false)
     {
         try
         {
+            if (featureAuthentication?.IsPotentiallyCurrent != true)
+                throw new OperatorAuthorizationException("原操作员会话已失效，请重新登录；当前输入保留。");
             if (_backend is null) throw new LedgerValidationException("此开发包的账务模块尚未接入，请使用完整集成包。");
             if (requireBook && !HasBook) throw new LedgerValidationException("请先创建或打开账套。");
             if (discardOpening && !ConfirmDiscardOpening()) return false;
@@ -154,7 +162,8 @@ public partial class MainWindow : Window
         var save = new SaveFileDialog { Title = "备份当前账套", Filter = "账套备份 (*.caiwubak)|*.caiwubak", DefaultExt = ".caiwubak",
             FileName = SafeFileName(Snapshot.Book.Name) + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".caiwubak" };
         if (save.ShowDialog(this) != true) return;
-        WithBusy(() => _session!.BackupTo(save.FileName));
+        WithBusy(() => featureAuthentication!.Operators.Execute(featureAuthentication.Session, OperatorPermission.BackupLedger,
+            _ => { _session!.BackupTo(save.FileName); return true; }));
         NotificationText.Text = "备份已保存：" + save.FileName;
     });
 

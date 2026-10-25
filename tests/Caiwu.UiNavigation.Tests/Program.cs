@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
@@ -68,14 +69,11 @@ internal static class Program
         await CheckAsync("UI-NAV-REPORT-RETURN-RETAINS-CONTEXT", ReportReturnAsync);
     }
 
-    private static DesktopBackend ProductionBackend() => (DesktopBackend)(typeof(App)
-        .GetMethod("CreateBackend", BindingFlags.Static | BindingFlags.NonPublic)
-        ?? throw new InvalidOperationException("Production backend factory changed; update fixture bootstrap explicitly."))
-        .Invoke(null, null)!;
+    private static DesktopBackend ProductionBackend() => SyntheticDesktopIdentity.Backend;
 
     private static async Task<MainWindow> MainAsync(DesktopBackend backend)
     {
-        var main = new MainWindow(backend);
+        var main = SyntheticDesktopIdentity.CreateMain(backend);
         Application.Current.MainWindow = main;
         main.Show();
         await SettleAsync();

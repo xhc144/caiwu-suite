@@ -1,6 +1,7 @@
 using Caiwu.Contracts;
 using Caiwu.Desktop.Presentation;
 using Caiwu.VoucherTools;
+using Caiwu.Operators;
 
 namespace Caiwu.Desktop.Features;
 
@@ -15,7 +16,7 @@ public sealed class PendingVoucherCopy
     public PendingVoucherCopy(FeatureSessionBinding binding, VoucherCopyPlan plan)
     {
         Binding = binding; Plan = plan;
-        if (plan.Draft.Id is not null || plan.Draft.ExpectedBookId != binding.Shown.Book.Id ||
+        if (plan.PreparedBy != binding.Authentication.ActorKey || plan.Draft.Id is not null || plan.Draft.ExpectedBookId != binding.Shown.Book.Id ||
             plan.Draft.ExpectedRevision != binding.Shown.Revision || !binding.Shown.Vouchers.Any(v => v.Id == plan.SourceVoucherId))
             throw new LedgerValidationException("复制计划与已显示的源快照不一致。");
     }
@@ -37,7 +38,8 @@ public sealed class PendingVoucherCopy
             var saved = await Task.Run(() =>
             {
                 Binding.DemandCurrent();
-                return service.SaveDraft(editedDraft, Plan.PreparedBy);
+                Binding.Authentication.Demand(OperatorPermission.PrepareVoucher);
+                return service.SaveDraft(editedDraft, string.Empty); // Central decorator alone supplies the trusted actor.
             });
             SavedVoucher = saved; // Consume before the caller attempts any display refresh.
             return saved;

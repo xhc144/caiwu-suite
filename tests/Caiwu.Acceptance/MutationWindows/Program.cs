@@ -1,3 +1,4 @@
+using Caiwu.Desktop.Testing;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
@@ -25,7 +26,7 @@ internal static class Program
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Actual Windows WPF required.");
         output = Path.GetFullPath(args[0]); Directory.CreateDirectory(output);
         var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        backend = (DesktopBackend)typeof(App).GetMethod("CreateBackend", BindingFlags.Static | BindingFlags.NonPublic)!.Invoke(null, null)!;
+        backend = SyntheticDesktopIdentity.Backend;
         var supported = new[] { "OPENING", "ACCOUNT", "DELETE", "REVIEW", "POST", "SAME-IDENTITY-RESTORE" };
         var selected = args.Length > 1 ? new[] { args[1] } : supported;
         if (selected.Any(name => !supported.Contains(name))) throw new ArgumentException("Unknown mutation scenario.");
@@ -64,12 +65,14 @@ internal static class Program
             else if (name != "ACCOUNT")
             {
                 var v = service.SaveDraft(Request(plan, null, 10), "甲");
-                if (name == "POST") { var reviewPlan = service.GetSnapshot(); service.Review(v.Id, "乙", Ctx(reviewPlan)); }
+                if (name == "POST") { var reviewPlan = service.GetSnapshot(); SyntheticDesktopIdentity.ReviewerBackend.CreateService(seed).Review(v.Id, string.Empty, Ctx(reviewPlan)); }
             }
         }
-        var seen = new List<SeenMutation>(); var wrapped = backend with { CreateService = store => new ObservedLedgerService(backend.CreateService(store), seen) };
-        var main = new MainWindow(wrapped); main.Show(); Call(main, "OpenVerificationBook", path); Idle();
-        ((ComboBox)main.FindName("OperatorInput")).Text = "乙";
+        var seen = new List<SeenMutation>();
+        var uiBackend = name is "REVIEW" or "POST" ? SyntheticDesktopIdentity.ReviewerBackend : backend;
+        var wrapped = uiBackend with { CreateService = store => new ObservedLedgerService(uiBackend.CreateService(store), seen) };
+        var main = SyntheticDesktopIdentity.CreateMain(wrapped, asReviewer: name is "REVIEW" or "POST"); main.Show(); Call(main, "OpenVerificationBook", path); Idle();
+        Check(!((ComboBox)main.FindName("OperatorInput")).IsEditable, "Arbitrary names can impersonate a reviewer.");
         var session = Field<LedgerSession>(main, "_session"); var shown = session.Snapshot!;
         using var other = backend.Open(path); var writer = backend.CreateService(other);
         var v0 = shown.Vouchers.FirstOrDefault();
@@ -130,7 +133,7 @@ internal static class Program
             {
                 if (name == "POST") { var cancelPlan = writer.GetSnapshot(); writer.CancelReview(v0!.Id, "乙", Ctx(cancelPlan)); }
                 var editPlan = writer.GetSnapshot(); writer.SaveDraft(Request(editPlan, v0!.Id, 20), "甲");
-                if (name == "POST") { var reviewPlan = writer.GetSnapshot(); writer.Review(v0.Id, "乙", Ctx(reviewPlan)); }
+                if (name == "POST") { var reviewPlan = writer.GetSnapshot(); SyntheticDesktopIdentity.ReviewerBackend.CreateService(other).Review(v0.Id, string.Empty, Ctx(reviewPlan)); }
             }
             string? expected = null;
             if (name != "POST") { ChangeTo20(); expected = State(); }

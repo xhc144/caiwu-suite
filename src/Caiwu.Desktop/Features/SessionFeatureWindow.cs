@@ -25,7 +25,7 @@ public class SessionFeatureWindow : Window
         if (Application.Current?.TryFindResource(typeof(Window)) is Style style) Style = style;
         DockPanel.SetDock(Status, Dock.Top); Root.Children.Add(Status); Root.Children.Add(Body); Content = Root;
         timer = new(DispatcherPriority.Normal, Dispatcher) { Interval = TimeSpan.FromMilliseconds(100) };
-        timer.Tick += (_, _) => CheckSession();
+        timer.Tick += async (_, _) => { await Binding.Authentication.CheckAsync(); CheckSession(); };
         Loaded += (_, _) => { CheckSession(); timer.Start(); };
         Closed += (_, _) => timer.Stop();
     }
