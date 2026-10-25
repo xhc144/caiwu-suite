@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Caiwu.Contracts/Caiwu.Contracts.csproj" />
+    <ProjectReference Include="../../../src/Caiwu.Core/Caiwu.Core.csproj" />
+    <ProjectReference Include="../../../src/Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />
+    <ProjectReference Include="../../../src/Caiwu.VoucherTools/Caiwu.VoucherTools.csproj" />
+    <ProjectReference Include="../../../src/Caiwu.Summaries/Caiwu.Summaries.csproj" />
+    <Compile Include="../../../src/Caiwu.Desktop/Presentation/LedgerSession.cs" Link="LedgerSession.cs" />
+    <Compile Include="../../../src/Caiwu.Desktop/Presentation/PreviewLedgerService.cs" Link="PreviewLedgerService.cs" />
+    <Compile Include="../../../src/Caiwu.Desktop/Features/FeatureSessionBinding.cs" Link="FeatureSessionBinding.cs" />
+    <Compile Include="../../../src/Caiwu.Desktop/Features/PendingVoucherCopy.cs" Link="PendingVoucherCopy.cs" />
+    <Compile Include="../../../src/Caiwu.Desktop/Features/SessionSummaryCatalog.cs" Link="SessionSummaryCatalog.cs" />
+    <Compile Include="../../../src/Caiwu.Desktop/Features/AsyncSummaryStateAdapter.cs" Link="AsyncSummaryStateAdapter.cs" />
+  </ItemGroup>
+</Project>
