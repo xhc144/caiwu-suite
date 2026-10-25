@@ -1,5 +1,17 @@
 # 真实桌面接线：当前验证与交接
 
+## 最终 Managed 接线更新
+
+旧“pending managed/Designer”清单已由生产接线消除。生产主路径 e407e0b827c345ad2415ad0cb4634d0fc5f534a2、完整验证源码 68b7525127be34d13a7f382b9f0fa976fa574d95，采用 Managed 9ca1deb 与 Designer 03ee6da。生产先 OpenSession 核验 active EXE 并持子进程真实租约，身份用 Global/Operators；Create/Open 正式登记物理书本；摘要/BookTools不再因缺配置禁用；分类/模板关闭时核验登记，成本有显式受管保存按钮；F10/恢复走完整 bundle 和独立可信收据，单本恢复不改账号。
+
+证据目录 managed-68b7525：17/17 合成服务检查通过，9份 Desktop/solution/相关宿主 build 日志全部0警告/0错误。新合成检查实际创建虚构有效安装结构，以生产同一 OpenSession 接口核验路径/锁并绑定 ManagedFeatureContext；正常虚构账号登录后保存登记四类原生附件，完整备份恢复至新物理实例，验证同 BookId 路径隔离、旧窗口失效和全局身份文件 hash 未变。它没有启动 Windows EXE，也不把模拟 payload 当实际安装验收。
+
+Windows/run.ps1 现在15个实际窗口场景，增加受管 MainWindow 真摘要/BookTools/Designer/成本保存与完整备份登记。当前仅交叉编译，Windows/真实 installed EXE/launch-managed 父子交接/shortcut/contract flag、F10可信收据原生选择恢复、打印/IME/DPI均待 codex/release-candidate owner验证。旧 product --smoke-test保持exit2；候选安装/包装应改独立认证测试宿主，不能恢复匿名旁路。以上是精确剩余验收，不是接口缺失；当前没有因缺模块配置而禁用的正常模块入口，权限/制度/选页/来源失效门槛仍保留。
+
+
+<details><summary>此前阶段记录（仅供历史追溯，最终状态以上文为准）</summary>
+
+
 当前生产及探针代码提交为 **bfc50481fc75c20da254f8daade9b25fdf076666**，私有分支 codex/desktop-feature-wiring，草稿 PR25。当前入口已经实际接入 App/MainWindow，不再只提供初始化说明。接线及六个固定模块 SHA 见 src/Caiwu.Desktop/Features/HOST_INTEGRATION.md；受管数据 owner 的精确接口见 MANAGED_MODULE_API_REQUEST.md。
 
 ## 已完成的实际路径
@@ -47,10 +59,4 @@ manifest.json 记录源码提交、基线、六模块 SHA、生产/探针文件 
 
 本阶段没有当前权限拒绝或不确定的远端推送。未修改主 XAML/Themes、Contracts/Core/Storage、预挂载书库、原安装包或派生 catalog；所有运行数据均为合成账套及虚构临时身份。
 
-## 最终 Managed 接线更新
-
-旧“pending managed/Designer”清单已由生产接线消除。生产主路径 e407e0b827c345ad2415ad0cb4634d0fc5f534a2、完整验证源码 68b7525127be34d13a7f382b9f0fa976fa574d95，采用 Managed 9ca1deb 与 Designer 03ee6da。生产先 OpenSession 核验 active EXE 并持子进程真实租约，身份用 Global/Operators；Create/Open 正式登记物理书本；摘要/BookTools不再因缺配置禁用；分类/模板关闭时核验登记，成本有显式受管保存按钮；F10/恢复走完整 bundle 和独立可信收据，单本恢复不改账号。
-
-证据目录 managed-68b7525：17/17 合成服务检查通过，9份 Desktop/solution/相关宿主 build 日志全部0警告/0错误。新合成检查实际创建虚构有效安装结构，以生产同一 OpenSession 接口核验路径/锁并绑定 ManagedFeatureContext；正常虚构账号登录后保存登记四类原生附件，完整备份恢复至新物理实例，验证同 BookId 路径隔离、旧窗口失效和全局身份文件 hash 未变。它没有启动 Windows EXE，也不把模拟 payload 当实际安装验收。
-
-Windows/run.ps1 现在15个实际窗口场景，增加受管 MainWindow 真摘要/BookTools/Designer/成本保存与完整备份登记。当前仅交叉编译，Windows/真实 installed EXE/launch-managed 父子交接/shortcut/contract flag、F10可信收据原生选择恢复、打印/IME/DPI均待 codex/release-candidate owner验证。旧 product --smoke-test保持exit2；候选安装/包装应改独立认证测试宿主，不能恢复匿名旁路。以上是精确剩余验收，不是接口缺失；当前没有因缺模块配置而禁用的正常模块入口，权限/制度/选页/来源失效门槛仍保留。
+</details>

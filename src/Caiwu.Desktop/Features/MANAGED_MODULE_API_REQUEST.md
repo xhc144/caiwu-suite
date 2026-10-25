@@ -1,5 +1,8 @@
 # 给受管数据 owner 的最小接点
 
+**已落实**：Delivery 9ca1deb 的真实接口已由 e407e0b 接入。以下是历史需求；当前实现使用 ManagedDesktopLaunch.OpenSession、ManagedDataSession、ManagedModuleHost 与 ManagedBookBackup，不再缺配置禁用。最终 Windows/安装验收交 codex/release-candidate。
+
+
 Desktop 当前实际入口位于 `MainWindow.Features.cs`；`DesktopFeatureOptions` 是唯一配置点。根新分派的 `codex/managed-module-data` 负责真实 Delivery 数据锁、路径、账套/附件登记和整体备份恢复；Desktop 不另造登记文件，也不复制 internal `WithExclusiveData`。
 
 ## 账套复制：当前三个精确委托
