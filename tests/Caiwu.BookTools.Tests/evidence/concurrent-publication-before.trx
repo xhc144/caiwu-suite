@@ -1,0 +1,129 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="fe269f9e-6d17-4db4-838a-a9f66b69bb25" name="@561687ceeeed 2026-10-25 09:34:35" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-25T09:34:35.5664501+00:00" queuing="2026-10-25T09:34:35.5664501+00:00" start="2026-10-25T09:34:33.8144396+00:00" finish="2026-10-25T09:34:35.5761929+00:00" />
+  <TestSettings name="default" id="cfebab2d-f1e0-403a-aa67-e567ac94f114">
+    <Deployment runDeploymentRoot="_561687ceeeed_2026-10-25_09_34_35" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="a25b780f-9ff6-4bdd-8755-6f81fbf82b31" testId="8ef3fc99-2cd4-cebb-978f-6738b7832f09" testName="Caiwu.BookTools.Tests.ConcurrentPublicationTests.Two_independent_services_copying_different_sources_to_one_target_have_exactly_one_winner" computerName="561687ceeeed" duration="00:00:00.7054148" startTime="2026-10-25T09:34:34.7155399+00:00" endTime="2026-10-25T09:34:35.4432887+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a25b780f-9ff6-4bdd-8755-6f81fbf82b31">
+      <Output>
+        <ErrorInfo>
+          <Message>iteration 3: 2 callers reported success
+iteration 8: 2 callers reported success
+iteration 9: 2 callers reported success
+iteration 10: 2 callers reported success
+iteration 13: 2 callers reported success
+iteration 16: 2 callers reported success
+iteration 19: 2 callers reported success
+iteration 23: 2 callers reported success
+iteration 24: 2 callers reported success
+iteration 25: 2 callers reported success
+iteration=1; successes=1; savedBookId=b2aaa47a-5ef7-452a-a032-352bcd145741; A=b2aaa47a-5ef7-452a-a032-352bcd145741; B=IOException
+iteration=2; successes=1; savedBookId=4bd78f11-cbd9-4045-be12-d54585bcd27e; A=IOException; B=4bd78f11-cbd9-4045-be12-d54585bcd27e
+iteration=3; successes=2; savedBookId=2056fa9d-8789-4565-a39c-b6d09bc2babe; A=a6885dc0-5d23-4fdf-ae8b-caf63d8f0567; B=2056fa9d-8789-4565-a39c-b6d09bc2babe
+iteration=4; successes=1; savedBookId=3ef4d6d1-6fc2-436b-a5fe-8ddbe4fab296; A=IOException; B=3ef4d6d1-6fc2-436b-a5fe-8ddbe4fab296
+iteration=5; successes=1; savedBookId=fea3b673-709a-4842-8261-b0c89c372c6f; A=IOException; B=fea3b673-709a-4842-8261-b0c89c372c6f
+iteration=6; successes=1; savedBookId=325d9f13-b46f-4978-b7f0-22d625be66b5; A=IOException; B=325d9f13-b46f-4978-b7f0-22d625be66b5
+iteration=7; successes=1; savedBookId=b5c9c510-113b-4b71-97a1-0d75e3be35e8; A=IOException; B=b5c9c510-113b-4b71-97a1-0d75e3be35e8
+iteration=8; successes=2; savedBookId=f0ff9361-66b0-41ef-adbb-3f1225de5370; A=f0ff9361-66b0-41ef-adbb-3f1225de5370; B=db8aa0be-928d-46c7-bc8f-6b1cccc99d3b
+iteration=9; successes=2; savedBookId=8edab6c0-1c09-4bfe-9aac-f35a1e7cda10; A=8edab6c0-1c09-4bfe-9aac-f35a1e7cda10; B=39dab7f9-5cdd-44d9-88b3-03e39e42ab3b
+iteration=10; successes=2; savedBookId=eb2f2d6f-d1a6-4843-96f7-20bc96479924; A=42bb5a45-f853-4e52-8a35-f6514b2ce1e2; B=eb2f2d6f-d1a6-4843-96f7-20bc96479924
+iteration=11; successes=1; savedBookId=9193f4f8-4830-46a0-9ad6-39889ad1c275; A=IOException; B=9193f4f8-4830-46a0-9ad6-39889ad1c275
+iteration=12; successes=1; savedBookId=8bd97557-bedb-4b97-8b4e-b3ab7fd0d957; A=IOException; B=8bd97557-bedb-4b97-8b4e-b3ab7fd0d957
+iteration=13; successes=2; savedBookId=bd16b0f7-3401-4943-8824-8ebb100d4394; A=4a603e9b-0c88-4764-b544-a646da4c4415; B=bd16b0f7-3401-4943-8824-8ebb100d4394
+iteration=14; successes=1; savedBookId=1489f885-ac9f-4c02-8bc9-55a37bdf485a; A=IOException; B=1489f885-ac9f-4c02-8bc9-55a37bdf485a
+iteration=15; successes=1; savedBookId=e65c6d02-6f83-4670-8cf4-888a2ffeb8dd; A=e65c6d02-6f83-4670-8cf4-888a2ffeb8dd; B=IOException
+iteration=16; successes=2; savedBookId=18b28f36-89ed-411f-9e10-89b643b7a726; A=18b28f36-89ed-411f-9e10-89b643b7a726; B=d6758448-850f-4a17-9e8e-4d9da668418f
+iteration=17; successes=1; savedBookId=2e429488-c430-47c7-87e8-c530200df848; A=2e429488-c430-47c7-87e8-c530200df848; B=IOException
+iteration=18; successes=1; savedBookId=c2447fa7-64f6-4470-8fc2-6464d4f5f9af; A=c2447fa7-64f6-4470-8fc2-6464d4f5f9af; B=IOException
+iteration=19; successes=2; savedBookId=0f67f42f-1a69-4c45-973f-30866c0d8ba7; A=0f67f42f-1a69-4c45-973f-30866c0d8ba7; B=337568e7-19ca-4e36-9821-1b61a51b4b50
+iteration=20; successes=1; savedBookId=f13fa615-121b-4909-a822-a283250c4fbe; A=IOException; B=f13fa615-121b-4909-a822-a283250c4fbe
+iteration=21; successes=1; savedBookId=325911e0-aef9-4176-8c4d-7ee171c13f07; A=325911e0-aef9-4176-8c4d-7ee171c13f07; B=IOException
+iteration=22; successes=1; savedBookId=2e31c84c-2c6d-43ca-8baf-d1bbc6049633; A=IOException; B=2e31c84c-2c6d-43ca-8baf-d1bbc6049633
+iteration=23; successes=2; savedBookId=10fbdc84-4009-44e0-ae21-24dc32962ed5; A=10fbdc84-4009-44e0-ae21-24dc32962ed5; B=4b8fbfe5-2633-41c8-ac3f-9e3323de3c5e
+iteration=24; successes=2; savedBookId=69a0238f-7598-4cca-84ce-789b0e0dd06c; A=69a0238f-7598-4cca-84ce-789b0e0dd06c; B=fab5f6e7-7f23-4da3-ba5b-d15ef0bac169
+iteration=25; successes=2; savedBookId=6160bf8b-bfd1-490f-90f6-7e7c2c092b87; A=4b066131-911c-4541-a6d6-842c1aba4d4c; B=6160bf8b-bfd1-490f-90f6-7e7c2c092b87
+iteration=26; successes=1; savedBookId=b423ca50-6eca-4495-b7aa-ab6c44192f0c; A=IOException; B=b423ca50-6eca-4495-b7aa-ab6c44192f0c
+iteration=27; successes=1; savedBookId=d2f3e26f-b837-4595-aa1f-fccb2d9ceb27; A=IOException; B=d2f3e26f-b837-4595-aa1f-fccb2d9ceb27
+iteration=28; successes=1; savedBookId=d25bd36b-f31f-49e5-942d-41c1e8a1ced6; A=IOException; B=d25bd36b-f31f-49e5-942d-41c1e8a1ced6
+iteration=29; successes=1; savedBookId=90003478-b8d5-49d8-a1a5-511fa4edc12e; A=IOException; B=90003478-b8d5-49d8-a1a5-511fa4edc12e
+iteration=30; successes=1; savedBookId=e7b315f5-2df9-4d9e-977d-49282afa2d5c; A=e7b315f5-2df9-4d9e-977d-49282afa2d5c; B=IOException</Message>
+          <StackTrace>   at Caiwu.BookTools.Tests.ConcurrentPublicationTests.Two_independent_services_copying_different_sources_to_one_target_have_exactly_one_winner() in /workspace/caiwu/tests/Caiwu.BookTools.Tests/ConcurrentPublicationTests.cs:line 61
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Caiwu.BookTools.Tests.ConcurrentPublicationTests.Two_independent_services_copying_different_sources_to_one_target_have_exactly_one_winner" storage="/workspace/caiwu/tests/caiwu.booktools.tests/bin/release/net10.0/caiwu.booktools.tests.dll" id="8ef3fc99-2cd4-cebb-978f-6738b7832f09">
+      <Execution id="a25b780f-9ff6-4bdd-8755-6f81fbf82b31" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.BookTools.Tests/bin/Release/net10.0/Caiwu.BookTools.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.BookTools.Tests.ConcurrentPublicationTests" name="Two_independent_services_copying_different_sources_to_one_target_have_exactly_one_winner" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="8ef3fc99-2cd4-cebb-978f-6738b7832f09" executionId="a25b780f-9ff6-4bdd-8755-6f81fbf82b31" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v4.0.1+0f7d528729 (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.12]   Discovering: Caiwu.BookTools.Tests
+[xUnit.net 00:00:00.25]   Discovered:  Caiwu.BookTools.Tests
+[xUnit.net 00:00:00.28]   Starting:    Caiwu.BookTools.Tests
+[xUnit.net 00:00:01.08]       iteration 3: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 8: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 9: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 10: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 13: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 16: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 19: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 23: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 24: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration 25: 2 callers reported success
+[xUnit.net 00:00:01.08]       iteration=1; successes=1; savedBookId=b2aaa47a-5ef7-452a-a032-352bcd145741; A=b2aaa47a-5ef7-452a-a032-352bcd145741; B=IOException
+[xUnit.net 00:00:01.08]       iteration=2; successes=1; savedBookId=4bd78f11-cbd9-4045-be12-d54585bcd27e; A=IOException; B=4bd78f11-cbd9-4045-be12-d54585bcd27e
+[xUnit.net 00:00:01.08]       iteration=3; successes=2; savedBookId=2056fa9d-8789-4565-a39c-b6d09bc2babe; A=a6885dc0-5d23-4fdf-ae8b-caf63d8f0567; B=2056fa9d-8789-4565-a39c-b6d09bc2babe
+[xUnit.net 00:00:01.08]       iteration=4; successes=1; savedBookId=3ef4d6d1-6fc2-436b-a5fe-8ddbe4fab296; A=IOException; B=3ef4d6d1-6fc2-436b-a5fe-8ddbe4fab296
+[xUnit.net 00:00:01.08]       iteration=5; successes=1; savedBookId=fea3b673-709a-4842-8261-b0c89c372c6f; A=IOException; B=fea3b673-709a-4842-8261-b0c89c372c6f
+[xUnit.net 00:00:01.08]       iteration=6; successes=1; savedBookId=325d9f13-b46f-4978-b7f0-22d625be66b5; A=IOException; B=325d9f13-b46f-4978-b7f0-22d625be66b5
+[xUnit.net 00:00:01.08]       iteration=7; successes=1; savedBookId=b5c9c510-113b-4b71-97a1-0d75e3be35e8; A=IOException; B=b5c9c510-113b-4b71-97a1-0d75e3be35e8
+[xUnit.net 00:00:01.08]       iteration=8; successes=2; savedBookId=f0ff9361-66b0-41ef-adbb-3f1225de5370; A=f0ff9361-66b0-41ef-adbb-3f1225de5370; B=db8aa0be-928d-46c7-bc8f-6b1cccc99d3b
+[xUnit.net 00:00:01.08]       iteration=9; successes=2; savedBookId=8edab6c0-1c09-4bfe-9aac-f35a1e7cda10; A=8edab6c0-1c09-4bfe-9aac-f35a1e7cda10; B=39dab7f9-5cdd-44d9-88b3-03e39e42ab3b
+[xUnit.net 00:00:01.08]       iteration=10; successes=2; savedBookId=eb2f2d6f-d1a6-4843-96f7-20bc96479924; A=42bb5a45-f853-4e52-8a35-f6514b2ce1e2; B=eb2f2d6f-d1a6-4843-96f7-20bc96479924
+[xUnit.net 00:00:01.08]       iteration=11; successes=1; savedBookId=9193f4f8-4830-46a0-9ad6-39889ad1c275; A=IOException; B=9193f4f8-4830-46a0-9ad6-39889ad1c275
+[xUnit.net 00:00:01.08]       iteration=12; successes=1; savedBookId=8bd97557-bedb-4b97-8b4e-b3ab7fd0d957; A=IOException; B=8bd97557-bedb-4b97-8b4e-b3ab7fd0d957
+[xUnit.net 00:00:01.08]       iteration=13; successes=2; savedBookId=bd16b0f7-3401-4943-8824-8ebb100d4394; A=4a603e9b-0c88-4764-b544-a646da4c4415; B=bd16b0f7-3401-4943-8824-8ebb100d4394
+[xUnit.net 00:00:01.08]       iteration=14; successes=1; savedBookId=1489f885-ac9f-4c02-8bc9-55a37bdf485a; A=IOException; B=1489f885-ac9f-4c02-8bc9-55a37bdf485a
+[xUnit.net 00:00:01.08]       iteration=15; successes=1; savedBookId=e65c6d02-6f83-4670-8cf4-888a2ffeb8dd; A=e65c6d02-6f83-4670-8cf4-888a2ffeb8dd; B=IOException
+[xUnit.net 00:00:01.08]       iteration=16; successes=2; savedBookId=18b28f36-89ed-411f-9e10-89b643b7a726; A=18b28f36-89ed-411f-9e10-89b643b7a726; B=d6758448-850f-4a17-9e8e-4d9da668418f
+[xUnit.net 00:00:01.08]       iteration=17; successes=1; savedBookId=2e429488-c430-47c7-87e8-c530200df848; A=2e429488-c430-47c7-87e8-c530200df848; B=IOException
+[xUnit.net 00:00:01.08]       iteration=18; successes=1; savedBookId=c2447fa7-64f6-4470-8fc2-6464d4f5f9af; A=c2447fa7-64f6-4470-8fc2-6464d4f5f9af; B=IOException
+[xUnit.net 00:00:01.08]       iteration=19; successes=2; savedBookId=0f67f42f-1a69-4c45-973f-30866c0d8ba7; A=0f67f42f-1a69-4c45-973f-30866c0d8ba7; B=337568e7-19ca-4e36-9821-1b61a51b4b50
+[xUnit.net 00:00:01.08]       iteration=20; successes=1; savedBookId=f13fa615-121b-4909-a822-a283250c4fbe; A=IOException; B=f13fa615-121b-4909-a822-a283250c4fbe
+[xUnit.net 00:00:01.08]       iteration=21; successes=1; savedBookId=325911e0-aef9-4176-8c4d-7ee171c13f07; A=325911e0-aef9-4176-8c4d-7ee171c13f07; B=IOException
+[xUnit.net 00:00:01.08]       iteration=22; successes=1; savedBookId=2e31c84c-2c6d-43ca-8baf-d1bbc6049633; A=IOException; B=2e31c84c-2c6d-43ca-8baf-d1bbc6049633
+[xUnit.net 00:00:01.08]       iteration=23; successes=2; savedBookId=10fbdc84-4009-44e0-ae21-24dc32962ed5; A=10fbdc84-4009-44e0-ae21-24dc32962ed5; B=4b8fbfe5-2633-41c8-ac3f-9e3323de3c5e
+[xUnit.net 00:00:01.08]       iteration=24; successes=2; savedBookId=69a0238f-7598-4cca-84ce-789b0e0dd06c; A=69a0238f-7598-4cca-84ce-789b0e0dd06c; B=fab5f6e7-7f23-4da3-ba5b-d15ef0bac169
+[xUnit.net 00:00:01.08]       iteration=25; successes=2; savedBookId=6160bf8b-bfd1-490f-90f6-7e7c2c092b87; A=4b066131-911c-4541-a6d6-842c1aba4d4c; B=6160bf8b-bfd1-490f-90f6-7e7c2c092b87
+[xUnit.net 00:00:01.08]       iteration=26; successes=1; savedBookId=b423ca50-6eca-4495-b7aa-ab6c44192f0c; A=IOException; B=b423ca50-6eca-4495-b7aa-ab6c44192f0c
+[xUnit.net 00:00:01.08]       iteration=27; successes=1; savedBookId=d2f3e26f-b837-4595-aa1f-fccb2d9ceb27; A=IOException; B=d2f3e26f-b837-4595-aa1f-fccb2d9ceb27
+[xUnit.net 00:00:01.08]       iteration=28; successes=1; savedBookId=d25bd36b-f31f-49e5-942d-41c1e8a1ced6; A=IOException; B=d25bd36b-f31f-49e5-942d-41c1e8a1ced6
+[xUnit.net 00:00:01.08]       iteration=29; successes=1; savedBookId=90003478-b8d5-49d8-a1a5-511fa4edc12e; A=IOException; B=90003478-b8d5-49d8-a1a5-511fa4edc12e
+[xUnit.net 00:00:01.08]       iteration=30; successes=1; savedBookId=e7b315f5-2df9-4d9e-977d-49282afa2d5c; A=e7b315f5-2df9-4d9e-977d-49282afa2d5c; B=IOException
+[xUnit.net 00:00:01.08]       Stack Trace:
+[xUnit.net 00:00:01.08]         /workspace/caiwu/tests/Caiwu.BookTools.Tests/ConcurrentPublicationTests.cs(61,0): at Caiwu.BookTools.Tests.ConcurrentPublicationTests.Two_independent_services_copying_different_sources_to_one_target_have_exactly_one_winner()
+[xUnit.net 00:00:01.09]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:01.10]   Finished:    Caiwu.BookTools.Tests
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="561687ceeeed" outcome="Error" timestamp="2026-10-25T09:34:35.4478218+00:00">
+        <Text>[xUnit.net 00:00:01.08]     Caiwu.BookTools.Tests.ConcurrentPublicationTests.Two_independent_services_copying_different_sources_to_one_target_have_exactly_one_winner [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

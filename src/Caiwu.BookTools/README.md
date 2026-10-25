@@ -1,5 +1,7 @@
 # 复制为新账套与复制前预览
 
+**当前有待修复的并发发布 P1。** 2026-10-25 09:34 UTC 新增精确回归在两个独立服务都通过最后目标预检后同步发布：30 轮中 10 轮双方均报告成功，最终文件只保留其中一个新身份。`File.Move(overwrite:false)` 在当前 Linux/.NET 环境未提供需要的原子不覆盖保证。旧 40 项测试未覆盖此窗口，不能继续据此宣称并发安全。回归与原始 TRX 在 `tests/Caiwu.BookTools.Tests/ConcurrentPublicationTests.cs` 和 `evidence/concurrent-publication-before.trx`；等待根线程转回 Storage 专责的统一发布方式建议后修复，仅改本模块。
+
 独立的 .NET 10 模块，基于已有 `Caiwu.Contracts` 和 `Caiwu.Persistence.Sqlite` 公共 API。代码只在 `src/Caiwu.BookTools/**`，测试只在 `tests/Caiwu.BookTools.Tests/**`。起点为 `codex/windows-mvp` 的 `a49d426d8513600dec0f624f56a35c9ad66e71d4`；读取过该分支 Storage、LedgerSession、契约，以及 `codex/windows-delivery` 的 `BookOperations`/说明和 `codex/storage-readback` 的 Write 核对改动。未修改这些 owner 的文件或根 solution，未处理参考安装包。
 
 ## 可用范围与身份规则
@@ -27,7 +29,7 @@
 2. 宿主明确确认该计划。`BookCopyWorkflow` 在任何输入变动后撤销确认；没有预览/勾选确认不能执行，忙时拒绝重复提交和改输入，成功后不能再执行同一工作流。
 3. `Execute` 复用 Storage 的只读源 `RestoreBackup`，在目标目录下的独占随机临时子目录取得一致快照，包含已提交 WAL，排除未提交数据。只打开这个临时副本。按完整有序 DTO 指纹与预览比较，源变化（即使 revision 被错误地保持不变）也拒绝执行。
 4. 用 Storage.Create 创建另一份规范新库，通过公开 Write 一次保存目标快照。完整性检查、逐字段指纹回读后，再用已有 BackupTo 得到独立 DELETE-journal 文件，关闭并重新打开核对全部字段。没有写源库、重写 Core 约束或复用旧数据库 schema。
-5. 最后重新检查目标及 `-wal/-shm/-journal` 并调用不覆盖的同目录 `File.Move` 发布。发布是最后一个功能步骤；此前的失败/取消没有目标半成品。若其他操作抢先创建目标，保留其文件并失败。取消在同步 Storage 操作之间及发布前处理；Storage 自身锁等待可达 10 秒。发布后才到达的取消按成功处理。
+5. 当前最后重新检查目标及 `-wal/-shm/-journal` 并调用同目录 `File.Move(overwrite:false)`；其并发不覆盖保证已被上述精确反例推翻，须换用经专责确认的原子发布方式。已存在目标的串行检查仍有效，不能扩展为并发保证。取消在同步 Storage 操作之间及发布前处理；Storage 自身锁等待可达 10 秒。发布后才到达的取消按成功处理。
 6. 清理只触及本次临时子目录内预留的 captured/candidate/ready 及其日志，不删源文件、备份或已有目标；不递归删除未知文件。清理失败不掩盖原异常，错误的 `Data["BookCopyCleanupWarnings"]` 带提示；成功时在结果 `CleanupWarnings` 带提示。
 
 本次复制对应**捕获时**与预览一致的版本。捕获完成后源仍可继续写入；这不会混入副本，也不会被本模块回退。没有跨两个数据库的分布式事务、断电恢复日志或抵抗同权限恶意进程更换目录的承诺。宿主应持有自己现有的数据租约/忙态。不要将本模块用作绕过 Delivery 安全门槛的入口。

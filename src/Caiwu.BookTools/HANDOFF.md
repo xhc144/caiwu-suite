@@ -1,5 +1,11 @@
 # BookTools 交接
 
+## 当前优先项：并发发布 P1 已复现，修复等待统一建议
+
+2026-10-25 09:34 UTC：两个独立 BookCopyService、不同合成源、相同全新目标，在最终 `NewDestination` 检查之后经宿主 `validateDestination` 第二次调用 Barrier 同步放行。30 轮中 10 轮两方都返回成功；两结果包含不同 BookId，最终 SQLite 只保留其中一个。两源文件 SHA256 均未变，双方临时目录均清理。`File.Move(overwrite:false)` 的并发保证不成立；旧测试结果不足以证明此项。
+
+本轮新增 `ConcurrentPublicationTests.cs` 是有意保留的失败回归，原始 TRX 在测试目录 `evidence/concurrent-publication-before.trx`。尚未更改生产发布代码、Storage 或其他 owner 文件，先将证据回传根线程，等待其转回专责线程 `01a17265-5248-7773-944a-c6c37c72b013` 的可靠发布原语建议后复用，避免两套补丁。修复状态为 **pending**，不是权限拒绝或不确定是否执行。此项未闭合前不要据旧 40 项全绿集成本模块。
+
 2026-10-25 UTC，`codex/book-copy-tools`；基于 `a49d426d8513600dec0f624f56a35c9ad66e71d4`。所有新增内容仅在分配的两个目录。没有改书库、Desktop、Contracts、Core、SQLite、根 solution、安装更新保护或仓库权限。
 
 ## 可集成结果
