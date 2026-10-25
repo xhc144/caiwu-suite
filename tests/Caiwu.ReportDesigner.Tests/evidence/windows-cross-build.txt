@@ -1,0 +1,11 @@
+  Caiwu.Contracts -> /workspace/caiwu-report-designer/src/Caiwu.Contracts/bin/Release/net10.0/Caiwu.Contracts.dll
+  Caiwu.Reporting -> /workspace/caiwu-report-designer/src/Caiwu.Reporting/bin/Release/net10.0/Caiwu.Reporting.dll
+  Caiwu.ReportDesigner -> /workspace/caiwu-report-designer/src/Caiwu.ReportDesigner/bin/Release/net10.0/Caiwu.ReportDesigner.dll
+  Caiwu.ReportDesigner.Wpf -> /workspace/caiwu-report-designer/src/Caiwu.ReportDesigner/Wpf/bin/Release/net10.0-windows/Caiwu.ReportDesigner.Wpf.dll
+  Caiwu.ReportDesigner.WindowsSmoke -> /workspace/caiwu-report-designer/tests/Caiwu.ReportDesigner.Tests/WindowsSmoke/bin/Release/net10.0-windows/Caiwu.ReportDesigner.WindowsSmoke.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.74
