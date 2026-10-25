@@ -6,16 +6,30 @@ using Caiwu.Delivery;
 using Caiwu.Persistence.Sqlite;
 using Microsoft.Data.Sqlite;
 
+// Test-only child entrypoint exercises the managed launcher with a real second process.
+if (args.Length == 2 && args[0] == "--managed-lease-child")
+{
+    using var childData = ManagedDesktopLaunch.OpenSession(
+        Environment.GetEnvironmentVariable("CAIWU_INSTALL_ROOT") ?? throw new InvalidDataException("No install root."),
+        Environment.GetEnvironmentVariable("CAIWU_DATA_ROOT") ?? throw new InvalidDataException("No data root."),
+        Environment.ProcessPath ?? throw new InvalidDataException("No actual executable path."));
+    File.WriteAllText(args[1], "real child owns install/data leases");
+    var deadline = DateTime.UtcNow.AddSeconds(15);
+    while (!File.Exists(args[1] + ".release") && DateTime.UtcNow < deadline) Thread.Sleep(25);
+    return File.Exists(args[1] + ".release") ? 0 : 3;
+}
+
 // Every case owns a fresh synthetic directory. The harness never discovers or opens user books.
 var results = new List<object>();
 var failed = 0;
 var skipped = 0;
 var cases = (Environment.GetEnvironmentVariable("CAIWU_DELIVERY_TEST_SCOPE") switch
 {
+    "managed-modules" => ManagedModuleCases.All,
     "security-boundaries" => SecurityBoundaryCases.All.Concat(BackupAdversarialCases.All),
     "schema-constraints" => SchemaConstraintCases.All,
     "windows-backup-sharing" => WindowsBackupSharingCases.All,
-    _ => DeliveryCases.All.Concat(WindowsBackupSharingCases.All)
+    _ => DeliveryCases.All.Concat(WindowsBackupSharingCases.All).Concat(ManagedModuleCases.All)
 }).ToArray();
 foreach (var (name, action) in cases)
 {

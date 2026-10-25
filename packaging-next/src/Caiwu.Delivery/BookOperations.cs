@@ -28,6 +28,14 @@ public static class BookOperations
             var backup = BookPath(current.DataRoot, relativeBackup);
             if (IsBackup(current.DataRoot, source) || !IsBackup(current.DataRoot, backup))
                 throw new InvalidDataException("Backup must read a managed book and create a new file in .delivery-backups.");
+            var registration = SafePaths.Child(current.DataRoot, "managed-modules.json");
+            if (File.Exists(registration))
+            {
+                var inventory = ManagedDataSession.ReadJson<ManagedModuleInventory>(registration);
+                var book = inventory.Books.SingleOrDefault(b => SafePaths.Child(current.DataRoot, b.RelativeDatabasePath).Equals(source, StringComparison.OrdinalIgnoreCase));
+                if (book != null)
+                    throw new InvalidOperationException("This book has registered module attachments. Use ManagedBookBackup for a complete backup.");
+            }
             return WithSnapshot(source, current.DataRoot, (snapshot, inspected) =>
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(backup)!);
@@ -64,7 +72,7 @@ public static class BookOperations
     private static BookInspection InspectPath(string path, string dataRoot) =>
         WithSnapshot(path, dataRoot, (_, inspected) => inspected);
 
-    private static T WithSnapshot<T>(string path, string dataRoot, Func<string, BookInspection, T> consume)
+    internal static T WithSnapshot<T>(string path, string dataRoot, Func<string, BookInspection, T> consume)
     {
         LedgerFilePolicy.Validate(path);
         // All input inspection is read-only, including ordinary writable/live books. Capture once,
