@@ -84,7 +84,12 @@ internal static partial class Program
                             new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit),
                             new PropertyCondition(AutomationElement.AutomationIdProperty, "1001")))
                             ?? throw new InvalidOperationException("Actual native File name edit (1001) not found.");
-                        ((ValuePattern)edit.GetCurrentPattern(ValuePattern.Pattern)).SetValue(path);
+                        edit.SetFocus();
+                        Send([KeyInput(0x11, 0, 0), KeyInput(0x41, 0, 0), KeyInput(0x41, 0, 2), KeyInput(0x11, 0, 2)]);
+                        Send(path.SelectMany(c => new[] { KeyInput(0, c, 4), KeyInput(0, c, 6) }).ToArray());
+                        // File dialogs validate typed names on focus loss; a UIA ValuePattern alone can leave the default filename active.
+                        Send([KeyInput(0x09, 0, 0), KeyInput(0x09, 0, 2)]); Thread.Sleep(150);
+                        File.AppendAllText(Path.Combine(output, "native-dialog.jsonl"), System.Text.Json.JsonSerializer.Serialize(new { requested = path, actual = ((ValuePattern)edit.GetCurrentPattern(ValuePattern.Pattern)).Current.Value }) + "\n");
                         var accept = root.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Button))
                             .Cast<AutomationElement>().FirstOrDefault(e => e.Current.Name is "Save" or "Open" or "保存" or "保存(S)" or "打开" or "打开(O)")
                             ?? throw new InvalidOperationException("Actual native Save/Open button not found.");

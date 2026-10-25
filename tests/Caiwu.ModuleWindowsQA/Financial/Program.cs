@@ -97,7 +97,7 @@ internal static partial class Program
         Check(window.Style == Application.Current.TryFindResource(typeof(Window)), "inherits exact modern Window style");
         Check(window.FontFamily.Source.Contains("YaHei", StringComparison.Ordinal), "inherits Chinese font family");
         Check((window.Foreground as SolidColorBrush)?.Color == (Application.Current.FindResource("AppInk") as SolidColorBrush)?.Color, "inherits modern foreground brush");
-        var firstButton = Visuals<Button>(content).First();
+        var firstButton = Visuals<Button>(content).First(b => b.Content is string);
         Check(firstButton.Style == Application.Current.TryFindResource(typeof(Button)), "inherits exact modern Button template");
         return window;
     }
