@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "scope": "public_source_format_research_and_own_synthetic_record_readers",
+  "author_test_command": "python3 -W error::ResourceWarning -m unittest discover -s docs/reference-ui/static-program/pb9-object-format -v",
+  "author_tests_executed": 15,
+  "author_result": "passed",
+  "independent_tests_executed": 0,
+  "target_object_internal_inputs_tested": 0,
+  "external_parser_code_executed": false,
+  "external_parser_implementation_vendored": false,
+  "target_payload_or_recovery_data_uploaded": false,
+  "source_commit": "b46fd3e42b8f26ed18a547b9e4bec47f96530a86",
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 8123,
+      "sha256": "e0a92e78de3df130bc47b6e4e21800de0512390c11768586b01d6dacd70738e2"
+    },
+    {
+      "path": "format-spec.json",
+      "bytes": 12297,
+      "sha256": "3f8086332f1ab2bd1ec1213d9aa178b56857869bc1631824c4711440de7a0222"
+    },
+    {
+      "path": "record_probe.py",
+      "bytes": 8509,
+      "sha256": "d14611d766bf4a60138bf4ac60120f2be285385098afc2ac96dbca3eceffab81"
+    },
+    {
+      "path": "sources.json",
+      "bytes": 7759,
+      "sha256": "2a07c4ba9affd449d2c184fb1fac67a7bb071a56bf1ba9564a7f2d3e93b67ca3"
+    },
+    {
+      "path": "test_record_probe.py",
+      "bytes": 4541,
+      "sha256": "505e4e27717e1094ce6633c83b2098dcd894b9eb5b625cf2aa847eb7f6560444"
+    },
+    {
+      "path": "validation-plan.json",
+      "bytes": 5124,
+      "sha256": "67d9aa01e4f67ac522bb7771603482f8e0f00df6d2b8b92fc38405293a6c9f75"
+    },
+    {
+      "path": "version-differences.json",
+      "bytes": 4284,
+      "sha256": "c3cf15f760cca48479dbc4514af77d3564713c9b64cdc2eb59244a48cfa85b2e"
+    }
+  ],
+  "remaining_gate": "byte-owning recovery thread must validate candidate version, table boundaries and reference domains locally before treating any field meaning or call target as confirmed"
+}

@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-25",
+  "primary_external_repository": "Hucxy/PbdViewer",
+  "pinned_commit": "b46fd3e42b8f26ed18a547b9e4bec47f96530a86",
+  "repository_license": "MIT",
+  "external_code_vendored": false,
+  "external_code_executed": false,
+  "commercial_target_payloads_read_locally": 0,
+  "external_source_facts_are_not_target_validation": true,
+  "files": [
+    {
+      "path": "README.md",
+      "blob_sha": "e0ff279b100bf3f5e5afab616156904557ef939d",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/README.md",
+      "lines": 5,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "LICENSE",
+      "blob_sha": "6ab5a31052156a4473f9b23d2ebe33a95054ca8f",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/LICENSE",
+      "lines": 22,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbEntry.cs",
+      "blob_sha": "945ea0111675d1e980bf4cd72d02d69b7de7724c",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbEntry.cs",
+      "lines": 740,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbFile.cs",
+      "blob_sha": "8ba42f5b14ced9b731f134c18bde355e33e0e672",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbFile.cs",
+      "lines": 219,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbProject.cs",
+      "blob_sha": "d81f6b29b1094c26208c481a19844eb89e452f18",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbProject.cs",
+      "lines": 173,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbObject.cs",
+      "blob_sha": "3895a4abb760844856fcc464e484c52266ce03b6",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbObject.cs",
+      "lines": 150,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbType.cs",
+      "blob_sha": "45af0fd2b0cc8820491bcf48b8c515c8c53f267e",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbType.cs",
+      "lines": 166,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbFunction.cs",
+      "blob_sha": "98200d316e1c2e54cea785b8453956e4d6e0e78c",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbFunction.cs",
+      "lines": 70,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbFunctionDefinition.cs",
+      "blob_sha": "096251b22c6f7c030870d5a9a82cdb102ba498e7",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbFunctionDefinition.cs",
+      "lines": 73,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbFunctionFlag.cs",
+      "blob_sha": "40322ff61734e7b646592e3c354a5ab557f9d916",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbFunctionFlag.cs",
+      "lines": 11,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbReferencedFunction.cs",
+      "blob_sha": "2c574718f75e4fd37c7178c66807f94c1eae79a9",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbReferencedFunction.cs",
+      "lines": 32,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PbClass/PbVariable.cs",
+      "blob_sha": "cc21fbf26e87e80a5154b468e5849ebe51f80f1a",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PbClass/PbVariable.cs",
+      "lines": 373,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/BufferHelper.cs",
+      "blob_sha": "a96f4758d89de31bd111cf5cfc9d92c1f5ec4792",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/BufferHelper.cs",
+      "lines": 181,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PCodeHelper.cs",
+      "blob_sha": "7ef3cb5bfaaccb184213ffa5420e8a24311e64d1",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCodeHelper.cs",
+      "lines": 714,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PCode/PCodeParser90.cs",
+      "blob_sha": "be7754e4ec83714fddc2e22881fd2be022f5fd3a",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser90.cs",
+      "lines": 1035,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PCode/PCodeParserBase.cs",
+      "blob_sha": "3870f2b059bcf1921da733259c183026e001d0ae",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParserBase.cs",
+      "lines": 833,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PCode/PCodeParser100.cs",
+      "blob_sha": "7ce7e56467e2a1928be7818c40ddf0502a8fe061",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser100.cs",
+      "lines": 96,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PCode/PCodeParser105.cs",
+      "blob_sha": "1d62a3ce432d2521705404e17e0c35f67eeca212",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser105.cs",
+      "lines": 107,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "Uitils/PCode/PCodeParser110.cs",
+      "blob_sha": "ffc68647d2686b691a2b0532811303e5b3b5fab6",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/Uitils/PCode/PCodeParser110.cs",
+      "lines": 104,
+      "read_only": true,
+      "executed": false
+    },
+    {
+      "path": "DataModel/EntryNode.cs",
+      "blob_sha": "755100d99b817b639dd8e350a9737571c85ecb71",
+      "url": "https://github.com/Hucxy/PbdViewer/blob/b46fd3e42b8f26ed18a547b9e4bec47f96530a86/DataModel/EntryNode.cs",
+      "read_only": true,
+      "executed": false
+    }
+  ],
+  "official_context": [
+    {
+      "url": "https://infocenter-archive.sybase.com/help/topic/com.sybase.dc33822_1050/pdf/pbentrb.pdf",
+      "claim": "PB9 and earlier PBDs are ANSI; PB10+ regenerates Unicode PBDs",
+      "scope": "encoding compatibility only, not undocumented object layout"
+    },
+    {
+      "url": "https://docs.appeon.com/pb2022/powerscript_reference/xREF_33712_Static_versus.html",
+      "claim": "STATIC versus DYNAMIC object call lookup; global/system dynamic calls restricted",
+      "scope": "language semantics; does not validate binary flags or offsets"
+    },
+    {
+      "url": "https://docs.appeon.com/pb2021/powerscript_reference/xREF_95742_About_functions.html",
+      "claim": "Functions/events differ in lookup, scope and overloading",
+      "scope": "language semantics only"
+    }
+  ],
+  "secondary_external_source": {
+    "repository": "sijms/PowerBuilder-decompile",
+    "commit": "5a7b9b05a400ddef8515dbf74e6fcd51a2e741a4",
+    "path": "pbd/definitions.py",
+    "blob_sha": "08d035837b0ad4df05f6d2967f95826bf3fc8d0c",
+    "scope": "Only PB6-tested hypothesis for the six-byte event table; not PB9 validation"
+  }
+}
