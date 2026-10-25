@@ -1,0 +1,57 @@
+{
+  "actualWindowsWpf": true,
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "os": "Microsoft Windows NT 10.0.26100.0",
+  "failures": 0,
+  "results": [
+    {
+      "name": "WPF-LAYOUT-PREVIEW-FALLBACK",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-ALL-FIELD-ERRORS-RETAIN-INPUT",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-DUPLICATE-NUMBER-RETAINED",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-CLOSED-TARGET-PERIOD",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-INACTIVE-ACCOUNT-ROW-FEEDBACK",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-CONFIRM-RETURNS-PLAN-HOST-ALONE-SAVES",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-CANCEL-BUTTON-RETURNS-NULL",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-ESCAPE-ROUTED-KEY-RETURNS-NULL",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-WINDOW-CLOSE-RETURNS-NULL",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-STALE-TOKEN-PRESERVED-FOR-HOST-REJECTION",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-HOST-THEME-RESOURCES-WIN",
+      "status": "PASS"
+    },
+    {
+      "name": "WPF-CORRECT-ERROR-AND-CONFIRM-ONCE",
+      "status": "PASS"
+    }
+  ],
+  "inputMethod": "Actual WPF modal windows and routed Click/Key events; no native mouse/IME assertion."
+}

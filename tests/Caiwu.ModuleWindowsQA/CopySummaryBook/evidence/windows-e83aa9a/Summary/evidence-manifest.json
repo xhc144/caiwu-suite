@@ -1,0 +1,48 @@
+{
+  "timestampUtc": "2026-10-25T11:16:37.8142454Z",
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "error": null,
+  "sourceTrees": {
+    "src/Caiwu.Desktop/Themes": "72ad713d1368a3b6cb78d094dc52fc7b328277fc",
+    "src/Caiwu.VoucherTools.Wpf": "0194e4a31de270a337917644adb3f6fe1845ccd6",
+    "tests/Caiwu.ModuleWindowsQA/CopySummaryBook": "657c9032187c4459fcdaf4857019a10c772e5fcd",
+    "src/Caiwu.Core": "a4a0239e97b433708fe727d9e4ee2eca03ca793b",
+    "src/Caiwu.Summaries": "4f5b0a0aa58fc19b1f808589bdbe27a11f879167",
+    "src/Caiwu.Contracts": "5282011ae8b5e38250e22310c3006a5a02dc373d",
+    "src/Caiwu.BookTools": "eeb20da638c164862143d463d7539bb900de2288",
+    "src/Caiwu.Persistence.Sqlite": "ce45cb6c52a7e980b43adbd7d8da65f1c6ff7a9d",
+    "src/Caiwu.VoucherTools": "725cd48d2485b43c22ffe7ba8c24aca44bb10214"
+  },
+  "inputMethod": "WPF RoutedEvent/property driving; no native keyboard, mouse or IME claim",
+  "module": "Summary",
+  "passed": true,
+  "cases": [],
+  "actualWindows": true,
+  "files": [
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "file": "author-summary.stderr.log",
+      "bytes": 0
+    },
+    {
+      "sha256": "d10d632734bbf22d9058ba56c1678c2cd3a302519be2a7b80205177b6809fc87",
+      "file": "author-summary.stdout.log",
+      "bytes": 698
+    },
+    {
+      "sha256": "093cd7fc749db2df5da0cf48083105199b6f7339df3b12a0281a171ac527d8f2",
+      "file": "smoke.json",
+      "bytes": 216
+    },
+    {
+      "sha256": "04d5d8cf49894befd308e4ce6fbd707b0578f55c942b56cf108e150931ba2f01",
+      "file": "summary-conflict.png",
+      "bytes": 70330
+    },
+    {
+      "sha256": "d3f81005cbe77a1c29a946d9417bba27fcd2f24bbb583031b31c1a79152beb1a",
+      "file": "summary-manager.png",
+      "bytes": 58742
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "runId": 40188069024,
+  "sourceCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "artifacts": [
+    {
+      "id": 12597067046,
+      "name": "copy-summary-book-BookTools-e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+      "size_in_bytes": 1741921,
+      "url": "https://api.github.com/repos/xhc144/caiwu-suite/actions/artifacts/12597067046",
+      "archive_download_url": "https://api.github.com/repos/xhc144/caiwu-suite/actions/artifacts/12597067046/zip",
+      "expired": false,
+      "created_at": "2026-10-25T11:17:25Z",
+      "expires_at": "2026-11-08T11:17:24Z",
+      "updated_at": "2026-10-25T11:17:25Z",
+      "digest": "sha256:d292637820dde554dbd054dd14634e230a3d70a9db8dd9e77ef3fb97ba827caa",
+      "workflow_run": {
+        "id": 40188069024,
+        "repository_id": 1431773852,
+        "head_repository_id": 1431773852,
+        "head_branch": "codex/module-copy-summary-qa",
+        "head_sha": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7"
+      }
+    },
+    {
+      "id": 12597031967,
+      "name": "copy-summary-book-Summary-e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+      "size_in_bytes": 116005,
+      "url": "https://api.github.com/repos/xhc144/caiwu-suite/actions/artifacts/12597031967",
+      "archive_download_url": "https://api.github.com/repos/xhc144/caiwu-suite/actions/artifacts/12597031967/zip",
+      "expired": false,
+      "created_at": "2026-10-25T11:16:39Z",
+      "expires_at": "2026-11-08T11:16:38Z",
+      "updated_at": "2026-10-25T11:16:39Z",
+      "digest": "sha256:989859dba1e68b00996616b44bf12986916953e4984d648d1e07cd87212c17a0",
+      "workflow_run": {
+        "id": 40188069024,
+        "repository_id": 1431773852,
+        "head_repository_id": 1431773852,
+        "head_branch": "codex/module-copy-summary-qa",
+        "head_sha": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7"
+      }
+    },
+    {
+      "id": 12596486985,
+      "name": "copy-summary-book-Voucher-e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+      "size_in_bytes": 163581,
+      "url": "https://api.github.com/repos/xhc144/caiwu-suite/actions/artifacts/12596486985",
+      "archive_download_url": "https://api.github.com/repos/xhc144/caiwu-suite/actions/artifacts/12596486985/zip",
+      "expired": false,
+      "created_at": "2026-10-25T11:16:07Z",
+      "expires_at": "2026-11-08T11:16:06Z",
+      "updated_at": "2026-10-25T11:16:07Z",
+      "digest": "sha256:caef8f8f2e5c770082591887d35592f8f16366968bcc7fcdaa6a7affd632601c",
+      "workflow_run": {
+        "id": 40188069024,
+        "repository_id": 1431773852,
+        "head_repository_id": 1431773852,
+        "head_branch": "codex/module-copy-summary-qa",
+        "head_sha": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7"
+      }
+    }
+  ]
+}

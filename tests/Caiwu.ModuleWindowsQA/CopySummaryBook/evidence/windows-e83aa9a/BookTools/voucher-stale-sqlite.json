@@ -1,0 +1,51 @@
+{
+  "name": "voucher-stale-sqlite",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "initial focus is actual date input",
+    "ConfirmButton enabled",
+    "invalid date keeps window and actual keyboard focus",
+    "invalid confirmation does not write actual SQLite",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "ConfirmButton enabled",
+    "dialog preserves original snapshot token and fresh identity",
+    "real Core/SQLite rejects stale plan without replacing winner",
+    "stale save preserves exact SQLite bytes"
+  ],
+  "observations": [],
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "voucher-stale-error-focus.png",
+      "width": 1044,
+      "height": 788,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "bf51af679e3e1d181dc4e3115895ed6a795e963e08d6541171fe85ec1b9e5fda",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "voucher-stale-error-focus-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 130,
+        "Top": 130,
+        "Right": 1174,
+        "Bottom": 918
+      },
+      "sha256": "1fb92c7f5a4d9051e24431bae236b07af0c491d4cb72ae8eebad9fb14c146ac2",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

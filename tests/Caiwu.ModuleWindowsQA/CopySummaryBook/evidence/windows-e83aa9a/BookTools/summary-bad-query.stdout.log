@@ -1,0 +1,27 @@
+PASS actual Windows required
+PASS exact production Modern.xaml resources loaded without product startup
+PASS reopened persisted summary initially selectable
+PASS invalid UTF16 query clears old selection
+PASS actual controls reject stale selection after bad query
+PASS bad query cannot accept old text
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS query recovery does not silently reselect old item
+PASS explicit reselection recovers valid query
+PASS CancelWindowButton enabled
+PASS reopened persisted summary initially selectable
+PASS invalid UTF16 query clears old selection
+PASS actual controls reject stale selection after bad query
+PASS bad query cannot accept old text
+PASS native HWND is visible for capture
+PASS native window bounds measured
+PASS PrintWindow captures actual complete native window
+PASS actual module is foreground for desktop evidence
+PASS BitBlt captures actual foreground desktop
+PASS query recovery does not silently reselect old item
+PASS explicit reselection recovers valid query
+PASS CancelWindowButton enabled
+PASS bad queries and cancel preserve persisted original bytes and text

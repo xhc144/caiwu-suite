@@ -1,0 +1,49 @@
+{
+  "name": "book-stale",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "\u751F\u6210\u590D\u5236\u524D\u9884\u89C8 enabled",
+    "ExecuteButton enabled",
+    "stale source fails inside window without publishing",
+    "failed execute retains input and concurrent winner",
+    "failed stale plan requires fresh approval",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "CancelButton enabled"
+  ],
+  "observations": [],
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "book-stale-error.png",
+      "width": 790,
+      "height": 740,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "bc5e2595325cce022a32e01f985e538b3f1da137bf519f5a9ff85ed25ddfcbc9",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "book-stale-error-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 104,
+        "Top": 104,
+        "Right": 894,
+        "Bottom": 844
+      },
+      "sha256": "ea0a8a609df1b89625a3159112a64d4d509c347061bd1a4811f5cce5c2ecc914",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "name": "summary-bad-query",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "reopened persisted summary initially selectable",
+    "invalid UTF16 query clears old selection",
+    "actual controls reject stale selection after bad query",
+    "bad query cannot accept old text",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "query recovery does not silently reselect old item",
+    "explicit reselection recovers valid query",
+    "CancelWindowButton enabled",
+    "reopened persisted summary initially selectable",
+    "invalid UTF16 query clears old selection",
+    "actual controls reject stale selection after bad query",
+    "bad query cannot accept old text",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "query recovery does not silently reselect old item",
+    "explicit reselection recovers valid query",
+    "CancelWindowButton enabled",
+    "bad queries and cancel preserve persisted original bytes and text"
+  ],
+  "observations": [],
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "summary-bad-query-55296.png",
+      "width": 1044,
+      "height": 720,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "81e6ecdb88325c9ea3e248ce5f926a9e2611cb60cfd678eb2042bc8f26c4e894",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "summary-bad-query-55296-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 26,
+        "Top": 26,
+        "Right": 1070,
+        "Bottom": 746
+      },
+      "sha256": "711ef3938f784a47f3882f7f9b2c89ba310e688ca4295d420e6b94d15a62c83e",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    },
+    {
+      "file": "summary-bad-query-56320.png",
+      "width": 1044,
+      "height": 720,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "9bd259e04d353f3ea988330b528efe645f4388ef0e45de802ee274168c0cfc29",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "summary-bad-query-56320-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 52,
+        "Top": 52,
+        "Right": 1096,
+        "Bottom": 772
+      },
+      "sha256": "84c5cf7157932ada4e58709e4f874bf5d301613e8a7dd5fcf58fadf7bea3e0cf",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

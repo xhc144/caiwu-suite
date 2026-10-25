@@ -1,0 +1,63 @@
+{
+  "passed": true,
+  "module": "Voucher",
+  "actualWindows": true,
+  "inputMethod": "WPF RoutedEvent/property driving; no native keyboard, mouse or IME claim",
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "cases": [],
+  "error": null,
+  "sourceTrees": {
+    "src/Caiwu.Persistence.Sqlite": "ce45cb6c52a7e980b43adbd7d8da65f1c6ff7a9d",
+    "src/Caiwu.Desktop/Themes": "72ad713d1368a3b6cb78d094dc52fc7b328277fc",
+    "src/Caiwu.Core": "a4a0239e97b433708fe727d9e4ee2eca03ca793b",
+    "tests/Caiwu.ModuleWindowsQA/CopySummaryBook": "657c9032187c4459fcdaf4857019a10c772e5fcd",
+    "src/Caiwu.Contracts": "5282011ae8b5e38250e22310c3006a5a02dc373d",
+    "src/Caiwu.VoucherTools": "725cd48d2485b43c22ffe7ba8c24aca44bb10214",
+    "src/Caiwu.Summaries": "4f5b0a0aa58fc19b1f808589bdbe27a11f879167",
+    "src/Caiwu.VoucherTools.Wpf": "0194e4a31de270a337917644adb3f6fe1845ccd6",
+    "src/Caiwu.BookTools": "eeb20da638c164862143d463d7539bb900de2288"
+  },
+  "timestampUtc": "2026-10-25T11:16:06.1086320Z",
+  "files": [
+    {
+      "bytes": 0,
+      "file": "author-voucher.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 1465,
+      "file": "author-voucher.stdout.log",
+      "sha256": "1276525ca93d7e3fd9c17a7ab79c3b55a5fa347d2b6417249fb036f54a45f140"
+    },
+    {
+      "bytes": 71379,
+      "file": "field-errors-retained.png",
+      "sha256": "7cc3287be43fa973d68273ae33cf8af1bb4964986932feaf72f1f7e7253f3318"
+    },
+    {
+      "bytes": 57359,
+      "file": "inactive-account-feedback.png",
+      "sha256": "a14d1a83a458235b081b73bbfd994d49cc493b925409997f00b10c69a538df87"
+    },
+    {
+      "bytes": 49097,
+      "file": "preview-fallback.png",
+      "sha256": "74fc85db50c76a395eaf95ee259b12caccbe9f0e1181b4c65d2c1e796a21f63e"
+    },
+    {
+      "bytes": 0,
+      "file": "stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 470,
+      "file": "stdout.log",
+      "sha256": "e828848bcd3a62955b8db552e081fd775215a5cb64a7118a55ff92d0fb005287"
+    },
+    {
+      "bytes": 1370,
+      "file": "wpf-results.json",
+      "sha256": "5b7f909531244793688a17273554afbca4e59109562fc3eb5185830acc0ab689"
+    }
+  ]
+}

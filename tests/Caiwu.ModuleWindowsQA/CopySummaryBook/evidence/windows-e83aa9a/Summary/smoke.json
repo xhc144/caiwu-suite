@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checks": 64,
+  "renders": [
+    "summary-manager.png",
+    "summary-conflict.png"
+  ],
+  "error": null,
+  "platform": "Microsoft Windows NT 10.0.26100.0",
+  "data": "synthetic only"
+}

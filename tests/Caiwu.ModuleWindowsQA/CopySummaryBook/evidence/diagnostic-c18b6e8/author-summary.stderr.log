@@ -1,0 +1,13 @@
+System.InvalidOperationException: Summary manager modal regression failed.
+ ---> System.InvalidOperationException: scope identifies the injected book
+   at Program.Check(Boolean condition, String message) in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.ModuleWindowsQA\CopySummaryBook\AuthorSummary\Program.cs:line 214
+   at Program.<>c__DisplayClass3_0.<Main>b__0(SummaryManagerWindow window) in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.ModuleWindowsQA\CopySummaryBook\AuthorSummary\Program.cs:line 39
+   at Program.<>c__DisplayClass5_0.<Drive>b__2() in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.ModuleWindowsQA\CopySummaryBook\AuthorSummary\Program.cs:line 190
+   --- End of inner exception stack trace ---
+   at Program.Drive(SummaryManagerWindow window, Action`1 actions) in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.ModuleWindowsQA\CopySummaryBook\AuthorSummary\Program.cs:line 194
+   at Program.Main(String[] args) in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.ModuleWindowsQA\CopySummaryBook\AuthorSummary\Program.cs:line 36
+[31;1mException: [0mD:\a\caiwu-suite\caiwu-suite\tests\Caiwu.ModuleWindowsQA\CopySummaryBook\AuthorSummary\Run-WindowsSmoke.ps1:8[0m
+[31;1m[0m[36;1mLine |[0m
+[31;1m[0m[36;1m[36;1m   8 | [0m . DE -ne 0) { [36;1mthrow 'Summary manager regression failed. Inspect smoke.j[0m .[0m
+[31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m     | [31;1m               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+[31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m     | [31;1mSummary manager regression failed. Inspect smoke.json and captured PNGs.[0m

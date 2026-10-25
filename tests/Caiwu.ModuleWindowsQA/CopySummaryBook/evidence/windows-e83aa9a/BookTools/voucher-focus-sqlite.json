@@ -1,0 +1,52 @@
+{
+  "name": "voucher-focus-sqlite",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "initial focus is actual date input",
+    "ConfirmButton enabled",
+    "invalid date keeps window and actual keyboard focus",
+    "invalid confirmation does not write actual SQLite",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "ConfirmButton enabled",
+    "dialog preserves original snapshot token and fresh identity",
+    "dialog alone did not persist copy",
+    "host explicitly saves fresh draft with current actor",
+    "fresh copied voucher reopens from actual SQLite"
+  ],
+  "observations": [],
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "voucher-error-focus.png",
+      "width": 1044,
+      "height": 788,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "4d83ee5794f896e28ef72a2e47737f0ed4661ddd858934cabcba0b17146eb26c",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "voucher-error-focus-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 78,
+        "Top": 78,
+        "Right": 1122,
+        "Bottom": 866
+      },
+      "sha256": "4cbb4041aafc0e7efb7877e87cf6bcc9391546193cde5028b280ebc1773a67cc",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

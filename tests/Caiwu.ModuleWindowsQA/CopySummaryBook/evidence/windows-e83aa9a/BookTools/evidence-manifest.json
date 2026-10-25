@@ -1,0 +1,300 @@
+{
+  "inputMethod": "WPF RoutedEvent/property driving; no native keyboard, mouse or IME claim",
+  "sourceTrees": {
+    "src/Caiwu.VoucherTools": "725cd48d2485b43c22ffe7ba8c24aca44bb10214",
+    "src/Caiwu.Desktop/Themes": "72ad713d1368a3b6cb78d094dc52fc7b328277fc",
+    "src/Caiwu.Persistence.Sqlite": "ce45cb6c52a7e980b43adbd7d8da65f1c6ff7a9d",
+    "src/Caiwu.Summaries": "4f5b0a0aa58fc19b1f808589bdbe27a11f879167",
+    "src/Caiwu.Core": "a4a0239e97b433708fe727d9e4ee2eca03ca793b",
+    "tests/Caiwu.ModuleWindowsQA/CopySummaryBook": "657c9032187c4459fcdaf4857019a10c772e5fcd",
+    "src/Caiwu.Contracts": "5282011ae8b5e38250e22310c3006a5a02dc373d",
+    "src/Caiwu.BookTools": "eeb20da638c164862143d463d7539bb900de2288",
+    "src/Caiwu.VoucherTools.Wpf": "0194e4a31de270a337917644adb3f6fe1845ccd6"
+  },
+  "error": null,
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "actualWindows": true,
+  "timestampUtc": "2026-10-25T11:17:24.4511612Z",
+  "passed": true,
+  "module": "BookTools",
+  "files": [
+    {
+      "sha256": "ba28107b7b4ed34b3c6b15be7546d4f74faf5a10f429e4fe2e40e8de2d59fd67",
+      "bytes": 2223,
+      "file": "book-busy-cancel.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "book-busy-cancel.stderr.log"
+    },
+    {
+      "sha256": "4b2e6e31fe55528f9d09a6797758b73e7cd2c410e85a5ba41392ac92efecd500",
+      "bytes": 634,
+      "file": "book-busy-cancel.stdout.log"
+    },
+    {
+      "sha256": "75c0fd40c1a21b93fd1c74a1a5c87afa7d72762cbb4b68750861426c04cf8336",
+      "bytes": 155966,
+      "file": "book-cancelled-desktop.png"
+    },
+    {
+      "sha256": "e9b2c928fa25adb36e674c9888146bbe444c7b4017e6a9c4270df36ae88af65a",
+      "bytes": 69271,
+      "file": "book-cancelled.png"
+    },
+    {
+      "sha256": "17a96603aa99c578f954a3f473b21c2cc8db1d692cc12b8d3fd8c65496d8a695",
+      "bytes": 172843,
+      "file": "book-full-preview-desktop.png"
+    },
+    {
+      "sha256": "04d0cdf45e9fa8e83f923b48207fd72d49e94570db1579445a45a225bc78232d",
+      "bytes": 95397,
+      "file": "book-full-preview.png"
+    },
+    {
+      "sha256": "0ebeaf99d87c0b78af14f8f527990a3ba051113df58b78370ee280f88fcd3e01",
+      "bytes": 2393,
+      "file": "book-full.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "book-full.stderr.log"
+    },
+    {
+      "sha256": "d1de35bd54a613c40623f67560296a0f3a154ba6e7f0ec5b6db0e3f198415dcc",
+      "bytes": 818,
+      "file": "book-full.stdout.log"
+    },
+    {
+      "sha256": "b42eda6b2e13a2bf8faf27c4f82e6cc58b4e19ab3bf4ebc50310ae95e5be034e",
+      "bytes": 146981,
+      "file": "book-opening-preview-desktop.png"
+    },
+    {
+      "sha256": "d1be74f05a5290c7fd6116d7b9ea5acc00567de2264b122e2f271393a674688f",
+      "bytes": 92910,
+      "file": "book-opening-preview.png"
+    },
+    {
+      "sha256": "ced09102e18744b326f41025edd1aff322b66f92438d974dc43f86bb1a3f33d3",
+      "bytes": 2399,
+      "file": "book-opening.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "book-opening.stderr.log"
+    },
+    {
+      "sha256": "d1de35bd54a613c40623f67560296a0f3a154ba6e7f0ec5b6db0e3f198415dcc",
+      "bytes": 818,
+      "file": "book-opening.stdout.log"
+    },
+    {
+      "sha256": "1eaf1852e4ae59c13ea194720146800a64292eefb93a320ef735b337ad883cd5",
+      "bytes": 2147,
+      "file": "book-preview-cancel.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "book-preview-cancel.stderr.log"
+    },
+    {
+      "sha256": "3b5a1a7b41d012e2452ef72f315e0b075ce5ac9ecc18b340580a96a4862bc506",
+      "bytes": 786,
+      "file": "book-preview-cancel.stdout.log"
+    },
+    {
+      "sha256": "42d49a33c68b15f5842c47b915f44d9925d65b11ee8d56d6da82e75556916927",
+      "bytes": 127449,
+      "file": "book-preview-invalidated-desktop.png"
+    },
+    {
+      "sha256": "514bb1bbdafcde4f1eb19b1d5352350db0af3188f4bbbf7f1511ad42ec112448",
+      "bytes": 69242,
+      "file": "book-preview-invalidated.png"
+    },
+    {
+      "sha256": "d2b652d8f0e0198878d227d0838cd061bd7b34557c487a42af5c610918ddb9f2",
+      "bytes": 66397,
+      "file": "book-race.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "book-race.stderr.log"
+    },
+    {
+      "sha256": "57ef7154c68ce88bc3c4df967e37cbe48fb7b652c47fcc2f5946749ee2017bcd",
+      "bytes": 7496,
+      "file": "book-race.stdout.log"
+    },
+    {
+      "sha256": "ea0a8a609df1b89625a3159112a64d4d509c347061bd1a4811f5cce5c2ecc914",
+      "bytes": 126461,
+      "file": "book-stale-error-desktop.png"
+    },
+    {
+      "sha256": "bc5e2595325cce022a32e01f985e538b3f1da137bf519f5a9ff85ed25ddfcbc9",
+      "bytes": 69604,
+      "file": "book-stale-error.png"
+    },
+    {
+      "sha256": "e63823c5f41554db6c0749e901ffb4c92b830789d0766d18bc72e556f800101f",
+      "bytes": 1872,
+      "file": "book-stale.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "book-stale.stderr.log"
+    },
+    {
+      "sha256": "74b208bf2f1bb52969f360d4eaec58fa9058328fa2073c0c6f43bfd79d11d4bd",
+      "bytes": 583,
+      "file": "book-stale.stdout.log"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "build.stderr.log"
+    },
+    {
+      "sha256": "cbbe034db030100bed52692b3d147c71bc1e831fcc1ee51a878841b7a9dee285",
+      "bytes": 4493,
+      "file": "build.stdout.log"
+    },
+    {
+      "sha256": "50104f495bdea4cfd3ae1a2655cccd56e2300f75fb3a4baae31ac2fb740c431e",
+      "bytes": 39157,
+      "file": "race-observations.json"
+    },
+    {
+      "sha256": "711ef3938f784a47f3882f7f9b2c89ba310e688ca4295d420e6b94d15a62c83e",
+      "bytes": 91669,
+      "file": "summary-bad-query-55296-desktop.png"
+    },
+    {
+      "sha256": "81e6ecdb88325c9ea3e248ce5f926a9e2611cb60cfd678eb2042bc8f26c4e894",
+      "bytes": 58311,
+      "file": "summary-bad-query-55296.png"
+    },
+    {
+      "sha256": "84c5cf7157932ada4e58709e4f874bf5d301613e8a7dd5fcf58fadf7bea3e0cf",
+      "bytes": 103747,
+      "file": "summary-bad-query-56320-desktop.png"
+    },
+    {
+      "sha256": "9bd259e04d353f3ea988330b528efe645f4388ef0e45de802ee274168c0cfc29",
+      "bytes": 57096,
+      "file": "summary-bad-query-56320.png"
+    },
+    {
+      "sha256": "8b8c864db05bf4ad33a10121569a4faaefda98205777c00c1eba3c2e0daf3cf5",
+      "bytes": 3423,
+      "file": "summary-bad-query.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "summary-bad-query.stderr.log"
+    },
+    {
+      "sha256": "7e9adc3a909ed37f2a001198840c5e9320b6a8408fb2b8617f42733d7d1a8d37",
+      "bytes": 1330,
+      "file": "summary-bad-query.stdout.log"
+    },
+    {
+      "sha256": "4cbb4041aafc0e7efb7877e87cf6bcc9391546193cde5028b280ebc1773a67cc",
+      "bytes": 95856,
+      "file": "voucher-error-focus-desktop.png"
+    },
+    {
+      "sha256": "4d83ee5794f896e28ef72a2e47737f0ed4661ddd858934cabcba0b17146eb26c",
+      "bytes": 64115,
+      "file": "voucher-error-focus.png"
+    },
+    {
+      "sha256": "2f69c0b30879bc65b131a27950fafdd8363ff2bd7d1359387a0cb3127092908f",
+      "bytes": 2049,
+      "file": "voucher-focus-sqlite.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "voucher-focus-sqlite.stderr.log"
+    },
+    {
+      "sha256": "aca9a1ab979adf46bfd6d7f32295ad6ef8c740d1d30fca03a51b8793237c983c",
+      "bytes": 773,
+      "file": "voucher-focus-sqlite.stdout.log"
+    },
+    {
+      "sha256": "1fb92c7f5a4d9051e24431bae236b07af0c491d4cb72ae8eebad9fb14c146ac2",
+      "bytes": 124102,
+      "file": "voucher-stale-error-focus-desktop.png"
+    },
+    {
+      "sha256": "bf51af679e3e1d181dc4e3115895ed6a795e963e08d6541171fe85ec1b9e5fda",
+      "bytes": 64296,
+      "file": "voucher-stale-error-focus.png"
+    },
+    {
+      "sha256": "235bb146019b79aa77fc89a7e682f3b11c65febf56fa4a133137c51a351c76c0",
+      "bytes": 2021,
+      "file": "voucher-stale-sqlite.json"
+    },
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "file": "voucher-stale-sqlite.stderr.log"
+    },
+    {
+      "sha256": "94064d7b20268397ab1b20ff4ca5737b943b892ac634be57c35a228f65ac2cc3",
+      "bytes": 733,
+      "file": "voucher-stale-sqlite.stdout.log"
+    }
+  ],
+  "cases": [
+    {
+      "passed": true,
+      "name": "book-preview-cancel"
+    },
+    {
+      "passed": true,
+      "name": "book-full"
+    },
+    {
+      "passed": true,
+      "name": "book-opening"
+    },
+    {
+      "passed": true,
+      "name": "book-stale"
+    },
+    {
+      "passed": true,
+      "name": "book-busy-cancel"
+    },
+    {
+      "passed": true,
+      "name": "book-race"
+    },
+    {
+      "passed": true,
+      "name": "voucher-focus-sqlite"
+    },
+    {
+      "passed": true,
+      "name": "voucher-stale-sqlite"
+    },
+    {
+      "passed": true,
+      "name": "summary-bad-query"
+    }
+  ]
+}

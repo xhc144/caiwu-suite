@@ -1,0 +1,59 @@
+{
+  "name": "book-busy-cancel",
+  "passed": true,
+  "error": null,
+  "checks": [
+    "actual Windows required",
+    "exact production Modern.xaml resources loaded without product startup",
+    "\u751F\u6210\u590D\u5236\u524D\u9884\u89C8 enabled",
+    "ExecuteButton enabled",
+    "CancelButton enabled",
+    "busy cancel safely exits before publication without writes",
+    "completed cancellation visibly reports safe outcome and close action",
+    "native HWND is visible for capture",
+    "native window bounds measured",
+    "PrintWindow captures actual complete native window",
+    "actual module is foreground for desktop evidence",
+    "BitBlt captures actual foreground desktop",
+    "CancelButton enabled",
+    "busy cancellation cleans owned workspace"
+  ],
+  "observations": [
+    {
+      "status": "\u5DF2\u53D6\u6D88\uFF0C\u76EE\u6807\u672A\u53D1\u5E03\u3002 \u5982\u9700\u91CD\u8BD5\uFF0C\u8BF7\u91CD\u65B0\u6253\u5F00\u7A97\u53E3\u3002",
+      "IsVisible": true,
+      "ActualWidth": 734,
+      "ActualHeight": 15.96,
+      "X": 20,
+      "Y": 619.04
+    }
+  ],
+  "checkoutCommit": "e83aa9ab0ea16975b718f3ff21e34c8e4941b4d7",
+  "actualWindowsWpf": true,
+  "inputMethod": "Actual modal WPF windows; direct Text/SelectedValue properties and RoutedEvent Click. Keyboard focus inspected; native keyboard, mouse and IME not exercised.",
+  "data": "new synthetic temporary books only",
+  "captures": [
+    {
+      "file": "book-cancelled.png",
+      "width": 790,
+      "height": 740,
+      "dpiX": 96,
+      "dpiY": 96,
+      "sha256": "e9b2c928fa25adb36e674c9888146bbe444c7b4017e6a9c4270df36ae88af65a",
+      "method": "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale"
+    },
+    {
+      "file": "book-cancelled-desktop.png",
+      "width": 1024,
+      "height": 768,
+      "windowBounds": {
+        "Left": 156,
+        "Top": 156,
+        "Right": 946,
+        "Bottom": 896
+      },
+      "sha256": "75c0fd40c1a21b93fd1c74a1a5c87afa7d72762cbb4b68750861426c04cf8336",
+      "method": "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale"
+    }
+  ]
+}

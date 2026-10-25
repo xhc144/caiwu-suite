@@ -1,0 +1,43 @@
+{
+  "inputMethod": "WPF RoutedEvent/property driving; no native keyboard, mouse or IME claim",
+  "timestampUtc": "2026-10-25T11:03:17.8137655Z",
+  "error": "FAIL: author-summary exit 1.",
+  "module": "Summary",
+  "checkoutCommit": "c18b6e8103366273dbc27871487b1e5e1d9632b7",
+  "actualWindows": true,
+  "files": [
+    {
+      "sha256": "79ffaca2a4489d6ad528533fabe081a7c553d54b5b840c5177e6844f5d6c075b",
+      "file": "author-summary.stderr.log",
+      "bytes": 1625
+    },
+    {
+      "sha256": "b5d8ce49244c6a088c9bb28f55b51bab4c31d31427c73770cc2cb194e66ab207",
+      "file": "author-summary.stdout.log",
+      "bytes": 698
+    },
+    {
+      "sha256": "7bdafb0769d221cf2c3e276ad8e1bd15cd60c356f1e6ae7f1409dd4744f6777b",
+      "file": "smoke.json",
+      "bytes": 1319
+    },
+    {
+      "sha256": "e63706d5c5049061674f9d19195b6830d4633002005831e3fe419c79c1b45ef7",
+      "file": "summary-failure.png",
+      "bytes": 50905
+    }
+  ],
+  "passed": false,
+  "cases": [],
+  "sourceTrees": {
+    "src/Caiwu.Persistence.Sqlite": "ce45cb6c52a7e980b43adbd7d8da65f1c6ff7a9d",
+    "src/Caiwu.Core": "a4a0239e97b433708fe727d9e4ee2eca03ca793b",
+    "src/Caiwu.BookTools": "eeb20da638c164862143d463d7539bb900de2288",
+    "src/Caiwu.VoucherTools.Wpf": "0194e4a31de270a337917644adb3f6fe1845ccd6",
+    "src/Caiwu.Desktop/Themes": "72ad713d1368a3b6cb78d094dc52fc7b328277fc",
+    "src/Caiwu.VoucherTools": "725cd48d2485b43c22ffe7ba8c24aca44bb10214",
+    "src/Caiwu.Summaries": "4f5b0a0aa58fc19b1f808589bdbe27a11f879167",
+    "src/Caiwu.Contracts": "5282011ae8b5e38250e22310c3006a5a02dc373d",
+    "tests/Caiwu.ModuleWindowsQA/CopySummaryBook": "dfd68fc013b381cd13456adf69815e222750bab8"
+  }
+}

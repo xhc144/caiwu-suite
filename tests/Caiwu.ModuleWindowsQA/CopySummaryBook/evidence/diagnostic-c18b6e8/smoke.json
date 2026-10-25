@@ -1,0 +1,10 @@
+{
+  "passed": false,
+  "checks": 0,
+  "renders": [
+    "summary-failure.png"
+  ],
+  "error": "System.InvalidOperationException: Summary manager modal regression failed.\r\n ---\u003E System.InvalidOperationException: scope identifies the injected book\r\n   at Program.Check(Boolean condition, String message) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\CopySummaryBook\\AuthorSummary\\Program.cs:line 214\r\n   at Program.\u003C\u003Ec__DisplayClass3_0.\u003CMain\u003Eb__0(SummaryManagerWindow window) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\CopySummaryBook\\AuthorSummary\\Program.cs:line 39\r\n   at Program.\u003C\u003Ec__DisplayClass5_0.\u003CDrive\u003Eb__2() in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\CopySummaryBook\\AuthorSummary\\Program.cs:line 190\r\n   --- End of inner exception stack trace ---\r\n   at Program.Drive(SummaryManagerWindow window, Action\u00601 actions) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\CopySummaryBook\\AuthorSummary\\Program.cs:line 194\r\n   at Program.Main(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.ModuleWindowsQA\\CopySummaryBook\\AuthorSummary\\Program.cs:line 36",
+  "platform": "Microsoft Windows NT 10.0.26100.0",
+  "data": "synthetic only"
+}

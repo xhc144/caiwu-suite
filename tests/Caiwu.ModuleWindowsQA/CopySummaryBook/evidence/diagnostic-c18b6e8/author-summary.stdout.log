@@ -1,0 +1,5 @@
+  Determining projects to restore...
+  Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Summaries\Caiwu.Summaries.csproj (in 198 ms).
+  Restored D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.ModuleWindowsQA\CopySummaryBook\AuthorSummary\Caiwu.Summaries.WindowsSmoke.csproj (in 217 ms).
+  Restored D:\a\caiwu-suite\caiwu-suite\src\Caiwu.Summaries\Wpf\Caiwu.Summaries.Wpf.csproj (in 3 ms).
+{"diagnostic":"book-scope","BookId":"e4fc629c-166d-4b4c-b95a-a7a5e9a0acd5","BookDisplayName":"\u5408\u6210\u8D26\u5957 A","expectedBookId":"e4fc629c-166d-4b4c-b95a-a7a5e9a0acd5","actualText":"","inlineText":"\u5F53\u524D\u8D26\u5957\uFF1A\u5408\u6210\u8D26\u5957 A \u00B7 e4fc629c-166d-4b4c-b95a-a7a5e9a0acd5"}
