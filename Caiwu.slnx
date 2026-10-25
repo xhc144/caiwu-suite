@@ -1,5 +1,10 @@
 <Solution>
   <Project Path="src/Caiwu.Contracts/Caiwu.Contracts.csproj" />
+  <Project Path="src/Caiwu.Core/Caiwu.Core.csproj" />
+  <Project Path="src/Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />
   <Project Path="src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
   <Project Path="tests/Caiwu.Desktop.Logic.Tests/Caiwu.Desktop.Logic.Tests.csproj" />
+  <Project Path="tests/Caiwu.Core.Tests/Caiwu.Core.Tests.csproj" />
+  <Project Path="tests/Caiwu.Persistence.Sqlite.Tests/Caiwu.Persistence.Sqlite.Tests.csproj" />
+  <Project Path="tests/Caiwu.Integration.Tests/Caiwu.Integration.Tests.csproj" />
 </Solution>

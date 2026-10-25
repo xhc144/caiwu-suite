@@ -8,5 +8,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Caiwu.Contracts/Caiwu.Contracts.csproj" />
+    <ProjectReference Include="../Caiwu.Core/Caiwu.Core.csproj" />
+    <ProjectReference Include="../Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />
   </ItemGroup>
 </Project>

@@ -43,7 +43,7 @@ public sealed class NewBookWindow : Window
     private readonly ComboBox _month = new() { ItemsSource = Enumerable.Range(1, 12).ToArray(), SelectedIndex = 0 };
     private readonly TextBlock _error = new() { Foreground = System.Windows.Media.Brushes.Firebrick, TextWrapping = TextWrapping.Wrap };
     public BookInfo? Book { get; private set; }
-    public TemplateDefinition? Template => _template.SelectedItem as TemplateDefinition;
+    public TemplateDefinition? SelectedTemplate => _template.SelectedItem as TemplateDefinition;
 
     public NewBookWindow(IReadOnlyList<TemplateDefinition> templates)
     {
@@ -68,7 +68,7 @@ public sealed class NewBookWindow : Window
         if (string.IsNullOrWhiteSpace(_name.Text)) { _error.Text = "请填写单位或账套名称。"; return; }
         if (!int.TryParse(_year.Text, out var year) || year is < 2000 or > 2100)
         { _error.Text = "请输入2000至2100之间的会计年度。"; return; }
-        if (Template is not { } template) { _error.Text = "请选择会计制度。"; return; }
+        if (SelectedTemplate is not { } template) { _error.Text = "请选择会计制度。"; return; }
         var month = (int)_month.SelectedItem;
         Book = new BookInfo(Guid.NewGuid(), _name.Text.Trim(), template.Regime, template.Version,
             year, month, month - 1, DateTimeOffset.UtcNow);

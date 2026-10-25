@@ -1,5 +1,16 @@
 # 骨架验证状态（2026-10-25）
 
+## 当前已验证结果
+
+原先的构建阻点已解决：预先创建权限700的工作区 `XDG_RUNTIME_DIR`，配合工作区内DOTNET_CLI_HOME/XDG缓存/NuGet缓存配置即可。未修改HOME、账号、宿主挂载或系统权限。可复用命令入口 `tools/dotnet-local.sh`。
+
+- `build Caiwu.slnx -c Release --no-restore --nologo`：完整WPF/Contracts/Core/SQLite/测试项目交叉构建成功，0警告、0错误。
+- Core测试：53通过、0失败、0跳过；SQLite测试：63通过、0失败、0跳过。TRX在本任务 `artifacts/test-results`。
+- 纯界面逻辑：13通过；真实Core+SQLite+会话集成：9通过，含银行108800、本期借贷各31200、期末借贷各120000、重开与备份恢复、期间锁和已记账删除拒绝。
+- Windows实际运行、WPF生成截图、打印机及高DPI手动交互仍由Windows CI/后续验收确认。Linux交叉构建不冒充实机交互。
+
+## 历史尝试（保留失败原因）
+
 - 已安装官方.NET SDK 10.0.402 / runtime10.0.13到任务 `.tools/dotnet`，tar包SHA512与官方发布元数据一致；`dotnet --info`运行成功。
 - 首次普通 `dotnet build Caiwu.slnx -c Release` 未进入编译：NuGet-Migrations创建用户级互斥锁失败。strace显示运行时尝试创建 `/home/agent/.dotnet`，该用户目录在本容器只读。设置DOTNET_CLI_HOME/TMPDIR不能改变这次runtime用户锁位置。
 - 请求为同一构建临时允许 `/home/agent/.dotnet` 写入，被自动审批明确拒绝，操作未执行；没有绕过或重试该拒绝。

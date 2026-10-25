@@ -32,6 +32,15 @@ public partial class MainWindow : Window
     }
 
     private bool HasBook => _session?.Snapshot is not null;
+    internal void OpenVerificationBook(string path) { _session!.Open(path); BookOpened(); }
+    internal void ShowVerificationPage(int index) { Pages.SelectedIndex = index; QueryCurrent(); UpdateLayout(); }
+    internal VoucherEditorWindow OpenVerificationVoucher(Guid id)
+    {
+        var voucher = Snapshot.Vouchers.Single(v => v.Id == id);
+        var window = new VoucherEditorWindow(Snapshot.Book, Snapshot.Accounts, voucher, "验证操作员",
+            _ => throw new InvalidOperationException("验证窗口只读。")) { Owner = this };
+        window.Show(); return window;
+    }
     private LedgerSnapshot Snapshot => _session?.Snapshot ?? throw new LedgerValidationException("请先打开账套。");
     private ILedgerService Service => _session?.Service ?? throw new LedgerValidationException("请先打开账套。");
     private string OperatorName()
@@ -110,12 +119,12 @@ public partial class MainWindow : Window
     private void NewBook_Click(object sender, RoutedEventArgs e) => Run(() =>
     {
         var dialog = new NewBookWindow(_backend!.Templates) { Owner = this };
-        if (dialog.ShowDialog() != true || dialog.Book is null || dialog.Template is null) return;
+        if (dialog.ShowDialog() != true || dialog.Book is null || dialog.SelectedTemplate is null) return;
         var save = new SaveFileDialog { Title = "保存新账套", Filter = "财务账套 (*.caiwu)|*.caiwu", DefaultExt = ".caiwu",
             FileName = SafeFileName(dialog.Book.Name) + ".caiwu", AddExtension = true };
         if (save.ShowDialog(this) != true) return;
         if (File.Exists(save.FileName)) throw new LedgerValidationException("新账套不能覆盖已有文件，请选择新的文件名。");
-        _session!.Create(save.FileName, dialog.Book, dialog.Template.Accounts); BookOpened();
+        _session!.Create(save.FileName, dialog.Book, dialog.SelectedTemplate.Accounts); BookOpened();
         NotificationText.Text = "账套已建立。请核对科目并录入期初余额。";
     }, requireBook: false, discardOpening: true);
 
