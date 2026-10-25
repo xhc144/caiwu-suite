@@ -10,8 +10,12 @@ using Microsoft.Data.Sqlite;
 var results = new List<object>();
 var failed = 0;
 var skipped = 0;
-var cases = (Environment.GetEnvironmentVariable("CAIWU_DELIVERY_TEST_SCOPE") == "security-boundaries"
-    ? SecurityBoundaryCases.All.Concat(BackupAdversarialCases.All) : DeliveryCases.All).ToArray();
+var cases = (Environment.GetEnvironmentVariable("CAIWU_DELIVERY_TEST_SCOPE") switch
+{
+    "security-boundaries" => SecurityBoundaryCases.All.Concat(BackupAdversarialCases.All),
+    "schema-constraints" => SchemaConstraintCases.All,
+    _ => DeliveryCases.All
+}).ToArray();
 foreach (var (name, action) in cases)
 {
     using var fixture = new Fixture();
@@ -426,6 +430,7 @@ internal static class DeliveryCases
             foreach (var test in BookOperationCases.All) yield return test;
             foreach (var test in SecurityBoundaryCases.All) yield return test;
             foreach (var test in BackupAdversarialCases.All) yield return test;
+            foreach (var test in SchemaConstraintCases.All) yield return test;
         }
     }
 

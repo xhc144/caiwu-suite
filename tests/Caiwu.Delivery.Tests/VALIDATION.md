@@ -1,10 +1,10 @@
 # 交付组件验收记录
 
-2026-10-25，在 `codex/windows-delivery` 的 Linux 工作区实际执行：**132 passed / 0 failed / 0 skipped**。SDK 为仓库锁定的 .NET SDK 10.0.402，运行时 .NET 10.0.13。NuGet locked restore 成功；测试程序退出码 0；最终报告 `artifacts/delivery-security-review-regression.json` 已回读核对，并明确标记 `publishedWindowsArtifactExecuted=false`。
+2026-10-25，在 `codex/windows-delivery` 的 Linux 工作区实际执行：**141 passed / 0 failed / 0 skipped**。SDK 为仓库锁定的 .NET SDK 10.0.402，运行时 .NET 10.0.13。NuGet locked restore 成功；测试程序退出码 0；最终报告 `artifacts/schema-constraints-regression.json` 已回读核对，并明确标记 `publishedWindowsArtifactExecuted=false`。
 
 ```bash
 ./tools/dotnet-local.sh restore tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj --locked-mode
-./tools/dotnet-local.sh run --project tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj -c Release --no-restore -- artifacts/delivery-security-review-regression.json
+./tools/dotnet-local.sh run --project tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj -c Release --no-restore -- artifacts/schema-constraints-regression.json
 ```
 
 Windows 已有锁定 SDK 时，可将 `./tools/dotnet-local.sh` 换成 `dotnet`。这是独立控制台测试，不需要新增测试框架包；任一失败返回非零退出码。最后一个参数可选，指定逐项 JSON 报告路径。所有账套均在新的唯一临时目录中创建；HTTP 使用注入的本地 handler，不会请求真实更新服务。
@@ -49,3 +49,19 @@ CAIWU_DELIVERY_TEST_SCOPE=security-boundaries ./tools/dotnet-local.sh run \
 迁移副本替换BookId、同BookId但revision后退、迁移带trigger均留下blocked回执，原源文件与原一致性备份保持。独立trigger控制在Storage层证明完整性ok并不排除后续保存静默改金额；Delivery门槛拒绝trigger/view和未知v1对象，备份失败不替换已存在有效备份。不同有效账套仅显式恢复到新路径且如实返回不同身份，不猜用户预期。
 
 只读备份文件和Linux0555备份目录均有真实权限正向探针，要求恢复成功且源/备份hash及权限保持；临时inspection copy在独立可写scratch中，不能清理旧备份。Windows设备路径仅验证词法拒绝；NTFS junction/ACL/8.3、硬链接身份、同权限恶意目录替换和真实断电未验。本轮不执行Windows PE，不生成分发包、不扩大更新或签名权限，主独审暂停标志仍有效。
+
+## 追加schema约束反例（9项）
+
+先只跑4项新probe，2个安全要求实际失败；不是Python模拟：旧LedgerFilePolicy.Validate通过，BookOperations.Restore创建目标后，正常Storage.Write两条同摘要平衡分录（借贷各10.25），实际读回只一行（借0、贷10.25），revision2、integrity_check=ok。5表名、所有列序/类型/PK/FK相同，额外UNIQUE autoindex的sql=NULL；源、正常backup和变体backup哈希均保持。
+
+严格布局校验后原4项通过；又验证声明类型、CHECK省略、STRICT缺失、同名索引改列四个不同metadata轴均被拒绝，不把这些格式拒绝冒称财务丢行。复查首次normalizer还复现CR注释绕过：SQLite到LF才结束--，旧normalizer提前在CR结束会“复活”实际没执行的CHECK；bundled SQLite负ordinal控制确认，再修复LF规则。最终9/9、全量141/141，无跳过。报告在packaging-next/evidence/schema-constraint-review。
+
+```bash
+CAIWU_DELIVERY_TEST_SCOPE=schema-constraints ./tools/dotnet-local.sh run \
+  --project tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj -c Release --no-restore \
+  -- artifacts/schema-constraints-final.json
+```
+
+正向兼容控制只改规范DDL的空白/闭合comments，Gate和Restore继续接受，保存后两条分录、借贷各10.25完整；拒绝变体时恢复目标不存在、所有输入哈希不变。未改Storage/Core/Desktop、未执行Windows EXE、未产分发包。
+
+原accounts换列的“先正确读再保存互换”叙述明确撤回：ReadContents也SELECT*按序，未据此例修改。已证实的是额外冲突约束及CR规范化边界，证据层次为.NET bundled SQLite和真实C#交付API，不是Windows实机验收。

@@ -59,3 +59,13 @@
 - 恶意trigger独立控制：完整性仍ok，直接Storage恢复后普通snapshot保存将期初1234.56改成61234.56。本模块拒绝这类对象，但主Desktop当前直接Storage Open/RestoreBackup仍需在App.OnStartup的委托包装中调用公共LedgerFilePolicy.Validate；不将本模块修复冒称全App已安全。
 - unverified：Windows原生安装/卸载、NTFS junction/ACL/8.3、硬链接身份、同用户恶意并发换目录及真实断电；只对Windows namespace做词法拒绝，不能当NTFS实测。保留独审暂停门槛，没有新分发包、Library重试、签名/更新权限扩展或main合并。
 - 兼容/恢复门槛：旧预览若没有独立版本摘要则拒绝自动卸载/更新，不能从现存manifest反推信任；pending卸载需显式恢复，没有自动继续或断电恢复完成声明。备份布局校验不证明数据来源真实性，指定账套恢复仍需UI核对期望BookId/已知可信hash。
+
+## schema-v1约束复核续作
+
+- 收到候选后先核源码：accounts“先正确读、再位置INSERT交换列”说法已由主协调撤回；ReadContents确实SELECT*按序读，撤回被保留，不据此改规则或数据。另只读核对主集成cf334c93aca6c33f48411ceea77d7044c1bf161f，其Storage仍为该读写方式，生产源码未改。
+- 真正C#反例：voucher_lines额外UNIQUE(summary) ON CONFLICT REPLACE，所有列序/类型/PK/FK及5表名不变、autoindex.sql=NULL。旧Gate与Delivery Restore实际通过；随后正常Storage.Write两分录借贷各10.25，读回只一贷方行10.25，revision2，integrity ok/FK empty。原输入和两个backup hash不变。定向初版4项2失败，完整证据已保存。
+- 只改本模块：SchemaV1Layout以可信Store.Create新建的规范v1空库为参考，对完整表/索引DDL受限token、table_xinfo、FK、STRICT/withoutrowid、index_list/xinfo比对；在同一只读输入事务内完成，不迁移/改写输入，失败不建恢复目标。临时参考不是用户账套，创建后只删自身文件。
+- 第二实际发现：首版normalizer误在CR结束--注释，SQLite实际上直到LF；负ordinal控制证实CHECK已缺失但旧norm仍通过。按官方SQLite规则修复LF边界并限制未引用token为审阅过的ASCII，未按猜测修其他业务规则。
+- success：新增9/9、全量141/141，无失败无跳过；canonical空白/闭合注释兼容控制仍可恢复且保存两条完整平衡分录。evidence/schema-constraint-review含原Gate失败、CR失败、修复后和全量JSON。
+- root分工建议：Storage Open/Restore要拒绝未知schema；Create/InsertContents用显式列名，ReadContents用显式投影；Write在commit前深语义读回数量与完整分录/借贷，不匹配回滚。显式列名本身不阻止ON CONFLICT REPLACE，不得当成此bug单独修复。Delivery的公共Validate可在Desktop组合根预接，其他直接Storage入口不自动受保护。
+- 兼容仅规范schema-v1及已说明的cosmetic差异，未审阅DDL需显式迁移，不静默转换合法数据；Windows/发布签名/生产迁移未验，分发暂停、无Library重试和不扩大更新权限仍保持。

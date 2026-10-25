@@ -1,0 +1,31 @@
+{
+  "success": false,
+  "total": 4,
+  "passed": 2,
+  "failed": 2,
+  "skipped": 0,
+  "runtime": ".NET 10.0.13",
+  "os": "Debian GNU/Linux 13 (trixie)",
+  "publishedWindowsArtifactExecuted": false,
+  "scope": "Synthetic self-authored delivery components only. No reference installer or real accounting data.",
+  "results": [
+    {
+      "name": "schema constraint control: extra UNIQUE REPLACE silently drops a normal balanced voucher line",
+      "status": "passed"
+    },
+    {
+      "name": "schema constraint safety: read-only layout gate rejects a same-column UNIQUE REPLACE backup",
+      "status": "failed",
+      "detail": "System.InvalidOperationException: The gate accepted changed conflict semantics despite unchanged columns/keys. Observed: {\u0022SchemaFacts\u0022:{\u0022ColumnsTypesAndPrimaryKeyUnchanged\u0022:true,\u0022ForeignKeysUnchanged\u0022:true,\u0022AllAutoindexSqlNull\u0022:true,\u0022AutoindexesAdded\u0022:1,\u0022UserVersion\u0022:1,\u0022ApplicationId\u0022:1128355669,\u0022StoredDdlDiffers\u0022:true},\u0022gateAccepted\u0022:true,\u0022error\u0022:null,\u0022sourceUnchanged\u0022:true,\u0022validBackupUnchanged\u0022:true,\u0022adversarialBackupUnchanged\u0022:true,\u0022restoredTargetExists\u0022:false}\n   at Check.True(Boolean value, String message) in /workspace/caiwu-suite-delivery/tests/Caiwu.Delivery.Tests/Program.cs:line 659\n   at SchemaConstraintCases.\u003C\u003Ec.\u003Cget_All\u003Eb__6_1(Fixture f) in /workspace/caiwu-suite-delivery/tests/Caiwu.Delivery.Tests/SchemaConstraintCases.cs:line 89\n   at Program.\u003CMain\u003E$(String[] args) in /workspace/caiwu-suite-delivery/tests/Caiwu.Delivery.Tests/Program.cs:line 24"
+    },
+    {
+      "name": "schema constraint safety: Delivery restore must reject UNIQUE REPLACE before creating a live copy",
+      "status": "failed",
+      "detail": "System.InvalidOperationException: Delivery exposed a changed-constraint database as a live book. Observed: {\u0022SchemaFacts\u0022:{\u0022ColumnsTypesAndPrimaryKeyUnchanged\u0022:true,\u0022ForeignKeysUnchanged\u0022:true,\u0022AllAutoindexSqlNull\u0022:true,\u0022AutoindexesAdded\u0022:1,\u0022UserVersion\u0022:1,\u0022ApplicationId\u0022:1128355669,\u0022StoredDdlDiffers\u0022:true},\u0022restoreAccepted\u0022:true,\u0022restoreError\u0022:null,\u0022targetExists\u0022:true,\u0022copyResultReturned\u0022:true,\u0022laterOrdinaryWrite\u0022:{\u0022IntendedLineCount\u0022:2,\u0022IntendedDebit\u0022:10.25,\u0022IntendedCredit\u0022:10.25,\u0022StoredRevision\u0022:2,\u0022PersistedLineCount\u0022:1,\u0022RawLineRowCount\u0022:1,\u0022PersistedDebit\u0022:0,\u0022PersistedCredit\u0022:10.25,\u0022IntegrityCheck\u0022:\u0022ok\u0022},\u0022laterWriteError\u0022:null,\u0022sourceUnchanged\u0022:true,\u0022validBackupUnchanged\u0022:true,\u0022adversarialBackupUnchanged\u0022:true}\n   at Check.True(Boolean value, String message) in /workspace/caiwu-suite-delivery/tests/Caiwu.Delivery.Tests/Program.cs:line 659\n   at SchemaConstraintCases.\u003C\u003Ec.\u003Cget_All\u003Eb__6_2(Fixture f) in /workspace/caiwu-suite-delivery/tests/Caiwu.Delivery.Tests/SchemaConstraintCases.cs:line 112\n   at Program.\u003CMain\u003E$(String[] args) in /workspace/caiwu-suite-delivery/tests/Caiwu.Delivery.Tests/Program.cs:line 24"
+    },
+    {
+      "name": "schema compatibility control: canonical whitespace and comments remain accepted and preserve two lines",
+      "status": "passed"
+    }
+  ]
+}
