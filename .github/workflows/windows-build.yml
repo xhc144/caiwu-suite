@@ -56,6 +56,11 @@ jobs:
         if: always()
         shell: pwsh
         run: ./tests/Caiwu.Desktop.Controls.Tests/Run-WindowsSmoke.ps1 -Artifacts artifacts/reference-dialogs
+      - name: Verify atomic SQLite create backup and restore publication on Windows
+        if: always()
+        timeout-minutes: 6
+        shell: pwsh
+        run: ./tests/Caiwu.Persistence.Sqlite.Tests/CreateRace/run-windows.ps1 -OutputDirectory artifacts/sqlite-create-race-windows
       - name: Run Delivery component and pause-gate checks without installers
         if: always()
         shell: pwsh
@@ -104,6 +109,7 @@ jobs:
             artifacts/high-resolution/
             artifacts/mutation-windows/
             artifacts/native-focus/
+            artifacts/sqlite-create-race-windows/
             !artifacts/ui-navigation/build-*/**
             !artifacts/**/*.caiwu
             !artifacts/**/*.caiwu-wal
