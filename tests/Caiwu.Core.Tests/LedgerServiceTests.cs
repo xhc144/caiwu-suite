@@ -635,4 +635,73 @@ public sealed class LedgerServiceTests
         Assert.Equal(VoucherStatus.Posted, second.GetSnapshot().Vouchers.Single().Status);
         Assert.Equal(3, second.GetSnapshot().Revision);
     }
+
+    [Fact]
+    public void Opening_grid_zero_row_for_disabled_unused_leaf_is_accepted_but_vouchers_still_reject_it()
+    {
+        using var store = Store();
+        var s = new LedgerService(store);
+        var cash = s.GetSnapshot().Accounts.Single(a => a.Code == "1001");
+        s.SaveAccount(cash with { IsActive = false }, "科目员");
+        // The real grid submits every leaf, including the disabled cash row with zero values.
+        var visible = s.GetSnapshot().Accounts.Select(a => new OpeningBalance(a.Code,
+            a.Code == "1002" ? 100.01m : 0, a.Code == "4001" ? 100.01m : 0)).ToArray();
+        s.SetOpeningBalances(visible, "期初员");
+        Assert.Equal(100.01m, s.GetSnapshot().Accounts.Single(a => a.Code == "1002").OpeningDebit);
+        Assert.Equal(100.01m, s.GetSnapshot().Accounts.Single(a => a.Code == "4001").OpeningCredit);
+        Assert.False(s.GetSnapshot().Accounts.Single(a => a.Code == "1001").IsActive);
+        Assert.Equal(0m, s.GetSnapshot().Accounts.Single(a => a.Code == "1001").OpeningDebit);
+        Rejected(store, () => s.SaveDraft(Draft(debit: "1001"), "制单员"));
+    }
+
+    [Theory]
+    [InlineData("1002")]
+    [InlineData("4001")]
+    public void Disabled_leaf_existing_nonzero_opening_can_be_resubmitted_unchanged(string inactiveCode)
+    {
+        using var store = Store();
+        var s = new LedgerService(store);
+        s.SetOpeningBalances([new("1002", 100.01m, 0), new("4001", 0, 100.01m)], "期初员");
+        var account = s.GetSnapshot().Accounts.Single(a => a.Code == inactiveCode);
+        s.SaveAccount(account with { IsActive = false }, "科目员");
+        var visible = s.GetSnapshot().Accounts.Select(a => new OpeningBalance(a.Code, a.OpeningDebit, a.OpeningCredit)).ToArray();
+        s.SetOpeningBalances(visible, "期初员");
+        var retained = s.GetSnapshot().Accounts.Single(a => a.Code == inactiveCode);
+        Assert.Equal(account.OpeningDebit, retained.OpeningDebit);
+        Assert.Equal(account.OpeningCredit, retained.OpeningCredit);
+        Assert.False(retained.IsActive);
+        Assert.Equal(100.01m, s.GetTrialBalance(Jan1, Jan31).Where(r => r.IsLeaf).Sum(r => r.OpeningDebit));
+        Assert.Equal(100.01m, s.GetTrialBalance(Jan1, Jan31).Where(r => r.IsLeaf).Sum(r => r.OpeningCredit));
+    }
+
+    [Fact]
+    public void Omission_or_clearing_of_disabled_nonzero_opening_cannot_silently_replace_it_even_when_totals_balance()
+    {
+        using var store = Store();
+        var s = new LedgerService(store);
+        s.SetOpeningBalances([new("1002", 100.01m, 0), new("4001", 0, 100.01m)], "期初员");
+        var bank = s.GetSnapshot().Accounts.Single(a => a.Code == "1002");
+        s.SaveAccount(bank with { IsActive = false }, "科目员");
+        // Both payloads would be balanced if a filter quietly erased the disabled bank balance.
+        Rejected(store, () => s.SetOpeningBalances([new("1403", 100.01m, 0), new("4001", 0, 100.01m)], "期初员"));
+        Rejected(store, () => s.SetOpeningBalances([new("1002", 0, 0), new("1403", 100.01m, 0), new("4001", 0, 100.01m)], "期初员"));
+        Rejected(store, () => s.SetOpeningBalances([new("1002", 200.02m, 0), new("4001", 0, 200.02m)], "期初员"));
+        s.SaveAccount(bank, "科目员");
+        s.SetOpeningBalances([new("1403", 100.01m, 0), new("4001", 0, 100.01m)], "期初员");
+        Assert.Equal(0m, s.GetSnapshot().Accounts.Single(a => a.Code == "1002").OpeningDebit);
+    }
+
+    [Fact]
+    public void Disabled_zero_opening_cannot_gain_new_amounts_and_nonleaf_zero_rows_remain_invalid()
+    {
+        using var store = Store();
+        var s = new LedgerService(store);
+        var cash = s.GetSnapshot().Accounts.Single(a => a.Code == "1001");
+        s.SaveAccount(cash with { IsActive = false }, "科目员");
+        Rejected(store, () => s.SetOpeningBalances([new("1001", 100, 0), new("4001", 0, 100)], "期初员"));
+        s.SaveAccount(new("100201", "停用银行明细", "1002", BalanceDirection.Debit, false, 0, 0), "科目员");
+        var bank = s.GetSnapshot().Accounts.Single(a => a.Code == "1002");
+        s.SaveAccount(bank with { IsActive = false }, "科目员");
+        Rejected(store, () => s.SetOpeningBalances([new("1002", 0, 0)], "期初员"));
+    }
 }

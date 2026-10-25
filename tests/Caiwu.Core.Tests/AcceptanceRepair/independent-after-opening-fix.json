@@ -1,0 +1,114 @@
+{
+  "baselineCommit": "037a07585078d4dfcd443a2cc4a237c88aed07a0",
+  "checkoutCommit": "0bc92ac\u002Bopening-fix-working-tree",
+  "productionSourceTree": "Core=opening-fix;Sqlite=d69a8b7;Desktop=037a075",
+  "observedAtUtc": "2026-10-25T07:47:19.1956703+00:00",
+  "environment": {
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "framework": ".NET 10.0.13",
+    "culture": "zh-CN",
+    "actualCoreAndSqlite": true,
+    "actualDesktopDataModels": true,
+    "wpfExecuted": false
+  },
+  "passed": 15,
+  "failed": 3,
+  "results": [
+    {
+      "id": "FLOW-01",
+      "name": "Create, opening, draft, distinct reviewer, post, reopen and exact balances",
+      "status": "PASS"
+    },
+    {
+      "id": "IMMUTABLE-01",
+      "name": "Posted edits/delete/cancel/repeat post reject without additional audit/revision",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCK-01",
+      "name": "Close month durably locks every voucher mutation and opening",
+      "status": "PASS"
+    },
+    {
+      "id": "LOCK-02",
+      "name": "Unposted voucher prevents close and does not mutate the book",
+      "status": "PASS"
+    },
+    {
+      "id": "INPUT-01",
+      "name": "Invalid draft leaves all persisted data unchanged",
+      "status": "PASS"
+    },
+    {
+      "id": "BACKUP-01",
+      "name": "Backup/restore exact snapshot and independent subsequent writes",
+      "status": "PASS"
+    },
+    {
+      "id": "BACKUP-02",
+      "name": "Backup/restore cannot overwrite existing destinations",
+      "status": "PASS"
+    },
+    {
+      "id": "RESTORE-01",
+      "name": "Corrupt backup leaves current session and destination unchanged",
+      "status": "PASS"
+    },
+    {
+      "id": "SESSION-01",
+      "name": "Real session switch isolates account books and rejects corrupt open",
+      "status": "PASS"
+    },
+    {
+      "id": "STORE-CAS-01",
+      "name": "Low-level stale revision rejected without mutation",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC-002",
+      "name": "Stale draft from second editor must reject instead of silently overwriting newer draft",
+      "status": "FAIL",
+      "exception": "System.Exception",
+      "detail": "Stale editor overwrote amount 20.00 with 10.00; current revision 3. No conflict was raised."
+    },
+    {
+      "id": "ACC-003",
+      "name": "Opening grid can save all visible zero rows after disabling an unused leaf",
+      "status": "PASS"
+    },
+    {
+      "id": "AMOUNT-01",
+      "name": "Chinese culture accepts valid decimal/grouping and rejects unsupported negative/exponent/precision",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC-004",
+      "name": "Malformed thousands grouping must reject instead of silently increasing monetary value",
+      "status": "FAIL",
+      "exception": "System.Exception",
+      "detail": "Malformed values accepted: 1,23 =\u003E 123.00; 1,,2 =\u003E 12.00; 12,34.56 =\u003E 1234.56; 100,00 =\u003E 10000.00"
+    },
+    {
+      "id": "REPEAT-01",
+      "name": "Duplicate review on same ID rejects and adds no audit/revision",
+      "status": "PASS"
+    },
+    {
+      "id": "STALE-POSTED-01",
+      "name": "Stale draft cannot overwrite a voucher posted by another session",
+      "status": "PASS"
+    },
+    {
+      "id": "ACC-005",
+      "name": "Actual SQLite busy save exception matches voucher editor\u0027s error-preserving catch filter",
+      "status": "FAIL",
+      "exception": "System.Exception",
+      "detail": "Actual save threw Microsoft.Data.Sqlite.SqliteException (SQLite Error 5: \u0027database is locked\u0027.), excluded by VoucherEditorWindow.Save filter. WPF crash/lost input itself not executed on Linux."
+    },
+    {
+      "id": "TEMPLATES-01",
+      "name": "Every actual template supports initial opening and saving a one-cent voucher",
+      "status": "PASS"
+    }
+  ]
+}

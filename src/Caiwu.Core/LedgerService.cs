@@ -70,7 +70,7 @@ public sealed class LedgerService : ILedgerService
             actor, "DeleteAccount", null, $"删除科目 {code}");
     }
 
-    /// <summary>Replaces the entire opening balance set; omitted leaf accounts become zero.</summary>
+    /// <summary>Replaces active leaf openings; disabled leaf openings must remain unchanged.</summary>
     public void SetOpeningBalances(IReadOnlyList<OpeningBalance> balances, string operatorName)
     {
         var actor = Actor(operatorName);
@@ -83,9 +83,16 @@ public sealed class LedgerService : ILedgerService
             Require(balance is not null, "期初余额行不能为空。");
             var code = Code(balance!.AccountCode);
             Require(values.TryAdd(code, balance), "同一科目不能重复设置期初余额。");
-            RequireUsableLeaf(before, code);
+            // Opening-grid rows also include disabled leaves. Their unchanged balances
+            // are historical setup data, not permission to use them in new vouchers.
+            var account = FindAccount(before, code);
+            Require(!before.Accounts.Any(a => a.ParentCode == code), "只能为末级科目设置期初余额。");
             MoneyPair(balance.Debit, balance.Credit, allowZero: true);
+            Require(account.IsActive || balance.Debit == account.OpeningDebit && balance.Credit == account.OpeningCredit,
+                $"停用科目 {code} 只能原样保留期初余额，修改前请先启用科目。");
         }
+        foreach (var account in before.Accounts.Where(a => !a.IsActive && (a.OpeningDebit != 0 || a.OpeningCredit != 0)))
+            Require(values.ContainsKey(account.Code), $"停用科目 {account.Code} 已有期初余额，不能遗漏后静默清零；请原样提交或先启用再修改。");
         var accounts = before.Accounts.Select(a => values.TryGetValue(a.Code, out var b)
             ? a with { OpeningDebit = b.Debit, OpeningCredit = b.Credit }
             : a with { OpeningDebit = 0, OpeningCredit = 0 }).ToArray();
