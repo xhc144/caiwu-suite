@@ -1,0 +1,45 @@
+name: Focused financial component Windows QA
+on:
+  push:
+    branches: [codex/module-financial-ui-qa]
+    paths:
+      - 'tests/Caiwu.ModuleWindowsQA/Financial/**'
+      - '.github/workflows/module-financial-ui-qa.yml'
+      - 'src/Caiwu.Costing/Wpf/**'
+      - 'src/Caiwu.Nonprofit.Reporting/Wpf/**'
+      - 'src/Caiwu.ReportDesigner/Wpf/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: financial-component-qa-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  financial:
+    if: github.ref == 'refs/heads/codex/module-financial-ui-qa'
+    runs-on: windows-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 10.0.402
+      - name: Exercise only the three actual financial controls in one bounded process
+        shell: pwsh
+        run: ./tests/Caiwu.ModuleWindowsQA/Financial/run.ps1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: financial-windows-${{ github.sha }}
+          path: |
+            artifacts/financial-windows/*.json
+            artifacts/financial-windows/*.png
+            artifacts/financial-windows/*.log
+            artifacts/financial-windows/*.txt
+            artifacts/financial-windows/costing/*.json
+            artifacts/financial-windows/costing/*.csv
+            artifacts/financial-windows/nonprofit/user-data/*
+            artifacts/financial-windows/designer/*.json
+            artifacts/financial-windows/designer/*.html
+            artifacts/financial-windows/designer/*.csv
+          if-no-files-found: error

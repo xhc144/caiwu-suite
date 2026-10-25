@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Caiwu.Desktop/Caiwu.Desktop.csproj" />
+    <ProjectReference Include="../../../src/Caiwu.ReportDesigner/Wpf/Caiwu.ReportDesigner.Wpf.csproj" />
+    <!-- Reuse the author's synthetic reporting fixture, never real account data. -->
+    <Compile Include="../../Caiwu.ReportDesigner.Tests/SyntheticFixture.cs" Link="AuthorSyntheticFixture.cs" />
+  </ItemGroup>
+</Project>
