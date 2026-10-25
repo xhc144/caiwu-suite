@@ -7,6 +7,20 @@ Behavior-owning base: `6a155a5b2deec55bbf0fe8ac9fbc3e0903750ac5` from `codex/win
 Validated `src` tree: `da2fb244f2bac779501fa07ac63e45f7c3c28dce`.
 The subsequent handoff-only commit changes Markdown, not that source tree, and does not need another rendering run.
 
+## LedgerGrid supplement — 2026-10-25 10:26 UTC
+
+The earlier 70-cell check covered ReportGrid only. Root requested one equivalent LedgerGrid check, so a test-only supplement was added at `8d9959a0a714b73892b9f953b59bd8a3d89dde9b`; application `src` remains exactly `da2fb244f2bac779501fa07ac63e45f7c3c28dce`, identical to the validated visual implementation above. No visual or behavior code was changed for this supplement.
+
+[Windows run 40184502213](https://github.com/xhc144/caiwu-suite/actions/runs/40184502213) is **success**. [Native evidence 12595626696](https://github.com/xhc144/caiwu-suite/actions/runs/40184502213/artifacts/12595626696) includes the original ledger PNG and `visual-review.json` with `ledgerCellMeasurements`. [Regression evidence 12595217863](https://github.com/xhc144/caiwu-suite/actions/runs/40184502213/artifacts/12595217863) contains the existing WPF/navigation results.
+
+- Covered the opening row and all three ordinary posted rows: 4 rows × 7 columns = 28 cell/header boundary measurements.
+- Cell/header X error and width error: maximum **0**.
+- Covered all 12 debit/credit/balance content boxes: full-width right alignment, expected right-edge error **0**, ordinary/opening right-edge difference **0**.
+- Balance content boxes all have X 1690, width 128, right edge **1818 relative to LedgerGrid** at 96 DPI, displaying `100,000.00`, `90,000.00`, `88,800.00`, `108,800.00`.
+- The source ledger PNG was also viewed at original resolution. This check did not find an opening-versus-ordinary amount-column displacement in this build. No visual fix was made or inferred from thumbnail appearance.
+
+Root can retain the already delivered 98a43e0 visual version and Library images; the application tree is unchanged. Cherry-picking the single test commit is optional if the root wants this case in the integrated visual runner. Future module visuals remain for the integration acceptance task, not this phase.
+
 ## Actual evidence
 
 [Isolated Windows run 40183636004](https://github.com/xhc144/caiwu-suite/actions/runs/40183636004): **success**, exact validated code commit.
