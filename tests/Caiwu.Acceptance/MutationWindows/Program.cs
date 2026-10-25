@@ -169,9 +169,9 @@ internal static class Program
             var text = new StringBuilder(); EnumChildWindows(dialog, (child, _) => { var part = new StringBuilder(2048); GetWindowText(child, part, part.Capacity); text.AppendLine(part.ToString()); return true; }, IntPtr.Zero);
             File.AppendAllText(Path.Combine(output, "native-dialogs.jsonl"), JsonSerializer.Serialize(new { title = item.Title, text = text.ToString() }) + Environment.NewLine);
             if (item.Title == "确认记账") Check(text.ToString().Contains("10.00"), "Actual native confirmation did not show the original ten-unit amount.");
-            item.BeforeClick?.Invoke(); var button = GetDlgItem(dialog, item.Button);
+            item.BeforeClick?.Invoke(); var button = ReadyButton(dialog, item.Button);
             File.AppendAllText(Path.Combine(output, "native-driver.jsonl"), JsonSerializer.Serialize(new
-            { item.Title, requestedButton = item.Button, foundButton = button != IntPtr.Zero,
+            { item.Title, requestedButton = item.Button, actualButton = GetDlgCtrlID(button), foundButton = button != IntPtr.Zero,
                 visible = IsWindowVisible(button), enabled = IsWindowEnabled(button) }) + Environment.NewLine);
             Check(button != IntPtr.Zero && IsWindowVisible(button) && IsWindowEnabled(button), "Native confirmation button missing/disabled/hidden.");
             // BM_CLICK requires an active dialog (Microsoft's documented precondition).
@@ -193,6 +193,35 @@ internal static class Program
         _ = task.ContinueWith(t => Console.Error.WriteLine("NATIVE-DIALOG-DRIVER-FAIL: " + t.Exception),
             CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
         return task;
+    }
+    private static IntPtr ReadyButton(IntPtr dialog, int requested)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        do
+        {
+            var preferred = GetDlgItem(dialog, requested);
+            if (preferred != IntPtr.Zero && IsWindowVisible(preferred) && IsWindowEnabled(preferred)) return preferred;
+            if (requested == 1)
+            {
+                // The observed Windows OK-only message box has no child at IDOK=1.
+                // Resolve the one real OK control, rather than assume its Win32 ID.
+                var buttons = new List<IntPtr>();
+                EnumChildWindows(dialog, (child, _) =>
+                {
+                    var cls = new StringBuilder(64); GetClassName(child, cls, cls.Capacity);
+                    if (cls.ToString().Equals("Button", StringComparison.OrdinalIgnoreCase) && IsWindowVisible(child) && IsWindowEnabled(child)) buttons.Add(child);
+                    return true;
+                }, IntPtr.Zero);
+                if (buttons.Count == 1)
+                {
+                    var caption = new StringBuilder(128); GetWindowText(buttons[0], caption, caption.Capacity);
+                    var label = caption.ToString().Replace("&", "", StringComparison.Ordinal).Trim();
+                    if (label.Equals("OK", StringComparison.OrdinalIgnoreCase) || label.StartsWith("确定", StringComparison.Ordinal)) return buttons[0];
+                }
+            }
+            Thread.Sleep(30);
+        } while (DateTime.UtcNow < deadline);
+        throw new InvalidOperationException("Expected unique visible native confirmation button was not ready; requested ID " + requested);
     }
     private static void WaitForDialogs(Task task)
     {
@@ -221,6 +250,7 @@ internal static class Program
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder text, int count);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetClassName(IntPtr window, StringBuilder text, int count);
     [DllImport("user32.dll")] private static extern IntPtr GetDlgItem(IntPtr window, int id);
+    [DllImport("user32.dll")] private static extern int GetDlgCtrlID(IntPtr window);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
     [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr window);
     [DllImport("user32.dll")] private static extern bool IsWindowEnabled(IntPtr window);
