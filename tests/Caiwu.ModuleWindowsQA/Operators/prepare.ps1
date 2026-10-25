@@ -23,8 +23,10 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Cannot extract the pinned author smoke probe.' }
     tar -xf $archive -C $scratch
     if ($LASTEXITCODE -ne 0) { throw 'Cannot materialize the pinned author smoke probe.' }
-    $sourceLink = Join-Path $scratch 'src'
-    if (-not (Test-Path $sourceLink)) { New-Item -ItemType Junction -Path $sourceLink -Target (Join-Path $root 'src') | Out-Null }
+    foreach ($directory in @('src', 'packaging-next')) {
+        $sourceLink = Join-Path $scratch $directory
+        if (-not (Test-Path $sourceLink)) { New-Item -ItemType Junction -Path $sourceLink -Target (Join-Path $root $directory) | Out-Null }
+    }
     $target = if ([IO.Path]::IsPathFullyQualified($Evidence)) { $Evidence } else { Join-Path $root $Evidence }
     New-Item -ItemType Directory -Force $target | Out-Null
     $files = @(git ls-files tests/Caiwu.ModuleWindowsQA/Operators .github/workflows/operators-windows-qa.yml)
