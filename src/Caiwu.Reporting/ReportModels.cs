@@ -3,7 +3,7 @@ using Caiwu.Contracts;
 
 namespace Caiwu.Reporting;
 
-public enum ReportKind { VoucherList, TrialBalance, Ledger }
+public enum ReportKind { VoucherList, TrialBalance, Ledger, BalanceSheet, IncomeStatement }
 public enum ReportValueKind { Text, Amount }
 
 /// <summary>An explicit citation supplied by the integrating caller; no rules are inferred from it.</summary>
@@ -67,6 +67,7 @@ public sealed class ReportMetadata
 }
 
 public sealed record ReportColumn(string Key, string Title, ReportValueKind Kind);
+public sealed record ReportAnnotation(string Label, string Value);
 
 /// <summary>Text and decimal amounts stay distinct, including in CSV. Sub-cent amounts are rejected, never rounded.</summary>
 public sealed class ReportCell
@@ -111,7 +112,7 @@ public sealed class ReportRow
     }
 }
 
-/// <summary>A presentation snapshot. Rows exclude Total; no statutory financial statement mapping is performed.</summary>
+/// <summary>A presentation snapshot. Rows exclude Total; IncludeTotal controls whether a separate summary is exported.</summary>
 public sealed class ReportDocument
 {
     public ReportKind Kind { get; }
@@ -121,9 +122,12 @@ public sealed class ReportDocument
     public IReadOnlyList<ReportRow> Rows { get; }
     public ReportRow Total { get; }
     public string Note { get; }
+    public bool IncludeTotal { get; }
+    public IReadOnlyList<ReportAnnotation> Annotations { get; }
 
     internal ReportDocument(ReportKind kind, string title, ReportMetadata metadata,
-        IEnumerable<ReportColumn> columns, IEnumerable<ReportRow> rows, ReportRow total, string note)
+        IEnumerable<ReportColumn> columns, IEnumerable<ReportRow> rows, ReportRow total, string note,
+        IEnumerable<ReportAnnotation>? annotations = null, bool includeTotal = true)
     {
         Kind = kind;
         Title = title;
@@ -132,6 +136,8 @@ public sealed class ReportDocument
         Rows = Array.AsReadOnly(rows.ToArray());
         Total = total;
         Note = note;
+        IncludeTotal = includeTotal;
+        Annotations = Array.AsReadOnly((annotations ?? []).ToArray());
     }
 }
 

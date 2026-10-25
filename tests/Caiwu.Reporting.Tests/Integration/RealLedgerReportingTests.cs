@@ -203,6 +203,29 @@ public sealed class RealLedgerReportingTests
         }
     }
 
+    [Fact]
+    public void SmallBusinessStatementsConsumeRealReopenedSnapshotAndExportCoverage()
+    {
+        using var fixture = new RealBook(AccountingRegime.SmallBusiness);
+        fixture.SeedContractSample();
+        fixture.Reopen();
+        var snapshot = fixture.Service.GetSnapshot();
+        var options = new SmallBusinessStatementOptions(additionalSources: [new("合成测试来源", SourceAddress)]);
+        var income = SmallBusinessStatements.IncomeStatement(snapshot, 1, GeneratedAt, options);
+        var balance = SmallBusinessStatements.BalanceSheet(snapshot, To, GeneratedAt, options);
+        Assert.Equal(18800m, income.Lines.Single(l => l.RowNumber == 32).First.Amount);
+        Assert.Equal(118800m, balance.Lines.Single(l => l.RowNumber == 30).First.Amount);
+        Assert.Null(balance.Lines.Single(l => l.RowNumber == 53).First.Amount);
+        Assert.Contains(balance.Issues, i => i.Code == "MissingRow" && i.Detail.Contains("行51", StringComparison.Ordinal));
+        foreach (var statement in new[] { income, balance })
+        {
+            Assert.False(statement.IsVerifiedForProduction);
+            Assert.False(statement.IsCompleteFormulaSet);
+            VerifyAndWriteExports(statement.Document, fixture, "statement-" + statement.OfficialForm);
+            Assert.Contains(Csv(ReportExporter.ToCsv(statement.Document)), row => row[0] == "生产核验" && row[1] == "否");
+        }
+    }
+
     private static ReportMetadata Metadata(BookInfo book, DateOnly from, DateOnly to) =>
         new(book, from, to, GeneratedAt, [new("合成样例来源（测试占位，非制度依据）", SourceAddress)]);
 
