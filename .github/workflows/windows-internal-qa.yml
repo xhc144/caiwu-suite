@@ -14,7 +14,7 @@ permissions:
   contents: read
 concurrency:
   group: caiwu-internal-qa-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   install:
     runs-on: windows-2025

@@ -1,0 +1,18 @@
+{
+  "success": false,
+  "failure": "System.TimeoutException: product window\r\n   at Program.Until(Func\u00601 predicate, String description, Int32 timeout) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\InstalledDesktop\\Program.cs:line 176\r\n   at Program.Window(Func\u00602 matches) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\InstalledDesktop\\Program.cs:line 180\r\n   at Program.Main(String[] args) in D:\\a\\caiwu-suite\\caiwu-suite\\tests\\Caiwu.Delivery.Tests\\InstalledDesktop\\Program.cs:line 89",
+  "windowsExecuted": true,
+  "normalProductLogin": true,
+  "sourceProjectsExecutedAsProduct": false,
+  "sourceCommit": "64cc066184ec32f7a9d481fc86f0f657c5d9794b",
+  "checks": [
+    "installed pointer binds the isolated data root",
+    "installed payload advertises the reviewed managed App contract",
+    "fixture starts with an unused isolated global identity directory",
+    "normal product rejects a wrong synthetic password",
+    "actual product login locks the current actor control",
+    "installed process resolves coreclr.dll from its own payload",
+    "installed process resolves hostfxr.dll from its own payload",
+    "actual product process loads no native/managed image from the source checkout"
+  ]
+}

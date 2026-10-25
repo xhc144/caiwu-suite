@@ -15,7 +15,7 @@ permissions:
   contents: read
 concurrency:
   group: caiwu-candidate-validation-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   prepare:
     runs-on: windows-2025
