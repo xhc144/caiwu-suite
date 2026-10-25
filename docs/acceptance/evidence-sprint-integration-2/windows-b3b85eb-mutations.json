@@ -1,0 +1,33 @@
+{
+  "checkoutCommit": "b3b85eb3ab7fa859a3c44cca5bb6d25d48d7b434",
+  "actualWindowsWpf": true,
+  "mechanism": "Six isolated real production WPF processes, actual SQLite competing writers and same-process native confirmations; individual watchdogs preserve partial failures.",
+  "physicalKeyboardImeTested": false,
+  "failures": 0,
+  "results": [
+    {
+      "id": "OPENING",
+      "status": "PASS"
+    },
+    {
+      "id": "ACCOUNT",
+      "status": "PASS"
+    },
+    {
+      "id": "DELETE",
+      "status": "PASS"
+    },
+    {
+      "id": "REVIEW",
+      "status": "PASS"
+    },
+    {
+      "id": "POST",
+      "status": "PASS"
+    },
+    {
+      "id": "SAME-IDENTITY-RESTORE",
+      "status": "PASS"
+    }
+  ]
+}

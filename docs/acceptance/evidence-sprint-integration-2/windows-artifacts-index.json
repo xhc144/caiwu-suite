@@ -32,5 +32,40 @@
     "artifactId": 12593918462,
     "zipSha256": "677788b67e86e454db193962913c9eb4b5db947b5c99fecb52147280d88ed33f",
     "scope": "Combined modern visuals plus Delivery sharing repair: WPF8, navigation2, native focus2, Core v1.2 22, dual-process/App gate3, Delivery143/0/4 pass; account and same-identity restore mutations pass, four native confirmations blocked; optional six-window capture size failure and 45 Storage readback fixture sharing failures remain."
+  },
+  {
+    "runId": 40181737928,
+    "commit": "7a845d4e637326c28774740580b675fcc5d240c4",
+    "artifactId": 12594895184,
+    "zipSha256": "0297cd7df1de77722684210d8827ee583f8ea28a155e2906b407730a2cfd382a",
+    "scope": "Fluent Light/native template changes: four actual 1920x1080 primary desktop captures."
+  },
+  {
+    "runId": 40181737928,
+    "commit": "7a845d4e637326c28774740580b675fcc5d240c4",
+    "artifactId": 12594223314,
+    "zipSha256": "d2918759ff66013a09901fe39318c042c98905f925c3d97fb2e6e7f8c12301af",
+    "scope": "Nine native resource checks, six complete 1920x1080 window captures, WPF8 and navigation2 pass."
+  },
+  {
+    "runId": 40182073681,
+    "commit": "5e21ac321f119efd30a4a11780b27ee651f58221",
+    "artifactId": 12595176101,
+    "zipSha256": "b2413ce2cec9fdbd4f4818abbfd9e643158e6e0d573a21f6ca711e141fcb59cc",
+    "scope": "All seven new publication cases and 12 original race repetitions pass on Windows. Full SQLite suite remains 71 pass / 45 readback-fixture sharing failures; old native OK ID assumption still blocks four mutations."
+  },
+  {
+    "runId": 40182579455,
+    "commit": "639426b06e0542bf9b4a8f275fc524c4ae095728",
+    "artifactId": 12594682276,
+    "zipSha256": "01555af5fa0ab3b3c61e15a47acb18b5adfe8f85d1296485d4cf500bb02ae298",
+    "scope": "Diagnostic evidence: actual single OK control not found at assumed ID1; no production mutation pass inferred for the four blocked cases."
+  },
+  {
+    "runId": 40182949333,
+    "commit": "b3b85eb3ab7fa859a3c44cca5bb6d25d48d7b434",
+    "artifactId": 12594657891,
+    "zipSha256": "3ed06cb8ed30e091db2dab09c39dccf39c607f95dc7cba45d395eaa5fd17ba6b",
+    "scope": "SUCCESS: six actual stale mutation windows, two native-keyboard focus cases, nine visual resource checks and six complete native window PNGs. The actual unique OK control has ID2; no financial assertions were removed."
   }
 ]
