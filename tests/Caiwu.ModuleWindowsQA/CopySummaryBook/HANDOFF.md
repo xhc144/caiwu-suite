@@ -17,7 +17,7 @@
 
 ## 证据与修正依据
 
-原始 PNG/JSON/日志按运行源码 SHA 保存；每个模块 `evidence-manifest.json` 包含实际 checkout SHA、相关 Git 子树、每个原始文件 SHA256/长度。补验每张 PNG 自带原生尺寸、DPI、机制和哈希收据。收尾时在本机逐个重算；不编辑图片、裁剪、放大或修改原始 JSON。
+原始 PNG/JSON/日志按运行源码 SHA 保存；每个模块 `evidence-manifest.json` 包含实际 checkout SHA、相关 Git 子树、每个原始文件 SHA256/长度。补验每张 PNG 自带原生尺寸、DPI、机制和哈希收据。收尾时在本机逐个重算；不编辑图片、裁剪、放大或修改原始 JSON。Windows 原始 CRLF 保持不变；证据目录局部 `.gitattributes` 禁止文本换行转换，避免后续 Windows/Linux checkout 改坏收据。
 
 1. 原作者 Summary smoke 在 `b65bd19` 的首个归属显示断言失败，[原 run](https://github.com/xhc144/caiwu-suite/actions/runs/40187041374)。`c18b6e8` 原样断言加诊断复现，[诊断 run](https://github.com/xhc144/caiwu-suite/actions/runs/40187210617)：BookId 与注入一致，`TextBlock.Text` 为空，而 `TextRange` 和原始截图完整包含正确账套名/ID。`evidence/diagnostic-c18b6e8/` 保留失败 JSON、日志及截图。
 2. `de723e4` 只修测试读取方式为实际 inline 文本；账套 ID 与显示名预期不变，没有为了通过测试修改生产 WPF。该轮 [CI](https://github.com/xhc144/caiwu-suite/actions/runs/40187319742) 三组均通过。原 Voucher 探针源码仍与作者 `54871a0` 完全相同。
