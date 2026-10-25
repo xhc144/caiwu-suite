@@ -19,6 +19,9 @@ public sealed class DraftEditTokenTests
         ExpectedRevision = opened.Revision, ExpectedBookId = opened.Book.Id
     };
 
+    private static VoucherDraft At(LedgerSnapshot shown, VoucherDraft input) => input with
+    { ExpectedBookId = shown.Book.Id, ExpectedRevision = shown.Revision };
+
     private static void Conflict(MemoryLedgerStore store, VoucherDraft input, Action action)
     {
         var dataBefore = JsonSerializer.Serialize(store.Read());
@@ -42,7 +45,7 @@ public sealed class DraftEditTokenTests
     public void Existing_edit_requires_matching_load_revision_and_book_before_any_write(string invalid)
     {
         using var store = NewStore(); var s = new LedgerService(store);
-        s.SaveDraft(CreateDraft(), "A");
+        s.SaveDraft(At(s.GetSnapshot(), CreateDraft()), "A");
         var opened = s.GetSnapshot();
         var correct = Edit(opened, 20);
         var input = invalid switch
@@ -65,7 +68,7 @@ public sealed class DraftEditTokenTests
     public void Two_editors_keep_their_original_tokens_and_old_input_cannot_replace_twenty_with_ten()
     {
         using var store = NewStore(); var one = new LedgerService(store); var two = new LedgerService(store);
-        one.SaveDraft(CreateDraft(), "A");
+        one.SaveDraft(At(one.GetSnapshot(), CreateDraft()), "A");
         var documentA = one.GetSnapshot(); var documentB = two.GetSnapshot();
         var inputA = Edit(documentA, 20);
         var oldVoucher = documentB.Vouchers.Single();
@@ -85,7 +88,7 @@ public sealed class DraftEditTokenTests
     {
         using var oneStore = NewStore(); using var twoStore = NewStore();
         var one = new LedgerService(oneStore); var two = new LedgerService(twoStore);
-        one.SaveDraft(CreateDraft(), "A"); two.SaveDraft(CreateDraft(), "B");
+        one.SaveDraft(At(one.GetSnapshot(), CreateDraft()), "A"); two.SaveDraft(At(two.GetSnapshot(), CreateDraft()), "B");
         var target = one.GetSnapshot(); var other = two.GetSnapshot();
         Assert.Equal(target.Revision, other.Revision);
         Assert.NotEqual(target.Book.Id, other.Book.Id);
@@ -96,7 +99,7 @@ public sealed class DraftEditTokenTests
     [Fact]
     public void Next_legitimate_save_uses_the_accepted_version_without_refreshing_the_token_for_old_input()
     {
-        using var store = NewStore(); var s = new LedgerService(store); s.SaveDraft(CreateDraft(), "A");
+        using var store = NewStore(); var s = new LedgerService(store); s.SaveDraft(At(s.GetSnapshot(), CreateDraft()), "A");
         var opened = s.GetSnapshot();
         var firstInput = Edit(opened, 20); var saved = s.SaveDraft(firstInput, "A");
         var next = new VoucherDraft(saved.Id, saved.Date, saved.Kind, saved.Number, saved.AttachmentCount,
@@ -112,7 +115,7 @@ public sealed class DraftEditTokenTests
     [InlineData("both")]
     [InlineData("revision-only")]
     [InlineData("book-only")]
-    public void New_draft_keeps_legacy_compatibility_and_checks_each_supplied_token(string mode)
+    public void New_draft_requires_both_origin_fields_and_rejects_legacy_missing_context(string mode)
     {
         using var store = NewStore(); var s = new LedgerService(store); var opened = s.GetSnapshot();
         var input = CreateDraft() with
@@ -120,9 +123,18 @@ public sealed class DraftEditTokenTests
             ExpectedRevision = mode is "both" or "revision-only" ? opened.Revision : null,
             ExpectedBookId = mode is "both" or "book-only" ? opened.Book.Id : null
         };
-        s.SaveDraft(input, "A");
-        Assert.Equal(1L, store.Read().Revision);
-        Assert.Single(store.Read().Vouchers);
+        if (mode == "both")
+        {
+            s.SaveDraft(input, "A");
+            Assert.Equal(1L, store.Read().Revision);
+            Assert.Single(store.Read().Vouchers);
+        }
+        else
+        {
+            Conflict(store, input, () => s.SaveDraft(input, "A"));
+            Assert.Equal(0L, store.Read().Revision);
+            Assert.Empty(store.Read().Vouchers);
+        }
     }
 
     [Theory]

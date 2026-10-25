@@ -25,6 +25,8 @@ VoucherDraft From(LedgerSnapshot loaded, decimal amount) => Draft(amount) with
     ExpectedRevision = loaded.Revision,
     ExpectedBookId = loaded.Book.Id
 };
+VoucherDraft At(LedgerSnapshot shown, VoucherDraft input) => input with
+{ ExpectedBookId = shown.Book.Id, ExpectedRevision = shown.Revision };
 string State(ILedgerStore s) => JsonSerializer.Serialize(s.Read());
 void MustConflict(ILedgerStore s, Action action)
 {
@@ -43,13 +45,13 @@ try
     Case("ACC002-FRESH", () =>
     {
         using var store = NewStore("fresh"); var s = new LedgerService(store);
-        s.SaveDraft(Draft(), "A"); var loaded = s.GetSnapshot();
+        s.SaveDraft(At(s.GetSnapshot(), Draft()), "A"); var loaded = s.GetSnapshot();
         s.SaveDraft(From(loaded, 20), "A");
         Assert(store.Read().Vouchers.Single().Lines[0].Debit == 20m && store.Read().Revision == 2, "Fresh token did not save20 exactly once.");
     });
     Case("ACC002-TWO-CONNECTIONS-STALE", () =>
     {
-        using var oneStore = NewStore("stale"); var one = new LedgerService(oneStore); one.SaveDraft(Draft(), "A");
+        using var oneStore = NewStore("stale"); var one = new LedgerService(oneStore); one.SaveDraft(At(one.GetSnapshot(), Draft()), "A");
         using var twoStore = SqliteLedgerStore.Open(oneStore.DatabasePath); var two = new LedgerService(twoStore);
         // These snapshots and drafts are captured before A commits its new value.
         var documentA = one.GetSnapshot(); var documentB = two.GetSnapshot();
@@ -63,35 +65,36 @@ try
     });
     Case("ACC002-MISSING", () =>
     {
-        using var store = NewStore("missing"); var s = new LedgerService(store); s.SaveDraft(Draft(), "A");
+        using var store = NewStore("missing"); var s = new LedgerService(store); s.SaveDraft(At(s.GetSnapshot(), Draft()), "A");
         var input = From(s.GetSnapshot(), 20) with { ExpectedRevision = null };
         MustConflict(store, () => s.SaveDraft(input, "B"));
     });
     Case("ACC002-FUTURE", () =>
     {
-        using var store = NewStore("future"); var s = new LedgerService(store); s.SaveDraft(Draft(), "A");
+        using var store = NewStore("future"); var s = new LedgerService(store); s.SaveDraft(At(s.GetSnapshot(), Draft()), "A");
         var loaded = s.GetSnapshot(); var input = From(loaded, 20) with { ExpectedRevision = loaded.Revision + 1 };
         MustConflict(store, () => s.SaveDraft(input, "B"));
     });
     Case("ACC002-NEGATIVE", () =>
     {
-        using var store = NewStore("negative"); var s = new LedgerService(store); s.SaveDraft(Draft(), "A");
+        using var store = NewStore("negative"); var s = new LedgerService(store); s.SaveDraft(At(s.GetSnapshot(), Draft()), "A");
         var input = From(s.GetSnapshot(), 20) with { ExpectedRevision = -1 };
         MustConflict(store, () => s.SaveDraft(input, "B"));
     });
     Case("ACC002-ACCEPTED-VERSION-SECOND-SAVE", () =>
     {
-        using var store = NewStore("second-save"); var s = new LedgerService(store); s.SaveDraft(Draft(), "A");
+        using var store = NewStore("second-save"); var s = new LedgerService(store); s.SaveDraft(At(s.GetSnapshot(), Draft()), "A");
         var loaded = s.GetSnapshot();
         var edit = From(loaded, 20); s.SaveDraft(edit, "A");
         // Carry only the accepted version+1 after success; never read a fresh token for old input.
         s.SaveDraft(edit with { ExpectedRevision = edit.ExpectedRevision + 1, Lines = Draft(30).Lines }, "A");
         Assert(store.Read().Revision == 3 && store.Read().Vouchers.Single().Lines[0].Debit == 30m, "Second legitimate save failed.");
     });
-    Case("ACC002-LEGACY-NEW", () =>
+    Case("V12-LEGACY-NEW-REJECTED", () =>
     {
-        using var store = NewStore("legacy-new"); var s = new LedgerService(store); s.SaveDraft(Draft(), "A");
-        Assert(store.Read().Revision == 1, "Legacy creation compatibility failed.");
+        using var store = NewStore("legacy-new"); var s = new LedgerService(store);
+        MustConflict(store, () => s.SaveDraft(Draft(), "A"));
+        Assert(store.Read().Revision == 0 && store.Read().Vouchers.Count == 0, "Missing new-draft context changed state.");
     });
     Case("ACC002-NEW-CORRECT", () =>
     {
@@ -108,7 +111,7 @@ try
     });
     Case("ACC002-STORE-CAS-AFTER-READ", () =>
     {
-        using var oneStore = NewStore("read-write-gap"); new LedgerService(oneStore).SaveDraft(Draft(), "A");
+        using var oneStore = NewStore("read-write-gap"); new LedgerService(oneStore).SaveDraft(At(oneStore.Read(), Draft()), "A");
         var opened = oneStore.Read();
         using var twoStore = SqliteLedgerStore.Open(oneStore.DatabasePath);
         var two = new LedgerService(twoStore);
@@ -125,14 +128,14 @@ try
     });
     Case("ACC002-MISSING-BOOK", () =>
     {
-        using var store = NewStore("missing-book"); var s = new LedgerService(store); s.SaveDraft(Draft(), "A");
+        using var store = NewStore("missing-book"); var s = new LedgerService(store); s.SaveDraft(At(s.GetSnapshot(), Draft()), "A");
         var input = From(s.GetSnapshot(), 20) with { ExpectedBookId = null };
         MustConflict(store, () => s.SaveDraft(input, "A"));
     });
     Case("ACC002-OTHER-BOOK-SAME-REVISION", () =>
     {
-        using var target = NewStore("target-book"); var one = new LedgerService(target); one.SaveDraft(Draft(), "A");
-        using var unrelated = NewStore("unrelated-book"); var two = new LedgerService(unrelated); two.SaveDraft(Draft(), "B");
+        using var target = NewStore("target-book"); var one = new LedgerService(target); one.SaveDraft(At(one.GetSnapshot(), Draft()), "A");
+        using var unrelated = NewStore("unrelated-book"); var two = new LedgerService(unrelated); two.SaveDraft(At(two.GetSnapshot(), Draft()), "B");
         var targetLoaded = one.GetSnapshot(); var otherLoaded = two.GetSnapshot();
         Assert(targetLoaded.Revision == otherLoaded.Revision && targetLoaded.Book.Id != otherLoaded.Book.Id, "Invalid same-revision cross-book setup.");
         var input = From(targetLoaded, 20) with { ExpectedRevision = otherLoaded.Revision, ExpectedBookId = otherLoaded.Book.Id };

@@ -6,7 +6,8 @@ namespace Caiwu.Core;
 
 /// <summary>
 /// Single-year, RMB ledger rules. Each command reads a fresh revision and performs
-/// exactly one atomic store write, including its audit event. The caller owns the store.
+/// exactly one atomic store write, including its audit event. Writes first check the
+/// book/revision of the snapshot the user actually saw. The caller owns the store.
 /// </summary>
 public sealed class LedgerService : ILedgerService
 {
@@ -18,11 +19,12 @@ public sealed class LedgerService : ILedgerService
 
     public LedgerSnapshot GetSnapshot() => Read();
 
-    public void SaveAccount(Account account, string operatorName)
+    public void SaveAccount(Account account, string operatorName, LedgerMutationContext? context = null)
     {
         var actor = Actor(operatorName);
         Require(account is not null, "科目不能为空。");
         var before = Read();
+        RequireMutationContext(before, context);
         var nextAccount = account! with
         {
             Code = Code(account!.Code),
@@ -57,11 +59,12 @@ public sealed class LedgerService : ILedgerService
             actor, "SaveAccount", null, $"保存科目 {nextAccount.Code} {nextAccount.Name}");
     }
 
-    public void DeleteAccount(string code, string operatorName)
+    public void DeleteAccount(string code, string operatorName, LedgerMutationContext? context = null)
     {
         var actor = Actor(operatorName);
         code = Code(code);
         var before = Read();
+        RequireMutationContext(before, context);
         var account = FindAccount(before, code);
         Require(!before.Accounts.Any(a => a.ParentCode == code), "有下级科目的科目不能删除。");
         Require(account.OpeningDebit == 0 && account.OpeningCredit == 0, "有期初余额的科目不能删除。");
@@ -71,11 +74,12 @@ public sealed class LedgerService : ILedgerService
     }
 
     /// <summary>Replaces active leaf openings; disabled leaf openings must remain unchanged.</summary>
-    public void SetOpeningBalances(IReadOnlyList<OpeningBalance> balances, string operatorName)
+    public void SetOpeningBalances(IReadOnlyList<OpeningBalance> balances, string operatorName, LedgerMutationContext? context = null)
     {
         var actor = Actor(operatorName);
         Require(balances is not null, "期初余额不能为空。");
         var before = Read();
+        RequireMutationContext(before, context);
         RequireOpeningEditable(before);
         var values = new Dictionary<string, OpeningBalance>(StringComparer.Ordinal);
         foreach (var balance in balances!)
@@ -106,11 +110,8 @@ public sealed class LedgerService : ILedgerService
         var actor = Actor(operatorName);
         Require(draft is not null, "凭证不能为空。");
         var before = Read();
-        if (draft!.Id.HasValue && (!draft.ExpectedRevision.HasValue || !draft.ExpectedBookId.HasValue))
-            throw new StoreConcurrencyException("修改已有草稿必须携带打开编辑时的账套与版本，请保留输入并重新加载核对。");
-        if ((draft.ExpectedRevision is { } revision && revision != before.Revision) ||
-            (draft.ExpectedBookId is { } bookId && bookId != before.Book.Id))
-            throw new StoreConcurrencyException("账套或凭证编辑版本已变化，请保留输入并重新加载核对，不能覆盖保存。");
+        RequireMutationContext(before, draft!.ExpectedBookId is { } bookId && draft.ExpectedRevision is { } revision
+            ? new LedgerMutationContext(bookId, revision) : null);
         RequireOpenDate(before, draft!.Date);
         var kind = Text(draft.Kind, "凭证字");
         Require(draft.AttachmentCount >= 0, "附件张数不能为负数。");
@@ -145,10 +146,11 @@ public sealed class LedgerService : ILedgerService
         return voucher;
     }
 
-    public void DeleteDraft(Guid id, string operatorName)
+    public void DeleteDraft(Guid id, string operatorName, LedgerMutationContext? context = null)
     {
         var actor = Actor(operatorName);
         var before = Read();
+        RequireMutationContext(before, context);
         var voucher = FindVoucher(before, id);
         RequireOpenDate(before, voucher.Date);
         Require(voucher.Status == VoucherStatus.Draft, "只能删除草稿凭证。");
@@ -156,10 +158,11 @@ public sealed class LedgerService : ILedgerService
             actor, "DeleteDraft", id, $"删除 {Label(voucher)}");
     }
 
-    public void Review(Guid id, string reviewer)
+    public void Review(Guid id, string reviewer, LedgerMutationContext? context = null)
     {
         var actor = Actor(reviewer);
         var before = Read();
+        RequireMutationContext(before, context);
         var voucher = FindVoucher(before, id);
         RequireOpenDate(before, voucher.Date);
         Require(voucher.Status == VoucherStatus.Draft, "只有草稿凭证可以审核。");
@@ -168,20 +171,22 @@ public sealed class LedgerService : ILedgerService
         ReplaceVoucher(before, voucher with { Status = VoucherStatus.Reviewed, ReviewedBy = actor }, actor, "Review");
     }
 
-    public void CancelReview(Guid id, string operatorName)
+    public void CancelReview(Guid id, string operatorName, LedgerMutationContext? context = null)
     {
         var actor = Actor(operatorName);
         var before = Read();
+        RequireMutationContext(before, context);
         var voucher = FindVoucher(before, id);
         RequireOpenDate(before, voucher.Date);
         Require(voucher.Status == VoucherStatus.Reviewed, "只有已审核且未记账的凭证可以取消审核。");
         ReplaceVoucher(before, voucher with { Status = VoucherStatus.Draft, ReviewedBy = null }, actor, "CancelReview");
     }
 
-    public void Post(Guid id, string operatorName)
+    public void Post(Guid id, string operatorName, LedgerMutationContext? context = null)
     {
         var actor = Actor(operatorName);
         var before = Read();
+        RequireMutationContext(before, context);
         var voucher = FindVoucher(before, id);
         RequireOpenDate(before, voucher.Date);
         Require(voucher.Status == VoucherStatus.Reviewed, "只有已审核且未记账的凭证可以记账，不得重复记账。");
@@ -192,10 +197,11 @@ public sealed class LedgerService : ILedgerService
         ReplaceVoucher(before, voucher with { Status = VoucherStatus.Posted }, actor, "Post");
     }
 
-    public void CloseMonth(int month, string operatorName)
+    public void CloseMonth(int month, string operatorName, LedgerMutationContext? context = null)
     {
         var actor = Actor(operatorName);
         var before = Read();
+        RequireMutationContext(before, context);
         Require(month >= before.Book.StartMonth && month <= 12, "结账月份超出账套会计期间。");
         Require(month == before.Book.ClosedThroughMonth + 1, "只能按月顺序结账，不能重复结账或跳月结账。");
         Require(!before.Vouchers.Any(v => v.Date.Month == month && v.Status != VoucherStatus.Posted),
@@ -274,6 +280,15 @@ public sealed class LedgerService : ILedgerService
             "账套会计年度或期间设置无效。");
         ValidateAccounts(snapshot.Accounts);
         return snapshot;
+    }
+
+    private static void RequireMutationContext(LedgerSnapshot before, LedgerMutationContext? context)
+    {
+        if (context is null)
+            throw new StoreConcurrencyException("操作缺少用户所见快照的账套与版本，请保留输入并重新加载核对。");
+        if (context.ExpectedBookId == Guid.Empty || context.ExpectedBookId != before.Book.Id ||
+            context.ExpectedRevision < 0 || context.ExpectedRevision != before.Revision)
+            throw new StoreConcurrencyException("账套或数据版本已变化，请保留输入并重新加载核对，不能直接覆盖或确认。");
     }
 
     private void ReplaceVoucher(LedgerSnapshot before, Voucher voucher, string actor, string action) =>
