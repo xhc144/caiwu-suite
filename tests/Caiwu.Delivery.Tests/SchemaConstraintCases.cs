@@ -61,27 +61,29 @@ internal static class SchemaConstraintCases
     {
         get
         {
-            yield return ("schema constraint control: extra UNIQUE REPLACE silently drops a normal balanced voucher line", f =>
+            yield return ("schema constraint control: Storage readback rolls back extra UNIQUE REPLACE without durable loss", f =>
             {
                 var files = CreateVariant(f, replacementConstraint: true);
                 var gateError = Capture(() => LedgerFilePolicy.Validate(files.VariantPath));
                 var target = Path.Combine(f.Root, "storage-only-constraint-control.caiwu");
                 // Deliberately bypass Delivery to prove the database's effect independently of the gate.
                 SqliteLedgerStore.RestoreBackup(files.VariantPath, target);
-                var outcome = WriteBalancedAndRead(target);
+                string before;
+                using (var store = SqliteLedgerStore.Open(target)) before = JsonSerializer.Serialize(store.Read());
+                var writeError = Capture(() => WriteBalancedAndRead(target));
+                string after;
+                using (var store = SqliteLedgerStore.Open(target)) { after = JsonSerializer.Serialize(store.Read()); store.CheckIntegrity(); }
                 var facts = new
                 {
                     files.SchemaFacts, gateAccepted = gateError == null, gateError = gateError?.GetType().Name,
-                    outcome, sourceUnchanged = Fixture.Hash(files.SourcePath) == files.SourceHash,
+                    storageRejected = writeError is InvalidDataException, durableSnapshotUnchanged = before == after,
+                    sourceUnchanged = Fixture.Hash(files.SourcePath) == files.SourceHash,
                     validBackupUnchanged = Fixture.Hash(files.StablePath) == files.StableHash,
                     adversarialBackupUnchanged = Fixture.Hash(files.VariantPath) == files.VariantHash
                 };
                 Console.WriteLine("SCHEMA-CONSTRAINT-CONTROL " + JsonSerializer.Serialize(facts));
-                Check.Equal(1, outcome.PersistedLineCount);
-                Check.Equal(1L, outcome.RawLineRowCount);
-                Check.Equal(0m, outcome.PersistedDebit);
-                Check.Equal(10.25m, outcome.PersistedCredit);
-                Check.Equal("ok", outcome.IntegrityCheck);
+                Check.True(facts.storageRejected && facts.durableSnapshotUnchanged,
+                    "The integrated transactional readback must reject lossy writes and preserve every durable field.");
                 Check.True(facts.sourceUnchanged && facts.validBackupUnchanged && facts.adversarialBackupUnchanged,
                     "The independent control changed an original input instead of its disposable copy.");
             });
