@@ -1,0 +1,16 @@
+{
+  "runId": 40172477245,
+  "jobId": 121106056815,
+  "artifactId": 12591076154,
+  "headSha": "037a07585078d4dfcd443a2cc4a237c88aed07a0",
+  "artifactSha256": "0d37cdbd08fe368e14d516b0836a9c11a352c70da1380036d0424262ad21c560",
+  "packageSha256": "43696969042e63c6265f5533e6c76abd58685d38ed74b6a763f2a9f57ca9ee86",
+  "packageManifestFileCount": 413,
+  "packageManifestAllFilesMatch": true,
+  "screenshots": {
+    "opening-balances.png": "46c58cc9af08cce0507458343deb53e8b2dc56e8dfd00f8d858cf34b56145c20",
+    "posted-voucher.png": "32776a58c3b784f21f5283812e94cbcf4b4a6b14c92ddd1e0aee9726e4892f29",
+    "trial-balance.png": "cd6f1a36fffdfe37e6322d6638c1c5b54e5cfc27b8671cfcf60951fbaee2224b",
+    "voucher-list.png": "d22a98e5104a94016364656620bc5968a539d667c61927fce2d617d9d0cdf299"
+  }
+}
