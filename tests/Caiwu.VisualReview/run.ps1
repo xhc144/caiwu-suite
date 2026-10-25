@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$OutputDirectory, [ValidateRange(30, 180)][int]$TimeoutSeconds = 90)
+param([switch]$DesktopCapture, [string]$OutputDirectory, [ValidateRange(30, 180)][int]$TimeoutSeconds = 90)
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'Visual review requires actual Windows WPF. No screenshots produced.' }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
@@ -13,7 +13,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Visual harness did not compile.' }
 $resultPath = Join-Path $OutputDirectory 'visual-review.json'
 if (Test-Path $resultPath) { Remove-Item $resultPath }
 $dll = Join-Path $PSScriptRoot 'bin/Release/net10.0-windows/Caiwu.VisualReview.dll'
-$p = Start-Process -FilePath (Get-Command dotnet).Source -ArgumentList @(('"' + $dll + '"'), ('"' + $OutputDirectory + '"')) -PassThru -RedirectStandardOutput (Join-Path $OutputDirectory 'stdout.log') -RedirectStandardError (Join-Path $OutputDirectory 'stderr.log')
+$captureArguments = @(('"' + $dll + '"'), ('"' + $OutputDirectory + '"'))
+if ($DesktopCapture) { $captureArguments += '--desktop' }
+$p = Start-Process -FilePath (Get-Command dotnet).Source -ArgumentList $captureArguments -PassThru -RedirectStandardOutput (Join-Path $OutputDirectory 'stdout.log') -RedirectStandardError (Join-Path $OutputDirectory 'stderr.log')
 if (-not $p.WaitForExit($TimeoutSeconds * 1000)) { $p.Kill($true); throw 'Visual harness timed out; inspect partial PNGs and logs. No pass inferred.' }
 if ($p.ExitCode -ne 0 -or -not (Test-Path $resultPath)) { throw 'Visual harness failed; inspect visual-review.json and logs.' }
 $r = Get-Content -Raw $resultPath | ConvertFrom-Json

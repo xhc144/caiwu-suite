@@ -32,9 +32,9 @@ jobs:
           if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Visual capture requires the existing delivery hold.' }
           node tests/Caiwu.VisualReview/verify-xaml.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Original XAML interaction contract changed.' }
-      - name: Capture four full native desktop pages with synthetic data
+      - name: Capture full native desktop pages after compositor and bounds checks
         shell: pwsh
-        run: ./tests/Caiwu.Acceptance/HighResolution/run.ps1 -OutputDirectory artifacts/high-resolution
+        run: ./tests/Caiwu.VisualReview/run.ps1 -DesktopCapture -OutputDirectory artifacts/high-resolution
       # Upload the first useful evidence before any optional interaction checks.
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()

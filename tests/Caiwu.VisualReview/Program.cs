@@ -28,6 +28,7 @@ internal static class Program
     private static readonly List<object> FontObservations = [];
     private static readonly List<object> ReportCellMeasurements = [];
     private static string output = "";
+    private static bool desktopCapture;
     private static nint displayMode;
     private static byte[]? originalDisplay;
 
@@ -36,6 +37,7 @@ internal static class Program
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("An actual Windows WPF desktop is required.");
         output = Path.GetFullPath(args.Length > 0 ? args[0] : "artifacts/verification/modern");
+        desktopCapture = args.Contains("--desktop", StringComparer.Ordinal);
         Directory.CreateDirectory(output);
         App? app = null;
         try
@@ -98,7 +100,7 @@ internal static class Program
             menuItem.IsSubmenuOpen = false; Pump(); Checks.Add("Existing native menu opens and closes");
             var posted = service.GetSnapshot().Vouchers.Single(v => v.Id == postedId);
             var editor = new VoucherEditorWindow(snapshot.Book, snapshot.Accounts, posted, "制单员", _ => throw new InvalidOperationException("Read-only sample.")) { Owner = main };
-            editor.Show(); Pump(); SizeNative(editor); Capture(editor, "03-posted-voucher.png");
+            editor.Show(); Pump(); SizeNative(editor); if (!desktopCapture) Capture(editor, "03-posted-voucher.png");
             Require(((DataGrid)editor.FindName("LinesGrid")).IsReadOnly && !((Button)editor.FindName("SaveButton")).IsEnabled,
                 "Posted voucher is no longer read-only.");
             Checks.Add("Posted voucher remains read-only and Save stays disabled"); editor.Close(); Pump();
@@ -106,6 +108,7 @@ internal static class Program
             var draft = service.GetSnapshot().Vouchers.First(v => v.Status == VoucherStatus.Draft);
             var editable = new VoucherEditorWindow(snapshot.Book, snapshot.Accounts, draft, "制单员", _ => throw new InvalidOperationException("Visual check must not save.")) { Owner = main };
             editable.Show(); Pump();
+            if (desktopCapture) { SizeNative(editable); Capture(editable, "03-voucher-editor.png"); }
             var lines = (DataGrid)editable.FindName("LinesGrid"); lines.CurrentCell = new DataGridCellInfo(lines.Items[0], lines.Columns[3]);
             lines.ScrollIntoView(lines.Items[0], lines.Columns[3]); lines.Focus();
             Require(lines.BeginEdit(), "DataGrid amount cell cannot enter edit mode."); Pump();
@@ -152,7 +155,8 @@ internal static class Program
 
     private static void SaveResult(bool success, string? error) => File.WriteAllText(Path.Combine(output, "visual-review.json"),
         JsonSerializer.Serialize(new { success, actualWindowsWpf = true, syntheticOnly = true,
-            captureMethod = "Win32 PrintWindow, complete native window including non-client frame; no image resize or crop",
+            captureMethod = desktopCapture ? "Win32 BitBlt of full foreground native desktop after stable maximized bounds and DwmFlush; no resize or crop" : "Win32 PrintWindow, complete native window including non-client frame; no image resize or crop",
+            actualWindowsDesktop = desktopCapture, resizedOrUpscaled = false,
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_VISUAL_COMMIT"),
             sourceTree = Environment.GetEnvironmentVariable("CAIWU_VISUAL_SOURCE_TREE"),
             generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, fontObservations = FontObservations, reportCellMeasurements = ReportCellMeasurements, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
@@ -175,6 +179,10 @@ internal static class Program
     }
     private static void SizeNative(Window window)
     {
+        if (desktopCapture)
+        {
+            window.WindowState = WindowState.Maximized; Settle(window); return;
+        }
         window.WindowState = WindowState.Normal; window.Activate(); Pump();
         var hwnd = new WindowInteropHelper(window).Handle;
         Require(SetWindowPos(hwnd, 0, 0, 0, 1920, 1080, 0x0004 | 0x0010), "SetWindowPos failed."); Pump();
@@ -184,6 +192,7 @@ internal static class Program
     private static void Capture(Window window, string file)
     {
         window.Activate(); window.UpdateLayout(); Pump();
+        if (desktopCapture) { CaptureDesktop(window, file); return; }
         ObserveFonts(window, file);
         var hwnd = new WindowInteropHelper(window).Handle;
         Require(GetWindowRect(hwnd, out var rect), "Cannot measure native window.");
@@ -197,6 +206,7 @@ internal static class Program
             Require(PrintWindow(hwnd, memory, 2), "PrintWindow failed; no screenshot inferred.");
             var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, 0, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
             Require(source.PixelWidth == width && source.PixelHeight == height, "Capture size differs from native bounds.");
+            RejectBlackFrame(source);
             var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source));
             var path = Path.Combine(output, file); using (var stream = File.Create(path)) encoder.Save(stream);
             var dpi = VisualTreeHelper.GetDpi(window);
@@ -205,6 +215,41 @@ internal static class Program
                 sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))) });
         }
         finally { SelectObject(memory, old); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(hwnd, dc); }
+    }
+    private static void Settle(Window window)
+    {
+        window.Activate();
+        for (var i = 0; i < 6; i++)
+        { window.UpdateLayout(); Pump(); Thread.Sleep(80); Require(DwmFlush() == 0, "Native compositor did not flush."); }
+        Pump();
+    }
+    private static void CaptureDesktop(Window window, string file)
+    {
+        Settle(window); ObserveFonts(window, file);
+        var hwnd = new WindowInteropHelper(window).Handle;
+        Require(GetForegroundWindow() == hwnd && IsZoomed(hwnd), "Intended native window is not foreground/maximized.");
+        Require(GetClientRect(hwnd, out var client) && client.Right >= GetSystemMetrics(0) - 40 && client.Bottom >= GetSystemMetrics(1) - 160,
+            "Native window resize has not settled to the full work area.");
+        var width = GetSystemMetrics(0); var height = GetSystemMetrics(1);
+        var screen = GetDC(0); var memory = CreateCompatibleDC(screen); var bitmap = CreateCompatibleBitmap(screen, width, height); var previous = SelectObject(memory, bitmap);
+        try
+        {
+            Require(BitBlt(memory, 0, 0, width, height, screen, 0, 0, 0x40CC0020), "Native desktop capture failed.");
+            var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, 0, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            RejectBlackFrame(source);
+            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source));
+            var path = Path.Combine(output, file); using (var stream = File.Create(path)) encoder.Save(stream);
+            Captures.Add(new { file, width, height, dpiX = GetDpiForWindow(hwnd), dpiY = GetDpiForWindow(hwnd),
+                sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))) });
+        }
+        finally { SelectObject(memory, previous); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(0, screen); }
+    }
+    private static void RejectBlackFrame(BitmapSource source)
+    {
+        var pixels = new byte[source.PixelWidth * source.PixelHeight * 4]; source.CopyPixels(pixels, source.PixelWidth * 4, 0);
+        var black = 0;
+        for (var i = 0; i < pixels.Length; i += 4) if (pixels[i] < 8 && pixels[i + 1] < 8 && pixels[i + 2] < 8) black++;
+        Require(black < source.PixelWidth * source.PixelHeight * .03, "Large black region/compositor transition detected; no valid capture inferred.");
     }
     private static void ValidateReportCells(DataGrid grid)
     {
@@ -278,6 +323,13 @@ internal static class Program
     }
     private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
+    [DllImport("dwmapi.dll")] private static extern int DwmFlush();
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool IsZoomed(nint hwnd);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool GetClientRect(nint hwnd, out Rect rect);
+    [DllImport("user32.dll")] private static extern nint GetDC(nint hwnd);
+    [DllImport("user32.dll")] private static extern uint GetDpiForWindow(nint hwnd);
+    [DllImport("gdi32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool BitBlt(nint target, int x, int y, int width, int height, nint source, int sx, int sy, uint operation);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool EnumDisplaySettings(string? device, int mode, nint settings);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int ChangeDisplaySettings(nint settings, int flags);
     [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
