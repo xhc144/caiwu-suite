@@ -40,13 +40,38 @@ internal static class NativeCapture
             Captures.Add(new { file = filename, width, height, dpiX = dpi.PixelsPerInchX, dpiY = dpi.PixelsPerInchY,
                 sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))),
                 method = "Win32 PrintWindow, complete native HWND including frame; no crop, resize or upscale" });
+            CaptureDesktop(hwnd, filename);
         }
         finally { SelectObject(memory, previous); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(hwnd, dc); }
+    }
+    private static void CaptureDesktop(nint hwnd, string filename)
+    {
+        Program.Need(GetForegroundWindow() == hwnd, "actual module is foreground for desktop evidence");
+        var width = GetSystemMetrics(0); var height = GetSystemMetrics(1);
+        var screen = GetDC(0); var memory = CreateCompatibleDC(screen);
+        var bitmap = CreateCompatibleBitmap(screen, width, height); var previous = SelectObject(memory, bitmap);
+        try
+        {
+            Program.Need(screen != 0 && BitBlt(memory, 0, 0, width, height, screen, 0, 0, 0x40CC0020), "BitBlt captures actual foreground desktop");
+            var source = Imaging.CreateBitmapSourceFromHBitmap(bitmap, 0, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
+            var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(source));
+            var file = Path.GetFileNameWithoutExtension(filename) + "-desktop.png";
+            var path = Path.Combine(Program.Output, file);
+            using (var output = File.Create(path)) encoder.Save(output);
+            GetWindowRect(hwnd, out var bounds);
+            Captures.Add(new { file, width, height, windowBounds = new { bounds.Left, bounds.Top, bounds.Right, bounds.Bottom },
+                sha256 = Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))),
+                method = "Win32 desktop BitBlt with tested module HWND verified foreground; complete primary display, no crop, resize or upscale" });
+        }
+        finally { SelectObject(memory, previous); DeleteObject(bitmap); DeleteDC(memory); ReleaseDC(0, screen); }
     }
     [StructLayout(LayoutKind.Sequential)] private struct Rect { public int Left, Top, Right, Bottom; }
     [DllImport("dwmapi.dll")] private static extern int DwmFlush();
     [DllImport("user32.dll")] private static extern bool GetWindowRect(nint hwnd, out Rect rect);
     [DllImport("user32.dll")] private static extern nint GetWindowDC(nint hwnd);
+    [DllImport("user32.dll")] private static extern nint GetDC(nint hwnd);
+    [DllImport("user32.dll")] private static extern nint GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern int GetSystemMetrics(int index);
     [DllImport("user32.dll")] private static extern int ReleaseDC(nint hwnd, nint dc);
     [DllImport("user32.dll")] private static extern bool PrintWindow(nint hwnd, nint dc, uint flags);
     [DllImport("gdi32.dll")] private static extern nint CreateCompatibleDC(nint dc);
@@ -54,4 +79,5 @@ internal static class NativeCapture
     [DllImport("gdi32.dll")] private static extern nint SelectObject(nint dc, nint obj);
     [DllImport("gdi32.dll")] private static extern bool DeleteObject(nint obj);
     [DllImport("gdi32.dll")] private static extern bool DeleteDC(nint dc);
+    [DllImport("gdi32.dll")] private static extern bool BitBlt(nint target, int x, int y, int width, int height, nint source, int sourceX, int sourceY, uint operation);
 }

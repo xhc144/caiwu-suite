@@ -161,6 +161,10 @@ internal static class Program
                     Poll(dialog, () => Find<TextBlock>(dialog, "StatusText").Text.Contains("已取消"), () =>
                     {
                         Need(dialog.Result is null && !File.Exists(target) && Hash(source) == hash, "busy cancel safely exits before publication without writes");
+                        var status = Find<TextBlock>(dialog, "StatusText");
+                        Need(status.IsVisible && status.Text.Contains("如需重试") && Find<Button>(dialog, "CancelButton").Content as string == "关闭", "completed cancellation visibly reports safe outcome and close action");
+                        var statusOrigin = status.TransformToAncestor(dialog).Transform(new Point());
+                        observations.Add(new { status = status.Text, status.IsVisible, status.ActualWidth, status.ActualHeight, statusOrigin.X, statusOrigin.Y });
                         NativeCapture.Save(dialog, "book-cancelled.png"); Click(dialog, "CancelButton");
                     });
                 });
