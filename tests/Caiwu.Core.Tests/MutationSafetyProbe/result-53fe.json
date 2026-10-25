@@ -1,0 +1,141 @@
+{
+  "targetCommit": "53fe0f2d2744e557dab98bf2652ffa5fce644c25",
+  "actualSqlite": true,
+  "saveDraftThirteenCasesRepeated": false,
+  "wpfExecuted": false,
+  "risksConfirmed": 5,
+  "risksAlreadyBlocked": 0,
+  "safetyPassed": 20,
+  "safetyFailed": 0,
+  "results": [
+    {
+      "id": "STALE-OPENING-BALANCES",
+      "status": "RISK_CONFIRMED",
+      "details": {
+        "shownToB": 100,
+        "newerSavedByA": 200,
+        "finalBank": 100,
+        "revisionBeforeB": 2,
+        "revisionAfterB": 3
+      }
+    },
+    {
+      "id": "STALE-ACCOUNT-REACTIVATION",
+      "status": "RISK_CONFIRMED",
+      "details": {
+        "oldActive": true,
+        "newerSavedActive": false,
+        "finalActive": true,
+        "finalName": "B\u4FEE\u6539\u663E\u793A\u540D\u79F0"
+      }
+    },
+    {
+      "id": "STALE-DELETE-UPDATED-DRAFT",
+      "status": "RISK_CONFIRMED",
+      "details": {
+        "shownToB": 10,
+        "newerSavedByA": 20,
+        "finalVoucherCount": 0
+      }
+    },
+    {
+      "id": "STALE-REVIEW-UNSEEN-AMOUNT",
+      "status": "RISK_CONFIRMED",
+      "details": {
+        "shownToReviewer": 10,
+        "reviewedAmount": 20,
+        "status": "Reviewed"
+      }
+    },
+    {
+      "id": "POST-CONFIRMATION-AMOUNT-MISMATCH",
+      "status": "RISK_CONFIRMED",
+      "details": {
+        "shownInConfirmation": 10,
+        "postedAmount": 20,
+        "currentVersionHasIndependentReview": true,
+        "status": "Posted"
+      }
+    },
+    {
+      "id": "REAL-CAS-SaveAccount",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-DeleteAccount",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-SetOpeningBalances",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-DeleteDraft",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-Review",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-CancelReview",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-Post",
+      "status": "PASS"
+    },
+    {
+      "id": "REAL-CAS-CloseMonth",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-OPENING-POSTED-LOCK",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-ACCOUNT-OPENING-BALANCE-GUARD",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-DELETE-ACCOUNT-NOW-REFERENCED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-Review-NOW-POSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-CancelReview-NOW-POSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-DeleteDraft-NOW-POSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-POST-NOW-CANCELED",
+      "status": "PASS"
+    },
+    {
+      "id": "FRESH-CLOSE-NEW-UNPOSTED",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-Review",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-CancelReview",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-Post",
+      "status": "PASS"
+    },
+    {
+      "id": "OTHER-BOOK-VOUCHER-ID-DeleteDraft",
+      "status": "PASS"
+    }
+  ]
+}
