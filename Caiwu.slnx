@@ -9,6 +9,7 @@
   <Project Path="tests/Caiwu.Core.Tests/SqliteIntegrationProbe/IntegrationProbe.csproj" />
   <Project Path="tests/Caiwu.Persistence.Sqlite.Tests/Caiwu.Persistence.Sqlite.Tests.csproj" />
   <Project Path="tests/Caiwu.Reporting.Tests/Caiwu.Reporting.Tests.csproj" />
+  <Project Path="tests/Caiwu.Reporting.Tests/Integration/Caiwu.Reporting.Integration.Tests.csproj" />
   <Project Path="tests/Caiwu.Integration.Tests/Caiwu.Integration.Tests.csproj" />
   <Project Path="tests/Caiwu.Acceptance/Wpf/Caiwu.Acceptance.Wpf.csproj" />
 </Solution>
