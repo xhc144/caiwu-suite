@@ -13,12 +13,12 @@ public static class ReportExporter
         ArgumentNullException.ThrowIfNull(report);
         ArgumentNullException.ThrowIfNull(writer);
         WriteCsvPair(writer, report.Columns.Count, "报表", report.Title);
-        foreach (var pair in Metadata(report.Metadata))
+        foreach (var pair in Metadata(report))
             WriteCsvPair(writer, report.Columns.Count, pair.Key, pair.Value);
         WriteCsvPair(writer, report.Columns.Count, "说明", report.Note);
         WriteCsvRecord(writer, report.Columns.Select(c => CsvText(c.Title)));
         foreach (var row in report.Rows) WriteCsvRow(writer, row);
-        WriteCsvRow(writer, report.Total);
+        if (report.IncludeTotal) WriteCsvRow(writer, report.Total);
         foreach (var source in report.Metadata.Sources)
             WriteCsvPair(writer, report.Columns.Count, $"来源：{source.Title}", source.Address);
     }
@@ -60,14 +60,14 @@ public static class ReportExporter
         writer.Write("@media screen{body{background:#ddd}.page{background:white;max-width:340mm;margin:6mm auto;box-shadow:0 1px 5px #888;overflow:auto}}@media print{.page{padding:0}th{print-color-adjust:exact}}</style></head><body>\n");
 
         // Total is a real row, counted in pagination so a full last data page cannot overflow just for the total.
-        var rowCount = (long)report.Rows.Count + 1;
-        var pages = (rowCount + options.RowsPerPage - 1) / options.RowsPerPage;
+        var rowCount = (long)report.Rows.Count + (report.IncludeTotal ? 1 : 0);
+        var pages = Math.Max(1, (rowCount + options.RowsPerPage - 1) / options.RowsPerPage);
         for (long page = 0; page < pages; page++)
         {
             writer.Write("<section class=\"page\"><header><h1>");
             writer.Write(H(report.Title));
             writer.Write("</h1><div class=\"metadata\">");
-            foreach (var pair in Metadata(report.Metadata))
+            foreach (var pair in Metadata(report))
             {
                 writer.Write("<span>"); writer.Write(H(pair.Key)); writer.Write("：");
                 writer.Write(H(pair.Value)); writer.Write("</span>");
@@ -129,6 +129,12 @@ public static class ReportExporter
             " 至 " + metadata.To.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         yield return new("生成时间", metadata.GeneratedAt.ToString("O", CultureInfo.InvariantCulture));
         yield return new("币种 / 单位", "人民币（CNY）/ 元");
+    }
+
+    private static IEnumerable<KeyValuePair<string, string>> Metadata(ReportDocument report)
+    {
+        foreach (var pair in Metadata(report.Metadata)) yield return pair;
+        foreach (var annotation in report.Annotations) yield return new(annotation.Label, annotation.Value);
     }
 
     private static void WriteCsvPair(TextWriter writer, int width, string key, string value) =>

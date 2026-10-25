@@ -2,7 +2,7 @@
 
 基线：`97d696a3ee7adf100e24b4924438468bd34dd80c` 的 `docs/IMPLEMENTATION_CONTRACT.md` 与 `Caiwu.Contracts`。目标 `net10.0`；生产库仅引用 Contracts，无第三方包。所有新增内容限于 Reporting 与对应测试目录；solution、Desktop、Contracts、Core、Sqlite、packaging 由主协调集成。
 
-提供凭证清单、科目余额表、科目明细账的不可变呈现快照，以及 CSV、本地可打印 HTML。未实现资产负债表、利润表或民非财务报表；科目余额表保留明确名称与账簿数据说明，不构成法定财报。会计制度与版本沿用账套，不根据来源链接推断规则，不宣称制度模板已获生产核验。本模块不依赖原软件或手册图像。
+提供凭证清单、科目余额表、科目明细账的不可变呈现快照，以及 CSV、本地可打印 HTML。另有依据固定正式表样的小企业资产负债表/利润表有限计算预览，API、逐行覆盖与缺失限制见 [SMALL_BUSINESS_STATEMENTS.md](SMALL_BUSINESS_STATEMENTS.md)。所有财报计算保持未验证生产/非完整公式集标志，不构成合规声明；现金流量表及民非财务报表未实现。科目余额表仍是账簿数据，会计制度与原模板版本沿用账套。本模块不依赖原软件或手册图像。
 
 ## public API
 
@@ -96,7 +96,7 @@ dotnet test tests/Caiwu.Reporting.Tests/Caiwu.Reporting.Tests.csproj \
   --no-restore --configuration Release
 ```
 
-实际运行：45 项单元测试通过，0 失败，0 跳过。测试覆盖独立手算契约样例（本期借贷各 31200、期末借贷各 120000）、父子汇总去重、零余额、负余额、多级任意编码、未知科目、Unicode、凭证 ID、来源地址/版本/期间/时间、0.1+0.2、精度拒绝/decimal 极限及静默分值损失、空表、日期状态筛选、不可变快照、CSV 攻击文本与 RFC 回读、HTML 编码、10000 行分页与无丢行、BOM/流所有权、I/O 失败传播。
+实际运行：55 项单元测试通过，0 失败，0 跳过。测试覆盖独立手算契约样例（本期借贷各 31200、期末借贷各 120000）、父子汇总去重、零余额、负余额、多级任意编码、未知科目、Unicode、凭证 ID、来源地址/版本/期间/时间、0.1+0.2、精度拒绝/decimal 极限及静默分值损失、空表、日期状态筛选、不可变快照、CSV 攻击文本与 RFC 回读、HTML 编码、10000 行分页与无丢行、BOM/流所有权、I/O 失败传播。小企业财报另覆盖两组独立手算、负余额分户/期限重分类、月度/累计、其中行及父子不重计、结转排除、资料缺失与不支持范围。
 
 新增可独立运行的真实 Core＋SQLite 集成测试，位于 `tests/Caiwu.Reporting.Tests/Integration/`。它与单元测试隔离，不会让仅依赖 Contracts 的基础单元测试引用 Core/SQLite。须在已合入这两个模块的完整集成树中运行：
 
@@ -107,6 +107,6 @@ dotnet test tests/Caiwu.Reporting.Tests/Integration/Caiwu.Reporting.Integration.
   --no-restore --configuration Release -p:TreatWarningsAsErrors=true
 ```
 
-在集成分支 `037a07585078d4dfcd443a2cc4a237c88aed07a0` 加本模块代码的隔离工作树中实际运行，9 项全部通过。通过真实 `LedgerService` 保存/审核/记账到 SQLite，再关闭重开生成三类报表，写入实际 CSV/HTML 文件并独立解析 CSV 验证，临时账套和导出在用例结束后删除。覆盖小企业/企业两种模板、多级与反向余额、期初滚入、日期端点、草稿/已审核不入账、同凭证多行、精确分值、持久化攻击文本、元数据/来源/ID 保留、无审计操作人/数据库路径泄露、空期间及备份恢复内容一致；未使用 UI 或浏览器。详细审查及 Desktop owner 待办见 `tests/Caiwu.Reporting.Tests/Integration/REVIEW.md`。
+在集成分支 `037a07585078d4dfcd443a2cc4a237c88aed07a0` 加本模块代码的隔离工作树中实际运行，10 项全部通过，并在更新后的 `0377ce764bc5a191c232c3f50da602a5ca2c0c0c` 隔离工作树复验。通过真实 `LedgerService` 保存/审核/记账到 SQLite，再关闭重开生成三类账簿报表及小企业两表计算预览，写入实际 CSV/HTML 文件并独立解析 CSV 验证，临时账套和导出在用例结束后删除。覆盖小企业/企业两种模板、多级与反向余额、期初滚入、日期端点、草稿/已审核不入账、同凭证多行、精确分值、持久化攻击文本、元数据/来源/ID 保留、无审计操作人/数据库路径泄露、空期间及备份恢复内容一致；未使用 UI 或浏览器。之前的有限审查及 Desktop owner 待办见 `tests/Caiwu.Reporting.Tests/Integration/REVIEW.md`，仅代表该记录的历史检查提交。
 
 浏览器实测边界：在 Linux 容器用已安装 Chromium 对生成的本地 HTML 发起 `file://` 导航，返回 `net::ERR_BLOCKED_BY_ADMINISTRATOR`。停止了该浏览器验证，未修改策略，未获得真实打印 PDF 或截图；不得据单元测试声称浏览器/打印机验收完成。Windows 桌面接入、实际浏览器打印预览与真实打印机尚需主协调验收。
