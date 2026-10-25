@@ -26,3 +26,5 @@ root 已审查并接受生产修订75c84a6，独立核验063a1b5的761文件free
 已采纳 `.github/workflows/windows-private-delivery.yml`；初装/升级测试版本0.1.0.3/0.1.0.4。两次构建都运行组件回归，不使用 --skip-tests。保留新私有验证范围标记，新增release-manifest字段明确 `approvedForUserDelivery=false`；新source SHA与证据单独冻结。
 
 用户分发、Release和原始派生上传仍禁止；两路QA可稍后由root给出审核SHA。生产验证失败可在既有授权内最小修复并保留失败证据。截止13:45 UTC前回报实际状态。
+
+手动调用新workflow在65e435d返回GitHub HTTP404（workflow尚未在默认分支注册），没有创建运行或构建。这不是自动批准拒绝。为维持不合main边界，改用仅私有仓库、当前分支、workflow文件变化的push入口，绑定该事件的完整SHA；其余已审生产步骤不变，再冻结新SHA后运行。

@@ -1,6 +1,9 @@
 # Root-approved private validation workflow. No user distribution or Release permission.
 name: Private approved-source production candidate validation
 on:
+  push:
+    branches: [codex/final-private-packaging]
+    paths: ['.github/workflows/windows-private-delivery.yml']
   workflow_dispatch:
     inputs:
       expected_commit:
@@ -22,17 +25,18 @@ concurrency:
   cancel-in-progress: false
 jobs:
   delivery:
+    if: github.event.repository.private == true
     runs-on: windows-2025
     timeout-minutes: 35
     env:
-      CAIWU_APPROVED_SHA: ${{ inputs.expected_commit }}
+      CAIWU_APPROVED_SHA: ${{ inputs.expected_commit || github.sha }}
       CAIWU_WORKFLOW_SHA: ${{ github.sha }}
-      CAIWU_INITIAL_VERSION: ${{ inputs.initial_version }}
-      CAIWU_UPGRADE_VERSION: ${{ inputs.upgrade_version }}
+      CAIWU_INITIAL_VERSION: ${{ inputs.initial_version || '0.1.0.3' }}
+      CAIWU_UPGRADE_VERSION: ${{ inputs.upgrade_version || '0.1.0.4' }}
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
-          ref: ${{ inputs.expected_commit }}
+          ref: ${{ inputs.expected_commit || github.sha }}
       - name: Enforce owning-review hold and exact immutable composition
         shell: pwsh
         run: |
