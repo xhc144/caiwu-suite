@@ -169,7 +169,7 @@ internal static class Program
             Find<DatePicker>(report, "FromInput").SelectedDate = new DateTime(2026, 10, 2);
             Find<DatePicker>(report, "ToInput").SelectedDate = new DateTime(2026, 10, 20);
             Find<ComboBox>(report, "AccountInput").SelectedValue = "1002";
-            Click(Button(report, "生成"));
+            Click(Button(report, "生成报表", "生成"));
             await SettleAsync();
             var grid = Find<DataGrid>(report, "ReportGrid");
             await SelectScrolledAsync(grid, grid.Items.Cast<ReportRow>().Single(r => r.AccountCode == "9060"));
@@ -211,7 +211,7 @@ internal static class Program
                 // Do not mandate a new button: the existing kind selector is an acceptable way
                 // back if it restores the saved parent context instead of losing it.
                 Find<ComboBox>(report, "KindInput").SelectedIndex = 0;
-                Click(Button(report, "生成"));
+                Click(Button(report, "生成报表", "生成"));
             }
             await SettleAsync();
             var parentAfter = ReadReport(report);
@@ -350,8 +350,10 @@ internal static class Program
         }
         throw new InvalidOperationException("Labeled control changed: " + label);
     }
-    private static Button Button(Window owner, string content) => Visuals<Button>(owner)
-        .Single(b => b.IsVisible && b.Content?.ToString() == content);
+    // Both delivered visual versions use the same production Generate_Click action.
+    // Resolve its exact visible caption; never invoke a handler or skip a navigation assertion.
+    private static Button Button(Window owner, params string[] captions) => Visuals<Button>(owner)
+        .Single(b => b.IsVisible && b.Content is string text && captions.Contains(text, StringComparer.Ordinal));
     private static MenuItem Menu(Window owner, string header) => Logical(owner).OfType<MenuItem>()
         .Single(m => m.Header?.ToString() == header);
     private static void Click(Button button)
