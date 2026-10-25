@@ -71,7 +71,14 @@ internal static class Program
             button.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next)); Pump();
             Require(Keyboard.FocusedElement is not null, "Keyboard traversal lost focus.");
             Checks.Add("Modern button template, native automation peer and keyboard focus traversal");
+            Require(main.FontSize == 14, "Custom main Window did not receive the application typography.");
+            var searchBox = (TextBox)main.FindName("VoucherSearch");
+            Require(ReferenceEquals(searchBox.Template, app.FindResource("DefaultTextBoxControlTemplate")), "Search input fell back to a legacy TextBox template.");
+            var operatorInput = (ComboBox)main.FindName("OperatorInput");
+            Require(ReferenceEquals(operatorInput.Template, app.FindResource("EditableComboBoxTemplate")), "Editable ComboBox fell back to a legacy template.");
             var date = (DatePicker)main.FindName("VoucherFrom");
+            Require(date.Template.FindName("BorderElement", date) is Border, "DatePicker fell back to a legacy template.");
+            Checks.Add("Application typography and actual Fluent TextBox, editable ComboBox and DatePicker templates");
             date.IsDropDownOpen = true; Pump();
             Require(date.Template.FindName("PART_Popup", date) is Popup { IsOpen: true }, "DatePicker calendar popup did not open.");
             date.IsDropDownOpen = false; Pump(); Checks.Add("Native DatePicker calendar popup opens and closes");
