@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "product": "Caiwu Suite development preview",
+  "version": "0.1.0.1",
+  "commit": "983e2e31ee9f66a4204dcddc154c1a0ab097d4f9",
+  "sourceTreeDirty": false,
+  "sourceDateEpoch": 1792913777,
+  "sdk": "10.0.402",
+  "runtime": "10.0.13",
+  "rid": "win-x64",
+  "selfContained": true,
+  "nsis": "v3.13",
+  "compressor": "zlib",
+  "signed": false,
+  "trustedUpdateChannel": false,
+  "managedDataIntegration": false,
+  "windowsRuntimeValidated": false,
+  "files": [
+    {
+      "path": "caiwu-0.1.0.1-win-x64-setup.exe",
+      "bytes": 129530445,
+      "sha256": "468d959f23d8e7d301de975d5f139a9d78412305030d59905dd9760d421fefbe"
+    },
+    {
+      "path": "caiwu-0.1.0.1-win-x64-portable.zip",
+      "bytes": 225085301,
+      "sha256": "2ac2533b537f7ff33a1558e0cc57733fc27d9d64144c8e7f4f80bd6488316441"
+    }
+  ]
+}

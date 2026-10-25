@@ -1,0 +1,25 @@
+{
+  "sourceCommit": "983e2e31ee9f66a4204dcddc154c1a0ab097d4f9",
+  "sameBytes": true,
+  "scope": "Linux, same exact SDK and NSIS, two separate clean source trees; not a cross-OS or signed-build claim",
+  "files": [
+    {
+      "path": "caiwu-0.1.0.1-win-x64-setup.exe",
+      "first": "468d959f23d8e7d301de975d5f139a9d78412305030d59905dd9760d421fefbe",
+      "cleanRebuild": "468d959f23d8e7d301de975d5f139a9d78412305030d59905dd9760d421fefbe",
+      "equal": true
+    },
+    {
+      "path": "caiwu-0.1.0.1-win-x64-portable.zip",
+      "first": "2ac2533b537f7ff33a1558e0cc57733fc27d9d64144c8e7f4f80bd6488316441",
+      "cleanRebuild": "2ac2533b537f7ff33a1558e0cc57733fc27d9d64144c8e7f4f80bd6488316441",
+      "equal": true
+    },
+    {
+      "path": "payload/payload-manifest.json",
+      "first": "9ad568d822916e8a0971c5e8eff9393d733ee44df6fc96c7d2cdadd408897e3f",
+      "cleanRebuild": "9ad568d822916e8a0971c5e8eff9393d733ee44df6fc96c7d2cdadd408897e3f",
+      "equal": true
+    }
+  ]
+}

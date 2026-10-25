@@ -30,3 +30,11 @@
 5. 既有可信签名设施、可控HTTPS feed、发布者pin与人工审批前置到位后再启用检查/暂存；当前无自动应用更新闭环。没有生成/索取密钥证书，没有导入信任、购买许可、改安全设置或访问真实账务。
 
 本轮没有审批拒绝、没有参考安装器执行，也没有公开发布。分支/草稿PR若成功，准确链接由任务最终回复提供；不会合入main。
+
+## 最终干净构建与远端交付
+
+- 实现提交：`983e2e31ee9f66a4204dcddc154c1a0ab097d4f9`，已推送私有 `codex/windows-delivery`，草稿PR为 https://github.com/xhc144/caiwu-suite/pull/6 ，base仍是codex/windows-mvp；未合main。
+- 两个独立干净源码目录（原工作区与detached clean worktree）使用常规locked mode完整发布成功，安装器、便携包及payload manifest字节相同。`evidence/983e2e3/`提交准确manifest、80项逐项报告、SHA256SUMS与reproducibility.json。二进制按该实现提交构建，后续本交接/证据提交不属于该产物的源commit。
+- Installer 129,530,445 bytes；SHA256 `468d959f23d8e7d301de975d5f139a9d78412305030d59905dd9760d421fefbe`。Portable ZIP 225,085,301 bytes；SHA256 `2ac2533b537f7ff33a1558e0cc57733fc27d9d64144c8e7f4f80bd6488316441`。标准SHA256SUMS校验全部通过。
+- 本环境二进制及报告：`artifacts/delivery/clean-first/`。另有聚合ZIP `artifacts/delivery/caiwu-windows-delivery-983e2e3.zip`，354,698,701 bytes，SHA256 `f4e805d9fcf5fa7264986e9e1684c1d1aece6d2edb34be6d73372e664d778218`，包含installer/portable/manifest/tests/rebuild证据。
+- Library保存 blocked，结果已知未执行上传：当前技能的library_upload.py在hosted apps tools/list返回HTTP401，尚未进行prepare/transfer/finalize；无Library文件ID，无部分上传或不确定结果。未改用direct upload，因为Library技能明确禁止开始helper流程后切换direct action。此为助手鉴权错误，并非自动审批拒绝；后续仅在helper鉴权修复后重试相同文件，不盲目重复。该阻断不影响已完成私有分支/草稿PR与可复现源码交付。

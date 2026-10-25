@@ -1,0 +1,332 @@
+{
+  "success": true,
+  "total": 80,
+  "passed": 80,
+  "failed": 0,
+  "skipped": 0,
+  "runtime": ".NET 10.0.13",
+  "os": "Debian GNU/Linux 13 (trixie)",
+  "scope": "Synthetic self-authored delivery components only. No reference installer or real accounting data.",
+  "results": [
+    {
+      "name": "install and data roots cannot overlap in either direction",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: ../escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: nested/../../escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: ..\\escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: /absolute",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: C:\\absolute",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: \\\\server\\share",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: a:stream",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: nested/../escape",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: CON.txt",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: folder./file",
+      "status": "passed"
+    },
+    {
+      "name": "payload path rejected: trailing ",
+      "status": "passed"
+    },
+    {
+      "name": "symlinked ancestor cannot redirect a managed child",
+      "status": "passed"
+    },
+    {
+      "name": "manifest hashes actual payload and round-trips its identity",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects byte tampering with unchanged file length",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects missing files",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects files added after sealing",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects Windows case-insensitive path collisions",
+      "status": "passed"
+    },
+    {
+      "name": "manifest rejects a payload file symlink",
+      "status": "passed"
+    },
+    {
+      "name": "program payload cannot accidentally contain an accounting book",
+      "status": "passed"
+    },
+    {
+      "name": "first install activates verified program without moving a book",
+      "status": "passed"
+    },
+    {
+      "name": "a temporary payload cannot contain the chosen persistent data root",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade is blocked for Desktop without the managed-data contract",
+      "status": "passed"
+    },
+    {
+      "name": "a missing activation pointer cannot turn an existing installation into an unchecked first install",
+      "status": "passed"
+    },
+    {
+      "name": "another installation directory cannot bypass the active data-root upgrade gate",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade rejects a missing managed-book inventory",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade cannot omit a real managed book from the inventory",
+      "status": "passed"
+    },
+    {
+      "name": "upgrade cannot redirect its inventory to another data root",
+      "status": "passed"
+    },
+    {
+      "name": "active application lease prevents uninstall",
+      "status": "passed"
+    },
+    {
+      "name": "active application lease prevents upgrade before mutation",
+      "status": "passed"
+    },
+    {
+      "name": "the shared data-root lease prevents an upgrade through another installation coordinator",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall preserves external books backups and unowned installation files",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall preserves a modified file at an owned payload path",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall refuses an arbitrary directory without an ownership marker",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall followed by a newer install cannot bypass pre-upgrade backup gates",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall permits reinstalling the identical payload at its original program root",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall cannot permit a different payload merely by reusing its version number",
+      "status": "passed"
+    },
+    {
+      "name": "uninstall does not release a data root for another installation directory",
+      "status": "passed"
+    },
+    {
+      "name": "verified upgrade backups preserve independent SQLite balances",
+      "status": "passed"
+    },
+    {
+      "name": "backup captures committed SQLite WAL records without copying only the main file",
+      "status": "passed"
+    },
+    {
+      "name": "successful staged migration does not mutate the live book",
+      "status": "passed"
+    },
+    {
+      "name": "migration failure leaves every source unchanged and retains backup evidence",
+      "status": "passed"
+    },
+    {
+      "name": "a migration returning a corrupt stage is rejected",
+      "status": "passed"
+    },
+    {
+      "name": "backup preparation rejects corrupt source before migration",
+      "status": "passed"
+    },
+    {
+      "name": "backup preparation rejects source outside its data root",
+      "status": "passed"
+    },
+    {
+      "name": "backup preparation rejects duplicate source identities",
+      "status": "passed"
+    },
+    {
+      "name": "same-schema managed upgrade activates only after backup validation",
+      "status": "passed"
+    },
+    {
+      "name": "a subsequent upgrade does not mistake protected backups for unregistered books",
+      "status": "passed"
+    },
+    {
+      "name": "invalid upgrade payload cannot replace an active version",
+      "status": "passed"
+    },
+    {
+      "name": "installation cannot downgrade an existing version",
+      "status": "passed"
+    },
+    {
+      "name": "updates disabled by default cannot stage a candidate",
+      "status": "passed"
+    },
+    {
+      "name": "update feed must use HTTPS",
+      "status": "passed"
+    },
+    {
+      "name": "update candidate cannot use HTTP",
+      "status": "passed"
+    },
+    {
+      "name": "update candidate cannot execute a local file URI",
+      "status": "passed"
+    },
+    {
+      "name": "update candidate must use an explicitly trusted host",
+      "status": "passed"
+    },
+    {
+      "name": "update host suffix does not satisfy an exact host pin",
+      "status": "passed"
+    },
+    {
+      "name": "update URL cannot carry userinfo",
+      "status": "passed"
+    },
+    {
+      "name": "update host allowlist cannot be empty",
+      "status": "passed"
+    },
+    {
+      "name": "update publisher pins cannot be empty",
+      "status": "passed"
+    },
+    {
+      "name": "update publisher pins must identify a certificate",
+      "status": "passed"
+    },
+    {
+      "name": "update feed must also use a trusted host",
+      "status": "passed"
+    },
+    {
+      "name": "update checksum must be a full SHA256",
+      "status": "passed"
+    },
+    {
+      "name": "update checksum cannot contain nonhex characters",
+      "status": "passed"
+    },
+    {
+      "name": "update size must be positive",
+      "status": "passed"
+    },
+    {
+      "name": "update version cannot move backward",
+      "status": "passed"
+    },
+    {
+      "name": "update version cannot replay current version",
+      "status": "passed"
+    },
+    {
+      "name": "update version cannot contain a path",
+      "status": "passed"
+    },
+    {
+      "name": "update policy permits a newer pinned-host candidate for later signature verification",
+      "status": "passed"
+    },
+    {
+      "name": "disabled update checks make no HTTP request",
+      "status": "passed"
+    },
+    {
+      "name": "update checks reject a redirect without requesting its destination",
+      "status": "passed"
+    },
+    {
+      "name": "update checks return a safe newer candidate from the configured feed",
+      "status": "passed"
+    },
+    {
+      "name": "valid current-version feed returns no available update",
+      "status": "passed"
+    },
+    {
+      "name": "current-version feed still must provide a valid checksum",
+      "status": "passed"
+    },
+    {
+      "name": "update feed is bounded when Content-Length is absent",
+      "status": "passed"
+    },
+    {
+      "name": "download produces only a hash-verified untrusted staging file",
+      "status": "passed"
+    },
+    {
+      "name": "download refuses a redirect and leaves no executable staging artifact",
+      "status": "passed"
+    },
+    {
+      "name": "bad download SHA256 removes only its incomplete candidate",
+      "status": "passed"
+    },
+    {
+      "name": "streamed download with 127 bytes cannot satisfy 128-byte declaration",
+      "status": "passed"
+    },
+    {
+      "name": "streamed download with 129 bytes cannot satisfy 128-byte declaration",
+      "status": "passed"
+    },
+    {
+      "name": "cancelled download leaves no staging artifact",
+      "status": "passed"
+    }
+  ]
+}
