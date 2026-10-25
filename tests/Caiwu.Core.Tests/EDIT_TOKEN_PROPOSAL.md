@@ -27,4 +27,4 @@ public sealed record VoucherDraft(Guid? Id, DateOnly Date, string Kind, int? Num
 
 验收最小集合：两个真实连接各加载同一草稿，A凭其原token改20成功，B用旧token保存10须冲突，落盘仍20；已有Id缺token拒绝；跨账套token拒绝；成功保存后用**已接受版本**再次保存可行；冲突时不增加审计/revision、不修改输入；已审核/记账及锁期限制保持。还需根实际WPF双窗口验收输入保留，不能用后端测试冒充。
 
-状态：**契约字段已由主协调定义，Core/UI强制路径待协调实施**；当前Core分支没有假装修复此项。
+状态更新：主协调已定义两个字段并完成UI接线；本Core分支现已实现SaveDraft强制校验和回归，见 `AcceptanceRepair/TOKEN_ENFORCEMENT.md`。原提案仅保留历史依据；Windows实际双窗口验收和分发阻断仍由主协调负责。

@@ -106,6 +106,11 @@ public sealed class LedgerService : ILedgerService
         var actor = Actor(operatorName);
         Require(draft is not null, "凭证不能为空。");
         var before = Read();
+        if (draft!.Id.HasValue && (!draft.ExpectedRevision.HasValue || !draft.ExpectedBookId.HasValue))
+            throw new StoreConcurrencyException("修改已有草稿必须携带打开编辑时的账套与版本，请保留输入并重新加载核对。");
+        if ((draft.ExpectedRevision is { } revision && revision != before.Revision) ||
+            (draft.ExpectedBookId is { } bookId && bookId != before.Book.Id))
+            throw new StoreConcurrencyException("账套或凭证编辑版本已变化，请保留输入并重新加载核对，不能覆盖保存。");
         RequireOpenDate(before, draft!.Date);
         var kind = Text(draft.Kind, "凭证字");
         Require(draft.AttachmentCount >= 0, "附件张数不能为负数。");

@@ -1,5 +1,7 @@
 # ACC-002编辑token独立定点回归
 
+更新：Core现已按v1.1强制校验两个token。在基于34f065b集成契约的修复源码上，**同一13项真实SQLite探针全部通过**，原先8个失败全部转PASS；store CAS间隙用例继续通过。[新结果](result-token-enforced.json)及完整返修命令见 [TOKEN_ENFORCEMENT.md](../AcceptanceRepair/TOKEN_ENFORCEMENT.md)。下文保留0377/0d2/34f的修复前证据，不表示当前修复后的状态。
+
 2026-10-25。这里只补测试与证据，未修改Contracts、生产Core、SQLite或UI。主协调决定强制检查代码的改动归属后再实施，避免同时改同一SaveDraft点。
 
 最终复核远端又推进到 `34f065b6028ebd2102f0520263bae8bd3b7ec09f`。该SHA已集成ACC-003，且Desktop的EditVoucher已从同一次fresh snapshot取得数据/revision，编辑器保存也传入了 `_baseRevision` / `_book.Id`（仅静态核对，未跑WPF）。但是Core的SaveDraft仍未读取两个token。**同一仓库内13项探针针对34f065b重新restore/build/run，仍5通过/8失败，退出1，0编译警告/错误**：[result-34f.json](result-34f.json)。以下0d2/0377为较早冻结证据；最终结论应以34f这次复核为准，不能再说该最终SHA的UI未接线。
