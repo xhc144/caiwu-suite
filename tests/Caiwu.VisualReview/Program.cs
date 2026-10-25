@@ -27,6 +27,7 @@ internal static class Program
     private static readonly List<string> Checks = [];
     private static readonly List<object> FontObservations = [];
     private static readonly List<object> ReportCellMeasurements = [];
+    private static readonly List<object> LedgerCellMeasurements = [];
     private static string output = "";
     private static nint displayMode;
     private static byte[]? originalDisplay;
@@ -127,6 +128,8 @@ internal static class Program
             Call(main, "ShowVerificationPage", 4); Pump(); Capture(main, "04-trial-balance.png");
             Call(main, "ShowVerificationPage", 5); ((ComboBox)main.FindName("LedgerAccountInput")).SelectedValue = "1002";
             Call(main, "ShowVerificationPage", 5); Pump(); Capture(main, "05-bank-ledger.png");
+            ValidateLedgerCells((DataGrid)main.FindName("LedgerGrid"));
+            Checks.Add("Every opening/ordinary ledger row matches header boundaries and full-width right-aligned amount edges");
             var report = new ReportCenterWindow(snapshot.Accounts, new(2026, 10, 1), new(2026, 10, 31),
                 (kind, account, from, to) => ReportingQueries.Build(service, kind, account, from, to), (_, _) => { }) { Owner = main };
             report.Show(); Pump(); SizeNative(report); Capture(report, "06-reports.png");
@@ -157,7 +160,7 @@ internal static class Program
             actualWindowsDesktop = true, resizedOrUpscaled = false,
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_VISUAL_COMMIT"),
             sourceTree = Environment.GetEnvironmentVariable("CAIWU_VISUAL_SOURCE_TREE"),
-            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, fontObservations = FontObservations, reportCellMeasurements = ReportCellMeasurements, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
+            generatedAtUtc = DateTimeOffset.UtcNow, installedUiFonts = Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => f.Contains("Segoe", StringComparison.OrdinalIgnoreCase) || f.Contains("YaHei", StringComparison.OrdinalIgnoreCase) || f.Contains("DengXian", StringComparison.OrdinalIgnoreCase) || f.Contains("SimSun", StringComparison.OrdinalIgnoreCase)).Order().ToArray(), checks = Checks, fontObservations = FontObservations, reportCellMeasurements = ReportCellMeasurements, ledgerCellMeasurements = LedgerCellMeasurements, screenshots = Captures, error }, new JsonSerializerOptions { WriteIndented = true }));
 
     private static void PrepareDesktop()
     {
@@ -215,6 +218,53 @@ internal static class Program
         var black = 0;
         for (var i = 0; i < pixels.Length; i += 4) if (pixels[i] < 8 && pixels[i + 1] < 8 && pixels[i + 2] < 8) black++;
         Require(black < source.PixelWidth * source.PixelHeight * .03, "Large black region/compositor transition detected; no valid capture inferred.");
+    }
+    private static void ValidateLedgerCells(DataGrid grid)
+    {
+        var headers = Descendants<DataGridColumnHeader>(grid).Where(h => h.Column is not null).ToDictionary(h => h.Column.DisplayIndex);
+        var problems = new List<string>();
+        var firstRightEdges = new Dictionary<int, double>();
+        var entries = grid.Items.OfType<LedgerDisplay>().ToArray();
+        Require(entries.Length == 4 && entries[0].Value.Date is null && entries.Skip(1).All(r => r.Value.Date is not null),
+            "Bank fixture must include the opening row and three ordinary posted rows.");
+        for (var rowIndex = 0; rowIndex < entries.Length; rowIndex++)
+        {
+            var item = entries[rowIndex];
+            var row = grid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow
+                ?? throw new InvalidOperationException("Synthetic ledger row was not realized.");
+            var cells = Descendants<DataGridCell>(row).ToDictionary(c => c.Column.DisplayIndex);
+            foreach (var column in grid.Columns)
+            {
+                Require(cells.TryGetValue(column.DisplayIndex, out var cell), "Ledger cell is missing.");
+                var header = headers[column.DisplayIndex];
+                var x = cell!.TranslatePoint(new Point(), grid).X;
+                var headerX = header.TranslatePoint(new Point(), grid).X;
+                var text = column.GetCellContent(item) as TextBlock;
+                var textX = text?.TranslatePoint(new Point(), grid).X;
+                var rightEdge = textX + text?.ActualWidth;
+                var amountColumn = column.Header?.ToString() is "借方" or "贷方" or "余额";
+                LedgerCellMeasurements.Add(new { rowIndex, rowKind = item.Value.Date is null ? "opening" : "entry", item.Date, item.Number,
+                    item.Summary, column = column.Header, x, headerX, cellWidth = cell.ActualWidth, headerWidth = header.ActualWidth,
+                    textX, textWidth = text?.ActualWidth, rightEdge, expectedRightEdge = x + cell.ActualWidth - 11,
+                    text = text?.Text, alignment = text?.TextAlignment.ToString() });
+                if (Math.Abs(x - headerX) > 1.1 || Math.Abs(cell.ActualWidth - header.ActualWidth) > 1.1)
+                    problems.Add($"ledger row {rowIndex}/{column.Header}: body/header boundaries differ");
+                if (!amountColumn) continue;
+                if (text?.TextAlignment != TextAlignment.Right || Math.Abs(text.ActualWidth - (cell.ActualWidth - 22)) > 2 ||
+                    rightEdge is null || Math.Abs(rightEdge.Value - (x + cell.ActualWidth - 11)) > 1.1)
+                    problems.Add($"ledger row {rowIndex}/{column.Header}: amount does not occupy its full right-aligned content box");
+                if (rightEdge is { } edge)
+                {
+                    if (firstRightEdges.TryGetValue(column.DisplayIndex, out var openingEdge) && Math.Abs(edge - openingEdge) > 1.1)
+                        problems.Add($"ledger row {rowIndex}/{column.Header}: right edge differs from opening row");
+                    else firstRightEdges.TryAdd(column.DisplayIndex, edge);
+                }
+            }
+        }
+        var balance = grid.Columns.Single(c => c.Header?.ToString() == "余额");
+        Require(balance.GetCellContent(entries[0]) is TextBlock { Text: "100,000.00" } &&
+            balance.GetCellContent(entries[^1]) is TextBlock { Text: "108,800.00" }, "Bank opening/closing fixture values differ.");
+        Require(problems.Count == 0, string.Join("; ", problems));
     }
     private static void ValidateReportCells(DataGrid grid)
     {
