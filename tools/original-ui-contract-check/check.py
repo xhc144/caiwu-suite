@@ -138,13 +138,24 @@ def normalized_shortcut(value: str) -> str:
     return "+".join(sorted(parts))
 
 
+def unique_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Reject duplicate keys at every JSON object depth before values are lost."""
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise InputError(f"Duplicate JSON key: {key!r}")
+        result[key] = value
+    return result
+
+
 def load_json(path: Path) -> dict[str, Any]:
     try:
         if path.stat().st_size > 16 * 1024 * 1024:
             raise InputError(f"JSON exceeds 16 MiB: {path}")
         data = json.loads(path.read_text(encoding="utf-8"),
+                          object_pairs_hook=unique_json_object,
                           parse_constant=lambda x: (_ for _ in ()).throw(InputError(f"Invalid JSON number: {x}")))
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError, InputError) as exc:
         raise InputError(f"Cannot read JSON {path}: {exc}") from exc
     if not isinstance(data, dict):
         raise InputError(f"Expected a JSON object: {path}")

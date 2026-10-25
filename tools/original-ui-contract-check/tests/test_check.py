@@ -208,6 +208,58 @@ class ContractCheckTests(unittest.TestCase):
         with self.assertRaises(check.InputError):
             run(data)
 
+    def assert_duplicate_observation_rejected(self, original, replacement, key):
+        raw = (FIXTURES / "login-relative-match.synthetic.json").read_text()
+        self.assertIn(original, raw)
+        raw = raw.replace(original, replacement, 1)
+        with tempfile.TemporaryDirectory() as directory, redirect_stderr(io.StringIO()) as err:
+            path = Path(directory) / "duplicate.json"
+            output = Path(directory) / "report.json"
+            path.write_text(raw, encoding="utf-8")
+            with self.assertRaisesRegex(check.InputError, "Duplicate JSON key"):
+                check.load_json(path)
+            code = check.main(["--repo", str(REPO), "--product", "qingsong/main",
+                               "--case", "login.startup", "--observations", str(path),
+                               "--output", str(output)])
+            self.assertEqual(code, 2)
+            self.assertIn("input-error", err.getvalue())
+            self.assertIn(f"Duplicate JSON key: {key!r}", err.getvalue())
+            self.assertFalse(output.exists())
+
+    def test_duplicate_id_key_cannot_hide_a_wrong_id(self):
+        self.assert_duplicate_observation_rejected(
+            '"id":"cb_ok"', '"id":"wrong_id","id":"cb_ok"', "id")
+
+    def test_duplicate_text_key_cannot_hide_a_wrong_caption(self):
+        self.assert_duplicate_observation_rejected(
+            '"text":"Y. 确认"', '"text":"保存并关闭","text":"Y. 确认"', "text")
+
+    def test_duplicate_entry_key_cannot_hide_a_wrong_entry(self):
+        self.assert_duplicate_observation_rejected(
+            '"entry": "event:w_frame.open"',
+            '"entry":"event:wrong-caller","entry":"event:w_frame.open"', "entry")
+
+    def test_same_value_and_escaped_duplicate_keys_are_also_rejected(self):
+        self.assert_duplicate_observation_rejected(
+            '"id":"cb_ok"', r'"id":"cb_ok","\u0069d":"cb_ok"', "id")
+
+    def test_duplicate_baseline_keys_are_rejected_at_root_and_nested_depth(self):
+        for raw, key in (
+            ('{"qingsong/main":{},"qingsong/main":{}}', "qingsong/main"),
+            ('{"qingsong/main":{"w_login":{"props":{"text":"wrong","text":"correct"}}}}', "text"),
+        ):
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as directory, redirect_stderr(io.StringIO()) as err:
+                repo = Path(directory)
+                baseline = repo / "docs/original-analysis/json"
+                baseline.mkdir(parents=True)
+                (baseline / "windows.json").write_text(raw, encoding="utf-8")
+                output = repo / "report.json"
+                code = check.main(["--repo", str(repo), "--product", "qingsong/main",
+                                   "--case", "login.startup", "--output", str(output)])
+                self.assertEqual(code, 2)
+                self.assertIn(f"Duplicate JSON key: {key!r}", err.getvalue())
+                self.assertFalse(output.exists())
+
     def test_invalid_coordinate_numbers_are_rejected(self):
         for invalid in (float("nan"), float("inf"), True):
             with self.subTest(value=invalid):

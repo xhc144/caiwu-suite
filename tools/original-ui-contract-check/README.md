@@ -86,7 +86,7 @@ python3 -m unittest discover -s tools/original-ui-contract-check/tests -v
 | `comparison` | `mismatch`、`incomplete` 或已知检查 `matched`；不包括 unknown 的“通过”推定 |
 | `runtime_acceptance` | 合成/静态/缺省输入为 `not-tested`；自报 UIA 为 `not-established`，从不输出实机通过 |
 | 退出 `1` | 有已知约束 mismatch；合成反例也使用此码，但不能称真实候选失败已实测 |
-| 退出 `2` | 输入/基线错误，例如重复身份、坏 JSON、NaN、坐标不合法、原对象或已审关系发生变化 |
+| 退出 `2` | 输入/基线错误，例如任意深度的 JSON 重复键、重复身份、坏 JSON、NaN、坐标不合法、原对象或已审关系发生变化。基线与观测使用同一拒绝重复键的读取器，不接受 last-wins |
 | 退出 `3` | 没有已知 mismatch，但仍不是验收通过；可能匹配、未测或存在 unknown |
 | 退出 `0` | 仅 `--list-cases` 清单操作成功。当前没有返回 0 的验收模式 |
 
@@ -103,7 +103,7 @@ python3 -m unittest discover -s tools/original-ui-contract-check/tests -v
 
 测试还防止跨产品/跨入口冒领、部分观测误判缺失、漏字段自动匹配、跨坐标空间比较、把 schema 列序当屏幕列序、以及将自报 UIA 当真实验收通过。它们是工具回归，不是财务业务测试或 Windows UIA 验收。
 
-本轮实际验证（2026-10-25，Linux / Python 3.12）：27 项合成测试通过；四个夹具的 CLI 实跑结果如下。`unknown` 仍保留，不能把第一行称为真实登录验收通过。
+本轮实际验证（2026-10-25，Linux / Python 3.12）：32 项合成测试通过，包括重复 id/text/entry 键、同值/转义后同名键、根层及嵌套基线重复键的拒绝；四个夹具的 CLI 实跑结果如下。`unknown` 仍保留，不能把第一行称为真实登录验收通过。
 
 | 合成输入 | comparison | mismatch 数 | runtime_acceptance | 退出码 |
 |---|---|---:|---|---:|
