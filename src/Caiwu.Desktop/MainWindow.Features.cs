@@ -194,8 +194,8 @@ public partial class MainWindow
     {
         if (!CanWriteBook) throw new LedgerValidationException("当前账套不允许新增草稿。");
         var binding = CaptureDisplayedFeature(_voucherOrigin);
-        await binding.DemandPermissionAsync(OperatorPermission.PrepareVoucher);
         var source = SelectedVoucher();
+        await binding.DemandPermissionAsync(OperatorPermission.PrepareVoucher);
         var choice = new VoucherCopyWindow(binding.Shown, source.Id, binding.Authentication.ActorKey) { Owner = this };
         using var choiceMonitor = new FeatureWindowMonitor(choice, binding);
         if (choice.ShowDialog() != true || choice.Plan is not { } plan) return;
