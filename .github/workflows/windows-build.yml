@@ -1,7 +1,7 @@
 name: Windows desktop verification
 on:
   push:
-    branches: [codex/windows-mvp]
+    branches: [codex/windows-mvp, codex/windows-revalidation]
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,17 +17,64 @@ jobs:
       - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: 10.0.402
-      - name: Build, test and package self-authored software
+      - name: Keep delivery paused and build independent component tests
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Windows revalidation requires the delivery pause marker.' }
+          foreach ($project in @('tests/Caiwu.Desktop.Controls.Tests/Caiwu.Desktop.Controls.Tests.csproj', 'tests/Caiwu.Desktop.Controls.Tests/WindowsSmoke/Caiwu.Desktop.Controls.WindowsSmoke.csproj', 'tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj')) {
+            dotnet build $project -c Release --nologo
+            if ($LASTEXITCODE -ne 0) { throw "Independent component build failed: $project" }
+          }
+      - name: Build, test and render self-authored software under delivery hold
         shell: pwsh
         run: ./packaging/build.ps1
+      - name: Run Controls bounded Windows smoke
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.Desktop.Controls.Tests/Run-WindowsSmoke.ps1 -Artifacts artifacts/reference-dialogs
+      - name: Run Delivery component and pause-gate checks without installers
+        if: always()
+        shell: pwsh
+        run: |
+          dotnet run --project tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj -c Release -- artifacts/delivery-components/current.json
+          if ($LASTEXITCODE -ne 0) { throw 'Delivery component tests failed.' }
+          python -m unittest discover -s tests/Caiwu.Delivery.Tests -p test_build_gate.py -v
+          if ($LASTEXITCODE -ne 0) { throw 'Delivery pause gate failed.' }
+          ./tests/Caiwu.Delivery.Tests/Test-WindowsHarness.ps1 | Set-Content artifacts/delivery-components/harness-parser.json
+      - name: Run independent actual-SQLite repair cases on Windows
+        if: always()
+        shell: pwsh
+        run: |
+          $env:CAIWU_REVIEW_CHECKOUT_COMMIT = (git rev-parse HEAD).Trim()
+          $env:CAIWU_REVIEW_CORE_BLOB = (git rev-parse HEAD:src/Caiwu.Core/LedgerService.cs).Trim()
+          $env:CAIWU_REVIEW_CONTRACTS_TREE = (git rev-parse HEAD:src/Caiwu.Contracts).Trim()
+          $env:CAIWU_REVIEW_SQLITE_TREE = (git rev-parse HEAD:src/Caiwu.Persistence.Sqlite).Trim()
+          dotnet run --project tests/Caiwu.Acceptance/Revalidation53fe/Caiwu.Acceptance.Revalidation53fe.csproj -c Release -- artifacts/revalidation/core-repair.json
+          if ($LASTEXITCODE -ne 0) { throw 'Independent Core repair cases failed.' }
+      - name: Run two actual WPF processes and App file-gate cases
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.Acceptance/DualWindows/run.ps1 -OutputDirectory artifacts/dual-windows
+      - name: Confirm no distribution archive was produced
+        if: always()
+        shell: pwsh
+        run: |
+          if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'Delivery pause marker was removed.' }
+          $archives = @(Get-ChildItem artifacts -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -eq '.zip' -or $_.Name -like '*setup*.exe' })
+          if ($archives.Count -ne 0) { throw 'Validation must not produce a distribution archive or installer.' }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: caiwu-windows-preview-${{ github.run_number }}
+          name: caiwu-windows-revalidation-${{ github.run_number }}
           path: |
-            artifacts/*.zip
-            artifacts/*.json
             artifacts/test-results/
             artifacts/verification/
             artifacts/independent-acceptance/
+            artifacts/reference-dialogs/
+            artifacts/revalidation/
+            artifacts/dual-windows/
+            artifacts/delivery-components/
+            !artifacts/**/*.caiwu
+            !artifacts/**/*.caiwu-wal
+            !artifacts/**/*.caiwu-shm
           if-no-files-found: warn
