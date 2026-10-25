@@ -1,5 +1,12 @@
 name: Windows candidate preparation under delivery hold
 on:
+  push:
+    branches: [codex/release-candidate]
+    paths:
+      - '.github/workflows/windows-candidate-validation.yml'
+      - 'packaging-next/**'
+      - 'src/Caiwu.Desktop/**'
+      - 'tests/Caiwu.Delivery.Tests/**'
   workflow_dispatch:
 permissions:
   contents: read
