@@ -56,10 +56,13 @@ public sealed class TemplateCatalogTests
             new(Guid.NewGuid(), "民非测试", AccountingRegime.Nonprofit, TemplateCatalog.Get(AccountingRegime.Nonprofit).Version,
                 2026, 1, 0, DateTimeOffset.UtcNow), accounts, [], []));
         var s = new LedgerService(store);
+        var shown = s.GetSnapshot();
         var v = s.SaveDraft(new(null, new(2026, 1, 1), "记", null, 0,
-            [new("1002", "限定捐赠", 100, 0), new("410102", "限定捐赠", 0, 100)]), "A");
-        s.Review(v.Id, "B");
-        s.Post(v.Id, "C");
+            [new("1002", "限定捐赠", 100, 0), new("410102", "限定捐赠", 0, 100)], shown.Revision, shown.Book.Id), "A");
+        var reviewed = s.GetSnapshot();
+        s.Review(v.Id, "B", new(reviewed.Book.Id, reviewed.Revision));
+        var approved = s.GetSnapshot();
+        s.Post(v.Id, "C", new(approved.Book.Id, approved.Revision));
         var rows = s.GetTrialBalance(new(2026, 1, 1), new(2026, 1, 31));
         Assert.Equal(100, rows.Single(r => r.AccountCode == "4101").ClosingCredit);
         Assert.Equal(100, rows.Where(r => r.IsLeaf).Sum(r => r.PeriodCredit));
