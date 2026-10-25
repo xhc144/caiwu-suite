@@ -40,6 +40,10 @@ jobs:
         if: always()
         shell: pwsh
         run: ./tests/Caiwu.UiNavigation.Tests/run.ps1 -OutputDirectory artifacts/ui-navigation
+      - name: Run actual stale mutation confirmations and same-identity restore editor
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.Acceptance/MutationWindows/run.ps1 -OutputDirectory artifacts/mutation-windows
       - name: Run Controls bounded Windows smoke
         if: always()
         shell: pwsh
@@ -90,6 +94,8 @@ jobs:
             artifacts/delivery-components/
             artifacts/ui-navigation/
             artifacts/high-resolution/
+            artifacts/mutation-windows/
+            !artifacts/ui-navigation/build-*/**
             !artifacts/**/*.caiwu
             !artifacts/**/*.caiwu-wal
             !artifacts/**/*.caiwu-shm
