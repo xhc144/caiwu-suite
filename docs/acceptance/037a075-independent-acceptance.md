@@ -111,7 +111,7 @@ CAIWU_ACCEPTANCE_DOTNET=/path/to/dotnet tests/Caiwu.Acceptance/Regression/run.sh
 ./tests/Caiwu.Acceptance/Wpf/run.ps1
 ```
 
-此探针直接引用真实 Desktop，加载真实 App 资源，使用真实 SQLite，以 routed events/reflection 执行上述五个定点检查。没有模拟或声称物理键盘/IME/原生文件对话框验收。输出 JSON 与新截图放 `tests/Caiwu.Acceptance/evidence/runtime/wpf`，默认不入 Git。它没有接入现有 root solution，也没有更改现有 workflow；原打包脚本不会自动构建/执行它。
+此探针直接引用真实 Desktop，加载真实 App 资源，使用真实 SQLite，以 routed events/reflection 及一次原生鼠标连点执行上述定点检查（后续已扩充为七项，见 [Windows 探针交接](windows-probe-handoff.md)）。没有模拟或声称物理键盘/IME/原生文件对话框验收。输出 JSON 与新截图放 `tests/Caiwu.Acceptance/evidence/runtime/wpf`，默认不入 Git。它没有接入现有 root solution，也没有更改现有 workflow；原打包脚本不会自动构建/执行它。
 
 Windows 手工补验：创建两个不同年度/制度账套；错误/取消时保留原输入；新草稿双击保存和连按 Ctrl+S 只落一张；改变审核员审核、记账后各入口只读；切 A/B 和开坏文件不串账；余额→明细→凭证可返回；备份恢复副本独立；锁期禁止原期操作且后期可新增；中文 IME 候选确认 Enter/Esc 不跳格/关窗；Tab、Enter、F4/F7、Ctrl+S 的焦点和活动单元格提交；活动期初编辑直接关窗的未保存提示；100%/125%/150% DPI 下看完整表头/金额/按钮。
 

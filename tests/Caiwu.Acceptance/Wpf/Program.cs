@@ -1,6 +1,9 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
+using System.Windows.Input;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,7 +21,8 @@ using Microsoft.Data.Sqlite;
 internal static class Program
 {
     private static readonly List<object> Results = [];
-    private static int failures;
+    private static int failures, blocked;
+    private static readonly List<object> Measurements = [];
     private static string directory = "";
 
     [STAThread]
@@ -41,14 +45,24 @@ internal static class Program
         Call(window, "OpenVerificationBook", path); Pump();
         Check("WPF-LAYOUT", () =>
         {
+            var unreadable = new List<string>();
             foreach (var (page, name) in new[] { (1, "VoucherGrid"), (3, "OpeningGrid"), (4, "TrialGrid") })
             {
                 Call(window, "ShowVerificationPage", page); Pump();
                 Capture(window, name + ".png");
                 var grid = (DataGrid)window.FindName(name);
                 var widths = grid.Columns.Select(c => c.ActualWidth).ToArray();
-                Assert(widths.All(w => w >= 55), name + " collapsed columns: " + string.Join(",", widths));
+                Measurements.Add(new { probe = "WPF-LAYOUT", grid = name, widths,
+                    headers = grid.Columns.Select(c => c.Header?.ToString()).ToArray(),
+                    dpi = VisualTreeHelper.GetDpi(grid).PixelsPerDip });
+                for (var i = 0; i < grid.Columns.Count; i++)
+                {
+                    var column = grid.Columns[i];
+                    var minimum = column.Width.IsAbsolute ? Math.Max(55, column.Width.Value * .85) : 100;
+                    if (column.ActualWidth < minimum) unreadable.Add($"{name}/{column.Header}: {column.ActualWidth:0.##} < {minimum:0.##}");
+                }
             }
+            Assert(unreadable.Count == 0, "Unreadable columns: " + string.Join("; ", unreadable));
         });
         Check("WPF-INVALID-SAVE-RETAINS-INPUT", () =>
         {
@@ -65,6 +79,43 @@ internal static class Program
                 Capture(editor, "validation-retains-input.png");
             });
         });
+        Check("WPF-MALFORMED-AMOUNT-REJECTED", () =>
+        {
+            var editor = new VoucherEditorWindow(book, service.GetSnapshot().Accounts, null, "甲", d => service.SaveDraft(d, "甲")) { Owner = window };
+            var before = JsonSerializer.Serialize(store.Read());
+            InDialog(editor, () =>
+            {
+                Fill(editor, "分组错误应拒绝", "1,23", "1,23");
+                ((Button)editor.FindName("SaveButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                Assert(editor.IsVisible && editor.DialogResult is null, "Malformed 1,23 was accepted and closed the editor.");
+                AssertUnchangedInput(editor, "分组错误应拒绝", "1,23", "1,23");
+                Assert(JsonSerializer.Serialize(store.Read()) == before, "Malformed amount wrote a voucher/audit/revision.");
+                Assert(!string.IsNullOrWhiteSpace(((TextBlock)editor.FindName("ErrorText")).Text), "Malformed amount showed no explicit error.");
+                Capture(editor, "malformed-amount-rejected.png");
+            });
+        });
+        Check("WPF-RAPID-DOUBLE-SAVE-SINGLE-WRITE", () =>
+        {
+            var calls = 0; var before = store.Read();
+            var editor = new VoucherEditorWindow(book, service.GetSnapshot().Accounts, null, "甲", d =>
+            {
+                calls++; return service.SaveDraft(d, "甲");
+            }) { Owner = window };
+            var ownerGuard = new MouseButtonEventHandler((_, e) => e.Handled = true);
+            // Guard only the owner so the second native click cannot start an unrelated owner action
+            // after the modal closes; input routing inside the voucher window remains unchanged.
+            window.PreviewMouseDown += ownerGuard; window.PreviewMouseUp += ownerGuard;
+            try
+            {
+                InDialogByNativeDoubleClick(editor, () => Fill(editor, "连点保存独立验收", "3.45", "3.45"), () => calls);
+                var after = store.Read();
+                Assert(calls == 1 && after.Vouchers.Count == before.Vouchers.Count + 1 && after.Revision == before.Revision + 1,
+                    $"Rapid native clicks produced saveCalls={calls}, vouchersDelta={after.Vouchers.Count - before.Vouchers.Count}, revisionDelta={after.Revision - before.Revision}.");
+                Measurements.Add(new { probe = "WPF-RAPID-DOUBLE-SAVE-SINGLE-WRITE", nativeMouseEvents = 4, saveCalls = calls,
+                    vouchersDelta = after.Vouchers.Count - before.Vouchers.Count, revisionDelta = after.Revision - before.Revision });
+            }
+            finally { window.PreviewMouseDown -= ownerGuard; window.PreviewMouseUp -= ownerGuard; }
+        });
         Check("WPF-SQLITE-BUSY-RETAINS-INPUT", () =>
         {
             var editor = new VoucherEditorWindow(book, service.GetSnapshot().Accounts, null, "甲", d => service.SaveDraft(d, "甲")) { Owner = window };
@@ -76,6 +127,8 @@ internal static class Program
                 ((Button)editor.FindName("SaveButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert(editor.IsVisible && editor.DialogResult is null, "Busy failure closed dialog.");
                 Assert(!string.IsNullOrWhiteSpace(((TextBlock)editor.FindName("ErrorText")).Text), "Busy save did not show inline error.");
+                AssertUnchangedInput(editor, "锁冲突保留", "2.34", "2.34");
+                Capture(editor, "sqlite-busy-retains-input.png");
             });
             transaction.Rollback();
         });
@@ -112,14 +165,16 @@ internal static class Program
             executedAtUtc = DateTimeOffset.UtcNow, actualWindowsWpf = true,
             os = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
             checkoutCommit = Environment.GetEnvironmentVariable("CAIWU_ACCEPTANCE_CHECKOUT_COMMIT") ?? "not supplied",
-            mechanism = "Actual production WPF classes/resources, real SQLite; scripted routed events/reflection. No physical keyboard/IME/file-dialog automation.",
-            failures, results = Results
+            productionSourceTree = Environment.GetEnvironmentVariable("CAIWU_ACCEPTANCE_SOURCE_TREE") ?? "not supplied",
+            mechanism = "Actual production WPF classes/resources and SQLite; scripted routed events/reflection plus one native SendInput mouse double-click. No physical keyboard/IME/file-dialog automation.",
+            failures, blocked, measurements = Measurements, results = Results
         }, new JsonSerializerOptions { WriteIndented = true }));
-        app.Shutdown(); return failures == 0 ? 0 : 1;
+        app.Shutdown(); return failures == 0 && blocked == 0 ? 0 : 1;
     }
     private static void Check(string id, Action action)
     {
         try { action(); Results.Add(new { id, status = "PASS" }); Console.WriteLine("PASS " + id); }
+        catch (ProbeBlockedException e) { blocked++; Results.Add(new { id, status = "BLOCKED", detail = e.Message }); Console.WriteLine("BLOCKED " + id + " " + e.Message); }
         catch (Exception e) { failures++; Results.Add(new { id, status = "FAIL", detail = e.ToString() }); Console.WriteLine("FAIL " + id + " " + e.Message); }
     }
     private static void Assert(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
@@ -135,6 +190,75 @@ internal static class Program
         rows[0].Summary = rows[1].Summary = summary; rows[0].AccountCode = "1002"; rows[1].AccountCode = "3001";
         rows[0].DebitText = debit; rows[1].CreditText = credit;
     }
+    private static void AssertUnchangedInput(VoucherEditorWindow editor, string summary, string debit, string credit)
+    {
+        var rows = (ObservableCollection<VoucherLineEdit>)((DataGrid)editor.FindName("LinesGrid")).ItemsSource;
+        Assert(rows[0].Summary == summary && rows[1].Summary == summary && rows[0].DebitText == debit && rows[1].CreditText == credit,
+            "Rejected save changed or lost the entered summary/amounts.");
+    }
+    private sealed class ProbeBlockedException(string message) : Exception(message);
+    private static void InDialogByNativeDoubleClick(VoucherEditorWindow editor, Action prepare, Func<int> saveCalls)
+    {
+        Exception? error = null;
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            error ??= saveCalls() == 0
+                ? new ProbeBlockedException("Synthetic native clicks did not reach Save within five seconds; desktop input availability unverified.")
+                : new InvalidOperationException("Save was invoked but the modal did not close within five seconds.");
+            ForceClose(editor);
+        };
+        editor.Dispatcher.InvokeAsync(() =>
+        {
+            try
+            {
+                prepare(); editor.UpdateLayout(); Capture(editor, "rapid-save-before-click.png");
+                var handle = new WindowInteropHelper(editor).Handle;
+                if (!SetForegroundWindow(handle) && GetForegroundWindow() != handle)
+                    throw new ProbeBlockedException("Cannot foreground the actual editor on this Windows desktop.");
+                var button = (Button)editor.FindName("SaveButton");
+                var point = button.PointToScreen(new Point(button.ActualWidth / 2, button.ActualHeight / 2));
+                if (!SetCursorPos((int)Math.Round(point.X), (int)Math.Round(point.Y)))
+                    throw new ProbeBlockedException("SetCursorPos rejected native mouse placement.");
+                var input = new[] { MouseInput(0x0002), MouseInput(0x0004), MouseInput(0x0002), MouseInput(0x0004) };
+                var delivered = SendInput((uint)input.Length, input, Marshal.SizeOf<NativeInput>());
+                if (delivered != input.Length) throw new ProbeBlockedException($"SendInput accepted {delivered}/4 native mouse events; no success inferred.");
+                timer.Start();
+            }
+            catch (Exception e) { error = e; ForceClose(editor); }
+        }, DispatcherPriority.ApplicationIdle);
+        try
+        {
+            editor.ShowDialog();
+            // Finish queued native input after the first click closes the modal.
+            PumpFor(TimeSpan.FromMilliseconds(300));
+            if (error is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error).Throw();
+            if (saveCalls() == 0) throw new ProbeBlockedException("Editor closed without a Save callback; double-click delivery not verified.");
+        }
+        finally { timer.Stop(); ForceClose(editor); }
+    }
+    private static void PumpFor(TimeSpan interval)
+    {
+        var frame = new DispatcherFrame(); var timer = new DispatcherTimer { Interval = interval };
+        timer.Tick += (_, _) => { timer.Stop(); frame.Continue = false; }; timer.Start();
+        try { Dispatcher.PushFrame(frame); } finally { timer.Stop(); }
+    }
+    private static void ForceClose(Window window)
+    {
+        if (!window.IsVisible) return;
+        window.GetType().GetField("_dirty", BindingFlags.Instance | BindingFlags.NonPublic)?.SetValue(window, false);
+        window.Close();
+    }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeInput { public uint Type; public NativeMouse Mouse; }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeMouse { public int Dx, Dy; public uint MouseData, Flags, Time; public UIntPtr Extra; }
+    private static NativeInput MouseInput(uint flags) => new() { Type = 0, Mouse = new() { Flags = flags } };
+    [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, NativeInput[] input, int size);
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetForegroundWindow(IntPtr window);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetCursorPos(int x, int y);
     private static void InDialog(Window window, Action probe)
     {
         Exception? error = null;
@@ -145,8 +269,7 @@ internal static class Program
             finally
             {
                 // Cleanup only, after observations; avoid a discard-confirmation deadlock.
-                window.GetType().GetField("_dirty", BindingFlags.Instance | BindingFlags.NonPublic)?.SetValue(window, false);
-                window.Close();
+                ForceClose(window);
             }
         }, DispatcherPriority.ApplicationIdle);
         window.ShowDialog(); if (error is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error).Throw();
