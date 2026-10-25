@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Caiwu.Contracts;
+using Caiwu.Acceptance;
 using Caiwu.Core;
 using Caiwu.Desktop;
 using Caiwu.Desktop.Dialogs;
@@ -60,14 +61,15 @@ internal static class Program
             var template = TemplateCatalog.Get(AccountingRegime.SmallBusiness);
             using var store = backend.Create(path, new(Guid.NewGuid(), name, template.Regime, template.Version, 2026, 10, 9, DateTimeOffset.UtcNow), template.Accounts);
             var service = backend.CreateService(store);
+            var seedPlan = service.GetSnapshot();
             var v = service.SaveDraft(new(null, new(2026, 10, 1), "记", null, 0,
-                [new("1002", "初始十元", 10, 0), new("3001", "初始十元", 0, 10)]), "甲");
+                [new("1002", "初始十元", 10, 0), new("3001", "初始十元", 0, 10)], seedPlan.Revision, seedPlan.Book.Id), "甲");
             return (path, v.Id);
         }
         Case("APP-BACKEND-VALIDATES-OPEN-AND-RESTORE-BEFORE-STORAGE", () =>
         {
             var (path, _) = Seed(Path.Combine(root, "policy"), "synthetic-untrusted");
-            using (var db = new SqliteConnection("Data Source=" + path))
+            using (var db = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString()))
             {
                 db.Open(); using var command = db.CreateCommand();
                 command.CommandText = "CREATE TRIGGER synthetic_probe AFTER UPDATE ON ledger BEGIN UPDATE ledger SET name='must-not-run' WHERE singleton=1; END";
@@ -154,16 +156,15 @@ internal static class Program
     private static int Child(string role, string path, string output)
     {
         var app = new App(); app.InitializeComponent(); app.ShutdownMode = ShutdownMode.OnExplicitShutdown;
-        var backend = Backend(); var main = new MainWindow(backend); app.MainWindow = main; main.Show();
+        var seen = new List<SeenMutation>(); var actualBackend = Backend();
+        var backend = actualBackend with { CreateService = store => new ObservedLedgerService(actualBackend.CreateService(store), seen) };
+        var main = new MainWindow(backend); app.MainWindow = main; main.Show();
         Call(main, "OpenVerificationBook", path);
         var session = (LedgerSession)typeof(MainWindow).GetField("_session", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(main)!;
-        var opening = session.Service!.GetSnapshot(); var original = opening.Vouchers.Single(); var tokens = new List<object>();
-        var editor = new VoucherEditorWindow(opening.Book, opening.Accounts, original, "甲", request =>
-        {
-            tokens.Add(new { expectedRevision = request.ExpectedRevision, expectedBookId = request.ExpectedBookId });
-            return session.Service!.SaveDraft(request, "甲");
-        }, expectedRevision: opening.Revision)
-        { Owner = main, Title = "Independent dual editor " + role, WindowStartupLocation = WindowStartupLocation.Manual, Left = role == "A" ? 25 : 450, Top = 45 };
+        var opening = session.Service!.GetSnapshot(); var original = opening.Vouchers.Single();
+        var editor = (VoucherEditorWindow)Call(main, "CreateVerificationEditor", original.Id)!;
+        editor.Title = "Independent dual editor " + role; editor.WindowStartupLocation = WindowStartupLocation.Manual;
+        editor.Left = role == "A" ? 25 : 450; editor.Top = 45;
         var rows = (ObservableCollection<VoucherLineEdit>)((DataGrid)editor.FindName("LinesGrid")).ItemsSource;
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) }; var last = 0; Exception? fault = null;
         object State(string kind)
@@ -174,7 +175,7 @@ internal static class Program
                 editorVisible = editor.IsVisible, inputDebit = rows[0].DebitText, inputCredit = rows[1].CreditText,
                 inputSummary = rows[0].Summary, error = ((TextBlock)editor.FindName("ErrorText")).Text,
                 storedBookId = current.Book.Id, storedRevision = current.Revision, storedAmount = current.Vouchers.Single().Lines[0].Debit,
-                vouchers = current.Vouchers.Count, auditEvents = current.AuditEvents.Count, snapshotSha256 = Digest(current), sentTokens = tokens.ToArray() };
+                vouchers = current.Vouchers.Count, auditEvents = current.AuditEvents.Count, snapshotSha256 = Digest(current), sentTokens = seen.Where(x => x.Draft is not null).Select(x => new { expectedRevision = x.Draft!.ExpectedRevision, expectedBookId = x.Draft.ExpectedBookId }).ToArray() };
         }
         editor.Loaded += (_, _) => editor.Dispatcher.InvokeAsync(() =>
         {
@@ -193,7 +194,10 @@ internal static class Program
                     rows[0].Summary = rows[1].Summary = "未保存输入-" + role;
                     rows[0].DebitText = rows[1].CreditText = command.GetProperty("amount").GetString()!;
                 }
-                else if (kind == "save") ((Button)editor.FindName("SaveButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                else if (kind == "save")
+                {
+                    ((Button)editor.FindName("SaveButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
                 else if (kind == "close") { typeof(VoucherEditorWindow).GetField("_dirty", BindingFlags.NonPublic | BindingFlags.Instance)?.SetValue(editor, false); editor.Close(); }
                 else throw new InvalidDataException("Unknown bounded child command.");
                 if (editor.IsVisible) Capture(editor, Path.Combine(output, "editor-event-" + seq + ".png"));
@@ -213,9 +217,9 @@ internal static class Program
     private static object? Call(object instance, string method, params object[] args) => instance.GetType().GetMethod(method, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(instance, args);
     private static void Capture(Window window, string path)
     {
-        window.UpdateLayout(); var visual = (FrameworkElement)window.Content;
-        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(visual.ActualWidth), (int)Math.Ceiling(visual.ActualHeight), 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        window.UpdateLayout(); var dpi = VisualTreeHelper.GetDpi(window);
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY), 96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+        bitmap.Render(window); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var file = File.Create(path); encoder.Save(file);
     }
 }

@@ -37,11 +37,19 @@ internal static class Program
         var book = new BookInfo(Guid.NewGuid(), "独立验收", AccountingRegime.SmallBusiness, "acceptance", 2026, 10, 9, DateTimeOffset.UtcNow);
         using var store = SqliteLedgerStore.Create(path, book, TemplateCatalog.Get(AccountingRegime.SmallBusiness).Accounts);
         var service = new LedgerService(store);
+        var seedPlan = service.GetSnapshot();
         var saved = service.SaveDraft(new(null, new(2026, 10, 1), "记", null, 0,
-            [new("1002", "独立数据", 123456.78m, 0), new("3001", "独立数据", 0, 123456.78m)]), "甲");
-        service.Review(saved.Id, "乙"); service.Post(saved.Id, "乙");
+            [new("1002", "独立数据", 123456.78m, 0), new("3001", "独立数据", 0, 123456.78m)], seedPlan.Revision, seedPlan.Book.Id), "甲");
+        var reviewPlan = service.GetSnapshot(); service.Review(saved.Id, "乙", new(reviewPlan.Book.Id, reviewPlan.Revision));
+        var postPlan = service.GetSnapshot(); service.Post(saved.Id, "乙", new(postPlan.Book.Id, postPlan.Revision));
         var window = new MainWindow(backend); app.MainWindow = window; window.Show(); Pump();
         Call(window, "OpenVerificationBook", path); Pump();
+        VoucherEditorWindow OpenNewEditorFromOneSnapshot(Func<VoucherDraft, Voucher>? save = null)
+        {
+            var opening = service.GetSnapshot();
+            return new VoucherEditorWindow(opening.Book, opening.Accounts, null, "甲", save ?? (d => service.SaveDraft(d, "甲")),
+                expectedRevision: opening.Revision) { Owner = window };
+        }
         Check("WPF-LAYOUT", () =>
         {
             var unreadable = new List<string>();
@@ -65,7 +73,7 @@ internal static class Program
         });
         Check("WPF-INVALID-SAVE-RETAINS-INPUT", () =>
         {
-            var editor = new VoucherEditorWindow(book, service.GetSnapshot().Accounts, null, "甲", d => service.SaveDraft(d, "甲")) { Owner = window };
+            var editor = OpenNewEditorFromOneSnapshot();
             var before = store.Read().Revision;
             InDialog(editor, () =>
             {
@@ -80,7 +88,7 @@ internal static class Program
         });
         Check("WPF-MALFORMED-AMOUNT-REJECTED", () =>
         {
-            var editor = new VoucherEditorWindow(book, service.GetSnapshot().Accounts, null, "甲", d => service.SaveDraft(d, "甲")) { Owner = window };
+            var editor = OpenNewEditorFromOneSnapshot();
             var before = JsonSerializer.Serialize(store.Read());
             InDialog(editor, () =>
             {
@@ -96,10 +104,7 @@ internal static class Program
         Check("WPF-RAPID-DOUBLE-SAVE-SINGLE-WRITE", () =>
         {
             var calls = 0; var before = store.Read();
-            var editor = new VoucherEditorWindow(book, service.GetSnapshot().Accounts, null, "甲", d =>
-            {
-                calls++; return service.SaveDraft(d, "甲");
-            }) { Owner = window };
+            var editor = OpenNewEditorFromOneSnapshot(d => { calls++; return service.SaveDraft(d, "甲"); });
             var ownerGuard = new MouseButtonEventHandler((_, e) => e.Handled = true);
             // Guard only the owner so the second native click cannot start an unrelated owner action
             // after the modal closes; input routing inside the voucher window remains unchanged.
@@ -117,7 +122,7 @@ internal static class Program
         });
         Check("WPF-SQLITE-BUSY-RETAINS-INPUT", () =>
         {
-            var editor = new VoucherEditorWindow(book, service.GetSnapshot().Accounts, null, "甲", d => service.SaveDraft(d, "甲")) { Owner = window };
+            var editor = OpenNewEditorFromOneSnapshot();
             using var blocker = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = path, Pooling = false }.ToString());
             blocker.Open(); using var transaction = blocker.BeginTransaction(deferred: false);
             InDialog(editor, () =>
@@ -133,8 +138,9 @@ internal static class Program
         });
         Check("WPF-STALE-EDITOR-RETAINS-OPENING-TOKEN-AND-INPUT", () =>
         {
+            var seedOpening = service.GetSnapshot();
             var draft = service.SaveDraft(new(null, new(2026, 10, 2), "记", null, 0,
-                [new("1002", "旧窗口原值", 10, 0), new("3001", "旧窗口原值", 0, 10)]), "甲");
+                [new("1002", "旧窗口原值", 10, 0), new("3001", "旧窗口原值", 0, 10)], seedOpening.Revision, seedOpening.Book.Id), "甲");
             // Each editor's voucher, book identity and revision come from exactly one
             // snapshot at OPEN time, before either write. Never refresh a token in Save.
             var openingA = service.GetSnapshot();
@@ -185,7 +191,8 @@ internal static class Program
         // without claiming that the backend accepted it; no account-save success is fabricated.
         Check("WPF-ACCOUNT-INVALID-RETAINS-INPUT", () =>
         {
-            var dialog = new AccountWindow(null, null) { Owner = window };
+            var accountOpening = service.GetSnapshot();
+            var dialog = new AccountWindow(null, null, account => service.SaveAccount(account, "甲", new(accountOpening.Book.Id, accountOpening.Revision))) { Owner = window };
             var accepted = false;
             InDialog(dialog, () =>
             {
@@ -328,9 +335,9 @@ internal static class Program
     }
     private static void Capture(Window window, string name)
     {
-        window.UpdateLayout(); var content = (FrameworkElement)window.Content;
-        var image = new RenderTargetBitmap((int)Math.Ceiling(content.ActualWidth), (int)Math.Ceiling(content.ActualHeight), 96, 96, PixelFormats.Pbgra32);
-        image.Render(content); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
+        window.UpdateLayout(); var dpi = VisualTreeHelper.GetDpi(window);
+        var image = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth * dpi.DpiScaleX), (int)Math.Ceiling(window.ActualHeight * dpi.DpiScaleY), 96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+        image.Render(window); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(image));
         using var file = File.Create(Path.Combine(directory, name)); encoder.Save(file);
     }
 }
