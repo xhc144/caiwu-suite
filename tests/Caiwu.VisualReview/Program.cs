@@ -46,9 +46,14 @@ internal static class Program
             var snapshot = service.GetSnapshot();
             foreach (var (summary, amount, review) in new[] { ("办公用品采购 · 合成样例", 860m, false), ("差旅费用报销 · 合成样例", 2480.50m, true) })
             {
+                var entryPlan = service.GetSnapshot();
                 var voucher = service.SaveDraft(new(null, new(2026, 10, 18), "记", null, 2,
-                    [new("5602", summary, amount, 0), new("1002", summary, 0, amount)], null, snapshot.Book.Id), "制单员");
-                if (review) service.Review(voucher.Id, "审核员");
+                    [new("5602", summary, amount, 0), new("1002", summary, 0, amount)], entryPlan.Revision, entryPlan.Book.Id), "制单员");
+                if (review)
+                {
+                    var reviewPlan = service.GetSnapshot();
+                    service.Review(voucher.Id, "审核员", new(reviewPlan.Book.Id, reviewPlan.Revision));
+                }
             }
             var main = new MainWindow(backend); app.MainWindow = main; main.Show(); Pump();
             Call(main, "OpenVerificationBook", path); Pump(); SizeNative(main);
