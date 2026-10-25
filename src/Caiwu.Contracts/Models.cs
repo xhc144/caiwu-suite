@@ -18,6 +18,10 @@ public sealed record Voucher(Guid Id, DateOnly Date, string Kind, int Number,
     int AttachmentCount, string PreparedBy, string? ReviewedBy,
     VoucherStatus Status, IReadOnlyList<VoucherLine> Lines);
 
+/// <summary>
+/// New and existing drafts require both expected fields from the same snapshot used to
+/// open the editor. Null defaults retain source compatibility, not permission to write.
+/// </summary>
 public sealed record VoucherDraft(Guid? Id, DateOnly Date, string Kind, int? Number,
     int AttachmentCount, IReadOnlyList<VoucherLine> Lines, long? ExpectedRevision = null,
     Guid? ExpectedBookId = null);
