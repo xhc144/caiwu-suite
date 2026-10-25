@@ -14,6 +14,13 @@ internal static class NativeCapture
     {
         window.Activate(); window.UpdateLayout();
         window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        // PrintWindow can otherwise return the previous compositor frame immediately
+        // after routed handlers update controls. Keep pumping while WPF presents it.
+        var frame = new DispatcherFrame();
+        var settle = new DispatcherTimer(DispatcherPriority.ApplicationIdle, window.Dispatcher)
+            { Interval = TimeSpan.FromMilliseconds(200) };
+        settle.Tick += (_, _) => { settle.Stop(); frame.Continue = false; };
+        settle.Start(); Dispatcher.PushFrame(frame);
         DwmFlush();
         var hwnd = new WindowInteropHelper(window).Handle;
         Program.Need(hwnd != 0 && GetWindowRect(hwnd, out _), "native HWND is visible for capture");

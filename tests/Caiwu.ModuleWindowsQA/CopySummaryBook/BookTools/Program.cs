@@ -111,6 +111,12 @@ internal static class Program
         Need(actual.Revision == 1 && Json(actual.Accounts) == Json(shown.Accounts), "copy persists accounts and original openings exactly");
         Need(Json(actual.Vouchers) == Json(opening ? Array.Empty<Voucher>() : shown.Vouchers), "selected scope persists exact vouchers");
         Need(actual.AuditEvents.Count == (opening ? 1 : shown.AuditEvents.Count + 1), "copy persists provenance and selected audit scope");
+        Need(shown.Book.ClosedThroughMonth == 1 && actual.Book.ClosedThroughMonth == (opening ? 0 : 1), "selected scope retains or resets a genuinely closed month");
+        using (var reopened = SqliteLedgerStore.Open(target))
+        {
+            var bank = new LedgerService(reopened).GetTrialBalance(new(2026, 1, 1), new(2026, 1, 31)).Single(r => r.AccountCode == "1002");
+            Need(bank.OpeningDebit == 10m && bank.ClosingDebit == (opening ? 10m : 10.2m), "reopened copied book has independently expected ledger balance");
+        }
         Need(Hash(source) == hash && !Directory.GetDirectories(root).Any(), "success preserves source and cleans staging");
         observations.Add(new { result.Book.Id, targetSha256 = Hash(target), sourceSha256 = hash, opening });
     }
@@ -275,8 +281,13 @@ internal static class Program
             new(Guid.NewGuid(), "合成账套" + name, AccountingRegime.Enterprise, "synthetic-only", 2026, 1, 0, DateTimeOffset.UtcNow),
             [new("1002", "合成银行", null, BalanceDirection.Debit, true, 10m, 0), new("4001", "合成资本", null, BalanceDirection.Credit, true, 0, 10m)]);
         var shown = store.Read();
-        new LedgerService(store).SaveDraft(new(null, new(2026, 1, 5), "记", 1, 0,
+        var service = new LedgerService(store);
+        var voucher = service.SaveDraft(new(null, new(2026, 1, 5), "记", 1, 0,
             [new("1002", "合成借方", 0.2m, 0), new("4001", "合成贷方", 0, 0.2m)], shown.Revision, shown.Book.Id), "合成制单员");
+        LedgerMutationContext Context() { var snapshot = store.Read(); return new(snapshot.Book.Id, snapshot.Revision); }
+        service.Review(voucher.Id, "合成审核员", Context());
+        service.Post(voucher.Id, "合成记账员", Context());
+        service.CloseMonth(1, "合成结账员", Context());
         return path;
     }
     private static LedgerSnapshot Read(string path) { using var s = SqliteLedgerStore.Open(path); s.CheckIntegrity(); return s.Read(); }

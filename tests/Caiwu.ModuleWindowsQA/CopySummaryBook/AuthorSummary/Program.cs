@@ -36,7 +36,10 @@ internal static class Program
             Drive(manager, window =>
             {
                 Console.WriteLine(JsonSerializer.Serialize(new { diagnostic = "book-scope", window.State.BookId, window.State.BookDisplayName, expectedBookId = book, actualText = Find<TextBlock>(window, "BookScope").Text, inlineText = new System.Windows.Documents.TextRange(Find<TextBlock>(window, "BookScope").ContentStart, Find<TextBlock>(window, "BookScope").ContentEnd).Text }));
-                Check(window.State.BookId == book && Find<TextBlock>(window, "BookScope").Text.Contains("合成账套 A", StringComparison.Ordinal), "scope identifies the injected book");
+                // BookScope is composed of bound Runs. WPF leaves TextBlock.Text empty;
+                // inspect its actual document text, retaining the same identity/display assertion.
+                var scope = Find<TextBlock>(window, "BookScope");
+                Check(window.State.BookId == book && new System.Windows.Documents.TextRange(scope.ContentStart, scope.ContentEnd).Text.Contains("合成账套 A", StringComparison.Ordinal), "scope identifies the injected book");
                 Check(!Find<Button>(window, "ChooseButton").IsEnabled, "empty catalog cannot be selected");
                 Click(window, "AddCategoryButton"); SetText(window, "CategoryNameBox", "费用");
                 Check(catalog.Read().Categories.Count == 0, "typing category is not persisted");
