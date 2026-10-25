@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Caiwu.Contracts;
 using Caiwu.Desktop.Presentation;
 
@@ -137,7 +138,7 @@ public partial class VoucherEditorWindow : Window
             // Cancel, failed validation and expired contexts never replace the current input.
             if (selected is null) return;
             if (!_lines.Contains(line)) throw new LedgerValidationException("原分录已变化，请重新选择。");
-            line.Summary = selected; ErrorText.Text = ""; FocusCell(line, 0);
+            line.Summary = selected; ErrorText.Text = ""; FocusCell(line, 0, DispatcherPriority.Input);
         }
         catch (Exception ex)
         {
@@ -195,9 +196,9 @@ public partial class VoucherEditorWindow : Window
         }
     }
 
-    private void FocusCell(VoucherLineEdit row, int column)
+    private void FocusCell(VoucherLineEdit row, int column, DispatcherPriority priority = DispatcherPriority.Normal)
     {
-        Dispatcher.BeginInvoke(new Action(() =>
+        Dispatcher.BeginInvoke(priority, new Action(() =>
         {
             LinesGrid.ScrollIntoView(row, LinesGrid.Columns[column]);
             LinesGrid.CurrentCell = new DataGridCellInfo(row, LinesGrid.Columns[column]);
