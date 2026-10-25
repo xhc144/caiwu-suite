@@ -21,6 +21,11 @@ internal static class NativeCapture
             { Interval = TimeSpan.FromMilliseconds(200) };
         settle.Tick += (_, _) => { settle.Stop(); frame.Continue = false; };
         settle.Start(); Dispatcher.PushFrame(frame);
+        // Match the existing verified native capture path: drain layout/dispatcher,
+        // then let the separate WPF render/compositor thread present the final frame.
+        window.UpdateLayout();
+        window.Dispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+        Thread.Sleep(250);
         DwmFlush();
         var hwnd = new WindowInteropHelper(window).Handle;
         Program.Need(hwnd != 0 && GetWindowRect(hwnd, out _), "native HWND is visible for capture");
