@@ -1,0 +1,70 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="d8a87ddf-f110-4b98-b4b7-36eaadd70e3b" name="@b888a35a3c41 2026-10-25 09:36:59" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-25T09:36:59.1438143+00:00" queuing="2026-10-25T09:36:59.1438144+00:00" start="2026-10-25T09:36:55.4534177+00:00" finish="2026-10-25T09:37:11.8396701+00:00" />
+  <TestSettings name="default" id="a770454c-2676-4435-aaf6-d52595ce8ebe">
+    <Deployment runDeploymentRoot="_b888a35a3c41_2026-10-25_09_36_59" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="df56217c-cacd-4bef-81b4-273d5d08b3d9" testId="e3e9d1c9-b42b-395f-3a6a-b60a55e8583e" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;create&quot;)" computerName="b888a35a3c41" duration="00:00:04.7891312" startTime="2026-10-25T09:36:58.8314286+00:00" endTime="2026-10-25T09:37:03.6144652+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="df56217c-cacd-4bef-81b4-273d5d08b3d9" />
+    <UnitTestResult executionId="a50b50a4-de0a-4bc3-9961-ccffec0e476a" testId="3c28c89a-7679-5a47-fb1d-aac8e54db86e" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;restore&quot;)" computerName="b888a35a3c41" duration="00:00:03.7451420" startTime="2026-10-25T09:37:07.8048477+00:00" endTime="2026-10-25T09:37:11.5496067+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="a50b50a4-de0a-4bc3-9961-ccffec0e476a" />
+    <UnitTestResult executionId="03520980-b98a-45eb-9049-a9543540af1d" testId="e13a56e3-f7ca-6b58-5d7c-7ffc0dd2e47d" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.FailedPopulationCleansOnlyItsOwnTemporaryFiles" computerName="b888a35a3c41" duration="00:00:00.0036953" startTime="2026-10-25T09:37:11.7058481+00:00" endTime="2026-10-25T09:37:11.7093609+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="03520980-b98a-45eb-9049-a9543540af1d" />
+    <UnitTestResult executionId="f170a91a-8835-415a-a35f-ca2574ed442a" testId="66abe178-a725-78d7-4cf7-63e9d4f49ea1" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;publish&quot;)" computerName="b888a35a3c41" duration="00:00:01.8962919" startTime="2026-10-25T09:36:56.9036593+00:00" endTime="2026-10-25T09:36:58.8174386+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f170a91a-8835-415a-a35f-ca2574ed442a" />
+    <UnitTestResult executionId="b3fd3597-ab49-476c-be12-2850e72d2176" testId="3251f588-9e31-55bd-055c-99a9a655cc77" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.StagedPublishersOnDedicatedThreadsCannotReplaceEachOther" computerName="b888a35a3c41" duration="00:00:00.1464976" startTime="2026-10-25T09:37:11.5572281+00:00" endTime="2026-10-25T09:37:11.7019611+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b3fd3597-ab49-476c-be12-2850e72d2176" />
+    <UnitTestResult executionId="0ccad178-106c-4515-9c13-35a0fb23b77f" testId="e520b60b-e381-6ba5-abf4-911b9c1b9964" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.DestinationAppearingAfterStagingIsNeverChangedOrRemoved" computerName="b888a35a3c41" duration="00:00:00.0038710" startTime="2026-10-25T09:37:11.7022864+00:00" endTime="2026-10-25T09:37:11.7055051+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0ccad178-106c-4515-9c13-35a0fb23b77f" />
+    <UnitTestResult executionId="d08650fc-9516-48ce-ae2b-ac6ad98762ee" testId="951ed9b5-a40c-d2ba-2ef3-972b8c98938e" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;backup&quot;)" computerName="b888a35a3c41" duration="00:00:04.1916920" startTime="2026-10-25T09:37:03.6168996+00:00" endTime="2026-10-25T09:37:07.8035978+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d08650fc-9516-48ce-ae2b-ac6ad98762ee" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;publish&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="66abe178-a725-78d7-4cf7-63e9d4f49ea1">
+      <Execution id="f170a91a-8835-415a-a35f-ca2574ed442a" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.DestinationAppearingAfterStagingIsNeverChangedOrRemoved" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="e520b60b-e381-6ba5-abf4-911b9c1b9964">
+      <Execution id="0ccad178-106c-4515-9c13-35a0fb23b77f" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="DestinationAppearingAfterStagingIsNeverChangedOrRemoved" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.FailedPopulationCleansOnlyItsOwnTemporaryFiles" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="e13a56e3-f7ca-6b58-5d7c-7ffc0dd2e47d">
+      <Execution id="03520980-b98a-45eb-9049-a9543540af1d" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="FailedPopulationCleansOnlyItsOwnTemporaryFiles" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.StagedPublishersOnDedicatedThreadsCannotReplaceEachOther" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="3251f588-9e31-55bd-055c-99a9a655cc77">
+      <Execution id="b3fd3597-ab49-476c-be12-2850e72d2176" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="StagedPublishersOnDedicatedThreadsCannotReplaceEachOther" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;create&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="e3e9d1c9-b42b-395f-3a6a-b60a55e8583e">
+      <Execution id="df56217c-cacd-4bef-81b4-273d5d08b3d9" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;restore&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="3c28c89a-7679-5a47-fb1d-aac8e54db86e">
+      <Execution id="a50b50a4-de0a-4bc3-9961-ccffec0e476a" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;backup&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="951ed9b5-a40c-d2ba-2ef3-972b8c98938e">
+      <Execution id="d08650fc-9516-48ce-ae2b-ac6ad98762ee" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="e3e9d1c9-b42b-395f-3a6a-b60a55e8583e" executionId="df56217c-cacd-4bef-81b4-273d5d08b3d9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3c28c89a-7679-5a47-fb1d-aac8e54db86e" executionId="a50b50a4-de0a-4bc3-9961-ccffec0e476a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e13a56e3-f7ca-6b58-5d7c-7ffc0dd2e47d" executionId="03520980-b98a-45eb-9049-a9543540af1d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="66abe178-a725-78d7-4cf7-63e9d4f49ea1" executionId="f170a91a-8835-415a-a35f-ca2574ed442a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3251f588-9e31-55bd-055c-99a9a655cc77" executionId="b3fd3597-ab49-476c-be12-2850e72d2176" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e520b60b-e381-6ba5-abf4-911b9c1b9964" executionId="0ccad178-106c-4515-9c13-35a0fb23b77f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="951ed9b5-a40c-d2ba-2ef3-972b8c98938e" executionId="d08650fc-9516-48ce-ae2b-ac6ad98762ee" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="7" executed="7" passed="7" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v4.0.1+0f7d528729 (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.23]   Discovering: Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.54]   Discovered:  Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.62]   Starting:    Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:15.51]   Finished:    Caiwu.Persistence.Sqlite.Tests
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

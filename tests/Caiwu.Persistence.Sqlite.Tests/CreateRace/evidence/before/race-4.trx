@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="221ff24f-907b-4cc9-bc00-ec00091195c1" name="@b888a35a3c41 2026-10-25 09:33:21" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-25T09:33:21.4424589+00:00" queuing="2026-10-25T09:33:21.4424589+00:00" start="2026-10-25T09:33:19.8520361+00:00" finish="2026-10-25T09:33:21.4548448+00:00" />
+  <TestSettings name="default" id="566aee06-00ef-4ad3-a4cd-c655231e6e54">
+    <Deployment runDeploymentRoot="_b888a35a3c41_2026-10-25_09_33_21" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="605de9a7-5f85-41c4-b2ba-c10c30c129e1" testId="dfa4073c-b67f-4fba-b293-a9765b0c6c1f" testName="Caiwu.Persistence.Sqlite.Tests.StoreTests.RacingCreatorsNeverOverwriteTheWinner" computerName="b888a35a3c41" duration="00:00:00.1506576" startTime="2026-10-25T09:33:21.0420541+00:00" endTime="2026-10-25T09:33:21.2208377+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="605de9a7-5f85-41c4-b2ba-c10c30c129e1" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.StoreTests.RacingCreatorsNeverOverwriteTheWinner" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="dfa4073c-b67f-4fba-b293-a9765b0c6c1f">
+      <Execution id="605de9a7-5f85-41c4-b2ba-c10c30c129e1" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.StoreTests" name="RacingCreatorsNeverOverwriteTheWinner" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="dfa4073c-b67f-4fba-b293-a9765b0c6c1f" executionId="605de9a7-5f85-41c4-b2ba-c10c30c129e1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="1" executed="1" passed="1" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v4.0.1+0f7d528729 (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.18]   Discovering: Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.36]   Discovered:  Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.43]   Starting:    Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.68]   Finished:    Caiwu.Persistence.Sqlite.Tests
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>
