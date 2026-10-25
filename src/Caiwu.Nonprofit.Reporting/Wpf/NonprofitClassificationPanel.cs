@@ -136,9 +136,9 @@ public sealed class NonprofitClassificationPanel : UserControl
     private void Run(Action action)
     {
         try{action();}
-        catch(ClassificationStaleException ex){status.Text=ex.Message;issues.ItemsSource=new[]{ex.Reason};exportCsv.IsEnabled=exportHtml.IsEnabled=save.IsEnabled=false;}
+        catch(ClassificationStaleException ex){ClearPreview();status.Text=ex.Message;issues.ItemsSource=new[]{ex.Reason};exportCsv.IsEnabled=exportHtml.IsEnabled=save.IsEnabled=false;}
         catch(Exception ex)when(ex is ArgumentException or InvalidOperationException or IOException or System.Text.Json.JsonException or OverflowException)
-        {status.Text=ex.Message;issues.ItemsSource=new[]{new MissingReason("NP_EDITOR_VALIDATION","Editor",ex.Message)};}
+        {ClearPreview();status.Text=ex.Message;issues.ItemsSource=new[]{new MissingReason("NP_EDITOR_VALIDATION","Editor",ex.Message)};}
     }
     private Button Add(Panel panel,string label,Action action)
     {var b=new Button{Content=label,Margin=new(4),Padding=new(10,5,10,5)};b.Click+=(_,_)=>Run(action);panel.Children.Add(b);return b;}
@@ -176,7 +176,7 @@ public sealed class NonprofitClassificationPanel : UserControl
         {
             e.Column.Width=e.PropertyName=="项目"?280:180;
             if(e.Column is DataGridTextColumn text)
-            {var style=new Style(typeof(TextBlock),text.ElementStyle);style.Setters.Add(new Setter(TextBlock.TextWrappingProperty,TextWrapping.Wrap));text.ElementStyle=style;}
+            {var style=new Style(typeof(TextBlock),text.ElementStyle);style.Setters.Add(new Setter(TextBlock.TextWrappingProperty,TextWrapping.Wrap));if(e.PropertyName!="项目")style.Setters.Add(new Setter(TextBlock.TextAlignmentProperty,TextAlignment.Right));text.ElementStyle=style;}
         };
     }
     private static DataView Table(NonprofitStatement report)
