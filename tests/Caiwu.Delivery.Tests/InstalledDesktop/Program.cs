@@ -148,6 +148,8 @@ internal static class Program
             var cost = Window(title => title.StartsWith("成本工作表 ·", StringComparison.Ordinal)); Capture("cost-entry"); Close(cost);
             Menu("会计档案", "复制账套…");
             var copy = Window(title => title.Contains("复制", StringComparison.Ordinal) && title.Contains("账套", StringComparison.Ordinal)); Capture("book-copy-entry"); Close(copy);
+            var copySourceRow = list.FindFirst(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.DataItem))!;
+            ((SelectionItemPattern)copySourceRow.GetCurrentPattern(SelectionItemPattern.Pattern)).Select();
             Menu("实务操作", "复制凭证为新草稿…");
             var voucherCopy = Window(title => title == "复制为新草稿"); Capture("voucher-copy-entry"); Close(voucherCopy);
             Pass("actual installed summary initialization, cost and book-copy entrypoints open");
@@ -253,8 +255,13 @@ internal static class Program
     private static void FileDialog(string title, string path)
     {
         var dialog = Window(name => name == title);
-        var input = dialog.FindFirst(TreeScope.Descendants, new AndCondition(Id("1001"), new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Edit))) ?? throw new InvalidDataException("Native filename edit absent.");
-        SetValue(input, path); input.SetFocus(); Key(0x0d);
+        // Native common dialogs reuse numeric control IDs. Focus the actual filename
+        // edit by its standard mnemonic and type real input so the dialog commits it.
+        SetForegroundWindow((IntPtr)dialog.Current.NativeWindowHandle);
+        Down(0x12); Key(0x4e); Up(0x12); Thread.Sleep(150); // Alt+N: File name / 文件名.
+        var focused = AutomationElement.FocusedElement;
+        if (focused.Current.ControlType != ControlType.Edit) throw new InvalidDataException("Native filename mnemonic did not focus an edit control.");
+        ControlKey(0x41); Type(path); Key(0x0d);
         Until(() => !HasWindow(title), "native path dialog acceptance");
     }
     private static void Cell(AutomationElement grid, int row, int column, string text)
@@ -262,9 +269,10 @@ internal static class Program
         var cell = ((GridPattern)grid.GetCurrentPattern(GridPattern.Pattern)).GetItem(row, column); var rectangle = cell.Current.BoundingRectangle;
         SetCursorPos((int)(rectangle.X + rectangle.Width / 2), (int)(rectangle.Y + rectangle.Height / 2));
         Send(new Input { Type = 0, Mouse = new Mouse { Flags = 2 } }); Send(new Input { Type = 0, Mouse = new Mouse { Flags = 4 } });
-        Key(0x71); Shortcut(0x41); Type(text); Key(0x09); Thread.Sleep(60);
+        Key(0x71); ControlKey(0x41); Type(text); Key(0x09); Thread.Sleep(60);
     }
-    private static void Shortcut(ushort key, bool shift = false) { if (main is not null) SetForegroundWindow((IntPtr)main.Current.NativeWindowHandle); Down(0x11); if (shift) Down(0x10); Key(key); if (shift) Up(0x10); Up(0x11); Thread.Sleep(100); }
+    private static void ControlKey(ushort key, bool shift = false) { Down(0x11); if (shift) Down(0x10); Key(key); if (shift) Up(0x10); Up(0x11); Thread.Sleep(100); }
+    private static void Shortcut(ushort key, bool shift = false) { if (main is not null) SetForegroundWindow((IntPtr)main.Current.NativeWindowHandle); ControlKey(key, shift); }
     private static void Key(ushort key) { Down(key); Up(key); }
     private static void Down(ushort key) => Send(new Input { Type = 1, Keyboard = new Keyboard { VirtualKey = key } });
     private static void Up(ushort key) => Send(new Input { Type = 1, Keyboard = new Keyboard { VirtualKey = key, Flags = 2 } });
