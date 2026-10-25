@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <CaiwuControlsProject Condition="'$(CaiwuControlsProject)' == ''">../../../src/Caiwu.Desktop.Controls/Caiwu.Desktop.Controls.csproj</CaiwuControlsProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Caiwu.Summaries/Caiwu.Summaries.csproj" />
+    <ProjectReference Include="$(CaiwuControlsProject)" />
+  </ItemGroup>
+</Project>
