@@ -1,0 +1,48 @@
+--- a/tests/Caiwu.Persistence.Sqlite.Tests/ReadbackTests.cs
++++ b/tests/Caiwu.Persistence.Sqlite.Tests/ReadbackTests.cs
+@@ -65,15 +65,25 @@
+     }
+     private static string State(LedgerSnapshot snapshot) => JsonSerializer.Serialize(snapshot);
+ 
++    // Forensic byte comparison of this synthetic, paused connection only.
++    // This is never used as a production SQLite/WAL fingerprint.
++    private byte[] PausedSyntheticBytes()
++    {
++        using var input = new FileStream(Database, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
++        using var output = new MemoryStream();
++        input.CopyTo(output);
++        return output.ToArray();
++    }
++
+     private void RefusedAndUnchanged(SqliteLedgerStore store, LedgerSnapshot next)
+     {
+         var before = State(store.Read());
+         var input = State(next);
+-        var bytes = File.ReadAllBytes(Database);
++        var bytes = PausedSyntheticBytes();
+         Assert.Throws<InvalidDataException>(() => store.Write(next, 1));
+         Assert.Equal(before, State(store.Read()));
+         Assert.Equal(input, State(next));
+-        Assert.Equal(bytes, File.ReadAllBytes(Database));
++        Assert.Equal(bytes, PausedSyntheticBytes());
+         using var reopened = SqliteLedgerStore.Open(Database);
+         Assert.Equal(before, State(reopened.Read()));
+         reopened.CheckIntegrity();
+@@ -327,7 +337,7 @@
+             COMMIT;
+             """);
+         var before = State(store.Read());
+-        var bytesBefore = File.ReadAllBytes(Database);
++        var bytesBefore = PausedSyntheticBytes();
+         var error = Record.Exception(() => store.Write(Next(), 1));
+         using (var db = Raw())
+         {
+@@ -339,7 +349,7 @@
+             Assert.Equal("ok", integrity);
+         }
+         Assert.Equal(before, State(store.Read()));
+-        Assert.Equal(bytesBefore, File.ReadAllBytes(Database));
++        Assert.Equal(bytesBefore, PausedSyntheticBytes());
+         using var independentlyReopened = SqliteLedgerStore.Open(Database);
+         Assert.Equal(before, State(independentlyReopened.Read()));
+     }
