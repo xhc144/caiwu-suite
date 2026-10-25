@@ -86,10 +86,16 @@ internal static class Program
             var searchBox = (TextBox)main.FindName("VoucherSearch");
             Require(ReferenceEquals(searchBox.Template, app.FindResource("DefaultTextBoxControlTemplate")), "Search input fell back to a legacy TextBox template.");
             var operatorInput = (ComboBox)main.FindName("OperatorInput");
-            Require(ReferenceEquals(operatorInput.Template, app.FindResource("EditableComboBoxTemplate")), "Editable ComboBox fell back to a legacy template.");
+            Require(!operatorInput.IsEditable && !operatorInput.IsEnabled &&
+                operatorInput.SelectedItem?.ToString() == SyntheticDesktopIdentity.Login.Identity.DisplayName,
+                "Operator identity is editable or differs from the authenticated login.");
+            ControlTemplate? nativeComboTemplate = null;
+            for (Style? nativeStyle = (Style)app.FindResource("DefaultComboBoxStyle"); nativeStyle is not null && nativeComboTemplate is null; nativeStyle = nativeStyle.BasedOn)
+                nativeComboTemplate = nativeStyle.Setters.OfType<Setter>().FirstOrDefault(s => s.Property == Control.TemplateProperty)?.Value as ControlTemplate;
+            Require(nativeComboTemplate is not null && ReferenceEquals(operatorInput.Template, nativeComboTemplate), "Locked identity ComboBox fell back to a legacy template.");
             var date = (DatePicker)main.FindName("VoucherFrom");
             Require(date.Template.FindName("BorderElement", date) is Border, "DatePicker fell back to a legacy template.");
-            Checks.Add("Application typography and actual Fluent TextBox, editable ComboBox and DatePicker templates");
+            Checks.Add("Application typography, authenticated locked identity and actual Fluent TextBox, ComboBox and DatePicker templates");
             date.IsDropDownOpen = true; Pump();
             Require(date.Template.FindName("PART_Popup", date) is Popup { IsOpen: true }, "DatePicker calendar popup did not open.");
             date.IsDropDownOpen = false; Pump(); Checks.Add("Native DatePicker calendar popup opens and closes");
