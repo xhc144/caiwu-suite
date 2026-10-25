@@ -1,124 +1,36 @@
-# Windows 交付与验收候选实现
+# Windows 私有交付组件
 
-本目录是独立交付组件，供主协调采纳。只增加 `packaging-next/**` 与 `tests/Caiwu.Delivery.Tests/**`；不改原 `packaging/`、根 solution 或 `.github/`。源起点 `037a07585078d4dfcd443a2cc4a237c88aed07a0`，公共接口沿用 `97d696a3ee7adf100e24b4924438468bd34dd80c`。
+**交付仍暂停。** `docs/acceptance/DELIVERY_PAUSED.md` 由指定独审负责；只有根接受旧 P1 复查和最新证据并明确放行后，才可处理标记、生成最终用户候选。普通 builder 没有暂停绕过参数。现有内部安装器不是最终包，不能改名交付。
 
-**当前集成暂停分发。** 只读核对 `codex/windows-mvp` 的 `0377ce764bc5a191c232c3f50da602a5ca2c0c0c`，已发现 `docs/acceptance/DELIVERY_PAUSED.md` 的独立 P1 复查门槛。`build.py` 和候选 workflow 均在生成 installer/ZIP 前拒绝继续，没有绕过参数；标志由主集成按原独审要求移除。本目录旧产物仅保留为缺陷复现材料，不建议记账试用。
+当前基线为 PR30 head `2707a72ffe1b73fed715517802e6ad62e48fe611`。实际 Windows 安装验证的代码源是 `dece298946d03ad88c5031eb02dab8f87c330046`；其正常登录、独立审核/记账、F10 取消/接受、实际恢复目标深回读、忙态阻断、正常升级及升级后登录、卸载保留的精确范围见 [候选交接](RELEASE_CANDIDATE_HANDOFF.md)。历史失败也在该记录保留，构建或组件绿色不替代安装业务验收。
 
-## 已实现与门槛
+本轮生产路径、源码/文件冻结、两路安装业务 QA 等待项和最终重建顺序见 [最终私有交付方案](FINAL_PRIVATE_DELIVERY_PLAN.md)。用户安装与操作说明见 [中文指南](../docs/user-guide/INSTALL_AND_USE.zh-CN.md)，分层验收边界见 [验收矩阵](../docs/user-guide/ACCEPTANCE_MATRIX.md)。
 
-- .NET 10 LTS / WPF / Windows x64 自包含发布，NSIS 3.13 当前用户安装器、开始菜单、ARP 卸载登记和便携 ZIP。无需管理员权限；不写 HKLM、不安装服务、不更改安全设置。
-- 显式四段 Windows 版本、完整源码 commit、固定 SDK/runtime、NuGet content hashes/锁文件、固定 NSIS/SCons 下载 SHA256、固定构建时间和有序 ZIP；逐文件清单与发布校验。默认拒绝脏源码和未锁定依赖。
-- 程序版本目录不可覆盖，`current.json` 是原子激活点。数据根保留绑定安装根、版本和 payload 摘要的回执，阻断换安装根或卸载后换包绕过升级；卸载后仅相同 payload 可在原根重装。安装及卸载与程序启动共享租约；相同数据根另有全局租约，避免两处安装同时写同一组账套。
-- 卸载先以安装时单独保留的 `VersionManifests` 摘要识别受管版本，对所有受管清单和候选文件完成预检，再去激活并删除仍匹配原 SHA256 的程序文件。未知目录里的有效清单也不构成删除授权；账套、备份及 SQLite journal 不得成为 payload。未知文件、被修改的程序文件、账套与备份保留，不递归删程序根。程序根有未知文件或回执不一致时，重装/迁移目录需要显式恢复流程。默认数据根 `%LOCALAPPDATA%\CaiwuSuite\Data` 与程序根 `%LOCALAPPDATA%\Programs\CaiwuSuite` 分离；支持 `/DATAROOT=`，并拒绝程序/数据/临时 payload 嵌套和 reparse points。
-- 升级组件以 SQLite Backup API 为每个已登记账套生成一致性备份，并从备份回读 book/revision 和校验值。迁移回调只收到恢复出的副本；除完整性外，必须保持原 BookId 且 revision 不后退，并通过 schema-v1 对象门槛；损坏或异常会阻断激活，原账套与旧指针不动，备份及回执保留。
-- 自动检查/下载组件支持 HTTPS 精确主机白名单、无重定向、有界 feed/下载、单调版本与 SHA256。Windows 另以可信 Authenticode、固定发布者指纹、签名包产品名/实际版本核对。下载只产生 `.untrusted`；通过签名后可生成等待用户审批的 `.exe`，不会自动执行。
+## 构建路径
 
-**真实 Desktop 尚未完成账套登记和统一入口集成，实际包的 `managedDataContract=false`。首次安装路径已实现但运行可用性仍待 Windows 和独立 P1 复查，覆盖升级会在激活前阻断。** 不应手改标记来绕过。数据回执与激活指针不一致时，启动、数据操作与卸载都会在动作前拒绝；两者之间发生断电时须核对回执并走显式恢复；不声称已完成断电恢复测试。当前仅支持 schema 1；已实现迁移副本验证门槛，没有实现生产账套原地 schema 迁移或自动数据回退。
+- `Prepare-WindowsCandidate.ps1` 在干净源进行 locked 自包含 Desktop/host 发布，记录精确源与逐文件 hash，不生成 installer/ZIP，暂停期间可用。
+- `Build-InternalQa.ps1` 仅在隔离 Windows CI、hold 仍存在时生成 `INTERNAL-UNVALIDATED` 合成 QA 安装器。测试控制器生成它的 managed manifest；不属于最终生产路径。
+- `build.py` 使用组合宿主作为安装引擎及 installed launcher，四类原生 codec 与真实租约保持完整。显式 `--managed-data-contract --expected-commit <完整SHA>` 才采用已审核的受管 capability；普通 `manifest` 默认仍为 false。该生产选项要求干净源和冻结锁图，并仍先检查 hold。未指定选项的旧 false 路径不适用于当前受管快捷方式，不应交付。
+- `freeze-source.py` 只从指定提交的 Git blob 生成冻结文件清单；不复制源码或读取未跟踪数据。
 
-**包未签名、无可信发布通道，`update-policy.json` 默认 disabled。** 自动更新应用的完整闭环尚未完成；不能把任意 URL 的下载/执行当成功。不会生成、索取或导入证书/私钥，也不购买许可。签名正向验收、可信 feed 托管与审批后的应用流程由发布负责人接入。
+固定 SDK10.0.402/runtime10.0.13，RID 为 win-x64；官方 SDK SHA512 见 `docs/sdk-metadata.json`，NSIS3.13 来源及 SHA256 见 `toolchain.lock.json`，`bootstrap-nsis.py` 负责验证下载。Desktop 和组合 host 的 RID 图分别由 `packaging-next/locks/desktop`、`host` 冻结，源 owner 的锁文件不被重写。
 
-## 构建
+放行后的命令、版本选择与 Windows 实测步骤以最终方案为准。输出包括 `*-setup.exe`、用于核对的 `*-payload.zip`、`release-manifest.json`、`SHA256SUMS` 和 `payload/payload-manifest.json`。ZIP 不是受支持的免安装应用；受管 App 需要安装激活、可信回执和独立数据根。中文指南及第三方/runtime 许可随 payload 保留。清单 hash 不等于数字签名。
 
-先准备仓库固定的官方 SDK 10.0.402。Linux 可沿用 `tools/dotnet-local.sh` 的工作区缓存环境。官方 SDK 的 SHA512 位于既有 `docs/sdk-metadata.json`。目标 runtime 为 10.0.13；工具维护时整体审查与更新锁，不悄悄浮动版本。
+## 安装与数据边界
 
-Windows 自带 Python 3.11+ 和固定 SDK 后：
+当前用户安装默认程序根 `%LOCALAPPDATA%\Programs\CaiwuSuite`、数据根 `%LOCALAPPDATA%\CaiwuSuite\Data`。程序、数据和临时 payload 必须分离。自定义静默安装的 `/DATAROOT=` 指定数据根，NSIS `/D=` 指定程序根且放最后；实际启动走快捷方式或 `Caiwu.Delivery.exe launch-managed "<installRoot>"`。Desktop 在访问任何身份/账套数据前校验实际执行路径及 owner/current/data receipt，并拥有 install/data 两个 OS 租约。不要直接启动 Desktop、删锁或改 JSON 解决拒绝。
 
-```powershell
-python packaging-next/bootstrap-nsis.py --destination .tools/nsis
-python packaging-next/build.py --version 0.1.0.1 --makensis .tools/nsis/nsis-3.13/makensis.exe --out artifacts/delivery/first
-```
+版本目录不可覆盖；升级在租约内对全部已登记账套及原生附件完整备份、验证后激活新指针。旧版、新版都必须真实声明 managed capability。单账套备份不含全局操作员，身份备份需独立受控流程；活动 Global/Operators 不被账套恢复覆盖。
 
-Linux 已有 Python 3.11+、g++、zlib 头文件时可原生构建 compiler，使用官方 Windows stubs，无需 Wine：
+恢复仅支持本数据根内原路径可信备份的恢复副本。原 bundle+receipt 移至新根，在原路径不可用时会安全拒绝；**跨根便携恢复/导入重映射未实现**。卸载按独立所有权 hash 删除已知程序文件，保留账套、备份、身份、未知和被修改文件。未知旧预览、schema 迁移、中断/断电恢复需单独处理，不能承诺自动回退。
 
-```bash
-python3 packaging-next/bootstrap-nsis.py --destination .tools/nsis --native
-python3 packaging-next/build.py --version 0.1.0.1 --dotnet ./tools/dotnet-local.sh \
-  --makensis .tools/nsis/nsis-3.13/Bin/makensis --out artifacts/delivery/first
-```
+## 验证与信任
 
-输出目录必须为空，脚本不删除旧交付。`--allow-dirty` 只用于本地预览，并在 provenance 标记；`--refresh-locks` 是显式维护操作，首次改变包图时才使用，之后检查新增锁文件。Desktop RID 和 helper SingleFile 的依赖图分开放在 `packaging-next/locks/desktop/` 与 `helper/`（SingleFile 会添加 ILLink build 依赖），所有图锁写入 `packaging-next/locks/`，不改其他 owner 的 NuGet 锁。
+`Test-WindowsDelivery.ps1` 只在隔离 x64 Windows CI 运行合成验证。默认内部模式要求 hold 与 INTERNAL marker；`-ProductionCandidate` 要求 hold 已由 owner 处理、完整 approved SHA 与干净源匹配，并拒绝内部 marker。该模式未自行批准交付。它从新安装目录执行产品、核对真实恢复目标和每个观测保留文件；不从源码项目冒充安装产品。
 
-交付包含 `*-setup.exe`、`*-portable.zip`、`release-manifest.json`、`SHA256SUMS`、`payload/payload-manifest.json`。清单记录源 commit、版本、工具与每个文件长度/SHA256。清单不是数字签名，不能单独建立发布者信任。
+[候选准备 workflow](../.github/workflows/windows-candidate-validation.yml) 可在暂停期间运行，不产分发文件。`workflows/windows-delivery.yml` 是放行后待采纳的模板，并未成为活动交付 workflow。`Test-WindowsHarness.ps1` 检查 PowerShell 语法和实际正负断言，`test_build_gate.py` 检查暂停与显式 source/capability 门槛。
 
-同一源提交与工具可重复构建到另一个空输出目录，比较 installer/ZIP SHA256；建议在干净 runner 重复。`SOURCE_DATE_EPOCH` 来自源 commit。Linux 的可重复性证据不等于不同 OS/compiler 二进制必然相同，签名和可信时间戳亦是后续独立发布步骤。
+包仍未签名，`update-policy.json` 默认 disabled，无可信生产自动更新源。保留 HTTPS/白名单/下载边界与 Authenticode 发布者、产品/实际版本门槛；不生成签名材料、凭据或更改 Windows 信任，不自动执行下载。
 
-## 安装、卸载和 Windows 验收
-
-安装器为当前用户安装。交互默认不显示账套根选择页，可用明确参数选择分离的目录：
-
-```powershell
-.\caiwu-0.1.0.1-win-x64-setup.exe /S /DATAROOT="D:\CaiwuData" /D=C:\Users\Example\AppData\Local\Programs\CaiwuSuite
-```
-
-NSIS `/D=` 必须最后且不加引号。实际运行优先使用开始菜单的统一 launcher。便携包保留 `.NET` 全部 runtime；直接启动 Desktop 会绕过交付租约，因此不能据此开启安全升级。
-
-本机没有 Windows/Wine，不运行任何 Windows EXE。Windows 验收脚本只启动本仓库自研程序，使用全新隔离目录和合成账套，并在发现已有该产品 ARP 登记时停止。它先核对安装目录内两 EXE 的 payload SHA256，再运行已安装 launcher/WPF 生成真实合成 `.caiwu`，独立检查 3 张已记账凭证和银行 108800。接着保持真实安装窗口运行并调用 native 升级安装器，检查拒绝、窗口未被杀、指针与账套未改；关闭窗口后，调用**安装目录中的** `inspect-book` / `backup-book` / `restore-book` 检查备份、恢复副本的身份/revision/语义 SHA256，最后 native 卸载并核对源账套、备份、恢复副本及 unknown 文件均保留。运行期 harness 不执行 `dotnet` 或任何源项目：
-
-```powershell
-./packaging-next/Test-WindowsDelivery.ps1 -Installer artifacts/delivery/first/caiwu-0.1.0.1-win-x64-setup.exe `
-  -UpgradeInstaller artifacts/delivery/next/caiwu-0.1.0.2-win-x64-setup.exe `
-  -OutputDirectory "$env:RUNNER_TEMP/caiwu-delivery-unique-run"
-```
-
-验收的安装包版本固定为 0.1.0.1 和 0.1.0.2。卸载测试使用 NSIS `_?=` 在原进程运行，以便可靠等待真实退出；运行中的卸载 stub 本身可能留下，外部合成 unknown 文件按设计保留。正常用户卸载采用 NSIS 临时副本机制。
-
-运行窗口忙态检查是新开真实安装主窗口，未自动打开账套；该事实记录为 `bookOpenDuringThisNormalWindow=false`，不冒称已验证“打开账套时迁移”。合成账套此前确实由安装 WPF 的 smoke 流程创建、打开和截图。备份恢复验证已安装交付组件，不声称验证 Desktop 菜单驱动的备份恢复交互。
-
-workflow 的 `require_managed_desktop` 默认 false。开启后必须在安装包真实看到 `managedDataContract=true` 且 WPF 实际生成的账套已经登记；脚本只读检查清单，不制造清单或修改标记。未完成接入时该模式应失败。无论模式，`completeManagedUpgradeValidated=false`，正向版本升级不在当前验收完成范围。
-
-候选 workflow 在 `workflows/windows-delivery.yml`；仅主协调可采纳到根 `.github/workflows/`。未被采纳前 GitHub 不会执行它。Windows CI 生成 `windows-acceptance.json` 和真实 WPF 截图；人工键盘流、DPI、打印、签名正向与生产合规不属于已完成验证。
-
-## 给 Desktop/存储 owner 的接口
-
-1. 所有生产启动均走 `Installation.Launch(installRoot,args)`，持 install 和 data 两个租约直到 WPF 退出。若 owner 将租约直接移入 Desktop，请保持相同锁文件与 FileShare.None 规则。`CAIWU_DATA_ROOT` 会传给 Desktop，当前 Desktop 尚未消费它。
-2. 只能在数据根中创建/打开受管 `.caiwu`，每次打开前先原子登记 `dataRoot/managed-books.json`：`{"contractVersion":1,"databasePaths":["绝对账套路径"]}`。拒绝漏项、外部路径、重复、链接和备用目录；所有已有账套必须纳入迁移/导入方案。**扫描受管根无法证明根外没有账套，需 Desktop 按实际打开/创建路径履约。**
-3. 产品集成并独立验收后，才让 `PayloadManifest.Create(..., managedDataContract:true)` 同时用于旧版与新版。当前 CLI 故意不暴露开启开关；不得仅改 JSON 解锁。
-4. 当前 `UpgradeSafety.Prepare(dataRoot,paths,migrateStaged)` 必须在租约内调用，返回备份目录、staged 副本和回执。只允许迁移副本。将来 schema 改变时，另设计跨文件日志与可恢复提交，并由存储 owner 验证恢复流程；不能把这个阶段误称为已支持原地 schema 升降级。
-5. 更新 API：`UpdateClient.CheckAsync` 供启动/空闲时自动检查，`DownloadAsync` 仅做有界 hash 验证；`Stage-TrustedUpdate.ps1` 做 Windows 签名审批并返回待审批路径。`Assert-TrustedInstaller.ps1` 可在实际应用前再次校验签名、hash、产品与实际版本。没有安装后置健康检查/失败应用回退的 unattended apply 实现，当前应由用户手动确认后交安装器处理，升级数据门槛仍生效。
-
-`BookOperations` 是明确指定单账套的保守工具：读写均持 install/data 两租约，核对 ownership/current/data receipt；备份只能从数据根账套写新 `.delivery-backups/*.caiwu`，恢复只能从该区写数据根内新 `.caiwu`，不覆盖。有效只读备份可恢复；检查经 SQLite 的只读源备份 API 在 dataRoot/.delivery-scratch 生成独占新 `.tmp` 一致性副本后读取，并只清理该新副本；不要求原备份或备份目录可写，scratch/目标仍须可写。语义 SHA256 比较完整持久快照；原始文件 SHA256 单独报告，备份和源文件无需字节相同。`BankBalance` 仅为唯一同名样本科目的辅助值，多个同名“银行存款”返回 null，不阻断备份恢复。恢复工具不伪造全量 Desktop 登记；恢复副本需由 Desktop 正式打开/登记后才可能满足完整升级清单。
-
-CLI 均为位置参数：`manifest payload version commit`、`verify payload`、`install payload installRoot dataRoot`、`launch installRoot [Desktop args...]`、`uninstall installRoot`、`inspect-book installRoot relativeBook`、`backup-book installRoot relativeSource .delivery-backups/new.caiwu`、`restore-book installRoot .delivery-backups/backup.caiwu relativeNewBook`、`check-update policy currentVersion`、`stage-update policy currentVersion stagingRoot`。更新策略由可信安装配置提供；feed 不能自行增补主机或发布者指纹。
-
-## 最新主集成的具体适配点（只读核对）
-
-以下依据不可变 `0377ce764bc5a191c232c3f50da602a5ca2c0c0c`，未改这些 owner 文件，也未猜测未推送代码。
-
-| 现有文件/方法 | 当前缺口与最小接法 |
-| --- | --- |
-| `src/Caiwu.Desktop/App.xaml.cs` / `OnStartup` | 仍直接传 `SqliteLedgerStore.Open/Create/RestoreBackup`，不消费 `CAIWU_DATA_ROOT`。新安全复核确认直接 Storage Restore 可保留触发器；在 Open 和 RestoreBackup 的存储调用之前加入公共 `Caiwu.Delivery.LedgerFilePolicy.Validate(path)` 只读门槛（恢复时检查所选 backup）。在组合根包装这三个委托：规范化数据根和实际路径，拒绝程序根、根外、reparse、非 `.caiwu` 的生产账套；不要仅靠文件对话框初始目录。 |
-| `src/Caiwu.Desktop/Presentation/LedgerSession.cs` / `Open`、`Create`、`Replace` | `Replace` 读取并验证新 store 后、替换 `_store` 前，原子登记 `next.DatabasePath`；登记失败继续旧会话并 dispose next。对 create/open 都从真实 store 路径登记，不能只登记原始用户输入。 |
-| 同文件 / `RestoreTo`；`MainWindow.xaml.cs` / `Restore_Click` | 现为恢复后再 `_session.Open(save.FileName)`。保持这个正式打开步骤来登记恢复副本，并在恢复前验证目标属于数据根。外部备份可显式选择读取，目标始终是新文件，不能用 raw copy 当 WAL 恢复。 |
-| `MainWindow.xaml.cs` / `NewBook_Click`、`OpenBook_Click`、`Restore_Click` | 三个文件对话框都未限制数据根，open 还允许所有文件。设置受管初始目录用于操作习惯，同时必须由上述 backend/session 路径门槛兜底。 |
-| `Verification/UiVerification.cs` / `Run`；`SampleLedger.cs` / `Create` | `SampleLedger.Create` 直接调 backend.Create，随后 `OpenVerificationBook` 才走 session.Open；组合根和会话两个入口都要覆盖。新的 harness 已把 smoke 的 destination 放在 dataRoot/verification，不靠伪造 inventory 通过。 |
-| `App.OnStartup` 与交付 `Installation.Launch` | 当前 launcher 在 WPF 子进程整个生命周期持两租约。若 Desktop 也无条件 FileShare.None 打开同名锁，会把 launcher 合法子进程误拒绝。先选定唯一租约持有者：保留 launcher 为唯一持有者并让直开 Desktop 委派 launcher，或主协调统一重构持有协议；不能双重获取。 |
-| `packaging-next/build.py` 的 `manifest` 调用；`Program.cs` 的 `manifest` case | 当前刻意只发 false。先完成 Desktop 上述入口与独立验证，再由交付 owner 为审核后的 capability 增加显式启用接口。不能靠修改 JSON 让 strict job 假通过。 |
-| 主 `packaging/build.ps1` / 测试调度与暂停门槛 | 最新已按 `<OutputType>Exe` 跑 console 测试，本模块无需再改名称白名单；新增测试需根 solution 由主协调纳入。候选 workflow 直接显式跑本测试，并同样检查独审暂停标志。 |
-
-新增 v1.1 `VoucherDraft.ExpectedRevision` 未改变 `BookOperations` 使用的 store/read/backup/restore 契约；本组件不编辑草稿，不替代该 P1 返修。所有生产升级、签名和 Windows 运行结论仍以主独审与 Windows CI 为准。
-
-## 独立边界复核结果与范围
-
-`evidence/security-boundary-review/` 保存实际失败及修复后结果：旧实现15个新条件中11失败；另外有效只读备份、只读备份目录分别复现1个不同失败。最终22个新增条件和全量132项全部通过，未用已有同条件案例增加计数。恶意触发器控制样本即使 `integrity_check=ok`，恢复后的正常保存仍可把银行期初1234.56改成61234.56；本组件现在在 store.Open 的写能力探针前，以只读连接拒绝触发器、视图、额外应用表/索引和非 schema 1；同一次只读事务还与受信任 Storage.Create 新建的规范空库比对完整 DDL 及列/约束/索引元数据。
-
-`LedgerFilePolicy.Validate` 是公开的只读布局门槛，供 Desktop 组合根接入；它不替代路径登记、租约、业务规则或备份来源认证。直接调用原 Storage API 的其他入口不自动获得本模块保护。显式恢复另一个有效账套到新路径会返回其真实 BookId，不会猜测用户意图；恢复指定账套时，UI还应核对预期身份和已知可信校验值。
-
-卸载在删除前保存 pending 标志并移除激活指针。异常或断点留下标志时，后续启动/安装/数据操作拒绝并要求显式恢复，不自动猜测续做；没有自动断电恢复或继续卸载的完成声明。旧预览缺少独立版本所有权摘要时同样拒绝自动删除，不能从现存清单反向“补信任”。
-
-Linux实际验证文件/目录符号链接、sidecar 路径门槛、源/备份哈希、只读文件和0555目录权限以及跨进程租约；设备/extended-namespace 仅做跨平台词法拒绝验证。Windows NTFS junction/ACL/8.3别名、硬链接身份、同权限进程并发替换目录和真实断电未实测；本实现不声称抵抗已控制当前用户文件系统写权限的攻击者。Windows验收仍受独审暂停门槛约束，本次没有运行Windows EXE或生成新分发包。
-
-## schema 约束追加复核
-
-`evidence/schema-constraint-review/`记录C#真实入口反例。原Gate仅验对象名，会允许 `voucher_lines` 加上 `UNIQUE(summary) ON CONFLICT REPLACE`；列序/类型/PK/FK和五表名均没变，额外autoindex的SQL为null。Delivery恢复成功后，普通Storage保存两条同摘要平衡分录（借贷各10.25）只剩一条贷方10.25，revision仍推进到2，完整性仍ok/FK无违规。该结果独立于被撤回的“accounts先正确读再保存交换列”说法；读取本来也SELECT*按序，撤回例不作为修复依据。
-
-`SchemaV1Layout`现在与可信已安装Storage的公开Create入口生成的全新空schema参考比对：有序列名/声明类型/null/default/PK/hidden、FK、STRICT/without-rowid、所有index的origin/unique/partial/列序/排序/collation，以及完整表/索引DDL。参考只在独立临时目录生成并清理，不以用户文件当模板；输入保持只读事务，失败不创建恢复目标、不重写或“修复”备份。
-
-兼容范围明确限制为相同规范schema-v1布局、允许SQLite的ASCII空白、未引用SQL词的ASCII大小写和闭合注释差异；业务数据的中文内容不受影响。不同引号、类型别名、约束表达式或其他未审阅DDL不自动推定等价，不进行静默转换。新参考生成器版本若不再为1，也要求显式更新审核。本轮还实际复现并修复了规范化的CR漏洞：`--`只在LF/EOF结束，不能在CR提前结束而把被注释的CHECK复活，参见[SQLite注释规则](https://www.sqlite.org/lang_comment.html)。
-
-最终新增9项、全量141项通过；canonical空白/闭合comments正向控制恢复后保存两行、借贷各10.25均完整。直接绕过Delivery的Storage控制仍能复现丢行，因此不声称Storage本身已修。主协调可交Storage owner：在Open/Restore边界拒绝未知schema；在Create及InsertContents显式列出INSERT列、ReadContents显式投影；Write在commit前以深语义读回核对完整分录/借贷，不匹配则回滚。**仅改显式列名不能修复额外UNIQUE REPLACE**；该约束门槛和事务语义核对需要单独保留。本模块没有修改Storage/Core/Desktop，也未解除分发暂停。
-
-## 许可与证据
-
-.NET 官方元数据确认 10.0 为 LTS，支持期至 2028-11-14：[Microsoft metadata](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json)。NSIS 3.13 使用官方未改 stubs 与 zlib compressor，核心/zlib 的 zlib/libpng 许可允许商业使用，无购买要求；保留原 notices、不冒称上游作者、不把修改版冒作原版：[NSIS license](https://nsis.sourceforge.io/License)。未选择 LZMA、付费工具或第三方 installer plugins。
-
-`THIRD-PARTY-NOTICES.md`、`NSIS-COPYING.txt`、`licenses/Apache-2.0.txt` 及构建时从官方 runtime pack 复制的许可证随包保留。锁定 NuGet 的原始 license expression 已核实。工具本地编译证据为 `toolchain-evidence.linux.json`；它记录本轮观测，不冒充官方数字签名或 Windows 运行验收。
+较早接口/安全边界审查与实测记录见 [HANDOFF](HANDOFF.md)、[MANAGED_MODULES](src/Caiwu.Delivery/MANAGED_MODULES.md) 和 `evidence/`；其中“尚未接线/未 Windows 实测”是对应历史快照，当前状态以精确源绑定的新记录为准。

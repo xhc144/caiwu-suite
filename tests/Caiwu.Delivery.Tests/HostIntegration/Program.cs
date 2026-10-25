@@ -14,7 +14,17 @@ try
     var install = Path.Combine(root, "程序 目录"); var dataRoot = Path.Combine(root, "合成 账套");
     var payload = Path.Combine(root, "payload-one"); Directory.CreateDirectory(payload);
     File.WriteAllText(Path.Combine(payload, "Caiwu.Desktop.exe"), "synthetic component fixture, never executed");
-    PayloadManifest.Create(payload, "0.1.0.1", new string('a', 40), true).Write(Path.Combine(payload, PayloadManifest.FileName));
+    var desktopHash = PayloadManifest.Hash(Path.Combine(payload, "Caiwu.Desktop.exe"));
+    Run(0, "manifest", payload, "0.1.0.1", new string('a', 40));
+    Assert(!PayloadManifest.Read(Path.Combine(payload, PayloadManifest.FileName)).ManagedDataContract,
+        "ordinary host manifest remains conservative by default");
+    Run(0, "manifest-managed", payload, "0.1.0.1", new string('a', 40));
+    var adopted = PayloadManifest.Read(Path.Combine(payload, PayloadManifest.FileName));
+    Assert(adopted.ManagedDataContract && adopted.Commit == new string('a', 40) && adopted.Version == "0.1.0.1",
+        "explicit composed-host manifest adopts managed capability with exact source and version");
+    Run(0, "verify", payload);
+    Assert(PayloadManifest.Hash(Path.Combine(payload, "Caiwu.Desktop.exe")) == desktopHash,
+        "manifest selection preserves the payload bytes and passes actual host verification");
     Run(0, "install", payload, install, dataRoot);
     string bookPath, summaryPath, identityPath;
     using (var data = Installation.OpenManagedData(install))

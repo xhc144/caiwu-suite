@@ -39,6 +39,48 @@ class DistributionPauseTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'paused distribution'):
                 BUILD.ensure_delivery_allowed(root)
 
+    def test_managed_selection_does_not_bypass_pause(self):
+        with tempfile.TemporaryDirectory(prefix='caiwu-managed-pause-') as temporary:
+            root = Path(temporary)
+            pause = root / 'docs/acceptance/DELIVERY_PAUSED.md'
+            pause.parent.mkdir(parents=True)
+            pause.touch()
+            output = root / 'artifacts'
+            arguments = ['build.py', '--version', '0.1.0.3', '--makensis', 'must-not-run',
+                         '--out', str(output), '--managed-data-contract', '--expected-commit', 'a' * 40]
+            with mock.patch.object(BUILD, 'ROOT', root), mock.patch.object(BUILD, 'run') as tool:
+                with mock.patch('sys.argv', arguments), self.assertRaisesRegex(RuntimeError, 'paused distribution'):
+                    BUILD.main()
+                tool.assert_not_called()
+            self.assertFalse(output.exists())
+
+    def test_managed_requires_frozen_reviewed_source_before_tools(self):
+        for extra, message in [([], 'expected-commit'),
+                               (['--expected-commit', 'a' * 40, '--allow-dirty'], 'clean source'),
+                               (['--expected-commit', 'a' * 40, '--refresh-locks'], 'frozen dependency')]:
+            with self.subTest(extra=extra), tempfile.TemporaryDirectory(prefix='caiwu-managed-gate-') as temporary:
+                root = Path(temporary)
+                output = root / 'artifacts'
+                arguments = ['build.py', '--version', '0.1.0.3', '--makensis', 'must-not-run',
+                             '--out', str(output), '--managed-data-contract', *extra]
+                with mock.patch.object(BUILD, 'ROOT', root), mock.patch.object(BUILD, 'run') as tool:
+                    with mock.patch('sys.argv', arguments), self.assertRaisesRegex(RuntimeError, message):
+                        BUILD.main()
+                    tool.assert_not_called()
+                self.assertFalse(output.exists())
+
+    def test_wrong_reviewed_sha_blocks_before_output(self):
+        with tempfile.TemporaryDirectory(prefix='caiwu-wrong-sha-') as temporary:
+            root = Path(temporary)
+            output = root / 'artifacts'
+            arguments = ['build.py', '--version', '0.1.0.3', '--makensis', 'test-nsis',
+                         '--out', str(output), '--managed-data-contract', '--expected-commit', 'a' * 40]
+            with mock.patch.object(BUILD, 'ROOT', root):
+                with mock.patch.object(BUILD, 'run', side_effect=[BUILD.SDK, BUILD.NSIS, 'b' * 40, '']):
+                    with mock.patch('sys.argv', arguments), self.assertRaisesRegex(RuntimeError, 'does not match'):
+                        BUILD.main()
+            self.assertFalse(output.exists())
+
     def test_dangling_pause_link_is_not_treated_as_absent(self):
         with tempfile.TemporaryDirectory(prefix='caiwu-pause-test-') as temporary:
             root = Path(temporary)

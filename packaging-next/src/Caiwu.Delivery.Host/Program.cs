@@ -11,6 +11,10 @@ try
     {
         case "manifest" when args.Length == 4:
             PayloadManifest.Create(args[1], args[2], args[3]).Write(Path.Combine(args[1], PayloadManifest.FileName)); break;
+        // Capability adoption is explicit. The ordinary manifest command stays false.
+        // The production builder retains its independent acceptance hold and clean-SHA gate.
+        case "manifest-managed" when args.Length == 4:
+            PayloadManifest.Create(args[1], args[2], args[3], managedDataContract: true).Write(Path.Combine(args[1], PayloadManifest.FileName)); break;
         case "verify" when args.Length == 2:
             PayloadManifest.Read(Path.Combine(args[1], PayloadManifest.FileName)).Verify(args[1]); break;
         case "install" when args.Length == 4:

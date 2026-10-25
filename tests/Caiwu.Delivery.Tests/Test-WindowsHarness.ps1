@@ -45,4 +45,16 @@ foreach ($command in $commands) {
         throw 'Runtime acceptance must not switch to source projects, arbitrary execution or substitute signing trust.'
     }
 }
+if ($IsWindows -and $env:GITHUB_ACTIONS -eq 'true' -and (Test-Path (Join-Path $ProjectRoot 'docs/acceptance/DELIVERY_PAUSED.md'))) {
+    $blockedOutput = Join-Path ([IO.Path]::GetTempPath()) ('caiwu-production-hold-' + [Guid]::NewGuid().ToString('N'))
+    $blocked = $false
+    try {
+        & $harness -Installer 'must-not-run.exe' -UpgradeInstaller 'must-not-run.exe' -ControllerExecutable 'must-not-run.exe' -OutputDirectory $blockedOutput -ProductionCandidate -ExpectedCommit ('a' * 40)
+    } catch {
+        $blocked = $_.Exception.Message -like '*Independent delivery hold blocks production*'
+    }
+    Assert $blocked 'Production acceptance did not reject the actual active delivery hold.'
+    Assert (-not (Test-Path $blockedOutput)) 'Production acceptance created output before checking the hold.'
+    $checked++
+}
 [ordered]@{ success = $true; parser = $PSVersionTable.PSVersion.ToString(); assertionCases = $checked; windowsRuntimeExecuted = $false } | ConvertTo-Json

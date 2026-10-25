@@ -4,11 +4,24 @@ param(
     [Parameter(Mandatory)][string]$UpgradeInstaller,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [Parameter(Mandatory)][string]$ControllerExecutable,
-    [switch]$RequireManagedDesktop
+    [switch]$RequireManagedDesktop,
+    [switch]$ProductionCandidate,
+    [string]$ExpectedCommit,
+    [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')][string]$InitialVersion = '0.1.0.1',
+    [ValidatePattern('^\d+\.\d+\.\d+\.\d+$')][string]$UpgradeVersion = '0.1.0.2'
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-if (-not $IsWindows -or -not [Environment]::Is64BitProcess -or $env:GITHUB_ACTIONS -ne 'true') { throw 'Run internal synthetic acceptance only in isolated x64 Windows CI.' }
+if (-not $IsWindows -or -not [Environment]::Is64BitProcess -or $env:GITHUB_ACTIONS -ne 'true') { throw 'Run synthetic acceptance only in isolated x64 Windows CI.' }
+$sourceRoot = Split-Path -Parent $PSScriptRoot
+$pause = Join-Path $sourceRoot 'docs/acceptance/DELIVERY_PAUSED.md'
+$classification = if ($ProductionCandidate) { 'PRODUCTION-CANDIDATE-PRIVATE' } else { 'INTERNAL-UNVALIDATED' }
+if ($ProductionCandidate) {
+    if (Test-Path -LiteralPath $pause) { throw 'Independent delivery hold blocks production-candidate acceptance.' }
+    if ($ExpectedCommit -cnotmatch '^[0-9a-f]{40}$' -or (git -C $sourceRoot rev-parse HEAD).Trim() -cne $ExpectedCommit) { throw 'Production acceptance requires its exact reviewed source SHA.' }
+    if (@(git -C $sourceRoot status --porcelain --untracked-files=normal).Count -ne 0) { throw 'Production acceptance requires clean source.' }
+} elseif (-not (Test-Path -LiteralPath $pause)) { throw 'Internal QA requires the delivery hold.' }
+if ([version]$UpgradeVersion -le [version]$InitialVersion) { throw 'Upgrade version must be greater than initial version.' }
 $output = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $output) { throw 'Acceptance output must be a new directory.' }
 $registry = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\CaiwuSuite'
@@ -53,7 +66,7 @@ function Same-Book($Expected, $Actual) {
     Assert ([decimal]$Actual.bankBalance -eq [decimal]123.45) 'Independent expected synthetic bank balance is 123.45.'
 }
 function Run-InstalledJson([string[]]$CommandArguments) {
-    $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $installRoot 'versions/0.1.0.1/Caiwu.Delivery.exe'))
+    $start = [Diagnostics.ProcessStartInfo]::new((Join-Path $installRoot "versions/$InitialVersion/Caiwu.Delivery.exe"))
     $start.UseShellExecute = $false; $start.WorkingDirectory = $output
     $start.RedirectStandardOutput = $true; $start.RedirectStandardError = $true
     foreach ($argument in $CommandArguments) { $start.ArgumentList.Add($argument) }
@@ -78,10 +91,14 @@ try {
     Assert (Test-Path $registry) 'Native install did not register current-user ARP.'
     $pointerPath = Join-Path $installRoot 'current.json'
     $pointer = Get-Content $pointerPath -Raw | ConvertFrom-Json
-    Assert ($pointer.version -eq '0.1.0.1' -and $pointer.dataRoot -eq $dataRoot) 'Native installation pointer/data root mismatch.'
+    Assert ($pointer.version -eq $InitialVersion -and $pointer.dataRoot -eq $dataRoot) 'Native installation pointer/data root mismatch.'
     $manifest = Get-Content (Join-Path $installRoot "versions/$($pointer.version)/payload-manifest.json") -Raw | ConvertFrom-Json
     Assert ([bool]$manifest.managedDataContract) 'This internal QA requires the actual managed App composition.'
-    Assert (Test-Path (Join-Path $installRoot "versions/$($pointer.version)/INTERNAL-UNVALIDATED.txt")) 'Internal candidate classification missing.'
+    $internalMarker = Join-Path $installRoot "versions/$($pointer.version)/INTERNAL-UNVALIDATED.txt"
+    if ($ProductionCandidate) {
+        Assert ($manifest.commit -ceq $ExpectedCommit) 'Production payload source differs from the reviewed clean SHA.'
+        Assert (-not (Test-Path $internalMarker)) 'Internal candidate must not be relabelled as production.'
+    } else { Assert (Test-Path $internalMarker) 'Internal candidate classification missing.' }
     Pass 'native current-user NSIS installation with Chinese and space-separated program/data roots' @{ installRoot = $installRoot; dataRoot = $dataRoot; commit = $manifest.commit }
 
     $control = Start-Controller $evidence 'hold'
@@ -91,7 +108,7 @@ try {
     $ready = Get-Content $readyPath -Raw | ConvertFrom-Json
     Assert ($ready.checkoutCommit -eq $manifest.commit) 'Runtime evidence belongs to a different payload source commit.'
     $running = Get-Process -Id $ready.desktopPid
-    Assert ($running.Path -eq (Join-Path $installRoot 'versions/0.1.0.1/Caiwu.Desktop.exe')) 'Controller did not launch the installed App.'
+    Assert ($running.Path -eq (Join-Path $installRoot "versions/$InitialVersion/Caiwu.Desktop.exe")) 'Controller did not launch the installed App.'
     foreach ($leasePath in @((Join-Path $installRoot '.delivery.lock'), (Join-Path $dataRoot '.delivery-data.lock'))) {
         $held = $false
         try { $probe = [IO.File]::Open($leasePath, 'Open', 'ReadWrite', 'None'); $probe.Dispose() } catch [IO.IOException] { $held = $true }
@@ -116,7 +133,10 @@ try {
     $retained.Remove((Join-Path $dataRoot '.delivery-data-owner.json'))
     Run-Native $UpgradeInstaller ('/S /DATAROOT="' + $dataRoot + '" /D=' + $installRoot)
     $next = Get-Content $pointerPath -Raw | ConvertFrom-Json
-    Assert ($next.version -eq '0.1.0.2') 'Idle upgrade did not activate the new native installed version.'
+    Assert ($next.version -eq $UpgradeVersion) 'Idle upgrade did not activate the new native installed version.'
+    $nextManifest = Get-Content (Join-Path $installRoot "versions/$UpgradeVersion/payload-manifest.json") -Raw | ConvertFrom-Json
+    Assert ($nextManifest.commit -ceq $manifest.commit -and [bool]$nextManifest.managedDataContract) 'Upgrade source/capability differs from the tested initial composition.'
+    if ($ProductionCandidate) { Assert (-not (Test-Path (Join-Path $installRoot "versions/$UpgradeVersion/INTERNAL-UNVALIDATED.txt"))) 'Upgrade must be newly built by the production path.' }
     Assert-Retained $retained
     $upgradeReceipts = @(Get-ChildItem (Join-Path $dataRoot '.delivery-backups') -Recurse -Filter 'backup-receipt.json' | ForEach-Object { Get-Content $_.FullName -Raw | ConvertFrom-Json })
     Assert (@($upgradeReceipts | Where-Object { $_.status -eq 'validated' -and @($_.moduleBackups).Count -eq 2 -and -not $_.globalIdentitiesIncluded }).Count -eq 1) 'Upgrade did not validate complete backups for both registered physical instances.'
@@ -125,12 +145,12 @@ try {
     $control = Start-Controller $healthEvidence 'health'; Wait-Controller $control $healthEvidence; $control = $null
     Pass 'actual upgraded installed App logs in with retained identities and opens retained source ledger'
 
-    $activeRoot = Join-Path $installRoot 'versions/0.1.0.2'
-    $policy = & (Join-Path $activeRoot 'Caiwu.Delivery.exe') check-update (Join-Path $activeRoot 'update-policy.json') '0.1.0.2' | ConvertFrom-Json
+    $activeRoot = Join-Path $installRoot "versions/$UpgradeVersion"
+    $policy = & (Join-Path $activeRoot 'Caiwu.Delivery.exe') check-update (Join-Path $activeRoot 'update-policy.json') $UpgradeVersion | ConvertFrom-Json
     Assert ($LASTEXITCODE -eq 0 -and $policy.status -eq 'disabled') 'Installed policy unexpectedly enables an unconfigured production update channel.'
     $unsignedRejected = $false
     try {
-        & (Join-Path $PSScriptRoot 'Assert-TrustedInstaller.ps1') -Installer $UpgradeInstaller -ExpectedSha256 (Get-FileHash -LiteralPath $UpgradeInstaller -Algorithm SHA256).Hash -ExpectedVersion '0.1.0.2' -CurrentVersion '0.1.0.1' -PublisherThumbprints @('1111111111111111111111111111111111111111') | Out-Null
+        & (Join-Path $PSScriptRoot 'Assert-TrustedInstaller.ps1') -Installer $UpgradeInstaller -ExpectedSha256 (Get-FileHash -LiteralPath $UpgradeInstaller -Algorithm SHA256).Hash -ExpectedVersion $UpgradeVersion -CurrentVersion $InitialVersion -PublisherThumbprints @('1111111111111111111111111111111111111111') | Out-Null
     } catch {
         if ($_.Exception.Message -like '*valid Windows-trusted Authenticode signature*') { $unsignedRejected = $true } else { throw }
     }
@@ -141,7 +161,7 @@ try {
     $unknown = Join-Path $installRoot 'synthetic-user-note.txt'; 'Retain unowned synthetic file.' | Set-Content $unknown
     Run-Native (Join-Path $installRoot 'Uninstall.exe') ('/S _?=' + $installRoot)
     Assert (-not (Test-Path $registry) -and -not (Test-Path $pointerPath)) 'Uninstall left active registration or pointer.'
-    foreach ($version in @('0.1.0.1', '0.1.0.2')) { Assert (-not (Test-Path (Join-Path $installRoot "versions/$version/Caiwu.Desktop.exe"))) 'Uninstall left managed product binaries.' }
+    foreach ($version in @($InitialVersion, $UpgradeVersion)) { Assert (-not (Test-Path (Join-Path $installRoot "versions/$version/Caiwu.Desktop.exe"))) 'Uninstall left managed product binaries.' }
     Assert-Retained $retained
     Assert (Test-Path $unknown) 'Uninstall deleted the unowned program-directory file.'
     Pass 'native uninstall preserves every ledger attachment backup global identity and unknown user file' @{ retainedFiles = $retained.Count }
@@ -177,7 +197,7 @@ try {
         $dataRoot = $originalDataRoot; $installRoot = $originalInstallRoot
     }
     Assert-Retained $retained
-    [ordered]@{ success = $true; classification = 'INTERNAL-UNVALIDATED'; sourceCommit = $manifest.commit; windowsExecuted = $true; nativeInstallerExecuted = $true; completeManagedUpgradeValidated = $true; portableBackupRestoreSupported = $false; crossRootRecoveryProbeExecuted = $true; approvedForUserDelivery = $false; signed = $false; trustedProductionUpdateFeed = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
+    [ordered]@{ success = $true; classification = $classification; sourceCommit = $manifest.commit; windowsExecuted = $true; nativeInstallerExecuted = $true; completeManagedUpgradeValidated = $true; portableBackupRestoreSupported = $false; crossRootRecoveryProbeExecuted = $true; approvedForUserDelivery = $false; signed = $false; trustedProductionUpdateFeed = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
 } catch {
     if ($null -ne $control) {
         try {
@@ -186,7 +206,7 @@ try {
             $control.StandardError.ReadToEnd() | Set-Content (Join-Path $evidence 'controller-stderr.log')
         } catch { }
     }
-    [ordered]@{ success = $false; classification = 'INTERNAL-UNVALIDATED'; windowsExecuted = $true; failure = $_.Exception.Message; approvedForUserDelivery = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
+    [ordered]@{ success = $false; classification = $classification; windowsExecuted = $true; failure = $_.Exception.Message; approvedForUserDelivery = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
     throw
 } finally {
     Remove-Item Env:CAIWU_INTERNAL_QA_PASSWORD -ErrorAction SilentlyContinue

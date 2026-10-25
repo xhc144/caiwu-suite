@@ -1,10 +1,12 @@
 name: Windows candidate preparation under delivery hold
 on:
   push:
-    branches: [codex/release-candidate]
+    branches: [codex/release-candidate, codex/final-private-packaging]
     paths:
       - '.github/workflows/windows-candidate-validation.yml'
       - 'packaging-next/Prepare-WindowsCandidate.ps1'
+      - 'packaging-next/build.py'
+      - 'packaging-next/freeze-source.py'
       - 'packaging-next/Delivery.restore.targets'
       - 'packaging-next/locks/**'
       - 'packaging-next/src/**'
@@ -32,6 +34,12 @@ jobs:
         shell: pwsh
         run: |
           if (-not (Test-Path docs/acceptance/DELIVERY_PAUSED.md)) { throw 'This preparatory workflow requires the independent delivery hold.' }
+      - name: Verify production hold and explicit managed-build preflight
+        shell: pwsh
+        run: |
+          ./tests/Caiwu.Delivery.Tests/Test-WindowsHarness.ps1
+          python tests/Caiwu.Delivery.Tests/test_build_gate.py
+          if ($LASTEXITCODE -ne 0) { throw 'Production build gate regression failed.' }
       - name: Publish exact clean source with frozen RID graphs without installer or archive
         shell: pwsh
         timeout-minutes: 7
@@ -44,6 +52,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Published helper integration failed.' }
           dotnet run --project tests/Caiwu.Delivery.Tests/ModuleIntegration -c Release -- artifacts/candidate-preparation/module-integration-windows.json
           if ($LASTEXITCODE -ne 0) { throw 'Four native attachment integration failed.' }
+      - name: Freeze exact immutable source file inventory
+        shell: pwsh
+        run: |
+          python packaging-next/freeze-source.py --commit '${{ github.sha }}' --out artifacts/candidate-preparation/source-freeze.json
+          if ($LASTEXITCODE -ne 0) { throw 'Source freeze failed.' }
       - name: Confirm source identity and distribution hold
         if: always()
         shell: pwsh

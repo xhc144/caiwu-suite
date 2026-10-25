@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import struct
@@ -44,14 +45,27 @@ def main():
     parser.add_argument('--refresh-locks', action='store_true', help='Maintainer-only explicit NuGet lock refresh')
     parser.add_argument('--allow-dirty', action='store_true', help='Local preview only; recorded in build provenance')
     parser.add_argument('--skip-tests', action='store_true')
+    parser.add_argument('--managed-data-contract', action='store_true',
+                        help='Explicitly adopt the independently reviewed managed App composition; does not bypass delivery hold')
+    parser.add_argument('--expected-commit', help='Full clean source SHA required for managed production packaging')
     options = parser.parse_args()
     ensure_delivery_allowed(ROOT)
+    if not re.fullmatch(r'\d+\.\d+\.\d+\.\d+', options.version) or any(int(n) > 65535 for n in options.version.split('.')):
+        raise RuntimeError('Version must contain four Windows version components in 0..65535')
+    if options.managed_data_contract:
+        if not options.expected_commit or not re.fullmatch(r'[0-9a-f]{40}', options.expected_commit):
+            raise RuntimeError('Managed production packaging requires --expected-commit with the reviewed full SHA')
+        if options.allow_dirty or options.refresh_locks:
+            raise RuntimeError('Managed production packaging requires clean source and frozen dependency locks')
     if run([options.dotnet, '--version'], capture=True) != SDK:
         raise RuntimeError(f'Exact official SDK {SDK} is required')
     if run([options.makensis, '-VERSION'], capture=True) != NSIS:
         raise RuntimeError('Exact NSIS 3.13 is required')
     commit = run(['git', 'rev-parse', 'HEAD'], capture=True)
     dirty = bool(run(['git', 'status', '--porcelain', '--untracked-files=normal'], capture=True))
+    if options.expected_commit and commit != options.expected_commit:
+        raise RuntimeError('Source HEAD does not match --expected-commit')
+    source_tree = run(['git', 'rev-parse', 'HEAD:src'], capture=True)
     if dirty and not options.allow_dirty:
         raise RuntimeError('Commit the source tree first; --allow-dirty only builds an explicitly marked local preview')
     epoch = int(run(['git', 'show', '-s', '--format=%ct', 'HEAD'], capture=True))
@@ -69,9 +83,6 @@ def main():
         run([options.dotnet, 'restore', ROOT / 'tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj', '--locked-mode'], env=environment)
         run([options.dotnet, 'run', '--project', ROOT / 'tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj',
              '-c', 'Release', '--no-restore', '--', out / 'delivery-tests.json'], env=environment)
-    else:
-        run([options.dotnet, 'restore', helper_project, '--locked-mode'], env=environment)
-        run([options.dotnet, 'build', helper_project, '-c', 'Release', '--no-restore', '--nologo'], env=environment)
     # Component tests build the codec-free library CLI; build the composition host explicitly.
     run([options.dotnet, 'restore', helper_project, '--locked-mode'], env=environment)
     run([options.dotnet, 'build', helper_project, '-c', 'Release', '--no-restore', '--nologo'], env=environment)
@@ -103,6 +114,7 @@ def main():
     for name in ['THIRD-PARTY-NOTICES.md', 'NSIS-COPYING.txt']:
         shutil.copy2(ROOT / 'packaging-next' / name, notices / name)
     shutil.copy2(ROOT / 'packaging-next/licenses/Apache-2.0.txt', notices / 'Apache-2.0.txt')
+    shutil.copy2(ROOT / 'docs/user-guide/INSTALL_AND_USE.zh-CN.md', notices / 'INSTALL_AND_USE.zh-CN.md')
     # Runtime NuGet packs contain the official redistribution notices; retain them in the payload.
     assets = json.loads((helper_project.parent / 'obj/project.assets.json').read_text(encoding='utf-8'))
     for package, names in [('microsoft.netcore.app.runtime.win-x64', ['LICENSE.TXT', 'THIRD-PARTY-NOTICES.TXT']),
@@ -121,7 +133,11 @@ def main():
         pe = struct.unpack_from('<I', data, 0x3c)[0]
         if data[:2] != b'MZ' or data[pe:pe + 4] != b'PE\x00\x00' or struct.unpack_from('<H', data, pe + 4)[0] != 0x8664:
             raise RuntimeError(f'Expected a Windows x64 PE host: {executable}')
-    run([options.dotnet, cli, 'manifest', payload, options.version, commit], env=environment)
+    manifest_command = 'manifest-managed' if options.managed_data_contract else 'manifest'
+    run([options.dotnet, cli, manifest_command, payload, options.version, commit], env=environment)
+    manifest = json.loads((payload / 'payload-manifest.json').read_text(encoding='utf-8'))
+    if manifest['managedDataContract'] != options.managed_data_contract:
+        raise RuntimeError('Generated manifest capability does not match the explicit build selection')
     run([options.dotnet, cli, 'verify', payload], env=environment)
     if not options.allow_dirty and (run(['git', 'rev-parse', 'HEAD'], capture=True) != commit or
                                    run(['git', 'status', '--porcelain', '--untracked-files=normal'], capture=True)):
@@ -133,7 +149,8 @@ def main():
     run([options.makensis, '-V2', '-NOCONFIG', *[f'-D{k}={v}' for k, v in definitions.items()],
          ROOT / 'packaging-next/installer/Caiwu.nsi'], env=environment)
     # Fixed ordering, timestamp, attributes and no platform-dependent compression implementation.
-    archive = out / f'caiwu-{options.version}-win-x64-portable.zip'
+    # The managed App requires installer activation/receipts; this is a payload archive.
+    archive = out / f'caiwu-{options.version}-win-x64-payload.zip'
     timestamp = datetime.datetime.fromtimestamp(max(315532800, epoch), datetime.timezone.utc)
     zip_time = tuple(timestamp.timetuple()[:6])
     with zipfile.ZipFile(archive, 'w', compression=zipfile.ZIP_STORED) as target:
@@ -145,10 +162,14 @@ def main():
                 target.writestr(info, source.read_bytes())
     provenance = {
         'schema': 1, 'product': 'Caiwu Suite development preview', 'version': options.version,
-        'commit': commit, 'sourceTreeDirty': dirty, 'sourceDateEpoch': epoch,
+        'commit': commit, 'productionSourceTree': source_tree, 'sourceTreeDirty': dirty, 'sourceDateEpoch': epoch,
         'sdk': SDK, 'runtime': RUNTIME, 'rid': 'win-x64', 'selfContained': True,
         'nsis': NSIS, 'compressor': 'zlib', 'signed': False, 'trustedUpdateChannel': False,
-        'managedDataIntegration': False, 'windowsRuntimeValidated': False,
+        'managedDataIntegration': options.managed_data_contract, 'windowsRuntimeValidated': False,
+        'launcherCommand': 'launch-managed',
+        'payloadManifestSha256': sha(payload / 'payload-manifest.json'),
+        'payloadFiles': manifest['files'],
+        'archivePurpose': 'payload inspection; managed activation requires the installer',
         'files': [{'path': p.name, 'bytes': p.stat().st_size, 'sha256': sha(p)} for p in [installer, archive]],
     }
     (out / 'release-manifest.json').write_text(json.dumps(provenance, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
