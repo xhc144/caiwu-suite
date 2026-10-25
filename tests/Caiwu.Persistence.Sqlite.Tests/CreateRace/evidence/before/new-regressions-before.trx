@@ -1,0 +1,174 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="f5bbfd76-fb72-4c2d-b091-1f07421363fc" name="@b888a35a3c41 2026-10-25 09:34:58" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-25T09:34:58.2653550+00:00" queuing="2026-10-25T09:34:58.2653551+00:00" start="2026-10-25T09:34:54.4534360+00:00" finish="2026-10-25T09:35:09.4416929+00:00" />
+  <TestSettings name="default" id="2e0aa4dd-63ca-4965-a5c1-5e59a39dd83e">
+    <Deployment runDeploymentRoot="_b888a35a3c41_2026-10-25_09_34_58" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="1a4f54a2-47af-443e-94f8-7684b0fc3fb7" testId="e3e9d1c9-b42b-395f-3a6a-b60a55e8583e" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;create&quot;)" computerName="b888a35a3c41" duration="00:00:06.1219012" startTime="2026-10-25T09:34:57.9778314+00:00" endTime="2026-10-25T09:35:04.0836138+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="1a4f54a2-47af-443e-94f8-7684b0fc3fb7">
+      <Output>
+        <ErrorInfo>
+          <Message>SUCCESS
+
+
+
+System.IO.InvalidDataException: Creator returned another book.
+   at Caiwu.Persistence.Sqlite.Tests.CreateRaceWorker.Main(String[] args) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreateRaceWorker.cs:line 63
+</Message>
+          <StackTrace>   at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs:line 70
+   at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs:line 92
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="bbd63195-80f5-4399-8348-80e74435a9f0" testId="66abe178-a725-78d7-4cf7-63e9d4f49ea1" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;publish&quot;)" computerName="b888a35a3c41" duration="00:00:01.7869801" startTime="2026-10-25T09:34:56.1229080+00:00" endTime="2026-10-25T09:34:57.9551834+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="bbd63195-80f5-4399-8348-80e74435a9f0">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Single() Failure: The collection contained 2 matching items
+Expected:      (predicate expression)
+Collection:    [0, 1]
+Match indices: 0, 1</Message>
+          <StackTrace>   at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs:line 69
+   at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs:line 92
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="3e0dd0d7-85af-4668-9572-cbf0b709b150" testId="e520b60b-e381-6ba5-abf4-911b9c1b9964" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.DestinationAppearingAfterStagingIsNeverChangedOrRemoved" computerName="b888a35a3c41" duration="00:00:00.0221010" startTime="2026-10-25T09:35:09.2437016+00:00" endTime="2026-10-25T09:35:09.2640403+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3e0dd0d7-85af-4668-9572-cbf0b709b150" />
+    <UnitTestResult executionId="5e37743e-91bf-4dc7-9875-7d09531ae6e1" testId="951ed9b5-a40c-d2ba-2ef3-972b8c98938e" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;backup&quot;)" computerName="b888a35a3c41" duration="00:00:00.3523081" startTime="2026-10-25T09:35:04.0959867+00:00" endTime="2026-10-25T09:35:04.4396563+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="5e37743e-91bf-4dc7-9875-7d09531ae6e1">
+      <Output>
+        <ErrorInfo>
+          <Message>
+SUCCESS
+
+System.IO.InvalidDataException: Published book was replaced.
+   at Caiwu.Persistence.Sqlite.Tests.CreateRaceWorker.Main(String[] args) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreateRaceWorker.cs:line 70
+
+</Message>
+          <StackTrace>   at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs:line 70
+   at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs:line 92
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="2b420a9a-06a0-4248-8c36-32baeb3bc67f" testId="e13a56e3-f7ca-6b58-5d7c-7ffc0dd2e47d" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.FailedPopulationCleansOnlyItsOwnTemporaryFiles" computerName="b888a35a3c41" duration="00:00:00.0056303" startTime="2026-10-25T09:35:09.2646695+00:00" endTime="2026-10-25T09:35:09.2729373+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2b420a9a-06a0-4248-8c36-32baeb3bc67f" />
+    <UnitTestResult executionId="14727654-0668-4e22-8d02-2deb4dad6911" testId="3251f588-9e31-55bd-055c-99a9a655cc77" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.StagedPublishersOnDedicatedThreadsCannotReplaceEachOther" computerName="b888a35a3c41" duration="00:00:00.0149187" startTime="2026-10-25T09:35:09.2057042+00:00" endTime="2026-10-25T09:35:09.2383699+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="14727654-0668-4e22-8d02-2deb4dad6911">
+      <Output>
+        <ErrorInfo>
+          <Message>Assert.Single() Failure: The collection contained 2 matching items
+Expected:      (predicate expression)
+Collection:    [0, 1]
+Match indices: 0, 1</Message>
+          <StackTrace>   at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.StagedPublishersOnDedicatedThreadsCannotReplaceEachOther() in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs:line 32
+--- End of stack trace from previous location ---</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="35b0013e-8710-4d42-a422-d97c499ec363" testId="3c28c89a-7679-5a47-fb1d-aac8e54db86e" testName="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;restore&quot;)" computerName="b888a35a3c41" duration="00:00:04.7632051" startTime="2026-10-25T09:35:04.4405962+00:00" endTime="2026-10-25T09:35:09.2013791+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="35b0013e-8710-4d42-a422-d97c499ec363" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;publish&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="66abe178-a725-78d7-4cf7-63e9d4f49ea1">
+      <Execution id="bbd63195-80f5-4399-8348-80e74435a9f0" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.DestinationAppearingAfterStagingIsNeverChangedOrRemoved" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="e520b60b-e381-6ba5-abf4-911b9c1b9964">
+      <Execution id="3e0dd0d7-85af-4668-9572-cbf0b709b150" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="DestinationAppearingAfterStagingIsNeverChangedOrRemoved" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.FailedPopulationCleansOnlyItsOwnTemporaryFiles" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="e13a56e3-f7ca-6b58-5d7c-7ffc0dd2e47d">
+      <Execution id="2b420a9a-06a0-4248-8c36-32baeb3bc67f" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="FailedPopulationCleansOnlyItsOwnTemporaryFiles" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.StagedPublishersOnDedicatedThreadsCannotReplaceEachOther" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="3251f588-9e31-55bd-055c-99a9a655cc77">
+      <Execution id="14727654-0668-4e22-8d02-2deb4dad6911" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="StagedPublishersOnDedicatedThreadsCannotReplaceEachOther" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;create&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="e3e9d1c9-b42b-395f-3a6a-b60a55e8583e">
+      <Execution id="1a4f54a2-47af-443e-94f8-7684b0fc3fb7" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;restore&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="3c28c89a-7679-5a47-fb1d-aac8e54db86e">
+      <Execution id="35b0013e-8710-4d42-a422-d97c499ec363" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+    <UnitTest name="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: &quot;backup&quot;)" storage="/workspace/caiwu/tests/caiwu.persistence.sqlite.tests/bin/release/net10.0/caiwu.persistence.sqlite.tests.dll" id="951ed9b5-a40c-d2ba-2ef3-972b8c98938e">
+      <Execution id="5e37743e-91bf-4dc7-9875-7d09531ae6e1" />
+      <TestMethod codeBase="/workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/bin/Release/net10.0/Caiwu.Persistence.Sqlite.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.Persistence.Sqlite.Tests.CreationRaceTests" name="SeparateProcessesHaveOneWinnerAndPreserveItsContents" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="e3e9d1c9-b42b-395f-3a6a-b60a55e8583e" executionId="1a4f54a2-47af-443e-94f8-7684b0fc3fb7" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="66abe178-a725-78d7-4cf7-63e9d4f49ea1" executionId="bbd63195-80f5-4399-8348-80e74435a9f0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e520b60b-e381-6ba5-abf4-911b9c1b9964" executionId="3e0dd0d7-85af-4668-9572-cbf0b709b150" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="951ed9b5-a40c-d2ba-2ef3-972b8c98938e" executionId="5e37743e-91bf-4dc7-9875-7d09531ae6e1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e13a56e3-f7ca-6b58-5d7c-7ffc0dd2e47d" executionId="2b420a9a-06a0-4248-8c36-32baeb3bc67f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3251f588-9e31-55bd-055c-99a9a655cc77" executionId="14727654-0668-4e22-8d02-2deb4dad6911" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3c28c89a-7679-5a47-fb1d-aac8e54db86e" executionId="35b0013e-8710-4d42-a422-d97c499ec363" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="7" executed="7" passed="3" failed="4" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v4.0.1+0f7d528729 (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.22]   Discovering: Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.61]   Discovered:  Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:00.75]   Starting:    Caiwu.Persistence.Sqlite.Tests
+[xUnit.net 00:00:02.66]       Assert.Single() Failure: The collection contained 2 matching items
+[xUnit.net 00:00:02.66]       Expected:      (predicate expression)
+[xUnit.net 00:00:02.66]       Collection:    [0, 1]
+[xUnit.net 00:00:02.66]       Match indices: 0, 1
+[xUnit.net 00:00:02.66]       Stack Trace:
+[xUnit.net 00:00:02.66]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs(69,0): at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode)
+[xUnit.net 00:00:02.66]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs(92,0): at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode)
+[xUnit.net 00:00:02.66]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:08.78]       SUCCESS
+[xUnit.net 00:00:08.78]
+[xUnit.net 00:00:08.78]
+[xUnit.net 00:00:08.78]
+[xUnit.net 00:00:08.78]       System.IO.InvalidDataException: Creator returned another book.
+[xUnit.net 00:00:08.78]          at Caiwu.Persistence.Sqlite.Tests.CreateRaceWorker.Main(String[] args) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreateRaceWorker.cs:line 63
+[xUnit.net 00:00:08.78]
+[xUnit.net 00:00:08.78]       Stack Trace:
+[xUnit.net 00:00:08.79]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs(70,0): at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode)
+[xUnit.net 00:00:08.79]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs(92,0): at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode)
+[xUnit.net 00:00:08.79]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:09.14]
+[xUnit.net 00:00:09.14]       SUCCESS
+[xUnit.net 00:00:09.14]
+[xUnit.net 00:00:09.14]       System.IO.InvalidDataException: Published book was replaced.
+[xUnit.net 00:00:09.14]          at Caiwu.Persistence.Sqlite.Tests.CreateRaceWorker.Main(String[] args) in /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreateRaceWorker.cs:line 70
+[xUnit.net 00:00:09.14]
+[xUnit.net 00:00:09.14]
+[xUnit.net 00:00:09.14]       Stack Trace:
+[xUnit.net 00:00:09.14]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs(70,0): at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode)
+[xUnit.net 00:00:09.14]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs(92,0): at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(String mode)
+[xUnit.net 00:00:09.14]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:13.94]       Assert.Single() Failure: The collection contained 2 matching items
+[xUnit.net 00:00:13.94]       Expected:      (predicate expression)
+[xUnit.net 00:00:13.94]       Collection:    [0, 1]
+[xUnit.net 00:00:13.94]       Match indices: 0, 1
+[xUnit.net 00:00:13.94]       Stack Trace:
+[xUnit.net 00:00:13.94]         /workspace/caiwu/tests/Caiwu.Persistence.Sqlite.Tests/CreationRaceTests.cs(32,0): at Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.StagedPublishersOnDedicatedThreadsCannotReplaceEachOther()
+[xUnit.net 00:00:13.94]         --- End of stack trace from previous location ---
+[xUnit.net 00:00:13.99]   Finished:    Caiwu.Persistence.Sqlite.Tests
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="b888a35a3c41" outcome="Error" timestamp="2026-10-25T09:34:57.9620665+00:00">
+        <Text>[xUnit.net 00:00:02.66]     Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: "publish") [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="b888a35a3c41" outcome="Error" timestamp="2026-10-25T09:35:04.0891416+00:00">
+        <Text>[xUnit.net 00:00:08.78]     Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: "create") [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="b888a35a3c41" outcome="Error" timestamp="2026-10-25T09:35:04.4435866+00:00">
+        <Text>[xUnit.net 00:00:09.14]     Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.SeparateProcessesHaveOneWinnerAndPreserveItsContents(mode: "backup") [FAIL]</Text>
+      </RunInfo>
+      <RunInfo computerName="b888a35a3c41" outcome="Error" timestamp="2026-10-25T09:35:09.2434822+00:00">
+        <Text>[xUnit.net 00:00:13.94]     Caiwu.Persistence.Sqlite.Tests.CreationRaceTests.StagedPublishersOnDedicatedThreadsCannotReplaceEachOther [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

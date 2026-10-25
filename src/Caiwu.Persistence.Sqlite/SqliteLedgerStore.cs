@@ -1,4 +1,6 @@
+using System.ComponentModel;
 using System.Globalization;
+using System.Runtime.InteropServices;
 using Caiwu.Contracts;
 using Microsoft.Data.Sqlite;
 
@@ -228,7 +230,7 @@ public sealed class SqliteLedgerStore : ILedgerStore
     private static string NewDestination(string path)
     {
         var full = FullPath(path);
-        // File.Move without overwrite also enforces this after the staging work.
+        // PublishNew atomically rejects existing destinations after staging too.
         if (Path.Exists(full)) throw new IOException("目标已存在，不能覆盖已有文件。");
         if (!Directory.Exists(Path.GetDirectoryName(full))) throw new DirectoryNotFoundException("目标目录不存在。");
         full = ResolveLinks(full);
@@ -288,7 +290,19 @@ public sealed class SqliteLedgerStore : ILedgerStore
         try
         {
             populate(stage);
-            File.Move(stage, destination, overwrite: false);
+            if (OperatingSystem.IsWindows())
+            {
+                // Windows MoveFileEx without REPLACE_EXISTING rejects a competing file.
+                File.Move(stage, destination, overwrite: false);
+            }
+            else if (LinkNew(stage, destination) != 0)
+            {
+                // Unix File.Move(false) can check absence then call replacing rename.
+                // link publishes the complete staged inode and atomically fails if the
+                // name already exists. Never fall back to a replacing move or partial copy.
+                var error = new Win32Exception(Marshal.GetLastPInvokeError());
+                throw new IOException("无法安全发布账套：目标已存在或文件系统不支持原子硬链接发布。", error);
+            }
         }
         finally
         {
@@ -296,6 +310,11 @@ public sealed class SqliteLedgerStore : ILedgerStore
             foreach (var suffix in new[] { "-journal", "-wal", "-shm" }) File.Delete(stage + suffix);
         }
     }
+
+    [DllImport("libc", EntryPoint = "link", SetLastError = true)]
+    private static extern int LinkNew(
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string existingPath,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string newPath);
 
     private static (string, object?)[] BookParameters(BookInfo book) =>
     [
