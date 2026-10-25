@@ -21,13 +21,11 @@ try
         case "uninstall" when args.Length == 2:
             Installation.Uninstall(args[1]); break;
         case "launch" when args.Length >= 2:
-            var current = Installation.ReadCurrent(args[1]);
-            var manifest = PayloadManifest.Read(Path.Combine(args[1], "versions", current.Version, PayloadManifest.FileName));
-            // ManagedDesktopLaunch releases its validation lease before the child revalidates
-            // and owns both leases. Legacy launch continues to keep its own handles.
-            return manifest.ManagedDataContract
-                ? ManagedDesktopLaunch.Launch(args[1], args.Skip(2).ToArray())
-                : Installation.Launch(args[1], args.Skip(2).ToArray());
+            return Installation.Launch(args[1], args.Skip(2).ToArray());
+        case "launch-managed" when args.Length >= 2:
+            // Explicit handoff: validation handles are released before the child
+            // revalidates its active executable/receipts and owns both real leases.
+            return ManagedDesktopLaunch.Launch(args[1], args.Skip(2).ToArray());
         case "inspect-book" when args.Length == 3:
             Write(BookOperations.Inspect(args[1], args[2])); break;
         case "backup-book" when args.Length == 4:

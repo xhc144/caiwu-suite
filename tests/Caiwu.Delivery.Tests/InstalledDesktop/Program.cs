@@ -17,6 +17,7 @@ internal static class Program
     private static Process? launcher, desktop;
     private static AutomationElement? main;
     private static bool normalLoginCompleted;
+    private static bool migrationAttempted, originalBundleUnavailable;
     private static readonly string Password = Environment.GetEnvironmentVariable("CAIWU_INTERNAL_QA_PASSWORD") ?? "Synthetic!" + Guid.NewGuid().ToString("N");
 
     [STAThread]
@@ -42,6 +43,7 @@ internal static class Program
             var identityRoot = Path.Combine(data, "Global", "Operators");
             var operators = new LocalOperatorService(new FileOperatorStore(identityRoot));
             var health = args.Length == 4 && args[3] == "health";
+            var migration = args.Length == 4 && args[3] == "migration";
             if (!health)
             {
                 Require(operators.IsFirstUse, "fixture starts with an unused isolated global identity directory");
@@ -57,7 +59,7 @@ internal static class Program
             var identityBefore = PayloadManifest.Hash(identityPath);
             var helper = Path.Combine(versionRoot, "Caiwu.Delivery.exe");
             var start = new ProcessStartInfo(helper) { UseShellExecute = false, WorkingDirectory = evidence, RedirectStandardError = true, RedirectStandardOutput = true };
-            start.ArgumentList.Add("launch"); start.ArgumentList.Add(install);
+            start.ArgumentList.Add("launch-managed"); start.ArgumentList.Add(install);
             launcher = Process.Start(start) ?? throw new IOException("Installed launcher did not start.");
             var stdout = launcher.StandardOutput.ReadToEndAsync(); var stderr = launcher.StandardError.ReadToEndAsync();
             Until(() =>
@@ -75,6 +77,22 @@ internal static class Program
             if (!string.IsNullOrWhiteSpace(checkout)) Require(modules.All(m => !SafePaths.Contains(checkout, m.path)), "actual product process loads no native/managed image from the source checkout");
             File.WriteAllText(Path.Combine(evidence, "loaded-native-modules.json"), JsonSerializer.Serialize(modules, PayloadManifest.Json));
             Capture("normal-login");
+            if (migration)
+            {
+                var receiptPath = Path.Combine(data, "Global", "BackupReceipts", "carried-receipt.json");
+                using var receipt = JsonDocument.Parse(File.ReadAllText(receiptPath));
+                originalBundleUnavailable = !Directory.Exists(receipt.RootElement.GetProperty("Directory").GetString());
+                Require(originalBundleUnavailable, "cross-root recovery fixture makes the original absolute bundle directory unavailable");
+                Menu("文件", "从备份恢复副本…"); FileDialog("选择本机受管完整备份的可信哈希收据", receiptPath); Yes("完整恢复");
+                migrationAttempted = true;
+                Until(() => Text(main!, "NotificationText").Contains("完整恢复未完成", StringComparison.Ordinal), "normal new-root carried-receipt rejection");
+                Require(Text(main, "NotificationText").Contains("受管备份收据无效", StringComparison.Ordinal), "unchanged carried receipt is rejected because its absolute bundle path is outside the new data root");
+                Require(Directory.GetFiles(data, "*.caiwu", SearchOption.AllDirectories).All(p => p.Contains(".delivery-backups", StringComparison.Ordinal)), "rejected cross-root recovery publishes no live ledger");
+                Require(PayloadManifest.Hash(identityPath) == identityBefore, "rejected cross-root recovery leaves the new root's global identities unchanged");
+                Capture("cross-root-recovery-rejected"); Close(main);
+                if (!launcher.WaitForExit(30000) || launcher.ExitCode != 0) throw new IOException("Migration limitation probe App did not close normally.");
+                Save(true, null); return 0;
+            }
             if (health)
             {
                 Shortcut(0x4f); FileDialog("打开账套", Path.Combine(data, "安装 合成账套.caiwu"));
@@ -176,7 +194,7 @@ internal static class Program
         }
     }
 
-    private static void Save(bool success, string? failure) { if (evidence.Length > 0) File.WriteAllText(Path.Combine(evidence, "installed-runtime.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), checks = Checks }, PayloadManifest.Json)); }
+    private static void Save(bool success, string? failure) { if (evidence.Length > 0) File.WriteAllText(Path.Combine(evidence, "installed-runtime.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), migrationAttempted, originalBundleUnavailable, portableBackupRestoreSupported = false, checks = Checks }, PayloadManifest.Json)); }
     private static void Pass(string name) { Checks.Add(name); Save(false, "In progress"); }
     private static void Require(bool value, string name) { if (!value) throw new InvalidDataException(name); Pass(name); }
     private static Condition Id(string id) => new PropertyCondition(AutomationElement.AutomationIdProperty, id);

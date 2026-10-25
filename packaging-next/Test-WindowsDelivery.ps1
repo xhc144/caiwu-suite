@@ -129,7 +129,39 @@ try {
     Assert-Retained $retained
     Assert (Test-Path $unknown) 'Uninstall deleted the unowned program-directory file.'
     Pass 'native uninstall preserves every ledger attachment backup global identity and unknown user file' @{ retainedFiles = $retained.Count }
-    [ordered]@{ success = $true; classification = 'INTERNAL-UNVALIDATED'; sourceCommit = $manifest.commit; windowsExecuted = $true; nativeInstallerExecuted = $true; completeManagedUpgradeValidated = $true; approvedForUserDelivery = $false; signed = $false; trustedProductionUpdateFeed = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
+
+    # Additional portability limitation check. The main installed lifecycle above is
+    # complete before this probe. Carry original bytes; never rewrite/re-hash a
+    # receipt to make an unsupported recovery appear successful.
+    $originalDataRoot = $dataRoot
+    $originalInstallRoot = $installRoot
+    $carriedReceiptSource = @(Get-ChildItem (Join-Path $originalDataRoot 'Global/BackupReceipts') -Filter '*.json').FullName | Select-Object -First 1
+    $carriedReceipt = Get-Content $carriedReceiptSource -Raw | ConvertFrom-Json
+    $dataRoot = Join-Path $output '模拟 新数据根'
+    $installRoot = Join-Path $env:LOCALAPPDATA ('Programs/Caiwu Migration QA 程序 ' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path (Join-Path $dataRoot 'Global/BackupReceipts'), (Join-Path $dataRoot '.delivery-backups') | Out-Null
+    Copy-Item -LiteralPath $carriedReceiptSource -Destination (Join-Path $dataRoot 'Global/BackupReceipts/carried-receipt.json')
+    Copy-Item -LiteralPath $carriedReceipt.Directory -Destination (Join-Path $dataRoot '.delivery-backups/carried-bundle') -Recurse
+    $preservedOriginalRoot = $originalDataRoot + '.migration-source-retained'
+    Move-Item -LiteralPath $originalDataRoot -Destination $preservedOriginalRoot
+    try {
+        Assert (-not (Test-Path $carriedReceipt.Directory)) 'Migration probe must not depend on the original absolute backup directory.'
+        Run-Native $Installer ('/S /DATAROOT="' + $dataRoot + '" /D=' + $installRoot)
+        $migrationEvidence = Join-Path $output 'migration-runtime'
+        $control = Start-Controller $migrationEvidence 'migration'; Wait-Controller $control $migrationEvidence; $control = $null
+        $migrationReport = Get-Content (Join-Path $migrationEvidence 'installed-runtime.json') -Raw | ConvertFrom-Json
+        Assert ([bool]$migrationReport.migrationAttempted -and [bool]$migrationReport.originalBundleUnavailable -and -not $migrationReport.portableBackupRestoreSupported) 'Cross-root receipt limitation was not actually exercised.'
+        $newRootRetained = Data-Hashes
+        Run-Native (Join-Path $installRoot 'Uninstall.exe') ('/S _?=' + $installRoot)
+        Assert-Retained $newRootRetained
+        Pass 'new-root carried backup and unchanged receipt reject safely with the original directory unavailable' @{ portableBackupRestoreSupported = $false; limitation = 'Current trusted receipt contains an absolute original-data-root path; no portable recovery/remap workflow exists.' }
+    } finally {
+        if ($null -ne $control -and -not $control.HasExited) { $control.Kill($true); $control = $null }
+        Move-Item -LiteralPath $preservedOriginalRoot -Destination $originalDataRoot
+        $dataRoot = $originalDataRoot; $installRoot = $originalInstallRoot
+    }
+    Assert-Retained $retained
+    [ordered]@{ success = $true; classification = 'INTERNAL-UNVALIDATED'; sourceCommit = $manifest.commit; windowsExecuted = $true; nativeInstallerExecuted = $true; completeManagedUpgradeValidated = $true; portableBackupRestoreSupported = $false; crossRootRecoveryProbeExecuted = $true; approvedForUserDelivery = $false; signed = $false; trustedProductionUpdateFeed = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
 } catch {
     [ordered]@{ success = $false; classification = 'INTERNAL-UNVALIDATED'; windowsExecuted = $true; failure = $_.Exception.Message; approvedForUserDelivery = $false; results = $results } | ConvertTo-Json -Depth 12 | Set-Content (Join-Path $output 'windows-acceptance.json') -Encoding utf8
     throw

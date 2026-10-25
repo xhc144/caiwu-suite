@@ -104,7 +104,7 @@ Section "Caiwu Suite" SEC_MAIN
   ClearErrors
   CreateDirectory "$SMPROGRAMS\CaiwuSuite"
   IfErrors metadata_failed
-  CreateShortcut "$SMPROGRAMS\CaiwuSuite\财务套件.lnk" "$INSTDIR\versions\${PRODUCT_VERSION}\Caiwu.Delivery.exe" 'launch "$INSTDIR"'
+  CreateShortcut "$SMPROGRAMS\CaiwuSuite\财务套件.lnk" "$INSTDIR\versions\${PRODUCT_VERSION}\Caiwu.Delivery.exe" 'launch-managed "$INSTDIR"'
   IfErrors metadata_failed
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   IfErrors metadata_failed

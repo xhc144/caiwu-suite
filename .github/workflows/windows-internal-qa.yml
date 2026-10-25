@@ -71,4 +71,7 @@ jobs:
             ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/upgraded-runtime/*.json
             ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/upgraded-runtime/*.png
             ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/upgraded-runtime/*.log
+            ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/migration-runtime/*.json
+            ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/migration-runtime/*.png
+            ${{ runner.temp }}/caiwu-internal-qa-${{ github.run_id }}-${{ github.run_attempt }}/migration-runtime/*.log
           if-no-files-found: warn
