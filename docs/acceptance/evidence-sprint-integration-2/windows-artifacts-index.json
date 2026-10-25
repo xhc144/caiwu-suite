@@ -95,5 +95,26 @@
     "artifactId": 12595763828,
     "zipSha256": "b72815d172d7ae57277bd630729886945372056c0c927eb1909a5bfc5c74d733",
     "scope": "FAILED: new product OnStartup login interferes with independent host dispatcher; all six stale cases watchdog-blocked, native input misses intended cell and Application shuts down, visual90s timeout. Independent resource Application startup isolated in1f2fd4f; no production auth bypass."
+  },
+  {
+    "runId": 40186288268,
+    "commit": "1f2fd4f4eba7ee25f64c359b8ee9353358e19f32",
+    "artifactId": 12595593967,
+    "zipSha256": "47265a21ccfb48ccee031c04dcb91483fde8c68ef02cb21351c641343bcad702",
+    "scope": "FAILED before business assertions: App.InitializeComponent rejects the derived CLR component for app.xaml. Corrected by standalone Application loading exact Modern dictionary in3a9ecbe; production source untouched."
+  },
+  {
+    "runId": 40186496784,
+    "commit": "3a9ecbe168a0e255028936b36de62d8bcc2d0e01",
+    "artifactId": 12595754681,
+    "zipSha256": "22e22cd0ed12b01881484bbcd8d500352d09df1ff24fab9ada62eb4b77ae26d3",
+    "scope": "Six actual stale-window cases and two native focus cases PASS. Visual probe fails solely on obsolete expectation that operator identity ComboBox is editable; auth host deliberately locks it. 10e38ff asserts trusted locked identity plus actual Fluent native noneditable template. Whole run failure retained."
+  },
+  {
+    "runId": 40186708406,
+    "commit": "10e38ff65313aae5106a6b55c42790d47345b8fb",
+    "artifactId": 12596333787,
+    "zipSha256": "2615d81e4d84950c0400d3428beb2d34ee2296bd1d3cb7f3ef3dc2be5c87c892",
+    "scope": "Focused SUCCESS: six actual stale-window cases, two native keyboard focus cases and all modern visual checks/captures on authenticated production tree. Trusted operator is locked and uses real Fluent noneditable template. Does not cover fourteen new feature windows, product OnStartup, new managed wiring or full candidate/installation."
   }
 ]
