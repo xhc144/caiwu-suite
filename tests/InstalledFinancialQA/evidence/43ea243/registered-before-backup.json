@@ -1,0 +1,32 @@
+[
+  {
+    "key": "costing-4d5711b4354986da9569f8f2",
+    "codec": "cost-worksheet-v1",
+    "relativePath": "Books/b3bd503eac3f42d196e67ba37d652ba4/Modules/Costing/worksheet-5414bc5262cf4d2a949093ed9e3436de.json",
+    "sha256": "b403a676e39b6f583ffe8087df4a9e56058df4ea22d03d7f6622e28c3e59fb44"
+  },
+  {
+    "key": "nonprofit-6ff03ad4a6caa3750951d700",
+    "codec": "nonprofit-classification-v1",
+    "relativePath": "Books/b3bd503eac3f42d196e67ba37d652ba4/Modules/Nonprofit/installed-reviewed.json",
+    "sha256": "9772bcec6cf084337992847c723f8968040e31a77a1f23b9a255319e82f7e85c"
+  },
+  {
+    "key": "nonprofit-8cc19dfb284c0e96997ff81f",
+    "codec": "nonprofit-classification-v1",
+    "relativePath": "Books/b3bd503eac3f42d196e67ba37d652ba4/Modules/Nonprofit/synthetic-input.json",
+    "sha256": "ffecb685fb64edf74757968da883873aabf0012daf87462dddf7facacd02c288"
+  },
+  {
+    "key": "reports-36ea36320f0d1d59298f7af7",
+    "codec": "report-template-v1",
+    "relativePath": "Books/b3bd503eac3f42d196e67ba37d652ba4/Modules/Reports/installed-template.json",
+    "sha256": "70e5a05e884bd708d4f5da97a1b7f19265d464a5e2ae2204c0d4867f28a4b737"
+  },
+  {
+    "key": "summaries",
+    "codec": "summary-v1",
+    "relativePath": "Books/b3bd503eac3f42d196e67ba37d652ba4/Modules/Summaries/catalog.json",
+    "sha256": "6464394a3d448e70e6538b6eb7cd4e0f6889377d970bc96bf069120e7babc9fc"
+  }
+]

@@ -83,6 +83,7 @@ internal static partial class Program
         Menu("文件", "备份当前账套…"); Yes("受管完整备份");
         var receipts = Path.Combine(data, "Global", "BackupReceipts"); Until(() => Directory.Exists(receipts) && Directory.GetFiles(receipts, "*.json").Length == 1 && Text(main!, "NotificationText").Contains("独立可信哈希收据已保存", StringComparison.Ordinal), "actual App complete four-codec backup");
         var receiptPath = Directory.GetFiles(receipts, "*.json").Single();
+        File.Copy(receiptPath, Path.Combine(evidence, "actual-trusted-receipt.json"));
         using (var receipt = JsonDocument.Parse(File.ReadAllText(receiptPath)))
         {
             var bundle = receipt.RootElement.GetProperty("Directory").GetString()!; var trustedHash = receipt.RootElement.GetProperty("ManifestSha256").GetString()!;
@@ -102,7 +103,11 @@ internal static partial class Program
         using var leftStore = SqliteLedgerStore.Open(bookPath); using var rightStore = SqliteLedgerStore.Open(restoredBookPath); rightStore.CheckIntegrity();
         var left = leftStore.Read(); var right = rightStore.Read();
         var a = BookOperations.Inspect(install, Path.GetRelativePath(data, bookPath)); var b = BookOperations.Inspect(install, Path.GetRelativePath(data, restoredBookPath));
-        Require(a.BookId == b.BookId && a.Revision == b.Revision && a.SnapshotSha256 == b.SnapshotSha256 && b.PostedVoucherCount == 2 && b.BankBalance == 110m, "independent actual-restored SQLite readback matches full snapshot revision identity two posted vouchers and bank110");
+        var sourceBank = BankCodeBalance(left); var restoredBank = BankCodeBalance(right);
+        File.WriteAllText(Path.Combine(evidence, "restore-ledger-diagnostics.json"), JsonSerializer.Serialize(new { source = a, actualRestoredTarget = b, explicitAccountCode = "1002", sourceAccountBalance = sourceBank, restoredAccountBalance = restoredBank }, PayloadManifest.Json));
+        // BookOperations.BankBalance is optional and selected by the literal display
+        // name 银行存款. This explicitly named synthetic bank must be checked by code.
+        Require(a.BookId == b.BookId && a.Revision == b.Revision && a.SnapshotSha256 == b.SnapshotSha256 && a.PostedVoucherCount == 2 && b.PostedVoucherCount == 2 && a.BankBalance == b.BankBalance && sourceBank == 110m && restoredBank == 110m, "independent actual-restored SQLite readback matches full snapshot revision identity two posted vouchers and explicit bank1002 balance110");
         using var managed = Installation.OpenManagedData(install); var inv = managed.ReadInventory(); var source = managed.FindBook(bookPath, BookId); var target = managed.FindBook(restoredBookPath, BookId);
         var originals = inv.Attachments.Where(x => x.InstanceId == source.InstanceId).OrderBy(x => x.Key).ToArray(); var restored = inv.Attachments.Where(x => x.InstanceId == target.InstanceId).OrderBy(x => x.Key).ToArray();
         Require(originals.Length == 5 && restored.Length == originals.Length && originals.Select(x => x.Codec).Distinct().Count() == 4, "restored target has exact complete registered attachment membership across all four codecs");
@@ -114,7 +119,12 @@ internal static partial class Program
             var xv = codec.ReadVersion(xp, left); var yv = codec.ReadVersion(yp, right); Require(xv == yv, "native codec content/version equality: " + x.Key);
             evidenceRows.Add(new { x.Key, x.Codec, source = x.RelativePath, restored = y.RelativePath, sourceSha256 = PayloadManifest.Hash(xp), restoredSha256 = PayloadManifest.Hash(yp), sourceVersion = xv, restoredVersion = yv });
         }
-        File.WriteAllText(Path.Combine(evidence, "actual-restored-readback.json"), JsonSerializer.Serialize(new { source = a, actualRestoredTarget = b, originalLedgerSha256 = sourceBookHash, identityUnchanged = PayloadManifest.Hash(identityPath) == identityHash, attachments = evidenceRows }, PayloadManifest.Json));
+        File.WriteAllText(Path.Combine(evidence, "actual-restored-readback.json"), JsonSerializer.Serialize(new { source = a, actualRestoredTarget = b, explicitAccountCode = "1002", sourceAccountBalance = sourceBank, restoredAccountBalance = restoredBank, originalLedgerSha256 = sourceBookHash, identityUnchanged = PayloadManifest.Hash(identityPath) == identityHash, attachments = evidenceRows }, PayloadManifest.Json));
+    }
+    private static decimal BankCodeBalance(LedgerSnapshot snapshot)
+    {
+        var account = snapshot.Accounts.Single(a => a.Code == "1002");
+        return account.OpeningDebit - account.OpeningCredit + snapshot.Vouchers.Where(v => v.Status == VoucherStatus.Posted).SelectMany(v => v.Lines).Where(l => l.AccountCode == account.Code).Sum(l => l.Debit - l.Credit);
     }
     private static bool FormulaCellIsTen(AutomationElement grid)
     {
