@@ -1,0 +1,429 @@
+﻿{
+  "SchemaVersion": 1,
+  "Calculation": {
+    "Input": {
+      "WorksheetId": "6c02bee1-219d-4a0f-9728-5adf91a34416",
+      "BookId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "Date": "2026-10-01",
+      "PreparedBy": "\u5236\u8868\u7532 \u4E2D\u6587Az09\uFF08\uFF09-.",
+      "SourceReference": "\u5408\u6210\u6837\u4F8B\uFF1A\u6750\u6599A60/B40\u3001\u4EBA\u5DE580\u3001\u5236\u9020\u8D3940\uFF1B\u7B2C\u4E8C\u9636\u6BB5\u589E\u52A030",
+      "PolicyVersion": "worksheet-whole-stage-largest-remainder-rmb-v1",
+      "Stages": [
+        {
+          "StageId": "S1",
+          "Name": "\u5B8C\u5DE5\u534A\u6210\u54C1",
+          "LaborBasis": "LaborHours",
+          "OverheadBasis": "MachineHours",
+          "DirectLabor": 84,
+          "ManufacturingOverhead": 40,
+          "Objects": [
+            {
+              "CostObject": "A",
+              "ProductName": "\u5408\u6210\u4EA7\u54C1\u7532",
+              "OutputQuantity": 2,
+              "DirectMaterials": 60,
+              "LaborHours": 1,
+              "MachineHours": 3
+            },
+            {
+              "CostObject": "B",
+              "ProductName": "\u5408\u6210\u4EA7\u54C1\u4E59",
+              "OutputQuantity": 4,
+              "DirectMaterials": 40,
+              "LaborHours": 3,
+              "MachineHours": 1
+            }
+          ],
+          "CarryIns": [],
+          "SharedMaterials": 0,
+          "MaterialBasis": "OutputQuantity"
+        },
+        {
+          "StageId": "S2",
+          "Name": "\u6574\u6279\u5408\u5E76\u52A0\u5DE5",
+          "LaborBasis": "OutputQuantity",
+          "OverheadBasis": "OutputQuantity",
+          "DirectLabor": 20,
+          "ManufacturingOverhead": 0,
+          "Objects": [
+            {
+              "CostObject": "C",
+              "ProductName": "\u5408\u6210\u6210\u54C1",
+              "OutputQuantity": 5,
+              "DirectMaterials": 10,
+              "LaborHours": 0,
+              "MachineHours": 0
+            }
+          ],
+          "CarryIns": [
+            {
+              "SourceStageId": "S1",
+              "SourceCostObject": "A",
+              "TargetCostObject": "C"
+            },
+            {
+              "SourceStageId": "S1",
+              "SourceCostObject": "B",
+              "TargetCostObject": "C"
+            }
+          ],
+          "SharedMaterials": 0,
+          "MaterialBasis": "OutputQuantity"
+        }
+      ]
+    },
+    "InputFingerprint": "D0821CECE4171617803D26308AFD99AC76F946CE770E175A026B398B8DFBF360",
+    "ExternalCost": 254,
+    "FinishedCost": 254,
+    "Stages": [
+      {
+        "StageId": "S1",
+        "Name": "\u5B8C\u5DE5\u534A\u6210\u54C1",
+        "ExternalCost": 224,
+        "CarriedCost": 0,
+        "Objects": [
+          {
+            "StageId": "S1",
+            "CostObject": "A",
+            "ProductName": "\u5408\u6210\u4EA7\u54C1\u7532",
+            "OutputQuantity": 2,
+            "DirectMaterials": 60,
+            "AllocatedLabor": 21,
+            "AllocatedOverhead": 30,
+            "CarriedMaterials": 0,
+            "CarriedLabor": 0,
+            "CarriedOverhead": 0,
+            "IsTransferredOut": true,
+            "AllocatedMaterials": 0,
+            "Materials": 60,
+            "Labor": 21,
+            "Overhead": 30,
+            "TotalCost": 111,
+            "UnitCost": 55.5
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "B",
+            "ProductName": "\u5408\u6210\u4EA7\u54C1\u4E59",
+            "OutputQuantity": 4,
+            "DirectMaterials": 40,
+            "AllocatedLabor": 63,
+            "AllocatedOverhead": 10,
+            "CarriedMaterials": 0,
+            "CarriedLabor": 0,
+            "CarriedOverhead": 0,
+            "IsTransferredOut": true,
+            "AllocatedMaterials": 0,
+            "Materials": 40,
+            "Labor": 63,
+            "Overhead": 10,
+            "TotalCost": 113,
+            "UnitCost": 28.25
+          }
+        ],
+        "AllocationDetails": [
+          {
+            "CostObject": "A",
+            "CostElement": "\u6750\u6599",
+            "Basis": "OutputQuantity",
+            "Weight": 2,
+            "Pool": 0,
+            "ExactNumerator": "0",
+            "ExactDenominator": "60000",
+            "FloorAmount": 0,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 0
+          },
+          {
+            "CostObject": "B",
+            "CostElement": "\u6750\u6599",
+            "Basis": "OutputQuantity",
+            "Weight": 4,
+            "Pool": 0,
+            "ExactNumerator": "0",
+            "ExactDenominator": "60000",
+            "FloorAmount": 0,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 0
+          },
+          {
+            "CostObject": "A",
+            "CostElement": "\u4EBA\u5DE5",
+            "Basis": "LaborHours",
+            "Weight": 1,
+            "Pool": 84,
+            "ExactNumerator": "84000000",
+            "ExactDenominator": "40000",
+            "FloorAmount": 21,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 21
+          },
+          {
+            "CostObject": "B",
+            "CostElement": "\u4EBA\u5DE5",
+            "Basis": "LaborHours",
+            "Weight": 3,
+            "Pool": 84,
+            "ExactNumerator": "252000000",
+            "ExactDenominator": "40000",
+            "FloorAmount": 63,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 63
+          },
+          {
+            "CostObject": "A",
+            "CostElement": "\u5236\u9020\u8D39\u7528",
+            "Basis": "MachineHours",
+            "Weight": 3,
+            "Pool": 40,
+            "ExactNumerator": "120000000",
+            "ExactDenominator": "40000",
+            "FloorAmount": 30,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 30
+          },
+          {
+            "CostObject": "B",
+            "CostElement": "\u5236\u9020\u8D39\u7528",
+            "Basis": "MachineHours",
+            "Weight": 1,
+            "Pool": 40,
+            "ExactNumerator": "40000000",
+            "ExactDenominator": "40000",
+            "FloorAmount": 10,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 10
+          }
+        ]
+      },
+      {
+        "StageId": "S2",
+        "Name": "\u6574\u6279\u5408\u5E76\u52A0\u5DE5",
+        "ExternalCost": 30,
+        "CarriedCost": 224,
+        "Objects": [
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "ProductName": "\u5408\u6210\u6210\u54C1",
+            "OutputQuantity": 5,
+            "DirectMaterials": 10,
+            "AllocatedLabor": 20,
+            "AllocatedOverhead": 0,
+            "CarriedMaterials": 100,
+            "CarriedLabor": 84,
+            "CarriedOverhead": 40,
+            "IsTransferredOut": false,
+            "AllocatedMaterials": 0,
+            "Materials": 110,
+            "Labor": 104,
+            "Overhead": 40,
+            "TotalCost": 254,
+            "UnitCost": 50.8
+          }
+        ],
+        "AllocationDetails": [
+          {
+            "CostObject": "C",
+            "CostElement": "\u6750\u6599",
+            "Basis": "OutputQuantity",
+            "Weight": 5,
+            "Pool": 0,
+            "ExactNumerator": "0",
+            "ExactDenominator": "50000",
+            "FloorAmount": 0,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 0
+          },
+          {
+            "CostObject": "C",
+            "CostElement": "\u4EBA\u5DE5",
+            "Basis": "OutputQuantity",
+            "Weight": 5,
+            "Pool": 20,
+            "ExactNumerator": "100000000",
+            "ExactDenominator": "50000",
+            "FloorAmount": 20,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 20
+          },
+          {
+            "CostObject": "C",
+            "CostElement": "\u5236\u9020\u8D39\u7528",
+            "Basis": "OutputQuantity",
+            "Weight": 5,
+            "Pool": 0,
+            "ExactNumerator": "0",
+            "ExactDenominator": "50000",
+            "FloorAmount": 0,
+            "RemainderAdjustment": 0,
+            "AllocatedAmount": 0
+          }
+        ]
+      }
+    ],
+    "VoucherSuggestions": [
+      {
+        "SuggestionKey": "6c02bee1-219d-4a0f-9728-5adf91a34416/S1/A/external",
+        "Summary": "\u5916\u90E8\u6750\u6599\u3001\u4EBA\u5DE5\u53CA\u5236\u9020\u8D39\u7528\u5F52\u96C6\u5EFA\u8BAE\uFF08\u6765\u6E90\u987B\u5BA1\u6838\uFF0C\u907F\u514D\u91CD\u590D\u8BB0\u8D26\uFF09",
+        "Status": "PendingAccountingReview",
+        "Lines": [
+          {
+            "StageId": "S1",
+            "CostObject": "A",
+            "AccountRole": "WorkInProgress",
+            "Debit": 111,
+            "Credit": 0
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "A",
+            "AccountRole": "RawMaterials",
+            "Debit": 0,
+            "Credit": 60
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "A",
+            "AccountRole": "PayrollPayable",
+            "Debit": 0,
+            "Credit": 21
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "A",
+            "AccountRole": "ManufacturingOverhead",
+            "Debit": 0,
+            "Credit": 30
+          }
+        ]
+      },
+      {
+        "SuggestionKey": "6c02bee1-219d-4a0f-9728-5adf91a34416/S1/B/external",
+        "Summary": "\u5916\u90E8\u6750\u6599\u3001\u4EBA\u5DE5\u53CA\u5236\u9020\u8D39\u7528\u5F52\u96C6\u5EFA\u8BAE\uFF08\u6765\u6E90\u987B\u5BA1\u6838\uFF0C\u907F\u514D\u91CD\u590D\u8BB0\u8D26\uFF09",
+        "Status": "PendingAccountingReview",
+        "Lines": [
+          {
+            "StageId": "S1",
+            "CostObject": "B",
+            "AccountRole": "WorkInProgress",
+            "Debit": 113,
+            "Credit": 0
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "B",
+            "AccountRole": "RawMaterials",
+            "Debit": 0,
+            "Credit": 40
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "B",
+            "AccountRole": "PayrollPayable",
+            "Debit": 0,
+            "Credit": 63
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "B",
+            "AccountRole": "ManufacturingOverhead",
+            "Debit": 0,
+            "Credit": 10
+          }
+        ]
+      },
+      {
+        "SuggestionKey": "6c02bee1-219d-4a0f-9728-5adf91a34416/S2/C/carry/S1/A",
+        "Summary": "\u9636\u6BB5\u95F4\u5728\u5236\u6210\u672C\u6574\u6279\u8F6C\u79FB\u5EFA\u8BAE",
+        "Status": "PendingAccountingReview",
+        "Lines": [
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "AccountRole": "WorkInProgress",
+            "Debit": 111,
+            "Credit": 0
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "A",
+            "AccountRole": "WorkInProgress",
+            "Debit": 0,
+            "Credit": 111
+          }
+        ]
+      },
+      {
+        "SuggestionKey": "6c02bee1-219d-4a0f-9728-5adf91a34416/S2/C/carry/S1/B",
+        "Summary": "\u9636\u6BB5\u95F4\u5728\u5236\u6210\u672C\u6574\u6279\u8F6C\u79FB\u5EFA\u8BAE",
+        "Status": "PendingAccountingReview",
+        "Lines": [
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "AccountRole": "WorkInProgress",
+            "Debit": 113,
+            "Credit": 0
+          },
+          {
+            "StageId": "S1",
+            "CostObject": "B",
+            "AccountRole": "WorkInProgress",
+            "Debit": 0,
+            "Credit": 113
+          }
+        ]
+      },
+      {
+        "SuggestionKey": "6c02bee1-219d-4a0f-9728-5adf91a34416/S2/C/external",
+        "Summary": "\u5916\u90E8\u6750\u6599\u3001\u4EBA\u5DE5\u53CA\u5236\u9020\u8D39\u7528\u5F52\u96C6\u5EFA\u8BAE\uFF08\u6765\u6E90\u987B\u5BA1\u6838\uFF0C\u907F\u514D\u91CD\u590D\u8BB0\u8D26\uFF09",
+        "Status": "PendingAccountingReview",
+        "Lines": [
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "AccountRole": "WorkInProgress",
+            "Debit": 30,
+            "Credit": 0
+          },
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "AccountRole": "RawMaterials",
+            "Debit": 0,
+            "Credit": 10
+          },
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "AccountRole": "PayrollPayable",
+            "Debit": 0,
+            "Credit": 20
+          }
+        ]
+      },
+      {
+        "SuggestionKey": "6c02bee1-219d-4a0f-9728-5adf91a34416/S2/C/finish",
+        "Summary": "\u7EC8\u7AEF\u6210\u672C\u5BF9\u8C61\u6574\u6279\u5B8C\u5DE5\u7ED3\u8F6C\u5EFA\u8BAE",
+        "Status": "PendingAccountingReview",
+        "Lines": [
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "AccountRole": "FinishedProducts",
+            "Debit": 254,
+            "Credit": 0
+          },
+          {
+            "StageId": "S2",
+            "CostObject": "C",
+            "AccountRole": "WorkInProgress",
+            "Debit": 0,
+            "Credit": 254
+          }
+        ]
+      }
+    ]
+  }
+}

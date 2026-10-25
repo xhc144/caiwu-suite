@@ -1,0 +1,2 @@
+# Keep native Windows evidence byte-for-byte, including BOM and CRLF.
+evidence/** -text whitespace=cr-at-eol

@@ -1,0 +1,13 @@
+{
+  "runId": 40188184523,
+  "runUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40188184523",
+  "artifactId": 12596967331,
+  "sourceSha": "6db23d198b2215ec5a1e91fed0e3c62824ac2493",
+  "archiveSha256": "25f1b505044f38ce3781fc1aad825490d586adb1ca18369673501a52356252a1",
+  "syntheticOnly": true,
+  "allPngHashesAndDimensionsVerified": true,
+  "excludedFromGitCopy": [
+    "financial-progress.json (intermediate unfinished snapshot)"
+  ],
+  "databaseNotUploaded": true
+}

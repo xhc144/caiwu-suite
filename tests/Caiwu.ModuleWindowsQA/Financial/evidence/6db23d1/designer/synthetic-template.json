@@ -1,0 +1,40 @@
+{
+  "SchemaVersion": 1,
+  "Id": "e5122f20-002d-4060-8c52-0d42ff9545fe",
+  "Version": 2,
+  "SourceKind": "TrialBalance",
+  "Title": "\u5408\u6210\u81EA\u5B9A\u4E49\u62A5\u8868",
+  "Header": "\u53E6\u4E00\u5408\u6210\u7A97\u53E3",
+  "Orientation": "Landscape",
+  "RowsPerPage": 18,
+  "SubtotalBy": null,
+  "Columns": [
+    {
+      "Key": "name",
+      "Title": "\u540D\u79F0",
+      "Expression": "[accountName]",
+      "Width": 150,
+      "Format": "F2",
+      "Visible": true,
+      "Total": false
+    },
+    {
+      "Key": "net",
+      "Title": "\u4FEE\u6539\u540E\u51C0\u989D",
+      "Expression": "SUM([periodDebit],-[periodCredit],0.2)",
+      "Width": 220,
+      "Format": "F2",
+      "Visible": true,
+      "Total": true
+    },
+    {
+      "Key": "third",
+      "Title": "\u51C0\u989D\u4E09\u5206\u4E4B\u4E00",
+      "Expression": "ROUND([net]/3,2)",
+      "Width": 130,
+      "Format": "F4",
+      "Visible": true,
+      "Total": true
+    }
+  ]
+}

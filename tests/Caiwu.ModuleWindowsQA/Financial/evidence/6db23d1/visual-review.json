@@ -1,0 +1,65 @@
+{
+  "sourceSha": "6db23d198b2215ec5a1e91fed0e3c62824ac2493",
+  "method": "Codex逐张使用view_image检查原生PNG；密集数字和设计器使用original分辨率；未编辑或重绘截图。",
+  "geometry": "1920x1080, 96 DPI; full native client and visible action-button bounds also asserted at runtime.",
+  "images": [
+    {
+      "file": "costing-stages.png",
+      "sha256": "494a2240c1269b27ef688531f4e626f9d67c81fbe34678c2685a907e8c5fffe6",
+      "review": "254.00复算结果、S1人工84；现代字体/按钮与阶段表完整；数值右对齐。"
+    },
+    {
+      "file": "costing-remainder.png",
+      "sha256": "a2fbbb531693e1c3412e2fb4972cb5d698d606b9580a6e7c6f517b1b7f44363e",
+      "review": "A获得0.01尾差，B/C为零；精确审核列与费用池/最终分配均可见。"
+    },
+    {
+      "file": "costing-invalid.png",
+      "sha256": "21e1c2e613233ad5b2e17575bd3c5d46b5158d0383f61202b89a91d0295d07f8",
+      "review": "空人工单元格保留；中文错误留窗，未显示旧成功状态。"
+    },
+    {
+      "file": "costing-calculation.png",
+      "sha256": "bb5b4b18c026d567aba0891371da49e7bf25e951d2dbb20685eb81fbcbf56a12",
+      "review": "A总成本0.01，B/C为0；金额和单位成本右对齐。"
+    },
+    {
+      "file": "nonprofit-balance.png",
+      "sha256": "219a23a7f17f94291c52e2944a8f0055bdea66679aec443c519f6e0575b272e4",
+      "review": "年初100.00、期末110.00；完整窗口，长表通过正常滚动查看。"
+    },
+    {
+      "file": "nonprofit-activity.png",
+      "sha256": "6b42cbf49294310848ba66917be2a41f158c96a4a64b05f086bb7afa130848a3",
+      "review": "非限定捐赠10.00，限定0.00，本期与累计六列可见；原始分辨率确认小数未裁切。"
+    },
+    {
+      "file": "nonprofit-stale.png",
+      "sha256": "233f16ae58b19471fc9f9f49197acb2ba58c339888aa710429a0d39d24f43e8a",
+      "review": "NP_CLASSIFICATION_STALE明确可见，保存/导出禁用，旧完整预览清空。"
+    },
+    {
+      "file": "designer-preview.png",
+      "sha256": "5e0e25e0e7998775912112e7c57727534d9bef2c0bf53fd0ef694c35a5c7baba",
+      "review": "修改公式与宽度、100.60合计、F2/F4下拉框完整；审计区可滚动，窗口未裁切。"
+    },
+    {
+      "file": "designer-formula-error.png",
+      "sha256": "2a7d890c5ea697e2f305c1bb47ed2bb2c1a9914d0f4fe4108f681722d0eff82b",
+      "review": "除零定位列/行/字符，保留输入，旧预览清空，导出/打印禁用。"
+    },
+    {
+      "file": "designer-stale-session.png",
+      "sha256": "344ce2198447831ed162b861dc12a678c34ee6f640c5934990c768e98996e6c5",
+      "review": "来源/会话/期间失效提示可见，窗口保留，预览为空。"
+    }
+  ],
+  "notCovered": [
+    "其他缩放/分辨率",
+    "物理键盘",
+    "IME组合输入",
+    "打印/PDF",
+    "生产Desktop宿主",
+    "安装/更新"
+  ]
+}

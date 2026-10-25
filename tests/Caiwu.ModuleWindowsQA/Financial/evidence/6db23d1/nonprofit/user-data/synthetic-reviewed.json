@@ -1,0 +1,577 @@
+{
+  "FormatVersion": 1,
+  "PayloadSha256": "cd6275424fe97252d56a0fdf579905b7467a226a3d7abf7eb2fa2995b2c1685b",
+  "Manifest": {
+    "SchemaVersion": 1,
+    "Binding": {
+      "BookId": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+      "Revision": 1,
+      "SnapshotSha256": "fca9540d70dbf4e4515c6cb7901ac73d0c8a525308270499c27dad96c5d77018"
+    },
+    "Period": {
+      "From": "2026-06-01",
+      "To": "2026-06-30",
+      "YearStart": "2026-01-01",
+      "Kind": "Monthly",
+      "CurrentLabel": "\u672C\u6708\u6570"
+    },
+    "CreatedAt": "2026-10-25T10:00:00+00:00",
+    "Accounts": [
+      {
+        "AccountCode": "1002",
+        "AccountSha256": "6efa54eb5a3ad3b128ab9db5cb3ddf8d4ce4674f5949a7f1fff08bb0b752bc3a",
+        "Semantic": "OtherBalance",
+        "ActivityFact": null,
+        "NoBalanceExpectedConfirmed": false,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u4EBA\u5DE5\u5206\u7C7B\u4F9D\u636E"
+      },
+      {
+        "AccountCode": "3101",
+        "AccountSha256": "0c4e260ce11831a62ceae6772f20e7f1c0e418754b19025267e683bac343f749",
+        "Semantic": "UnrestrictedNetAssets",
+        "ActivityFact": null,
+        "NoBalanceExpectedConfirmed": false,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u4EBA\u5DE5\u5206\u7C7B\u4F9D\u636E"
+      },
+      {
+        "AccountCode": "4101",
+        "AccountSha256": "1d3ac3cdfe7a9fbb68c9c0c464f3484eb8e5f9ca37848107e50a5d18433e8e70",
+        "Semantic": "IncomeExpense",
+        "ActivityFact": "DonationIncome",
+        "NoBalanceExpectedConfirmed": false,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u4EBA\u5DE5\u5206\u7C7B\u4F9D\u636E"
+      }
+    ],
+    "Lines": [
+      {
+        "Source": {
+          "VoucherId": "ffb70e81-64bc-4597-88d7-b48d427744bf",
+          "LineIndex": 0,
+          "ContentSha256": "2f34df1945047da4021c1b0316eb331c9f3257825f999b94d21d896e6b53c922"
+        },
+        "Role": "BalanceOnly",
+        "Classification": null,
+        "ComponentId": null,
+        "MovementGroupId": null,
+        "EvidenceReference": "\u5408\u6210\u5206\u5F55\u9010\u9879\u590D\u6838"
+      },
+      {
+        "Source": {
+          "VoucherId": "ffb70e81-64bc-4597-88d7-b48d427744bf",
+          "LineIndex": 1,
+          "ContentSha256": "d1aef23e6844d54ee588fde609aae1090b5906365fd5f9463c4095eada40ab32"
+        },
+        "Role": "RecognizedActivity",
+        "Classification": {
+          "Class": "Unrestricted",
+          "RestrictionId": null,
+          "RestrictionVersion": null,
+          "ProjectId": null,
+          "SourceKind": null,
+          "EvidenceReference": null
+        },
+        "ComponentId": null,
+        "MovementGroupId": null,
+        "EvidenceReference": "\u5408\u6210\u5206\u5F55\u9010\u9879\u590D\u6838"
+      },
+      {
+        "Source": {
+          "VoucherId": "f0f4d568-8018-4018-9a46-d8a49d1f29b6",
+          "LineIndex": 0,
+          "ContentSha256": "5bf4c4e2c5f770808d9f44a448cf9ff2434fe241518527e81458e6912910f529"
+        },
+        "Role": "IncomeExpenseClosing",
+        "Classification": {
+          "Class": "Unrestricted",
+          "RestrictionId": null,
+          "RestrictionVersion": null,
+          "ProjectId": null,
+          "SourceKind": null,
+          "EvidenceReference": null
+        },
+        "ComponentId": null,
+        "MovementGroupId": null,
+        "EvidenceReference": "\u5408\u6210\u5206\u5F55\u9010\u9879\u590D\u6838"
+      },
+      {
+        "Source": {
+          "VoucherId": "f0f4d568-8018-4018-9a46-d8a49d1f29b6",
+          "LineIndex": 1,
+          "ContentSha256": "b7ccc781c0beaf499820ead233ac7ba9ad155e9438bb8f5fa87d5b0b09d074f7"
+        },
+        "Role": "IncomeExpenseClosing",
+        "Classification": {
+          "Class": "Unrestricted",
+          "RestrictionId": null,
+          "RestrictionVersion": null,
+          "ProjectId": null,
+          "SourceKind": null,
+          "EvidenceReference": null
+        },
+        "ComponentId": null,
+        "MovementGroupId": null,
+        "EvidenceReference": "\u5408\u6210\u5206\u5F55\u9010\u9879\u590D\u6838"
+      }
+    ],
+    "BalanceMappings": [
+      {
+        "Fact": "Cash",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "BankDeposits",
+        "Mode": "AccountBalances",
+        "Accounts": [
+          {
+            "AccountCode": "1002",
+            "AccountSha256": "6efa54eb5a3ad3b128ab9db5cb3ddf8d4ce4674f5949a7f1fff08bb0b752bc3a",
+            "Coefficient": 1
+          }
+        ],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherMonetaryFunds",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "AgencyMonetaryFunds",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "ShortTermInvestments",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "ShortTermInvestmentAllowance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "NotesReceivable",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "AccountsReceivable",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherReceivables",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "BadDebtAllowance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "Prepayments",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "Inventory",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "InventoryAllowance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "PrepaidExpenses",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongDebtDueWithinYear",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherLongInvestmentDueWithinYear",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "DueWithinYearInvestmentAllowance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherCurrentAssets",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongEquityInvestments",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongEquityAllowance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongDebtInvestments",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongDebtAllowance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherLongInvestments",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherLongInvestmentAllowance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "FixedAssetCost",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "AccumulatedDepreciation",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "FixedAssetImpairment",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "ConstructionInProgress",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "FixedAssetDisposal",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "HeritageResources",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "IntangibleAssetCost",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "AccumulatedAmortization",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "IntangibleAssetImpairment",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongTermPrepaidExpenses",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "DedicatedAgencyAssets",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "ShortTermBorrowings",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "NotesPayable",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "AccountsPayable",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherPayables",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "EmployeeBenefitsPayable",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "TaxesPayable",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "ReceiptsInAdvance",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "AccruedExpenses",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongBorrowingsDueWithinYear",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongPayablesDueWithinYear",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherLongLiabilitiesDueWithinYear",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherCurrentLiabilities",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongBorrowings",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "LongPayables",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "Provisions",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "OtherLongLiabilities",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "AgencyLiabilities",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "UnrestrictedNetAssets",
+        "Mode": "AccountBalances",
+        "Accounts": [
+          {
+            "AccountCode": "3101",
+            "AccountSha256": "0c4e260ce11831a62ceae6772f20e7f1c0e418754b19025267e683bac343f749",
+            "Coefficient": -1
+          }
+        ],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      },
+      {
+        "Fact": "RestrictedNetAssets",
+        "Mode": "ConfirmedZero",
+        "Accounts": [],
+        "YearOpeningAnalysis": null,
+        "ClosingAnalysis": null,
+        "EvidenceReference": "\u5408\u6210\u8D26\u5957\u9010\u9879\u660E\u786E\u786E\u8BA4\u4E3A\u96F6"
+      }
+    ],
+    "Components": [],
+    "Review": {
+      "CnyAmountsConfirmed": true,
+      "CompleteYearToDateConfirmed": true,
+      "AccountMappingReviewed": true,
+      "LineClassificationReviewed": true,
+      "BusinessBreakdownComplete": true,
+      "FundraisingDisclosure": "NotApplicableConfirmed",
+      "YearOpeningBasis": "Reviewed2026TransitionLedger",
+      "RestrictedIncomeTaxTreatmentReviewed": false,
+      "RestrictedIncomeTaxReviewEvidence": "",
+      "EvidenceReference": "\u4EC5\u5408\u6210\u6570\u636E\uFF1B\u5DF2\u9010\u9879\u590D\u6838\u5B8C\u6574\u671F\u95F4"
+    },
+    "SourceLimitations": []
+  }
+}

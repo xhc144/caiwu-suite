@@ -1,0 +1,136 @@
+costing PASS inherits exact modern Window style
+costing PASS inherits Chinese font family
+costing PASS inherits modern foreground brush
+costing PASS inherits exact modern Button template
+costing PASS author sample independently totals250.00
+costing PASS native Unicode input has exact foreground textbox focus
+costing PASS ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed
+costing PASS native metadata edit updates binding and invalidates calculation
+costing PASS actual DataGrid begins edit: 人工费用池（元）
+costing PASS actual DataGrid commits cell and row
+costing PASS actual labor cell edit recalculates250->254
+costing PASS actual editor reads back JSON and recalculates254
+costing PASS existing audit JSON preserved on duplicate destination
+costing PASS cross-book JSON refused without mutating current editor
+costing PASS native save cancellation retains calculation and editor
+costing PASS native save cancellation creates no files
+costing PASS native open cancellation creates no files
+costing PASS capture foreground is intended component window
+costing PASS complete native client fits desktop without clipping
+costing PASS visible action buttons fit complete component client
+costing PASS equal-weight one-cent remainder goes to A; total conserved
+costing PASS one-cent remainder visible in audit rows
+costing PASS capture foreground is intended component window
+costing PASS complete native client fits desktop without clipping
+costing PASS visible action buttons fit complete component client
+costing PASS actual DataGrid begins edit: 人工费用池（元）
+costing PASS actual DataGrid commits cell and row
+costing PASS invalid numeric input stays in window with error and no stale calculation/suggestions
+costing PASS capture foreground is intended component window
+costing PASS complete native client fits desktop without clipping
+costing PASS visible action buttons fit complete component client
+costing PASS actual DataGrid begins edit: 人工费用池（元）
+costing PASS actual DataGrid commits cell and row
+costing PASS rendered amount column right aligned: 总成本
+costing PASS capture foreground is intended component window
+costing PASS complete native client fits desktop without clipping
+costing PASS visible action buttons fit complete component client
+costing PASS no WPF binding errors in this component
+nonprofit PASS inherits exact modern Window style
+nonprofit PASS inherits Chinese font family
+nonprofit PASS inherits modern foreground brush
+nonprofit PASS inherits exact modern Button template
+nonprofit PASS unclassified source remains incomplete with missing values
+nonprofit PASS actual enum editor begins edit
+nonprofit PASS actual DataGrid commits cell and row
+nonprofit PASS actual ComboBox writes explicit account semantic
+nonprofit PASS actual DataGrid begins edit: 复核依据
+nonprofit PASS native Unicode input has exact foreground textbox focus
+nonprofit PASS ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed
+nonprofit PASS actual DataGrid commits cell and row
+nonprofit PASS native Chinese input reaches nonprofit evidence row
+nonprofit PASS actual enum editor begins edit
+nonprofit PASS actual DataGrid commits cell and row
+nonprofit PASS nullable activity enum persists through real ComboBox
+nonprofit PASS explicit classifications produce reconciled two-table calculation preview, never formal issue
+nonprofit PASS independent oracle: assets110 and unrestricted donation10
+nonprofit PASS native classification save cancellation leaves no files
+nonprofit PASS reset confirmation cancellation retains classification and preview
+nonprofit PASS native Save button creates actual classified JSON
+nonprofit PASS native classification load restores explicit reviewed two-table preview
+nonprofit PASS native HTML export contains actual balance110
+nonprofit PASS capture foreground is intended component window
+nonprofit PASS complete native client fits desktop without clipping
+nonprofit PASS visible action buttons fit complete component client
+nonprofit PASS native CSV export contains actual donation10
+nonprofit PASS native export cancellation has no side effect
+nonprofit PASS capture foreground is intended component window
+nonprofit PASS complete native client fits desktop without clipping
+nonprofit PASS visible action buttons fit complete component client
+nonprofit PASS actual DataGrid begins edit: 复核依据
+nonprofit PASS actual DataGrid commits cell and row
+nonprofit PASS classification edit refuses stale export and removes old complete-looking preview
+nonprofit PASS changed classification creates no export file
+nonprofit PASS classification, preview, save, load and export never write the saved ledger
+nonprofit PASS source changes inside actual native export dialog: no file and no stale complete preview
+nonprofit PASS source change rejects bound export before writing any bytes
+nonprofit PASS old classification rejected and original JSON preserved
+nonprofit PASS source-change error stays visible and disables save/export
+nonprofit PASS stale source produced no new or modified sidecar/export files
+nonprofit PASS capture foreground is intended component window
+nonprofit PASS complete native client fits desktop without clipping
+nonprofit PASS visible action buttons fit complete component client
+nonprofit PASS rendered nonprofit numeric column is right aligned
+nonprofit PASS no WPF binding errors in this component
+designer PASS inherits exact modern Window style
+designer PASS inherits Chinese font family
+designer PASS inherits modern foreground brush
+designer PASS inherits exact modern Button template
+designer PASS independent initial leaf-only total100.20
+designer PASS modern format ComboBox fits its real grid cell without vertical or value-label clipping
+designer PASS actual DataGrid begins edit: 字段 / decimal公式
+designer PASS actual DataGrid commits cell and row
+designer PASS real formula cell edit clears stale preview/export
+designer PASS actual DataGrid begins edit: 标题
+designer PASS actual DataGrid commits cell and row
+designer PASS actual DataGrid begins edit: 宽度DIP
+designer PASS actual DataGrid commits cell and row
+designer PASS native Unicode input has exact foreground textbox focus
+designer PASS ordinary Chinese/ASCII/punctuation accepted through native Unicode input; IME not claimed
+designer PASS edited formula independently totals100.60
+designer PASS explicit host cancellation of save/load/exports creates no files
+designer PASS cancelled host path selection retains exact preview
+designer PASS actual Save button writes validated template JSON
+designer PASS actual DataGrid begins edit: 字段 / decimal公式
+designer PASS actual DataGrid commits cell and row
+designer PASS second actual edit changes visible calculation
+designer PASS actual Load button restores formula and width then re-previews
+designer PASS actual HTML/CSV buttons export reloaded values
+designer PASS HTML encodes user-entered header markup
+designer PASS rendered amount column right aligned: 修改后净额
+designer PASS capture foreground is intended component window
+designer PASS complete native client fits desktop without clipping
+designer PASS visible action buttons fit complete component client
+designer PASS duplicate export refuses overwrite, stays open and clears stale preview
+designer PASS actual DataGrid begins edit: 标题
+designer PASS actual DataGrid commits cell and row
+designer PASS concurrent template save conflict preserves file and user edit in window
+designer PASS actual DataGrid begins edit: 字段 / decimal公式
+designer PASS actual DataGrid commits cell and row
+designer PASS division error is located; no pseudo-complete report or stale export
+designer PASS capture foreground is intended component window
+designer PASS complete native client fits desktop without clipping
+designer PASS visible action buttons fit complete component client
+designer PASS limited preview explicitly disables full export and printing
+designer PASS source changed during path selection rejects export without modifying existing files
+designer PASS path-selection source race visibly invalidates old preview
+designer PASS changed book/period/session refuses save and preview in same window
+designer PASS changed book/period/session leaves saved files unchanged
+designer PASS changed book/period/session refuses save and preview in same window
+designer PASS changed book/period/session leaves saved files unchanged
+designer PASS changed book/period/session refuses save and preview in same window
+designer PASS changed book/period/session leaves saved files unchanged
+designer PASS capture foreground is intended component window
+designer PASS complete native client fits desktop without clipping
+designer PASS visible action buttons fit complete component client
+designer PASS no WPF binding errors in this component

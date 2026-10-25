@@ -11,6 +11,7 @@
 必须在可显示桌面的 Windows 上运行，SDK 为仓库固定的 .NET 10.0.402。脚本只编译依赖及此组，单进程内部限时 180 秒，外部限时 210 秒。任一真实失败返回非零；其他独立组件仍会继续，超时明确失败。每组结束立即写 `financial-results.json`；分支限定 workflow 在成功或失败时均上传证据。
 
 - `financial-results.json` 含精确源码 SHA、逐组件断言、实际失败堆栈、绑定错误、截图 SHA256 与原生窗口几何。
+- `financial-progress.json` 仅为中间未完成快照，不能替代最终 `financial-results.json`。
 - PNG 使用现有 `HighResolution` 探针相同的原生主桌面 BitBlt 路径，1920×1080，不裁剪、缩放或拼图；核对前台 HWND、完整客户区和动作按钮边界。
 - 成本与设计器的 JSON/CSV/HTML、民非用户目录的分类 JSON/两表导出保留为合成证据。分类 JSON 不在主账套备份内。
 - 原生文件对话框只选此次测试目录或取消；若找不到实际控件则失败，不替代真实结果。
@@ -33,4 +34,4 @@ Linux 可使用 `tools/dotnet-local.sh build tests/Caiwu.ModuleWindowsQA/Financi
 
 常规中文、ASCII、标点使用已核对焦点的 native SendInput Unicode；未跑物理键盘或 IME 组合输入。未提交打印作业、未生成或检查 PDF、未验主 Desktop 宿主、未验安装/更新账套保留。WPF 文档对象或编译成功不能替代这些结论。
 
-最终运行及返修记录见同目录后续 `VALIDATION.md`；以其中源码 SHA 对应的 JSON/PNG 为准。
+最终运行及返修记录见 [VALIDATION.md](VALIDATION.md)；以其中源码 SHA 对应的 JSON/PNG 为准。
