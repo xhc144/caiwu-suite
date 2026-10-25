@@ -1,0 +1,58 @@
+name: Operators focused Windows acceptance
+on:
+  push:
+    branches: [codex/module-operators-qa]
+    paths:
+      - '.github/workflows/operators-windows-qa.yml'
+      - 'tests/Caiwu.ModuleWindowsQA/Operators/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: operators-windows-qa-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  operators:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1
+        with:
+          dotnet-version: 10.0.402
+      - name: Pin source identity and reuse the author probe
+        shell: pwsh
+        run: ./tests/Caiwu.ModuleWindowsQA/Operators/prepare.ps1
+      - name: Run original bounded Operators WPF smoke with current pinned production sources
+        shell: pwsh
+        run: ./.tools/operators-baseline/tests/Caiwu.Operators.Tests/Run-WindowsSmoke.ps1 -OutputDirectory '${{ github.workspace }}/artifacts/module-operators-qa/author-smoke'
+      - name: Upload original smoke evidence immediately
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: operators-author-smoke-${{ github.sha }}
+          path: |
+            artifacts/module-operators-qa/source-hashes.json
+            artifacts/module-operators-qa/author-smoke/*.json
+            artifacts/module-operators-qa/author-smoke/*.png
+            artifacts/module-operators-qa/author-smoke/*.txt
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Run focused native Operators interactions and authorized real Core plus SQLite
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.ModuleWindowsQA/Operators/run.ps1
+      - name: Upload only synthetic UI and sanitized result evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: operators-focused-windows-${{ github.sha }}
+          path: |
+            artifacts/module-operators-qa/source-hashes.json
+            artifacts/module-operators-qa/results.json
+            artifacts/module-operators-qa/*.png
+            artifacts/module-operators-qa/*.log
+          if-no-files-found: warn
+          retention-days: 7
