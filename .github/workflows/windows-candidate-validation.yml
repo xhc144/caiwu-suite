@@ -1,7 +1,7 @@
 name: Windows candidate preparation under delivery hold
 on:
   push:
-    branches: [codex/release-candidate, codex/final-private-packaging]
+    branches: [codex/release-candidate]
     paths:
       - '.github/workflows/windows-candidate-validation.yml'
       - 'packaging-next/Prepare-WindowsCandidate.ps1'

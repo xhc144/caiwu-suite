@@ -18,6 +18,7 @@ $pause = Join-Path $sourceRoot 'docs/acceptance/DELIVERY_PAUSED.md'
 $classification = if ($ProductionCandidate) { 'PRODUCTION-CANDIDATE-PRIVATE' } else { 'INTERNAL-UNVALIDATED' }
 if ($ProductionCandidate) {
     if (Test-Path -LiteralPath $pause) { throw 'Independent delivery hold blocks production-candidate acceptance.' }
+    if (-not (Test-Path (Join-Path $sourceRoot 'docs/acceptance/PRIVATE_VALIDATION_ONLY.md'))) { throw 'Private production validation scope record is required.' }
     if ($ExpectedCommit -cnotmatch '^[0-9a-f]{40}$' -or (git -C $sourceRoot rev-parse HEAD).Trim() -cne $ExpectedCommit) { throw 'Production acceptance requires its exact reviewed source SHA.' }
     if (@(git -C $sourceRoot status --porcelain --untracked-files=normal).Count -ne 0) { throw 'Production acceptance requires clean source.' }
 } elseif (-not (Test-Path -LiteralPath $pause)) { throw 'Internal QA requires the delivery hold.' }

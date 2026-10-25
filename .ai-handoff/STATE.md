@@ -1,5 +1,9 @@
 # caiwu-suite 主集成交接
 
+## 12:35 UTC：root明确批准私有生产验证
+
+root已审75c84a6并核验063a1b5源清单，授权转换旧暂停、采纳workflow和运行全新普通生产构建及实际安装生命周期。旧DELIVERY_PAUSED转换为docs/acceptance/PRIVATE_VALIDATION_ONLY.md，用户分发与Release仍禁止；新的完整source SHA和结果单独冻结，未收到两路QA审核SHA前不越目录改写。
+
 ## 最终 packaging/doc 接续：2026-10-25
 
 本轮独立 checkout `/workspace/caiwu-final`，分支 `codex/final-private-packaging` / [草稿 PR34](https://github.com/xhc144/caiwu-suite/pull/34)。生产构建改动检查点 `75c84a6484eb79e1f9031b620539f39b976a1862`；基线 PR30 `2707a72ffe1b73fed715517802e6ad62e48fe611`；PR33 文档已拣选并按最新安装证据更新。src 树保持 `3854470d5c59e25d92c0e2f567a4ea8decbf8c27`，book-project 未改。

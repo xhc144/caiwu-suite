@@ -1,5 +1,8 @@
 # 开发用功能验收矩阵
 
+> **12:35 UTC阶段更新：**root已明确批准私有生产构建及实际安装生命周期验证。旧 DELIVERY_PAUSED 已转换为 `docs/acceptance/PRIVATE_VALIDATION_ONLY.md`，新workflow已采纳，新的完整SHA及结果单独冻结。用户分发和Release仍未批准；两路QA的审核SHA仍待root回传。以下原有暂停/待采纳表述是上一阶段记录，以本更新及分项门禁记录的最新授权为准。
+
+
 本表更新于 2026-10-25，面向私有交付评审。生产基线为 PR30 head `2707a72ffe1b73fed715517802e6ad62e48fe611`，其最近实测安装包的代码源是 `dece298946d03ad88c5031eb02dab8f87c330046`。之后的交接文档提交没有成为旧安装包的二进制来源。用户操作说明见 [安装与使用](INSTALL_AND_USE.zh-CN.md)。
 
 `DELIVERY_PAUSED.md` 仍在。最终生产路径的审查、生产构建、安装业务 QA 集成和最终包验收尚未完成；内部安装器没有转为用户版。本轮从 [PR33 的原文档](https://github.com/xhc144/caiwu-suite/blob/4460fec7a9d3e07162a66bae2b2f69415d8ad73a/docs/user-guide/ACCEPTANCE_MATRIX.md) 更新过时状态，保留组件与安装产品的区别。

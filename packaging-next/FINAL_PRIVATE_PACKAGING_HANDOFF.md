@@ -1,5 +1,8 @@
 # 最终 packaging/doc 集成交接
 
+> **12:35 UTC阶段更新：**root已明确批准私有生产构建及实际安装生命周期验证。旧 DELIVERY_PAUSED 已转换为 `docs/acceptance/PRIVATE_VALIDATION_ONLY.md`，新workflow已采纳，新的完整SHA及结果单独冻结。用户分发和Release仍未批准；两路QA的审核SHA仍待root回传。以下原有暂停/待采纳表述是上一阶段记录，以本更新及分项门禁记录的最新授权为准。
+
+
 2026-10-25。本轮 checkout `/workspace/caiwu-final`，分支 `codex/final-private-packaging` / [草稿 PR34](https://github.com/xhc144/caiwu-suite/pull/34)。没有改 book-project。workspace `.agents` 为空，仓库无适用 `AGENTS.md`/`.agents/skills`；使用项目现有交接和真实 Git/CI 证据，不假称 Handoff MCP。
 
 ## 可审查结果

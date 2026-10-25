@@ -162,6 +162,7 @@ def main():
                 target.writestr(info, source.read_bytes())
     provenance = {
         'schema': 1, 'product': 'Caiwu Suite development preview', 'version': options.version,
+        'classification': 'PRODUCTION-CANDIDATE-PRIVATE', 'approvedForUserDelivery': False,
         'commit': commit, 'productionSourceTree': source_tree, 'sourceTreeDirty': dirty, 'sourceDateEpoch': epoch,
         'sdk': SDK, 'runtime': RUNTIME, 'rid': 'win-x64', 'selfContained': True,
         'nsis': NSIS, 'compressor': 'zlib', 'signed': False, 'trustedUpdateChannel': False,

@@ -1,5 +1,8 @@
 # 最终私有交付：待放行的重建与核验方案
 
+> **12:35 UTC阶段更新：**root已明确批准私有生产构建及实际安装生命周期验证。旧 DELIVERY_PAUSED 已转换为 `docs/acceptance/PRIVATE_VALIDATION_ONLY.md`，新workflow已采纳，新的完整SHA及结果单独冻结。用户分发和Release仍未批准；两路QA的审核SHA仍待root回传。以下原有暂停/待采纳表述是上一阶段记录，以本更新及分项门禁记录的最新授权为准。
+
+
 状态：**DELIVERY_PAUSED 保留，尚无最终分发包或 Release。** 本分支 `codex/final-private-packaging` / [草稿 PR34](https://github.com/xhc144/caiwu-suite/pull/34) 从 PR30 head `2707a72ffe1b73fed715517802e6ad62e48fe611` 接续，拣选文档 PR33 `4460fec7a9d3e07162a66bae2b2f69415d8ad73a`（本分支拣选提交 `e4a93295410ae7e6ef16f6c85e0aa107c983b828`）。不修改 book-project、main、权限、签名信任或更新策略。
 
 **root 最新复核：**原五项 P1、dece298 的 F10 及实际恢复目标深回读已在明确范围内独审接受；[分项门禁记录](../docs/acceptance/final-private-review-gates.md) 保存来源及限制。余额深回读不是余额页可见性截图证明。生产变更检查点为 `75c84a6484eb79e1f9031b620539f39b976a1862`；root 要求先审此 diff，再明确批准最后门禁转换与最终构建。当前仍保留 marker。

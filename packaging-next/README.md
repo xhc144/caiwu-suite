@@ -1,5 +1,8 @@
 # Windows 私有交付组件
 
+> **12:35 UTC阶段更新：**root已明确批准私有生产构建及实际安装生命周期验证。旧 DELIVERY_PAUSED 已转换为 `docs/acceptance/PRIVATE_VALIDATION_ONLY.md`，新workflow已采纳，新的完整SHA及结果单独冻结。用户分发和Release仍未批准；两路QA的审核SHA仍待root回传。以下原有暂停/待采纳表述是上一阶段记录，以本更新及分项门禁记录的最新授权为准。
+
+
 **交付仍暂停。** `docs/acceptance/DELIVERY_PAUSED.md` 由指定独审负责；只有根接受旧 P1 复查和最新证据并明确放行后，才可处理标记、生成最终用户候选。普通 builder 没有暂停绕过参数。现有内部安装器不是最终包，不能改名交付。
 
 当前基线为 PR30 head `2707a72ffe1b73fed715517802e6ad62e48fe611`。实际 Windows 安装验证的代码源是 `dece298946d03ad88c5031eb02dab8f87c330046`；其正常登录、独立审核/记账、F10 取消/接受、实际恢复目标深回读、忙态阻断、正常升级及升级后登录、卸载保留的精确范围见 [候选交接](RELEASE_CANDIDATE_HANDOFF.md)。历史失败也在该记录保留，构建或组件绿色不替代安装业务验收。

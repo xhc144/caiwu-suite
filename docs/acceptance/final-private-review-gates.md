@@ -1,6 +1,6 @@
 # 私有交付门禁分项记录
 
-2026-10-25，root 向最终 packaging/doc 集成任务明确回传独审结论并接受以下范围。本文件记录 root 的拥有者决定，不把它登记成本轮重新执行的测试，也不移除 `DELIVERY_PAUSED.md`。
+2026-10-25，root 向最终 packaging/doc 集成任务明确回传独审结论并接受以下范围。本文件记录 root 的拥有者决定，不把它登记成本轮重新执行的测试，当时未移除 `DELIVERY_PAUSED.md`；后续明确转换授权见本文末段。
 
 ## 已由 root 接受的独审范围
 
@@ -18,3 +18,11 @@ root 同时接受 `dece298946d03ad88c5031eb02dab8f87c330046` 的原生 F10 取�
 - 最终用户分发及 Release 仍不允许；不合 main、不公开、不改权限。未签名、无可信更新源及跨新根恢复不支持的限制持续有效。
 
 最终构建/安装复验的准备方案见 [FINAL_PRIVATE_DELIVERY_PLAN.md](../../packaging-next/FINAL_PRIVATE_DELIVERY_PLAN.md)。最终批准须绑定届时的完整不可变组合 SHA，后续文档/证据提交不能追认成旧运行的二进制来源。
+
+## 12:35 UTC：root 批准私有生产验证阶段
+
+root 已审查并接受生产修订75c84a6，独立核验063a1b5的761文件freeze；明确授权转换旧 DELIVERY_PAUSED、采纳已审workflow、显式启用已审managed capability、冻结新完整SHA并用普通builder全新构建及原生生命周期复验。旧暂停文件据此转换为 [PRIVATE_VALIDATION_ONLY.md](PRIVATE_VALIDATION_ONLY.md)。本次移除旧标记有该独立明确授权，不是CI自批，也不表示全部业务通过。
+
+已采纳 `.github/workflows/windows-private-delivery.yml`；初装/升级测试版本0.1.0.3/0.1.0.4。两次构建都运行组件回归，不使用 --skip-tests。保留新私有验证范围标记，新增release-manifest字段明确 `approvedForUserDelivery=false`；新source SHA与证据单独冻结。
+
+用户分发、Release和原始派生上传仍禁止；两路QA可稍后由root给出审核SHA。生产验证失败可在既有授权内最小修复并保留失败证据。截止13:45 UTC前回报实际状态。
