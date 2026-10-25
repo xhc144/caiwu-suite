@@ -1,0 +1,75 @@
+{
+  "checkoutCommit": "739b8dacda9187466a6c3907fe5d9de21ec714c7",
+  "productionSourceTree": "febb3c197fb37b1195711442f384abb5ff86039f",
+  "windowsExecuted": true,
+  "productAppStartupTested": false,
+  "independentComponentHost": true,
+  "nativeSendInputEvents": 2762,
+  "unicodeInjectionTested": true,
+  "physicalHumanKeyboardTested": false,
+  "imeTested": false,
+  "screenReaderTested": false,
+  "os": "Microsoft Windows NT 10.0.26100.0",
+  "results": [
+    {
+      "Id": "FIRST-USE-CANCEL-NO-IDENTITY",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "FIRST-USE-VALIDATION-EXPLICIT-LOGIN-CANCEL",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "LOGIN-WRONG-PASSWORD-RETAINS-WINDOW-NATIVE-ENTER",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "LOGIN-CANCEL-CLEARS-SECRET",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "ADMIN-MANAGEMENT-ADD-ROLE-CHANGE-DISABLE",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "NONADMIN-MANAGEMENT-REJECTED",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "AUTHORIZED-CORE-SQLITE-CLOSED-LOOP-ACTOR-BOUNDARY",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "SAME-BOOK-DIFFERENT-PHYSICAL-SESSION-STALE-EDITOR",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "PASSWORD-CHANGE-REVOKES-OLD-SESSION",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    },
+    {
+      "Id": "LOGOUT-OLD-ADAPTER-AND-FACTORY-REMAIN-REVOKED",
+      "Passed": true,
+      "ErrorType": null,
+      "Failure": null
+    }
+  ]
+}

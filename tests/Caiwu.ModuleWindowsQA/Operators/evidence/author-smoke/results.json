@@ -1,0 +1,37 @@
+{
+  "actualWindowsWpf": true,
+  "physicalKeyboardOrImeTested": false,
+  "mechanism": "Actual modal WPF windows, routed Button.Click handlers and current host Modern.xaml resources; synthetic temporary identities only.",
+  "commit": "739b8dacda9187466a6c3907fe5d9de21ec714c7",
+  "failures": 0,
+  "results": [
+    {
+      "id": "setup-cancel-no-session",
+      "status": "PASS"
+    },
+    {
+      "id": "setup-validation-then-create",
+      "status": "PASS"
+    },
+    {
+      "id": "login-cancel-no-session",
+      "status": "PASS"
+    },
+    {
+      "id": "login-error-stays-open-then-success",
+      "status": "PASS"
+    },
+    {
+      "id": "management-create-and-disable",
+      "status": "PASS"
+    },
+    {
+      "id": "management-constructor-requires-admin",
+      "status": "PASS"
+    },
+    {
+      "id": "change-password-validation-and-relogin",
+      "status": "PASS"
+    }
+  ]
+}

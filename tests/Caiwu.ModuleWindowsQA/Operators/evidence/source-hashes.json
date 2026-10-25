@@ -1,0 +1,62 @@
+{
+  "coreContract": "v1.2",
+  "originalSmokeScriptBlob": "d23605aa541a5240004b50ec60dd46bf66c3e9c7",
+  "originalCompositionBlob": "36c31ce4b8be4b8815c065b7841ce734532ff2c6",
+  "files": [
+    {
+      "gitBlob": "7c8aa4b3a95436b10f1fc93bf5ed8c015f7e3100",
+      "sha256": "32c68b67389655299318e977b139152ab62290956fb9f76ea61b8fc345634ae5",
+      "path": ".github/workflows/operators-windows-qa.yml"
+    },
+    {
+      "gitBlob": "59fcec81d66a1e0d6fe516f11fa717af19ed4f6a",
+      "sha256": "d20805ea05572cb980a06563efb0c7f6b324aa743827c3fed75d940ebac51996",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/Caiwu.ModuleWindowsQA.Operators.csproj"
+    },
+    {
+      "gitBlob": "feb62476570f22fe0111f0f34655ae8ecc65d84e",
+      "sha256": "3ad0f8827c6b0fb99405a0f134f33f9030db9fb74cea0f1457d3f9ce8ed0ca77",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/LedgerCases.cs"
+    },
+    {
+      "gitBlob": "80735973bf17d7624bbb2cd71a32ea723a12ecc9",
+      "sha256": "9ea8949d9ca7567636c1fb35c021cfe5f641f3409f9040d96117603664686ed1",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/NativeInput.cs"
+    },
+    {
+      "gitBlob": "ede09d95e737409eb312142c6af69e23992f5967",
+      "sha256": "1f15726c01a094d0ae29b245ff58e0b0eda1500ca7088bcfb61094ba525225e7",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/Program.cs"
+    },
+    {
+      "gitBlob": "a07e0a5f8094031a2db2d3ad6feb11f2152acbaa",
+      "sha256": "45b48007176b48d861296d9034c81085f21e079f560dd5a5c1b37fb55670029a",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/README.md"
+    },
+    {
+      "gitBlob": "e904d3172a0eb08d6e074d7eadc6eaafefc13327",
+      "sha256": "ffd35eebe11dd18e5a1003f26db070c35511f27dc5fe8629180970f3d9d35490",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/packages.lock.json"
+    },
+    {
+      "gitBlob": "ef3ccdcac318d080e143ac7b22826a584e2b9e20",
+      "sha256": "d733b5cd64e8532e2231511554fb06a60f1b8eb5e4e8bac83871e9062d0db48b",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/prepare.ps1"
+    },
+    {
+      "gitBlob": "45e12cda5fca400aed76fdbb13f0b42da66f6f9a",
+      "sha256": "a3cb9500789eb9cfd4a2104871e2442dc29688aa2210d17a70a7ee11963a8632",
+      "path": "tests/Caiwu.ModuleWindowsQA/Operators/run.ps1"
+    }
+  ],
+  "trees": {
+    "src/Caiwu.Desktop/Themes": "72ad713d1368a3b6cb78d094dc52fc7b328277fc",
+    "src/Caiwu.Core": "a4a0239e97b433708fe727d9e4ee2eca03ca793b",
+    "src/Caiwu.Contracts": "5282011ae8b5e38250e22310c3006a5a02dc373d",
+    "src/Caiwu.Operators": "188771cbe328f6c41af5ab937cc370ef566ee282"
+  },
+  "pinnedModernCommit": "98a43e0",
+  "pinnedOperatorsCommit": "1957435365390756fd8267937fd0ec408b1e498f",
+  "checkoutCommit": "739b8dacda9187466a6c3907fe5d9de21ec714c7",
+  "productionSourceTree": "febb3c197fb37b1195711442f384abb5ff86039f"
+}
