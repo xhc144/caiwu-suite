@@ -44,6 +44,10 @@ jobs:
         if: always()
         shell: pwsh
         run: ./tests/Caiwu.Acceptance/MutationWindows/run.ps1 -OutputDirectory artifacts/mutation-windows
+      - name: Run actual native F4 picker focus and returned-cell keyboard input
+        if: always()
+        shell: pwsh
+        run: ./tests/Caiwu.Acceptance/NativeFocus/run.ps1 -OutputDirectory artifacts/native-focus
       - name: Run Controls bounded Windows smoke
         if: always()
         shell: pwsh
@@ -95,6 +99,7 @@ jobs:
             artifacts/ui-navigation/
             artifacts/high-resolution/
             artifacts/mutation-windows/
+            artifacts/native-focus/
             !artifacts/ui-navigation/build-*/**
             !artifacts/**/*.caiwu
             !artifacts/**/*.caiwu-wal
