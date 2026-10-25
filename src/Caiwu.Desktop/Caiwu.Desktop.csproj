@@ -18,6 +18,8 @@
     <ProjectReference Include="../Caiwu.BookTools/Wpf/Caiwu.BookTools.Wpf.csproj" />
     <ProjectReference Include="../Caiwu.Operators/Wpf/Caiwu.Operators.Wpf.csproj" />
     <ProjectReference Include="../Caiwu.Nonprofit.Reporting/Wpf/Caiwu.Nonprofit.Reporting.Wpf.csproj" />
+    <ProjectReference Include="../../packaging-next/src/Caiwu.Delivery/Modules/Caiwu.Delivery.Modules.csproj" />
+    <ProjectReference Include="../Caiwu.ReportDesigner/Wpf/Caiwu.ReportDesigner.Wpf.csproj" />
   </ItemGroup>
   <ItemGroup>
     <!-- Synthetic verification is compiled only by independent test hosts, never the shipped application. -->

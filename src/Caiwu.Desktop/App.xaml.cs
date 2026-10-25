@@ -24,7 +24,8 @@ public partial class App : Application
             store => new PreviewLedgerService(new LedgerService(store))), TemplateCatalog.All);
 
     private LocalOperatorService? operators;
-    private string? userDataRoot;
+    private ManagedDataSession? managedData;
+    private ManagedFeatureContext? managedFeatures;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -37,10 +38,14 @@ public partial class App : Application
         }
         try
         {
-            var data = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            if (string.IsNullOrWhiteSpace(data)) throw new InvalidOperationException("无法确定当前用户的数据目录，未建立账务会话。");
-            userDataRoot = Path.Combine(data, "CaiwuSuite");
-            operators = new(new FileOperatorStore(Path.Combine(userDataRoot, "Operators")));
+            var install = Environment.GetEnvironmentVariable("CAIWU_INSTALL_ROOT");
+            var data = Environment.GetEnvironmentVariable("CAIWU_DATA_ROOT");
+            if (string.IsNullOrWhiteSpace(install) || string.IsNullOrWhiteSpace(data))
+                throw new InvalidOperationException("请从受管启动器 launch-managed 启动；缺少明确的安装/数据根，未访问用户数据。");
+            managedData = ManagedDesktopLaunch.OpenSession(install, data,
+                Environment.ProcessPath ?? throw new InvalidDataException("缺少实际可执行文件路径。"));
+            managedFeatures = new(managedData);
+            operators = new(new FileOperatorStore(managedData.OperatorsDirectory));
             LoginAndShowMain();
         }
         catch (Exception ex) { MessageBox.Show(ex.Message, "启动未完成", MessageBoxButton.OK, MessageBoxImage.Warning); Shutdown(1); }
@@ -54,8 +59,9 @@ public partial class App : Application
         try
         {
             var authentication = new FeatureAuthentication(service, login);
-            var options = new DesktopFeatureOptions { NonprofitPreviewRoot = Path.Combine(userDataRoot!, "LocalPreviews", "Nonprofit") };
-            var main = new MainWindow(CreateAuthenticatedBackend(service, login), authentication, options);
+            var features = managedFeatures ?? throw new InvalidOperationException("受管数据会话未建立。");
+            var options = features.Options(authentication);
+            var main = new MainWindow(features.BindBackend(CreateAuthenticatedBackend(service, login)), authentication, options);
             MainWindow = main;
             main.Closed += (_, _) =>
             {
@@ -71,4 +77,7 @@ public partial class App : Application
         }
         catch { service.Logout(login); throw; }
     }
+
+    protected override void OnExit(ExitEventArgs e)
+    { managedData?.Dispose(); base.OnExit(e); }
 }
