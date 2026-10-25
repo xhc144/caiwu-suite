@@ -4,6 +4,8 @@ on:
     branches: [codex/installed-bookflows-qa]
     paths:
       - 'tests/InstalledBookFlowsQA/**'
+      - '!tests/InstalledBookFlowsQA/**/*.md'
+      - '!tests/InstalledBookFlowsQA/evidence/**'
       - '.github/workflows/windows-installed-bookflows-qa.yml'
   workflow_dispatch:
 permissions:

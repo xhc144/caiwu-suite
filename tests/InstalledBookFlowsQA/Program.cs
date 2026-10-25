@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Security.Cryptography;
 using System.Windows.Automation;
 using System.Windows.Interop;
 using System.Windows.Media.Imaging;
@@ -19,11 +20,12 @@ internal static class Program
     private static Process? launcher, desktop;
     private static AutomationElement? main;
     private static bool normalLoginCompleted;
-    private static readonly List<object> Cases = [];
+    private sealed record CaseResult(string name, string status, string? reason = null);
+    private static readonly List<CaseResult> Cases = [];
     private static readonly List<string> Failures = [];
     private static string bookPath = "", copiedBookPath = "", restoredBookPath = "", originalVoucherJson = "";
     private static LedgerSnapshot? baseline;
-    private static readonly string[] ExpectedCases = ["voucher-cancel", "voucher-execute-save-repeat", "voucher-duplicate-refused", "summary-manage", "summary-refill", "book-preview-cancel-stale-approval", "book-copy-new-identity", "book-duplicate-destination-refused", "backup-restore-same-identity", "physical-instance-summary-isolation", "independent-readback", "stale-source-revision"];
+    private static readonly string[] ExpectedCases = ["voucher-cancel", "voucher-execute-save-repeat", "voucher-duplicate-refused", "summary-manage", "summary-refill", "book-preview-cancel-stale-approval", "book-copy-new-identity", "book-duplicate-destination-refused", "backup-restore-same-identity", "physical-instance-summary-isolation", "trial-balance-visible-native", "independent-readback", "stale-source-revision"];
 
     private static readonly string Password = Environment.GetEnvironmentVariable("CAIWU_INTERNAL_QA_PASSWORD") ?? "Synthetic!" + Guid.NewGuid().ToString("N");
 
@@ -59,7 +61,7 @@ internal static class Program
             operators.AddOperator(admin, operators.GetDirectory(admin).Revision, "fixture-reviewer", "虚构安装审核人", Password, roles);
             operators.Logout(admin);
             var identityPath = Path.Combine(identityRoot, "operators.json");
-            var identityBefore = PayloadManifest.Hash(identityPath);
+            var identityBefore = Hash(identityPath);
             var helper = Path.Combine(versionRoot, "Caiwu.Delivery.exe");
             var start = new ProcessStartInfo(helper) { UseShellExecute = false, WorkingDirectory = evidence, RedirectStandardError = true, RedirectStandardOutput = true };
             start.ArgumentList.Add("launch-managed"); start.ArgumentList.Add(install);
@@ -121,13 +123,13 @@ internal static class Program
             baseline = Read(bookPath); originalVoucherJson = JsonSerializer.Serialize(baseline.Vouchers.Single(), PayloadManifest.Json);
             CheckLeases();
             Case("voucher-cancel", () => {
-                var before = PayloadManifest.Hash(bookPath);
+                var before = Hash(bookPath);
                 var choice = VoucherChoice(2); Capture("voucher-choice-cancel"); Invoke(choice, Name("取消"));
                 Until(() => !HasWindow("复制为新草稿"), "choice cancelled");
                 choice = VoucherChoice(2); Invoke(choice, Id("ConfirmCopy"));
                 var editor = Window(t => t == "复制凭证 · 未保存的新草稿"); Capture("voucher-editor-cancel"); Invoke(editor, Name("取消并关闭"));
                 Until(() => !HasWindow("复制凭证 · 未保存的新草稿"), "unsaved copied editor cancelled");
-                Require(PayloadManifest.Hash(bookPath) == before && Read(bookPath).Vouchers.Count == 1, "both copied-voucher cancellations leave exact source bytes and voucher count unchanged");
+                Require(Hash(bookPath) == before && Read(bookPath).Vouchers.Count == 1, "both copied-voucher cancellations leave exact source bytes and voucher count unchanged");
             });
             Case("voucher-execute-save-repeat", () => {
                 var choice = VoucherChoice(2); Invoke(choice, Id("ConfirmCopy"));
@@ -144,11 +146,11 @@ internal static class Program
                 AssertOriginal(saved); Capture("voucher-copy-saved");
             });
             Case("voucher-duplicate-refused", () => {
-                var before = PayloadManifest.Hash(bookPath); var choice = VoucherChoice(2);
+                var before = Hash(bookPath); var choice = VoucherChoice(2);
                 Invoke(choice, Id("ConfirmCopy"));
                 Until(() => Text(choice, "CopyErrors").Contains("编号已存在", StringComparison.Ordinal), "duplicate voucher number is refused");
                 Capture("voucher-duplicate-rejected");
-                Require(HasWindow("复制为新草稿") && PayloadManifest.Hash(bookPath) == before, "duplicate number retains choice and changes no ledger bytes");
+                Require(HasWindow("复制为新草稿") && Hash(bookPath) == before, "duplicate number retains choice and changes no ledger bytes");
                 Invoke(choice, Name("取消"));
             });
             Case("summary-manage", () => {
@@ -179,7 +181,7 @@ internal static class Program
                 throw new InvalidOperationException("Summary refill control changed: implement and independently validate actual choose, fill, cancel and save before passing.");
             });
             Case("book-preview-cancel-stale-approval", () => {
-                var before = PayloadManifest.Hash(bookPath); var target = Path.Combine(data, "cancelled-copy.caiwu");
+                var before = Hash(bookPath); var target = Path.Combine(data, "cancelled-copy.caiwu");
                 var window = BookChoice(target, "取消的账套"); Invoke(window, Name("生成复制前预览"));
                 var confirmation = window.FindFirst(TreeScope.Descendants, Id("Confirmation"))!;
                 Until(() => confirmation.Current.IsEnabled, "copy preview permits explicit approval");
@@ -187,10 +189,10 @@ internal static class Program
                 var edits = Edits(window); SetValue(edits[0], "预览后改变名称");
                 Require(!window.FindFirst(TreeScope.Descendants, Id("ExecuteButton"))!.Current.IsEnabled && ((TogglePattern)confirmation.GetCurrentPattern(TogglePattern.Pattern)).Current.ToggleState == ToggleState.Off, "changed input invalidates stale preview approval and rejects execution");
                 Capture("book-stale-preview-rejected"); Invoke(window, Name("取消"));
-                Require(!File.Exists(target) && PayloadManifest.Hash(bookPath) == before, "cancelled book-copy preview publishes nothing and preserves source bytes");
+                Require(!File.Exists(target) && Hash(bookPath) == before, "cancelled book-copy preview publishes nothing and preserves source bytes");
             });
             Case("book-copy-new-identity", () => {
-                copiedBookPath = Path.Combine(data, "复制 独立身份账套.caiwu"); var before = PayloadManifest.Hash(bookPath);
+                copiedBookPath = Path.Combine(data, "复制 独立身份账套.caiwu"); var before = Hash(bookPath);
                 var window = BookChoice(copiedBookPath, "安装复制独立身份"); Invoke(window, Name("生成复制前预览"));
                 ApproveBook(window); Capture("book-copy-approved"); NativeDoubleClick(window.FindFirst(TreeScope.Descendants, Id("ExecuteButton"))!);
                 Until(() => !HasWindow("复制为新账套") && File.Exists(copiedBookPath) && Text(main!, "NotificationText").Contains("新账套已复制并登记", StringComparison.Ordinal), "actual book copy execution registration and close", 30000);
@@ -198,21 +200,21 @@ internal static class Program
                 Require(saved.Book.Id != source.Book.Id && saved.Book.Name == "安装复制独立身份" && saved.Revision == 1 && saved.Vouchers.Count == source.Vouchers.Count, "structured full copy reopens with new identity revision one and complete vouchers");
                 var provenance = saved.AuditEvents.Single(a => a.Action == "BookCopiedAsNew");
                 using var detail = JsonDocument.Parse(provenance.Detail);
-                Require(detail.RootElement.GetProperty("SourceBookId").GetGuid() == source.Book.Id && detail.RootElement.GetProperty("SourceRevision").GetInt64() == source.Revision && detail.RootElement.GetProperty("SourceFingerprint").GetString()!.Length == 64, "persisted copy audit binds exact source identity revision and semantic hash");
-                Require(PayloadManifest.Hash(bookPath) == before && Text(main!, "BookNameText") == "安装合成账套", "executed copy preserves exact source bytes and active source session");
+                Require(detail.RootElement.GetProperty("SourceBookId").GetGuid() == source.Book.Id && detail.RootElement.GetProperty("SourceRevision").GetInt64() == source.Revision && detail.RootElement.GetProperty("SourceFingerprint").GetString() == ProvenanceFingerprint.Compute(source), "persisted copy audit binds exact source identity revision and semantic hash");
+                Require(Hash(bookPath) == before && Text(main!, "BookNameText") == "安装合成账套", "executed copy preserves exact source bytes and active source session");
                 Require(Inventory().Books.Count(b => b.RelativeDatabasePath.EndsWith("复制 独立身份账套.caiwu", StringComparison.Ordinal)) == 1, "repeat native confirm registers exactly one target");
                 CheckLeases(); Capture("book-copy-saved");
             });
             Case("book-duplicate-destination-refused", () => {
-                var before = PayloadManifest.Hash(copiedBookPath); var source = PayloadManifest.Hash(bookPath);
+                var before = Hash(copiedBookPath); var source = Hash(bookPath);
                 var window = BookChoice(copiedBookPath, "重复目标必须拒绝"); Invoke(window, Name("生成复制前预览"));
                 Until(() => !string.IsNullOrWhiteSpace(Text(window, "StatusText")), "existing destination refusal");
                 Require(!window.FindFirst(TreeScope.Descendants, Id("ExecuteButton"))!.Current.IsEnabled && !window.FindFirst(TreeScope.Descendants, Id("Confirmation"))!.Current.IsEnabled, "existing destination cannot be approved or executed");
                 Capture("book-duplicate-target-rejected"); Invoke(window, Name("取消"));
-                Require(PayloadManifest.Hash(copiedBookPath) == before && PayloadManifest.Hash(bookPath) == source, "duplicate operation retains exact winner and source file hashes");
+                Require(Hash(copiedBookPath) == before && Hash(bookPath) == source, "duplicate operation retains exact winner and source file hashes");
             });
             Case("backup-restore-same-identity", () => {
-                var before = PayloadManifest.Hash(bookPath); var inventory = Inventory();
+                var before = Hash(bookPath); var inventory = Inventory();
                 Menu("文件", "备份当前账套…"); Yes("受管完整备份");
                 var receipts = Path.Combine(data, "Global", "BackupReceipts");
                 Until(() => Directory.Exists(receipts) && Directory.GetFiles(receipts, "*.json").Length == 1 && Text(main!, "NotificationText").Contains("独立可信哈希收据已保存", StringComparison.Ordinal), "actual full backup trusted receipt");
@@ -222,23 +224,41 @@ internal static class Program
                 var source = Read(bookPath); var recovered = Inventory().Books.Single(b => !inventory.Books.Any(old => old.InstanceId == b.InstanceId));
                 restoredBookPath = SafePaths.Child(data, recovered.RelativeDatabasePath); var restored = Read(restoredBookPath);
                 Require(restored.Book.Id == source.Book.Id && restored.Revision == source.Revision && JsonSerializer.Serialize(restored, PayloadManifest.Json) == JsonSerializer.Serialize(source, PayloadManifest.Json), "restore preserves identity revision and exact semantic snapshot unlike copy-as-new");
-                Require(PayloadManifest.Hash(bookPath) == before && PayloadManifest.Hash(identityPath) == identityBefore, "restore preserves exact source ledger and global identity bytes");
+                Require(Hash(bookPath) == before && Hash(identityPath) == identityBefore, "restore preserves exact source ledger and global identity bytes");
                 var originalAttachment = Attachment(bookPath); var restoredAttachment = Attachment(restoredBookPath);
-                Require(originalAttachment.InstanceId != restoredAttachment.InstanceId && originalAttachment.RelativePath != restoredAttachment.RelativePath && PayloadManifest.Hash(SafePaths.Child(data, originalAttachment.RelativePath)) == PayloadManifest.Hash(SafePaths.Child(data, restoredAttachment.RelativePath)), "same-identity restored physical instance has an isolated path with initially identical summary file hash");
+                Require(originalAttachment.InstanceId != restoredAttachment.InstanceId && originalAttachment.RelativePath != restoredAttachment.RelativePath && Hash(SafePaths.Child(data, originalAttachment.RelativePath)) == Hash(SafePaths.Child(data, restoredAttachment.RelativePath)), "same-identity restored physical instance has an isolated path with initially identical summary file hash");
                 Capture("same-identity-restored");
             });
             Case("physical-instance-summary-isolation", () => {
-                var originalAttachment = Attachment(bookPath); var originalHash = PayloadManifest.Hash(SafePaths.Child(data, originalAttachment.RelativePath));
+                var originalAttachment = Attachment(bookPath); var originalHash = Hash(SafePaths.Child(data, originalAttachment.RelativePath));
                 var before = Summary(bookPath); var restored = Summary(restoredBookPath);
                 Menu("会计档案", "常用摘要管理…"); var manager = Window(t => t.StartsWith("常用摘要管理 ·", StringComparison.Ordinal));
                 Invoke(manager, Name("新增分类")); Set(manager, "Feature.Summary.Draft", "仅第二物理副本"); Invoke(manager, Id("Feature.Summary.Save"));
                 Until(() => Summary(restoredBookPath).Categories.Count == restored.Categories.Count + 1, "second physical instance summary saved");
                 Capture("second-instance-summary-saved"); Close(manager);
-                Require(PayloadManifest.Hash(SafePaths.Child(data, originalAttachment.RelativePath)) == originalHash && Summary(bookPath).Version == before.Version && !Summary(bookPath).Categories.Any(c => c.Name == "仅第二物理副本"), "same BookId does not alias catalogs: second physical instance update preserves first catalog bytes version and categories");
+                Require(Hash(SafePaths.Child(data, originalAttachment.RelativePath)) == originalHash && Summary(bookPath).Version == before.Version && !Summary(bookPath).Categories.Any(c => c.Name == "仅第二物理副本"), "same BookId does not alias catalogs: second physical instance update preserves first catalog bytes version and categories");
                 OpenBook(bookPath); Menu("会计档案", "常用摘要管理…"); manager = Window(t => t.StartsWith("常用摘要管理 ·", StringComparison.Ordinal));
                 Require(Summary(bookPath).Categories.Count == before.Categories.Count, "normal source reopen resolves its own original physical catalog"); Capture("source-instance-still-isolated"); Close(manager);
             });
-            Cases.Add(new { name = "stale-source-revision", status = "not-run", reason = "No supported normal installed UI action changes a source revision while its owned modal editor remains open. Do not mutate SQLite behind the App-owned managed-data lease or change credentials/permissions to manufacture expiry. Preview approval invalidation is verified separately and is not claimed as this case." });
+            Case("trial-balance-visible-native", () => {
+                OpenBook(bookPath);
+                var tab = main!.FindAll(TreeScope.Descendants, new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.TabItem)).Cast<AutomationElement>().Single(e => e.Current.Name == "科目余额表");
+                SetForegroundWindow((IntPtr)main.Current.NativeWindowHandle);
+                NativeDoubleClick(tab);
+                AutomationElement? grid = null, totals = null;
+                Until(() => {
+                    grid = main.FindFirst(TreeScope.Descendants, Id("TrialGrid")); totals = main.FindFirst(TreeScope.Descendants, Id("TrialTotalsText"));
+                    return ((SelectionItemPattern)tab.GetCurrentPattern(SelectionItemPattern.Pattern)).Current.IsSelected && grid is not null && !grid.Current.IsOffscreen && grid.Current.BoundingRectangle.Height > 100 && totals is not null && !totals.Current.IsOffscreen && totals.Current.Name.Contains("123.45", StringComparison.Ordinal);
+                }, "actual selected balance page, visible grid and exact posted amount");
+                Require(main.FindFirst(TreeScope.Descendants, Name("仅含已记账凭证 · 双击查看明细")) is { Current.IsOffscreen: false }, "visible balance-page explanatory heading confirms actual page content");
+                var visibleGrid = grid ?? throw new InvalidDataException("Visible balance grid disappeared.");
+                var visibleTotals = totals ?? throw new InvalidDataException("Visible balance totals disappeared.");
+                desktop!.WaitForInputIdle(5000); Thread.Sleep(500); DwmFlush(); Thread.Sleep(250);
+                Require(((SelectionItemPattern)tab.GetCurrentPattern(SelectionItemPattern.Pattern)).Current.IsSelected && !visibleGrid.Current.IsOffscreen && !visibleTotals.Current.IsOffscreen && visibleTotals.Current.Name.Contains("123.45", StringComparison.Ordinal), "balance page and amount remain visible after actual layout/compositor settle");
+                Capture("trial-balance-confirmed-native");
+                File.WriteAllText(Path.Combine(evidence, "trial-balance-visible-receipt.json"), JsonSerializer.Serialize(new { sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), selectedPageTitle = tab.Current.Name, selected = ((SelectionItemPattern)tab.GetCurrentPattern(SelectionItemPattern.Pattern)).Current.IsSelected, gridVisible = !visibleGrid.Current.IsOffscreen, gridBounds = visibleGrid.Current.BoundingRectangle.ToString(), rowCount = ((GridPattern)visibleGrid.GetCurrentPattern(GridPattern.Pattern)).Current.RowCount, totalsVisible = !visibleTotals.Current.IsOffscreen, actualTotals = visibleTotals.Current.Name, expectedPostedAmount = "123.45", nativeWidth = GetSystemMetrics(0), nativeHeight = GetSystemMetrics(1), pngSha256 = Hash(Path.Combine(evidence, "trial-balance-confirmed-native.png")) }, PayloadManifest.Json));
+            });
+            Cases.Add(new("stale-source-revision", "not-run", "No supported normal installed UI action changes a source revision while its owned modal editor remains open. Do not mutate SQLite behind the App-owned managed-data lease or change credentials/permissions to manufacture expiry. Preview approval invalidation is verified separately and is not claimed as this case."));
             CheckLeases();
             Close(main);
             if (!launcher.WaitForExit(30000) || launcher.ExitCode != 0) throw new IOException("Installed App did not exit normally.");
@@ -260,18 +280,21 @@ internal static class Program
         }
     }
     private static void Case(string name, Action action) {
-        try { action(); Cases.Add(new { name, status = "passed" }); }
+        try { action(); Cases.Add(new(name, "passed")); }
         catch (Exception ex) {
-            Failures.Add(name + ": " + ex.Message); Cases.Add(new { name, status = "failed", reason = ex.ToString() });
-            try { Capture(name + "-failure"); DumpTree(); } catch { }
+            Failures.Add(name + ": " + ex.Message); Cases.Add(new(name, "failed", ex.ToString()));
+            try { Capture(name + "-failure"); DumpTree(name + "-ui-tree"); } catch { }
             // Close owned product dialogs to continue independent cases; no synthetic business writes here.
-            foreach (var window in ProductWindows().Reverse().ToArray()) { try { if (window.Current.Name != "财务套件 · 开发预览") Close(window); } catch { } }
+            var ownerHandle = main?.Current.NativeWindowHandle ?? 0;
+            foreach (var window in ProductWindows().Reverse().ToArray()) { try { if (window.Current.NativeWindowHandle != ownerHandle) Close(window); } catch { } }
         }
         Save(false, "In progress");
     }
     private static void Save(bool success, string? failure) {
         if (evidence.Length == 0) return;
-        File.WriteAllText(Path.Combine(evidence, "installed-bookflows.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), productionBaseline = "dece298946d03ad88c5031eb02dab8f87c330046", checks = Checks, cases = Cases, expectedCases = ExpectedCases }, PayloadManifest.Json));
+        var results = ExpectedCases.Select(name => Cases.FirstOrDefault(c => c.name == name) ?? new CaseResult(name, "not-run", "Controller has not reached this case.")).ToArray();
+        success = success && results.All(c => c.status == "passed");
+        File.WriteAllText(Path.Combine(evidence, "installed-bookflows.json"), JsonSerializer.Serialize(new { success, failure, windowsExecuted = true, normalProductLogin = normalLoginCompleted, sourceProjectsExecutedAsProduct = false, sourceCommit = Environment.GetEnvironmentVariable("GITHUB_SHA"), productionBaseline = "dece298946d03ad88c5031eb02dab8f87c330046", checks = Checks, cases = results, expectedCases = ExpectedCases }, PayloadManifest.Json));
     }
     private static void Pass(string name) { Checks.Add(name); Save(false, "In progress"); }
     private static void Require(bool value, string name) { if (!value) throw new InvalidDataException(name); Pass(name); }
@@ -280,6 +303,11 @@ internal static class Program
         var capture = Path.Combine(Path.GetTempPath(), "installed-bookflows-read-" + Guid.NewGuid().ToString("N") + ".caiwu");
         try { SqliteLedgerStore.RestoreBackup(path, capture); using var store = SqliteLedgerStore.Open(capture); store.CheckIntegrity(); return store.Read(); }
         finally { foreach (var suffix in new[] { "", "-wal", "-shm", "-journal" }) if (File.Exists(capture + suffix)) File.Delete(capture + suffix); }
+    }
+    private static string Hash(string path) {
+        // Read the real file without excluding SQLite's already open writer handle. This does not acquire or bypass the managed data lease.
+        using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+        return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
     private static void AssertOriginal(LedgerSnapshot snapshot) => Require(JsonSerializer.Serialize(snapshot.Vouchers.Single(v => v.Id == baseline!.Vouchers.Single().Id), PayloadManifest.Json) == originalVoucherJson, "source posted voucher identity lines actors signatures and status remain byte-for-byte semantically unchanged");
     private static ManagedModuleInventory Inventory() => JsonSerializer.Deserialize<ManagedModuleInventory>(File.ReadAllText(Path.Combine(data, "managed-modules.json")), PayloadManifest.Json)!;
@@ -386,11 +414,11 @@ internal static class Program
     private static void Up(ushort key) => Send(new Input { Type = 1, Keyboard = new Keyboard { VirtualKey = key, Flags = 2 } });
     private static void Type(string text) { foreach (var ch in text) { Send(new Input { Type = 1, Keyboard = new Keyboard { Scan = ch, Flags = 4 } }); Send(new Input { Type = 1, Keyboard = new Keyboard { Scan = ch, Flags = 6 } }); } Thread.Sleep(150); }
     private static void Send(Input input) { if (SendInput(1, [input], Marshal.SizeOf<Input>()) != 1) throw new IOException("Native input was rejected."); }
-    private static void DumpTree()
+    private static void DumpTree(string name = "failure-ui-tree")
     {
         var windows = AutomationElement.RootElement.FindAll(TreeScope.Children, new PropertyCondition(AutomationElement.ProcessIdProperty, desktop!.Id)).Cast<AutomationElement>();
         var nodes = windows.SelectMany(w => w.FindAll(TreeScope.Subtree, Condition.TrueCondition).Cast<AutomationElement>()).Select(e => new { e.Current.Name, e.Current.AutomationId, type = e.Current.ControlType.ProgrammaticName, e.Current.IsEnabled }).ToArray();
-        File.WriteAllText(Path.Combine(evidence, "failure-ui-tree.json"), JsonSerializer.Serialize(nodes, PayloadManifest.Json));
+        File.WriteAllText(Path.Combine(evidence, name + ".json"), JsonSerializer.Serialize(nodes, PayloadManifest.Json));
     }
     private static void Capture(string name)
     {
@@ -432,6 +460,7 @@ internal static class Program
     [StructLayout(LayoutKind.Explicit, Size = 40)] private struct Input { [FieldOffset(0)] public uint Type; [FieldOffset(8)] public Keyboard Keyboard; [FieldOffset(8)] public Mouse Mouse; }
     [StructLayout(LayoutKind.Sequential)] private struct Keyboard { public ushort VirtualKey, Scan; public uint Flags, Time; public UIntPtr Extra; }
     [StructLayout(LayoutKind.Sequential)] private struct Mouse { public int X, Y; public uint Data, Flags, Time; public UIntPtr Extra; }
+    [DllImport("dwmapi.dll")] private static extern int DwmFlush();
     [DllImport("user32.dll", SetLastError = true)] private static extern uint SendInput(uint count, Input[] input, int size);
     [DllImport("user32.dll")] private static extern bool SetCursorPos(int x, int y);
     [DllImport("user32.dll")] private static extern bool SetForegroundWindow(IntPtr window);
