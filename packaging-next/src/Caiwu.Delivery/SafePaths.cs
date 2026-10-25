@@ -4,6 +4,11 @@ public static class SafePaths
 {
     public static string Full(string path)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var windowsPath = path.Replace('/', '\\');
+        if (windowsPath.StartsWith(@"\\?\", StringComparison.Ordinal) || windowsPath.StartsWith(@"\\.\", StringComparison.Ordinal) ||
+            windowsPath.StartsWith(@"\??\", StringComparison.Ordinal))
+            throw new InvalidDataException("Windows device and extended namespace aliases are not accepted as managed paths.");
         var result = Path.GetFullPath(path);
         if (result == Path.GetPathRoot(result)) throw new InvalidDataException("A filesystem root is not an installation/data directory.");
         RejectLinks(result);
@@ -39,7 +44,7 @@ public static class SafePaths
 
     public static void RejectLinks(string path)
     {
-        for (var item = new FileInfo(Path.GetFullPath(path)) as FileSystemInfo; item != null; item = Directory.GetParent(item.FullName))
+        for (FileSystemInfo? item = Directory.Exists(path) ? new DirectoryInfo(Path.GetFullPath(path)) : new FileInfo(Path.GetFullPath(path)); item != null; item = Directory.GetParent(item.FullName))
         {
             // File.Exists is false for dangling links. LinkTarget must be checked as well.
             if (item.LinkTarget != null || (item.Exists && (item.Attributes & FileAttributes.ReparsePoint) != 0))

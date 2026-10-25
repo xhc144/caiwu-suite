@@ -52,29 +52,36 @@ public static class UpgradeSafety
         Directory.CreateDirectory(directory);
         var copies = new List<string>();
         var entries = new List<object>();
+        var identities = new List<(Guid Id, long Revision)>();
         try
         {
             // Complete all consistent SQLite backups before invoking any migration.
             foreach (var source in sources)
             {
                 var backup = SafePaths.Child(directory, $"book-{copies.Count:D4}.caiwu");
+                LedgerFilePolicy.Validate(source);
                 using (var store = SqliteLedgerStore.Open(source))
                 {
                     store.CheckIntegrity();
                     store.BackupTo(backup);
                     using var completedBackup = SqliteLedgerStore.Open(backup);
                     var snapshot = completedBackup.Read();
+                    identities.Add((snapshot.Book.Id, snapshot.Revision));
                     entries.Add(new { source, backup, snapshot.Book.Id, snapshot.Revision, sha256 = PayloadManifest.Hash(backup) });
                 }
                 var staged = SafePaths.Child(directory, $"staged-{copies.Count:D4}.caiwu");
                 SqliteLedgerStore.RestoreBackup(backup, staged);
                 copies.Add(staged);
             }
-            foreach (var staged in copies)
+            for (var index = 0; index < copies.Count; index++)
             {
+                var staged = copies[index];
                 migrateStaged?.Invoke(staged);
+                LedgerFilePolicy.Validate(staged);
                 using var validated = SqliteLedgerStore.Open(staged);
-                validated.CheckIntegrity(); _ = validated.Read();
+                validated.CheckIntegrity(); var snapshot = validated.Read();
+                if (snapshot.Book.Id != identities[index].Id || snapshot.Revision < identities[index].Revision)
+                    throw new InvalidDataException("Migrated copy changed the ledger identity or moved its revision backward.");
             }
             File.WriteAllText(Path.Combine(directory, "backup-receipt.json"), JsonSerializer.Serialize(new
             { status = "validated", schema = 1, liveDatabasesModified = false, entries }, PayloadManifest.Json));

@@ -1,10 +1,10 @@
 # 交付组件验收记录
 
-2026-10-25，在 `codex/windows-delivery` 的 Linux 工作区实际执行：**110 passed / 0 failed / 0 skipped**。SDK 为仓库锁定的 .NET SDK 10.0.402，运行时 .NET 10.0.13。NuGet locked restore 成功；测试程序退出码 0；报告 `artifacts/delivery-tests.json` 已回读核对，并明确标记 `publishedWindowsArtifactExecuted=false`。
+2026-10-25，在 `codex/windows-delivery` 的 Linux 工作区实际执行：**132 passed / 0 failed / 0 skipped**。SDK 为仓库锁定的 .NET SDK 10.0.402，运行时 .NET 10.0.13。NuGet locked restore 成功；测试程序退出码 0；最终报告 `artifacts/delivery-security-review-regression.json` 已回读核对，并明确标记 `publishedWindowsArtifactExecuted=false`。
 
 ```bash
 ./tools/dotnet-local.sh restore tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj --locked-mode
-./tools/dotnet-local.sh run --project tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj -c Release --no-restore -- artifacts/delivery-tests.json
+./tools/dotnet-local.sh run --project tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj -c Release --no-restore -- artifacts/delivery-security-review-regression.json
 ```
 
 Windows 已有锁定 SDK 时，可将 `./tools/dotnet-local.sh` 换成 `dotnet`。这是独立控制台测试，不需要新增测试框架包；任一失败返回非零退出码。最后一个参数可选，指定逐项 JSON 报告路径。所有账套均在新的唯一临时目录中创建；HTTP 使用注入的本地 handler，不会请求真实更新服务。
@@ -33,3 +33,19 @@ Windows 已有锁定 SDK 时，可将 `./tools/dotnet-local.sh` 换成 `dotnet`�
 同 schema 升级成功用例显式使用合成的 `managedDataContract=true` 和完整合成清单，只验证组件协议。当前真实 Desktop 没有接入完整数据清单和统一租约时，实际升级应继续阻断；不能为了通过验收修改生产清单标记。迁移副本验证没有实现生产数据库原地迁移或任意 schema 回退。
 
 Windows 无符号链接权限或文件系统不能表示大小写碰撞时，相应用例会明确记录 `skipped`；测试不会更改系统安全设置。签名正向验收需由主协调在已有可信签名设施和发布通道可用后单独补充；本测试不生成证书、密钥或替代信任。
+
+## 本轮独立安全边界复核
+
+新增22个不同条件，未把原110项重复计数。先只跑新条件并保存旧行为：初始15项有11个真实失败；随后分别复现有效只读备份“复制后失败”和只读备份目录被错误要求可写两个失败。最终定向22/22、全量132/132，无失败无跳过；完整前后结果在 `packaging-next/evidence/security-boundary-review/`。
+
+```bash
+CAIWU_DELIVERY_TEST_SCOPE=security-boundaries ./tools/dotnet-local.sh run \
+  --project tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj -c Release --no-restore \
+  -- artifacts/delivery-security-review-final.json
+```
+
+新反例验证实际副作用，不以泛异常充当保护：正确hash的伪清单不能删用户真实SQLite；未知版本即使清单可Verify也保留；未知目录链接不能在删程序后留下激活指针；inactive版本篡改必须在当前版本任何删除前被发现。data-only跨入口租约和凭据前移均阻断操作。自写POSIX启动sentinel有正向控制，拒绝路径不得产生forbidden marker。
+
+迁移副本替换BookId、同BookId但revision后退、迁移带trigger均留下blocked回执，原源文件与原一致性备份保持。独立trigger控制在Storage层证明完整性ok并不排除后续保存静默改金额；Delivery门槛拒绝trigger/view和未知v1对象，备份失败不替换已存在有效备份。不同有效账套仅显式恢复到新路径且如实返回不同身份，不猜用户预期。
+
+只读备份文件和Linux0555备份目录均有真实权限正向探针，要求恢复成功且源/备份hash及权限保持；临时inspection copy在独立可写scratch中，不能清理旧备份。Windows设备路径仅验证词法拒绝；NTFS junction/ACL/8.3、硬链接身份、同权限恶意目录替换和真实断电未验。本轮不执行Windows PE，不生成分发包、不扩大更新或签名权限，主独审暂停标志仍有效。

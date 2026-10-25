@@ -142,7 +142,7 @@ Section "Uninstall"
     Abort
   ${EndIf}
   ${If} $0 != 0
-    MessageBox MB_ICONSTOP "卸载安全检查失败。请先关闭程序；账套和备份已保留。" /SD IDOK
+    MessageBox MB_ICONSTOP "卸载未完成。请关闭程序并检查安装状态；账套和备份已保留。" /SD IDOK
     SetErrorLevel 1
     Abort
   ${EndIf}

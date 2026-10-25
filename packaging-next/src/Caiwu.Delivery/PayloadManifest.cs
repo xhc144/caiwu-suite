@@ -30,14 +30,14 @@ public sealed record PayloadManifest(string Version, string Commit, bool Managed
             .Select(p => new PayloadFile(Path.GetRelativePath(payload, p).Replace('\\', '/'), new FileInfo(p).Length, Hash(p)))
             .OrderBy(p => p.Path, StringComparer.Ordinal).ToArray();
         var manifest = new PayloadManifest(version, commit, managedDataContract, files);
-        manifest.ValidatePaths(payload);
+        manifest.ValidateStructure(payload);
         return manifest;
     }
     public string Digest() => Convert.ToHexStringLower(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(this, Json) + "\n")));
     public void Write(string path) => File.WriteAllText(path, JsonSerializer.Serialize(this, Json) + "\n");
     public static PayloadManifest Read(string path) => JsonSerializer.Deserialize<PayloadManifest>(File.ReadAllText(path), Json)
         ?? throw new InvalidDataException("Missing manifest.");
-    private void ValidatePaths(string payload)
+    internal void ValidateStructure(string payload)
     {
         ParseVersion(Version);
         if (!Regex.IsMatch(Commit, "^[0-9a-f]{40}$") || Files.Length == 0) throw new InvalidDataException("Invalid manifest provenance or empty payload.");
@@ -47,14 +47,14 @@ public sealed record PayloadManifest(string Version, string Commit, bool Managed
             _ = SafePaths.Child(payload, file.Path);
             if (!seen.Add(file.Path.Replace('\\', '/')) || file.Path.Equals(FileName, StringComparison.OrdinalIgnoreCase) ||
                 file.Bytes < 0 || !Regex.IsMatch(file.Sha256, "^[0-9a-f]{64}$")) throw new InvalidDataException("Invalid or duplicate payload entry.");
-            if (new[] { ".caiwu", ".db", ".sqlite", ".sqlite3", ".bak" }.Contains(System.IO.Path.GetExtension(file.Path), StringComparer.OrdinalIgnoreCase) ||
-                file.Path.EndsWith("-wal", StringComparison.OrdinalIgnoreCase) || file.Path.EndsWith("-shm", StringComparison.OrdinalIgnoreCase))
+            if (new[] { ".caiwu", ".caiwubak", ".db", ".sqlite", ".sqlite3", ".bak" }.Contains(System.IO.Path.GetExtension(file.Path), StringComparer.OrdinalIgnoreCase) ||
+                file.Path.EndsWith("-wal", StringComparison.OrdinalIgnoreCase) || file.Path.EndsWith("-shm", StringComparison.OrdinalIgnoreCase) || file.Path.EndsWith("-journal", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("Ledger/backup files may not be distributed as program payload.");
         }
     }
     public void Verify(string payload)
     {
-        payload = SafePaths.Full(payload); ValidatePaths(payload);
+        payload = SafePaths.Full(payload); ValidateStructure(payload);
         var actual = SafePaths.Files(payload).Select(p => System.IO.Path.GetRelativePath(payload, p).Replace('\\', '/'))
             .Where(p => p != FileName).ToHashSet(StringComparer.Ordinal);
         if (!actual.SetEquals(Files.Select(f => f.Path))) throw new InvalidDataException("Payload has missing or unlisted files.");
