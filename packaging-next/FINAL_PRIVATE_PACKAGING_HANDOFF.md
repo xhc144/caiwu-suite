@@ -22,7 +22,7 @@
 - `host-integration-75c84a6.json`：默认 false、显式 managed、源/版本/原始 payload 字节及实际 verify 子进程均验；真实租约拒绝、带 codec 的 helper 升级备份/数据保留和卸载保留通过。
 - `module-integration-75c84a6.json`：四 codec 与身份隔离组件通过，**不是四模块已安装业务端到端认证**。
 
-本地 working-tree 检查另有官方 SDK10.0.402 下载 SHA512 与固定 metadata 相等、组合宿主零警告/错误构建、Linux helper 子进程9项、Python门槛7项及 Markdown本地链接/UTF-8/YAML/diff检查通过。本地结果不冒称 Windows 安装，源码绑定的 Windows 结果以上述 immutable checkpoint 为准。没有新测试失败，没有自动批准拒绝或不确定远端写入。
+本地 working-tree 检查另有官方 SDK10.0.402 下载 SHA512 与固定 metadata 相等、组合宿主零警告/错误构建、Linux helper 子进程9项、Python门槛7项及 Markdown本地链接/UTF-8/YAML/diff检查通过。本地结果不冒称 Windows 安装，源码绑定的 Windows 结果以上述 immutable checkpoint 为准。初次原始 CRLF 报告的 diff 检查把 CR 误作行尾空白；已在该证据目录显式保留下载字节并识别 CRLF，重新检查通过。没有产品测试失败，没有自动批准拒绝或不确定远端写入。
 
 ## root 分项接受与剩余门禁
 

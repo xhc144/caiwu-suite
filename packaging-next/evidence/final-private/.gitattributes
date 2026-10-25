@@ -1,2 +1,2 @@
-# Preserve downloaded JSON evidence bytes and hashes.
-*.json -text
+# Preserve downloaded JSON bytes; recognize their original Windows CRLF.
+*.json -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
