@@ -15,13 +15,15 @@ public sealed class SummaryCatalogState(ISummaryCatalog catalog) : INotifyProper
     private string query = "";
     private Guid? categoryId;
     private Guid? selectedId;
+    private SummaryCatalogStatus operationStatus;
+    private string? operationError, queryError;
     public event PropertyChangedEventHandler? PropertyChanged;
     public SummarySnapshot? Snapshot { get; private set; }
     public IReadOnlyList<SummaryCategory> Categories => Snapshot?.Categories ?? Array.Empty<SummaryCategory>();
     public IReadOnlyList<SummaryEntry> VisibleEntries { get; private set; } = Array.Empty<SummaryEntry>();
     public SummaryEntry? SelectedEntry => VisibleEntries.FirstOrDefault(e => e.Id == selectedId);
-    public SummaryCatalogStatus Status { get; private set; }
-    public string? ErrorMessage { get; private set; }
+    public SummaryCatalogStatus Status => queryError is not null ? SummaryCatalogStatus.InvalidData : operationStatus;
+    public string? ErrorMessage => queryError ?? operationError;
     public bool CanAccept => Status == SummaryCatalogStatus.Ready && SelectedEntry is not null;
     public string StatusText => ErrorMessage ?? (Snapshot is null ? "尚未载入摘要库。" : Snapshot.Entries.Count == 0
         ? "暂无摘要，可新增分类和摘要。" : VisibleEntries.Count == 0 ? "没有匹配的摘要。" : $"匹配 {VisibleEntries.Count} 条摘要。");
@@ -48,7 +50,7 @@ public sealed class SummaryCatalogState(ISummaryCatalog catalog) : INotifyProper
     {
         try
         {
-            Snapshot = operation(); Status = SummaryCatalogStatus.Ready; ErrorMessage = null;
+            Snapshot = operation(); operationStatus = SummaryCatalogStatus.Ready; operationError = null;
             if (categoryId.HasValue && !Snapshot.Categories.Any(c => c.Id == categoryId)) categoryId = null;
             Rebuild(); return true;
         }
@@ -60,10 +62,17 @@ public sealed class SummaryCatalogState(ISummaryCatalog catalog) : INotifyProper
         return false;
     }
     private void Fail(SummaryCatalogStatus status, string error)
-    { Status = status; ErrorMessage = error; Notify(); }
+    { operationStatus = status; operationError = error; Notify(); }
     private void Rebuild()
     {
-        VisibleEntries = Snapshot?.Search(query, categoryId) ?? Array.Empty<SummaryEntry>();
+        try
+        {
+            _ = TextRules.QueryTerms(query);
+            VisibleEntries = Snapshot?.Search(query, categoryId) ?? Array.Empty<SummaryEntry>();
+            queryError = null;
+        }
+        catch (SummaryValidationException ex)
+        { queryError = ex.Message; VisibleEntries = Array.Empty<SummaryEntry>(); selectedId = null; }
         if (!VisibleEntries.Any(e => e.Id == selectedId)) selectedId = null;
         Notify();
     }

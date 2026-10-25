@@ -8,6 +8,11 @@ namespace Caiwu.Summaries;
 internal static class TextRules
 {
     internal static string Normalize(string value) => value.Normalize(NormalizationForm.FormKC);
+    internal static string[] QueryTerms(string? query)
+    {
+        try { return Normalize(query ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries); }
+        catch (ArgumentException) { throw new SummaryValidationException("搜索文字包含无效 Unicode，请修改搜索内容。"); }
+    }
     internal static string Required(string? value, string label, int max, bool multiline = false)
     {
         if (string.IsNullOrWhiteSpace(value)) throw new SummaryValidationException($"{label}不能为空或只有空白。");

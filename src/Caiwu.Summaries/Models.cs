@@ -22,7 +22,7 @@ public sealed class SummarySnapshot
 
     public IReadOnlyList<SummaryEntry> Search(string? query = null, Guid? categoryId = null)
     {
-        var terms = TextRules.Normalize(query ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        var terms = TextRules.QueryTerms(query);
         var categories = Categories.ToDictionary(c => c.Id, c => c.Name);
         return Array.AsReadOnly(Entries.Where(e => (!categoryId.HasValue || e.CategoryId == categoryId) &&
                 terms.All(t => TextRules.Normalize(e.Text).Contains(t, StringComparison.OrdinalIgnoreCase) ||

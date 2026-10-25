@@ -17,6 +17,8 @@
     <ProjectReference Include="ProcessProbe/ProcessProbe.csproj" ReferenceOutputAssembly="false" />
     <Compile Remove="ProcessProbe/**/*.cs" />
     <Compile Remove="ControlsAdapterSmoke/**/*.cs" />
+    <Compile Remove="WindowsSmoke/**/*.cs" />
+    <Compile Remove="WindowsHost/**/*.cs" />
     <Using Include="Xunit" />
     <AssemblyMetadata Include="ProcessProbePath" Value="$(MSBuildProjectDirectory)/ProcessProbe/bin/$(Configuration)/net10.0/ProcessProbe.dll" />
   </ItemGroup>

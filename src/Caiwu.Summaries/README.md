@@ -49,7 +49,49 @@ JSON schema 为 `1`，修订号从 `0` 开始，每次成功修改递增。`Cata
 
 每文件最大 16 MiB、10000 分类、50000 摘要；未知字段与版本均拒绝写入，避免新版本数据被旧代码丢弃。
 
-## WPF 选择与绑定
+## 可直接调用的 WPF 管理窗口
+
+可选项目 `Wpf/Caiwu.Summaries.Wpf.csproj` 提供真正调用上述持久服务的 `SummaryManagerWindow` 和 `SummaryManagementDialogs.ShowManager`，无需 Controls。标准 WPF 控件继承宿主全局主题；库不引入自带控件模板或覆盖宿主主题。窗口包含分类新增/改名/删除、摘要新增/编辑/移动分类/删除、搜索、完整预览与选择返回，显示当前账套名称及 ID。
+
+```xml
+<!-- 由 Desktop owner 加到其项目，不是本分支擅改宿主。 -->
+<ProjectReference Include="../Caiwu.Summaries/Wpf/Caiwu.Summaries.Wpf.csproj" />
+```
+
+```csharp
+using Caiwu.Summaries.Wpf;
+
+// 工具菜单“摘要库管理与选择…”的宿主 Click 处理器。
+// catalog 已明确绑定当前 book.Id 与用户数据路径。
+var picked = SummaryManagementDialogs.ShowManager(this, catalog, book.Name,
+    initialSummaryId: currentSummaryId, focusAfterClose: summaryBox);
+if (picked.Accepted)
+{
+    summaryBox.Text = picked.Value!.Text;
+    currentSummaryId = picked.Value.Id; // 此入口使用 Guid?；旧 Controls DTO 的 ID 为规范字符串。
+}
+```
+
+新增/编辑先进入草稿面板，只有点击“保存更改”才落盘；删除先展示目标，再点击“确认删除并保存”。取消编辑、取消选择或标题栏关闭都不写未保存草稿；此前已经明确保存的更改仍保留。存在待保存编辑时禁止选择和重新载入，防止把草稿误认为已经选择/保存。取消选择不修改宿主原分录，窗口也不会替宿主保存凭证。
+
+`SummaryManagerState` 是独立于 WPF 的可测编辑状态：每次开始编辑捕获当时的 `CatalogVersion`，`Save()` 不读取新版本来替换它。验证失败、锁冲突、写失败与版本冲突均保留正文、目标分类、编辑 ID 和捕获版本；不偷偷刷新再覆盖。版本冲突后可先复制仍保留的输入，显式取消编辑、重新载入并核对，再开始新编辑。损坏文件错误不会被取消操作隐藏或重建为空库。
+
+窗口的服务与 BookId 在构造后固定，不能在窗口内切账套。宿主切账时应关闭旧窗口，并用新账套对应的 `JsonSummaryCatalog` 重新调用。菜单挂接与账套生命周期仍由主 UI owner 负责。
+
+独立可运行宿主在 `tests/Caiwu.Summaries.Tests/WindowsHost`：包含标准工具菜单、摘要框与调用按钮，首次在 `%LOCALAPPDATA%/Caiwu/SummaryManagerDemo` 创建固定合成账套的独立摘要库，以后打开真实 JSON；坏文件会报错，绝不重建。这个宿主不依赖 Desktop、Controls、Contracts 或账务数据库，不把界面中的文字当作已保存凭证。
+
+```powershell
+# Windows，安装 SDK 10.0.402；在仓库根运行。
+dotnet restore tests/Caiwu.Summaries.Tests/WindowsHost/Caiwu.Summaries.WindowsHost.csproj --locked-mode
+dotnet run --project tests/Caiwu.Summaries.Tests/WindowsHost/Caiwu.Summaries.WindowsHost.csproj --no-restore -c Release
+
+# 实际启动 WPF 窗口的回归：失败退出非零，输出 smoke.json 与真实渲染 PNG。
+./tests/Caiwu.Summaries.Tests/Run-WindowsSmoke.ps1 -Artifacts "$PWD/artifacts/summary-manager"
+```
+
+回归驱动实际模态窗口及控件事件，检查真实持久调用、未确认编辑关闭/取消、搜索无结果、稳定 ID、非空分类删除拒绝、删除确认、两窗口版本冲突保留输入、Windows 目标文件持锁导致实际重命名失败及重试、损坏输入错误、选择返回、宿主文本/焦点与新账套重新绑定。所有内容为合成。当前 Linux 环境仅完成交叉编译，**未运行该 Windows 回归或查看其 PNG**；脚本不是实际 Windows 验收结果。
+
+## 兼容现有 Controls 选择器与自建视图
 
 已核对 `codex/reference-dialogs` 的 `bf75d563a325fa257c9097740dbcd0caa2e0b000`：`SelectionDialogs.PickSummary` 输入为 `IEnumerable<SummaryLibraryItem>`，DTO 为 `(string Id, string Category, string Text)`。显式 adapter 不引入反向依赖：
 
@@ -87,7 +129,7 @@ DataContext = state;
 
 状态公开 `Snapshot`、`Status`、`ErrorMessage`、`CanAccept`、`SelectedEntry` 等。首次为 `NotLoaded`；错误保留上次快照供核对，禁用确认和修改，直到 `Refresh()` 成功；不会显示“已保存”。查询改变后不再可见的选择会清除，恢复查询也不会自动确认。`AcceptSelection()` 返回选择，`CancelSelection()` 返回空取消结果，均无 I/O、不修改分录。
 
-API 为同步，16 MiB 是上限而非 UI 延迟承诺。库状态必须在 WPF Dispatcher 线程操作；宿主若把大文件服务调用放到后台，应自行管理忙状态，并把结果/新状态派回 UI 线程。该模块没有实际新建 WPF 窗口，也没有改 Desktop 组合根。
+API 为同步，16 MiB 是上限而非 UI 延迟承诺。库状态必须在 WPF Dispatcher 线程操作；宿主若把大文件服务调用放到后台，应自行管理忙状态，并把结果/新状态派回 UI 线程。现成管理窗口使用同步的小型摘要库操作；没有改 Desktop 组合根。
 
 ## 导出、备份、恢复与 Delivery 登记
 
@@ -120,6 +162,8 @@ var restored = JsonSummaryCatalog.RestoreBackup(receipt.Path, receipt.Sha256, ne
 ```sh
 tools/dotnet-local.sh restore tests/Caiwu.Summaries.Tests/Caiwu.Summaries.Tests.csproj --locked-mode
 tools/dotnet-local.sh test tests/Caiwu.Summaries.Tests/Caiwu.Summaries.Tests.csproj --no-restore -c Release -p:TreatWarningsAsErrors=true
+tools/dotnet-local.sh build src/Caiwu.Summaries/Wpf/Caiwu.Summaries.Wpf.csproj -c Release -p:TreatWarningsAsErrors=true
+tools/dotnet-local.sh build tests/Caiwu.Summaries.Tests/WindowsSmoke/Caiwu.Summaries.WindowsSmoke.csproj -c Release -p:TreatWarningsAsErrors=true
 
 # 合入 Controls bf75d563 后，可使用默认相邻项目路径编译真实 API 桥接：
 tools/dotnet-local.sh build tests/Caiwu.Summaries.Tests/ControlsAdapterSmoke/ControlsAdapterSmoke.csproj -c Release -p:TreatWarningsAsErrors=true

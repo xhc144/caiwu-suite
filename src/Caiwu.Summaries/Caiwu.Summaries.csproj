@@ -5,5 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Caiwu.Summaries.Tests" />
+    <Compile Remove="Wpf/**/*.cs" />
+    <None Remove="Wpf/**/*.xaml" />
   </ItemGroup>
 </Project>

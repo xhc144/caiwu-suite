@@ -378,4 +378,31 @@ public sealed class CatalogTests : IDisposable
     }
 
     private sealed record PickerDto(string Id, string Category, string Text);
+
+    [Theory]
+    [InlineData(0xD800)]
+    [InlineData(0xDC00)]
+    public void InvalidQueryClearsSelectionAndReturnsReadableErrorWithoutChangingCatalog(int codeUnit)
+    {
+        // Attribute strings pass through metadata encodings; construct the invalid UTF-16 unit at runtime.
+        var badQuery = new string((char)codeUnit, 1);
+        var catalog = JsonSummaryCatalog.Create(Location());
+        var s = catalog.AddCategory("中文", catalog.Read().Version);
+        s = catalog.AddSummary(s.Categories[0].Id, "中文摘要😀", s.Version);
+        var view = new SummaryCatalogState(catalog);
+        Assert.True(view.Refresh()); view.SelectedId = s.Entries[0].Id;
+        Assert.True(view.CanAccept);
+        view.Query = badQuery;
+        Assert.False(view.CanAccept); Assert.False(view.AcceptSelection().Accepted);
+        Assert.Null(view.SelectedEntry); Assert.Empty(view.VisibleEntries);
+        Assert.Equal(SummaryCatalogStatus.InvalidData, view.Status); Assert.Contains("搜索文字", view.ErrorMessage);
+        Assert.Equal(s.Version, view.Snapshot!.Version);
+        Assert.Throws<SummaryValidationException>(() => s.Search(badQuery));
+        view.Query = "中文 😀";
+        Assert.Equal(SummaryCatalogStatus.Ready, view.Status); Assert.Single(view.VisibleEntries);
+        Assert.False(view.CanAccept); // fixing a query does not silently reselect the previous row.
+        view.SelectedId = s.Entries[0].Id;
+        Assert.True(view.AcceptSelection().Accepted);
+        Assert.Equal(s.Version, catalog.Read().Version);
+    }
 }
