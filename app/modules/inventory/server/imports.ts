@@ -3,11 +3,13 @@ import { z } from 'zod';
 import { BusinessError, zId } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { DocumentSchema, OpeningSchema, ProductSchema } from '../shared';
+import { requireImportKeys } from '../excel';
 import { fail, inventoryService } from './service';
 const key = randomBytes(32);
 export const ImportSchema = z.object({
   kind: z.enum(['products', 'opening', 'document']),
   rows: z.array(z.record(z.string(), z.unknown())).min(1).max(1000),
+  rowNumbers: z.array(z.number().int().min(2)).max(1000).optional(),
   warehouseId: zId.optional(),
   revision: z.number().int().nonnegative().optional(),
   document: DocumentSchema.optional(),
@@ -38,8 +40,13 @@ export async function importInventory(
     const rows = [];
     const errors: { row: number; message: string }[] = [];
     const productInputs = [];
+    let amounts: { netCents: number; taxCents: number; grossCents: number } | null = null;
+    if (v.rowNumbers && v.rowNumbers.length !== v.rows.length)
+      fail('IMPORT', 'Excel 行号与数据行数不一致，请重新读取文件');
     for (const [i, row] of v.rows.entries()) {
       try {
+        if (v.kind === 'document') continue;
+        requireImportKeys(v.kind, row);
         if (v.kind === 'products') {
           const code = String(row.code ?? '').trim();
           if (seen.has(code)) fail('DUPLICATE', `产品 ${code} 在导入文件中重复`);
@@ -80,7 +87,7 @@ export async function importInventory(
           rows.push(r);
         }
       } catch (e) {
-        errors.push({ row: i + 2, message: errorText(e) });
+        errors.push({ row: v.rowNumbers?.[i] ?? i + 2, message: errorText(e) });
       }
     }
     if (v.kind === 'opening') {
@@ -98,21 +105,30 @@ export async function importInventory(
       errors.length = 0;
       for (const [i, r] of v.rows.entries()) {
         try {
-          const line = DocumentSchema.shape.lines.element.parse(r);
+          requireImportKeys('document', r);
+          const line = DocumentSchema.shape.lines.element
+            .extend({ priceIncludesTax: z.boolean() })
+            .strict()
+            .parse(r);
           await s.product(line.productCode, i + 1);
           rows.push(line);
         } catch (e) {
-          errors.push({ row: i + 2, message: errorText(e) });
+          errors.push({ row: v.rowNumbers?.[i] ?? i + 2, message: errorText(e) });
         }
       }
       if (v.document.id && !v.overwrite)
         errors.push({ row: 0, message: '当前单据已有明细，请明确确认覆盖全部原明细' });
       if (!errors.length)
         try {
-          await s.previewDocument({
+          const preview = await s.previewDocument({
             ...v.document,
             lines: rows.map((r) => DocumentSchema.shape.lines.element.parse(r)),
           });
+          amounts = {
+            netCents: preview.netCents,
+            taxCents: preview.taxCents,
+            grossCents: preview.grossCents,
+          };
         } catch (e) {
           errors.push({ row: 0, message: errorText(e) });
         }
@@ -151,6 +167,6 @@ export async function importInventory(
         summary: `导入 ${rows.length} 行${v.kind === 'products' ? '产品' : v.kind === 'opening' ? '期初' : '单据明细'}`,
       });
     }
-    return { rows, errors, confirmation, saved: commit };
+    return { rows, errors, amounts, confirmation, saved: commit };
   });
 }

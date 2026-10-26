@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { App, Alert, Button, Checkbox, Drawer, Form, Input, Select, Space } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router';
-import { AccountSelect, FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
+import { AccountSelect, FilterBar, PageContainer, useUrlFilters, exportToExcel } from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
 import { useHotkey, usePermission } from '@caiwu/web-kit';
+import { importExportColumns } from '../excel';
 import { api } from './api';
 import { InventoryNavigation } from './common';
 import {
@@ -503,6 +504,25 @@ export default function DocumentPage() {
                 id="document-lines"
                 title={`单据明细-${h.number}`}
                 rows={h.lines}
+                toolbar={
+                  <Button
+                    onClick={() =>
+                      void exportToExcel({
+                        fileName: `单据可回导明细-${h.number}`,
+                        columns: importExportColumns('document'),
+                        rows: h.lines.map((l) => ({
+                          productCode: l.productCode,
+                          quantity: l.quantity,
+                          unitPrice: l.unitPrice,
+                          priceIncludesTax: l.priceIncludesTax,
+                          note: l.note,
+                        })),
+                      })
+                    }
+                  >
+                    导出可回导明细
+                  </Button>
+                }
                 columns={[
                   { key: 'productCode', title: '产品编号', dataIndex: 'productCode' },
                   { key: 'productName', title: '产品名称', dataIndex: 'productName' },

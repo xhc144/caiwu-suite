@@ -77,6 +77,8 @@ test('M16 独立闭环：期初10 → 入库5 → 出库3 → 库存台账12 →
   await page.getByRole('button', { name: '录入实盘', exact: true }).click();
   await page.getByLabel('实盘P1', { exact: true }).fill('11');
   await page.getByRole('button', { name: '保存实盘', exact: true }).click();
+  await expect(page.getByRole('button', { name: '保存实盘', exact: true })).not.toBeVisible();
+  await expect(page.getByRole('row').filter({ hasText: 'P1' })).toContainText('-1');
   await page.reload();
   await expect(page.getByRole('row').filter({ hasText: 'P1' })).toContainText('-1');
   await page.goto('/m/inventory/receipts');
