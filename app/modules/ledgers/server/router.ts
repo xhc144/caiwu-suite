@@ -5,9 +5,20 @@ import { FormatChangeSchema, FormatSchema, KindSchema, QuerySchema } from '../sh
 import { ledgersService } from './service';
 import { exportReport, printReport } from './output';
 
+import { MultiQuerySchema } from '../multicolumn';
+import { multiService, exportMulti } from './multicolumn';
+
 const m = moduleKit(manifest);
 const OutputSchema = QuerySchema.safeExtend({ columns: FormatSchema.shape.columns });
 export const ledgersRouter = m.router({
+  multiReport: m.procedure
+    .meta({ permission: 'ledgers.view' })
+    .input(MultiQuerySchema)
+    .query(({ ctx, input }) => multiService(ctx.svc).report(input)),
+  multiExport: m.procedure
+    .meta({ permission: 'ledgers.export' })
+    .input(MultiQuerySchema)
+    .query(({ ctx, input }) => exportMulti(ctx.svc, input)),
   report: m.procedure
     .meta({ permission: 'ledgers.view' })
     .input(QuerySchema)
