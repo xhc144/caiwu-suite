@@ -2,7 +2,7 @@
 
 依据 `rules/sources/official/nonprofit-2026.pdf` 第128–153页和 `transition-2025-6.pdf` 第4–5页。对照民非原版“报表管理”菜单及 `w_bb_get/def/proc/saveas`；本目录只提供报表模板与验证，不重做共享引擎、权限或打印界面。
 
-- 本次实现：401资产负债表、402业务活动表、403现金流量表的严格 `ReportTemplateSchema` 表样。401/402金额全部显示“待接入真实取数”，名称和标题明确为草稿，不能作为完成的报表使用。
+- 基础草稿：`nonprofitFormDraft`提供401资产负债表、402业务活动表、403现金流量表的严格 `ReportTemplateSchema` 表样；该草稿工厂的金额显示“待接入真实取数”。下述取数工厂分别填入已经核验的金额项目，仍明确标记切片，不能作为完整法定报表使用。
 - 本次实现：403的2026本年已过账取数切片，显式绑定现金/银行末级账户与24项现金流量分类。捐赠退回冲减原项目，资产处置列净额，内部划转不列收支；金额为整数分。分类依据随模板保存在说明行，不按项目名称猜测分类。
 - 本次实现：独立core/testkit固定账套，403逐项手算比对、真实router导入/生成/重算/Excel导出；权限拒绝、失败事务保留快照、漏分类/重复分类/非法内部划转和整数分检查；独立Chromium E2E走现有生成页和真实下载。
 - 本次续接：正常合入共享PR112精确SHA `f9b591d68db15dda909923a8b8aa074a62464c8e`，没有手改其core/server/shared。401由`balance401AnnualTemplate`真实生成年初和期末全部金额项目，分别保存两时点来源；固定账套年初249000分、期末250000分，1月发生额不污染年初，到期重分类不会复用期末分类回填年初。减值、受托现金移列均由真实科目取数；缺年初期间、范围内部缺月和未结转损益拒绝检查保留。
@@ -29,4 +29,4 @@
 - 需要结构化、带来源的重分类输入：到期日/受托现金明细/各类减值分配/比较数调整/净资产转限制/以前年度调整/现金等价物政策及汇兑影响；无来源时阻止生成。年初受托现金和到期分类须按年初状态，不能拿期末分类回填。
 - 共享生成入口需要同事务校验年度、适用制度、仅已过账、逐笔现金分类覆盖及内部划转；需保存分类依据、取数期间和预检来源版本，防止预检后账务变化。2026比较例外只豁免两张表的上年数。
 
-试用：在`app`下运行`pnpm exec vitest run modules/report-engine/test/nonprofit`；设置`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`后运行`pnpm build:web`和`pnpm exec playwright test modules/report-engine/e2e/nonprofit --retries=0`。E2E会自行建临时民非企账套、用testkit造数据、调用真实`router.importTemplate`，再打开`/m/report-engine/view?id=…&period=202602`生成并下载Excel。开发者可用`fixtureMapping()`查看映射输入格式；该文件和`fixtureChart`仅为测试，不得用于真实账套。生产表样由`nonprofitFormDraft(code,year)`创建；403开发切片由`cashflow403Template(mapping)`创建，生成前运行`checkCashflow403Sources(svc,period,mapping)`。
+试用：在`app`下运行`pnpm exec vitest run modules/report-engine/test/nonprofit`；设置`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`后运行`pnpm build:web`和`pnpm exec playwright test modules/report-engine/e2e/nonprofit --retries=0`。五条E2E会自行建临时民非企账套、用testkit造数据、调用真实`router.importTemplate`，再打开现有生成页并下载Excel。开发入口为`balance401AnnualTemplate`（两时点来源）、`activity402TotalsTemplate`（合计列）、`cashflow403Template`（2026首次执行）、`comparativeCashflow403Template`（本年/上年同期）。相关fixture与虚构依据仅供测试，不得用于真实账套；这些入口均不是生产制度报表安装入口，服务端门禁仍待共享owner接入。
