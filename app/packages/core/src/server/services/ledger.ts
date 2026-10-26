@@ -229,7 +229,7 @@ export function ledgerService(ctx: ServiceContext) {
      * 余额"借正贷负"。rollup=true 时同时返回上级科目的汇总行。
      *
      * 期初 = 最近一个"期初已确定"年度的 opening_balance + 该年期初期间到 periodFrom 前一期的发生额。
-     * 所以年结前也能跨年查询（上年期末自动结转为下年期初）。
+     * 所用期间均已建立时，年结前也能跨年承接历史余额；未建期间不按零推算。
      */
     async balances(raw: BalanceQuery): Promise<BalanceRow[]> {
       const q = BalanceQuerySchema.parse(raw);
@@ -243,20 +243,29 @@ export function ledgerService(ctx: ServiceContext) {
       const base = await baseOf(q.periodFrom);
       const targetYear = periodYear(q.periodTo);
       const book = await bookService(ctx).info();
-      // 每行都包含 YTD；实际累计范围必须完整，不能把未建立期间当成零。
-      // 首启用年允许从 startPeriod 起算，账前累计仍取已录的 opening_balance。
+      // 每行同时包含余额和 YTD：从实际期初锚点至查询末期、以及本年累计范围都要完整。
+      // 首启用年从 startPeriod 起算；已存期初锚点之前未参与计算的期间不强制补建。
       const requiredYtdFrom = Math.max(book.startPeriod, makePeriod(targetYear, 1));
-      const ytdPeriods = await ctx.db
+      const requiredFrom = Math.min(base.opening_period, requiredYtdFrom);
+      const coveredPeriods = await ctx.db
         .selectFrom('period')
         .select('period')
-        .where('period', '>=', requiredYtdFrom)
+        .where('period', '>=', requiredFrom)
         .where('period', '<=', q.periodTo)
         .execute();
-      if (ytdPeriods.length !== periodMonth(q.periodTo) - periodMonth(requiredYtdFrom) + 1)
+      const ytdComplete =
+        coveredPeriods.filter((p) => p.period >= requiredYtdFrom).length ===
+        periodMonth(q.periodTo) - periodMonth(requiredYtdFrom) + 1;
+      const coveredMonths =
+        (targetYear - periodYear(requiredFrom)) * 12 +
+        periodMonth(q.periodTo) -
+        periodMonth(requiredFrom) +
+        1;
+      if (!ytdComplete || coveredPeriods.length !== coveredMonths)
         throw new BusinessError({
-          code: 'LEDGER_YTD_PERIOD_MISSING',
-          message: '本年累计实际范围中有尚未建立的期间，不能按零发生额计算',
-          hint: '请补齐该年度累计范围内的期间后重新查询；首启用年从启用期间累计',
+          code: ytdComplete ? 'LEDGER_BALANCE_PERIOD_MISSING' : 'LEDGER_YTD_PERIOD_MISSING',
+          message: `${ytdComplete ? '余额承接' : '本年累计'}实际范围中有尚未建立的期间，不能按零发生额计算`,
+          hint: '请补齐实际覆盖范围内的期间后重新查询；首启用年从启用期间累计，余额从已存期初锚点承接',
         });
       const baseCurrency = q.currency ? book.baseCurrency : null;
       const all = await accounts.list();

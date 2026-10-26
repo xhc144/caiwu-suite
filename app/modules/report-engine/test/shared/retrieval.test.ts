@@ -93,6 +93,49 @@ async function seedHistory() {
 }
 
 describe('w_bb_proc / w_bb_def_help 法定报表共享取数合同', () => {
+  it.each([false, true])(
+    '首次确认已覆盖未来和比较期，确认数字与最终快照一致；includeUnposted=%s',
+    async (includeUnposted) => {
+      await seedVouchers(app.svc, [
+        {
+          date: '2025-02-01',
+          status: 'pending',
+          lines: [
+            { account: '1001', debit: 11 },
+            { account: '6001', credit: 11 },
+          ],
+        },
+        {
+          date: '2026-03-01',
+          status: 'pending',
+          lines: [
+            { account: '1001', debit: 13 },
+            { account: '6001', credit: 13 },
+          ],
+        },
+      ]);
+      const r = await report([
+        formula('debit', '1001', { from: 'previousYear', to: 'previousYear' }),
+        formula('debit', '1001', { from: '202603', to: '202603' }),
+      ]);
+      const first = await generate(r, 202602, { includeUnposted });
+      expect(first).toMatchObject({ kind: 'confirmation', count: 2 });
+      if (first.kind === 'confirmation')
+        expect(first.links).toContainEqual({
+          label: '待审核凭证',
+          to: '/m/voucher-book?period=202603&status=pending',
+        });
+      expect(await caller().snapshot({ id: r.id, period: 202602, includeUnposted })).toBeNull();
+      const final = await generate(r, 202602, { confirmUnposted: true, includeUnposted });
+      expect(final.kind).toBe('generated');
+      if (final.kind === 'generated') {
+        expect(final.snapshot.unpostedCount).toBe(2);
+        expect(final.snapshot.cells.map((c) => c.value)).toEqual(
+          includeUnposted ? ['11', '13'] : ['0', '0'],
+        );
+      }
+    },
+  );
   it('旧七参数保持本月口径；年初、上年同期、上年年初及明确跨年区间均为独立手算金额', async () => {
     await seedHistory();
     expect(

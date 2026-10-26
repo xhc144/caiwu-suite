@@ -60,7 +60,12 @@ export interface EntryRow {
   sourceModule: string | null;
 }
 
-/** 余额查询（余额表、报表取数、账簿期初用）。 */
+/**
+ * 余额查询（余额表、报表取数、账簿期初用）。
+ * 返回整行前检查实际覆盖期间：余额从最近的已存期初锚点承接，YTD 从目标年年初
+ * （首启用年从 startPeriod）累计。缺失期间明确拒绝，不视为零或推算未来余额。
+ * 此项收紧旧查询行为；参数格式兼容不代表未建期间仍可查询。
+ */
 export const BalanceQuerySchema = z.object({
   periodFrom: zPeriod,
   periodTo: zPeriod,
@@ -90,6 +95,7 @@ export type BalanceQuery = z.input<typeof BalanceQuerySchema>;
 /**
  * 余额行。所有余额都是"借正贷负"的有符号数，显示时用 balanceSide() 换算。
  * fc* 为外币金额（分），qty* 为数量（十进制字符串）。
+ * 任一余额/YTD 实际覆盖期间未建立时不返回确定数值，抛期间缺失业务错误。
  */
 export interface BalanceRow {
   accountId: number;
