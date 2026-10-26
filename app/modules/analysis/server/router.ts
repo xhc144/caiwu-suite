@@ -3,10 +3,67 @@ import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import { AgingFilterSchema, ConfigInputSchema, ShortcutSchema, TrendFilterSchema } from '../shared';
 import { analysisService } from './service';
-import { exportAging, exportTrend } from './export';
+import { exportAging, exportTrend, exportContracts } from './export';
+import {
+  ContractFilterSchema,
+  ContractInputSchema,
+  ContractLinkSchema,
+  ContractVersionSchema,
+} from '../contracts';
+import { contractService } from './contracts';
 
 const m = moduleKit(manifest);
 export const analysisRouter = m.router({
+  contracts: m.router({
+    list: m.procedure
+      .meta({ permission: 'analysis.contract.view' })
+      .query(({ ctx }) => contractService(ctx.svc).list()),
+    get: m.procedure
+      .meta({ permission: 'analysis.contract.view' })
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ ctx, input }) => contractService(ctx.svc).get(input.id)),
+    save: m.procedure
+      .meta({ permission: 'analysis.contract.edit' })
+      .input(ContractInputSchema)
+      .mutation(({ ctx, input }) => contractService(ctx.svc).save(input)),
+    review: m.procedure
+      .meta({ permission: 'analysis.contract.review' })
+      .input(ContractVersionSchema.extend({ reviewed: z.boolean() }))
+      .mutation(({ ctx, input }) => contractService(ctx.svc).review(input)),
+    remove: m.procedure
+      .meta({ permission: 'analysis.contract.edit' })
+      .input(ContractVersionSchema.extend({ confirmed: z.boolean() }))
+      .mutation(({ ctx, input }) => contractService(ctx.svc).remove(input)),
+    candidates: m.procedure
+      .meta({ permission: 'analysis.contract.link' })
+      .input(z.object({ id: z.number().int().positive(), voucherId: z.number().int().positive() }))
+      .query(({ ctx, input }) => contractService(ctx.svc).candidates(input.id, input.voucherId)),
+    link: m.procedure
+      .meta({ permission: 'analysis.contract.link' })
+      .input(ContractLinkSchema)
+      .mutation(({ ctx, input }) => contractService(ctx.svc).link(input)),
+    unlink: m.procedure
+      .meta({ permission: 'analysis.contract.link' })
+      .input(
+        ContractVersionSchema.extend({
+          lineId: z.number().int().positive(),
+          confirmed: z.boolean(),
+        }),
+      )
+      .mutation(({ ctx, input }) => contractService(ctx.svc).unlink(input)),
+    report: m.procedure
+      .meta({ permission: 'analysis.contract.view' })
+      .input(ContractFilterSchema)
+      .query(({ ctx, input }) => contractService(ctx.svc).report(input)),
+    export: m.procedure
+      .meta({ permission: 'analysis.export' })
+      .input(ContractFilterSchema)
+      .query(async ({ ctx, input }) => {
+        ctx.svc.permissions.require('analysis.contract.view');
+        const report = await contractService(ctx.svc).report(input);
+        return { report, base64: await exportContracts(report) };
+      }),
+  }),
   config: m.procedure
     .meta({ permission: 'analysis.aging.view' })
     .query(({ ctx }) => analysisService(ctx.svc).config()),
@@ -53,9 +110,15 @@ export const analysisRouter = m.router({
     }),
   printAllowed: m.procedure
     .meta({ permission: 'analysis.export' })
-    .input(z.enum(['aging', 'trend']))
+    .input(z.enum(['aging', 'trend', 'contracts']))
     .query(({ ctx, input }) => {
-      ctx.svc.permissions.require(input === 'aging' ? 'analysis.aging.view' : 'analysis.view');
+      ctx.svc.permissions.require(
+        input === 'aging'
+          ? 'analysis.aging.view'
+          : input === 'contracts'
+            ? 'analysis.contract.view'
+            : 'analysis.view',
+      );
       return true;
     }),
 });

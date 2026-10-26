@@ -65,6 +65,8 @@ export type AgingLot = {
   voucherNo: string;
   date: string | null;
   bizDate: string | null;
+  originalBizDate?: string | null;
+  dateBasis?: 'business' | 'voucher' | 'unknown';
   amount: number;
   remaining: number;
 };
