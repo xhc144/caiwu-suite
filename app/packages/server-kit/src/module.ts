@@ -3,6 +3,7 @@ import type { Migration } from '@caiwu/db';
 import type { ModuleManifest } from '@caiwu/core';
 import { moduleProcedure } from './procedures';
 import { t } from './trpc';
+import type { RuntimeHooks } from './lifecycle';
 
 /** 模块服务端的定义：modules/<id>/server/index.ts 默认导出 defineServerModule(...)。 */
 export interface ServerModule<R extends AnyTRPCRouter = AnyTRPCRouter> {
@@ -12,17 +13,24 @@ export interface ServerModule<R extends AnyTRPCRouter = AnyTRPCRouter> {
   migrations: readonly Migration[];
   /** 模块提供的会计制度模板（JSON 对象） */
   templates: readonly unknown[];
+  lifecycle?: RuntimeHooks;
 }
 
 export function defineServerModule<R extends AnyTRPCRouter>(
   manifest: ModuleManifest,
-  def: { router: R; migrations?: readonly Migration[]; templates?: readonly unknown[] },
+  def: {
+    router: R;
+    migrations?: readonly Migration[];
+    templates?: readonly unknown[];
+    lifecycle?: RuntimeHooks;
+  },
 ): ServerModule<R> {
   return Object.freeze({
     manifest,
     router: def.router,
     migrations: def.migrations ?? [],
     templates: def.templates ?? [],
+    lifecycle: def.lifecycle,
   });
 }
 

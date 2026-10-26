@@ -97,9 +97,61 @@ test('w_fx_zl：真实三笔应收→部分回款→FIFO分桶核对→改区间
   await page.getByLabel('区间上限（天）').fill('10,40,90');
   await page.getByRole('button', { name: '查询' }).click();
   await expect(page.getByTestId('aging-reconciliation')).toContainText('账龄合计：500.00');
-  const printed = expect(page.frameLocator('iframe').locator('body')).toContainText('500.00');
+  // 原生打印可能在 click 返回前完成；在 beforeprint 中保存实际输出，不延长 iframe 生命周期。
+  const printed = await page.evaluateHandle(() => {
+    const events: {
+      phase: string;
+      trusted: boolean;
+      html: string;
+      text: string;
+      pageCss: string;
+    }[] = [];
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations)
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof HTMLIFrameElement)) continue;
+          node.addEventListener(
+            'load',
+            () => {
+              for (const phase of ['beforeprint', 'afterprint'])
+                node.contentWindow!.addEventListener(
+                  phase,
+                  (event) => {
+                    const doc = node.contentDocument!;
+                    events.push({
+                      phase,
+                      trusted: event.isTrusted,
+                      html: doc.documentElement.outerHTML,
+                      text: doc.body.textContent!,
+                      pageCss: Array.from(doc.styleSheets)
+                        .flatMap((sheet) => Array.from(sheet.cssRules))
+                        .filter((rule) => rule.type === CSSRule.PAGE_RULE)
+                        .map((rule) => rule.cssText)
+                        .join('\n'),
+                    });
+                    if (phase === 'afterprint') observer.disconnect();
+                  },
+                  { once: true },
+                );
+            },
+            { capture: true, once: true },
+          );
+        }
+    });
+    observer.observe(document.body, { childList: true });
+    return events;
+  });
   await page.getByRole('button', { name: '打印', exact: true }).click();
-  await printed;
+  await expect
+    .poll(() => printed.evaluate((events) => events.map((event) => event.phase)))
+    .toEqual(['beforeprint', 'afterprint']);
+  const printEvents = await printed.jsonValue();
+  expect(printEvents.every((event) => event.trusted)).toBe(true);
+  expect(printEvents[0]!.text).toContain('500.00');
+  expect(printEvents[0]!.html).toContain('500.00');
+  expect(printEvents[0]!.pageCss).toMatch(/size:\s*a4 landscape/i);
+  await expect(page.locator('iframe')).toHaveCount(0);
+  await printed.dispose();
   const downloadEvent = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 Excel', exact: true }).click();
   const download = await downloadEvent;

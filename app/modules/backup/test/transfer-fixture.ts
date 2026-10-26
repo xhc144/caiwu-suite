@@ -34,14 +34,34 @@ export async function largePortableFixture(seed: Buffer, targetBytes: number, di
   await writeFile(source, seed.subarray(offset), { flag: 'wx', mode: 0o600 });
   const raw = new Database(source);
   try {
-    raw
-      .prepare('INSERT INTO book_setting(scope,key,value,updated_at) VALUES (?,?,?,?)')
-      .run(
+    const pageSize = raw.pragma('page_size', { simple: true }) as number;
+    const setting = raw.prepare(
+      'INSERT INTO book_setting(scope,key,value,updated_at) VALUES (?,?,?,?) ON CONFLICT(scope,key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at',
+    );
+    // seed 包含实际已加载模块的全部 schema/数据，不能假定它小于固定预留空间。
+    let fillerBytes = Math.max(0, targetBytes - seed.length - pageSize);
+    let fits = false;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      setting.run(
         'backup',
         'transferFixture',
-        JSON.stringify('x'.repeat(targetBytes - 512 * 1024)),
+        JSON.stringify('x'.repeat(fillerBytes)),
         new Date().toISOString(),
       );
+      // 缩短填充值时也回收溢出页，让下一次测量反映真实占用，而非 freelist。
+      raw.exec('VACUUM');
+      const length = (raw.pragma('page_count', { simple: true }) as number) * pageSize;
+      const manifestBytes = Buffer.byteLength(JSON.stringify({ ...metadata, length }));
+      const spareBytes = targetBytes - 12 - length;
+      if (spareBytes >= manifestBytes && spareBytes <= 1024 * 1024) {
+        fits = true;
+        break;
+      }
+      const next = fillerBytes + spareBytes - manifestBytes - pageSize;
+      if (next < 0 || next === fillerBytes) break;
+      fillerBytes = next;
+    }
+    if (!fits) throw new Error('测试种子与元数据无法构造指定尺寸的有效包');
     await raw.backup(snapshot);
   } finally {
     raw.close();

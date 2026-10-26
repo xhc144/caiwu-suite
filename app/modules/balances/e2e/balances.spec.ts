@@ -272,10 +272,15 @@ test('w_zw_ye_1/w_zw_wbye_1：取消放弃确认、真实过期保存失败保�
   await drawer.getByRole('button', { name: '取消', exact: true }).click();
   await page.getByRole('button', { name: '继续编辑', exact: true }).click();
   await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
-  // 壳关闭标签没有模块拦截接口，未保存草稿仍须能恢复。
-  await page.keyboard.press('Control+F4');
+  // Ctrl+F4 关闭的是工作区标签；M20 会正确拦住未保存的设置。
+  // 真正刷新页面并确认离开，验证草稿恢复，同时保留离开保护。
+  const leaving = page.waitForEvent('dialog');
+  const reload = page.reload();
+  const confirmation = await leaving;
+  expect(confirmation.type()).toBe('beforeunload');
+  await confirmation.accept();
+  await reload;
   await expect(drawer).toHaveCount(0);
-  await page.goto(`${localServer.url}/m/balances`);
   await page.getByRole('button', { name: '展示设置', exact: true }).click();
   await expect(drawer.getByRole('status')).toContainText('已恢复');
   await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');

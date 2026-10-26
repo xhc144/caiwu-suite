@@ -3,7 +3,7 @@ import { constants } from 'node:fs';
 import { copyFile, link, lstat, open, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { authenticateUser } from '@caiwu/core/server';
+import { authenticateUser, createCoreServices, loadServiceUser } from '@caiwu/core/server';
 import type { AppRuntime, AuthedContext } from '@caiwu/server-kit';
 import {
   ConfirmSchema,
@@ -40,7 +40,7 @@ type Protection = {
   confirmation: string;
   available: boolean;
 };
-type Job = { abort: AbortController; promise: Promise<void>; progress: number };
+type Job = { bookId: string; abort: AbortController; promise: Promise<void>; progress: number };
 
 /** 单次扫描，常量栈空间；重复分组正则会在数 MiB 的合法输入上耗尽 V8 栈。 */
 function decodeUploadBase64(text: string): Buffer {
@@ -74,6 +74,7 @@ const states = new WeakMap<
   AppRuntime,
   {
     busy: Set<string>;
+    failures: Map<string, { bookId: string; error: unknown }>;
     jobs: Map<string, Job>;
     creating: Map<string, Promise<BackupTables['backup_item']>>;
     preparing: Map<string, Promise<Protection>>;
@@ -82,7 +83,13 @@ const states = new WeakMap<
 function state(app: AppRuntime) {
   let s = states.get(app);
   if (!s) {
-    s = { busy: new Set(), jobs: new Map(), creating: new Map(), preparing: new Map() };
+    s = {
+      busy: new Set(),
+      failures: new Map(),
+      jobs: new Map(),
+      creating: new Map(),
+      preparing: new Map(),
+    };
     states.set(app, s);
   }
   return s;
@@ -100,16 +107,30 @@ async function exclusive<T>(ctx: Context, fn: () => Promise<T>) {
     s.busy.delete(id);
   }
 }
-export async function waitForJobs(app: AppRuntime) {
-  await Promise.all([...state(app).jobs.values()].map((j) => j.promise));
+/** 关闭前必须等到真实结束；写入失败保留为关闭阻塞，不能用 console.error 冒充成功。 */
+export async function waitForJobs(app: AppRuntime, bookId?: string, signal?: AbortSignal) {
+  const s = state(app);
+  const matches = (job: { bookId: string }) => !bookId || job.bookId === bookId;
+  const abort = () => {
+    for (const job of s.jobs.values()) if (matches(job)) job.abort.abort(signal?.reason);
+  };
+  signal?.addEventListener('abort', abort, { once: true });
+  try {
+    if (signal?.aborted) abort();
+    await Promise.allSettled([...s.jobs.values()].filter(matches).map((j) => j.promise));
+    const errors = [...s.failures.values()].filter(matches).map((f) => f.error);
+    if (errors.length)
+      throw new AggregateError(errors, '备份最终状态或日志未能保存，不能安全关闭账套');
+    signal?.throwIfAborted();
+  } finally {
+    signal?.removeEventListener('abort', abort);
+  }
 }
-export function backupService(ctx: Context) {
+
+// 每次取得租约后重新构造，禁止后台作业捕获已返回 HTTP 请求的 db/svc。
+function backupOperations(ctx: Context) {
   const db = ctx.svc.db.withTables<BackupTables>();
   const now = () => ctx.app.now().toISOString();
-  const admin = () => {
-    if (!ctx.user.isAdmin)
-      throw fail('ADMIN', '恢复副本与覆盖准备需要当前账套管理员', '请使用管理员重新登录');
-  };
   const load = async (id: string) => {
     const row = await db
       .selectFrom('backup_item')
@@ -122,12 +143,12 @@ export function backupService(ctx: Context) {
   };
   const fileOf = async (row: Awaited<ReturnType<typeof load>>) =>
     packagePath(await directory(ctx.app.dataDir, ctx.book.id, row.directory), row.id);
-  const verify = async (id: string) => {
+  const verify = async (id: string, includeContent = false) => {
     const row = await load(id);
     if (!['valid', 'invalid'].includes(row.status))
       throw fail('STATE', '这份备份尚未完成或已删除', '请选择已完成的备份');
     try {
-      const checked = await validatePackage(await fileOf(row), ctx.app);
+      const checked = await validatePackage(await fileOf(row), ctx.app, includeContent);
       if (row.digest !== checked.digest) {
         await rm(checked.snapshot);
         throw fail('CHANGED', '受管备份与登记摘要不符');
@@ -248,8 +269,9 @@ export function backupService(ctx: Context) {
     }
     const removed: string[] = [];
     for (const row of valid.slice(Math.max(1, keep))) {
-      await regularFile(await fileOf(row));
-      await rm(await fileOf(row));
+      const file = await fileOf(row);
+      await regularFile(file);
+      await rm(file);
       await db
         .updateTable('backup_item')
         .set({ status: 'pruned', reason: '超过自动备份保留份数' })
@@ -258,6 +280,15 @@ export function backupService(ctx: Context) {
       removed.push(row.id);
     }
     return removed;
+  };
+  return { db, now, load, fileOf, verify, settings, doBackup, pruneAutomatic };
+}
+
+export function backupService(ctx: Context) {
+  const { db, now, load, fileOf, verify, settings } = backupOperations(ctx);
+  const admin = () => {
+    if (!ctx.user.isAdmin)
+      throw fail('ADMIN', '恢复副本与覆盖准备需要当前账套管理员', '请使用管理员重新登录');
   };
   const startBackup = async (
     input: { requestId: string; name: string },
@@ -297,61 +328,80 @@ export function backupService(ctx: Context) {
         })
         .execute();
       const abort = new AbortController();
-      const promise = (async () => {
-        try {
-          await doBackup(id, abort.signal);
-          if (kind === 'automatic') {
-            let note: string;
-            try {
-              const removed = await pruneAutomatic(config.keep);
-              note = `保留最新 ${config.keep} 份有效自动备份；已轮替 ${removed.length} 份`;
-            } catch {
-              note = '新备份成功；轮替失败，旧备份保留，请检查目录权限';
-            }
-            await db
-              .updateTable('backup_item')
-              .set({ retention_note: note })
-              .where('id', '=', id)
-              .execute();
-            try {
-              await ctx.svc.log.write({
-                action: 'backup.retention',
-                summary: note,
-                targetType: 'backup_item',
-                targetId: id,
-              });
-            } catch {
+      const promise = ctx.app.bookStore
+        .withBook(ctx.book.id, async (book) => {
+          const user = await loadServiceUser(book.db, ctx.user.id);
+          const svc = createCoreServices({
+            db: book.db,
+            user: user ?? ctx.user,
+            moduleId: 'backup',
+            now: ctx.app.now,
+            modules: ctx.app.modules.lookup,
+          });
+          const { db, doBackup, pruneAutomatic } = backupOperations({
+            ...ctx,
+            book,
+            user: user ?? ctx.user,
+            svc,
+          });
+          try {
+            if (!user) throw fail('PERMISSION', '原操作员已停用，备份已停止');
+            svc.permissions.require('backup.create');
+            await doBackup(id, abort.signal);
+            if (kind === 'automatic') {
+              let note: string;
+              try {
+                const removed = await pruneAutomatic(config.keep);
+                note = `保留最新 ${config.keep} 份有效自动备份；已轮替 ${removed.length} 份`;
+              } catch {
+                note = '新备份成功；轮替失败，旧备份保留，请检查目录权限';
+              }
               await db
                 .updateTable('backup_item')
-                .set({ retention_note: `${note}；操作日志保存失败` })
+                .set({ retention_note: note })
                 .where('id', '=', id)
                 .execute();
+              try {
+                await svc.log.write({
+                  action: 'backup.retention',
+                  summary: note,
+                  targetType: 'backup_item',
+                  targetId: id,
+                });
+              } catch {
+                await db
+                  .updateTable('backup_item')
+                  .set({ retention_note: `${note}；操作日志保存失败` })
+                  .where('id', '=', id)
+                  .execute();
+              }
             }
+          } catch (e) {
+            const err = fileError(e);
+            await db
+              .updateTable('backup_item')
+              .set({ status: abort.signal.aborted ? 'cancelled' : 'failed', reason: err.message })
+              .where('id', '=', id)
+              .execute();
+            await svc.log.write({
+              action: 'backup.failed',
+              summary: err.message,
+              targetType: 'backup_item',
+              targetId: id,
+            });
           }
-        } catch (e) {
-          const err = fileError(e);
-          await db
-            .updateTable('backup_item')
-            .set({ status: abort.signal.aborted ? 'cancelled' : 'failed', reason: err.message })
-            .where('id', '=', id)
-            .execute();
-          await ctx.svc.log.write({
-            action: 'backup.failed',
-            summary: err.message,
-            targetType: 'backup_item',
-            targetId: id,
-          });
-        }
-      })()
-        .catch(() => {
-          // W0 关服未提供任务排空，连接可能已关闭；下次列表会把未完成记录标为中断。
-          console.error('[backup] 备份作业最终状态无法保存；请重新打开备份目录核对中断记录');
+        })
+        .catch((error: unknown) => {
+          state(ctx.app).failures.set(id, { bookId: ctx.book.id, error });
+          throw error;
         })
         .finally(() => {
           state(ctx.app).jobs.delete(id);
           state(ctx.app).busy.delete(ctx.book.id);
         });
-      state(ctx.app).jobs.set(id, { abort, promise, progress: 0 });
+      state(ctx.app).jobs.set(id, { bookId: ctx.book.id, abort, promise, progress: 0 });
+      // 保留原 Promise 的拒绝供 waitForJobs / 同步保护备份观察，只处理 detached rejection。
+      void promise.catch(() => {});
       if (synchronous) await promise;
       return load(id);
     } catch (e) {
@@ -487,18 +537,11 @@ export function backupService(ctx: Context) {
           '备份超过浏览器传输上限 32 MiB',
           '需要共享层提供受管流式上传下载接口；请保留本机受管包',
         );
-      const checked = await verify(id);
+      const checked = await verify(id, true);
       await rm(checked.snapshot);
       return {
         name: `${row.name}-${row.id}.caiwubak`,
-        base64: await (async () => {
-          const h = await open(await fileOf(row), constants.O_RDONLY | constants.O_NOFOLLOW);
-          try {
-            return (await h.readFile()).toString('base64');
-          } finally {
-            await h.close();
-          }
-        })(),
+        base64: checked.content!.toString('base64'),
       };
     },
     async upload(input: { name: string; base64: string }) {
@@ -590,14 +633,14 @@ export function backupService(ctx: Context) {
           throw fail('CONFIRM', '删除确认文字不匹配，请核对备份 ID');
         if (row.kind === 'pre-restore') throw fail('PROTECTED', '恢复前保护备份不能在本页面删除');
         if (state(ctx.app).jobs.has(id)) throw fail('BUSY', '请先取消并等待备份结束');
-        await regularFile(await fileOf(row));
-        if ((await hashFile(await fileOf(row))) !== row.digest)
+        const file = await fileOf(row);
+        if ((await hashFile(file)) !== row.digest)
           throw fail(
             'CHANGED',
             '备份文件已被替换，不能把未知文件作为受管备份删除',
             '请核对文件来源；本操作未删除文件',
           );
-        await rm(await fileOf(row));
+        await rm(file);
         await db
           .updateTable('backup_item')
           .set({ status: 'pruned', reason: '用户明确删除' })

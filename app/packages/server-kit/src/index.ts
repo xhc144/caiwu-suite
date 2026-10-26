@@ -13,3 +13,10 @@ export { coreRouter, type CoreRouter, type CoreShell } from './core-router';
 export { SessionStore, type Session } from './sessions';
 export { createRuntime, buildAppRouter, createCaller, type CreateRuntimeOptions } from './app';
 export type { AppRuntime, RequestContext } from './context';
+
+export {
+  RuntimeLifecycle,
+  type RuntimeHooks,
+  type RuntimeHookContext,
+  type BookCloseHookContext,
+} from './lifecycle';
