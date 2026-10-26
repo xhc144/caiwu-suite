@@ -15,6 +15,11 @@ for (const [path, title] of [
     const drawer = page.getByRole('dialog', { name: '展示设置', exact: true });
     await page.getByRole('button', { name: '展示设置', exact: true }).click();
     await drawer.getByLabel('默认显示级次').selectOption('-1');
+    // Ctrl+F4 请求关闭整个标签；未保存的设置和编辑值必须仍在。
+    await page.keyboard.press('Control+F4');
+    await expect(tab).toHaveAttribute('aria-selected', 'true');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
     await drawer.getByRole('button', { name: '取消', exact: true }).click();
     const abandon = page.getByRole('dialog', { name: '展示设置尚未保存', exact: true });
     await expect(abandon).toBeVisible();
