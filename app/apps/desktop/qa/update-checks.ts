@@ -5,13 +5,12 @@ import path from 'node:path';
 import type { DesktopHost } from '../src/bridge';
 
 /** 真实已安装的旧版进程 + 本分支真实新版 NSIS；仅替换远端传输和原生对话框响应。 */
-export async function checkInstalledUpdates(
+export async function mockAvailableUpdate(
   desktop: ElectronApplication,
   page: Page,
   installer: string,
   version: string,
-  dataDir: string,
-): Promise<Page> {
+): Promise<{ sha256: string; size: number }> {
   // 等待启动时那一次检查完成；之后本用例的更新传输全部使用下面的适配器。
   await expect
     .poll(
@@ -65,6 +64,17 @@ export async function checkInstalledUpdates(
     },
     { installer, version, size, sha256 },
   );
+  return { sha256, size };
+}
+
+export async function checkInstalledUpdates(
+  desktop: ElectronApplication,
+  page: Page,
+  installer: string,
+  version: string,
+  dataDir: string,
+): Promise<Page> {
+  const { sha256 } = await mockAvailableUpdate(desktop, page, installer, version);
   expect((await page.evaluate(() => window.caiwuDesktopHost!.updates.check())).state).toBe(
     'available',
   );
