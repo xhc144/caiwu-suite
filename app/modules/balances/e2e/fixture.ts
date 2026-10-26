@@ -1,10 +1,9 @@
-import { spawn } from 'node:child_process';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test as base, type APIRequestContext } from '@playwright/test';
-import { createRuntime } from '@caiwu/server-kit';
-import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import { createRuntime, moduleKit } from '@caiwu/server-kit';
 import type { CoreServices } from '@caiwu/core/server';
 import balancesServer from '../server';
 
@@ -13,6 +12,31 @@ type LocalServer = {
   request: APIRequestContext;
   seed: (bookId: string, fn: (svc: CoreServices) => Promise<void>) => Promise<void>;
 };
+
+type ServerExit = { code: number | null; signal: string | null; error?: Error };
+
+async function closeLocalServer(child: ChildProcess, exited: Promise<ServerExit>, dataDir: string) {
+  if (child.exitCode == null && child.signalCode == null) child.kill('SIGTERM');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      exited,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`余额表服务未正常退出，保留临时目录：${dataDir}`)),
+          5_000,
+        );
+      }),
+    ]);
+    if (result.error || result.code !== 0)
+      throw new Error(
+        `余额表服务异常退出（${result.code ?? result.signal ?? result.error?.message}），保留临时目录：${dataDir}`,
+      );
+    await rm(dataDir, { recursive: true, force: true });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /** 独占目录、随机端口与真实生产网页。绝不读取 Playwright 公用服务的账套目录。 */
 export const test = base.extend<{ localServer: LocalServer }>({
@@ -34,12 +58,15 @@ export const test = base.extend<{ localServer: LocalServer }>({
         stdio: ['ignore', 'pipe', 'pipe'],
       },
     );
+    const exited = new Promise<ServerExit>((resolve) => {
+      child.once('exit', (code, signal) => resolve({ code, signal }));
+      child.once('error', (error) => resolve({ code: null, signal: null, error }));
+    });
     let output = '';
     child.stderr.on('data', (data: Buffer) => {
       output = (output + data.toString()).slice(-12_000);
     });
     let request: APIRequestContext | undefined;
-    const runtime = createRuntime({ dataDir, modules: [balancesServer], devMode: true });
     try {
       const port = await new Promise<number>((resolve, reject) => {
         const timer = setTimeout(
@@ -69,32 +96,35 @@ export const test = base.extend<{ localServer: LocalServer }>({
         url,
         request,
         async seed(bookId, fn) {
-          const opened = runtime.bookStore.open(bookId);
-          const user = await loadServiceUser(opened.db, 1);
-          if (!user) throw new Error('独立测试账套缺少管理员');
-          await fn(
-            createCoreServices({
-              db: opened.db,
-              user,
-              moduleId: null,
-              modules: runtime.modules.lookup,
-              now: runtime.now,
-            }),
-          );
-          await runtime.bookStore.closeAll();
+          // 已确认 server READY 后才加入目录。通过真实过程取得请求/账套租约；
+          // 过程只供本进程种子调用，不挂载到 HTTP，也不依赖新版独有 API。
+          const m = moduleKit(balancesServer.manifest);
+          const router = m.router({
+            seed: m.procedure
+              .meta({ permission: 'balances.settings.edit' })
+              .mutation(async ({ ctx }) => fn(ctx.svc)),
+          });
+          const runtime = createRuntime({
+            dataDir,
+            modules: [{ ...balancesServer, router }],
+            devMode: true,
+          });
+          const session = runtime.sessions.create(bookId, 1);
+          try {
+            await router.createCaller({ app: runtime, token: session.token }).seed();
+          } finally {
+            runtime.sessions.delete(session.token);
+            // closeAll 是新旧共享层均支持的辅助 runtime 正常关闭入口。
+            await runtime.bookStore.closeAll();
+          }
         },
       });
     } finally {
-      await runtime.bookStore.closeAll();
-      await request?.dispose();
-      if (child.exitCode == null) {
-        const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
-        child.kill('SIGTERM');
-        const force = setTimeout(() => child.kill('SIGKILL'), 5_000);
-        await exited;
-        clearTimeout(force);
+      try {
+        await request?.dispose();
+      } finally {
+        await closeLocalServer(child, exited, dataDir);
       }
-      await rm(dataDir, { recursive: true, force: true });
     }
   },
 });
