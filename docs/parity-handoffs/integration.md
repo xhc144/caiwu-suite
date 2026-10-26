@@ -29,6 +29,8 @@
 
 Delivery 的只读 schema 门禁仍拒绝任意触发器/视图/额外业务表；现在仅白名单两条由可信安装 Store 自己在全新合成参考中生成、名称/所属表/完整 SQL token 一致的模块保护。缺一条、同名改写或新增任意触发器均拒绝，不会为兼容而修写输入。无模块旧账套保持可用。该相容性门禁已用真实 Core→SQLite→LedgerFilePolicy 链回归，另跑原 Delivery 组件安全套件163通过/0失败/3个Linux上Windows语义跳过。
 
+保护范围是本实现 Store.Write 和已核查的旧 Store 整快照 DELETE/INSERT 路径，不是对任意外部 SQL 的保证。父任务审阅者用 SQLite3.53.1 最小表验证：recursive_triggers=OFF 时 INSERT OR REPLACE 可绕过 DELETE/UPDATE 触发器；当前未发现生产旧 writer 使用该写法。本轮不将这种未知 SQL 客户端称为受支持写入方，不修改安全权限去支持它。
+
 回放使用 .NET10 `RespectRequiredConstructorParameters=true`、未知成员拒绝及全层重复键检查。缺少 Document 属性是损坏事件，不能等同显式 Document=null。当前已有实际回归包含先保存 x，再追加缺 Document 的删除形状事件；要求失败。显式 null 删除仍由正常授权入口处理。
 
 完整备份/恢复逐字保存日志及保护触发器。BookTools 全量新身份复制保留全部模块事件/不透明 JSON/来源占用，含模块历史时新 revision=source.Revision+1，使每份旧 receipt.Revision 严格小于新当前版本；原 payload 内旧 BookId 仅作历史，不自动变成新 context。`CreateFromSnapshot` 只向全新路径原子发布确认快照，不改变既有库 CAS。科目及期初范围明确排除模块文档、收据和凭证，不称模块完整副本。仍保留 receipt.Revision<=ledger.Revision 校验；旧“receipt=2、复制版本=1”形状继续被判损坏。
@@ -64,3 +66,13 @@ Delivery 的只读 schema 门禁仍拒绝任意触发器/视图/额外业务表�
 仍待父任务提供各 owner 审核 SHA/HANDOFF；不自行拿浮动 branch HEAD 集成。原账套身份/两字符代码/产品/模板/操作日期、原 b_user/b_rights、稳定 LineId、辅助/外币/数量语义、自动年初来源及跨年/逆操作权限均为已读需求，**尚未被通用 JSON 存储能力实现**。原账套实际驱动/无损迁移、原流程全部按钮、44 制度模板、反过账/反结账持久化、打印及 Windows 实机对照都不以本接口替代。旧 gap-analysis 验收行保留。
 
 Windows CI 只运行新实现和合成账套，记录完整 source SHA、运行环境及高清原尺寸截图；静态相对布局比较和新实现实际运行分开，原程序不运行。旧 0.1.0.4、编译成功、测试数量均不作为原版完整保真证据。
+
+## 最终公共地基检查点（不含 shell/cashier 候选）
+
+已推实现 `e15fb7f289eecf8ecaa003aae586860ae70b45f5`，source tree `e3cd2a755fbc08df710a928206659ff4521bbb95`；私有草稿 PR52。后续本段及 evidence 是文档提交，不冒称新二进制源。公开 API 与 Core/SQLite/BookTools/Delivery 相容性构建已完成；这是公共事务底座的一块切片，**整体地基和原软件保真升级尚未完成**。
+
+同 SHA clean checkout 本地 Linux：Core171、SQLite122、BookCopy5、实际 SQLite 集成7均通过；Delivery163通过/0失败/3项平台跳过。真实 Windows [run40248340919](https://github.com/xhc144/caiwu-suite/actions/runs/40248340919) 成功：Core171、SQLite122、BookCopy5、集成7通过；Delivery162通过/0失败/4项平台跳过。SDK10.0.402；Windows 实际选择运行时.NET10.0.14，不能沿用旧文档的10.0.13称呼。四张实际前台桌面 PNG 均1920×1080、DPI96、未缩放，仍为未接 shell 首片时的界面诊断，originalUiParity/not-tested。artifact12619153053，ZIP SHA256 `d424e4b3092960c8bd9dcad2537cc53dde74eb2b36783d4ed0f19a607f472931`；已下载核验。计数、PNG哈希、平台和明确范围见 [证据索引](evidence/integration-e15fb7f.json)。
+
+较早8d1db2f/run40248027847在原生截图步骤失败，不能标为通过；e15fb7f补齐仅接受可信 canonical guard 的 Delivery 门禁后复验成功。原 run/artifact12619132545 保留；未以截图失败推翻已通过的组件结果，也未把组件结果冒充整 run 成功。
+
+按用户收敛指令，不再扩任务或新模块。仅按父任务明确 SHA 在另一私有隔离候选分支 `codex/parity-integration-candidate-20261026` 组合既有 shell `cde5f6863dc3aebc52adac0f8d7dbe087ec67113` 与出纳修正 `5fe65fecc03a5ecc2764303a3c6f15469e7c59bd`，当前候选实现 `ef5d28add2a2a39629e15f2a6717beca279a723c`。真实 wrapper→Core→SQLite→出纳的6组合场景已在 Linux 通过；该候选 Windows [run40248963733](https://github.com/xhc144/caiwu-suite/actions/runs/40248963733) 尚在运行，不计为通过。它没有自动赋予 App 任意模块权限，也没有把 cashier 窗口注册为原产品已接通；候选状态和剩余门禁以该分支 `integration-candidate.md` 为准。其余 owner 候选未回接，无新任务或后续波次。

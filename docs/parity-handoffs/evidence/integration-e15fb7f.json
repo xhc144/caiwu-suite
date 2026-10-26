@@ -1,0 +1,175 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "e15fb7f289eecf8ecaa003aae586860ae70b45f5",
+  "sourceTree": "e3cd2a755fbc08df710a928206659ff4521bbb95",
+  "sourceCleanBeforeAndAfter": true,
+  "workflowRun": 40248340919,
+  "workflowUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40248340919",
+  "artifactId": 12619153053,
+  "artifactZipSha256": "d424e4b3092960c8bd9dcad2537cc53dde74eb2b36783d4ed0f19a607f472931",
+  "windows": {
+    "status": "passed",
+    "components": {
+      "core": {
+        "total": 171,
+        "passed": 171,
+        "failed": 0,
+        "notExecuted": 0
+      },
+      "sqlite": {
+        "total": 122,
+        "passed": 122,
+        "failed": 0,
+        "notExecuted": 0
+      },
+      "book-copy": {
+        "total": 5,
+        "passed": 5,
+        "failed": 0,
+        "notExecuted": 0
+      }
+    },
+    "moduleIntegration": {
+      "schemaVersion": 1,
+      "sourceCommit": "e15fb7f289eecf8ecaa003aae586860ae70b45f5",
+      "sourceTree": "e3cd2a755fbc08df710a928206659ff4521bbb95",
+      "sourceBinding": "exact-clean-checkout",
+      "generatedAtUtc": "2026-10-26T00:16:40.2619344+00:00",
+      "platform": "Microsoft Windows 10.0.26100",
+      "runtime": ".NET 10.0.14",
+      "syntheticOnly": true,
+      "originalProgramExecuted": false,
+      "realBookCompatibility": "not-tested",
+      "originalUiParity": "not-tested",
+      "scope": "Actual SQLite integration for module journal and new draft proposals only; no complete-product acceptance implied.",
+      "status": "passed",
+      "cases": [
+        {
+          "name": "module-documents-and-proposal-persist-in-real-sqlite",
+          "status": "passed"
+        },
+        {
+          "name": "sqlite-abort-rolls-back-module-voucher-source-and-revision",
+          "status": "passed"
+        },
+        {
+          "name": "independent-writers-cannot-overwrite-stale-module-decision",
+          "status": "passed"
+        },
+        {
+          "name": "backup-restore-retains-unknown-json-and-source-consumption",
+          "status": "passed"
+        },
+        {
+          "name": "two-writers-one-source-have-exactly-one-atomic-winner",
+          "status": "passed"
+        },
+        {
+          "name": "foreign-book-confirmation-cannot-write-either-book",
+          "status": "passed"
+        },
+        {
+          "name": "managed-policy-accepts-only-canonical-module-retention-guards",
+          "status": "passed"
+        }
+      ]
+    },
+    "delivery": {
+      "sourceCommit": "e15fb7f289eecf8ecaa003aae586860ae70b45f5",
+      "total": 166,
+      "passed": 162,
+      "failed": 0,
+      "skipped": 4,
+      "os": "Microsoft Windows 10.0.26100",
+      "runtime": ".NET 10.0.14"
+    },
+    "screenshots": {
+      "checkoutCommit": "e15fb7f289eecf8ecaa003aae586860ae70b45f5",
+      "actualWindowsDesktop": true,
+      "syntheticDataOnly": true,
+      "resizedOrUpscaled": false,
+      "mechanism": "Native primary desktop BitBlt, actual self-authored WPF windows maximized; no original commercial program run.",
+      "captures": [
+        {
+          "file": "main-window.png",
+          "width": 1920,
+          "height": 1080,
+          "windowDpi": 96,
+          "sha256": "ff6bb2059d36df289b979cfd509f4278374ddbce789c5009ec2eb3b83c994ae2"
+        },
+        {
+          "file": "ledger.png",
+          "width": 1920,
+          "height": 1080,
+          "windowDpi": 96,
+          "sha256": "c9e0ba2416b99b63045984948f44b6e612acdeda935db1e2e4fbf169256dec7b"
+        },
+        {
+          "file": "voucher-editor.png",
+          "width": 1920,
+          "height": 1080,
+          "windowDpi": 96,
+          "sha256": "6a8d3812f9be64da2d5f176730173d1656eafb38cee4b743b60c56e575edfad9"
+        },
+        {
+          "file": "report.png",
+          "width": 1920,
+          "height": 1080,
+          "windowDpi": 96,
+          "sha256": "fd4cbf9630e7fc70350ceeb36b45e95bdb83265512256b127b36f88666718138"
+        }
+      ]
+    }
+  },
+  "linux": {
+    "sourceResult": {
+      "sourceCommit": "e15fb7f289eecf8ecaa003aae586860ae70b45f5",
+      "sourceTree": "e3cd2a755fbc08df710a928206659ff4521bbb95",
+      "cleanBeforeAndAfter": true,
+      "platform": "Linux-6.18.55-x86_64-with-glibc2.41",
+      "syntheticOnly": true,
+      "fullProductAcceptance": "not-tested",
+      "results": [
+        {
+          "name": "core",
+          "exitCode": 0
+        },
+        {
+          "name": "sqlite",
+          "exitCode": 0
+        },
+        {
+          "name": "book-copy",
+          "exitCode": 0
+        },
+        {
+          "name": "integration",
+          "exitCode": 0
+        },
+        {
+          "name": "delivery",
+          "exitCode": 0
+        }
+      ]
+    },
+    "delivery": {
+      "passed": 163,
+      "failed": 0,
+      "skipped": 3
+    }
+  },
+  "earlierRunFailure": {
+    "sourceCommit": "8d1db2f066a233d12f125198182197b584254209",
+    "workflowRun": 40248027847,
+    "stage": "native-product-rendering-diagnostic",
+    "artifactId": 12619132545
+  },
+  "scope": {
+    "syntheticOnly": true,
+    "originalProgramExecuted": false,
+    "originalUiParity": "not-tested",
+    "realBookCompatibility": "not-tested",
+    "fullProductAcceptance": "not-tested"
+  },
+  "moduleJournalGuardBoundary": "Supported Store.Write and reviewed legacy DELETE/INSERT path only; arbitrary external SQL including INSERT OR REPLACE with recursive_triggers OFF is not covered."
+}
