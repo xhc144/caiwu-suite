@@ -3,49 +3,20 @@ import type { Page } from '@playwright/test';
 import type { Invoice } from '../shared';
 import { sampleFile } from '../test/fixtures';
 import { test, expect } from './isolated';
+import { bookWithInvoices, createInvoiceAccounts, saveInvoiceAgain } from './data';
 
 async function select(page: Page, label: string, text: string) {
   await page.getByLabel(label, { exact: true }).fill(text);
   await page.keyboard.press('Enter');
 }
 
-test('w_fp_lr_2 → w_fp_sz_2 → w_fp_pz → w_fp_zzs_hz：5票真实导入、pending/posted、去重、锁定和导出', async ({
+test('w_fp_lr_2 → w_fp_sz_2 → w_fp_pz → w_fp_zzs_hz：5票真实导入、配置、来源凭证与pending/posted比对', async ({
   page,
   isolated,
 }) => {
   const { origin, request, inBook } = isolated;
   const { bookId, token } = await loginWithNewBook(page, request, { product: 'chengben' });
-  await inBook(bookId, async (svc) => {
-    const scheme = (await svc.book.info()).codeScheme;
-    await svc.dimensions.create({ type: 'department', code: 'E2E-D', name: '发票测试部门' });
-    await svc.dimensions.create({ type: 'partner', code: 'E2E-S', name: '发票测试供应商' });
-    await svc.accounts.create(
-      {
-        code: '7901',
-        name: '发票测试费用',
-        categoryId: 'pnl',
-        dimensions: [{ type: 'department', required: true }],
-      },
-      scheme,
-    );
-    await svc.accounts.create(
-      { code: '7902', name: '发票测试进项税', categoryId: 'liability', direction: 'debit' },
-      scheme,
-    );
-    await svc.accounts.create(
-      {
-        code: '7903',
-        name: '发票测试应付',
-        categoryId: 'liability',
-        dimensions: [{ type: 'partner', required: true }],
-      },
-      scheme,
-    );
-    await svc.accounts.create(
-      { code: '7904', name: '发票测试非抵扣费用', categoryId: 'pnl' },
-      scheme,
-    );
-  });
+  await inBook(bookId, createInvoiceAccounts);
   await page.goto(`${origin}/m/invoice/input`);
   await page.getByRole('button', { name: '导入 Excel', exact: true }).click();
   const file = await sampleFile();
@@ -92,6 +63,9 @@ test('w_fp_lr_2 → w_fp_sz_2 → w_fp_pz → w_fp_zzs_hz：5票真实导入、p
   await page.getByRole('button', { name: '预览分录', exact: true }).click();
   await expect(page.getByText('凭证预览（尚未保存）', { exact: true })).toBeVisible();
   await expect(page.getByText('-5.00', { exact: true }).last()).toBeVisible();
+  const generation = page.waitForRequest(
+    (r) => r.url().includes('m.invoice.generate') && r.method() === 'POST',
+  );
   await page.getByRole('button', { name: '确认生成凭证', exact: true }).click();
   await page.getByRole('button', { name: '确定', exact: true }).click();
   await expect(page.getByText('凭证预览（尚未保存）', { exact: true })).toBeHidden();
@@ -137,6 +111,19 @@ test('w_fp_lr_2 → w_fp_sz_2 → w_fp_pz → w_fp_zzs_hz：5票真实导入、p
     'href',
     '/m/ledgers/detail?account=7902&from=202602&to=202602&dims=',
   );
+  const originalInput = (await generation).postDataJSON() as Record<string, unknown>;
+  expect(originalInput['0']).toBeDefined();
+  await callApi(request, 'm.invoice.generate', originalInput['0'], { token });
+  await expect(saveInvoiceAgain(request, token, docs[0]!)).rejects.toThrow(/已审核或已后续处理/);
+  await inBook(bookId, async (svc) => {
+    expect((await svc.vouchers.list({ sourceModule: 'invoice' })).total).toBe(1);
+  });
+});
+
+test('w_fp_lr_2：已过账来源锁定、重复导入预览与Excel导出', async ({ page, isolated }) => {
+  const { origin, request, inBook } = isolated;
+  const { bookId, token, file, docs } = await bookWithInvoices(page, isolated, true);
+  const dialog = page.getByRole('dialog', { name: 'Excel 发票导入预览' });
   await page.goto(`${origin}/m/invoice/input`);
   const first = page.getByRole('row', { name: /00000000000000000001/ });
   await expect(first.getByRole('button', { name: '修改', exact: true })).toHaveCount(0);
@@ -162,40 +149,29 @@ test('w_fp_lr_2 → w_fp_sz_2 → w_fp_pz → w_fp_zzs_hz：5票真实导入、p
   await inBook(bookId, async (svc) => {
     expect((await svc.vouchers.list({ sourceModule: 'invoice' })).total).toBe(1);
   });
-  await expect(async () => {
-    await callApi(
-      request,
-      'm.invoice.save',
-      {
-        id: docs[0]!.id,
-        revision: docs[0]!.revision,
-        data: Object.fromEntries(
-          Object.entries(docs[0]!).filter(
-            ([k]) =>
-              ![
-                'id',
-                'revision',
-                'state',
-                'period',
-                'batchId',
-                'groupId',
-                'voucherId',
-                'voucherNo',
-                'voucherStatus',
-              ].includes(k),
-          ),
-        ),
-      },
-      { token },
-    );
-  }).rejects.toThrow(/已审核或已后续处理/);
+  await expect(saveInvoiceAgain(request, token, docs[0]!)).rejects.toThrow(/已审核或已后续处理/);
   await page.getByRole('button', { name: '关闭', exact: true }).click();
+});
+
+test('w_fp_fz/fjz、w_fp_hz：独立发票月锁、反结账与真实五票汇总', async ({ page, isolated }) => {
+  const { origin, inBook } = isolated;
+  const { bookId } = await bookWithInvoices(page, isolated);
   await page.goto(`${origin}/m/invoice/periods?period=202602`);
   await page.getByRole('button', { name: '结账', exact: true }).click();
   await page.getByRole('button', { name: '确定', exact: true }).click();
   await expect(page.getByText(/所选 202602：已结账/)).toBeVisible();
   await page.goto(`${origin}/m/invoice/summary?year=2026&direction=input&groupBy=month`);
-  await expect(page.getByRole('row', { name: /202602/ })).toContainText('1,000.00');
+  const summary = page.getByRole('row', { name: /202602/ });
+  await expect(summary).toContainText('1,000.00');
+  await expect(summary.getByRole('cell', { name: '100.00', exact: true })).toBeVisible();
+  await expect(summary.getByRole('cell', { name: '1,100.00', exact: true })).toBeVisible();
+  await page.goto(`${origin}/m/invoice/periods?period=202602`);
+  await page.getByRole('button', { name: '反结账', exact: true }).click();
+  await page.getByRole('button', { name: '确定', exact: true }).click();
+  await expect(page.getByText(/所选 202602：未结账/)).toBeVisible();
+  await inBook(bookId, async (svc) => {
+    expect((await svc.periods.require(202602)).status).toBe('open');
+  });
 });
 
 test('w_fp_lr_1 手工录入、未保存确认、查询筛选和批量删除二次确认', async ({ page, isolated }) => {

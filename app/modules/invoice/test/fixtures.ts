@@ -68,3 +68,44 @@ export async function mapping(
     nonDeductible: { accountId: expense.id, dimensions: {} },
   };
 }
+
+/** 合成账票数据：3月启用，确认跨月、红字、跨年确认，税额独立手算。 */
+export function midyearInvoices(): InvoiceInput[] {
+  return [
+    single({ number: 'MID-NORMAL', date: '2026-03-31', confirmDate: '2026-04-01' }),
+    single({
+      number: 'MID-RED',
+      date: '2026-04-02',
+      confirmDate: '2026-04-02',
+      amount: -2000,
+      tax: -200,
+      total: -2200,
+    }),
+    single({
+      number: 'MID-CROSS-YEAR',
+      date: '2026-12-31',
+      confirmDate: '2027-01-01',
+      amount: 3000,
+      tax: 300,
+      total: 3300,
+    }),
+    single({
+      direction: 'output',
+      number: 'MID-OUT',
+      date: '2026-03-15',
+      confirmDate: null,
+      amount: 5000,
+      tax: 500,
+      total: 5500,
+    }),
+    single({
+      direction: 'output',
+      number: 'MID-OUT-RED',
+      date: '2026-03-20',
+      confirmDate: null,
+      amount: -1000,
+      tax: -100,
+      total: -1100,
+    }),
+  ];
+}

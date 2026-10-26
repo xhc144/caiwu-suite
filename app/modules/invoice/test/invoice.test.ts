@@ -8,7 +8,7 @@ import { InvoiceSchema } from '../shared';
 import server from '../server';
 import { safeSum, validateInvoice } from '../server/service';
 import type { InvoiceTables } from '../server/migrations';
-import { mapping, sampleFile, single } from './fixtures';
+import { mapping, midyearInvoices, sampleFile, single } from './fixtures';
 
 let app: TestApp;
 const caller = () => app.call(server);
@@ -635,6 +635,160 @@ describe('w_fp_lr_1/_2 批量删除与 w_fp_hz/w_fp_khhz/_2 汇总', () => {
     expect(
       await api.export({ direction: 'input', dateFrom: '2026-02-06', dateTo: '2026-02-07' }),
     ).toHaveLength(2);
+  });
+});
+describe('w_fp_zzs_hz 年中启用的月/季度可比范围', () => {
+  it('真实SQLite：3月启用的全年、季度、跨年确认和红字只取启用后期间', async () => {
+    await app.close();
+    app = await createTestApp({ modules: [server], startMonth: 3 });
+    const api = caller();
+    await api.saveSettings(await mapping(app.svc));
+    await api.saveSettings(await mapping(app.svc, 'output'));
+    for (const data of midyearInvoices()) await api.save({ data });
+    await app.svc.periods.ensureYear(2027);
+    await seedVouchers(app.svc, [
+      {
+        date: '2026-03-31',
+        status: 'posted',
+        lines: [
+          { account: '6603', debit: 400 },
+          { account: '9902', credit: 400 },
+        ],
+      },
+      {
+        date: '2026-04-15',
+        status: 'posted',
+        lines: [
+          { account: '9901', debit: 800 },
+          { account: '6603', credit: 800 },
+        ],
+      },
+      {
+        date: '2027-01-31',
+        status: 'posted',
+        lines: [
+          { account: '9901', debit: 300 },
+          { account: '6603', credit: 300 },
+        ],
+      },
+    ]);
+    const months = await api.vat({ year: 2026, groupBy: 'month', includeUnposted: false });
+    for (const row of months.filter((r) => r.to < 202603))
+      expect(row).toMatchObject({
+        active: false,
+        startPeriod: 202603,
+        effectiveFrom: null,
+        face: null,
+        book: null,
+        difference: null,
+        count: null,
+        entries: [],
+      });
+    expect(months.find((r) => r.key === 'input-202603')).toMatchObject({
+      active: true,
+      effectiveFrom: 202603,
+      face: 0,
+      book: 0,
+      difference: 0,
+      count: 0,
+    });
+    expect(months.find((r) => r.key === 'output-202603')).toMatchObject({
+      face: 400,
+      book: 400,
+      difference: 0,
+      count: 2,
+    });
+    const april = months.find((r) => r.key === 'input-202604')!;
+    expect(april).toMatchObject({ face: 800, book: 800, difference: 0, count: 2 });
+    expect(april.explanations.find((r) => r.number === 'MID-NORMAL')).toMatchObject({
+      date: '2026-03-31',
+      confirmDate: '2026-04-01',
+      crossPeriod: true,
+    });
+    expect(april.explanations.find((r) => r.number === 'MID-RED')).toMatchObject({ red: true });
+    expect(months.find((r) => r.key === 'input-202612')).toMatchObject({
+      face: 0,
+      book: 0,
+      count: 0,
+    });
+    const quarters = await api.vat({ year: 2026, groupBy: 'quarter', includeUnposted: false });
+    expect(quarters.find((r) => r.key === 'output-202601')).toMatchObject({
+      from: 202601,
+      to: 202603,
+      active: true,
+      partial: true,
+      effectiveFrom: 202603,
+      face: 400,
+      book: 400,
+      difference: 0,
+    });
+    expect(quarters.find((r) => r.key === 'input-202604')).toMatchObject({
+      partial: false,
+      effectiveFrom: 202604,
+      face: 800,
+      book: 800,
+      difference: 0,
+    });
+    for (const groupBy of ['month', 'quarter'] as const) {
+      const next = await api.vat({ year: 2027, groupBy, includeUnposted: false });
+      expect(next.find((r) => r.key === 'input-202701')).toMatchObject({
+        active: true,
+        partial: false,
+        effectiveFrom: 202701,
+        face: 300,
+        book: 300,
+        difference: 0,
+        count: 1,
+        explanations: [
+          {
+            number: 'MID-CROSS-YEAR',
+            date: '2026-12-31',
+            confirmDate: '2027-01-01',
+            crossPeriod: true,
+          },
+        ],
+      });
+      const before = await api.vat({ year: 2025, groupBy, includeUnposted: true });
+      expect(
+        before.every(
+          (r) =>
+            !r.active &&
+            r.effectiveFrom == null &&
+            r.face == null &&
+            r.book == null &&
+            r.difference == null &&
+            r.count == null &&
+            r.entries.length === 0,
+        ),
+      ).toBe(true);
+    }
+  });
+  it.each([2, 5, 8, 12])('w_fp_zzs_hz %i月启用，季度截断不把前月当作零业务', async (startMonth) => {
+    await app.close();
+    app = await createTestApp({ modules: [server], startMonth });
+    const api = caller();
+    await api.saveSettings(await mapping(app.svc));
+    const startPeriod = 202600 + startMonth;
+    for (const groupBy of ['month', 'quarter'] as const) {
+      const rows = await api.vat({ year: 2026, groupBy, includeUnposted: false });
+      for (const row of rows) {
+        if (row.to < startPeriod)
+          expect(row).toMatchObject({
+            active: false,
+            effectiveFrom: null,
+            face: null,
+            book: null,
+            difference: null,
+          });
+        else
+          expect(row).toMatchObject({
+            active: true,
+            effectiveFrom: Math.max(row.from, startPeriod),
+            partial: row.from < startPeriod,
+            face: 0,
+          });
+      }
+    }
   });
 });
 describe('权限和隔离', () => {

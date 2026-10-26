@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { Alert, Button, Checkbox, Drawer, Form, InputNumber, Select, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
-import { DataTable, FilterBar, PageContainer } from '@caiwu/ui';
+import { DataTable, FilterBar, MoneyText, PageContainer } from '@caiwu/ui';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { InvoiceRouter } from '../server/router';
 import { api } from './api';
@@ -60,6 +60,12 @@ export default function VatPage() {
         description="差额 = 账面税额 − 全部正常票面税额。未制证、未过账、非抵扣税额计入成本、确认跨月及科目映射变更均可能产生差额；此表不自动补差、不判定抵扣资格或税务合规。"
       />
       <QueryError error={query.error} retry={query.refetch} />
+      {query.data?.[0] && (
+        <Alert
+          type="info"
+          title={`账套启用月份：${query.data[0].startPeriod}；启用前标为未启用，跨启用月季度仅比对启用后范围。`}
+        />
+      )}
       <DataTable
         tableId="invoice-vat"
         rowKey="key"
@@ -75,26 +81,45 @@ export default function VatPage() {
           { key: 'from', title: '起月', dataIndex: 'from', width: 100 },
           { key: 'to', title: '止月', dataIndex: 'to', width: 100 },
           {
+            key: 'scope',
+            title: '可比范围',
+            width: 210,
+            render: (_, r) =>
+              !r.active
+                ? `未启用（${r.startPeriod}起）`
+                : r.partial
+                  ? `部分期间：${r.effectiveFrom}–${r.to}`
+                  : '完整期间',
+          },
+          {
             key: 'account',
             title: '税科目',
             width: 130,
             render: (_, r) => (r.configured ? r.accountCode : '未配置（不能判断差额）'),
           },
-          { key: 'count', title: '票数', dataIndex: 'count', width: 80 },
-          { key: 'face', title: '票面税额', dataIndex: 'face', money: true, width: 130 },
+          { key: 'count', title: '票数', width: 80, render: (_, r) => r.count ?? '未启用' },
+          {
+            key: 'face',
+            title: '票面税额',
+            money: true,
+            width: 130,
+            render: (_, r) => (r.face == null ? '未启用' : <MoneyText value={r.face} />),
+          },
           {
             key: 'book',
             title: '账面税额',
             width: 130,
             money: true,
-            render: (_, r) => (r.configured ? (r.book / 100).toFixed(2) : '未配置'),
+            render: (_, r) =>
+              !r.active ? '未启用' : r.configured ? <MoneyText value={r.book} /> : '未配置',
           },
           {
             key: 'difference',
             title: '差额',
             width: 130,
             money: true,
-            render: (_, r) => (r.configured ? (r.difference / 100).toFixed(2) : '未配置'),
+            render: (_, r) =>
+              !r.active ? '未启用' : r.configured ? <MoneyText value={r.difference} /> : '未配置',
           },
           {
             key: 'detail',
@@ -102,12 +127,12 @@ export default function VatPage() {
             width: 180,
             render: (_, r) => (
               <Space>
-                <Button size="small" onClick={() => setDetail(r)}>
+                <Button size="small" disabled={!r.active} onClick={() => setDetail(r)}>
                   查看票与分录
                 </Button>
-                {r.accountCode && (
+                {r.active && r.accountCode && (
                   <Link
-                    to={`/m/ledgers/detail?account=${r.accountCode}&from=${r.from}&to=${r.to}&dims=`}
+                    to={`/m/ledgers/detail?account=${r.accountCode}&from=${r.effectiveFrom}&to=${r.to}&dims=`}
                   >
                     明细账
                   </Link>
@@ -119,6 +144,9 @@ export default function VatPage() {
       />
       {detail && (
         <Drawer open title="账票差异明细" width="90%" onClose={() => setDetail(null)}>
+          <p>
+            本期可比范围：{detail.effectiveFrom}–{detail.to}，账套启用月份 {detail.startPeriod}。
+          </p>
           <p>
             进项税处理配置：{detail.basis === 'cost' ? '税额计入成本/费用' : '税额单列或尚未配置'}
             。票面与凭证月份可能不同；点击来源核对实际科目。

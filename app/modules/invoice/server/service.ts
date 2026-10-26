@@ -868,6 +868,7 @@ export function invoiceService(svc: CoreServices) {
     },
     async vat(input: { year: number; groupBy: 'month' | 'quarter'; includeUnposted: boolean }) {
       const invoices = await self.list();
+      const { startPeriod } = await svc.book.info();
       const out = [];
       for (const direction of ['input', 'output'] as const) {
         const cfg = await settings(direction);
@@ -875,49 +876,62 @@ export function invoiceService(svc: CoreServices) {
         for (let m = 1; m <= 12; m += input.groupBy === 'quarter' ? 3 : 1) {
           const from = input.year * 100 + m,
             to = from + (input.groupBy === 'quarter' ? 2 : 0);
+          const active = to >= startPeriod;
+          const effectiveFrom = active ? Math.max(from, startPeriod) : null;
           const docs = invoices.filter(
             (d) =>
               d.direction === direction &&
-              d.period >= from &&
+              effectiveFrom != null &&
+              d.period >= effectiveFrom &&
               d.period <= to &&
               d.invoiceStatus === 'normal',
           );
-          const entries = map
-            ? await svc.ledger.entries({
-                periodFrom: from,
-                periodTo: to,
-                accountIds: [map.accountId],
-                includeChildren: false,
-                includeUnposted: input.includeUnposted,
-                limit: 200000,
-              })
-            : [];
-          const balances = map
-            ? await svc.ledger.balances({
-                periodFrom: from,
-                periodTo: to,
-                accountCodes: [map.accountCode],
-                rollup: false,
-                includeUnposted: input.includeUnposted,
-              })
-            : [];
-          const book = safeSum(
-            balances.map((r) =>
-              direction === 'input' ? safeSum([r.debit, -r.credit]) : safeSum([r.credit, -r.debit]),
-            ),
-          );
-          const face = safeSum(docs.map((d) => d.tax));
+          const entries =
+            map && effectiveFrom != null
+              ? await svc.ledger.entries({
+                  periodFrom: effectiveFrom,
+                  periodTo: to,
+                  accountIds: [map.accountId],
+                  includeChildren: false,
+                  includeUnposted: input.includeUnposted,
+                  limit: 200000,
+                })
+              : [];
+          const balances =
+            map && effectiveFrom != null
+              ? await svc.ledger.balances({
+                  periodFrom: effectiveFrom,
+                  periodTo: to,
+                  accountCodes: [map.accountCode],
+                  rollup: false,
+                  includeUnposted: input.includeUnposted,
+                })
+              : [];
+          const book = !active
+            ? null
+            : safeSum(
+                balances.map((r) =>
+                  direction === 'input'
+                    ? safeSum([r.debit, -r.credit])
+                    : safeSum([r.credit, -r.debit]),
+                ),
+              );
+          const face = !active ? null : safeSum(docs.map((d) => d.tax));
           out.push({
             key: `${direction}-${from}`,
             direction,
             from,
             to,
             configured: !!map,
+            active,
+            startPeriod,
+            effectiveFrom,
+            partial: effectiveFrom != null && effectiveFrom > from,
             accountCode: map?.accountCode ?? null,
             face,
             book,
-            difference: safeSum([book, -face]),
-            count: docs.length,
+            difference: book == null || face == null ? null : safeSum([book, -face]),
+            count: active ? docs.length : null,
             invoiceIds: docs.map((d) => d.id),
             entries,
             entriesLimited: entries.length === 200000,
