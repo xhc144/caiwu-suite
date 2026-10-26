@@ -12,7 +12,7 @@ import { createRuntime } from '@caiwu/server-kit';
 import { createCoreServices, loadServiceUser, type CoreServices } from '@caiwu/core/server';
 import cashierServer from '../server';
 
-type CashierFixture = {
+export type CashierFixture = {
   page: Page;
   request: APIRequestContext;
   baseURL: string;

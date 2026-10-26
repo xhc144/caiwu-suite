@@ -475,8 +475,8 @@ function GenerateDrawer({
   const generate = useMutation(
     api.generate.mutationOptions({
       onSuccess: () => {
-        void refresh();
         onClose();
+        void refresh();
       },
     }),
   );

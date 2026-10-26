@@ -5,4 +5,14 @@ export const api = moduleApi<CashierRouter>('cashier');
 export type Outputs = inferRouterOutputs<CashierRouter>;
 export type CashAccount = Outputs['accounts'][number];
 export type CashDocument = Outputs['documents'][number];
-export const refresh = () => queryClient.invalidateQueries({ queryKey: api.pathKey() });
+// 预览绑定用户选择的单据 revision；写入成功后该快照已失效，不能随列表重刷。
+// 只刷新持久化视图，重新预览须由用户重新选择/提交输入。
+export const refresh = () =>
+  Promise.all(
+    [
+      api.status.queryKey(),
+      api.accounts.queryKey(),
+      api.documents.queryKey(),
+      api.reconcile.queryKey(),
+    ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+  );
