@@ -149,6 +149,7 @@ function Editor({
   const [changed, setChanged] = useState(0);
   const live = useRef({
     data: initial,
+    savedData: initial,
     header: voucher,
     bufferRevision: 0,
     version: 0,
@@ -229,6 +230,7 @@ function Editor({
             restoredStatus = '存在未提交编辑缓冲，可点击“恢复编辑缓冲”继续';
           }
         }
+        live.current.savedData = live.current.data;
         setReady(true);
         setStatus(restoredStatus);
       })
@@ -327,6 +329,7 @@ function Editor({
         live.current.header = result.voucher;
         live.current.bufferRevision = result.bufferRevision;
         live.current.savedVersion = version;
+        live.current.savedData = snapshot;
         setHeader(result.voucher);
         if (result.voucher)
           queryClient.setQueryData(api.get.queryKey({ id: result.voucher.id }), {
@@ -380,12 +383,12 @@ function Editor({
   const saveRef = useRef(save);
   saveRef.current = save;
   useEffect(() => {
-    if (!ready || readonly || !changed) return;
+    if (!ready || readonly || !changed || leave) return;
     const timer = setTimeout(() => {
       if (live.current.version !== live.current.savedVersion) void saveRef.current(true);
     }, 850);
     return () => clearTimeout(timer);
-  }, [changed, ready, readonly]);
+  }, [changed, ready, readonly, leave]);
   const requestLeave = (action: () => void) => {
     if (pending.current) {
       void tail.current.then(() => handlers.current.requestLeave(action));
@@ -1112,6 +1115,15 @@ function Editor({
                 danger
                 onClick={() => {
                   const action = leave;
+                  // 放弃只撤销尚未持久化的编辑；壳的离开保护仍会检查其它页面。
+                  const state = live.current;
+                  state.data = state.savedData;
+                  state.version += 1;
+                  state.savedVersion = state.version;
+                  setData(state.data);
+                  setChanged(state.version);
+                  setError('');
+                  setStatus('已放弃未保存修改，保留上次持久化内容');
                   setLeave(null);
                   action?.();
                 }}

@@ -343,6 +343,8 @@ test('w_pz_pzedit_b：来源只读与来源跳转；隐藏页快捷键不生效�
     await expect(leave).toBeVisible();
     await leave.getByRole('button', { name: '放弃修改', exact: true }).click();
     await expect(page.getByRole('heading', { name: '凭证录入' })).toHaveCount(0);
+    await page.getByRole('menuitem', { name: '凭证录入', exact: true }).click();
+    await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('保存离开内容');
   } finally {
     await request.dispose();
     await local.close();
@@ -368,10 +370,15 @@ test('w_pz_pzedit.closequery / u_new：壳关闭按钮与 Ctrl+F4 提供取消/�
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('关闭取消保留');
     await page.getByLabel('第1行摘要', { exact: true }).fill('关闭将放弃');
     await page.keyboard.press('Control+F4');
+    await expect(leave).toBeVisible();
+    // 用户尚在选择期间不能由防抖自动保存先把待放弃内容持久化。
+    await page.waitForTimeout(1100);
+    expect((await svc.vouchers.list({ statuses: ['draft'] })).total).toBe(0);
     await leave.getByRole('button', { name: '放弃修改', exact: true }).click();
     await expect(page.getByRole('heading', { name: '凭证录入' })).toHaveCount(0);
     await page.goto(`${local.url}/m/voucher-entry/new`);
     await expect(page.getByRole('status')).toContainText('已恢复');
+    await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('');
     await page.getByLabel('第1行摘要', { exact: true }).fill('重输之前已存');
     await page.getByRole('button', { name: '保存草稿/缓冲', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
