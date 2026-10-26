@@ -4,7 +4,7 @@ import { ReportTemplateSchema, type ReportTemplate } from '../../shared';
 import { activityRows, nonprofitFormDraft, textCell } from './forms';
 import { activityMovement } from './period-formulas';
 
-const incomeIds = [
+export const incomeIds = [
   'donations',
   'dues',
   'services',
@@ -14,7 +14,7 @@ const incomeIds = [
   'investmentIncome',
   'otherIncome',
 ] as const;
-const expenseIds = [
+export const expenseIds = [
   'activityCost',
   'taxExpense',
   'administration',

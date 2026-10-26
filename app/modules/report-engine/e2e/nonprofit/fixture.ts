@@ -20,12 +20,22 @@ import {
 import { checkActivityTotalsSources } from '../../templates/nonprofit/activity-totals';
 import { seedVouchers } from '@caiwu/testkit';
 import { validateComparativeCashflow403Generation } from '../../templates/nonprofit/cashflow-comparative';
+import {
+  classifiedChart,
+  classifiedMapping,
+  seedClassifiedBook,
+  closeClassifiedPnl,
+} from '../../test/nonprofit/activity-classified-fixture';
+import { checkActivityClassifiedSources } from '../../templates/nonprofit/activity-classified';
+
+type BookKind =
+  'cashflow' | 'balance' | 'activity' | 'comparative' | 'classified' | 'classified-closed';
 
 export const test = base.extend<{
   nonprofit: {
     baseURL: string;
     request: APIRequestContext;
-    createBook(kind?: 'cashflow' | 'balance' | 'activity' | 'comparative'): Promise<string>;
+    createBook(kind?: BookKind): Promise<string>;
   };
 }>({
   nonprofit: async ({ playwright }, use) => {
@@ -58,7 +68,12 @@ export const test = base.extend<{
             seed: m.procedure
               .meta({ permission: 'report-engine.generate' })
               .mutation(async ({ ctx }) => {
-                if (kind === 'activity') {
+                if (kind === 'classified' || kind === 'classified-closed') {
+                  await seedClassifiedBook(ctx.svc);
+                  if (kind === 'classified-closed') await closeClassifiedPnl(ctx.svc);
+                  // 仅测试夹具的来源核验，不宣称公共generate已注册此预检。
+                  await checkActivityClassifiedSources(ctx.svc, 202602, classifiedMapping());
+                } else if (kind === 'activity') {
                   await seedActivity402Book(ctx.svc);
                   await closeActivity402Pnl(ctx.svc);
                   await checkActivityTotalsSources(ctx.svc, 202602, activityFixtureMapping());
@@ -107,11 +122,13 @@ export const test = base.extend<{
                 ...nonprofitTestServer,
                 router,
                 templates:
-                  kind === 'balance'
-                    ? [balanceFixtureChart]
-                    : kind === 'activity'
-                      ? [activityFixtureChart]
-                      : [fixtureChart],
+                  kind === 'classified' || kind === 'classified-closed'
+                    ? [classifiedChart]
+                    : kind === 'balance'
+                      ? [balanceFixtureChart]
+                      : kind === 'activity'
+                        ? [activityFixtureChart]
+                        : [fixtureChart],
               },
             ],
             devMode: true,
@@ -121,7 +138,10 @@ export const test = base.extend<{
               name: `民非${kind === 'balance' ? '401' : '403'}独立E2E`,
               orgName: '虚构民非单位',
               product: 'minfei',
-              templateId: fixtureChart.id,
+              templateId:
+                kind === 'classified' || kind === 'classified-closed'
+                  ? classifiedChart.id
+                  : fixtureChart.id,
               startYear: 2026,
               startMonth: 1,
               adminPassword: 'admin',
