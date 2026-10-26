@@ -8,7 +8,14 @@ import {
   type DimensionValues,
 } from '../../dimensions';
 import { qtyFromE6 } from '../../decimal';
-import { formatPeriod, makePeriod, periodYear, prevPeriod, type Period } from '../../period';
+import {
+  formatPeriod,
+  makePeriod,
+  periodYear,
+  periodMonth,
+  prevPeriod,
+  type Period,
+} from '../../period';
 import {
   BalanceQuerySchema,
   DEFAULT_COUNTED_STATUSES,
@@ -235,7 +242,23 @@ export function ledgerService(ctx: ServiceContext) {
       const statuses = q.includeUnposted ? UNPOSTED_COUNTED_STATUSES : DEFAULT_COUNTED_STATUSES;
       const base = await baseOf(q.periodFrom);
       const targetYear = periodYear(q.periodTo);
-      const baseCurrency = q.currency ? (await bookService(ctx).info()).baseCurrency : null;
+      const book = await bookService(ctx).info();
+      // 每行都包含 YTD；实际累计范围必须完整，不能把未建立期间当成零。
+      // 首启用年允许从 startPeriod 起算，账前累计仍取已录的 opening_balance。
+      const requiredYtdFrom = Math.max(book.startPeriod, makePeriod(targetYear, 1));
+      const ytdPeriods = await ctx.db
+        .selectFrom('period')
+        .select('period')
+        .where('period', '>=', requiredYtdFrom)
+        .where('period', '<=', q.periodTo)
+        .execute();
+      if (ytdPeriods.length !== periodMonth(q.periodTo) - periodMonth(requiredYtdFrom) + 1)
+        throw new BusinessError({
+          code: 'LEDGER_YTD_PERIOD_MISSING',
+          message: '本年累计实际范围中有尚未建立的期间，不能按零发生额计算',
+          hint: '请补齐该年度累计范围内的期间后重新查询；首启用年从启用期间累计',
+        });
+      const baseCurrency = q.currency ? book.baseCurrency : null;
       const all = await accounts.list();
       const byId = new Map(all.map((a) => [a.id, a]));
       const groupDims = DIMENSION_TYPES.filter((d) => q.groupBy.includes(d.id));
@@ -268,6 +291,10 @@ export function ledgerService(ctx: ServiceContext) {
             sql<string>`cast(sum(o.quantity_e6) as text)`.as('qty'),
             sql<string>`cast(sum(o.ytd_debit) as text)`.as('ytd_debit'),
             sql<string>`cast(sum(o.ytd_credit) as text)`.as('ytd_credit'),
+            // SUM 之前记录任一原始非零累计；正负抵销不代表来源已知。
+            sql<string>`cast(max(case when o.ytd_debit <> 0 or o.ytd_credit <> 0 then 1 else 0 end) as text)`.as(
+              'has_unknown_ytd',
+            ),
           ])
           .where('o.year', '=', base.year)
           .groupBy('o.account_id');
@@ -299,7 +326,7 @@ export function ledgerService(ctx: ServiceContext) {
             const account = byId.get(a.accountId);
             if (
               (q.excludeClosing || q.excludeClosingKinds.length > 0) &&
-              (n(r.ytd_debit) !== 0n || n(r.ytd_credit) !== 0n) &&
+              n(r.has_unknown_ytd) !== 0n &&
               account &&
               accountMatches(account, q)
             )
