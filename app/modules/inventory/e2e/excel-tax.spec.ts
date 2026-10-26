@@ -56,6 +56,21 @@ type Saved = {
     priceIncludesTax: boolean;
   }[];
 };
+async function holdImportRequest(page: Page, procedure: 'importPreview' | 'importSave') {
+  let release!: () => void,
+    received!: () => void,
+    calls = 0;
+  const pending = new Promise<void>((resolve) => (release = resolve));
+  const started = new Promise<void>((resolve) => (received = resolve));
+  await page.route(`**/trpc/m.inventory.${procedure}?**`, async (route) => {
+    calls++;
+    received();
+    await pending;
+    // Only delay delivery: the unmodified request still reaches the real local API.
+    await route.continue();
+  });
+  return { started, release, calls: () => calls };
+}
 for (const [basis, inclusive, net, tax, gross] of [
   ['是', true, 10000, 1300, 11300],
   ['否', false, 11300, 1469, 12769],
@@ -177,6 +192,10 @@ test('w_ck_rk1/f_rkd_get：空、错值、未知列不能提交，选择坏文�
   for (const value of [null, '错误']) {
     await modal.getByLabel('导入Excel文件').setInputFiles(await file(headers, value));
     await expect(modal.getByRole('cell', { name: /含税口径必须明确/ })).toBeVisible();
+    await expect(modal.getByRole('button', { name: '预览校验', exact: true })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    );
     await expect(modal.getByRole('button', { name: '预览校验', exact: true })).toBeDisabled();
     await expect(modal.getByRole('button', { name: '确认保存导入', exact: true })).toBeDisabled();
   }
@@ -188,4 +207,108 @@ test('w_ck_rk1/f_rkd_get：空、错值、未知列不能提交，选择坏文�
   expect(
     await callApi<unknown[]>(request, 'm.inventory.documents', {}, { token, method: 'GET' }),
   ).toEqual([]);
+});
+
+test('w_ck_rk1/f_rkd_get：真实预览与保存请求未完成时名称稳定、显示忙碌且不能重复提交', async ({
+  page,
+  request,
+}) => {
+  const { token } = await setup(page, request);
+  const number = 'PENDING-TAX';
+  const { drawer, modal } = await openReceipt(page, number);
+  const preview = modal.getByRole('button', { name: '预览校验', exact: true });
+  const save = modal.getByRole('button', { name: '确认保存导入', exact: true });
+  const input = modal.getByLabel('导入Excel文件');
+  const documents = () =>
+    callApi<{ id: number }[]>(
+      request,
+      'm.inventory.documents',
+      { keyword: number },
+      { token, method: 'GET' },
+    );
+  await input.setInputFiles(await file(headers, '是'));
+  await expect(preview).toBeEnabled();
+  const delayedPreview = await holdImportRequest(page, 'importPreview');
+  await preview.click();
+  await delayedPreview.started;
+  const previewResponse = page.waitForResponse((response) =>
+    response.url().includes('/trpc/m.inventory.importPreview?'),
+  );
+  try {
+    await expect(preview).toHaveAttribute('aria-busy', 'true');
+    await expect(preview).toBeDisabled();
+    await expect(save).toBeDisabled();
+    await expect(input).toBeDisabled();
+    // Native activation of the disabled control must not send another request.
+    await preview.evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
+    expect(await documents()).toEqual([]);
+    expect(delayedPreview.calls()).toBe(1);
+  } finally {
+    delayedPreview.release();
+    await previewResponse;
+  }
+  const checked = await previewResponse;
+  expect(checked.ok()).toBe(true);
+  await expect(preview).toHaveAttribute('aria-busy', 'false');
+  await expect(preview).toBeEnabled();
+  await expect(input).toBeEnabled();
+  await expect(save).toBeEnabled();
+  expect(await checked.json()).toMatchObject([
+    {
+      result: {
+        data: {
+          errors: [],
+          amounts: { netCents: 10000, taxCents: 1300, grossCents: 11300 },
+          saved: false,
+        },
+      },
+    },
+  ]);
+  const delayedSave = await holdImportRequest(page, 'importSave');
+  page.once('dialog', (dialog) => dialog.accept());
+  await save.click();
+  await delayedSave.started;
+  const saveResponse = page.waitForResponse((response) =>
+    response.url().includes('/trpc/m.inventory.importSave?'),
+  );
+  try {
+    await expect(save).toHaveAttribute('aria-busy', 'true');
+    await expect(save).toBeDisabled();
+    await expect(preview).toBeDisabled();
+    await expect(input).toBeDisabled();
+    await save.evaluate((button: HTMLButtonElement) => {
+      button.click();
+      button.click();
+    });
+    expect(await documents()).toEqual([]);
+    expect(delayedSave.calls()).toBe(1);
+  } finally {
+    delayedSave.release();
+    await saveResponse;
+  }
+  const committed = await saveResponse;
+  expect(committed.ok()).toBe(true);
+  expect(await committed.json()).toMatchObject([{ result: { data: { saved: true, errors: [] } } }]);
+  await expect(modal).not.toBeVisible();
+  await expect(drawer).not.toBeVisible();
+  const docs = await documents();
+  expect(docs).toHaveLength(1);
+  const saved = await callApi<Saved>(
+    request,
+    'm.inventory.document',
+    { id: docs[0]!.id },
+    { token, method: 'GET' },
+  );
+  expect(saved.lines[0]).toMatchObject({
+    net_cents: 10000,
+    tax_cents: 1300,
+    gross_cents: 11300,
+    unitPrice: '113',
+    priceIncludesTax: true,
+  });
+  expect(delayedPreview.calls()).toBe(1);
+  expect(delayedSave.calls()).toBe(1);
 });

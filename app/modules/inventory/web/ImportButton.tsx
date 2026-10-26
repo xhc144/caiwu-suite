@@ -68,6 +68,7 @@ export default function ImportButton({
     }
   };
   const errors = [...fileErrors, ...(preview.data?.errors ?? [])];
+  const busy = preview.isPending || save.isPending;
 
   return (
     <>
@@ -81,7 +82,9 @@ export default function ImportButton({
           <Space>
             <Button onClick={() => setOpen(false)}>取消</Button>
             <Button
-              disabled={!rows.length || !!fileErrors.length || !!error}
+              aria-label="预览校验"
+              aria-busy={preview.isPending}
+              disabled={busy || !rows.length || !!fileErrors.length || !!error}
               loading={preview.isPending}
               onClick={() => preview.mutate(payload)}
             >
@@ -89,7 +92,9 @@ export default function ImportButton({
             </Button>
             <Button
               type="primary"
-              disabled={!preview.data || !!errors.length || !rows.length || !!error}
+              aria-label="确认保存导入"
+              aria-busy={save.isPending}
+              disabled={busy || !preview.data || !!errors.length || !rows.length || !!error}
               loading={save.isPending}
               onClick={async () => {
                 if (
@@ -138,6 +143,7 @@ export default function ImportButton({
           aria-label="导入Excel文件"
           type="file"
           accept=".xlsx"
+          disabled={busy}
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) void read(f);
@@ -146,6 +152,7 @@ export default function ImportButton({
         {(kind !== 'document' || document?.id) && (
           <Checkbox
             checked={overwrite}
+            disabled={busy}
             onChange={(e) => {
               setOverwrite(e.target.checked);
               preview.reset();
