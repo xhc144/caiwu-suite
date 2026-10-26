@@ -1,0 +1,1159 @@
+{
+  "code": "203",
+  "name": "企业现金流量表（未完成，局部取数）",
+  "rows": 42,
+  "cols": 3,
+  "schemaVersion": 1,
+  "readOnly": true,
+  "cells": [
+    {
+      "address": "A1",
+      "kind": "text",
+      "source": "企业现金流量表　会企 03 表",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A2",
+      "kind": "text",
+      "source": "未完成：仅已配置项目可取数；待配置项目不是零。比较期间、重分类、结转前利润、完整现金流分配尚待接入，不可用作完整法定报表。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A3",
+      "kind": "text",
+      "source": "编制单位：待填写　期间：以生成页及导出口径页为准　单位：元（底层整数分）",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A4",
+      "kind": "text",
+      "source": "项目",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B4",
+      "kind": "text",
+      "source": "本期金额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C4",
+      "kind": "text",
+      "source": "上期金额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A5",
+      "kind": "text",
+      "source": "一、经营活动产生的现金流量：",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A6",
+      "kind": "text",
+      "source": "销售商品、提供劳务收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B6",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C6",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A7",
+      "kind": "text",
+      "source": "收到的税费返还",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B7",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C7",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A8",
+      "kind": "text",
+      "source": "收到其他与经营活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B8",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C8",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A9",
+      "kind": "text",
+      "source": "经营活动现金流入小计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B9",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C9",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A10",
+      "kind": "text",
+      "source": "购买商品、接受劳务支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B10",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C10",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A11",
+      "kind": "text",
+      "source": "支付给职工以及为职工支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B11",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C11",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A12",
+      "kind": "text",
+      "source": "支付的各项税费",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B12",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C12",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A13",
+      "kind": "text",
+      "source": "支付其他与经营活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B13",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C13",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A14",
+      "kind": "text",
+      "source": "经营活动现金流出小计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B14",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C14",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A15",
+      "kind": "text",
+      "source": "经营活动产生的现金流量净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B15",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C15",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A16",
+      "kind": "text",
+      "source": "二、投资活动产生的现金流量：",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A17",
+      "kind": "text",
+      "source": "收回投资收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B17",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C17",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A18",
+      "kind": "text",
+      "source": "取得投资收益收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B18",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C18",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A19",
+      "kind": "text",
+      "source": "处置固定资产、无形资产和其他长期资产收回的现金净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B19",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C19",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A20",
+      "kind": "text",
+      "source": "处置子公司及其他营业单位收到的现金净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B20",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C20",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A21",
+      "kind": "text",
+      "source": "收到其他与投资活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B21",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C21",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A22",
+      "kind": "text",
+      "source": "投资活动现金流入小计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B22",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C22",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A23",
+      "kind": "text",
+      "source": "购建固定资产、无形资产和其他长期资产支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B23",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C23",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A24",
+      "kind": "text",
+      "source": "投资支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B24",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C24",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A25",
+      "kind": "text",
+      "source": "取得子公司及其他营业单位支付的现金净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B25",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C25",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A26",
+      "kind": "text",
+      "source": "支付其他与投资活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B26",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C26",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A27",
+      "kind": "text",
+      "source": "投资活动现金流出小计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B27",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C27",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A28",
+      "kind": "text",
+      "source": "投资活动产生的现金流量净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B28",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C28",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A29",
+      "kind": "text",
+      "source": "三、筹资活动产生的现金流量：",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A30",
+      "kind": "text",
+      "source": "吸收投资收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B30",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C30",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A31",
+      "kind": "text",
+      "source": "取得借款收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B31",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C31",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A32",
+      "kind": "text",
+      "source": "收到其他与筹资活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B32",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C32",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A33",
+      "kind": "text",
+      "source": "筹资活动现金流入小计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B33",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C33",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A34",
+      "kind": "text",
+      "source": "偿还债务支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B34",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C34",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A35",
+      "kind": "text",
+      "source": "分配股利、利润或偿付利息支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B35",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C35",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A36",
+      "kind": "text",
+      "source": "支付其他与筹资活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B36",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C36",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A37",
+      "kind": "text",
+      "source": "筹资活动现金流出小计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B37",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C37",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A38",
+      "kind": "text",
+      "source": "筹资活动产生的现金流量净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B38",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C38",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A39",
+      "kind": "text",
+      "source": "四、汇率变动对现金及现金等价物的影响",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B39",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C39",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A40",
+      "kind": "text",
+      "source": "五、现金及现金等价物净增加额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B40",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C40",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A41",
+      "kind": "text",
+      "source": "加：期初现金及现金等价物余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B41",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C41",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A42",
+      "kind": "text",
+      "source": "六、期末现金及现金等价物余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B42",
+      "kind": "text",
+      "source": "待配置：本期取数口径",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C42",
+      "kind": "text",
+      "source": "待共享接口：比较期间",
+      "unit": "number",
+      "currency": "CNY"
+    }
+  ],
+  "merges": [
+    {
+      "row": 1,
+      "col": 1,
+      "rows": 1,
+      "cols": 3
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "rows": 1,
+      "cols": 3
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "rows": 1,
+      "cols": 3
+    }
+  ],
+  "styles": [
+    {
+      "address": "A1",
+      "align": "center",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A2",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A3",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A5",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A6",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A7",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A9",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A11",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A12",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A13",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A14",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A15",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A16",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A22",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A24",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A25",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A27",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A28",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A29",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A31",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A32",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A33",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A34",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A35",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A36",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A37",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A38",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A39",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A40",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A41",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A42",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    }
+  ],
+  "rowHeights": [
+    {
+      "row": 1,
+      "height": 32
+    },
+    {
+      "row": 2,
+      "height": 80
+    },
+    {
+      "row": 3,
+      "height": 40
+    }
+  ],
+  "colWidths": [
+    {
+      "col": 1,
+      "width": 360
+    },
+    {
+      "col": 2,
+      "width": 170
+    },
+    {
+      "col": 3,
+      "width": 170
+    }
+  ],
+  "checks": [
+    {
+      "name": "期末现金＝期初现金＋净增加额（待配置项会报错）",
+      "left": "B42",
+      "right": "B41+B40",
+      "tolerance": "0"
+    }
+  ],
+  "accounting": {
+    "defaultScope": "posted",
+    "sign": "debit-positive",
+    "moneyUnit": "cents",
+    "rounding": "half-up"
+  }
+}
