@@ -13,13 +13,15 @@ import type {
 import { assertServiceScope } from '../service-scope';
 import type { CoreServices } from './index';
 
+type BridgeFailure = { failed: boolean; error: unknown };
+
 type TransactionScope = {
   svc: CoreServices;
   active: boolean;
   closing: boolean;
   pendingWith: Set<Promise<unknown>>;
-  withFailed: boolean;
-  withError: unknown;
+  parent: TransactionScope | undefined;
+  bridgeFailure: BridgeFailure;
 };
 const transactions = new AsyncLocalStorage<TransactionScope>();
 const callbacks = new AsyncLocalStorage<{ svc: CoreServices; active: boolean }>();
@@ -28,13 +30,15 @@ export function withCoreServiceTransaction<T>(
   svc: CoreServices,
   run: () => Promise<T>,
 ): Promise<T> {
+  const current = transactions.getStore();
+  const parent = current?.active && current.svc.db === svc.db ? current : undefined;
   const scope: TransactionScope = {
     svc,
     active: true,
     closing: false,
     pendingWith: new Set(),
-    withFailed: false,
-    withError: undefined,
+    parent,
+    bridgeFailure: parent?.bridgeFailure ?? { failed: false, error: undefined },
   };
   return transactions.run(scope, async () => {
     try {
@@ -43,13 +47,15 @@ export function withCoreServiceTransaction<T>(
       const unfinished = scope.pendingWith.size > 0;
       if (unfinished) {
         await drainInventoryWith(scope);
-        fail(
-          'INVENTORY_WITH_PENDING',
-          '事务回调结束时仍有未等待的库存回调，不能提交',
-          '请在 svc.tx 回调内 await 或 return t.inventory.with(...)',
-        );
+        const error = new BusinessError({
+          code: 'INVENTORY_WITH_PENDING',
+          message: '事务回调结束时仍有未等待的库存回调，不能提交',
+          hint: '请在 svc.tx 回调内 await 或 return t.inventory.with(...)',
+        });
+        recordBridgeFailure(scope, error);
+        throw error;
       }
-      if (scope.withFailed) throw scope.withError;
+      if (scope.bridgeFailure.failed) throw scope.bridgeFailure.error;
       return result;
     } finally {
       scope.closing = true;
@@ -57,6 +63,11 @@ export function withCoreServiceTransaction<T>(
       scope.active = false;
     }
   });
+}
+
+function recordBridgeFailure(scope: TransactionScope, error: unknown): void {
+  if (!scope.bridgeFailure.failed) scope.bridgeFailure.error = error;
+  scope.bridgeFailure.failed = true;
 }
 
 async function drainInventoryWith(scope: TransactionScope): Promise<void> {
@@ -77,17 +88,19 @@ function registerInventoryWith<T>(svc: CoreServices, run: () => Promise<T>): Pro
     return run();
   })();
   if (scope) {
-    scope.pendingWith.add(operation);
-    void operation.then(
-      () => {
-        scope.pendingWith.delete(operation);
-      },
-      (error: unknown) => {
-        if (!scope.withFailed) scope.withError = error;
-        scope.withFailed = true;
-        scope.pendingWith.delete(operation);
-      },
-    );
+    // 只向同一物理连接的祖先登记后代操作；不把祖先操作复制给子scope，避免快照嵌套自等。
+    const owners: TransactionScope[] = [];
+    for (let owner: TransactionScope | undefined = scope; owner; owner = owner.parent) {
+      owner.pendingWith.add(operation);
+      owners.push(owner);
+    }
+    const remove = () => {
+      for (const owner of owners) owner.pendingWith.delete(operation);
+    };
+    void operation.then(remove, (error: unknown) => {
+      recordBridgeFailure(scope, error);
+      remove();
+    });
   }
   return operation;
 }

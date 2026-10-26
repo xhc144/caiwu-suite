@@ -243,3 +243,19 @@ it('捕获已完成with的异常仍须回滚，不能通过吞掉回调错误提
   ).toBeNull();
   expect(await book.forModule('costing').settings.get('inside-failed-with', null)).toBeNull();
 });
+
+
+it('普通嵌套tx捕获错误的既有语义保持，不将所有嵌套事务一律标成桥失败', async () => {
+  book = await createTestBook();
+  await book.forModule('costing').tx(async (t) => {
+    await t.settings.set('ordinary-outer', 'kept');
+    await t
+      .tx(async (u) => {
+        await u.settings.set('ordinary-inner', 'kept');
+        throw new Error('普通嵌套错误');
+      })
+      .catch(() => undefined);
+  });
+  expect(await book.forModule('costing').settings.get('ordinary-outer', null)).toBe('kept');
+  expect(await book.forModule('costing').settings.get('ordinary-inner', null)).toBe('kept');
+});
