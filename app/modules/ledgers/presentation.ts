@@ -19,11 +19,13 @@ export function displayColumns(kind: LedgerKind, ids: ColumnId[]) {
   return ids.map((id) => ({
     id,
     label:
-      kind !== 'detail' && id === 'debit'
+      (kind === 'cash' || kind === 'bank') && id === 'debit'
         ? '收入'
-        : kind !== 'detail' && id === 'credit'
+        : (kind === 'cash' || kind === 'bank') && id === 'credit'
           ? '付出'
-          : LABELS[id],
+          : kind === 'general' && id === 'voucherNo'
+            ? '追溯'
+            : LABELS[id],
     money: id === 'debit' || id === 'credit' || id === 'balance',
   }));
 }
@@ -33,5 +35,22 @@ export function cellText(row: LedgerRow, id: ColumnId): string {
 }
 export function reportCaption(report: LedgerReport) {
   const q = report.query;
-  return `${q.periodFrom}—${q.periodTo}；科目 ${q.account || '全部'}${q.accountTo ? ` 至 ${q.accountTo}` : q.account ? '（含下级）' : ''}；辅助维度 ${JSON.stringify(q.dimensions)}；${report.scope}`;
+  return `${report.orgName ? `单位：${report.orgName}；` : ''}${q.periodFrom}—${q.periodTo}；科目 ${q.account || '全部'}${q.accountTo ? ` 至 ${q.accountTo}` : q.account ? '（含下级）' : ''}；辅助维度 ${JSON.stringify(q.dimensions)}；${report.scope}`;
+}
+
+/** 仅改变展示层次；下载和打印始终保留完整月份及累计、期末。 */
+export function generalTableRows(rows: LedgerRow[]): LedgerRow[] {
+  const result: LedgerRow[] = [];
+  for (const row of rows) {
+    const previous = result.at(-1);
+    if (
+      (row.kind === 'ytd' || row.kind === 'closing') &&
+      previous?.kind === 'month' &&
+      previous.account === row.account &&
+      previous.date === row.date
+    ) {
+      (previous.children ??= []).push(row);
+    } else result.push({ ...row });
+  }
+  return result;
 }
