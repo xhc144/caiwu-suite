@@ -1,3 +1,4 @@
+import { setImmediate } from 'node:timers/promises';
 import type { AppRuntime } from '@caiwu/server-kit';
 import { AutomaticBackupController, type Clock } from './controller';
 import { automaticBinding, waitForJobs } from './service';
@@ -11,6 +12,7 @@ type Runtime = {
   seen: Set<string>;
   timer?: unknown;
   discovering?: Promise<void>;
+  startup?: Promise<void>;
   stopping: boolean;
   discoveryFailure: string | null;
 };
@@ -74,7 +76,7 @@ function scheduleDiscovery(app: AppRuntime, runtime: Runtime) {
       .finally(() => scheduleDiscovery(app, runtime));
   }, 60_000);
 }
-/** 新建/恢复账套最多一分钟内被发现；已有账套在接受请求前完成启动备份尝试。 */
+/** 首次扫描作为受跟踪的后台任务启动；长备份不占用公共启动 hook 的超时。 */
 export async function startAutomaticBackups(
   app: AppRuntime,
   signal: AbortSignal,
@@ -92,8 +94,20 @@ export async function startAutomaticBackups(
     discoveryFailure: null,
   };
   runtimes.set(app, runtime);
-  await discover(app, runtime, true);
-  scheduleDiscovery(app, runtime);
+  // 下一轮事件循环再扫描，避免首次 list 的同步 SQLite 读取也落在启动 hook 内。
+  // 此 Promise 属于 runtime，stop 必须等待；不能仅用 detached catch 或页面存活托管。
+  runtime.startup = setImmediate()
+    .then(async () => {
+      runtime.signal.throwIfAborted();
+      if (!runtime.stopping) await discover(app, runtime, true);
+    })
+    .catch((error: unknown) => {
+      runtime.discoveryFailure = message(error);
+    })
+    .finally(() => {
+      runtime.startup = undefined;
+      scheduleDiscovery(app, runtime);
+    });
 }
 export function automaticStatus(app: AppRuntime, id: string) {
   const runtime = runtimes.get(app);
@@ -108,7 +122,7 @@ export function automaticStatus(app: AppRuntime, id: string) {
         ? '自动备份正在停止'
         : status?.attached
           ? '启动 / 正常退出 / 定时自动备份已接入'
-          : '自动备份运行时已启动；账套将在一分钟内接入',
+          : '自动备份运行时已启动；账套等待后台扫描',
   };
 }
 export async function reconfigureAutomaticBackups(app: AppRuntime, id: string) {
@@ -130,6 +144,7 @@ export async function stopAutomaticBackups(app: AppRuntime, signal: AbortSignal)
   if (signal.aborted) abort();
   try {
     if (runtime.timer != null) runtime.clock.clear(runtime.timer);
+    await runtime.startup;
     await runtime.discovering;
     // 退出前也接入在最后一次扫描后新建的账套；不重复执行启动备份。
     await discover(app, runtime, false);

@@ -106,6 +106,12 @@ it('w_autobak：真实 start/stop 默认自动备份；快照包含整数分凭�
     },
   ]);
   await app.lifecycle.start();
+  await settle(
+    () =>
+      f.rows().length === 1 &&
+      !automaticStatus(app, f.id).automaticRunning &&
+      automaticStatus(app, f.id).nextAt !== null,
+  );
   expect(f.rows()).toHaveLength(1);
   expect(f.rows()[0]?.status).toBe('valid');
   expect(automaticStatus(app, f.id)).toMatchObject({
@@ -155,6 +161,7 @@ it('w_autobak：真实定时持系统租约，reconnect 等待快照与日志完
     intervalMinutes: 5,
   });
   await app.lifecycle.start();
+  await settle(() => automaticStatus(app, f.id).nextAt !== null);
   let entered!: () => void, finish!: () => void;
   const started = new Promise<void>((resolve) => {
     entered = resolve;
@@ -227,6 +234,7 @@ it('w_autobak：退出备份遇到磁盘满会保存失败并拒绝退出，账�
   const f = await fixture();
   await f.svc.settings.set('automatic', { ...DEFAULT_SETTINGS, onStart: false });
   await app.lifecycle.start();
+  await settle(() => automaticStatus(app, f.id).nextAt !== null);
   vi.spyOn(f.book.raw, 'backup').mockRejectedValueOnce(
     Object.assign(new Error('disk full'), { code: 'ENOSPC' }),
   );
@@ -245,6 +253,7 @@ it('w_autobak：服务启动后的新账套无需打开备份页面，一分钟�
   const f = await fixture(true);
   await f.svc.settings.set('automatic', { ...DEFAULT_SETTINGS, enabled: false });
   await app.lifecycle.start();
+  await settle(() => f.timers.size > 0);
   const fresh = await app.bookStore.create({
     name: '新建合成账套',
     orgName: '单位',
@@ -266,6 +275,7 @@ it('w_autobak：退出超时信号传到扫描中已开始的真实备份；取�
   const f = await fixture(true);
   await f.svc.settings.set('automatic', { ...DEFAULT_SETTINGS, enabled: false });
   await app.lifecycle.start();
+  await settle(() => f.timers.size > 0);
   const fresh = await app.bookStore.create({
     name: '扫描取消',
     orgName: '单位',
@@ -310,6 +320,12 @@ it('w_autobak：退出超时信号传到扫描中已开始的真实备份；取�
 it('w_autobak：普通缓存关闭后重新接入不重复执行启动备份，仍恢复后续定时', async () => {
   const f = await fixture(true);
   await app.lifecycle.start();
+  await settle(
+    () =>
+      f.rows().length === 1 &&
+      !automaticStatus(app, f.id).automaticRunning &&
+      automaticStatus(app, f.id).nextAt !== null,
+  );
   expect(f.rows()).toHaveLength(1);
   await app.bookStore.close(f.id);
   f.advance(60_000);
