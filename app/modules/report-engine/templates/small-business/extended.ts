@@ -7,6 +7,7 @@ import {
 } from '../../shared';
 import { balanceAddress, columnLabels, statementAddress, type FilingMode } from './catalogue';
 import { balanceSheetTemplate, cashflowTemplate, incomeTemplate } from './templates';
+import { applyInventoryBalances, type InventoryConfiguration } from './inventory-balance';
 
 /** 使用共享owner的统一编码器，不另实现取数或序列化契约。 */
 function balance(
@@ -159,8 +160,8 @@ export function extendedIncomeTemplate(mode: FilingMode = 'monthly', details: In
   return ReportTemplateSchema.parse(t);
 }
 
-/** 只补不依赖预付/预收期限判断的两个方向重分类项目；side返回所选方向正数。 */
-export function extendedBalanceSheetTemplate() {
+/** 补两个方向重分类项目和存货；预付/预收期限仍留缺，side返回所选方向正数。 */
+export function extendedBalanceSheetTemplate(inventory?: InventoryConfiguration) {
   const t = balanceSheetTemplate();
   for (const column of ['closing', 'yearOpening'] as const) {
     const metric = column === 'closing' ? 'closing' : 'opening';
@@ -173,6 +174,7 @@ export function extendedBalanceSheetTemplate() {
     replace(t, balanceAddress(4, column), `${split('1122', 'debit')}+${split('2203', 'debit')}`);
     replace(t, balanceAddress(33, column), `${split('2202', 'credit')}+${split('1123', 'credit')}`);
   }
+  applyInventoryBalances(t, inventory);
   return ReportTemplateSchema.parse(t);
 }
 

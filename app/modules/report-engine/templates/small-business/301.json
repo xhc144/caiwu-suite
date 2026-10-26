@@ -107,7 +107,7 @@
     {
       "address": "A39",
       "kind": "text",
-      "source": "年初采用期末－本年借方累计＋本年贷方累计；需以正确录入的期初及累计为前提。",
+      "source": "存货十项取总账有符号余额；在产品取生产成本末级明细；存货及其中项年初取年度期初。其它简单项目按年度累计还原。",
       "unit": "number",
       "currency": "CNY"
     },
@@ -351,16 +351,16 @@
     },
     {
       "address": "C14",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "(BALANCE(\"1401\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1402\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1403\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1404\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"4001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1405\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1407\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1408\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1411\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1421\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D14",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "(BALANCE(\"1401\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1402\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1403\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1404\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"4001\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1405\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1407\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1408\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1411\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1421\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
@@ -380,14 +380,14 @@
     {
       "address": "C15",
       "kind": "formula",
-      "source": "BALANCE(\"1403\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "source": "BALANCE(\"1403\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D15",
       "kind": "formula",
-      "source": "(BALANCE(\"1403\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1403\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1403\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "source": "BALANCE(\"1403\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -407,16 +407,16 @@
     },
     {
       "address": "C16",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "BALANCE(\"4001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\")",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D16",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "BALANCE(\"4001\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\")",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
@@ -436,14 +436,14 @@
     {
       "address": "C17",
       "kind": "formula",
-      "source": "BALANCE(\"1405\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "source": "BALANCE(\"1405\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D17",
       "kind": "formula",
-      "source": "(BALANCE(\"1405\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1405\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1405\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "source": "BALANCE(\"1405\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -464,14 +464,14 @@
     {
       "address": "C18",
       "kind": "formula",
-      "source": "BALANCE(\"1411\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "source": "BALANCE(\"1411\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D18",
       "kind": "formula",
-      "source": "(BALANCE(\"1411\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1411\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1411\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "source": "BALANCE(\"1411\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1962,17 +1962,17 @@
     },
     {
       "address": "C14",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D14",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "A15",
@@ -2018,17 +2018,17 @@
     },
     {
       "address": "C16",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D16",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "A17",
@@ -3266,6 +3266,30 @@
       "name": "年初固定资产账面价值＝原价－累计折旧",
       "left": "D25",
       "right": "D23-D24",
+      "tolerance": "0"
+    },
+    {
+      "name": "期末存货等于十项有符号组成（差异不二次扣减）",
+      "left": "C14",
+      "right": "(BALANCE(\"1401\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1402\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1403\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1404\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"4001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1405\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1407\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1408\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1411\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))+(BALANCE(\"1421\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))",
+      "tolerance": "0"
+    },
+    {
+      "name": "期末存货剔除有符号差异后包含原材料、在产品、库存商品和周转材料",
+      "left": "C14-(BALANCE(\"1404\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))-(BALANCE(\"1407\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\"}\"))>=(C15+C16+C17+C18)",
+      "right": "1",
+      "tolerance": "0"
+    },
+    {
+      "name": "年初存货等于十项有符号组成（差异不二次扣减）",
+      "left": "D14",
+      "right": "(BALANCE(\"1401\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1402\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1403\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1404\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"4001\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1405\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1407\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1408\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1411\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))+(BALANCE(\"1421\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))",
+      "tolerance": "0"
+    },
+    {
+      "name": "年初存货剔除有符号差异后包含原材料、在产品、库存商品和周转材料",
+      "left": "D14-(BALANCE(\"1404\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))-(BALANCE(\"1407\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\"}\"))>=(D15+D16+D17+D18)",
+      "right": "1",
       "tolerance": "0"
     }
   ],
