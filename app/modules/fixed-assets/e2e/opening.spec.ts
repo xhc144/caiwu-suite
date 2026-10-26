@@ -127,6 +127,23 @@ test('W2-19 w_xt_kgzb_zc/w_zcgl_kp_fssb：真实双表Excel→逐行预览→原
   expect(await get('detail', { id: cards[0]!.id })).toEqual(old);
   await page.getByLabel('选择期初 Excel').setInputFiles([]);
   await expect(page.getByRole('button', { name: '确认期初入库', exact: true })).toHaveCount(0);
+  // 模拟另一客户端更新档案：再次导出必须读取新事务，不能沿用网页的 30 秒缓存。
+  const masters = await get<{ id: number; kind: string; account_id: number | null }[]>('masters');
+  const category = masters.find((m) => m.kind === 'category')!;
+  await callApi(
+    request,
+    'm.fixed-assets.saveMaster',
+    {
+      id: category.id,
+      data: { kind: 'category', code: '02', name: '更新类别', accountId: category.account_id },
+    },
+    { token, method: 'POST' },
+  );
+  const latestDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出期初卡片', exact: true }).click();
+  const latest = new ExcelJS.Workbook();
+  await latest.xlsx.readFile((await (await latestDownload).path())!);
+  expect(latest.getWorksheet('期初卡片')!.getRow(2).getCell(3).text).toBe('02');
 });
 
 test('W2-19：选择坏文件清除旧预览，先前挂起的预览返回后也不能恢复确认入口', async ({

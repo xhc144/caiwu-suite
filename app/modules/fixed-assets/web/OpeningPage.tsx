@@ -80,9 +80,10 @@ export default function OpeningPage() {
   const exportOpening = async () => {
     setExporting(true);
     try {
-      const { cards, masters, departments, accessories } = await queryClient.fetchQuery(
-        api.exportOpening.queryOptions(),
-      );
+      const { cards, masters, departments, accessories } = await queryClient.fetchQuery({
+        ...api.exportOpening.queryOptions(),
+        staleTime: 0,
+      });
       if (!cards.length) {
         notify.error('没有卡片可导出');
         return;
