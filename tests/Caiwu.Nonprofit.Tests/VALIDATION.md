@@ -1,3 +1,22 @@
+## PR48 收尾：期初/分录联合身份边界修复（2026-10-26）
+
+静审基线 `2ac121b3c1f07a9b32fa065c978b2360293ad27d`，已测修复源码 `78f37ab957f2ab1d8f29bce5b89d2f3108f290d0`。仅修复现有接纳草稿与确认期初两个提交入口，不新增任务或功能。
+
+实跑复现：合法零期初ID与平衡草稿的借方或贷方行ID重复，先期初后草稿、先草稿后期初两个方向均未在旧实现写入前拒绝。新增4个边界用例在旧生产代码下全部失败（未抛异常），另1个既有冲突状态的完整读取拒绝用例通过。修复后两个入口共用 `ValidateCombinedLineIds` 联合校验本次期初、全部已接纳分录（保留已删来源的ID认领）和本次新增分录；重复/空ID在调用宿主写入前报 `NP_LINE_ID`。
+
+Release完整Parity适配器回归：**12通过、0失败、0跳过**，包含原7项与新5项。新回归在两个方向各覆盖借/贷行冲突，比较整个ModuleLedgerSnapshot序列化结果（含账簿版本、凭证、审计、模块文档、收据）和宿主文档/提案调用计数，确认拒绝无写入；换用独立ID后使用同一未消费的来源/提案重试可成功，重新构造适配器能读取完整状态。生产 `NonprofitLedgerValidation.Validate` 与 `ReadWritableSnapshot` 完整读取校验均未修改，已存冲突仍报 `NP_LINE_ID`。
+
+- 修复前TRX：`/tmp/caiwu-regimes-identity-fix/before/identity-before.trx`；SHA256 `2b51e855d04800e62326d5da44459d5070d3358d0b686dbcaa17c695914b6cbf`；5项中1过4失败。
+- 修复后TRX：`/tmp/caiwu-regimes-identity-fix/after/identity-after.trx`；SHA256 `3f7bd865fff9d0f038b12cb5c557bf5ba5f7fd9065d12a29b0035273d159e27e`；12项全部通过。
+
+```bash
+CAIWU_DOTNET_ROOT=/workspace/caiwu-dotnet bash tools/dotnet-local.sh test tests/Caiwu.Nonprofit.Tests/Parity/Caiwu.Nonprofit.Parity.Tests.csproj -c Release -p:ParityContractsProject=/tmp/caiwu-regimes-contracts/src/Caiwu.Contracts/Caiwu.Contracts.csproj -p:RestoreLockedMode=true -p:TreatWarningsAsErrors=true --nologo --logger 'trx;LogFileName=identity-after.trx' --results-directory /tmp/caiwu-regimes-identity-fix/after
+```
+
+本轮使用原PR52冻结契约与合成宿主。原91项领域/60项报表/WPF记录属于此前验证，本轮未重复运行；没有改变这些生产项目。此处是输入边界可修复缺口，不据此推断发生过高频资金事故。真实Core/SQLite组合、Windows验收和原账套/完整模板的既有未完成状态保持。
+
+---
+
 # regimes：本轮可写切片验证（2026-10-26）
 
 实际验证源码提交 `983be15d1d4375c4e5b742ff70c06a84ac5da81f`，基线 `3b0c59b02d8941c32ac176309555c03c94bb4213`。独立checkout `/workspace/caiwu-regimes`；Linux / .NET SDK10.0.403（global.json允许latestPatch）。下列为本轮Release、锁文件恢复、TreatWarningsAsErrors=true的实际结果；后面的旧77项证据仅保留历史，不能覆盖新能力或新边界。

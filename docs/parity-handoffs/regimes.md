@@ -92,3 +92,12 @@
 4. **pending证据/兼容**：原a01/a02/a05/a52/a54全部科目/报表内容及剩余39模板、原SQL Anywhere无损读写、完整外币/数量规则、跨年和特殊民非审批仍见原验收。现有代表变体不足以证明完整a54 schema，不新增解析完整派生资料，不触碰真实账套。
 
 本轮没有denied或uncertain外部写入；只推独占私有分支和草稿PR，未改/合main、公开、改权限、购买额度或发布制品。
+
+
+## PR48 限定收尾修复：联合行身份校验
+
+已测修复源码 `78f37ab957f2ab1d8f29bce5b89d2f3108f290d0`，针对静审 `2ac121b3c1f07a9b32fa065c978b2360293ad27d` 指出的输入边界遗漏。AcceptDraft原来仅检查已接纳分录、不含期初；ConfirmOpeningClassification原来仅验证期初、不含已接纳分录。两个入口现在共用联合ID校验，在任何相应宿主写入之前拒绝期初与已有/新增分录的重复/空ID；不刷新确认token，不改变完整状态读校验，不新增功能。
+
+实际双向回归：先期初后草稿、先草稿后期初，各对借/贷两行作冲突；旧代码4例均失败（未拒绝），完整状态读拒绝既有坏数据的1例仍通过。修复后完整Parity适配器Release 12例全部通过，0失败0跳过；错误码NP_LINE_ID，完整快照/版本/模块文档/凭证/审计/来源收据及宿主写入计数不变，独立ID修正后可提交和重读。TRX路径、SHA256、命令见 tests/Caiwu.Nonprofit.Tests/VALIDATION.md 顶部新节。
+
+本轮只改独占Parity两处生产文件、相应测试和已有交接/验证记录。没有改NonprofitLedgerValidation.Validate或ReadWritableSnapshot来掩盖问题。原公共集成与Windows等未完成项保持；本修复无剩余阻塞、无denied/pending/uncertain外部写入。
