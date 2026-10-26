@@ -2,9 +2,9 @@ import { today, periodOfDate } from '@caiwu/core';
 import { useInvoiceFilters } from './useInvoiceFilters';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { Alert, Button, Card, Form, Input, Popconfirm, Select, Space } from 'antd';
+import { Alert, Button, Card, Checkbox, Form, Input, Popconfirm, Select, Space } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { queryClient, showError, usePermission, useVoucherTypes } from '@caiwu/web-kit';
+import { coreApi, queryClient, showError, usePermission, useVoucherTypes } from '@caiwu/web-kit';
 import { DataTable, FilterBar, MoneyText, PageContainer, PeriodPicker } from '@caiwu/ui';
 import type { Direction, PlanInput } from '../shared';
 import type { InvoiceRouter } from '../server/router';
@@ -29,13 +29,16 @@ export default function ProcessPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [loading, setLoading] = useState(false);
   const [requestId, setRequestId] = useState('');
+  const [newAccountsConfirmed, setNewAccountsConfirmed] = useState(false);
   const [form] = Form.useForm<{ date: string; voucherTypeId: number; mode: PlanInput['mode'] }>();
   const can = usePermission('invoice.voucher');
+  const canCreateAccounts = usePermission('invoice.account');
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: api.list.queryKey() }),
       queryClient.invalidateQueries({ queryKey: api.groups.queryKey() }),
       queryClient.invalidateQueries({ queryKey: api.vat.queryKey() }),
+      queryClient.invalidateQueries({ queryKey: coreApi.accounts.list.queryKey() }),
     ]);
   const generate = useMutation(
     api.generate.mutationOptions({
@@ -52,6 +55,7 @@ export default function ProcessPage() {
     .map((r) => ({ id: r.id, revision: r.revision }));
   async function preview(v: { date: string; voucherTypeId: number; mode: PlanInput['mode'] }) {
     setPlan(null);
+    setNewAccountsConfirmed(false);
     setLoading(true);
     try {
       const p = await queryClient.fetchQuery({
@@ -163,6 +167,28 @@ export default function ProcessPage() {
             {plan.settings.inputTaxTreatment === 'separate' ? '单列税科目' : '计入非抵扣成本/费用'}
             。凭证日期 {plan.date}，发票月份 {plan.period}。
           </p>
+          {plan.newAccounts.length > 0 && (
+            <Card size="small" title="拟新增往来下级科目（尚未保存）">
+              <p>
+                以下科目将在确认生成时与凭证一起保存；取消预览不会新增。新科目继承结算上级的核算设置，辅助项使用参数中统一指定值。
+              </p>
+              <ul>
+                {plan.newAccounts.map((a) => (
+                  <li key={a.code}>
+                    {a.code} {a.fullName}
+                  </li>
+                ))}
+              </ul>
+              <Checkbox
+                checked={newAccountsConfirmed}
+                disabled={!canCreateAccounts}
+                onChange={(e) => setNewAccountsConfirmed(e.target.checked)}
+              >
+                已核对并同意新增以上科目
+              </Checkbox>
+              {!canCreateAccounts && <p>缺少“制证时确认新增往来下级科目”权限，请联系管理员。</p>}
+            </Card>
+          )}
           {plan.groups.map((g, i) => (
             <div key={i}>
               <h4>
@@ -201,13 +227,29 @@ export default function ProcessPage() {
                 mode: plan.mode,
                 fingerprint: plan.fingerprint,
                 requestId,
+                newAccountsConfirmed,
               })
             }
           >
-            <Button type="primary" loading={generate.isPending}>
+            <Button
+              type="primary"
+              loading={generate.isPending}
+              disabled={
+                plan.newAccounts.length > 0 && (!canCreateAccounts || !newAccountsConfirmed)
+              }
+            >
               确认生成凭证
             </Button>
           </Popconfirm>
+          <Button
+            disabled={generate.isPending}
+            onClick={() => {
+              setPlan(null);
+              setNewAccountsConfirmed(false);
+            }}
+          >
+            取消预览
+          </Button>
         </Card>
       )}
       <h4>来源凭证批次</h4>
