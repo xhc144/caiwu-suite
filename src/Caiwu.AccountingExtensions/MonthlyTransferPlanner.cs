@@ -29,6 +29,13 @@ public static class MonthlyTransferPlanner
         foreach (var code in sources.Append(definition.DestinationAccountCode))
             Require(code is not null && accounts.TryGetValue(code, out var account) && account.IsActive &&
                 !state.Accounts.Any(a => a.ParentCode == code), "结转只能使用已启用的末级科目。");
+        // A later voucher may already have transferred this period's balance. Ignoring it while
+        // generating an earlier transfer can count the same income twice. Without an atomic
+        // invalidation/recalculation protocol, even a reviewed/draft later voucher remains a
+        // dependency that could be reposted. Do not infer transfer identity from Kind or Summary.
+        var affectedAccounts = sources.Append(definition.DestinationAccountCode).ToHashSet(StringComparer.Ordinal);
+        Require(!state.Vouchers.Any(v => v.Date > end && v.Lines.Any(l => affectedAccounts.Contains(l.AccountCode))),
+            "所选结转科目已有后期凭证，不能倒序结转；请先按权限撤销并移除后期相关凭证，再按月重新计算。不得保留旧后期结转后重复生成。");
         Require(state.Accounts.Sum(a => a.OpeningDebit) == state.Accounts.Sum(a => a.OpeningCredit),
             "年初数不平，不能自动结转。");
         var balances = sources.ToDictionary(code => code,

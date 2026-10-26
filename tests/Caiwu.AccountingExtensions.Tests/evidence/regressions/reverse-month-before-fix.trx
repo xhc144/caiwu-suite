@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="481f1562-4574-4a2f-a2bf-af9a377f781c" name="@c6d40763e77a 2026-10-26 00:15:37" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-26T00:15:37.5961411+00:00" queuing="2026-10-26T00:15:37.5961411+00:00" start="2026-10-26T00:15:35.5650814+00:00" finish="2026-10-26T00:15:37.6055667+00:00" />
+  <TestSettings name="default" id="2ee8500c-675c-42fc-a1fe-1cf85c3d9c83">
+    <Deployment runDeploymentRoot="_c6d40763e77a_2026-10-26_00_15_37" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="95c8ab88-87a0-4903-aa2a-07c720efbd2e" testId="152df595-29d0-3c6f-4544-2c402eed47ec" testName="Caiwu.AccountingExtensions.Tests.MonthlyTransferTests.CannotTransferAnEarlierMonthAfterALaterTransferHasPosted" computerName="c6d40763e77a" duration="00:00:00.3990000" startTime="2026-10-26T00:15:37.0482372+00:00" endTime="2026-10-26T00:15:37.4720314+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Failed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="95c8ab88-87a0-4903-aa2a-07c720efbd2e">
+      <Output>
+        <ErrorInfo>
+          <Message>倒序结转未拒绝，实跑收入借方余额=100，利润贷方余额=200</Message>
+          <StackTrace>   at Caiwu.AccountingExtensions.Tests.MonthlyTransferTests.CannotTransferAnEarlierMonthAfterALaterTransferHasPosted() in /workspace/caiwu-ledger/tests/Caiwu.AccountingExtensions.Tests/MonthlyTransferTests.cs:line 31
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Caiwu.AccountingExtensions.Tests.MonthlyTransferTests.CannotTransferAnEarlierMonthAfterALaterTransferHasPosted" storage="/workspace/caiwu-ledger/tests/caiwu.accountingextensions.tests/bin/release/net10.0/caiwu.accountingextensions.tests.dll" id="152df595-29d0-3c6f-4544-2c402eed47ec">
+      <Execution id="95c8ab88-87a0-4903-aa2a-07c720efbd2e" />
+      <TestMethod codeBase="/workspace/caiwu-ledger/tests/Caiwu.AccountingExtensions.Tests/bin/Release/net10.0/Caiwu.AccountingExtensions.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.AccountingExtensions.Tests.MonthlyTransferTests" name="CannotTransferAnEarlierMonthAfterALaterTransferHasPosted" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="152df595-29d0-3c6f-4544-2c402eed47ec" executionId="95c8ab88-87a0-4903-aa2a-07c720efbd2e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Failed">
+    <Counters total="1" executed="1" passed="0" failed="1" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v4.0.1+0f7d528729 (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.22]   Discovering: Caiwu.AccountingExtensions.Tests
+[xUnit.net 00:00:00.51]   Discovered:  Caiwu.AccountingExtensions.Tests
+[xUnit.net 00:00:00.74]   Starting:    Caiwu.AccountingExtensions.Tests
+[xUnit.net 00:00:01.27]       倒序结转未拒绝，实跑收入借方余额=100，利润贷方余额=200
+[xUnit.net 00:00:01.27]       Stack Trace:
+[xUnit.net 00:00:01.27]         /workspace/caiwu-ledger/tests/Caiwu.AccountingExtensions.Tests/MonthlyTransferTests.cs(31,0): at Caiwu.AccountingExtensions.Tests.MonthlyTransferTests.CannotTransferAnEarlierMonthAfterALaterTransferHasPosted()
+[xUnit.net 00:00:01.27]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:01.27]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:01.31]   Finished:    Caiwu.AccountingExtensions.Tests (ID = 'a4e615a3d64dd89b38af22eaf915a2afc95c90451aae8b4e382c0b5dc84e1e4e')
+</StdOut>
+    </Output>
+    <RunInfos>
+      <RunInfo computerName="c6d40763e77a" outcome="Error" timestamp="2026-10-26T00:15:37.4840446+00:00">
+        <Text>[xUnit.net 00:00:01.27]     Caiwu.AccountingExtensions.Tests.MonthlyTransferTests.CannotTransferAnEarlierMonthAfterALaterTransferHasPosted [FAIL]</Text>
+      </RunInfo>
+    </RunInfos>
+  </ResultSummary>
+</TestRun>

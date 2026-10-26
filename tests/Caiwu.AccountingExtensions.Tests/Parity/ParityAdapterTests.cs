@@ -8,6 +8,85 @@ namespace Caiwu.AccountingExtensions.Tests;
 /// <summary>Contract-double checks only. These tests do not prove the shared Core transaction is implemented.</summary>
 public sealed class ParityAdapterTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void DeletedLaterTransferReceiptBlocksEarlierMonthEvenWithChangedRuleCode(bool changeCode)
+    {
+        using var f = new SyntheticFixture();
+        var ledger = State() with { Vouchers = [Receipt(amount: 100)] };
+        var shared = new ContractDouble(new(ledger, [], []));
+        var adapter = new ParityAccountingAdapter(shared, f.Operators, f.Worker);
+        var later = adapter.PreviewMonthlyTransfer(Transfer(ledger, 2));
+        shared.State = shared.State with
+        {
+            ProposalReceipts = [new(later.ProposalId, later.ModuleId, later.SourceKeys, Guid.NewGuid(), 1)]
+        };
+        var earlier = Transfer(ledger, 1);
+        if (changeCode) earlier = earlier with { Definition = earlier.Definition with { Code = "another-rule", Version = "v2" } };
+        var error = Assert.Throws<LedgerValidationException>(() => adapter.AcceptMonthlyTransfer(earlier));
+        Assert.Contains("后期结转来源", error.Message);
+        Assert.Equal(0, shared.AcceptCalls); Assert.Equal(0, shared.SaveCalls);
+    }
+
+    [Theory]
+    [InlineData("deleted")]
+    [InlineData("reviewed")]
+    [InlineData("draft")]
+    [InlineData("moved")]
+    public void InactiveEarlierTransferCannotBeBypassedByGeneratingALaterMonth(string lifecycle)
+    {
+        using var f = new SyntheticFixture();
+        var ledger = State() with { Vouchers = [Receipt(amount: 100)] };
+        var shared = new ContractDouble(new(ledger, [], []));
+        var adapter = new ParityAccountingAdapter(shared, f.Operators, f.Worker);
+        var first = adapter.PreviewMonthlyTransfer(Transfer(ledger, 1));
+        var closing = Receipt() with
+        {
+            Id = Guid.NewGuid(), Kind = "转", Date = new(2026, lifecycle == "moved" ? 2 : 1, 28),
+            Status = lifecycle is "reviewed" ? VoucherStatus.Reviewed : lifecycle is "draft" ? VoucherStatus.Draft : VoucherStatus.Posted,
+            Lines = first.Lines
+        };
+        shared.State = shared.State with
+        {
+            Ledger = ledger with { Vouchers = lifecycle == "deleted" ? ledger.Vouchers : ledger.Vouchers.Append(closing).ToArray() },
+            ProposalReceipts = [new(first.ProposalId, first.ModuleId, first.SourceKeys, closing.Id, 1)]
+        };
+        Assert.Throws<LedgerValidationException>(() => adapter.AcceptMonthlyTransfer(Transfer(shared.State.Ledger, 2)));
+        Assert.Equal(0, shared.AcceptCalls); Assert.Equal(0, shared.SaveCalls);
+    }
+
+    [Fact]
+    public void ActiveEarlierTransferAllowsOnlyRemainingLaterIncome()
+    {
+        using var f = new SyntheticFixture();
+        var ledger = State() with { Vouchers = [Receipt(amount: 100)] };
+        var shared = new ContractDouble(new(ledger, [], []));
+        var adapter = new ParityAccountingAdapter(shared, f.Operators, f.Worker);
+        var first = adapter.PreviewMonthlyTransfer(Transfer(ledger, 1));
+        var closing = Receipt() with { Id = Guid.NewGuid(), Kind = "转", Date = new(2026, 1, 31), Lines = first.Lines };
+        shared.State = shared.State with
+        {
+            Ledger = ledger with { Vouchers = [..ledger.Vouchers, closing, Receipt(2, amount: 50)] },
+            ProposalReceipts = [new(first.ProposalId, first.ModuleId, first.SourceKeys, closing.Id, 1)]
+        };
+        var next = adapter.PreviewMonthlyTransfer(Transfer(shared.State.Ledger, 2));
+        Assert.Equal(50, next.Lines.Single(l => l.AccountCode == "4103").Credit);
+        Assert.Equal(0, shared.AcceptCalls);
+    }
+
+    [Fact]
+    public void UninterpretableTransferSourceCannotBeSilentlyIgnored()
+    {
+        using var f = new SyntheticFixture();
+        var ledger = State() with { Vouchers = [Receipt(amount: 100)] };
+        var shared = new ContractDouble(new(ledger, [],
+            [new(Guid.NewGuid(), ParityAccountingAdapter.ModuleId, ["legacy/unknown-period"], Guid.NewGuid(), 1)]));
+        var adapter = new ParityAccountingAdapter(shared, f.Operators, f.Worker);
+        Assert.Throws<NotSupportedException>(() => adapter.AcceptMonthlyTransfer(Transfer(ledger)));
+        Assert.Equal(0, shared.AcceptCalls);
+    }
+
     [Fact]
     public void ProposalContainsStableSourceAndSameContextWithDocumentAndVoucherTogether()
     {

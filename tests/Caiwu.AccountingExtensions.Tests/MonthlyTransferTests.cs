@@ -7,9 +7,37 @@ namespace Caiwu.AccountingExtensions.Tests;
 public sealed class MonthlyTransferTests
 {
     [Fact]
+    public void CannotTransferAnEarlierMonthAfterALaterTransferHasPosted()
+    {
+        using var f = new SyntheticFixture();
+        var state = State() with { Vouchers = [Receipt(amount: 100)] };
+        using var store = new SyntheticMemoryStore(state);
+        var service = f.Service(store);
+        var core = new LedgerService(store);
+        void ReviewAndPost(Voucher voucher)
+        {
+            core.Review(voucher.Id, f.Reviewer.Identity.ActorKey, Context(store.State));
+            core.Post(voucher.Id, f.Reviewer.Identity.ActorKey, Context(store.State));
+        }
+
+        ReviewAndPost(service.GenerateMonthlyTransfer(Transfer(store.State, 2)));
+        var before = store.State;
+        Voucher? duplicate = null;
+        var error = Record.Exception(() => duplicate = service.GenerateMonthlyTransfer(Transfer(store.State, 1)));
+        if (duplicate is not null)
+        {
+            ReviewAndPost(duplicate);
+            var rows = core.GetTrialBalance(new(2026, 1, 1), new(2026, 2, 28));
+            Assert.Fail($"倒序结转未拒绝，实跑收入借方余额={rows.Single(r => r.AccountCode == "6001").ClosingDebit}，利润贷方余额={rows.Single(r => r.AccountCode == "4103").ClosingCredit}");
+        }
+        Assert.IsType<LedgerValidationException>(error);
+        Assert.Same(before, store.State);
+    }
+
+    [Fact]
     public void IncomeAndExpensePlanUsesActualBalancesAndIsReadOnly()
     {
-        var state = State() with { Vouchers = [Receipt(), Expense(), Receipt(2, 999)] };
+        var state = State() with { Vouchers = [Receipt(), Expense()] };
         var plan = MonthlyTransferPlanner.CreatePlan(state, Transfer(state));
         Assert.Equal(new DateOnly(2026, 1, 31), plan.Date);
         Assert.Equal(1000, plan.DebitTotal); Assert.Equal(1000, plan.CreditTotal);
@@ -22,9 +50,9 @@ public sealed class MonthlyTransferTests
     }
 
     [Fact]
-    public void PlanIncludesOpeningAndUntransferredPreviousPeriodButNotFutureVouchers()
+    public void PlanIncludesOpeningAndUntransferredPreviousPeriod()
     {
-        var state = State() with { Vouchers = [Receipt(), Expense(), Receipt(2, 200), Receipt(3, 500)] };
+        var state = State() with { Vouchers = [Receipt(), Expense(), Receipt(2, 200)] };
         state = state with { Accounts = state.Accounts.Select(a => a.Code switch
         {
             "1001" => a with { OpeningDebit = 50 }, "6001" => a with { OpeningCredit = 50 }, _ => a
@@ -32,6 +60,26 @@ public sealed class MonthlyTransferTests
         var plan = MonthlyTransferPlanner.CreatePlan(state, Transfer(state, 2));
         Assert.Equal(1250, plan.Lines.Single(l => l.AccountCode == "6001").Debit);
         Assert.Equal(1000, plan.Lines.Single(l => l.AccountCode == "4103").Credit);
+    }
+
+    [Theory]
+    [InlineData(VoucherStatus.Posted)]
+    [InlineData(VoucherStatus.Reviewed)]
+    [InlineData(VoucherStatus.Draft)]
+    public void LaterAffectedVouchersBlockBackdatedTransferInEveryStatus(VoucherStatus status)
+    {
+        var state = State() with { Vouchers = [Receipt(), Receipt(2, status: status)] };
+        Assert.Throws<LedgerValidationException>(() => MonthlyTransferPlanner.CreatePlan(state, Transfer(state)));
+    }
+
+    [Fact]
+    public void FutureUnrelatedAccountsDoNotPreventTransfer()
+    {
+        var state = State();
+        var liability = new Account("2001", "合成借款", null, BalanceDirection.Credit, true, 0, 0);
+        var future = Receipt(2) with { Lines = [new("1001", "合成借款", 500, 0), new("2001", "合成借款", 0, 500)] };
+        state = state with { Accounts = state.Accounts.Append(liability).ToArray(), Vouchers = [Receipt(), Expense(), future] };
+        Assert.Equal(750, MonthlyTransferPlanner.CreatePlan(state, Transfer(state)).Lines.Single(l => l.AccountCode == "4103").Credit);
     }
 
     [Theory]

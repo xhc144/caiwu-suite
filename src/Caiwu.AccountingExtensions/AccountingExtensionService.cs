@@ -48,6 +48,10 @@ public sealed class AccountingExtensionService
             var selected = before.Vouchers.Where(v => v.Date.Month >= from && v.Date.Month <= through &&
                 v.Status == VoucherStatus.Posted).ToArray();
             Require(selected.Length != 0, "所选范围没有已过账凭证。");
+            var affectedAccounts = selected.SelectMany(v => v.Lines).Select(l => l.AccountCode).ToHashSet(StringComparer.Ordinal);
+            Require(!before.Vouchers.Any(v => v.Date.Month > through &&
+                v.Lines.Any(l => affectedAccounts.Contains(l.AccountCode))),
+                "存在后期关联凭证，不能先反过账前期；请从后期开始撤销，重算前移除旧后期结转，不能留下可再次过账的旧结转凭证。");
             var ids = selected.Select(v => v.Id).ToHashSet();
             var next = before with
             {

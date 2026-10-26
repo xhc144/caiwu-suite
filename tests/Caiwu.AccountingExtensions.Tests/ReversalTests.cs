@@ -11,24 +11,38 @@ public sealed class ReversalTests
     public void ReverseRangePreservesReviewAndAmountsAndChangesOnlySelectedPostedVouchers()
     {
         using var f = new SyntheticFixture();
-        var jan = Receipt(); var reviewed = Receipt(number: 2, status: VoucherStatus.Reviewed); var feb = Receipt(2);
-        var before = State() with { Vouchers = [jan, reviewed, feb] };
+        var selected = Receipt(2); var reviewed = Receipt(2, number: 2, status: VoucherStatus.Reviewed); var earlier = Receipt();
+        var before = State() with { Vouchers = [selected, reviewed, earlier] };
         using var store = new SyntheticMemoryStore(before);
-        var result = f.Service(store).ReversePosting(new(2026, 1, 1, false, Context(before)));
+        var result = f.Service(store).ReversePosting(new(2026, 2, 2, false, Context(before)));
         Assert.Equal(new AccountingMutationResult(1, 1), result);
         Assert.Equal(1, store.Reads); Assert.Equal(1, store.Writes);
-        var changed = store.State.Vouchers.Single(v => v.Id == jan.Id);
-        Assert.Equal(jan with { Status = VoucherStatus.Reviewed, Lines = changed.Lines }, changed);
-        Assert.Equal(jan.Lines, changed.Lines);
-        Assert.Equal(VoucherStatus.Posted, jan.Status);
+        var changed = store.State.Vouchers.Single(v => v.Id == selected.Id);
+        Assert.Equal(selected with { Status = VoucherStatus.Reviewed, Lines = changed.Lines }, changed);
+        Assert.Equal(selected.Lines, changed.Lines);
+        Assert.Equal(VoucherStatus.Posted, selected.Status);
         Assert.Equal(reviewed, store.State.Vouchers[1] with { Lines = reviewed.Lines });
         Assert.Equal(VoucherStatus.Posted, store.State.Vouchers[2].Status);
         var audit = Assert.Single(store.State.AuditEvents);
-        Assert.Equal(jan.Id, audit.VoucherId); Assert.Equal("ReversePosting", audit.Action);
+        Assert.Equal(selected.Id, audit.VoucherId); Assert.Equal("ReversePosting", audit.Action);
         Assert.Equal(f.Worker.Identity.ActorKey, audit.OperatorName);
         Assert.Empty(before.AuditEvents);
-        Assert.Equal(0, new LedgerService(store).GetTrialBalance(new(2026, 1, 1), new(2026, 1, 31))
+        Assert.Equal(0, new LedgerService(store).GetTrialBalance(new(2026, 2, 1), new(2026, 2, 28))
             .Single(r => r.AccountCode == "1001").PeriodDebit);
+    }
+
+    [Fact]
+    public void EarlierSourceCannotBeUnpostedWhileALaterTransferRemains()
+    {
+        using var f = new SyntheticFixture();
+        var closing = Receipt(2) with
+        {
+            Kind = "转", Lines = [new("6001", "合成后期结转", 100, 0), new("4103", "合成后期结转", 0, 100)]
+        };
+        var state = State() with { Vouchers = [Receipt(amount: 100), closing] };
+        using var store = new SyntheticMemoryStore(state);
+        Assert.Throws<LedgerValidationException>(() => f.Service(store).ReversePosting(new(2026, 1, 1, false, Context(state))));
+        Assert.Same(state, store.State); Assert.Equal(0, store.Attempts);
     }
 
     [Fact]

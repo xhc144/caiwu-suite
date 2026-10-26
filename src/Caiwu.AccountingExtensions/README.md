@@ -9,12 +9,14 @@
 | 方法 | 实际行为 | 权限与版本 |
 |---|---|---|
 | `GetSnapshot()` | 返回冻结的当前凭证/科目快照 | 活会话 ReadLedger |
-| `ReversePosting(request)` | 所选月份内 Posted → Reviewed，保留凭证、分录、制单人及审核人；每张凭证追加审计 | 活会话 PostVoucher **且** Administrator；原账套 ID/revision |
+| `ReversePosting(request)` | 所选月份内 Posted → Reviewed，保留凭证、分录、制单人及审核人；每张凭证追加审计；存在范围之后的关联科目凭证时拒绝仅撤销前期 | 活会话 PostVoucher **且** Administrator；原账套 ID/revision |
 | `ReopenPeriod(request)` | 撤销同年最近一期或本年所有已结期，止于 StartMonth−1；保留现有开账余额 | 活会话 ClosePeriod **且** Administrator；原账套 ID/revision |
-| `PreviewMonthlyTransfer(request)` | 从明确配置的转出末级科目余额计算平衡计划，包含开账余额及截至月末已过账余额；排除未来凭证 | 活会话 PrepareVoucher；原账套 ID/revision |
+| `PreviewMonthlyTransfer(request)` | 从明确配置的转出末级科目余额计算平衡计划，包含开账余额及截至月末已过账余额；后期有相关科目凭证时拒绝倒序生成 | 活会话 PrepareVoucher；原账套 ID/revision |
 | `GenerateMonthlyTransfer(request)` | 重新计算计划并调用真实 Core.SaveDraft；生成月底草稿，分配真实凭证号与审计 | 同上；Core 再验证同一 token，并执行一次 CAS Write |
 
-反操作各只读一次快照、执行一次事务 Write，同时提交状态、revision 和审计；失败不重试。结转计算和 Core 保存有两次读取，两次都使用原 token：期间的竞争写入被拒绝，不刷新 token、不自动覆盖。草稿没有自动审核/过账。当前月或更早有未过账凭证会拒绝生成；已生成未过账草稿因此阻止重复生成，已过账后余额清零则拒绝空凭证。新增交易产生剩余余额时可重新计划增量。没有声称这些规则替代原版结转批次及重新生成策略。
+反操作各只读一次快照、执行一次事务 Write，同时提交状态、revision 和审计；失败不重试。结转计算和 Core 保存有两次读取，两次都使用原 token：期间的竞争写入被拒绝，不刷新 token、不自动覆盖。草稿没有自动审核/过账。当前月或更早有未过账凭证会拒绝生成；已生成未过账草稿因此阻止重复生成，已过账后余额清零则拒绝空凭证。无后期依赖时，新增交易产生的剩余余额可重新计划增量。没有声称这些规则替代原版结转批次及重新生成策略。
+
+倒序结转采用保守策略：转出或转入科目在目标月之后有任何凭证（包括普通凭证、Draft、Reviewed、Posted），均拒绝生成前期结转；不能只凭“转”字或摘要猜哪些凭证会再次过账。未来仅涉及无关科目的凭证仍允许。反过账也检查范围之后的关联科目凭证，避免保留后期结转而只撤销其前期来源。没有自动作废或改写后期凭证；基础合成测试通过有权限的反过账→反审核→删除旧后期结转，再按月重算，确认新后期只转剩余余额。原版完整的受控失效/重算协议仍待集成。
 
 上述 legacy 变更只适用于没有 `ParityModuleCommit.*` 共享模块事件的现有基础账套。出现这类事件后会明确拒绝逆操作及 legacy 结转，不能把模块来源状态或维度余额留在旧状态。共享逆操作 API 尚未提供，见下节缺口。
 
@@ -60,9 +62,9 @@ python -m unittest discover -s tests/Caiwu.AccountingExtensions.Tests -p 'test_*
 `ParityAccountingAdapter` 使用真实会话守卫：
 
 - `GetSnapshot` 返回公共 `ModuleLedgerSnapshot`；计算与提交使用原 context，不从预览对象直接接受可篡改分录。
-- `AcceptMonthlyTransfer` 将月底损益分录和规则/来源版本文档一起放入 `VoucherProposal`，调用一次公共 `AcceptVoucherProposal`。来源键按账套/年月/规则代码稳定，规则版本变化不换来源键；已认领来源、已删草稿的重生成需要新的受控 API。与 legacy 增量计划相比，这条接口采用公共来源认领协议，不能绕过协议重复生成。
+- `AcceptMonthlyTransfer` 将月底损益分录和规则/来源版本文档一起放入 `VoucherProposal`，调用一次公共 `AcceptVoucherProposal`。来源键按账套/年月/规则代码稳定，规则版本变化不换来源键。后期来源认领即使凭证删除也阻断前期生成，且不按规则代码过滤；已有前期认领对应凭证缺失、未过账、反过账或改期时，禁止继续生成后期凭证。未知来源格式明确拒绝。没有静默失效或自动重新认领；需受控 API 撤销/重算，不能另换月份、规则代码或来源键绕过。
 - `SaveRawReferenceDocument` 只保存 `reference/` 前缀的未关联参考数据，PayloadJson 逐字转交 `SaveModuleDocuments`，保留未知列、极小数和 null；需要 Accountant 的 EditAccounts 权限。它不生成或更新凭证，不声称参考数据已经入账。
 - 在公共快照没有维度余额能力时，只允许无其他扩展文档的明确基础金额账套结转；发现参考/其他模块文档即拒绝，等待核心提供可验证的维度能力与原子结转。保守拒绝不会把辅助、外币、数量压掉。
 - 注册仅包含三产品两个已有真实 WPF handler 的反操作原窗口；注册本身不授权或激活菜单，宿主只能在基础账套能力匹配时绑定。月度结转原选择/设置窗口未完成，未注册假入口。
 
-公共接口仍缺：按凭证/期间的原子反过账、反结账和来源模块状态回滚；维度余额能力与生成分录扩展的同事务验证；原菜单独立权限；结转撤销/重新生成；已接入扩展数据的凭证编辑/删除生命周期守卫。精确建议已反馈在交接文件。
+公共接口仍缺：按凭证/期间的原子反过账、反结账和来源模块状态回滚；维度余额能力与生成分录扩展的同事务验证；原菜单独立权限；结转撤销/重新生成；已接入扩展数据的凭证编辑/删除生命周期守卫。共享 Core 的直接回溯 SaveDraft/Post 等入口也须统一检查后期结转依赖，模块不能拦截绕开本 adapter 的原始 Core 调用。精确建议已反馈在交接文件。

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Globalization;
 using Caiwu.Contracts;
 using Caiwu.Operators;
 
@@ -64,6 +65,7 @@ public sealed class ParityAccountingAdapter
     private static VoucherProposal BuildProposal(ModuleLedgerSnapshot snapshot, MonthlyTransferRequest request)
     {
         var plan = MonthlyTransferPlanner.CreatePlan(snapshot.Ledger, request);
+        RequireTransferOrder(snapshot, request);
         // The frozen public snapshot exposes base amounts but no authoritative dimensional balance
         // capability. Unknown/rich module documents cannot be silently treated as plain RMB data.
         if (snapshot.Modules.Any(m => m.Documents.Count != 0 &&
@@ -88,4 +90,30 @@ public sealed class ParityAccountingAdapter
 
     private sealed record TransferDocument(string Kind, DateOnly Date, long SourceRevision,
         MonthlyTransferDefinition Definition, IReadOnlyList<VoucherLine> Lines);
+
+    private static void RequireTransferOrder(ModuleLedgerSnapshot snapshot, MonthlyTransferRequest request)
+    {
+        var targetPeriod = new DateOnly(request.FiscalYear, request.Month, 1);
+        foreach (var receipt in snapshot.ProposalReceipts.Where(r => r.ModuleId == ModuleId))
+        {
+            // Claims survive deletion of the voucher. Their period is authoritative even when
+            // there is no surviving voucher or module document from which to recover a date.
+            if (receipt.SourceKeys.Count != 1)
+                throw new NotSupportedException("已有结转来源格式无法核实，不能忽略后重新生成；请使用受控迁移/重算流程。");
+            var parts = receipt.SourceKeys[0].Split('/');
+            if (parts.Length != 4 || parts[0] != "monthly-transfer" || parts[1].Length != 4 || parts[2].Length != 2 ||
+                !int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var year) || year is < 1 or > 9999 ||
+                !int.TryParse(parts[2], NumberStyles.None, CultureInfo.InvariantCulture, out var month) || month is < 1 or > 12 ||
+                parts[3].Length != 64 || !parts[3].All(char.IsAsciiHexDigit))
+                throw new NotSupportedException("已有结转来源期间无法核实，不能忽略后重新生成；请使用受控迁移/重算流程。");
+            var sourcePeriod = new DateOnly(year, month, 1);
+            if (sourcePeriod > targetPeriod)
+                throw new LedgerValidationException("已有后期结转来源认领，不能倒序结转；反过账或删除后期凭证不会自动撤销来源，需先完成受控失效与按月重算。");
+
+            var voucher = snapshot.Ledger.Vouchers.SingleOrDefault(v => v.Id == receipt.VoucherId);
+            if (voucher is null || voucher.Status != VoucherStatus.Posted ||
+                voucher.Date.Year != year || voucher.Date.Month != month)
+                throw new LedgerValidationException("已有结转凭证未过账、已反过账、删除或改期，不能继续生成；需先完成受控失效与重算，不能另换月份或规则代码绕过。");
+        }
+    }
 }
