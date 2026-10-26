@@ -3,7 +3,11 @@ import ExcelJS from 'exceljs';
 import type { BalanceRow } from '@caiwu/core';
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import type { Settings } from '../shared';
-import { seedBalanceCases, seedForeignZeroBaseCase } from '../test/fixtures';
+import {
+  seedBalanceCases,
+  seedForeignZeroBaseCase,
+  seedForeignRedActivityCase,
+} from '../test/fixtures';
 import { test } from './fixture';
 
 test('w_zw_ye：真实账套查询、状态口径、树、合计、URL 恢复、Excel 与明细地址', async ({
@@ -205,6 +209,55 @@ test('w_zw_wbye_1：跨年本位币为零、原币非零的行、合计与真实
   await page.getByRole('checkbox', { name: '只显示有发生额', exact: true }).check();
   await expect(row).toHaveCount(0);
   await expect(total.getByRole('cell').nth(13)).toHaveText('-100.00');
+});
+
+test('w_zw_wbye_1：本位币红字相抵后原币仍有发生额，只发生额保留真实明细、合计与 XLSX', async ({
+  page,
+  localServer,
+}) => {
+  const { bookId, token } = await loginWithNewBook(page, localServer.request, {
+    product: 'chengben',
+  });
+  await localServer.seed(bookId, (svc) => seedForeignRedActivityCase(svc));
+  const core = await callApi<BalanceRow[]>(
+    localServer.request,
+    'core.ledger.balances',
+    { periodFrom: 202602, periodTo: 202602, currency: 'USD', rollup: false, includeZero: true },
+    { token, method: 'GET' },
+  );
+  expect(core.find((r) => r.accountCode === '100202')).toMatchObject({
+    debit: 0,
+    credit: 0,
+    fcDebit: -10_000,
+  });
+  await page.goto(
+    `${localServer.url}/m/balances/foreign?from=202602&to=202602&currency=USD&level=-1&onlyActivity=1`,
+  );
+  const usd = page.getByRole('region', { name: 'USD余额' });
+  const row = usd
+    .getByRole('row')
+    .filter({ has: page.getByRole('link', { name: '明细 100202', exact: true }) });
+  const total = usd
+    .getByRole('row')
+    .filter({ has: page.getByRole('cell', { name: '合计', exact: true }) });
+  await expect(row.getByRole('cell').nth(4)).toHaveText('0.00');
+  await expect(row.getByRole('cell').nth(5)).toHaveText('0.00');
+  await expect(row.getByRole('cell').nth(11)).toHaveText('-100.00');
+  await expect(total.getByRole('cell').nth(11)).toHaveText('-100.00');
+  await page.getByRole('checkbox', { name: '只显示有发生额', exact: true }).uncheck();
+  await expect(row.getByRole('cell').nth(11)).toHaveText('-100.00');
+  await page.getByRole('checkbox', { name: '只显示有发生额', exact: true }).check();
+  await page.getByRole('checkbox', { name: '包含未过账凭证', exact: true }).check();
+  await expect(row.getByRole('cell').nth(11)).toHaveText('-100.00');
+  await expect(total.getByRole('cell').nth(11)).toHaveText('-100.00');
+  const downloadWait = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出 Excel', exact: true }).click();
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.readFile((await (await downloadWait).path())!);
+  const ws = wb.worksheets[0]!;
+  const rows = ws.getRows(5, ws.rowCount - 4)!;
+  expect(rows.find((r) => r.getCell(1).text === '100202')?.getCell(12).value).toBe(-100);
+  expect(rows.find((r) => r.getCell(1).text === '合计')?.getCell(12).value).toBe(-100);
 });
 
 test('w_zw_ye_1/w_zw_wbye_1：取消放弃确认、真实过期保存失败保留草稿、成功持久化', async ({

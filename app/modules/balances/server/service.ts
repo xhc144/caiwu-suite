@@ -225,7 +225,13 @@ export function balancesService(svc: CoreServices) {
           currency,
           totals: sumLeaves(selected),
           rows: selected
-            .filter((r) => !q.onlyActivity || r.debit !== 0 || r.credit !== 0)
+            .filter(
+              (r) =>
+                !q.onlyActivity ||
+                r.debit !== 0 ||
+                r.credit !== 0 ||
+                (q.mode === 'foreign' && (r.fcDebit !== 0 || r.fcCredit !== 0)),
+            )
             .map((r) => ({ ...r, parentId: byId.get(r.accountId)!.parentId })),
         });
       }

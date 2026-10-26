@@ -5,7 +5,7 @@ import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import balancesServer from '../server';
 import { balancesService, sumLeaves } from '../server/service';
 import { balanceDisplay, detailUrl, outputRows, parseDimensions, visibleRows } from '../shared';
-import { seedBalanceCases, seedForeignZeroBaseCase } from './fixtures';
+import { seedBalanceCases, seedForeignZeroBaseCase, seedForeignRedActivityCase } from './fixtures';
 
 let app: TestApp;
 beforeEach(async () => {
@@ -272,6 +272,56 @@ describe('w_zw_ye 汇总余额表', () => {
 });
 
 describe('w_zw_wbye 外币余额表', () => {
+  it.each([
+    { side: 'debit' as const, label: '借方', fcDebit: -10_000, fcCredit: 0, fcClosing: 0 },
+    { side: 'credit' as const, label: '贷方', fcDebit: 0, fcCredit: -10_000, fcClosing: 20_000 },
+  ])(
+    'w_zw_wbye_1 $label 红字抵消本位币但原币仍有发生额时，只发生额不能删明细',
+    async ({ side, fcDebit, fcCredit, fcClosing }) => {
+      await seedForeignRedActivityCase(app.svc, side);
+      const expected = {
+        opening: 71_000,
+        debit: 0,
+        credit: 0,
+        closing: 71_000,
+        fcOpening: 10_000,
+        fcDebit,
+        fcCredit,
+        fcClosing,
+      };
+      const core = await app.svc.ledger.balances({
+        ...range,
+        currency: 'USD',
+        rollup: false,
+        includeZero: true,
+      });
+      expect(core.find((r) => r.accountCode === '100202')).toMatchObject(expected);
+      for (const includeUnposted of [false, true]) {
+        for (const currency of ['', 'USD']) {
+          const input = { ...range, mode: 'foreign' as const, includeUnposted, currency };
+          const all = (await query().query(input)).groups[0]!;
+          const activity = (await query().query({ ...input, onlyActivity: true })).groups[0]!;
+          expect(activity.rows.find((r) => r.accountCode === '100202')).toMatchObject(expected);
+          expect(activity.totals).toEqual(all.totals);
+          expect(activity.totals).toMatchObject({
+            debit: 0,
+            credit: 0,
+            fcDebit,
+            fcCredit,
+            fcClosing,
+          });
+          const exported = (await query().export({ ...input, onlyActivity: true })).groups[0]!;
+          expect(outputRows(exported, -1, []).map((r) => [r.code, r.fcDebit, r.fcCredit])).toEqual([
+            ['100202', fcDebit, fcCredit],
+            ['合计', fcDebit, fcCredit],
+          ]);
+        }
+      }
+      const summary = await query().query({ ...range, mode: 'summary', onlyActivity: true });
+      expect(summary.groups[0]!.rows.some((r) => r.accountCode === '100202')).toBe(false);
+    },
+  );
+
   it('w_zw_wbye_1 跨年本位币为零而原币贷方余额非零时，行、合计及导出数据均保留原币余额', async () => {
     await seedForeignZeroBaseCase(app.svc);
     const input = { mode: 'foreign' as const, periodFrom: 202701, periodTo: 202701 };

@@ -109,3 +109,48 @@ export async function seedForeignZeroBaseCase(svc: CoreServices) {
   ]);
   await svc.periods.ensureYear(2027);
 }
+
+/** 同月本位币红字相抵为零，原币发生额不为零；借、贷两侧均使用合法平衡凭证。 */
+export async function seedForeignRedActivityCase(
+  svc: CoreServices,
+  side: 'debit' | 'credit' = 'debit',
+) {
+  await svc.opening.upsert({
+    year: 2026,
+    accountId: (await svc.accounts.require('100202')).id,
+    currency: 'USD',
+    balance: 71_000,
+    fcBalance: 10_000,
+  });
+  await svc.opening.upsert({
+    year: 2026,
+    accountId: (await svc.accounts.require('4001')).id,
+    balance: -71_000,
+  });
+  for (const [base, foreign, rate] of [
+    [71_000, 10_000, '7.1'],
+    [-71_000, -20_000, '3.55'],
+  ] as const) {
+    await seedVouchers(svc, [
+      {
+        date: '2026-02-15',
+        status: 'posted',
+        lines: [
+          {
+            account: '100202',
+            debit: side === 'debit' ? base : 0,
+            credit: side === 'credit' ? base : 0,
+            currency: 'USD',
+            rate,
+            fcAmount: foreign,
+          },
+          {
+            account: '6001',
+            debit: side === 'credit' ? base : 0,
+            credit: side === 'debit' ? base : 0,
+          },
+        ],
+      },
+    ]);
+  }
+}
