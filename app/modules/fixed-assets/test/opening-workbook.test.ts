@@ -45,6 +45,8 @@ describe('w_xt_kgzb_zc / w_zcgl_kp_fssb：真实 XLSX 双表', () => {
     const original = await createOpeningWorkbook([card]);
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(await original.xlsx.writeBuffer());
+    expect(workbook.getWorksheet('期初卡片')!.getColumn(1).numFmt).toBe('@');
+    expect(workbook.getWorksheet('附属设备')!.getColumn(1).numFmt).toBe('@');
     const parsed = readOpeningWorkbook(workbook, refs);
     expect(parsed.rows).toHaveLength(1);
     expect(parsed.rows[0]!.data).toMatchObject({
@@ -73,6 +75,23 @@ describe('w_xt_kgzb_zc / w_zcgl_kp_fssb：真实 XLSX 双表', () => {
     const parsed = readOpeningWorkbook(workbook, refs);
     expect(parsed.rows).toHaveLength(1);
     expect(parsed.rows[0]!.data.accessories).toEqual([]);
+  });
+
+  it('旧 Excel 的数字编号按补零显示格式恢复，主子表仍按完整编号匹配', async () => {
+    const workbook = await createOpeningWorkbook([card]);
+    const main = workbook.getWorksheet('期初卡片')!;
+    main.getRow(2).getCell(1).value = 1;
+    main.getRow(2).getCell(1).numFmt = '0000';
+    main.getRow(2).getCell(3).value = 1;
+    main.getRow(2).getCell(3).numFmt = '00';
+    const accessory = workbook.getWorksheet('附属设备')!;
+    accessory.getRow(2).getCell(1).value = 1;
+    accessory.getRow(2).getCell(1).numFmt = '0000';
+    accessory.getRow(2).getCell(2).value = 2;
+    accessory.getRow(2).getCell(2).numFmt = '0000';
+    const parsed = readOpeningWorkbook(workbook, refs);
+    expect(parsed.rows[0]!.data).toMatchObject({ code: '0001', categoryId: 1 });
+    expect(parsed.rows[0]!.data.accessories![0]!.code).toBe('0002');
   });
 
   it.each(['孤立设备', ''])('孤立或缺失设备编号「%s」拒绝整文件', async (code) => {

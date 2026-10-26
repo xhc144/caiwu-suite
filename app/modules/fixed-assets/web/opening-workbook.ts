@@ -48,7 +48,10 @@ export async function createOpeningWorkbook(cards: OpeningWorkbookCard[] = []) {
   }
   for (const sheet of [main, accessories]) {
     sheet.views = [{ state: 'frozen', ySplit: 1 }];
-    sheet.columns.forEach((column) => (column.width = 24));
+    sheet.columns.forEach((column) => {
+      column.width = 24;
+      column.numFmt = '@';
+    });
   }
   return workbook;
 }
@@ -57,6 +60,13 @@ function cellText(sheet: Worksheet, row: Row, column: number) {
   const cell = row.getCell(column);
   if (cell.formula || (cell.value && typeof cell.value === 'object' && 'error' in cell.value))
     throw new Error(`${sheet.name}第 ${row.number} 行第 ${column} 列含公式或错误，请粘贴为值`);
+  if (
+    typeof cell.value === 'number' &&
+    Number.isSafeInteger(cell.value) &&
+    cell.value >= 0 &&
+    /^0{2,40}$/.test(cell.numFmt)
+  )
+    return String(cell.value).padStart(cell.numFmt.length, '0');
   return cell.value instanceof Date ? cell.value.toISOString().slice(0, 10) : cell.text.trim();
 }
 

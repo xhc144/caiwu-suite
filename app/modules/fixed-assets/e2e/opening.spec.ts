@@ -72,6 +72,8 @@ test('W2-19 w_xt_kgzb_zc/w_zcgl_kp_fssb：真实双表Excel→逐行预览→原
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile((await (await download).path())!);
   expect(workbook.worksheets.map((s) => s.name)).toEqual(['期初卡片', '附属设备']);
+  expect(workbook.worksheets[0]!.getColumn(1).numFmt).toBe('@');
+  expect(workbook.getWorksheet('附属设备')!.getColumn(1).numFmt).toBe('@');
   fill(workbook);
   const upload = async () =>
     page.getByLabel('选择期初 Excel').setInputFiles({
