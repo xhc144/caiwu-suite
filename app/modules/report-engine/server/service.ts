@@ -367,6 +367,16 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
   let steps = 0;
   let lastPeriod = period;
   const availablePeriods = new Set((await svc.periods.list()).map((p) => p.period));
+  const bookInfo = await svc.book.info();
+  const requireRange = async (from: number, to: number) => {
+    if (from > to) throw new FormulaError('取数开始期间不能晚于结束期间');
+    await svc.periods.require(from);
+    await svc.periods.require(to);
+    const months =
+      (periodYear(to) - periodYear(from)) * 12 + periodMonth(to) - periodMonth(from) + 1;
+    if ([...availablePeriods].filter((p) => p >= from && p <= to).length !== months)
+      throw new FormulaError('取数范围内有尚未建立的期间，不能按零发生额计算');
+  };
   const resolvePeriod = (selector: string | undefined) => {
     const year = periodYear(period);
     const selected =
@@ -397,13 +407,9 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
     if (old) return old;
     const from = resolvePeriod(input.options?.from);
     const to = resolvePeriod(input.options?.to);
-    if (from > to) throw new FormulaError('取数开始期间不能晚于结束期间');
-    await svc.periods.require(from);
-    await svc.periods.require(to);
-    const months =
-      (periodYear(to) - periodYear(from)) * 12 + periodMonth(to) - periodMonth(from) + 1;
-    if ([...availablePeriods].filter((p) => p >= from && p <= to).length !== months)
-      throw new FormulaError('取数范围内有尚未建立的期间，不能按零发生额计算');
+    await requireRange(from, to);
+    if (['ytdDebit', 'ytdCredit'].includes(input.metric))
+      await requireRange(Math.max(bookInfo.startPeriod, periodYear(to) * 100 + 1), to);
     lastPeriod = Math.max(lastPeriod, to);
     const account = await svc.accounts.require(input.account);
     const dimensions: Partial<Record<DimensionTypeId, number>> = {};
@@ -420,7 +426,7 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
     let total = value(0, input.unit, input.currency);
     if (input.dimension === 'cashflow') {
       const activityFrom = ['ytdDebit', 'ytdCredit'].includes(input.metric)
-        ? Math.max((await svc.book.info()).startPeriod, periodYear(to) * 100 + 1)
+        ? Math.max(bookInfo.startPeriod, periodYear(to) * 100 + 1)
         : from;
       const entries = await svc.ledger.entries({
         periodFrom: activityFrom,

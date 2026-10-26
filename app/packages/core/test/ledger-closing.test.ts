@@ -5,6 +5,42 @@ import { createTestBook, seedVouchers, voucherInputFromSpec, type TestBook } fro
 let book: TestBook;
 afterEach(async () => book?.close());
 describe('w_bb_proc / w_zw_ydjz 真实结转过滤', () => {
+  it.each(['ytdDebit', 'ytdCredit'] as const)(
+    '%s 原始未知累计+100/-100抵销后仍拒绝排除结转，分组不改变口径',
+    async (field) => {
+      book = await createTestBook({ startMonth: 7 });
+      const account = await book.svc.accounts.require('1122');
+      for (const [code, amount] of [
+        ['C001', 100],
+        ['S001', -100],
+      ] as const) {
+        await book.svc.opening.upsert({
+          year: 2026,
+          accountId: account.id,
+          balance: 0,
+          dimensions: { partner: (await book.svc.dimensions.getByCode('partner', code))!.id },
+          [field]: amount,
+        });
+      }
+      for (const groupBy of [[], ['partner']] as const) {
+        const q = {
+          periodFrom: 202607,
+          periodTo: 202607,
+          accountCodes: ['1122'],
+          groupBy: [...groupBy],
+          rollup: false,
+          includeZero: true,
+        };
+        expect((await book.svc.ledger.balances(q)).reduce((n, r) => n + r[field], 0)).toBe(0);
+        await expect(
+          book.svc.ledger.balances({ ...q, excludeClosingKinds: ['pnl'] }),
+        ).rejects.toMatchObject({ data: { code: 'LEDGER_CLOSING_SCOPE_UNKNOWN' } });
+        await expect(
+          book.svc.ledger.balances({ ...q, excludeClosing: true }),
+        ).rejects.toMatchObject({ data: { code: 'LEDGER_CLOSING_SCOPE_UNKNOWN' } });
+      }
+    },
+  );
   it('普通凭证与有来源的结转经唯一入口保存；历史期初保留，查询不解锁来源或修改状态', async () => {
     book = await createTestBook();
     const svc = book.svc;
