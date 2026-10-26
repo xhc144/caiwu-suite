@@ -197,10 +197,8 @@ export async function cashflowCheck(svc: CoreServices, v: Voucher) {
   const warnings: string[] = [],
     errors: string[] = [];
   const accounts = new Map((await svc.accounts.list()).map((a) => [a.id, a]));
-  const cashNet = v.lines.reduce(
-    (s, l) => (accounts.get(l.accountId)?.cashflowRequired ? s + l.debit - l.credit : s),
-    0,
-  );
+  let internalNet = 0n;
+  const internalRows: string[] = [];
   for (const l of v.lines) {
     const a = accounts.get(l.accountId);
     const prefix = `${v.period} ${v.displayNo} 第${l.lineNo}行`;
@@ -227,16 +225,19 @@ export async function cashflowCheck(svc: CoreServices, v: Voucher) {
       continue;
     }
     const direction = parsed.data.cashflowDirection;
-    // 红字同向负数是冲减原流向；方向按借贷列核验，不因金额为负再翻转。
-    if (
-      (direction === 'inflow' && l.credit !== 0) ||
-      (direction === 'outflow' && l.debit !== 0) ||
-      (direction === 'internal' && cashNet !== 0)
-    )
+    // 与录入正式保存一致：红字按实际净额判断流向，内部项单独配平。
+    const signed = BigInt(l.debit) - BigInt(l.credit);
+    if (direction === 'internal') {
+      internalNet += signed;
+      internalRows.push(prefix);
+    }
+    if ((direction === 'inflow' && signed < 0n) || (direction === 'outflow' && signed > 0n))
       errors.push(
         `${prefix} 现金流量方向 ${direction === 'inflow' ? '流入' : direction === 'outflow' ? '流出' : '内部转移'} 与金额方向冲突`,
       );
   }
+  if (internalNet !== 0n)
+    errors.push(`${internalRows[0]}等内部现金流入流出未配平，差额 ${internalNet} 分`);
   return { warnings, errors };
 }
 export function copiedInput(

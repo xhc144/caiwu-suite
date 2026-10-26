@@ -930,7 +930,7 @@ describe('w_pz_get / w_pz_tjsh 细项回归', () => {
     const normalized = (v: Voucher) => v.lines.map(({ id: _id, ...line }) => line);
     expect(normalized(copy)).toEqual(normalized(v));
   });
-  it('w_pz_tjsh 红字同向负数冲减原现金流方向，仍须跨人审核', async () => {
+  it('w_pz_tjsh 红字按实际净额反转流向，原方向项目阻止；修正后仍须跨人审核', async () => {
     const cf = await setCashDirection('CF02', 'outflow');
     const base = await input();
     base.lines[1]!.dimensions = { cashflow: cf };
@@ -938,6 +938,18 @@ describe('w_pz_get / w_pz_tjsh 细项回归', () => {
     const p = await plan('reverse', [v.id], { date: '2026-02-01', voucherTypeId: v.voucherTypeId });
     const r = await api.commit({ token: p.token, confirmed: true });
     const b = await auditor();
+    const before = (await app.svc.vouchers.get(r.createdIds[0]!))!;
+    const wrong = await b.preview.audit({ action: 'audit', selection: { ids: r.createdIds } });
+    expect(wrong.eligibleCount).toBe(0);
+    expect(wrong.rows[0]!.reasons.join()).toMatch(/方向.*冲突/);
+    await expect(b.commit({ token: wrong.token, confirmed: true })).rejects.toThrow(/没有合格凭证/);
+    expect(await app.svc.vouchers.get(before.id)).toEqual(before);
+    // 仅以来源 owner 的 core 服务构造已修正的合法反例，不绕来源保护。
+    const corrected = copiedInput(before);
+    corrected.lines[1]!.dimensions = { cashflow: await setCashDirection('CF01', 'inflow') };
+    await app
+      .svcFor('voucher-book')
+      .vouchers.update(before.id, corrected, { expectedRevision: before.revision });
     const audit = await b.preview.audit({ action: 'audit', selection: { ids: r.createdIds } });
     expect(audit).toMatchObject({ eligibleCount: 1, skippedCount: 0 });
     expect(audit.rows[0]!.warnings).toEqual([]);
