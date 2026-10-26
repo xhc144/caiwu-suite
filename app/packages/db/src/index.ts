@@ -38,11 +38,16 @@ export interface OpenedDatabase<DB> {
  */
 export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
   const raw = new Database(file);
-  raw.pragma('foreign_keys = ON');
-  raw.pragma('busy_timeout = 5000');
-  if (file !== ':memory:') {
-    raw.pragma('journal_mode = WAL');
-    raw.pragma('synchronous = NORMAL');
+  try {
+    raw.pragma('foreign_keys = ON');
+    raw.pragma('busy_timeout = 5000');
+    if (file !== ':memory:') {
+      raw.pragma('journal_mode = WAL');
+      raw.pragma('synchronous = NORMAL');
+    }
+  } catch (error) {
+    raw.close();
+    throw error;
   }
   const db = new Kysely<DB>({ dialect: new GuardedSqliteDialect({ database: raw }) });
   // raw 在 Kysely 驱动初始化前已经打开；destroy() 此时可能不会释放它。
