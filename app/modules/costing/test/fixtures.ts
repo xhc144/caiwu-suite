@@ -59,7 +59,7 @@ type InventoryFixtures = {
     rows: { productCode: string; actual: string }[];
   }): Promise<unknown>;
 };
-export async function setup() {
+export async function setup(options: { withProduct?: boolean } = {}) {
   const app = await createTestApp({ modules: [inventoryModule, server], product: 'chengben' });
   const inventory = app.call(inventoryModule) as unknown as InventoryFixtures;
   const warehouseId = await inventory.saveWarehouse({ code: '01', name: '一仓' });
@@ -71,12 +71,14 @@ export async function setup() {
     inputTax: (await app.svc.accounts.require('22210101')).id,
     outputTax: (await app.svc.accounts.require('22210102')).id,
   };
-  await inventory.saveProduct({
-    code: 'P1',
-    name: '试算产品',
-    inventoryAccountId: ids.stock,
-    salesAccountId: ids.sales,
-  });
+  if (options.withProduct !== false) {
+    await inventory.saveProduct({
+      code: 'P1',
+      name: '试算产品',
+      inventoryAccountId: ids.stock,
+      salesAccountId: ids.sales,
+    });
+  }
   const opening = (quantity = '10', unitPrice = '1') =>
     inventory.saveOpening({
       warehouseId,

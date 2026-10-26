@@ -94,6 +94,59 @@ async function link(documentId: number, purpose: 'cost' | 'revenue', revision?: 
 }
 
 describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的同事务闭环', () => {
+  it('w_cb_hz：无商品发布空月后才建商品并正式核算首购', async () => {
+    const empty = await setup({ withProduct: false });
+    const read = (period: number) => empty.app.svcFor('costing').inventory.snapshot(period);
+    try {
+      const januarySource = await read(202601);
+      expect(januarySource.products).toEqual([]);
+      expect(januarySource.opening).toEqual([]);
+      expect(januarySource.documents).toEqual([]);
+      expect(januarySource.counts).toEqual([]);
+      const zero = await empty.api.preview({ period: 202601 });
+      expect(zero.rows).toEqual([]);
+      expect(zero.lines).toEqual([]);
+      const januaryBatch = await empty.api.commit(input(zero));
+      expect((await read(202601)).products).toEqual([]);
+      const februaryOpening = await read(202602);
+      expect(februaryOpening.periodOpeningReady).toBe(true);
+      expect(februaryOpening.periodOpening).toEqual([]);
+      await empty.inventory.saveProduct({
+        code: 'P1',
+        name: '空月后新增产品',
+        inventoryAccountId: empty.ids.stock,
+        salesAccountId: empty.ids.sales,
+      });
+      await empty.document('receipt', '10', '3', { date: '2026-02-10' });
+      const februaryPreview = await empty.api.preview({ period: 202602 });
+      expect(februaryPreview.rows).toHaveLength(1);
+      expect(februaryPreview.rows[0]).toMatchObject({
+        openingQuantity: '0',
+        openingCents: 0,
+        receivedQuantity: '10',
+        receivedCents: 3000,
+        closingQuantity: '10',
+        closingCents: 3000,
+      });
+      const februaryBatch = await empty.api.commit(input(februaryPreview));
+      const official = await read(202602);
+      expect(official.products).toHaveLength(1);
+      expect(official.control.costBatch).toBe(februaryBatch.inventoryBatchId);
+      expect(official.batches).toEqual([
+        expect.objectContaining({ id: januaryBatch.inventoryBatchId, period: 202601 }),
+        expect.objectContaining({
+          id: februaryBatch.inventoryBatchId,
+          period: 202602,
+          previous_batch_id: januaryBatch.inventoryBatchId,
+        }),
+      ]);
+      const stock = await empty.inventory.stock({ warehouseId: empty.warehouseId });
+      expect(stock[0]).toMatchObject({ balance: '10', balanceCents: 3000 });
+    } finally {
+      await empty.app.close();
+    }
+  });
+
   it('w_cb_hz：空启用月正式发布后承接首笔业务', async () => {
     // 没有任何期初、单据或盘点；档案存在不构成库存期初。
     const preview = await t.api.preview(january);

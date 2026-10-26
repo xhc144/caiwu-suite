@@ -25,32 +25,35 @@ async function emptyBook(page: Page, request: APIRequestContext) {
     code: '01',
     name: '首月空仓',
   });
-  await post('m.inventory.saveProduct', {
-    code: 'P1',
-    name: '次月首次入库产品',
-    inventoryAccountId: account('1405'),
-    salesAccountId: account('6001'),
-  });
-  // 1月没有期初、单据或盘点，首笔真实库存业务发生在2月。
-  await post('m.inventory.saveDocument', {
-    requestKey: randomUUID(),
-    kind: 'receipt',
-    warehouseId,
-    number: 'FEB-FIRST',
-    date: '2026-02-10',
-    category: '采购',
-    accountId: account('1001'),
-    lines: [{ productCode: 'P1', quantity: '10', unitPrice: '3' }],
-  });
+  const firstPurchase = async () => {
+    await post('m.inventory.saveProduct', {
+      code: 'P1',
+      name: '次月首次入库产品',
+      inventoryAccountId: account('1405'),
+      salesAccountId: account('6001'),
+    });
+    await post('m.inventory.saveDocument', {
+      requestKey: randomUUID(),
+      kind: 'receipt',
+      warehouseId,
+      number: 'FEB-FIRST',
+      date: '2026-02-10',
+      category: '采购',
+      accountId: account('1001'),
+      lines: [{ productCode: 'P1', quantity: '10', unitPrice: '3' }],
+    });
+  };
   const batches = () =>
     get<Pick<Batch, 'id' | 'period' | 'revision' | 'status'>[]>('m.costing.batches');
   const snapshot = (period = 202601) =>
     get<InventorySnapshot>('m.inventory.costingSnapshot', { period });
-  return { get, post, batches, snapshot, warehouseId };
+  return { get, post, batches, snapshot, warehouseId, firstPurchase };
 }
 
 test('w_cb_hz：空月发布后次月采购', async ({ page, request }) => {
   const t = await emptyBook(page, request);
+  expect(await t.get<unknown[]>('m.inventory.products')).toEqual([]);
+  expect((await t.snapshot()).products).toEqual([]);
   expect((await t.snapshot()).opening).toEqual([]);
   expect((await t.snapshot()).documents).toEqual([]);
   expect((await t.snapshot()).counts).toEqual([]);
@@ -68,11 +71,18 @@ test('w_cb_hz：空月发布后次月采购', async ({ page, request }) => {
   await confirmPublish(page);
   await expect(page.getByText(/202601 正式成本核算已发布/)).toBeVisible();
   expect((await t.snapshot()).control).toMatchObject({ costPeriod: 202601 });
+  expect(await t.get<unknown[]>('m.inventory.products')).toEqual([]);
+  expect((await t.snapshot()).products).toEqual([]);
   expect((await t.snapshot()).opening).toEqual([]);
   const february = await t.snapshot(202602);
   expect(february.periodOpeningReady).toBe(true);
   expect(february.periodOpening).toEqual([]);
   expect(await t.batches()).toHaveLength(1);
+  // 必须在1月正式空批次已经发布后，才首次建商品并录入2月采购。
+  await t.firstPurchase();
+  expect(await t.get<unknown[]>('m.inventory.products')).toHaveLength(1);
+  expect((await t.snapshot(202602)).products).toHaveLength(1);
+  expect((await t.snapshot(202602)).periodOpening).toEqual([]);
   await preview(page, 202602);
   const product = page.getByRole('row').filter({ hasText: '次月首次入库产品' });
   await expect(product.getByRole('cell').nth(3)).toHaveText('0');
@@ -108,6 +118,7 @@ test('w_cb_fgz：空月HTTP幂等与撤销保护', async ({ page, request }) => 
     confirmed: true,
   };
   const before = await t.snapshot();
+  expect(before.products).toEqual([]);
   await expect(
     t.post('m.costing.commit', { ...payload, confirmed: false }),
   ).rejects.toThrow(/明确确认/);
