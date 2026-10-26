@@ -3,6 +3,7 @@ import ExcelJS from 'exceljs';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createTestApp, seedVouchers, voucherInputFromSpec, type TestApp } from '@caiwu/testkit';
 import reportServer from '../../server';
+import { workbookBase64 } from '../../server/export';
 import type { ReportTemplate, ReportSnapshot } from '../../shared';
 import {
   balanceSheetSlots,
@@ -56,7 +57,8 @@ it('联合202：损益结转后收入14000、净利润10195；比较数为上年
   expect(value(s, profitSlots.netProfit!.comparative).value).toBe('800');
   expect(value(s, profitSlots.continuingProfit!.current).unit).toBe('text');
   expect(value(s, profitSlots.basicEps!.current).unit).toBe('text');
-  const result = await app.call(reportServer).exportResult({ id: r.id, period: 202601 });
+  await expect(app.call(reportServer).exportResult({ id: r.id, period: 202601 })).rejects.toThrow(/审核/);
+  const result = { base64: await workbookBase64(s) };
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(Uint8Array.from(Buffer.from(result!.base64, 'base64')).buffer);
   expect(wb.worksheets[0]!.getCell(profitSlots.netProfit!.current).value).toBe(101.95);

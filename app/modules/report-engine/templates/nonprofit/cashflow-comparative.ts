@@ -90,6 +90,8 @@ export function comparativeCashflow403Template(raw: ComparativeCashflowMapping):
       t.merges.push({ row, col: 1, rows: 1, cols: 3 });
     }
   }
+  t.reportIdentity = 'nonprofit-cashflow403-comparative';
+  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', mapping };
   return ReportTemplateSchema.parse(t);
 }
 

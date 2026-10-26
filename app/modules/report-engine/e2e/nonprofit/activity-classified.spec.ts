@@ -85,5 +85,5 @@ for (const kind of ['classified', 'classified-closed'] as const)
     expect(ws.getCell('D26').value).toBe(230.05);
     expect(ws.getCell('G26').value).toBe(2750.05);
     expect(ws.getCell('G30').value).toBe('待接入真实取数');
-    expect(ws.getCell('A3').value).toContain('公共原子门禁未接通');
+    expect(ws.getCell('A3').value).toContain('公共事务复核');
   });

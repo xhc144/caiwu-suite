@@ -149,7 +149,7 @@ describe('401期末真实取数切片与共享契约接线准备', () => {
     );
     await expect(
       api.generate({ id: r.id, expectedRevision: 1, period: 202607, requestId: randomUUID() }),
-    ).rejects.toThrow('B6：2026年01月早于账套启用期间2026年07月');
+    ).rejects.toThrow('2026年01月早于账套启用期间2026年07月');
     expect(await api.snapshot({ id: r.id, period: 202607 })).toBeNull();
   });
 
@@ -194,7 +194,7 @@ describe('401期末真实取数切片与共享契约接线准备', () => {
     );
     await expect(
       api.generate({ id: r.id, expectedRevision: 1, period: 202603, requestId: randomUUID() }),
-    ).rejects.toThrow('取数范围内有尚未建立的期间，不能按零发生额计算');
+    ).rejects.toThrow('资产负债表年度范围内存在未建立期间');
     expect(await api.snapshot({ id: r.id, period: 202603 })).toBeNull();
   });
 

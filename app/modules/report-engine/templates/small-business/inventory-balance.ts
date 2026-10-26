@@ -23,6 +23,7 @@ export type InventoryMapping = Record<
 export type InventoryAccount = { code: string; isLeaf: boolean };
 export type InventoryConfiguration = {
   mapping: InventoryMapping;
+  period?: number;
   /** 必须传当前账套完整科目表，不能只传已选明细。不是持久绑定或公共生成门禁。 */
   accounts: readonly InventoryAccount[];
 };
@@ -95,21 +96,16 @@ export function applyInventoryBalances(t: ReportTemplate, config?: InventoryConf
   if (config) validateInventoryMapping(config.mapping, config.accounts);
   // 默认十项全部强制引用；缺任一母科目由共享BALANCE.require明确报错，不回退零。
   const mapping = config?.mapping ?? officialInventoryMapping;
-  // 公共引擎尚不能绑定/复核科目表版本。先拒绝所有依赖构造期快照的省略：
-  // absent变常量零会漏掉以后新增的母科目，明细列表会漏掉以后新增的兄弟科目。
-  // 必须在修改任何单元格之前阻止输出；不能用README提示或自校验等式代替门禁。
-  for (const { role, code, name } of inventoryRoles) {
-    const entry = mapping[role];
-    if ('absent' in entry || entry.accounts.length !== 1 || entry.accounts[0] !== code)
-      throw new Error(
-        `${name}的不存在声明或明细映射需要公共生成/导出的科目版本原子绑定；当前不能构造该存货模板，请等待共享门禁后重新核实映射`,
-      );
-  }
+  t.reportIdentity = 'small-business-inventory';
+  t.profile = { version: 1, kind: 'small-business-inventory', scope: 'posted',
+    ...(config?.period === undefined ? {} : { period: config.period }),
+    mapping: { inventory: mapping },
+  };
   for (const column of ['closing', 'yearOpening'] as const) {
     const source = (role: InventoryRole) => {
-      // 仅母科目范围可以随真实总账动态包含后续新增的所有明细。
-      const account = inventoryRoles.find((r) => r.role === role)!.code;
-      return balanceFormula({
+      const entry = mapping[role];
+      if ('absent' in entry) return '0';
+      return entry.accounts.map(account => balanceFormula({
         account,
         metric: column === 'closing' ? 'closing' : 'opening',
         unit: 'cents',
@@ -121,7 +117,7 @@ export function applyInventoryBalances(t: ReportTemplate, config?: InventoryConf
           column === 'closing'
             ? { from: 'current', to: 'current' }
             : { from: 'yearStart', to: 'yearStart' },
-      });
+      })).join('+');
     };
     const total = inventoryRoles.map(({ role }) => `(${source(role)})`).join('+');
     replace(t, balanceAddress(9, column), total);

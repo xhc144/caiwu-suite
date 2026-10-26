@@ -29,7 +29,7 @@ const PurchaseDateSchema = z
       .max(120),
   })
   .strict();
-const PurchaseSchema = z
+export const PurchaseSchema = z
   .object({
     period: z.number().int().refine(isPeriod, '请选择有效的报告期间'),
     current: PurchaseDateSchema,
@@ -41,7 +41,7 @@ export type PurchaseBindings = z.input<typeof PurchaseSchema>;
 type DateBindings = z.infer<typeof PurchaseDateSchema>;
 type Classification = z.infer<typeof ClassificationSchema>;
 
-function validate(
+export function validatePurchaseDate(
   b: DateBindings,
   accounts: readonly Account[],
   partners: readonly DimensionItem[],
@@ -179,19 +179,19 @@ export function buildPurchaseReclassificationComparatives(
   partners: readonly DimensionItem[],
 ) {
   const b = PurchaseSchema.parse(raw);
-  validate(b.current, accounts, partners);
-  validate(b.previous, accounts, partners);
+  validatePurchaseDate(b.current, accounts, partners);
+  validatePurchaseDate(b.previous, accounts, partners);
   const previousPeriod = makePeriod(periodYear(b.period) - 1, 12);
   const t = enterpriseBalanceSheet();
   put(
     t,
     'A2',
-    '已停用的采购侧候选：共享期间/profile持久绑定及原子校验尚未实现，本切片在任何期间均拒绝生成。其余官方项目及合计仍待配置，不可作为完整法定报表。禁止使用旧页面底部自动明细链接核对本切片金额。',
+    '采购侧两行取数切片：公共生成事务核验固定报告期、分类和来源。其余官方项目及合计仍待配置，不可作为完整法定报表。禁止使用旧页面底部自动明细链接核对本切片金额。',
   );
   put(
     t,
     'A3',
-    `采购切片已停用：分类依据仅声明用于${b.period}/${previousPeriod}。公共生成接口尚不能强制匹配这两日期、profile及映射版本，不能生成或导出本候选的新快照。`,
+    `采购分类依据仅用于${b.period}/${previousPeriod}；仅已过账；来源变化须重新明确分类。审核只覆盖已接入采购两行，不代表全表平衡。`,
   );
   note(
     t,
@@ -199,12 +199,15 @@ export function buildPurchaseReclassificationComparatives(
   );
   fill(t, b.current, b.period, false);
   fill(t, b.previous, previousPeriod, true);
-  for (const slot of [balanceSheetSlots.prepayments!, balanceSheetSlots.accountsPayable!])
-    for (const address of [slot.current, slot.comparative]) {
-      const candidate = t.cells.find((c) => c.address === address)!;
-      // 局部停用哨兵，不是共享guard：IF惰性选择文本引用，真实generate必报公式错误。
-      // 保留数值候选及黄金断言；不能只改相对期间就复用旧日期的流动分类。
-      put(t, address, `IF(1,A3,${candidate.source})`, true);
-    }
+  // 未配置的整表合计仍显示文字，不把它们作为本两行切片的已接入审核。
+  t.checks = t.cells.filter(c => c.source.includes('采购侧完整性：')).flatMap(c => {
+    const row = c.address.slice(1);
+    return [
+      { name: `${row}采购来源借方完整分类`, left: `B${row}`, right: `C${row}`, tolerance: '0' },
+      { name: `${row}采购来源贷方完整分类`, left: `E${row}`, right: `F${row}`, tolerance: '0' },
+    ];
+  });
+  t.reportIdentity = 'enterprise-purchase';
+  t.profile = { version: 1, kind: 'enterprise-purchase', scope: 'posted', period: b.period, mapping: b };
   return ReportTemplateSchema.parse(t);
 }

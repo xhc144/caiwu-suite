@@ -251,7 +251,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas：402实际末级分类切�
     );
   });
 
-  it('w_bb_proc 仅模块预检不冒充公共原子门禁；公共生成及审核失败导出仍是明确缺口', async () => {
+  it('w_bb_proc 公共导入拒绝未分类来源；非正式试算审核失败也禁止导出', async () => {
     await seedClassifiedBook(app.svc);
     const mapping = classifiedMapping();
     mapping.groups.donations.restricted = [];
@@ -259,7 +259,11 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas：402实际末级分类切�
       /未分类/,
     );
     const api = app.call(classifiedServer);
-    const report = await api.importTemplate(activity402ClassifiedTemplate(mapping));
+    const template = activity402ClassifiedTemplate(mapping);
+    await expect(api.importTemplate(template)).rejects.toThrow(/排他来源|实际分录/);
+    // 非正式自定义试算保留错误审核供查看，不能导出为成功结果。
+    delete template.profile; delete template.reportIdentity;
+    const report = await api.importTemplate(template);
     const result = await api.generate({
       id: report.id,
       expectedRevision: 1,
@@ -270,7 +274,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas：402实际末级分类切�
     if (result.kind !== 'generated') throw new Error('未生成');
     expect(result.snapshot.checks.some((c) => c.status !== 'pass')).toBe(true);
     // 已知公共缺口的证据；不把可导出的失败结果称为已审核或法定完成。
-    expect(await api.exportResult({ id: report.id, period: 202602 })).not.toBeNull();
+    await expect(api.exportResult({ id: report.id, period: 202602 })).rejects.toThrow(/审核/);
   });
 
   it('w_bb_proc 整数分性质：收入贷减借、费用借减贷，退款可超本月收入且分类守恒', async () => {

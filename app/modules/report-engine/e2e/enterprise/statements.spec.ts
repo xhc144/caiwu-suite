@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test';
 import ExcelJS from 'exceljs';
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
-import type { Report } from '../../shared';
+import type { Report, ReportSnapshot } from '../../shared';
+import { workbookBase64 } from '../../server/export';
 import { balanceSheetSlots, cashflowSlots, enterpriseProfit } from '../../templates/enterprise';
 import { test } from './fixture';
 
@@ -37,11 +38,15 @@ test('W2-02 独立账套→真实UI引入企业表样→期末净额/现金项�
   await expect(
     page.getByText('资产总计＝负债和所有者权益总计（待配置项会报错）：错误', { exact: true }),
   ).toBeVisible();
-  const downloadWait = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出 Excel', exact: true }).click();
-  const download = await downloadWait;
+  await expect(page.getByRole('alert').filter({ hasText: '失败操作不会覆盖上次成功结果。' })).toContainText('审核');
+  const reports = await callApi<Report[]>(enterprise.request, 'm.report-engine.list', {}, { token });
+  const bs = reports.find(r => r.template.code === '201')!;
+  const saved = await callApi<ReportSnapshot>(enterprise.request, 'm.report-engine.snapshot', { id: bs.id, period: 202601 }, { token, method: 'GET' });
+  // 保留全部离线xlsx金额/格式断言；公共失败禁导出已通过真实浏览器断言。
+  // 正常生成和真实下载正例另见purchase-reclassification.spec.ts。
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.readFile((await download.path())!);
+  await wb.xlsx.load(Uint8Array.from(Buffer.from(await workbookBase64(saved), 'base64')).buffer);
   const ws = wb.worksheets[0]!;
   expect(ws.getCell(balanceSheetSlots.cash!.current).value).toBe(1741.95);
   expect(ws.getCell(balanceSheetSlots.fixedAssets!.current).value).toBe(950);

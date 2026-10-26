@@ -36,6 +36,7 @@ export function classifiedMapping(period = 202602): ActivityClassifiedMapping {
             unrestricted: [
               {
                 account: `${root}01`,
+                exclusiveResource: true,
                 evidence: {
                   authority: 'assetProvider',
                   issuer: `虚构外部资源提供者U-${id}`,
@@ -49,6 +50,7 @@ export function classifiedMapping(period = 202602): ActivityClassifiedMapping {
             restricted: [
               {
                 account: `${root}02`,
+                exclusiveResource: true,
                 evidence: {
                   authority: 'assetProvider',
                   issuer: `虚构外部资源提供者R-${id}`,

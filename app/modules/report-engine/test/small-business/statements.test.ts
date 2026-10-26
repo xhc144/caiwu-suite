@@ -423,7 +423,7 @@ describe('小企业三表 / w_bb_get、w_bb_proc、w_bb_saveas', () => {
     expect(cell(after, balanceAddress(1, 'closing')).value).toBe('155007');
   });
 
-  it('分类漏分、现金内部转存单边误分分别出现审核差额；当前引擎仍能导出的缺口保留', async () => {
+  it('分类漏分、现金内部转存单边误分分别出现审核差额，公共导出必须拒绝', async () => {
     await seedCashflowBook(app.svc);
     await seedVouchers(app.svc, [
       {
@@ -453,9 +453,9 @@ describe('小企业三表 / w_bb_get、w_bb_proc、w_bb_saveas', () => {
       status: 'fail',
       difference: '333',
     });
-    const exported = await api().exportResult({ id: r.id, period: 202602 });
-    expect(exported!.snapshot.checks.some((c) => c.status === 'fail')).toBe(true);
-    expect(exported!.snapshot.template.name).toContain('未完成');
+    await expect(api().exportResult({ id: r.id, period: 202602 })).rejects.toThrow(/审核/);
+    expect(s.checks.some((c) => c.status === 'fail')).toBe(true);
+    expect(s.template.name).toContain('未完成');
   });
 
   it('未过账警告取消不存快照；按已过账继续保持黄金值；缺科目不能返回假零', async () => {

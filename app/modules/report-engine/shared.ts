@@ -192,8 +192,24 @@ export const CheckSchema = z
   })
   .strict();
 /** Wave 2 可直接通过 importTemplate API 导入；所有层次拒绝未知字段。 */
+export const ReportProfileSchema = z.object({
+  version: z.literal(1),
+  kind: z.enum([
+    'enterprise-purchase', 'small-business-inventory',
+    'nonprofit-balance401', 'nonprofit-balance401-annual',
+    'nonprofit-activity402-totals', 'nonprofit-activity402-classified',
+    'nonprofit-cashflow403', 'nonprofit-cashflow403-comparative',
+  ]),
+  scope: z.literal('posted'),
+  period: zPeriod.optional(),
+  mapping: z.record(z.string(), z.unknown()),
+}).strict();
+export type ReportProfile = z.infer<typeof ReportProfileSchema>;
 export const ReportTemplateSchema = HeaderSchema.extend({
   schemaVersion: z.literal(1),
+  /** 身份和分类是结构化合同；名称、编码和说明文字不参与身份判断。 */
+  reportIdentity: ReportProfileSchema.shape.kind.optional(),
+  profile: ReportProfileSchema.optional(),
   readOnly: z.boolean(),
   cells: z.array(CellSchema).max(5000),
   merges: z.array(MergeSchema).max(1000),
@@ -303,6 +319,17 @@ export type ReportSnapshot = {
   includeUnposted: boolean;
   unpostedCount: number;
   generatedAt: string;
+  assurance?: 'custom-trial' | 'guarded-slice';
+  profileProofs?: {
+    reportId: number;
+    revision: number;
+    profileFingerprint: string;
+    definitionFingerprint: string;
+    accountFingerprint: string;
+    sourceFingerprint: string;
+    dimensionFingerprint: string;
+    bookId: string;
+  }[];
   template: ReportTemplate;
   cells: ResultCell[];
   dependencies: { id: number; code: string; revision: number }[];

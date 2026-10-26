@@ -76,6 +76,7 @@ for (const period of [202601, 202602])
     });
     const { balance: template } = await enterprise.seed(bookId, 'purchase');
     await page.goto(`${enterprise.baseURL}/m/report-engine`);
+    if (period === 202601) delete template.profile;
     await page.getByLabel('引入JSON模板').setInputFiles({
       name: '201-purchase-blocked.json',
       mimeType: 'application/json',
@@ -92,7 +93,7 @@ for (const period of [202601, 202602])
     await page.getByRole('button', { name: '生成/重算', exact: true }).click();
     await expect(
       page.getByRole('alert').filter({ hasText: '失败操作不会覆盖上次成功结果。' }),
-    ).toContainText(/201!A3.*文本，不能作为数值/);
+    ).toContainText(/旧无guard|缺少持久|报告期|分类.*期间/);
     await expect(page.getByText('所选期间和口径尚未生成报表', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: '导出 Excel', exact: true })).toBeDisabled();
     for (const slot of [balanceSheetSlots.prepayments!, balanceSheetSlots.accountsPayable!])

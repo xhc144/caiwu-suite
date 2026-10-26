@@ -229,8 +229,12 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
       unit: 'cents',
       currency: 'CNY',
     });
-    const bad = await api().save({ id: report.id, expectedRevision: 1, template });
-    await expect(generate(bad)).rejects.toThrow(/9999|不存在/);
+    await expect(api().save({ id: report.id, expectedRevision: 1, template })).rejects.toThrow(/公式|profile/);
+    // 故意破坏实际来源也会在公共生成事务被拒绝，不依赖只读UI保护。
+    await seedVouchers(app.svc, [{ date: '2026-02-20', status: 'posted', lines: [
+      { account: '1001', debit: 123 }, { account: '410101', credit: 123 },
+    ] }]);
+    await expect(generate(report)).rejects.toThrow(/未分类|来源.*变更/);
     expect(await api().snapshot({ id: report.id, period: 202602 })).toEqual(good.snapshot);
   });
 
@@ -268,7 +272,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
 
   it('记账不变量：现金内部划转的任意整数分不改变403现金净增加额', async () => {
     await seedCashflowBook(app.svc);
-    const report = await api().importTemplate(cashflow403Template(fixtureMapping()));
+    let revision = 0;
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 1_000_000 }), async (amount) => {
         await seedVouchers(app.svc, [
@@ -282,6 +286,9 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
           },
         ]);
         await checkCashflow403Sources(app.svc, 202602, fixtureMapping());
+        // 新增来源后显式重确认完整映射；不能复用旧profile。
+        const template = cashflow403Template(fixtureMapping()); template.code = String(500 + revision++);
+        const report = await api().importTemplate(template);
         const out = await generate(report);
         expect(
           out.kind === 'generated' && out.snapshot.cells.find((c) => c.address === 'B41')?.value,

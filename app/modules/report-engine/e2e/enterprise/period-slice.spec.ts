@@ -1,6 +1,8 @@
 import { expect } from '@playwright/test';
 import ExcelJS from 'exceljs';
-import { loginWithNewBook } from '@caiwu/testkit/e2e';
+import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
+import type { ReportSnapshot } from '../../shared';
+import { workbookBase64 } from '../../server/export';
 import { balanceSheetSlots, cashflowSlots, profitSlots } from '../../templates/enterprise';
 import { test } from './fixture';
 
@@ -36,7 +38,7 @@ for (const c of cases)
     page,
     enterprise,
   }) => {
-    const { bookId } = await loginWithNewBook(page, enterprise.request, {
+    const { bookId, token } = await loginWithNewBook(page, enterprise.request, {
       product: 'qingsong',
       startYear: 2025,
     });
@@ -66,10 +68,12 @@ for (const c of cases)
       c.comparison,
     );
     await expect(page.getByTestId('result-A2')).toContainText('禁止用它核对比较数');
-    const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: '导出 Excel', exact: true }).click();
+    await expect(page.getByRole('alert').filter({ hasText: '失败操作不会覆盖上次成功结果。' })).toContainText('审核');
+    const saved = await callApi<ReportSnapshot>(enterprise.request, 'm.report-engine.snapshot', { id: Number(id), period: 202601 }, { token, method: 'GET' });
+    // 全表审核尚未接通的旧切片只能离线检查格式；公共接口不返回xlsx。
     const wb = new ExcelJS.Workbook();
-    await wb.xlsx.readFile((await (await downloadPromise).path())!);
+    await wb.xlsx.load(Uint8Array.from(Buffer.from(await workbookBase64(saved), 'base64')).buffer);
     expect(wb.worksheets[0]!.getCell(c.current).value).toBe(Number(c.expected) / 100);
     expect(wb.worksheets[0]!.getCell(c.previous).value).toBe(Number(c.comparison) / 100);
     expect(wb.worksheets[0]!.getCell('A2').value).toContain('不可作为完整法定报表');

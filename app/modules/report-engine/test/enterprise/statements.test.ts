@@ -8,6 +8,7 @@ import { defineManifest } from '@caiwu/core';
 import { defineServerModule, moduleKit } from '@caiwu/server-kit';
 import { createTestApp, seedVouchers, voucherInputFromSpec, type TestApp } from '@caiwu/testkit';
 import reportServer from '../../server';
+import { workbookBase64 } from '../../server/export';
 import { ReportTemplateSchema, type Report, type ReportSnapshot } from '../../shared';
 import {
   balanceSheetSlots,
@@ -82,8 +83,9 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
     const s = await generate(r);
     expect(s.cells.filter((c) => c.unit !== 'text')).toEqual([]);
     expect(s.checks.every((c) => c.status === 'error' && c.difference === null)).toBe(true);
-    const out = await api().exportResult({ id: r.id, period: 202601 });
-    expect(out).not.toBeNull();
+    await expect(api().exportResult({ id: r.id, period: 202601 })).rejects.toThrow(/审核/);
+    // 不把离线格式检查冒充公共导出成功；错误审核的真实接口已在上面拒绝。
+    const out = { base64: await workbookBase64(s) };
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(Uint8Array.from(Buffer.from(out!.base64, 'base64')).buffer);
     expect(wb.worksheets[0]!.getCell('A2').value).toContain('未完成');
@@ -155,7 +157,8 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
     expect(s.checks[0]!.status).toBe('error');
     expect(await app.svc.vouchers.list({ limit: 100 })).toEqual(before);
     expect(await app.svc.opening.list(2026)).toEqual(opening);
-    const out = await api().exportResult({ id: r.id, period: 202601 });
+    await expect(api().exportResult({ id: r.id, period: 202601 })).rejects.toThrow(/审核/);
+    const out = { base64: await workbookBase64(s) };
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(Uint8Array.from(Buffer.from(out!.base64, 'base64')).buffer);
     expect(wb.worksheets[0]!.getCell(balanceSheetSlots.cash!.current).value).toBe(1741.95);
@@ -359,7 +362,7 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
       const r = await api().importTemplate(await balanceSlice(app.svc));
       const snapshot = await generate(r, 202601, true);
       expect(cell(snapshot, balanceSheetSlots.cash!.current).value).toBe('174195');
-      expect(await api().exportResult({ id: r.id, period: 202601 })).not.toBeNull();
+      await expect(api().exportResult({ id: r.id, period: 202601 })).rejects.toThrow(/审核/);
       await expect(app.svcFor('report-engine').vouchers.delete(v.id)).rejects.toThrow(
         /来源锁测试夹具/,
       );

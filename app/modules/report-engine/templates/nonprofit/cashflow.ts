@@ -108,6 +108,8 @@ export function cashflow403Template(raw: Cashflow403Mapping): ReportTemplate {
       format: 'general',
     });
   });
+  t.reportIdentity = 'nonprofit-cashflow403';
+  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', mapping };
   return ReportTemplateSchema.parse(t);
 }
 

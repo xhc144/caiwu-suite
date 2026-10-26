@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as base, type APIRequestContext } from '@playwright/test';
 import { createRuntime, moduleKit } from '@caiwu/server-kit';
+import type { CoreServices } from '@caiwu/core/server';
 import { seedCashflowBook, nonprofitTestServer, fixtureChart } from '../../test/nonprofit/fixture';
 import { checkCashflow403Sources } from '../../templates/nonprofit/cashflow';
 import { fixtureMapping } from '../../test/nonprofit/fixture';
@@ -35,6 +36,7 @@ export const test = base.extend<{
   nonprofit: {
     baseURL: string;
     request: APIRequestContext;
+    withCore(bookId: string, operation: (svc: CoreServices) => Promise<void>): Promise<void>;
     createBook(kind?: BookKind): Promise<string>;
   };
 }>({
@@ -61,6 +63,15 @@ export const test = base.extend<{
       await use({
         baseURL,
         request,
+        async withCore(bookId, operation) {
+          const m = moduleKit(nonprofitTestServer.manifest);
+          const router = m.router({ run: m.procedure.meta({ permission: 'report-engine.generate' })
+            .mutation(({ ctx }) => operation(ctx.svc)) });
+          const runtime = createRuntime({ dataDir, modules: [{ ...nonprofitTestServer, router }], devMode: true });
+          const session = runtime.sessions.create(bookId, 1);
+          try { await router.createCaller({ app: runtime, token: session.token }).run(); }
+          finally { runtime.sessions.delete(session.token); await runtime.bookStore.closeAll(); }
+        },
         async createBook(kind = 'cashflow') {
           // 本测试独占数据目录；临时runtime只负责core/testkit造数，不挂HTTP造数后门。
           const m = moduleKit(nonprofitTestServer.manifest);

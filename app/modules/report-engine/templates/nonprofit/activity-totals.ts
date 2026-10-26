@@ -100,6 +100,8 @@ export function activity402TotalsTemplate(raw: ActivityTotalsMapping): ReportTem
     );
     t.merges.push({ row: n, col: 1, rows: 1, cols: t.cols });
   }
+  t.reportIdentity = 'nonprofit-activity402-totals';
+  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.period, mapping };
   return ReportTemplateSchema.parse(t);
 }
 

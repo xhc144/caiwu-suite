@@ -5,6 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test as base, type APIRequestContext } from '@playwright/test';
 import { createRuntime, moduleKit } from '@caiwu/server-kit';
+import type { CoreServices } from '@caiwu/core/server';
 import type { ReportTemplate } from '../../shared';
 import reportServer from '../../server';
 import { balanceSlice, cashSlice, setupEnterpriseFixture } from '../../test/enterprise/fixture';
@@ -22,6 +23,7 @@ export const test = base.extend<{
   enterprise: {
     baseURL: string;
     request: APIRequestContext;
+    withCore(bookId: string, operation: (svc: CoreServices) => Promise<void>): Promise<void>;
     seed(
       bookId: string,
       mode?: 'current' | 'comparative' | 'purchase',
@@ -51,6 +53,15 @@ export const test = base.extend<{
       await use({
         baseURL,
         request,
+        async withCore(bookId, operation) {
+          const m = moduleKit(reportServer.manifest);
+          const router = m.router({ run: m.procedure.meta({ permission: 'report-engine.generate' })
+            .mutation(({ ctx }) => operation(ctx.svc)) });
+          const runtime = createRuntime({ dataDir, modules: [{ ...reportServer, router }], devMode: true });
+          const session = runtime.sessions.create(bookId, 1);
+          try { await router.createCaller({ app: runtime, token: session.token }).run(); }
+          finally { runtime.sessions.delete(session.token); await runtime.bookStore.closeAll(); }
+        },
         async seed(bookId, mode = 'current') {
           const m = moduleKit(reportServer.manifest);
           const router = m.router({

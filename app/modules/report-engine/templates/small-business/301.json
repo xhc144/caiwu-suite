@@ -3298,5 +3298,65 @@
     "sign": "debit-positive",
     "moneyUnit": "cents",
     "rounding": "half-up"
+  },
+  "reportIdentity": "small-business-inventory",
+  "profile": {
+    "version": 1,
+    "kind": "small-business-inventory",
+    "scope": "posted",
+    "mapping": {
+      "inventory": {
+        "purchases": {
+          "accounts": [
+            "1401"
+          ]
+        },
+        "inTransit": {
+          "accounts": [
+            "1402"
+          ]
+        },
+        "rawMaterials": {
+          "accounts": [
+            "1403"
+          ]
+        },
+        "materialVariance": {
+          "accounts": [
+            "1404"
+          ]
+        },
+        "workInProgress": {
+          "accounts": [
+            "4001"
+          ]
+        },
+        "finishedGoods": {
+          "accounts": [
+            "1405"
+          ]
+        },
+        "merchandiseVariance": {
+          "accounts": [
+            "1407"
+          ]
+        },
+        "outsourcedProcessing": {
+          "accounts": [
+            "1408"
+          ]
+        },
+        "turnoverMaterials": {
+          "accounts": [
+            "1411"
+          ]
+        },
+        "consumableBiologicalAssets": {
+          "accounts": [
+            "1421"
+          ]
+        }
+      }
+    }
   }
 }
