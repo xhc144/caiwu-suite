@@ -16,6 +16,34 @@ const test = base.extend<{ ledger: GeneralEnvironment }>({
   },
 });
 
+test('w_zc_dlz_1：已保存的自定义格式仍保留空记录阻止，明确含无数据后才生成零账页', async ({
+  page,
+  ledger,
+}) => {
+  const book = await loginWithNewBook(page, ledger.request, { startMonth: 7 });
+  await callApi(
+    ledger.request,
+    'm.ledgers.saveMultiFormat',
+    {
+      account: '1002',
+      columns: [{ name: '合成空栏目', accountCodes: ['100201'], mode: 'debit' }],
+      expectedRevision: 0,
+      confirmed: true,
+    },
+    { token: book.token },
+  );
+  await page.goto(`${ledger.baseURL}/m/ledgers/multicolumn?account=1002&from=202607&to=202607`);
+  await expect(page.getByRole('columnheader', { name: /合成空栏目/ })).toBeVisible();
+  await expect(page.getByRole('row', { name: /期初余额|本月小计|期末余额/ })).toHaveCount(0);
+  await page.getByRole('button', { name: '导出 Excel', exact: true }).click();
+  await expect(
+    page.getByText('当前条件没有多栏账记录，不能导出', { exact: true }).first(),
+  ).toBeVisible();
+  await page.getByRole('checkbox', { name: '含没有数据的科目' }).check();
+  await page.getByRole('button', { name: /查询$/ }).click();
+  await expect(page.getByRole('row', { name: /本月小计/ })).toContainText('0.00');
+});
+
 test('w_zc_dlz_1：自定义栏目应用、确认保存、重新打开、取消与恢复及真实Excel', async ({
   page,
   ledger,

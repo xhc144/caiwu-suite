@@ -176,8 +176,7 @@ export function multiService(svc: CoreServices) {
           startPeriod: book.startPeriod,
           scope: `${q.includeUnposted ? '包含未过账（待审核、已审核、已过账）' : '仅已过账'}；草稿和作废始终排除；全部币种折合本位币；${configured ? '自定义科目集合展开到末级，同栏父子不重计' : '直属下级各占一栏并汇总其完整下级，父子不重计'}；${configured ? '自定义栏目独立取数，不同栏目可能重叠，不能相加作为主账合计' : `分栏为${MULTI_MODES[q.mode]}`}；${dimensionLabels.length ? dimensionLabels.join('；') : '全部辅助项'}；启用期间${formatPeriod(book.startPeriod)}，启用前月额和余额未知，本年累计含账前累计一次；分栏只表示发生额，期初及期末分栏留空`,
         };
-        if (!active.size && !q.includeEmpty && !configured && q.periodFrom >= book.startPeriod)
-          return report;
+        if (!active.size && !q.includeEmpty && q.periodFrom >= book.startPeriod) return report;
         const byPeriod = new Map<number, EntryRow[]>();
         for (const e of entries) {
           const group = byPeriod.get(e.period) ?? [];

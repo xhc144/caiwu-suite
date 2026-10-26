@@ -40,6 +40,20 @@ afterEach(async () => {
 });
 
 describe('w_zc_dlz_1/w_zc_fhdlz_1 自定义栏目与格式', () => {
+  it('w_zc_dlz_1：自定义格式不把无数据条件变成零账页，导出仍拒绝空记录', async () => {
+    const api = app.call(server);
+    const q = query({
+      account: '1002',
+      columns: [{ name: '合成空栏目', accountCodes: ['100201'], mode: 'debit' }],
+    });
+    const report = await api.multiPreview(q);
+    expect(report.columns).toHaveLength(1);
+    expect(report.rows).toEqual([]);
+    await expect(api.multiExportFile(q)).rejects.toThrow(/没有多栏账记录/);
+    const included = await api.multiPreview({ ...q, includeEmpty: true });
+    expect(included.rows.map((r) => r.kind)).toEqual(['opening', 'month', 'ytd', 'closing']);
+    expect(included.rows.at(-1)!.signedBalance).toBe(0);
+  });
   it('分栏科目集合独立取借贷及净额，逐笔与月/累计精确一致，主账仍覆盖完整上级', async () => {
     await seedMultiBook(app.svc);
     const report = await app.call(server).multiReport(query());
