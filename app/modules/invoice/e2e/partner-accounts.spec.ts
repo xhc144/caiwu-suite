@@ -97,7 +97,9 @@ for (const [product, direction] of [
       received = resolve;
     });
     // 暂停真实 HTTP 响应，验证加载图标不改变操作名称，忙碌中不能重复提交。
-    await page.route('**/trpc/m.invoice.previewVoucher?*', async (route) => {
+    const previewUrl = (url: URL) =>
+      url.pathname.split('/trpc/')[1]?.split(',').includes('m.invoice.previewVoucher') ?? false;
+    await page.route(previewUrl, async (route) => {
       const response = await route.fetch();
       received();
       await gate;
@@ -117,7 +119,7 @@ for (const [product, direction] of [
       'aria-busy',
       'false',
     );
-    await page.unroute('**/trpc/m.invoice.previewVoucher?*');
+    await page.unroute(previewUrl);
     await page.getByLabel('已核对并同意新增以上科目', { exact: true }).check();
     await page.getByRole('button', { name: '确认生成凭证', exact: true }).click();
     await page.getByRole('button', { name: '确定', exact: true }).click();
