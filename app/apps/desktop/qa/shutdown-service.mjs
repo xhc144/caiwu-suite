@@ -36,6 +36,9 @@ const stop = () => {
   );
 };
 process.on('SIGTERM', stop);
+// QA 失败时宿主清理也不得留下合成孤儿服务；这不是正常保存路径。
+process.on('disconnect', () => process.exit(2));
+process.parentPort?.on('close', () => process.exit(2));
 process.on('message', (data) => {
   if (data === 'caiwu:shutdown') stop();
 });
