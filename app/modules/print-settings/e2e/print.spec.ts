@@ -421,8 +421,11 @@ test('w_print_2_zw：独立造数后明细科目连续打印，跳过空科目�
   await page.getByLabel('每个科目打印前提示', { exact: true }).check();
   await page.getByRole('button', { name: '打印全部', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('1001 库存现金');
+  // 确认框的祖先进场动画可能在按钮自身稳定后仍移动命中区域。
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
   await page.getByRole('button', { name: '继续打印', exact: true }).click();
   await expect(page.getByRole('dialog')).toContainText('6603 财务费用');
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
   await page.getByRole('button', { name: '取消后续', exact: true }).click();
   await expect(page.getByText('已停止后续打印，已提交 3 页', { exact: true })).toBeVisible();
   const jobs = await page.evaluate(
