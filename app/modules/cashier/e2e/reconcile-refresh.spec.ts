@@ -6,6 +6,35 @@ import { postedBook, reconciliation } from './scenarios';
 
 const feedback = { timeout: 5000 };
 const reconcileRoute = '**/trpc/*m.cashier.reconcile*';
+const reads = ['m.cashier.accounts', 'm.cashier.reconcile'];
+const readNames = (url: string) =>
+  new URL(url).pathname
+    .split('/')
+    .at(-1)!
+    .split(',')
+    .filter((name) => reads.includes(name));
+
+async function failAccountReads(page: Page) {
+  const failed: string[] = [];
+  let online = false;
+  await page.route('**/trpc/**', async (route) => {
+    const names = readNames(route.request().url());
+    if (!online && names.includes('m.cashier.accounts')) {
+      failed.push(...names);
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  return { failed, recover: () => (online = true) };
+}
+
+function successfulReads(page: Page) {
+  const completed: string[] = [];
+  page.on('response', (response) => {
+    if (response.ok() && response.request().method() === 'GET')
+      completed.push(...readNames(response.url()));
+  });
+  return completed;
+}
 
 // 先向独占真实服务取结果，再暂缓交付浏览器；不伪造成功数据或修改接口。
 async function holdReconcile(page: Page, fail = false) {
@@ -219,4 +248,116 @@ test('w_cn_dz 延迟旧响应不能覆盖新截止日或新账户的真实结果
   await expect(page.getByText('切换现金 · CNY · 截止 2026-01-09')).toBeVisible();
   await expect(balance).toContainText('330.00');
   await expect(balance).not.toContainText('1,290.00');
+});
+
+test('w_cn_dz 初次账户请求失败：有效条件URL的页面重试真实恢复账户与对账', async ({ cashier }) => {
+  const book = await postedBook(cashier);
+  const { page } = cashier;
+  const network = await failAccountReads(page);
+  await page.goto(`/m/cashier/reconcile?accountId=${book.accountId}&cutoff=2026-01-31`);
+  await expect.poll(() => network.failed).toContain('m.cashier.accounts');
+  await expect(page.getByRole('row', { name: /调节后余额/ })).toHaveCount(0);
+  const retry = page.getByRole('button', { name: '重试', exact: true });
+  await expect(retry).toBeVisible();
+  network.recover();
+  const completed = successfulReads(page);
+  await test.step(
+    '重试5秒内完成真实账户及对账HTTP请求并清除错误',
+    async () => {
+      await retry.click();
+      await expect.poll(() => completed).toEqual(expect.arrayContaining(reads));
+      await expect(page.getByRole('row', { name: /调节后余额/ })).toContainText('1,290.00');
+      await expect(page.getByTitle('闭环银行', { exact: true })).toBeVisible();
+      await expect(retry).toHaveCount(0);
+      const selectAll = page.getByRole('checkbox', { name: 'Select all', exact: true });
+      await selectAll.nth(0).check();
+      await selectAll.nth(1).check();
+      await expect(page.getByRole('button', { name: '确认手动勾账' })).toBeEnabled();
+    },
+    feedback,
+  );
+});
+
+test('w_cn_dz 账户刷新失败重试：保留表格及两侧选择，恢复真实勾账和取消', async ({ cashier }) => {
+  const book = await postedBook(cashier);
+  const { page } = cashier;
+  await page.goto(`/m/cashier/reconcile?accountId=${book.accountId}&cutoff=2026-01-31`);
+  const balance = page.getByRole('row', { name: /调节后余额/ });
+  await expect(balance).toContainText('1,290.00');
+  const oldRow = await balance.elementHandle();
+  expect(oldRow).not.toBeNull();
+  const selectAll = page.getByRole('checkbox', { name: 'Select all', exact: true });
+  await selectAll.nth(0).check();
+  await selectAll.nth(1).check();
+  const before = await reconciliation(cashier, book);
+  const network = await failAccountReads(page);
+  await page.getByRole('button', { name: '刷新财务分录' }).click();
+  await expect.poll(() => network.failed).toContain('m.cashier.accounts');
+  await expect(page.getByText('刷新失败，当前仍显示上次成功数据')).toBeVisible();
+  await expect(balance).toContainText('1,290.00');
+  await expect(selectAll.nth(0)).toBeChecked();
+  await expect(selectAll.nth(1)).toBeChecked();
+  await expect(page.getByRole('button', { name: '确认手动勾账' })).toBeDisabled();
+  network.recover();
+  const completed = successfulReads(page);
+  const gate = await holdReconcile(page);
+  try {
+    await test.step(
+      '重试等待时5秒内反馈忙状态并保留原表格和选择',
+      async () => {
+        await page.getByRole('button', { name: '重试', exact: true }).click();
+        await gate.fetched;
+        await expect(page.getByRole('status')).toHaveText('正在刷新，当前显示上次成功数据');
+        await expect(balance).toContainText('1,290.00');
+        expect(await oldRow!.evaluate((row) => row.isConnected)).toBe(true);
+        await expect(selectAll.nth(0)).toBeChecked();
+        await expect(selectAll.nth(1)).toBeChecked();
+        await expect(page.getByRole('button', { name: '确认手动勾账' })).toBeDisabled();
+      },
+      feedback,
+    );
+  } finally {
+    gate.release();
+  }
+  await gate.done;
+  await test.step(
+    '实际账户与对账HTTP恢复后5秒内启用动作且保留选择和余额',
+    async () => {
+      await expect.poll(() => completed).toEqual(expect.arrayContaining(reads));
+      await expect(page.getByText('刷新失败，当前仍显示上次成功数据')).toHaveCount(0);
+      await expect(page.getByRole('status')).toHaveCount(0);
+      await expect(balance).toContainText('1,290.00');
+      await expect(selectAll.nth(0)).toBeChecked();
+      await expect(selectAll.nth(1)).toBeChecked();
+      expect(await oldRow!.evaluate((row) => row.isConnected)).toBe(true);
+      await expect(page.getByRole('button', { name: '确认手动勾账' })).toBeEnabled();
+    },
+    feedback,
+  );
+  expect(await reconciliation(cashier, book)).toEqual(before);
+  await page.getByRole('button', { name: '确认手动勾账' }).click();
+  const match = page.getByRole('dialog', { name: '确认手动等额勾账' });
+  await match.getByLabel('确认文字').fill('勾账');
+  await test.step(
+    '恢复后真实勾账5秒内反馈并启用取消',
+    async () => {
+      await match.getByRole('button', { name: '确定', exact: true }).click();
+      await expect(balance).toContainText('1,145.00');
+      await expect(page.getByRole('button', { name: '取消勾账', exact: true })).toBeEnabled();
+    },
+    feedback,
+  );
+  await page.getByRole('button', { name: '取消勾账', exact: true }).click();
+  const cancel = page.getByRole('dialog', { name: /取消勾账组/ });
+  await cancel.getByLabel('确认文字').fill('取消勾账');
+  await test.step(
+    '恢复后真实取消5秒内反馈并保留原业务余额',
+    async () => {
+      await cancel.getByRole('button', { name: '确定', exact: true }).click();
+      await expect(balance).toContainText('1,290.00');
+      await expect(page.getByRole('button', { name: '取消勾账', exact: true })).toHaveCount(0);
+    },
+    feedback,
+  );
+  expect((await reconciliation(cashier, book)).adjustment).toEqual(before.adjustment);
 });

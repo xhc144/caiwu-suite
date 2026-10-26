@@ -38,9 +38,15 @@ export default function ReconcilePage() {
   const unmatch = useMutation(api.unmatch.mutationOptions({ onSuccess: () => void refresh() }));
   const data = result.data;
   const error = result.error ?? accounts.error;
-  const stale = result.isFetching || !!error;
+  const fetching = accounts.isFetching || result.isFetching;
+  const stale = fetching || !!error;
   // 同一条件的后台刷新保留成功快照；查询键仍隔离账户/截止日，不能借用旧条件数据。
-  const refetch = () => result.refetch({ cancelRefetch: false });
+  // 两种读取都可能失败；无有效条件时先恢复账户，再由 enabled 发起对账查询。
+  const refetch = () =>
+    Promise.all([
+      accounts.refetch({ cancelRefetch: false }),
+      ...(accountId > 0 && cutoff ? [result.refetch({ cancelRefetch: false })] : []),
+    ]);
   const adjustmentRows = data
     ? [
         {
@@ -95,7 +101,7 @@ export default function ReconcilePage() {
         </Form.Item>
       </FilterBar>
       {!accountId && <Alert title="请先建立出纳账户及期初" type="info" />}
-      <QueryState loading={!data && result.isFetching} error={data ? null : error} retry={refetch}>
+      <QueryState loading={!data && fetching} error={data ? null : error} retry={refetch}>
         {data && (
           <>
             <Alert
@@ -103,7 +109,7 @@ export default function ReconcilePage() {
               title={`${data.account.name} · ${data.account.currency} · 截止 ${data.cutoff}`}
               description="勾账只记录本模块匹配组。财务引用不能在出纳编辑或删除；点凭证号查看原凭证。"
             />
-            {result.isFetching && (
+            {fetching && (
               <div role="status" aria-live="polite">
                 正在刷新，当前显示上次成功数据
               </div>
@@ -117,11 +123,7 @@ export default function ReconcilePage() {
                 action={<Button onClick={() => void refetch()}>重试</Button>}
               />
             )}
-            <Button
-              loading={result.isFetching}
-              disabled={result.isFetching}
-              onClick={() => void refetch()}
-            >
+            <Button loading={fetching} disabled={fetching} onClick={() => void refetch()}>
               刷新财务分录
             </Button>
             <Typography.Title level={5}>出纳待勾项目</Typography.Title>
