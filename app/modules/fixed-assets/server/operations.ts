@@ -30,7 +30,11 @@ export function operations(svc: CoreServices) {
   const db = table(svc),
     assets = assetService(svc);
   const adjustmentInput = async (id: number, date: string) => {
-    const c = await assets.assertUnlockedInternal(id);
+    const c = await assets.assertLifecycleSourceUnlockedInternal(
+      id,
+      periodOfDate(date),
+      'adjustment',
+    );
     if (c.disposal_date) fail('DISPOSED', '已注销资产不能调整原值');
     if (date < c.use_date) fail('ADJUST_DATE', '调整日期不能早于使用日期');
     await svc.periods.assertOpen(periodOfDate(date), '调整原值');
@@ -135,7 +139,11 @@ export function operations(svc: CoreServices) {
     },
     async disposalPreview(id: number, date: string, reasonId: number, generate: boolean) {
       permit(svc, 'view');
-      const c = await assets.assertUnlockedInternal(id);
+      const c = await assets.assertLifecycleSourceUnlockedInternal(
+        id,
+        periodOfDate(date),
+        'disposal',
+      );
       await assets.assertChainInternal(c);
       if (c.disposal_date) fail('DISPOSED', '此资产已经注销');
       await assets.masterInternal(reasonId, 'reason');

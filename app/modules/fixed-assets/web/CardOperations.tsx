@@ -65,14 +65,23 @@ export default function CardOperations({
             />
           )}
           <Form layout="vertical">
-            <Form.Item label="调整日期">
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <Form.Item label="调整日期" htmlFor="fixed-assets-adjust-date">
+              <Input
+                id="fixed-assets-adjust-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
             </Form.Item>
-            <Form.Item label="调整后原值（元）">
-              <MoneyInput value={value} onChange={setValue} />
+            <Form.Item label="调整后原值（元）" htmlFor="fixed-assets-adjust-value">
+              <MoneyInput id="fixed-assets-adjust-value" value={value} onChange={setValue} />
             </Form.Item>
-            <Form.Item label="调整说明">
-              <Input value={note} onChange={(e) => setNote(e.target.value)} />
+            <Form.Item label="调整说明" htmlFor="fixed-assets-adjust-note">
+              <Input
+                id="fixed-assets-adjust-note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
             </Form.Item>
             <Confirm
               title="确认按以上日期、前后原值和说明保存调整？"
@@ -132,8 +141,9 @@ export default function CardOperations({
         </>
       ) : (
         <Form layout="vertical">
-          <Form.Item label="注销日期">
+          <Form.Item label="注销日期" htmlFor="fixed-assets-disposal-date">
             <Input
+              id="fixed-assets-disposal-date"
               type="date"
               value={date}
               onChange={(e) => {
@@ -142,8 +152,9 @@ export default function CardOperations({
               }}
             />
           </Form.Item>
-          <Form.Item label="注销原因">
+          <Form.Item label="注销原因" htmlFor="fixed-assets-disposal-reason">
             <MasterSelect
+              id="fixed-assets-disposal-reason"
               kind="reason"
               value={reasonId}
               onChange={(v) => {

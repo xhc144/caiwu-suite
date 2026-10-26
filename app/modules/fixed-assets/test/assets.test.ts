@@ -120,6 +120,185 @@ describe('固定资产规则与闭环', () => {
       expect((await api.batches())[0]!.voucher_id).toBe(v.id);
     },
   );
+  it.each(['audited', 'posted'] as const)(
+    'w_zcgl_yztz/w_zcgl_delete：2月%s凭证保留，3月可增量调整、继续折旧及注销，既有来源不可改',
+    async (status) => {
+      const id = await api.save({ data }),
+        feb = await run(202602),
+        febVoucher = await voucher(feb);
+      await app.svc.vouchers.changeStatus({ ids: [febVoucher.id], to: 'audited' });
+      if (status === 'posted') {
+        await app.svc.vouchers.changeStatus({ ids: [febVoucher.id], to: 'posted' });
+        await app.svc.periods.setStatus(202601, 'closed');
+        await app.svc.periods.setStatus(202602, 'closed');
+      }
+      const historicalVoucher = await app.svc.vouchers.get(febVoucher.id);
+      const db = app.svc.db.withTables<FixedAssetsTables>();
+      const historicalBatch = await db
+        .selectFrom('fixed_assets_batch')
+        .selectAll()
+        .where('id', '=', feb)
+        .executeTakeFirstOrThrow();
+      const historicalLines = await db
+        .selectFrom('fixed_assets_line')
+        .selectAll()
+        .where('batch_id', '=', feb)
+        .execute();
+      const input = {
+        id,
+        date: '2026-03-01',
+        value: 659000,
+        note: '后续期间增加原值',
+        expectedOriginal: 600000,
+        expectedChain: 600000,
+        confirmMismatch: false,
+      };
+      const first = await api.adjust(input);
+      // 删除本期未被后续折旧引用的调整，不要求删除上一期凭证。
+      await api.removeAdjustment({ id: first, confirm: true });
+      expect((await api.detail({ id })).card.original).toBe(600000);
+      const adjustment = await api.adjust(input);
+      expect((await api.preview({ period: 202603 })).total).toBe(11000);
+      const march = await run(202603),
+        marchVoucher = await voucher(march);
+      await app.svc.vouchers.changeStatus({ ids: [marchVoucher.id], to: 'audited' });
+      if (status === 'posted')
+        await app.svc.vouchers.changeStatus({ ids: [marchVoucher.id], to: 'posted' });
+      const marchSource = await app.svc.vouchers.get(marchVoucher.id);
+      // 同月调整会改变已经形成的折旧来源，仍须拦截。
+      expect(
+        (
+          await code(
+            api.adjust({
+              ...input,
+              date: '2026-03-15',
+              value: 700000,
+              expectedOriginal: 659000,
+              expectedChain: 659000,
+            }),
+          )
+        ).code,
+      ).toBe('FIXED_ASSETS_SOURCE_VOUCHER');
+      expect((await code(api.removeAdjustment({ id: adjustment, confirm: true }))).code).toBe(
+        'FIXED_ASSETS_SOURCE_VOUCHER',
+      );
+      expect((await code(api.remove({ id, confirm: true }))).code).toBe(
+        'FIXED_ASSETS_SOURCE_VOUCHER',
+      );
+      expect((await code(api.cancel({ id: march, confirm: true }))).code).toBe('VOUCHER_LOCKED');
+      expect((await api.detail({ id })).card).toMatchObject({
+        original: 659000,
+        depreciation: 21000,
+        months: 2,
+      });
+      // 注销追加清理业务，不重写同月已计提的折旧与凭证。
+      const preview = await api.disposalPreview({
+        id,
+        date: '2026-03-31',
+        reasonId,
+        generate: true,
+      });
+      const clearing = await api.dispose({
+        id,
+        date: '2026-03-31',
+        reasonId,
+        generate: true,
+        token: preview.token,
+        confirm: true,
+      });
+      expect(
+        (await app.svc.vouchers.get(clearing!))!.lines.map((l) => [
+          l.accountCode,
+          l.debit,
+          l.credit,
+        ]),
+      ).toEqual([
+        ['1606', 638000, 0],
+        ['1602', 21000, 0],
+        ['1601', 0, 659000],
+      ]);
+      expect((await api.detail({ id })).card.disposal_date).toBe('2026-03-31');
+      await api.undoDisposal({ id, confirm: true });
+      expect(await app.svc.vouchers.get(clearing!)).toBeNull();
+      const again = await api.disposalPreview({ id, date: '2026-03-31', reasonId, generate: true });
+      const lockedClearing = await api.dispose({
+        id,
+        date: '2026-03-31',
+        reasonId,
+        generate: true,
+        token: again.token,
+        confirm: true,
+      });
+      await app.svc.vouchers.changeStatus({ ids: [lockedClearing!], to: 'audited' });
+      expect((await code(api.undoDisposal({ id, confirm: true }))).code).toBe('VOUCHER_LOCKED');
+      expect(await app.svc.vouchers.get(febVoucher.id)).toEqual(historicalVoucher);
+      expect(await app.svc.vouchers.get(marchVoucher.id)).toEqual(marchSource);
+      expect(
+        await db
+          .selectFrom('fixed_assets_batch')
+          .selectAll()
+          .where('id', '=', feb)
+          .executeTakeFirstOrThrow(),
+      ).toEqual(historicalBatch);
+      expect(
+        await db.selectFrom('fixed_assets_line').selectAll().where('batch_id', '=', feb).execute(),
+      ).toEqual(historicalLines);
+    },
+  );
+  it('w_zcgl_yztz/w_zcgl_delete：历史过账不替代本期闭月、后续折旧及逆序撤销保护', async () => {
+    const id = await api.save({ data }),
+      feb = await run(202602),
+      v = await voucher(feb);
+    await app.svc.vouchers.changeStatus({ ids: [v.id], to: 'audited' });
+    await app.svc.vouchers.changeStatus({ ids: [v.id], to: 'posted' });
+    await app.svc.periods.setStatus(202602, 'closed');
+    const input = {
+      id,
+      date: '2026-03-01',
+      value: 659000,
+      note: '后续调整',
+      expectedOriginal: 600000,
+      expectedChain: 600000,
+      confirmMismatch: false,
+    };
+    await app.svc.periods.setStatus(202603, 'closed');
+    expect((await code(api.adjust(input))).code).toBe('PERIOD_CLOSED');
+    expect(
+      (await code(api.disposalPreview({ id, date: '2026-03-31', reasonId, generate: false }))).code,
+    ).toBe('PERIOD_CLOSED');
+    await app.svc.periods.setStatus(202603, 'open');
+    expect(
+      (await code(api.disposalPreview({ id, date: '2026-03-31', reasonId, generate: false }))).code,
+    ).toBe('FIXED_ASSETS_DISPOSAL_DEPRECIATION');
+    const adjustment = await api.adjust(input),
+      march = await run(202603);
+    expect((await code(api.removeAdjustment({ id: adjustment, confirm: true }))).code).toBe(
+      'FIXED_ASSETS_ADJUST_HISTORY',
+    );
+    const p = await api.disposalPreview({ id, date: '2026-03-31', reasonId, generate: false });
+    await api.dispose({
+      id,
+      date: '2026-03-31',
+      reasonId,
+      generate: false,
+      token: p.token,
+      confirm: true,
+    });
+    expect((await code(api.cancel({ id: march, confirm: true }))).code).toBe(
+      'FIXED_ASSETS_REVERSE_ORDER',
+    );
+    await api.undoDisposal({ id, confirm: true });
+    await api.cancel({ id: march, confirm: true });
+    await api.removeAdjustment({ id: adjustment, confirm: true });
+    expect((await api.detail({ id })).card).toMatchObject({
+      original: 600000,
+      depreciation: 10000,
+      months: 1,
+      disposal_date: null,
+    });
+    expect((await app.svc.vouchers.get(v.id))!.status).toBe('posted');
+    expect((await code(api.cancel({ id: feb, confirm: true }))).code).toBe('PERIOD_CLOSED');
+  });
   it('w_zc_qxfz：非最后月、缺确认、关闭期间拒绝', async () => {
     await api.save({ data });
     const a = await run(202602),

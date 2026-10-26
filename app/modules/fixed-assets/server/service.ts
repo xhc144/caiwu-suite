@@ -178,6 +178,7 @@ export function assetService(svc: CoreServices) {
       targetType: 'fixed_assets',
       targetId: id,
     });
+  /** 整卡覆盖、物理删除和统一置数会改变既有来源，检查全部来源凭证。 */
   const assertUnlocked = async (id: number) => {
     const c = await card(id);
     const batches = await db
@@ -194,6 +195,37 @@ export function assetService(svc: CoreServices) {
           'SOURCE_VOUCHER',
           `${c.code} 已生成${v.status === 'audited' ? '已审核' : v.status === 'posted' ? '已过账' : '待审核'}凭证，不能修改或删除来源`,
           '先在资产模块删除待审核凭证；已审核或过账凭证需先逆序反过账、取消审核',
+          `/m/voucher-entry/edit?id=${vid}`,
+        );
+    }
+    return c;
+  };
+  /**
+   * 生命周期业务追加新事件，保留之前月份的折旧快照和凭证。
+   * 原值调整会影响当月及后续折旧；注销须先完成当月折旧，故只与后续月份冲突。
+   * 注销自身的清理凭证始终保护；每次通过 core 重读凭证状态。
+   */
+  const assertLifecycleSourceUnlocked = async (
+    id: number,
+    period: number,
+    operation: 'adjustment' | 'disposal',
+  ) => {
+    const c = await card(id);
+    const batches = await db
+      .selectFrom('fixed_assets_line as l')
+      .innerJoin('fixed_assets_batch as b', 'b.id', 'l.batch_id')
+      .select('b.voucher_id')
+      .where('l.asset_id', '=', id)
+      .where('b.period', operation === 'adjustment' ? '>=' : '>', period)
+      .execute();
+    for (const vid of [...batches.map((b) => b.voucher_id), c.voucher_id]) {
+      if (vid == null) continue;
+      const v = await svc.vouchers.get(vid);
+      if (v)
+        fail(
+          'SOURCE_VOUCHER',
+          `${c.code} 的 ${v.period} 月来源凭证已生成，不能${operation === 'adjustment' ? '调整会影响该来源的原值' : '逆序注销资产'}`,
+          '先从后续业务逆序处理；凭证已审核或过账时需先反过账、取消审核',
           `/m/voucher-entry/edit?id=${vid}`,
         );
     }
@@ -1100,6 +1132,7 @@ export function assetService(svc: CoreServices) {
     masterInternal: (id: number, kind: string) => master(id, kind, true),
     accountInternal: account,
     assertUnlockedInternal: assertUnlocked,
+    assertLifecycleSourceUnlockedInternal: assertLifecycleSourceUnlocked,
     assertNoFutureInternal: assertNoFuture,
     assertChainInternal: assertChain,
     saveInternal,

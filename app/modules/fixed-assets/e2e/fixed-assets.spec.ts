@@ -4,12 +4,12 @@ import { existsSync, readdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRuntime } from '@caiwu/server-kit';
-import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import { createCoreServices, loadServiceUser, type CoreServices } from '@caiwu/core/server';
 import type { Account, DimensionItem, Voucher } from '@caiwu/core';
 import fixedAssets from '../server';
 
 /** 在本次 E2E 的临时账套上调用真实 core 状态服务，不增加测试后门或依赖审核页面。 */
-async function setVoucherStatus(bookId: string, id: number, status: 'audited' | 'posted') {
+async function withBookCore<T>(bookId: string, run: (svc: CoreServices) => Promise<T>) {
   const dataDir = readdirSync(os.tmpdir())
     .filter((n) => n.startsWith('caiwu-e2e-'))
     .map((n) => path.join(os.tmpdir(), n))
@@ -26,13 +26,18 @@ async function setVoucherStatus(bookId: string, id: number, status: 'audited' | 
       now: runtime.now,
       modules: runtime.modules.lookup,
     });
-    await svc.vouchers.changeStatus({ ids: [id], to: 'audited' });
-    if (status === 'posted') await svc.vouchers.changeStatus({ ids: [id], to: 'posted' });
+    return await run(svc);
   } finally {
     await runtime.bookStore.closeAll();
   }
 }
-async function prepare(request: APIRequestContext, token: string) {
+async function setVoucherStatus(bookId: string, id: number, status: 'audited' | 'posted') {
+  return withBookCore(bookId, async (svc) => {
+    await svc.vouchers.changeStatus({ ids: [id], to: 'audited' });
+    if (status === 'posted') await svc.vouchers.changeStatus({ ids: [id], to: 'posted' });
+  });
+}
+async function prepare(request: APIRequestContext, token: string, clearingCode = '1601') {
   const get = <T>(procedure: string, input?: unknown) =>
     callApi<T>(request, procedure, input, { token, method: 'GET' });
   const post = <T>(name: string, input: unknown) =>
@@ -53,7 +58,7 @@ async function prepare(request: APIRequestContext, token: string) {
   await post('saveMaster', { data: { kind: 'reason', code: '01', name: '报废' } });
   await post('saveSettings', {
     depreciationAccountId: id('1602'),
-    clearingAccountId: id('1601'),
+    clearingAccountId: id(clearingCode),
     voucherTypeId: types[0]!.id,
   });
   return {
@@ -422,4 +427,133 @@ test('M15 B/C：Excel模板与逐行导入→重导幂等→九项报表/导出/
   ).toBeNull();
   await page.goto('/m/fixed-assets/queries?field=amount&op=contains&value=1');
   await expect(page.getByText('金额不能使用「含有」操作符', { exact: true })).toBeVisible();
+});
+
+test('M15 P1：2月折旧过账结账后，浏览器完成3月增量调整→折旧→同月过账后注销，既有凭证保持不变', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(90000);
+  const { token, bookId } = await loginWithNewBook(page, request, { product: 'minfei' });
+  await withBookCore(bookId, async (svc) => {
+    await svc.accounts.create(
+      { code: '1606', name: '固定资产清理', categoryId: 'asset' },
+      (await svc.book.info()).codeScheme,
+    );
+  });
+  const p = await prepare(request, token, '1606');
+  const id = await p.post<number>('save', {
+    data: {
+      code: 'LIFE001',
+      name: '跨期生命周期资产',
+      categoryId: p.categoryId,
+      statusId: p.statusId,
+      purposeId: p.purposeId,
+      departmentId: p.departmentId,
+      acquired: '2026-01-01',
+      useDate: '2026-01-01',
+      original: 600000,
+      rate: '0',
+      method: '1',
+      lifeMonths: 60,
+    },
+  });
+  const febPreview = await p.get<{ token: string }>('m.fixed-assets.preview', { period: 202602 });
+  const feb = await p.post<number>('depreciate', {
+    period: 202602,
+    token: febPreview.token,
+    confirm: true,
+  });
+  const febVoucherPreview = await p.get<{ token: string }>('m.fixed-assets.voucherPreview', {
+    id: feb,
+  });
+  const febVoucher = await p.post<Voucher>('generateVoucher', {
+    id: feb,
+    token: febVoucherPreview.token,
+  });
+  await setVoucherStatus(bookId, febVoucher.id, 'posted');
+  await withBookCore(bookId, async (svc) => {
+    await svc.periods.setStatus(202601, 'closed');
+    await svc.periods.setStatus(202602, 'closed');
+  });
+  const historicalSource = await p.get<Voucher>('core.vouchers.get', { id: febVoucher.id });
+  await page.goto('/m/fixed-assets/cards');
+  const asset = page.getByRole('row', { name: /LIFE001/ });
+  await asset.getByRole('button', { name: '原值调整', exact: true }).click();
+  const adjustment = page.getByRole('dialog', { name: '原值调整与查询' });
+  await adjustment.getByLabel('调整日期', { exact: true }).fill('2026-03-01');
+  await adjustment.getByLabel('调整后原值（元）', { exact: true }).fill('6590');
+  await adjustment.getByLabel('调整说明', { exact: true }).fill('3月新增原值');
+  await adjustment.getByRole('button', { name: '确认原值调整', exact: true }).click();
+  await confirmPopover(page);
+  await expect(adjustment).toBeHidden();
+  await expect(asset).toContainText('6,590.00');
+  await page.goto('/m/fixed-assets/depreciation');
+  await page.getByLabel('计提月份', { exact: true }).fill('202603');
+  await page.getByRole('button', { name: '预览本月折旧' }).click();
+  await expect(page.getByText('本月合计：110.00 元', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '确认计提', exact: true }).click();
+  await confirmPopover(page);
+  const marchRow = page.getByRole('row', { name: /202603/ });
+  await marchRow.getByRole('button', { name: '凭证预览/生成' }).click();
+  const voucherDrawer = page.getByRole('dialog', { name: '折旧凭证预览' });
+  await expect(voucherDrawer).toContainText('110.00');
+  await voucherDrawer.getByRole('button', { name: '确认生成凭证' }).click();
+  await confirmPopover(page);
+  await expect(voucherDrawer).toBeHidden();
+  const batches =
+    await p.get<{ id: number; period: number; voucher_id: number | null }[]>(
+      'm.fixed-assets.batches',
+    );
+  const march = batches.find((b) => b.period === 202603)!;
+  await setVoucherStatus(bookId, march.voucher_id!, 'posted');
+  const marchSource = await p.get<Voucher>('core.vouchers.get', { id: march.voucher_id });
+  await page.goto('/m/fixed-assets/cards');
+  await asset.getByRole('button', { name: '注销/撤销' }).click();
+  const disposal = page.getByRole('dialog', { name: '注销资产' });
+  await disposal.getByLabel('注销日期', { exact: true }).fill('2026-03-31');
+  await disposal.getByLabel('注销原因', { exact: true }).click();
+  await page.getByText('01 报废', { exact: true }).last().click();
+  await disposal.getByLabel('当月注销同时生成清理凭证').check();
+  await disposal.getByRole('button', { name: '预览注销' }).click();
+  await expect(
+    disposal.getByText('已计提截止月 202603；清理净值 6,380.00 元', { exact: true }),
+  ).toBeVisible();
+  await expect(disposal).toContainText('1606 固定资产清理');
+  await disposal.getByRole('button', { name: '确认注销', exact: true }).click();
+  await confirmPopover(page);
+  await expect(disposal).toBeHidden();
+  await expect(asset).toHaveCount(0);
+  const detail = await p.get<{
+    card: {
+      original: number;
+      depreciation: number;
+      months: number;
+      disposal_date: string;
+      voucher_id: number;
+    };
+  }>('m.fixed-assets.detail', { id });
+  expect(detail.card).toMatchObject({
+    original: 659000,
+    depreciation: 21000,
+    months: 2,
+    disposal_date: '2026-03-31',
+  });
+  const clearing = await p.get<Voucher>('core.vouchers.get', { id: detail.card.voucher_id });
+  expect(clearing.lines.map((l) => [l.accountCode, l.debit, l.credit])).toEqual([
+    ['1606', 638000, 0],
+    ['1602', 21000, 0],
+    ['1601', 0, 659000],
+  ]);
+  expect(await p.get('core.vouchers.get', { id: febVoucher.id })).toEqual(historicalSource);
+  expect(await p.get('core.vouchers.get', { id: march.voucher_id })).toEqual(marchSource);
+  await expect(p.post('remove', { id, confirm: true })).rejects.toThrow(/来源/);
+  await expect(p.post('cancel', { id: march.id, confirm: true })).rejects.toThrow(/逆序|后续/);
+  await setVoucherStatus(bookId, detail.card.voucher_id, 'audited');
+  await expect(p.post('undoDisposal', { id, confirm: true })).rejects.toThrow(/审核/);
+  expect(
+    (await p.get<{ card: { disposal_date: string } }>('m.fixed-assets.detail', { id })).card
+      .disposal_date,
+  ).toBe('2026-03-31');
+  expect(await p.get('core.vouchers.get', { id: febVoucher.id })).toEqual(historicalSource);
 });
