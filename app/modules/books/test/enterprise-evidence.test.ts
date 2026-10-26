@@ -53,6 +53,7 @@ function template() {
     id: source.templateId,
     version: source.templateVersion,
     name: '合成来源校验专用',
+    description: '仅合成夹具，不代表真实官方科目或法律适用性。',
     sources: [
       {
         title: '合成测试原文（不存在真实文档）',
@@ -140,7 +141,10 @@ describe('w_xt_kgzb_a2/a3 企业完整来源表结构（仅合成夹具）', () 
       const changed = { ...source, rows: [{ ...source.rows[0]!, direction }, source.rows[1]!] };
       expect(() => parseSourcedEnterpriseTemplate(raw, changed)).toThrow();
       raw.accounts[0]!.source += `；性质:${direction}`;
-      if (direction === 'unconfirmed') raw.accounts[0]!.needsReview = true;
+      expect(() => parseSourcedEnterpriseTemplate(raw, changed)).toThrow(/needsReview/);
+      raw.accounts[0]!.needsReview = false;
+      expect(() => parseSourcedEnterpriseTemplate(raw, changed)).toThrow(/needsReview/);
+      raw.accounts[0]!.needsReview = true;
       expect(parseSourcedEnterpriseTemplate(raw, changed).template.accounts[0]?.direction).toBe(
         'debit',
       );
@@ -188,6 +192,38 @@ describe('w_xt_kgzb_a2/a3 企业完整来源表结构（仅合成夹具）', () 
 });
 
 describe('w_xt_kgzb_1 企业模板新建隔离（真实SQLite、合成账套）', () => {
+  it.each(['both', 'no-closing-balance'] as const)(
+    '%s 在当前core中仍是显示占位且元数据不持久化，必须保持待核，不能宣称完整支持',
+    async (nature) => {
+      const raw = template();
+      raw.accounts[0]!.needsReview = true;
+      raw.accounts[0]!.source += `；性质:${nature}`;
+      const source = evidence();
+      const parsed = parseSourcedEnterpriseTemplate(raw, {
+        ...source,
+        rows: [{ ...source.rows[0]!, direction: nature }, source.rows[1]!],
+      });
+      book = await createTestBook({
+        templates: [parsed.template],
+        templateId: parsed.template.id,
+        seed: false,
+      });
+      const account = (await book.svc.accounts.getByCode('1002'))!;
+      expect(account.direction).toBe('debit');
+      expect('source' in account).toBe(false);
+      expect('needsReview' in account).toBe(false);
+      const registered = book.templates.get(parsed.template.id);
+      expect(registered.accounts[0]?.needsReview).toBe(true);
+      expect(templateReviewWarning(registered)).toContain('1项待核科目');
+      await book.store.close(book.info.id);
+      expect(
+        book.store
+          .open(book.info.id)
+          .raw.prepare('SELECT direction FROM account WHERE code = ?')
+          .get('1002'),
+      ).toEqual({ direction: 'debit' });
+    },
+  );
   it('注册另一版本并新建后，旧9科目账套数据、制度身份与凭证均保持；重开亦不补表', async () => {
     book = await createTestBook({ templates: [legacy], templateId: legacy.id, seed: false });
     await seedVouchers(book.svc, [
@@ -262,7 +298,9 @@ describe('w_xt_kgzb_1 企业模板新建隔离（真实SQLite、合成账套）'
         startYear: 2026,
         startMonth: 1,
       }),
-    ).rejects.toThrow();
+    ).rejects.toThrow(
+      'UNIQUE constraint failed: account_dimension.account_id, account_dimension.dimension_type',
+    );
     expect(readdirSync(book.store.booksDir).sort()).toEqual(files);
     expect(await book.svc.accounts.list()).toEqual(original);
   });

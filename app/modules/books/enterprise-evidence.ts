@@ -16,7 +16,7 @@ const officialUrl = z.url().refine((value) => {
   }
 }, '来源须为公开的政府网站 HTTPS 地址');
 
-/** 结构校验不能代替核读原文；这里不提供尚未取得的企业完整科目数据。 */
+/** 只核对结构及来源声明的一致性，不能证明原稿权威性、转录正确或采集许可。 */
 export const EnterpriseChartEvidenceSchema = z
   .object({
     templateId: z.string().min(1),
@@ -96,8 +96,14 @@ export function parseSourcedEnterpriseTemplate(raw: unknown, rawEvidence: unknow
       account.direction !== row.direction
     )
       problems.push(`科目 ${account.code} 的方向与证据不一致`);
-    if ((row.direction === 'unconfirmed' || row.scope === 'unconfirmed') && !account.needsReview)
-      problems.push(`科目 ${account.code} 的未确认项必须 needsReview`);
+    if (
+      (['both', 'no-closing-balance', 'unconfirmed'].includes(row.direction) ||
+        row.scope === 'unconfirmed') &&
+      !account.needsReview
+    )
+      problems.push(
+        `科目 ${account.code} 的未确认或未获core支持的性质必须 needsReview；借/贷值不能代表完整业务语义`,
+      );
     for (const reference of [
       evidence.publicationId,
       evidence.edition,
