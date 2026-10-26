@@ -151,6 +151,14 @@ export function ledgerService(ctx: ServiceContext) {
         .where('l.period', '<=', f.periodTo)
         .where('v.status', 'in', [...statuses])
         .where('v.voided', '=', 0);
+      if (f.excludeClosing) q = q.where('v.closing_kind', 'is', null);
+      else if (f.excludeClosingKinds.length)
+        q = q.where((eb) =>
+          eb.or([
+            eb('v.closing_kind', 'is', null),
+            eb('v.closing_kind', 'not in', f.excludeClosingKinds),
+          ]),
+        );
       if (f.accountCode) {
         q = f.includeChildren
           ? q.where('a.code', 'like', `${f.accountCode}%`)
@@ -228,6 +236,8 @@ export function ledgerService(ctx: ServiceContext) {
       const base = await baseOf(q.periodFrom);
       const targetYear = periodYear(q.periodTo);
       const baseCurrency = q.currency ? (await bookService(ctx).info()).baseCurrency : null;
+      const all = await accounts.list();
+      const byId = new Map(all.map((a) => [a.id, a]));
       const groupDims = DIMENSION_TYPES.filter((d) => q.groupBy.includes(d.id));
       const groupCols = groupDims.map((d) => d.column);
 
@@ -286,6 +296,18 @@ export function ledgerService(ctx: ServiceContext) {
           a.fcOpening += n(r.fc_balance);
           a.qtyOpening += n(r.qty);
           if (base.year === targetYear) {
+            const account = byId.get(a.accountId);
+            if (
+              (q.excludeClosing || q.excludeClosingKinds.length > 0) &&
+              (n(r.ytd_debit) !== 0n || n(r.ytd_credit) !== 0n) &&
+              account &&
+              accountMatches(account, q)
+            )
+              throw new BusinessError({
+                code: 'LEDGER_CLOSING_SCOPE_UNKNOWN',
+                message: '启用前累计发生额没有结转来源，无法可靠排除结转',
+                hint: '请使用有完整凭证明细的年度，或选择包含结转的账面口径',
+              });
             a.ytdDebit += n(r.ytd_debit);
             a.ytdCredit += n(r.ytd_credit);
           }
@@ -293,7 +315,7 @@ export function ledgerService(ctx: ServiceContext) {
       }
 
       // 2. 分录发生额按区间汇总
-      const sumLines = async (from: Period, to: Period) => {
+      const sumLines = async (from: Period, to: Period, filterClosing = false) => {
         if (from > to) return [];
         let lq = ctx.db
           .selectFrom('voucher_line as l')
@@ -320,6 +342,16 @@ export function ledgerService(ctx: ServiceContext) {
           .where('v.status', 'in', [...statuses])
           .where('v.voided', '=', 0)
           .groupBy('l.account_id');
+        if (filterClosing) {
+          if (q.excludeClosing) lq = lq.where('v.closing_kind', 'is', null);
+          else if (q.excludeClosingKinds.length)
+            lq = lq.where((eb) =>
+              eb.or([
+                eb('v.closing_kind', 'is', null),
+                eb('v.closing_kind', 'not in', q.excludeClosingKinds),
+              ]),
+            );
+        }
         for (const col of groupCols)
           lq = lq.select(sql.ref(`l.${col}`).as(col)).groupBy(sql.ref(`l.${col}`));
         if (q.currency)
@@ -343,7 +375,7 @@ export function ledgerService(ctx: ServiceContext) {
         a.qtyOpening += n(r.qty_debit) - n(r.qty_credit);
       }
       // 本期发生
-      for (const r of await sumLines(q.periodFrom, q.periodTo)) {
+      for (const r of await sumLines(q.periodFrom, q.periodTo, true)) {
         const a = get(r.account_id as number, dimsOf(r));
         a.debit += n(r.debit);
         a.credit += n(r.credit);
@@ -354,15 +386,13 @@ export function ledgerService(ctx: ServiceContext) {
       }
       // 本年累计：targetYear 年初（或启用期间）到 periodTo
       const ytdFrom = base.year === targetYear ? base.opening_period : makePeriod(targetYear, 1);
-      for (const r of await sumLines(ytdFrom, q.periodTo)) {
+      for (const r of await sumLines(ytdFrom, q.periodTo, true)) {
         const a = get(r.account_id as number, dimsOf(r));
         a.ytdDebit += n(r.debit);
         a.ytdCredit += n(r.credit);
       }
 
       // 3. 汇总到上级科目
-      const all = await accounts.list();
-      const byId = new Map(all.map((a) => [a.id, a]));
       const totals = new Map<string, Accum>();
       const addInto = (target: Accum, src: Accum) => {
         target.opening += src.opening;

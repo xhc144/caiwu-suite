@@ -1,4 +1,11 @@
-import { BusinessError, periodYear, type BalanceRow, type DimensionTypeId } from '@caiwu/core';
+import {
+  BusinessError,
+  isPeriod,
+  periodYear,
+  periodMonth,
+  type BalanceRow,
+  type DimensionTypeId,
+} from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { z } from 'zod';
 import {
@@ -237,7 +244,7 @@ export function reportService(svc: CoreServices) {
         if (report.revision !== input.expectedRevision)
           fail('CONFLICT', '报表定义已更改，请刷新后再生成');
         await tsvc.periods.require(input.period);
-        const unposted = await tsvc.vouchers.list({
+        let unposted = await tsvc.vouchers.list({
           periodTo: input.period,
           statuses: ['draft', 'pending', 'audited'],
           limit: 1,
@@ -298,6 +305,25 @@ export function reportService(svc: CoreServices) {
             });
           }
         }
+        // 扩展期间可以晚于表头期间；仍须对实际覆盖的未过账凭证明确确认。
+        if (engine.lastPeriod() > input.period) {
+          unposted = await tsvc.vouchers.list({
+            periodTo: engine.lastPeriod(),
+            statuses: ['draft', 'pending', 'audited'],
+            limit: 1,
+          });
+          if (unposted.total > 0 && !input.confirmUnposted)
+            return {
+              kind: 'confirmation' as const,
+              count: unposted.total,
+              links: [
+                {
+                  label: '待审核凭证',
+                  to: `/m/voucher-book?period=${engine.lastPeriod()}&status=pending`,
+                },
+              ],
+            };
+        }
         const snapshot: ReportSnapshot = {
           id: 0,
           reportId: report.id,
@@ -339,6 +365,29 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
   const balances = new Map<string, Value>();
   const visiting = new Set<string>();
   let steps = 0;
+  let lastPeriod = period;
+  const availablePeriods = new Set((await svc.periods.list()).map((p) => p.period));
+  const resolvePeriod = (selector: string | undefined) => {
+    const year = periodYear(period);
+    const selected =
+      selector === 'yearStart'
+        ? year * 100 + 1
+        : selector === 'previousYear' || selector === 'previousYearSameMonth'
+          ? period - 100
+          : selector === 'previousYearEnd'
+            ? (year - 1) * 100 + 12
+            : selector === 'previousMonth'
+              ? periodMonth(period) === 1
+                ? (year - 1) * 100 + 12
+                : period - 1
+              : selector === 'previousYearStart'
+                ? (year - 1) * 100 + 1
+                : !selector || selector === 'current'
+                  ? period
+                  : Number(selector);
+    if (!isPeriod(selected)) throw new FormulaError('取数期间超出有效范围');
+    return selected;
+  };
   const tick = () => {
     if (++steps > 100_000) throw new FormulaError('本次生成超过100000步，请减少引用或拆分报表');
   };
@@ -346,6 +395,16 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
     const key = JSON.stringify(input);
     const old = balances.get(key);
     if (old) return old;
+    const from = resolvePeriod(input.options?.from);
+    const to = resolvePeriod(input.options?.to);
+    if (from > to) throw new FormulaError('取数开始期间不能晚于结束期间');
+    await svc.periods.require(from);
+    await svc.periods.require(to);
+    const months =
+      (periodYear(to) - periodYear(from)) * 12 + periodMonth(to) - periodMonth(from) + 1;
+    if ([...availablePeriods].filter((p) => p >= from && p <= to).length !== months)
+      throw new FormulaError('取数范围内有尚未建立的期间，不能按零发生额计算');
+    lastPeriod = Math.max(lastPeriod, to);
     const account = await svc.accounts.require(input.account);
     const dimensions: Partial<Record<DimensionTypeId, number>> = {};
     if (input.dimension !== 'none') {
@@ -360,16 +419,18 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
       throw new FormulaError(`币种 ${input.currency} 不存在`);
     let total = value(0, input.unit, input.currency);
     if (input.dimension === 'cashflow') {
-      const from = ['ytdDebit', 'ytdCredit'].includes(input.metric)
-        ? Math.max((await svc.book.info()).startPeriod, periodYear(period) * 100 + 1)
-        : period;
+      const activityFrom = ['ytdDebit', 'ytdCredit'].includes(input.metric)
+        ? Math.max((await svc.book.info()).startPeriod, periodYear(to) * 100 + 1)
+        : from;
       const entries = await svc.ledger.entries({
-        periodFrom: from,
-        periodTo: period,
+        periodFrom: activityFrom,
+        periodTo: to,
         accountCode: input.account,
         dimensions,
         currency: input.unit === 'foreignCents' ? input.currency : undefined,
         includeUnposted,
+        excludeClosing: input.options?.closing === 'exclude',
+        excludeClosingKinds: input.options?.closing === 'excludePnl' ? ['pnl'] : undefined,
         limit: 200_000,
       });
       if (entries.length >= 200_000)
@@ -391,12 +452,15 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
         }
     } else {
       const rows = await svc.ledger.balances({
-        periodFrom: period,
-        periodTo: period,
+        periodFrom: from,
+        periodTo: to,
         accountCodes: [input.account],
         dimensions,
         currency: input.unit === 'foreignCents' ? input.currency : undefined,
         includeUnposted,
+        excludeClosing: input.options?.closing === 'exclude',
+        excludeClosingKinds: input.options?.closing === 'excludePnl' ? ['pnl'] : undefined,
+        groupBy: input.options?.groupBy,
         rollup: false,
         includeZero: true,
       });
@@ -436,7 +500,18 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
           throw new FormulaError('core不提供所选取数指标');
         if (typeof n === 'number' && !Number.isSafeInteger(n))
           throw new FormulaError('总账金额超出安全整数范围');
-        total.amount = total.amount.plus(n);
+        const amount = value(n).amount;
+        total.amount = total.amount.plus(
+          input.options?.side === 'debit'
+            ? amount.greaterThan(0)
+              ? amount
+              : 0
+            : input.options?.side === 'credit'
+              ? amount.lessThan(0)
+                ? amount.negated()
+                : 0
+              : amount,
+        );
       }
     }
     if (
@@ -486,7 +561,9 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
           ? await evaluate(parseFormula(c.source), context(code))
           : value(c.source, c.unit, c.currency),
       );
-      if (v.empty) v = { ...v, unit: c.unit, currency: c.currency };
+      // IF/MAX 的普通数值零可以采用单元格声明的单位；非零值仍严格检查。
+      if (v.empty || (v.unit === 'number' && v.amount.isZero()))
+        v = { ...v, unit: c.unit, currency: c.currency };
       if (v.unit !== c.unit || (v.unit === 'foreignCents' && v.currency !== c.currency))
         throw new FormulaError(`${key} 的结果单位与单元格声明不一致，请调整单位`);
       cache.set(key, v);
@@ -501,5 +578,6 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
       evaluate(parseFormula(source), context(code)).then(finalize),
     dependencies: () =>
       [...used.values()].map((r) => ({ id: r.id, code: r.template.code, revision: r.revision })),
+    lastPeriod: () => lastPeriod,
   };
 }
