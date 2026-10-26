@@ -15,6 +15,23 @@ export type DuplexResult = {
   resume?: DuplexResume;
 };
 
+/** 投递抛错不能判断接收端是否已打印；此异常不提供可自动重放的恢复点。 */
+export class DuplexDeliveryError extends Error {
+  readonly completed: DuplexStep[];
+  readonly uncertain: DuplexStep;
+
+  constructor(completed: DuplexStep[], uncertain: DuplexStep, cause: unknown) {
+    const side = uncertain.side === 'front' ? '正面' : '背面';
+    super(
+      `双面投递结果不确定，已作废恢复点。异常步骤：${uncertain.account}，第 ${uncertain.copy} 份${side}，${uncertain.slots.length} 个纸槽。此前 ${completed.length} 步投递已返回成功，仅代表提交，不代表纸张已打印。请先检查系统打印队列与实际纸叠，确认异常步骤是否已打印；核对后取走旧纸叠，再新建作业。禁止按旧恢复点重投。`,
+      { cause },
+    );
+    this.name = 'DuplexDeliveryError';
+    this.completed = completed;
+    this.uncertain = uncertain;
+  }
+}
+
 /** 每科目独立完成正反两次走纸。偶码起点补空白正面，末尾奇页补空白背面。 */
 export function planManualDuplex(view: PrintView, pages: number[], copies = 1): DuplexStep[] {
   viewToPrintJob(view, pages);
@@ -126,8 +143,13 @@ export async function runManualDuplex(
     )
       return cancel(i);
     if (options.signal?.aborted) return cancel(i);
-    // 桥接失败的投递结果不确定，抛错且不自动重投；恢复点只覆盖尚未提交的作业。
-    await options.send(duplexStepToPrintJob(view, step));
+    const job = duplexStepToPrintJob(view, step);
+    try {
+      await options.send(job);
+    } catch (cause) {
+      // 包含恢复前已成功返回的步骤；失败步骤既不能算成功，也不能假定尚未投递。
+      throw new DuplexDeliveryError(steps.slice(0, i), step, cause);
+    }
     sent.push(...step.slots.filter((p): p is number => p != null));
     blankPages += step.slots.filter((p) => p == null).length;
   }

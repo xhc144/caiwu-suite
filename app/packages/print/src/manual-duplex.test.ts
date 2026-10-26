@@ -6,6 +6,7 @@ import {
   runPrintBatch,
   manualDuplexPdfJob,
   type PrintView,
+  type PrintJob,
 } from './index';
 
 function book(a: number, b: number, start = 1): PrintView {
@@ -154,6 +155,83 @@ it('w_preview_zc 确认期间取消信号不提交，投递异常不自动重投
     }),
   ).rejects.toThrow('投递结果不确定');
   expect(fail).toHaveBeenCalledTimes(1);
+});
+
+it.each([false, true])(
+  'w_preview_zc 恢复中间投递异常（接收端已接收=%s）保留成功边界并标记不确定步骤',
+  async (acceptedBeforeFailure) => {
+    const view = book(3, 2),
+      accepted: string[] = [];
+    const first = await runPrintBatch(view, {
+      pages: all(view),
+      copies: 1,
+      pause: 'none',
+      duplex: true,
+      send: async (job) => {
+        accepted.push(job.html);
+      },
+      confirm: vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false),
+    });
+    expect(first.resume?.nextStep).toBe(1);
+    const cause = new Error('投递连接中断');
+    const send = vi.fn(async (job: PrintJob) => {
+      if (send.mock.calls.length === 3) {
+        if (acceptedBeforeFailure) accepted.push(job.html);
+        throw cause;
+      }
+      accepted.push(job.html);
+    });
+    const error = await runPrintBatch(view, {
+      pages: all(view),
+      copies: 1,
+      pause: 'none',
+      duplex: true,
+      resume: first.resume,
+      send,
+      confirm: async () => true,
+    }).catch((error: unknown) => error);
+    expect(error).toMatchObject({
+      name: 'DuplexDeliveryError',
+      cause,
+      completed: planManualDuplex(view, all(view)).slice(0, 3),
+      uncertain: { account: 'B', copy: 1, side: 'back', slots: [5] },
+    });
+    expect(error).not.toHaveProperty('resume');
+    expect((error as Error).message).toContain('已作废恢复点');
+    expect((error as Error).message).toContain('系统打印队列与实际纸叠');
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(accepted).toHaveLength(acceptedBeforeFailure ? 4 : 3);
+  },
+);
+
+it('w_preview_zc 发送成功期间取消：仅在成功返回后推进恢复点，下一次不重投', async () => {
+  const view = book(3, 2),
+    controller = new AbortController(),
+    send = vi.fn(async () => {
+      controller.abort();
+    });
+  const first = await runPrintBatch(view, {
+    pages: all(view),
+    copies: 1,
+    pause: 'none',
+    duplex: true,
+    signal: controller.signal,
+    send,
+    confirm: async () => true,
+  });
+  expect(first.sent).toEqual([1, 3]);
+  expect(first.resume?.nextStep).toBe(1);
+  const resumed = await runPrintBatch(view, {
+    pages: all(view),
+    copies: 1,
+    pause: 'none',
+    duplex: true,
+    resume: first.resume,
+    send,
+    confirm: async () => true,
+  });
+  expect(resumed).toEqual({ sent: [2, 4, 5], cancelled: false, blankPages: 1 });
+  expect(send).toHaveBeenCalledTimes(4);
 });
 
 it('w_preview_zc 选页缺口也保留对应纸槽；PDF 交错顺序保留空白背页', () => {

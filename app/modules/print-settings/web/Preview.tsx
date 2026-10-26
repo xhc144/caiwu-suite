@@ -10,6 +10,7 @@ import {
   runPrintBatch,
   manualDuplexPdfJob,
   planManualDuplex,
+  DuplexDeliveryError,
   type DuplexResume,
   saveAsPdf,
   viewToPrintJob,
@@ -34,6 +35,7 @@ export default function Preview({
     [scope, setScope] = useState('all'),
     [busy, setBusy] = useState(false),
     [duplex, setDuplex] = useState(false),
+    [duplexBlocked, setDuplexBlocked] = useState<string | null>(null),
     [pending, setPending] = useState<{
       view: PrintView;
       pages: number[];
@@ -47,7 +49,8 @@ export default function Preview({
   const canExport = usePermission('print-settings.export');
   const audit = useMutation(api.recordOutput.mutationOptions());
   const current = Math.min(page, view.pages.length),
-    g = layoutGeometry(view.layout);
+    g = layoutGeometry(view.layout),
+    outputBlocked = !!pending || !!duplexBlocked;
   const confirm = (message: string) =>
     new Promise<boolean>((resolve) => {
       let accepted = false;
@@ -65,7 +68,7 @@ export default function Preview({
       });
     });
   const output = async (pdf: boolean, which?: 'current' | 'all', resume = false) => {
-    if (lock.current) return;
+    if (lock.current || duplexBlocked) return;
     if (pending && !resume) return;
     if (resume && (!pending || pending.view !== view)) {
       showError(
@@ -80,6 +83,7 @@ export default function Preview({
     lock.current = true;
     setBusy(true);
     abort.current = new AbortController();
+    let duplexStarted = false;
     try {
       const target = which ?? scope;
       const selected =
@@ -108,6 +112,7 @@ export default function Preview({
             isDesktop() ? '已取消 PDF 保存' : '打印对话框已关闭，文件是否保存以系统对话框为准',
           );
       } else {
+        duplexStarted = duplex;
         const result = await runPrintBatch(view, {
           pages: selected,
           copies: view.layout.copies,
@@ -126,6 +131,15 @@ export default function Preview({
         );
       }
     } catch (e) {
+      if (duplexStarted) {
+        // 一旦进入双面执行，任何异常都不能再沿用执行前的恢复点。
+        setPending(null);
+        setDuplexBlocked(
+          e instanceof DuplexDeliveryError
+            ? e.message
+            : '双面作业中断，已作废恢复点。请先检查系统打印队列与实际纸叠，核对已提交部分并取走旧纸叠，再新建作业。',
+        );
+      }
       showError(e);
     } finally {
       lock.current = false;
@@ -158,6 +172,7 @@ export default function Preview({
           title="双面作业已暂停，恢复点仅在当前预览有效。先确认系统已提交作业的实际结果，再恢复尚未提交部分；关闭预览不保存恢复点。"
         />
       )}
+      {duplexBlocked && <Alert type="error" title={duplexBlocked} />}
       <Space wrap style={{ margin: '12px 0' }}>
         <Button disabled={current <= 1 || busy} onClick={() => setPage(current - 1)}>
           上页
@@ -210,7 +225,7 @@ export default function Preview({
           <select
             aria-label="打印范围"
             value={scope}
-            disabled={busy || !!pending}
+            disabled={busy || outputBlocked}
             onChange={(e) => setScope(e.target.value)}
           >
             <option value="all">全部</option>
@@ -223,6 +238,7 @@ export default function Preview({
             aria-label="页码范围"
             value={range}
             placeholder="1,3,5-12"
+            disabled={busy || outputBlocked}
             onChange={(e) => setRange(e.target.value)}
           />
         )}
@@ -231,29 +247,35 @@ export default function Preview({
             <input
               type="checkbox"
               checked={duplex}
-              disabled={busy || !!pending}
+              disabled={busy || outputBlocked}
               onChange={(e) => setDuplex(e.target.checked)}
             />
             奇偶页分次打印（手动翻面）
           </label>
         )}
-        <Button disabled={busy || !!layoutError || !!pending} onClick={() => void output(false)}>
+        <Button
+          disabled={busy || !!layoutError || outputBlocked}
+          onClick={() => void output(false)}
+        >
           打印所选范围
         </Button>
         <Button
-          disabled={busy || !!layoutError || !!pending}
+          disabled={busy || !!layoutError || outputBlocked}
           onClick={() => void output(false, 'current')}
         >
           打印本页
         </Button>
         <Button
-          disabled={busy || !!layoutError || !!pending}
+          disabled={busy || !!layoutError || outputBlocked}
           onClick={() => void output(false, 'all')}
         >
           打印全部
         </Button>
         {canExport && (
-          <Button disabled={busy || !!layoutError || !!pending} onClick={() => void output(true)}>
+          <Button
+            disabled={busy || !!layoutError || outputBlocked}
+            onClick={() => void output(true)}
+          >
             PDF
           </Button>
         )}
@@ -278,6 +300,23 @@ export default function Preview({
               放弃双面恢复点
             </Button>
           </>
+        )}
+        {duplexBlocked && (
+          <Button
+            disabled={busy}
+            onClick={() =>
+              modal.confirm({
+                title: '已人工核对系统打印队列与实际纸叠？',
+                content:
+                  '异常步骤可能已经打印，旧恢复点已作废。请核对并取走旧纸叠。新作业会从正面开始，不会接续旧作业；关闭预览也不会撤销已提交作业。确认后仅解除阻止，不会立即投递。',
+                okText: '已核对，允许新建',
+                cancelText: '继续核对',
+                onOk: () => setDuplexBlocked(null),
+              })
+            }
+          >
+            核对后新建双面作业
+          </Button>
         )}
         {busy ? (
           <Button onClick={() => abort.current?.abort()}>取消后续打印</Button>
