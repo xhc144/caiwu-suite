@@ -13,21 +13,83 @@ import type {
 import { assertServiceScope } from '../service-scope';
 import type { CoreServices } from './index';
 
-const transactions = new AsyncLocalStorage<{ svc: CoreServices; active: boolean }>();
-const callbacks = new AsyncLocalStorage<object>();
+type TransactionScope = {
+  svc: CoreServices;
+  active: boolean;
+  closing: boolean;
+  pendingWith: Set<Promise<unknown>>;
+  withFailed: boolean;
+  withError: unknown;
+};
+const transactions = new AsyncLocalStorage<TransactionScope>();
+const callbacks = new AsyncLocalStorage<{ svc: CoreServices; active: boolean }>();
 
 export function withCoreServiceTransaction<T>(
   svc: CoreServices,
   run: () => Promise<T>,
 ): Promise<T> {
-  const scope = { svc, active: true };
+  const scope: TransactionScope = {
+    svc,
+    active: true,
+    closing: false,
+    pendingWith: new Set(),
+    withFailed: false,
+    withError: undefined,
+  };
   return transactions.run(scope, async () => {
     try {
-      return await run();
+      const result = await run();
+      scope.closing = true;
+      const unfinished = scope.pendingWith.size > 0;
+      if (unfinished) {
+        await drainInventoryWith(scope);
+        fail(
+          'INVENTORY_WITH_PENDING',
+          '事务回调结束时仍有未等待的库存回调，不能提交',
+          '请在 svc.tx 回调内 await 或 return t.inventory.with(...)',
+        );
+      }
+      if (scope.withFailed) throw scope.withError;
+      return result;
     } finally {
+      scope.closing = true;
+      if (scope.pendingWith.size) await drainInventoryWith(scope);
       scope.active = false;
     }
   });
+}
+
+async function drainInventoryWith(scope: TransactionScope): Promise<void> {
+  while (scope.pendingWith.size) await Promise.allSettled([...scope.pendingWith]);
+}
+
+/** 登记整个 with 返回的 Promise；观察拒绝不会改变调用方await到的结果。 */
+function registerInventoryWith<T>(svc: CoreServices, run: () => Promise<T>): Promise<T> {
+  const current = transactions.getStore();
+  const scope = current?.active && current.svc === svc ? current : undefined;
+  const operation = (async () => {
+    if (scope?.closing)
+      fail(
+        'INVENTORY_SCOPE_EXPIRED',
+        '事务回调已结束，不能启动新的库存回调',
+        '请在当前 svc.tx 回调内完成所有库存操作',
+      );
+    return run();
+  })();
+  if (scope) {
+    scope.pendingWith.add(operation);
+    void operation.then(
+      () => {
+        scope.pendingWith.delete(operation);
+      },
+      (error: unknown) => {
+        if (!scope.withFailed) scope.withError = error;
+        scope.withFailed = true;
+        scope.pendingWith.delete(operation);
+      },
+    );
+  }
+  return operation;
 }
 
 function fail(code: string, message: string, hint: string): never {
@@ -37,9 +99,13 @@ function fail(code: string, message: string, hint: string): never {
 /** 事务服务不可在旧回调结束后通过再次 tx 复活。 */
 export function assertCoreServiceTransaction(svc: CoreServices): void {
   const current = transactions.getStore();
+  const callback = callbacks.getStore();
   if (
     svc.db.isTransaction &&
-    (!current?.active || current.svc !== svc || !isInDatabaseTransaction())
+    (!current?.active ||
+      current.svc !== svc ||
+      !isInDatabaseTransaction() ||
+      (current.closing && (!callback?.active || callback.svc !== svc)))
   )
     fail(
       'INVENTORY_SCOPE_EXPIRED',
@@ -125,72 +191,73 @@ export function inventoryService(svc: CoreServices): InventoryService {
       assertBound();
       return result;
     },
-    async with<T>(run: (inventory: InventoryCostingCapability) => Promise<T>): Promise<T> {
-      assertBound();
-      if (!svc.db.isTransaction || !isInDatabaseTransaction())
-        fail(
-          'TRANSACTION_REQUIRED',
-          '写库存成本必须在 svc.tx 回调内执行',
-          '请调用 svc.tx(t => t.inventory.with(...))',
-        );
-      return provider().with(async (inventory) => {
-        const callback = {};
-        return callbacks.run(callback, async () => {
-          let active = true;
-          const pending = new Set<Promise<unknown>>();
-          const guard =
-            <A extends unknown[], R>(method: (...args: A) => Promise<R>) =>
-            async (...args: A): Promise<R> => {
+    with<T>(run: (inventory: InventoryCostingCapability) => Promise<T>): Promise<T> {
+      return registerInventoryWith(svc, async () => {
+        assertBound();
+        if (!svc.db.isTransaction || !isInDatabaseTransaction())
+          fail(
+            'TRANSACTION_REQUIRED',
+            '写库存成本必须在 svc.tx 回调内执行',
+            '请调用 svc.tx(t => t.inventory.with(...))',
+          );
+        return provider().with(async (inventory) => {
+          const callback = { svc, active: true };
+          return callbacks.run(callback, async () => {
+            const pending = new Set<Promise<unknown>>();
+            const guard =
+              <A extends unknown[], R>(method: (...args: A) => Promise<R>) =>
+              async (...args: A): Promise<R> => {
+                assertBound();
+                if (!callback.active || callbacks.getStore() !== callback)
+                  fail(
+                    'INVENTORY_SCOPE_EXPIRED',
+                    '库存能力的回调作用域已结束',
+                    '请在当前 inventory.with 回调内完成操作',
+                  );
+                const result = method(...args);
+                pending.add(result);
+                try {
+                  return await result;
+                } finally {
+                  pending.delete(result);
+                }
+              };
+            const capability: InventoryCostingCapability = Object.freeze({
+              snapshot: guard((period: number) => inventory.snapshot(period)),
+              commitCosting: guard(async (input: CostingCommitInput) => {
+                assertHistory(await inventory.snapshot(input.period));
+                return inventory.commitCosting(input);
+              }),
+              cancelCosting: guard(async (input: CostingCancelInput) => {
+                // snapshot 的期间仅用于读取完整批次链，不替代库存工厂的期间/状态检查。
+                const period =
+                  (await svc.periods.current())?.period ?? (await svc.book.info()).startPeriod;
+                assertHistory(await inventory.snapshot(period));
+                return inventory.cancelCosting(input);
+              }),
+              lockVoucherSource: guard((input: VoucherSourceInput) =>
+                inventory.lockVoucherSource(input),
+              ),
+              releaseVoucherSource: guard((input: VoucherSourceInput) =>
+                inventory.releaseVoucherSource(input),
+              ),
+            });
+            try {
+              const result = await run(capability);
               assertBound();
-              if (!active || callbacks.getStore() !== callback)
+              if (pending.size)
                 fail(
-                  'INVENTORY_SCOPE_EXPIRED',
-                  '库存能力的回调作用域已结束',
-                  '请在当前 inventory.with 回调内完成操作',
+                  'INVENTORY_OPERATION_PENDING',
+                  '库存回调结束时仍有未等待的操作',
+                  '请在回调内 await 每个库存操作',
                 );
-              const result = method(...args);
-              pending.add(result);
-              try {
-                return await result;
-              } finally {
-                pending.delete(result);
-              }
-            };
-          const capability: InventoryCostingCapability = Object.freeze({
-            snapshot: guard((period: number) => inventory.snapshot(period)),
-            commitCosting: guard(async (input: CostingCommitInput) => {
-              assertHistory(await inventory.snapshot(input.period));
-              return inventory.commitCosting(input);
-            }),
-            cancelCosting: guard(async (input: CostingCancelInput) => {
-              // snapshot 的期间仅用于读取完整批次链，不替代库存工厂的期间/状态检查。
-              const period =
-                (await svc.periods.current())?.period ?? (await svc.book.info()).startPeriod;
-              assertHistory(await inventory.snapshot(period));
-              return inventory.cancelCosting(input);
-            }),
-            lockVoucherSource: guard((input: VoucherSourceInput) =>
-              inventory.lockVoucherSource(input),
-            ),
-            releaseVoucherSource: guard((input: VoucherSourceInput) =>
-              inventory.releaseVoucherSource(input),
-            ),
+              return result;
+            } finally {
+              callback.active = false;
+              // 先排空已启动的操作再让外层事务提交或回滚，避免操作逃逸到已结束事务。
+              await Promise.allSettled([...pending]);
+            }
           });
-          try {
-            const result = await run(capability);
-            assertBound();
-            if (pending.size)
-              fail(
-                'INVENTORY_OPERATION_PENDING',
-                '库存回调结束时仍有未等待的操作',
-                '请在回调内 await 每个库存操作',
-              );
-            return result;
-          } finally {
-            active = false;
-            // 先排空已启动的操作再让外层事务提交或回滚，避免操作逃逸到已结束事务。
-            await Promise.allSettled([...pending]);
-          }
         });
       });
     },

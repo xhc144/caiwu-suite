@@ -163,3 +163,83 @@ it('未等待的操作在退出with前排空并强制真实事务回滚', async 
   await operation;
   expect(await book.forModule('costing').settings.get('pending-write', null)).toBeNull();
 });
+
+it('整个with仍在初始化时外层抛错，排空后回滚并保留调用方原错误', async () => {
+  let entered: (() => void) | undefined;
+  let release: (() => void) | undefined;
+  const started = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const blocked = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  book = await createTestBook({
+    providers: {
+      inventory: (svc) => ({
+        snapshot: async () => snapshot,
+        with: async (run) => {
+          entered!();
+          await blocked;
+          await svc.settings.set('provider-initialization', 'must-rollback');
+          return run(capability);
+        },
+      }),
+    },
+  });
+  let operation: Promise<unknown> | undefined;
+  let probe: Promise<boolean> | undefined;
+  let probeRead: (() => void) | undefined;
+  let settled = false;
+  const transaction = book.forModule('costing').tx(async (t) => {
+    await t.settings.set('caller-before-with', 'must-rollback');
+    probe = new Promise<void>((resolve) => {
+      probeRead = resolve;
+    }).then(async () => {
+      await expect(t.inventory.snapshot(202601)).rejects.toThrow(/事务/);
+      return true;
+    });
+    operation = t.inventory.with(async () => undefined);
+    void operation.catch(() => undefined);
+    throw new Error('调用方原错误');
+  });
+  const completed = transaction.catch((error: unknown) => {
+    settled = true;
+    return error;
+  });
+  await started;
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  const settledBeforeRelease = settled;
+  probeRead!();
+  const readExpired = await probe!.catch(() => false);
+  release!();
+  const error = await completed;
+  await operation;
+  expect(settledBeforeRelease).toBe(false);
+  expect(readExpired).toBe(true);
+  expect(error).toMatchObject({ message: '调用方原错误' });
+  expect(await book.forModule('costing').settings.get('caller-before-with', null)).toBeNull();
+  expect(await book.forModule('costing').settings.get('provider-initialization', null)).toBeNull();
+});
+
+it('捕获已完成with的异常仍须回滚，不能通过吞掉回调错误提交部分写入', async () => {
+  book = await createTestBook({
+    providers: {
+      inventory: () => ({ snapshot: async () => snapshot, with: (run) => run(capability) }),
+    },
+  });
+  await expect(
+    book.forModule('costing').tx(async (t) => {
+      await t.settings.set('caller-before-failed-with', 'must-rollback');
+      await t.inventory
+        .with(async () => {
+          await t.settings.set('inside-failed-with', 'must-rollback');
+          throw new Error('库存回调失败');
+        })
+        .catch(() => undefined);
+    }),
+  ).rejects.toThrow('库存回调失败');
+  expect(
+    await book.forModule('costing').settings.get('caller-before-failed-with', null),
+  ).toBeNull();
+  expect(await book.forModule('costing').settings.get('inside-failed-with', null)).toBeNull();
+});
