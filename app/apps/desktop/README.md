@@ -11,6 +11,8 @@
 
 配置和日志默认在用户应用数据目录 `caiwu-desktop/`。独立测试可设置绝对路径 `CAIWU_DESKTOP_USER_DATA_DIR`，不得指向日常使用的配置目录。
 
+Windows x64 手动打包前，在 `app/` 执行 `node apps/desktop/build/prepare-native.mjs`、`pnpm -C apps/desktop exec electron-builder install-app-deps --platform win32 --arch x64`，再 `pnpm -C apps/desktop exec electron-builder --win nsis --x64 --publish never`。SQLite 13.0.3 使用 N-API；准备脚本移除本次安装的主机 prebuild，确保入包和实际加载的是 Electron 重编译结果。
+
 运行：在 `app/` 执行 `pnpm desktop:build`、`pnpm -C apps/desktop start`。桌面自有测试由 `pnpm exec vitest run apps/desktop` 执行。真实 Electron 回归需先运行 `pnpm exec tsx apps/desktop/qa/prepare-fixture.ts <全新绝对临时目录>`，设置 `CAIWU_DESKTOP_QA_FIXTURE` 为该目录，再运行 `pnpm exec playwright test --config apps/desktop/playwright.config.ts`；需要 Electron 本体和桌面显示。Node 夹具须在重编译 Electron ABI 之前创建。
 
 未完成：

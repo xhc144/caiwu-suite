@@ -60,7 +60,10 @@ jobs:
         run: pnpm exec tsx apps/desktop/qa/prepare-fixture.ts "$env:RUNNER_TEMP/m21-qa"
       - name: 为 Electron 重编译 SQLite
         id: native
-        run: pnpm -C apps/desktop exec electron-builder install-app-deps --platform win32 --arch x64
+        run: |
+          node apps/desktop/build/prepare-native.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm -C apps/desktop exec electron-builder install-app-deps --platform win32 --arch x64
       - name: 生成用于覆盖回归的旧版本 NSIS（相同代码，不冒充历史发行版）
         run: |
           pnpm -C apps/desktop exec electron-builder --win nsis --x64 --publish never --config.extraMetadata.version=0.0.9 --config.directories.output=release-old 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-package-old.log"
@@ -110,6 +113,7 @@ jobs:
             ${{ runner.temp }}/m21-package-old.log
             ${{ runner.temp }}/m21-package.log
             ${{ runner.temp }}/m21-desktop-qa.log
+            ${{ runner.temp }}/m21-qa/config/logs/desktop.log*
           if-no-files-found: ignore
           retention-days: 3
       - name: 保留全仓检查的失败结论

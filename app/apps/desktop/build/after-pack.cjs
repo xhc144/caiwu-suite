@@ -16,11 +16,16 @@ module.exports = async (context) => {
     'dist/server.cjs',
     'package.json',
     'node_modules/better-sqlite3/lib/database.js',
-    'node_modules/bindings/bindings.js',
+    'node_modules/better-sqlite3/lib/binding.js',
   ]) {
     if (!entry(name)) throw new Error(`安装包缺少 ${name}`);
   }
   const native = 'node_modules/better-sqlite3/build/Release/better_sqlite3.node';
+  if (entry('node_modules/better-sqlite3/prebuilds/win32-x64.node')) {
+    throw new Error(
+      'SQLite 仍会优先加载自带 prebuild，请先运行 build/prepare-native.mjs 再为 Electron 重编译',
+    );
+  }
   if (!entry(native)?.unpacked || !existsSync(path.join(resources, 'app.asar.unpacked', native))) {
     throw new Error('安装包缺少解包的 SQLite 原生模块');
   }

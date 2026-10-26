@@ -58,11 +58,18 @@ let log: ReturnType<typeof createLog> = () => {};
 
 // 与版本号、安装目录和开发 checkout 无关；单实例锁及用户设置随升级保持稳定。
 app.setName('财务软件');
-const userData = process.env.CAIWU_DESKTOP_USER_DATA_DIR
-  ? validDirectory(process.env.CAIWU_DESKTOP_USER_DATA_DIR)
-  : path.join(app.getPath('appData'), 'caiwu-desktop');
-mkdirSync(userData, { recursive: true });
-app.setPath('userData', userData);
+let userData = '';
+let configFailure = false;
+try {
+  userData = process.env.CAIWU_DESKTOP_USER_DATA_DIR
+    ? validDirectory(process.env.CAIWU_DESKTOP_USER_DATA_DIR)
+    : path.join(app.getPath('appData'), 'caiwu-desktop');
+  if (app.isPackaged) assertDataOutsideInstall(userData, path.dirname(process.execPath));
+  mkdirSync(userData, { recursive: true });
+  app.setPath('userData', userData);
+} catch {
+  configFailure = true;
+}
 
 function spawnServer(token: string): ServiceChild {
   const env = {
@@ -739,7 +746,15 @@ async function initialize() {
   await boot();
 }
 
-if (!app.requestSingleInstanceLock()) {
+if (configFailure) {
+  void app.whenReady().then(() => {
+    dialog.showErrorBox(
+      '用户配置目录不可用',
+      '请检查用户配置目录的写入权限和磁盘空间。如设置了 CAIWU_DESKTOP_USER_DATA_DIR，请使用与安装目录互不包含的独立绝对路径后重试。软件尚未启动本地服务，也未更改账套。',
+    );
+    app.exit(1);
+  });
+} else if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => wakeWindow(mainWindow));
