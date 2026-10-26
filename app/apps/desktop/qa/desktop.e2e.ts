@@ -340,13 +340,17 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         desktop!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isMaximized()),
       )
       .toBe(true);
+    // Playwright 在应用退出后释放 ElectronApplication；提前保存真实子进程句柄。
+    const firstProcess = desktop.process();
     await desktop
       .evaluate(({ dialog, BrowserWindow }) => {
         dialog.showMessageBoxSync = () => 1;
         BrowserWindow.getAllWindows()[0]!.close();
       })
       .catch(() => {});
-    await expect.poll(() => desktop!.process().exitCode).not.toBeNull();
+    await expect.poll(() => firstProcess.exitCode).not.toBeNull();
+    expect(firstProcess.exitCode).toBe(0);
+    console.log('未保存关闭：取消后窗口/服务保留，确认放弃后进程正常退出');
     desktop = undefined;
     if (newInstaller) {
       // 模拟旧用户误把账套放进安装树；覆盖安装必须停止，不能递归删除这些数据。
@@ -380,12 +384,14 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         .dataDir,
     ).toBe(fixture.dataDir);
     if (newInstaller) console.log('③ 覆盖升级保留账套、备份、设置并重新启动：通过');
+    const reopenedProcess = desktop.process();
     await desktop
       .evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]!.close();
       })
       .catch(() => {});
-    await expect.poll(() => desktop!.process().exitCode).not.toBeNull();
+    await expect.poll(() => reopenedProcess.exitCode).not.toBeNull();
+    expect(reopenedProcess.exitCode).toBe(0);
     desktop = undefined;
     if (installed) {
       const uninstaller = readdirSync(path.dirname(executable)).find((name) =>
