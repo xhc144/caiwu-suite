@@ -1,15 +1,33 @@
 import type { CoreServices } from '@caiwu/core/server';
 import { seedVouchers, voucherInputFromSpec, type VoucherSpec } from '@caiwu/testkit';
-import { buildBalanceSheetSlice, buildCashflowSlice } from '../../templates/enterprise';
+import {
+  buildBalanceSheetSlice,
+  buildCashflowSlice,
+  type BalanceBindings,
+} from '../../templates/enterprise';
 
 /** 编码全部是测试账套自定义映射，绝不据此声称存在完整官方科目表。 */
 export const balanceBindings = {
-  cash: ['1001', '1002'],
-  fixedAssets: ['1601', '1602', '1603', '1606'],
-  construction: ['1604', '1609', '1605', '1608'],
-  shortTermLoans: ['2001'],
-  capital: ['4001'],
-} as const;
+  cash: {
+    cashOnHand: { state: 'mapped', accounts: ['1001'] },
+    bankDeposits: { state: 'mapped', accounts: ['1002'] },
+    otherMonetaryFunds: { state: 'notApplicable', reason: '该独立测试账套没有其他货币资金业务' },
+  },
+  fixedAssets: {
+    gross: { state: 'mapped', accounts: ['1601'] },
+    accumulatedDepreciation: { state: 'mapped', accounts: ['1602'] },
+    impairment: { state: 'mapped', accounts: ['1603'] },
+    disposalClearing: { state: 'mapped', accounts: ['1606'] },
+  },
+  construction: {
+    construction: { state: 'mapped', accounts: ['1604'] },
+    constructionImpairment: { state: 'mapped', accounts: ['1609'] },
+    materials: { state: 'mapped', accounts: ['1605'] },
+    materialsImpairment: { state: 'mapped', accounts: ['1608'] },
+  },
+  shortTermLoans: { carryingBalance: { state: 'mapped', accounts: ['2001'] } },
+  capital: { carryingBalance: { state: 'mapped', accounts: ['4001'] } },
+} satisfies BalanceBindings;
 
 export const cashBindings = {
   cashAccounts: ['1001', '1002'],
@@ -189,10 +207,8 @@ export async function setupEnterpriseFixture(svc: CoreServices) {
   await seedVouchers(svc, january);
 }
 
-export function balanceSlice() {
-  return buildBalanceSheetSlice(
-    Object.fromEntries(Object.entries(balanceBindings).map(([k, v]) => [k, [...v]])),
-  );
+export async function balanceSlice(svc: CoreServices) {
+  return buildBalanceSheetSlice(balanceBindings, await svc.accounts.list());
 }
 export async function cashSlice(svc: CoreServices) {
   return buildCashflowSlice(cashBindings, await svc.accounts.list());

@@ -173,8 +173,80 @@ const roots = z
   .array(z.string().regex(/^\d{1,20}$/))
   .min(1)
   .max(6);
-const BalanceBindingsSchema = z.partialRecord(z.enum(SIMPLE_BALANCE_KEYS), roots);
-export type BalanceBindings = z.input<typeof BalanceBindingsSchema>;
+const RoleBindingSchema = z.discriminatedUnion('state', [
+  z.object({ state: z.literal('mapped'), accounts: roots }).strict(),
+  z
+    .object({
+      state: z.literal('zero'),
+      accounts: roots,
+      reason: z.string().trim().min(4).max(300),
+    })
+    .strict(),
+  z
+    .object({ state: z.literal('notApplicable'), reason: z.string().trim().min(4).max(300) })
+    .strict(),
+]);
+export type RoleBinding = z.input<typeof RoleBindingSchema>;
+const ROLE_LABELS: Record<string, string> = {
+  cashOnHand: '库存现金',
+  bankDeposits: '银行存款',
+  otherMonetaryFunds: '其他货币资金',
+  gross: '原值',
+  accumulatedDepreciation: '累计折旧',
+  impairment: '减值准备',
+  disposalClearing: '固定资产清理',
+  construction: '在建工程',
+  constructionImpairment: '在建工程减值准备',
+  materials: '工程物资',
+  materialsImpairment: '工程物资减值准备',
+  accumulatedAmortization: '累计摊销',
+  carryingBalance: '账面余额',
+};
+/** 每项必须逐个声明，不能把缺少的备抵或清理账户默认为零。 */
+export const BALANCE_ROLES = {
+  cash: ['cashOnHand', 'bankDeposits', 'otherMonetaryFunds'],
+  fixedAssets: ['gross', 'accumulatedDepreciation', 'impairment', 'disposalClearing'],
+  construction: ['construction', 'constructionImpairment', 'materials', 'materialsImpairment'],
+  rightOfUseAssets: ['gross', 'accumulatedDepreciation', 'impairment'],
+  intangibleAssets: ['gross', 'accumulatedAmortization', 'impairment'],
+  goodwill: ['gross', 'impairment'],
+  longTermPrepaid: ['carryingBalance'],
+  deferredTaxAssets: ['carryingBalance'],
+  shortTermLoans: ['carryingBalance'],
+  notesPayable: ['carryingBalance'],
+  employeePayable: ['carryingBalance'],
+  deferredTaxLiabilities: ['carryingBalance'],
+  capital: ['carryingBalance'],
+  capitalReserve: ['carryingBalance'],
+  treasuryStock: ['carryingBalance'],
+  otherComprehensive: ['carryingBalance'],
+  specialReserve: ['carryingBalance'],
+  surplusReserve: ['carryingBalance'],
+} as const;
+export type BalanceBindings = {
+  [K in keyof typeof BALANCE_ROLES]?: { [R in (typeof BALANCE_ROLES)[K][number]]: RoleBinding };
+};
+const BalanceBindingsSchema = z
+  .partialRecord(z.enum(SIMPLE_BALANCE_KEYS), z.record(z.string(), RoleBindingSchema))
+  .superRefine((bindings, ctx) => {
+    for (const [key, roles] of Object.entries(bindings)) {
+      const required: readonly string[] = BALANCE_ROLES[key as keyof typeof BALANCE_ROLES];
+      for (const role of required)
+        if (!(role in roles))
+          ctx.addIssue({
+            code: 'custom',
+            path: [key, role],
+            message: `缺少组成角色“${ROLE_LABELS[role]}”，请映射账户或明确声明不适用`,
+          });
+      for (const role of Object.keys(roles))
+        if (!required.includes(role))
+          ctx.addIssue({
+            code: 'custom',
+            path: [key, role],
+            message: `${key}含未知组成角色${role}`,
+          });
+    }
+  });
 
 function noOverlap(codes: string[], label: string) {
   for (const [i, a] of codes.entries())
@@ -193,9 +265,18 @@ function balance(account: string, metric: 'closing' | 'debit' | 'credit', item =
   });
 }
 /** 此处只启用实际已配置项目，所有比较数及未覆盖项目继续显示文本。 */
-export function buildBalanceSheetSlice(raw: BalanceBindings): ReportTemplate {
+export function buildBalanceSheetSlice(
+  raw: BalanceBindings,
+  accounts: readonly Account[],
+): ReportTemplate {
   const bindings = BalanceBindingsSchema.parse(raw);
-  noOverlap(Object.values(bindings).flat(), '资产负债表映射');
+  const codes = Object.values(bindings).flatMap((roles) =>
+    Object.values(roles).flatMap((r) => (r.state === 'notApplicable' ? [] : r.accounts)),
+  );
+  noOverlap(codes, '资产负债表映射');
+  for (const code of codes)
+    if (!accounts.some((a) => a.code === code))
+      throw new Error(`组成角色映射的科目 ${code} 不存在`);
   const t = enterpriseBalanceSheet();
   const creditKeys = new Set([
     'shortTermLoans',
@@ -208,9 +289,45 @@ export function buildBalanceSheetSlice(raw: BalanceBindings): ReportTemplate {
     'specialReserve',
     'surplusReserve',
   ]);
-  for (const [key, codes] of Object.entries(bindings)) {
-    const sum = codes.map((a) => balance(a, 'closing')).join('+');
-    formula(t, balanceSheetSlots[key]!.current, creditKeys.has(key) ? `-(${sum})` : sum);
+  for (const [key, roles] of Object.entries(bindings)) {
+    const terms: string[] = [];
+    for (const [role, binding] of Object.entries(roles)) {
+      const label = [...ASSETS, ...LIABILITIES_EQUITY].find((l) => l.key === key)!.label;
+      let note = `${label} / ${ROLE_LABELS[role]}：`;
+      if (binding.state === 'notApplicable') note += `已声明不适用；${binding.reason}`;
+      else {
+        const expression = binding.accounts.map((a) => balance(a, 'closing')).join('+');
+        terms.push(expression);
+        note += `取真实科目 ${binding.accounts.join('、')}`;
+        if (binding.state === 'zero') {
+          note += `；已声明余额为零：${binding.reason}（仍取实际值，声明不符会审核失败）`;
+          t.checks.push({
+            name: `${label}/${ROLE_LABELS[role]}零余额声明`,
+            left: expression,
+            right: `(${expression})*0`,
+            tolerance: '0',
+          });
+        }
+      }
+      const row = ++t.rows;
+      text(t, `A${row}`, note);
+      t.merges.push({ row, col: 1, rows: 1, cols: t.cols });
+      t.styles.push({
+        address: `A${row}`,
+        align: 'left',
+        bold: false,
+        wrap: true,
+        format: 'general',
+      });
+      t.rowHeights.push({ row, height: 48 });
+    }
+    if (terms.length > 0) {
+      const sum = terms.join('+');
+      formula(t, balanceSheetSlots[key]!.current, creditKeys.has(key) ? `-(${sum})` : sum);
+    } else {
+      const target = t.cells.find((c) => c.address === balanceSheetSlots[key]!.current)!;
+      target.source = '已声明不适用：详见组成角色声明；不是零金额';
+    }
   }
   return ReportTemplateSchema.parse(t);
 }

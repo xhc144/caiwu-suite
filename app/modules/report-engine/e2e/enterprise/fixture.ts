@@ -47,7 +47,7 @@ export const test = base.extend<{
               .meta({ permission: 'report-engine.generate' })
               .mutation(async ({ ctx }) => {
                 await setupEnterpriseFixture(ctx.svc);
-                return { balance: balanceSlice(), cashflow: await cashSlice(ctx.svc) };
+                return { balance: await balanceSlice(ctx.svc), cashflow: await cashSlice(ctx.svc) };
               }),
           });
           const runtime = createRuntime({

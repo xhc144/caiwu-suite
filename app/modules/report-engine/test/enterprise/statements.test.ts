@@ -142,7 +142,7 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
     await setupEnterpriseFixture(app.svc);
     const before = await app.svc.vouchers.list({ limit: 100 });
     const opening = await app.svc.opening.list(2026);
-    const r = await api().importTemplate(balanceSlice());
+    const r = await api().importTemplate(await balanceSlice(app.svc));
     const s = await generate(r);
     for (const key of ['cash', 'fixedAssets', 'construction', 'shortTermLoans', 'capital'] as const)
       expect(cell(s, balanceSheetSlots[key]!.current)).toMatchObject({
@@ -196,7 +196,7 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
       String(GOLDEN.february.salesReceipts),
     );
     expect(cell(feb, cashflowSlots.purchases!.current).value).toBe('0');
-    const bs = await api().importTemplate(balanceSlice());
+    const bs = await api().importTemplate(await balanceSlice(app.svc));
     expect(cell(await generate(bs, 202602), balanceSheetSlots.cash!.current).value).toBe(
       String(GOLDEN.february.cash),
     );
@@ -239,7 +239,7 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
         ],
       },
     ]);
-    const r = await api().importTemplate(balanceSlice());
+    const r = await api().importTemplate(await balanceSlice(app.svc));
     expect(
       await api().generate({
         id: r.id,
@@ -310,7 +310,7 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
 
   it('w_bb_proc 缺少真实账户时整次生成回滚，保留前次成功快照，不能静默填零', async () => {
     await setupEnterpriseFixture(app.svc);
-    const r = await api().importTemplate(balanceSlice());
+    const r = await api().importTemplate(await balanceSlice(app.svc));
     const good = await generate(r);
     // 通过引擎公开的只读复制路径制造需新校验的映射版本。
     const copy = await api().copy({ sourceId: r.id, code: '211', name: '测试可编辑映射' });
@@ -356,7 +356,7 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
     try {
       await app.runtime.bookStore.open(app.book.id).raw.backup(backup);
       const original = await hash();
-      const r = await api().importTemplate(balanceSlice());
+      const r = await api().importTemplate(await balanceSlice(app.svc));
       const snapshot = await generate(r, 202601, true);
       expect(cell(snapshot, balanceSheetSlots.cash!.current).value).toBe('174195');
       expect(await api().exportResult({ id: r.id, period: 202601 })).not.toBeNull();
@@ -374,12 +374,27 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
   });
 
   it('映射拒绝重复、父子重叠、未知项目、非现金账户，不能伪装重分类和现金等价物', async () => {
-    expect(() => buildBalanceSheetSlice({ cash: ['1002', '100201'] })).toThrow(/重叠/);
-    expect(() => buildBalanceSheetSlice({ cash: ['1001'], fixedAssets: ['1001'] })).toThrow(/重复/);
-    expect(() => buildBalanceSheetSlice({ accountsReceivable: ['1122'] } as never)).toThrow();
-    // 增值税待抵扣等借方明细可能须转列资产，不能把整个应交税费科目直接反号。
-    expect(() => buildBalanceSheetSlice({ taxesPayable: ['2221'] } as never)).toThrow();
     const accounts = await app.svc.accounts.list();
+    expect(() =>
+      buildBalanceSheetSlice(
+        { capital: { carryingBalance: { state: 'mapped', accounts: ['1002', '100201'] } } },
+        accounts,
+      ),
+    ).toThrow(/重叠/);
+    expect(() =>
+      buildBalanceSheetSlice(
+        {
+          capital: { carryingBalance: { state: 'mapped', accounts: ['1001'] } },
+          shortTermLoans: { carryingBalance: { state: 'mapped', accounts: ['1001'] } },
+        },
+        accounts,
+      ),
+    ).toThrow(/重复/);
+    expect(() =>
+      buildBalanceSheetSlice({ accountsReceivable: ['1122'] } as never, accounts),
+    ).toThrow();
+    // 增值税待抵扣等借方明细可能须转列资产，不能把整个应交税费科目直接反号。
+    expect(() => buildBalanceSheetSlice({ taxesPayable: ['2221'] } as never, accounts)).toThrow();
     expect(() =>
       buildCashflowSlice({ cashAccounts: ['1001', '1001'], items: {} }, accounts),
     ).toThrow(/重复/);
