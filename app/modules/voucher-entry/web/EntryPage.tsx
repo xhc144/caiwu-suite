@@ -267,9 +267,11 @@ function Editor({
       row?.scrollIntoView({ block: 'nearest' });
     }, 0);
   };
-  const save = (draft: boolean): Promise<boolean> => {
+  const save = (draft: boolean, automatic = false): Promise<boolean> => {
     const operation = async () => {
       if (readonly || !ready || pending.current) return false;
+      // 排队期间前一次保存可能已清除 dirty；仅自动保存跳过，手动草稿仍须执行。
+      if (automatic && live.current.version === live.current.savedVersion) return true;
       const snapshot = { ...live.current.data, draft };
       const version = live.current.version;
       const current = live.current.header;
@@ -385,7 +387,7 @@ function Editor({
   useEffect(() => {
     if (!ready || readonly || !changed || leave) return;
     const timer = setTimeout(() => {
-      if (live.current.version !== live.current.savedVersion) void saveRef.current(true);
+      if (live.current.version !== live.current.savedVersion) void saveRef.current(true, true);
     }, 850);
     return () => clearTimeout(timer);
   }, [changed, ready, readonly, leave]);
