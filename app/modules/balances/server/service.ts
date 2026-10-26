@@ -180,9 +180,27 @@ export function balancesService(svc: CoreServices) {
           dimensions: dims,
           includeUnposted: q.includeUnposted,
           rollup: true,
-          includeZero: q.mode === 'summary',
+          // W0 的零行判断只检查本位币，跨年时会漏掉“本位币结清、原币非零”。
+          // 先让 core 保留所有行，再按当前报表实际展示的金额字段过滤；不重算余额。
+          includeZero: true,
         });
-        const selected = coreRows.filter((r) => selectedIds.has(r.accountId));
+        const selected = coreRows.filter(
+          (r) =>
+            selectedIds.has(r.accountId) &&
+            (q.mode !== 'foreign' ||
+              [
+                r.opening,
+                r.debit,
+                r.credit,
+                r.closing,
+                r.ytdDebit,
+                r.ytdCredit,
+                r.fcOpening,
+                r.fcDebit,
+                r.fcCredit,
+                r.fcClosing,
+              ].some((value) => value !== 0)),
+        );
         for (const row of selected)
           for (const key of [
             'opening',

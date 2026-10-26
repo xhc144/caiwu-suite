@@ -5,7 +5,7 @@ import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import balancesServer from '../server';
 import { balancesService, sumLeaves } from '../server/service';
 import { balanceDisplay, detailUrl, outputRows, parseDimensions, visibleRows } from '../shared';
-import { seedBalanceCases } from './fixtures';
+import { seedBalanceCases, seedForeignZeroBaseCase } from './fixtures';
 
 let app: TestApp;
 beforeEach(async () => {
@@ -272,6 +272,54 @@ describe('w_zw_ye 汇总余额表', () => {
 });
 
 describe('w_zw_wbye 外币余额表', () => {
+  it('w_zw_wbye_1 跨年本位币为零而原币贷方余额非零时，行、合计及导出数据均保留原币余额', async () => {
+    await seedForeignZeroBaseCase(app.svc);
+    const input = { mode: 'foreign' as const, periodFrom: 202701, periodTo: 202701 };
+    for (const currency of ['', 'USD']) {
+      for (const includeUnposted of [false, true]) {
+        const report = await query().query({ ...input, currency, includeUnposted });
+        const usd = report.groups.find((g) => g.currency === 'USD')!;
+        expect(usd.rows.map((r) => r.accountCode)).toEqual(['1002', '100202']);
+        expect(usd.rows.find((r) => r.accountCode === '100202')).toMatchObject({
+          opening: 0,
+          debit: 0,
+          credit: 0,
+          closing: 0,
+          ytdDebit: 0,
+          ytdCredit: 0,
+          fcOpening: -10_000,
+          fcDebit: 0,
+          fcCredit: 0,
+          fcClosing: -10_000,
+        });
+        expect(usd.totals).toMatchObject({
+          openingDebit: 0,
+          openingCredit: 0,
+          debit: 0,
+          credit: 0,
+          fcOpening: -10_000,
+          fcClosing: -10_000,
+        });
+        expect(outputRows(usd, -1, []).map((r) => [r.code, r.fcOpening, r.fcClosing])).toEqual([
+          ['100202', -10_000, -10_000],
+          ['合计', -10_000, -10_000],
+        ]);
+      }
+    }
+    const exported = await query().export({ ...input, currency: 'USD' });
+    expect(exported.groups[0]!.totals.fcClosing).toBe(-10_000);
+    const activity = await query().query({ ...input, onlyActivity: true });
+    expect(activity.groups[0]!.rows).toEqual([]);
+    expect(activity.groups[0]!.totals.fcClosing).toBe(-10_000);
+    await app.svc.db
+      .insertInto('currency')
+      .values({ code: 'EUR', name: '欧元', symbol: '€', is_base: 0, disabled: 0, sort: 2 })
+      .execute();
+    const empty = await query().query({ ...input, currency: 'EUR' });
+    expect(empty.groups[0]!.rows).toEqual([]);
+    expect(empty.groups[0]!.totals.fcClosing).toBe(0);
+  });
+
   it('逐币种 core 查询，外币及本位币按固定手算一致；维度过滤完整钻取', async () => {
     await seedBalanceCases(app.svc);
     await app.svc.db

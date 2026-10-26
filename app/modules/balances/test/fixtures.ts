@@ -82,3 +82,30 @@ export async function seedBalanceCases(svc: CoreServices) {
   const [voided] = await seedVouchers(svc, [{ date: '2026-02-16', lines: bank(99_000) }]);
   await svc.vouchers.setVoided(voided!.id, true);
 }
+
+/** 本位币已结清但原币仍有贷方余额；仅建下一年度期间，不生成下一年度期初。 */
+export async function seedForeignZeroBaseCase(svc: CoreServices) {
+  await svc.opening.upsert({
+    year: 2026,
+    accountId: (await svc.accounts.require('100202')).id,
+    currency: 'USD',
+    balance: 71_000,
+    fcBalance: 10_000,
+  });
+  await svc.opening.upsert({
+    year: 2026,
+    accountId: (await svc.accounts.require('4001')).id,
+    balance: -71_000,
+  });
+  await seedVouchers(svc, [
+    {
+      date: '2026-12-15',
+      status: 'posted',
+      lines: [
+        { account: '6603', debit: 71_000 },
+        { account: '100202', credit: 71_000, currency: 'USD', rate: '3.55', fcAmount: 20_000 },
+      ],
+    },
+  ]);
+  await svc.periods.ensureYear(2027);
+}
