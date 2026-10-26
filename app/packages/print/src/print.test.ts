@@ -288,6 +288,34 @@ describe('账册与批次', () => {
   });
 });
 describe('安全模板与金额', () => {
+  it('w_preview_report_base 审核结果普通列表与空列表可打印，名称仍作为转义文字', () => {
+    const name = '<script src="https://example.invalid/x">审核</script>';
+    const html = `<h1>现金报表</h1><table><tr><td>124.00</td></tr></table><ul><li>${escapeHtml(name)}：通过；差额 0；阈值 1（金额为分）</li><li><strong>第二项</strong>：不通过</li></ul><ul></ul>`;
+    const doc = renderPrintDocument({ title: '现金报表', html });
+    expect(doc).toContain('<td>124.00</td>');
+    expect(doc).toContain('<ul><li>&lt;script');
+    expect(doc).toContain('<li><strong>第二项</strong>：不通过</li>');
+    expect(doc).toContain('<ul></ul>');
+    expect(doc).not.toContain('<script');
+  });
+  it.each([
+    '<ul onclick="x()"><li>审核</li></ul>',
+    '<ul><li onmouseover="x()">审核</li></ul>',
+    '<ul><li><script>x()</script></li></ul>',
+    '<ul><li><iframe src="https://example.invalid"></iframe></li></ul>',
+    '<ul><li><img src="https://example.invalid/x"></li></ul>',
+    '<ul><li><a href="https://example.invalid">审核</a></li></ul>',
+    '<ul><li background="https://example.invalid/x">审核</li></ul>',
+    '<ul style="background:url(https://example.invalid/x)"><li>审核</li></ul>',
+    '<ul><li style="width:expression(x())">审核</li></ul>',
+    '<ul><li style="background:u&#114;l(https://example.invalid/x)">审核</li></ul>',
+    '<ul><li style="background:u\\72l(https://example.invalid/x)">审核</li></ul>',
+    '<ul><li style="background:image-set(\'https://example.invalid/x\')">审核</li></ul>',
+    '<ul><li><style>@import "https://example.invalid/x";</style></li></ul>',
+    '<ul><li/onload="x()">审核</li></ul>',
+  ])('w_preview_report_base 列表仍拒绝可执行内容、资源及危险样式 %s', (html) =>
+    expect(() => renderPrintDocument({ title: '审核列表', html })).toThrow(),
+  );
   it.each([
     '<script>alert(1)</script>',
     '<img src="https://x/track">',

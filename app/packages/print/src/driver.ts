@@ -39,7 +39,7 @@ function pageSizeCss(size: PageSize = 'A4', orientation = 'portrait') {
 /** HTML 仅用于受信任的模块渲染器；拒绝脚本、事件、网络资源及可执行样式。 */
 export function assertSafePrintContent(html: string, css = ''): void {
   const tags = new Set(
-    'article section div span p h1 h2 h3 h4 header footer table thead tbody tfoot tr th td colgroup col br hr b strong i em small caption'.split(
+    'article section div span p h1 h2 h3 h4 header footer table thead tbody tfoot tr th td colgroup col br hr b strong i em small caption ul li'.split(
       ' ',
     ),
   );

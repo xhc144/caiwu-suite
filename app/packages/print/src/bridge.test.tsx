@@ -8,6 +8,24 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 describe('W0 桥接与浏览器生命周期', () => {
+  it('w_preview_report_base 列表攻击在输出前明确拒绝，正常审核列表随后仍可输出', async () => {
+    const print = vi.fn(async () => {});
+    const printToPdf = vi.fn(async () => null);
+    window.caiwuDesktop = { print, printToPdf };
+    for (const html of [
+      '<ul><li onclick="x()">审核</li></ul>',
+      '<ul><li style="background:url(https://example.invalid/x)">审核</li></ul>',
+    ]) {
+      const unsafe = { title: '审核列表', html };
+      await expect(printHtml(unsafe)).rejects.toThrow('打印');
+      await expect(saveAsPdf(unsafe)).rejects.toThrow('打印');
+    }
+    expect(print).not.toHaveBeenCalled();
+    expect(printToPdf).not.toHaveBeenCalled();
+    const safe = { title: '审核列表', html: '<ul><li>审核：通过</li></ul>' };
+    await printHtml(safe);
+    expect(print).toHaveBeenCalledExactlyOnceWith(renderPrintDocument(safe), { title: '审核列表' });
+  });
   it('w_print_root 原签名 print(html,{title}) 兼容', async () => {
     const print = vi.fn(async () => {});
     window.caiwuDesktop = { print, printToPdf: async () => null };

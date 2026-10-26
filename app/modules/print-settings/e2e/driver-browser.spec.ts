@@ -32,13 +32,14 @@ async function serveDriver(page: Page) {
   await page.goto('/__print-driver-test__/');
 }
 
-// 普通消费者的 W0 HTML 契约：宽表与毫米标签均没有 M19 的 print-sheet 预分页结构。
+// 普通消费者的 W0 HTML 契约：宽表、毫米标签和审核列表都没有 M19 的 print-sheet 结构。
 const cases: {
   name: string;
   job: PrintDriver.PrintJob;
   text: string;
   pages: number;
   size: number[];
+  listItems?: string[];
 }[] = [
   {
     name: '分析宽表',
@@ -50,6 +51,20 @@ const cases: {
     text: '500.00',
     pages: 1,
     size: [297, 210],
+  },
+  {
+    name: '报告审核列表',
+    job: {
+      title: '现金报表-202601',
+      html: '<h1>现金报表</h1><p>期间 202601 · 仅已过账</p><table><tr><td>124.00</td></tr></table><ul><li>审核检查：通过；差额 0；阈值 1（金额为分）</li><li>&lt;script src=&quot;https://example.invalid/x&quot;&gt;审核名称&lt;/script&gt;：不通过</li></ul>',
+    },
+    text: '124.00',
+    listItems: [
+      '审核检查：通过；差额 0；阈值 1（金额为分）',
+      '<script src="https://example.invalid/x">审核名称</script>：不通过',
+    ],
+    pages: 1,
+    size: [210, 297],
   },
   {
     name: '资产毫米标签',
@@ -75,7 +90,14 @@ for (const c of cases) {
     for (const pdf of [false, true]) {
       const result = await page.evaluate(
         async ({ job, pdf }) => {
-          const events: { phase: string; text: string; html: string }[] = [];
+          const events: {
+            phase: string;
+            text: string;
+            html: string;
+            trusted: boolean;
+            listItems: string[];
+            executableElements: number;
+          }[] = [];
           let checks = 0;
           const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations)
@@ -88,11 +110,18 @@ for (const c of cases) {
                   'load',
                   () => {
                     for (const phase of ['beforeprint', 'afterprint'])
-                      node.contentWindow!.addEventListener(phase, () => {
+                      node.contentWindow!.addEventListener(phase, (event) => {
                         events.push({
                           phase,
                           text: node.contentDocument!.body.textContent!,
                           html: node.srcdoc,
+                          trusted: event.isTrusted,
+                          listItems: Array.from(
+                            node.contentDocument!.querySelectorAll('ul > li'),
+                          ).map((li) => li.textContent!),
+                          executableElements: node.contentDocument!.querySelectorAll(
+                            'script,iframe,img,object,embed,link',
+                          ).length,
                         });
                       });
                   },
@@ -113,7 +142,12 @@ for (const c of cases) {
         { job: c.job, pdf },
       );
       expect(result.events.map((event) => event.phase)).toEqual(['beforeprint', 'afterprint']);
-      for (const event of result.events) expect(event.text).toContain(c.text);
+      for (const event of result.events) {
+        expect(event.text).toContain(c.text);
+        expect(event.trusted).toBe(true);
+        expect(event.executableElements).toBe(0);
+        if (c.listItems) expect(event.listItems).toEqual(c.listItems);
+      }
       expect(result.checks).toBe(0);
       expect(result.frames).toBe(0);
       expect(result.value).toBe(pdf ? null : undefined);
