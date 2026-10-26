@@ -51,6 +51,29 @@ describe('w_main1 导航权限', () => {
         .join(' '),
     ).not.toMatch(/移动端|加密狗|注册|云报表/);
   });
+  it('根路由query和尾斜杠保持同页授权，嵌套业务路径仍单独校验', () => {
+    const root = defineManifest({
+      id: 'fixture',
+      name: '根页',
+      products: 'all',
+      permissions: [{ id: 'fixture.view', name: '查看' }],
+      menu: [
+        {
+          group: 'master',
+          title: '项目页',
+          path: '/?dimension=project',
+          permission: 'fixture.view',
+        },
+      ],
+    });
+    const allowed = { ...user, permissions: ['fixture.view'] };
+    const items = buildNavItems([root], allowed);
+    expect(routeAccess('/m/fixture', [root], items, allowed)).toBe('allow');
+    expect(routeAccess('/m/fixture/', [root], items, allowed)).toBe('allow');
+    expect(routeAccess('/m/fixture/edit', [root], items, allowed)).toBe('denied');
+    expect(routeAccess('/m/fixture/', [root], buildNavItems([root], user), user)).toBe('denied');
+    expect(selectedNavKey(items, '/m/fixture')).toBe('/m/fixture/?dimension=project');
+  });
 });
 
 it('余额表子页优先精确路径或最长前缀，不被根菜单抢占', () => {

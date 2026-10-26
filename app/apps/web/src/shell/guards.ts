@@ -1,5 +1,6 @@
 import type { CurrentUser, ModuleManifest } from '@caiwu/core';
 import type { NavItem } from './NavMenu';
+import { tabPath } from './paths';
 
 /** 原版 w_main1 的管理员入口规则；不用用户名判断。 */
 export function isAdminEntry(title: string, path: string) {
@@ -20,10 +21,12 @@ export function routeAccess(
   if (!manifest) return 'missing';
   // 只按明确菜单路径授权。不把根菜单权限推测成整个模块的权限。
   const declared = manifest.menu.filter(
-    (i) => `/m/${manifest.id}${i.path === '/' ? '' : i.path.split('?')[0]}` === pathname,
+    (i) => tabPath(`/m/${manifest.id}${i.path.split('?')[0]}`) === tabPath(pathname),
   );
   if (declared.length)
-    return items.some((i) => i.to.split('?')[0] === pathname) ? 'allow' : 'denied';
+    return items.some((i) => tabPath(i.to.split('?')[0]!) === tabPath(pathname))
+      ? 'allow'
+      : 'denied';
   return user.isAdmin ? 'allow' : 'denied';
 }
 

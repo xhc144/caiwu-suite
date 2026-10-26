@@ -47,6 +47,16 @@ export function sessionIdentity(session: ReturnType<typeof sessionStore.get>) {
     : '';
 }
 
+function browserNavigation() {
+  const state = window.history.state as { key?: string } | null;
+  return JSON.stringify([
+    window.location.pathname,
+    window.location.search,
+    window.location.hash,
+    state?.key,
+  ]);
+}
+
 /** 身份变化先撤销查询并清空缓存，再挂载新身份的页面。 */
 export function Shell({ devMode }: { devMode: boolean }) {
   const session = useRequiredSession();
@@ -83,7 +93,7 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const [search, setSearch] = useState(false);
+  const [searchAt, setSearchAt] = useState<string | null>(null);
   const [shortcuts, setShortcuts] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [exitTarget, setExitTarget] = useState<'user' | 'book' | null>(null);
@@ -119,8 +129,12 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
   useEffect(() => {
     const hit = navItems.find((i) => i.to.split('?')[0] === location.pathname);
     if (hit) setRecent((prev) => [hit.to, ...prev.filter((x) => x !== hit.to)].slice(0, 8));
-    setSearch(false);
   }, [location.pathname, location.search, location.key, navItems]);
+  useLayoutEffect(() => {
+    // history先更新地址，Router的transition可能稍后才提交。新开的搜索属于
+    // 打开时的浏览器导航，不能被这次迟到的提交或菜单重算关闭。
+    setSearchAt((openedAt) => (openedAt === browserNavigation() ? openedAt : null));
+  }, [location.pathname, location.search, location.hash, location.key]);
   useEffect(() => {
     if (!me.data || sessionStore.get()?.token !== session.token) return;
     if (
@@ -149,7 +163,7 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
       removeMutation();
     };
   }, [navigate, session.token, session.bookId]);
-  const onSearch = useCallback(() => setSearch(true), []);
+  const onSearch = useCallback(() => setSearchAt(browserNavigation()), []);
   const onShortcuts = useCallback(() => setShortcuts(true), []);
   const onHelp = useCallback(() => {
     void navigate('/m/workbench/help');
@@ -303,7 +317,7 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
           onShortcuts={onShortcuts}
           onHelp={onHelp}
         />
-        <SearchDialog open={search} onClose={() => setSearch(false)} />
+        <SearchDialog open={searchAt !== null} onClose={() => setSearchAt(null)} />
         <ShortcutDialog open={shortcuts} onClose={() => setShortcuts(false)} items={navItems} />
         <Modal
           getContainer={false}

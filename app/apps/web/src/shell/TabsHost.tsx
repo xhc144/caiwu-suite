@@ -27,9 +27,10 @@ import { checkBeforeLeave, routeAccess } from './guards';
 import { EntryPage } from './EntryPage';
 import { HomePage } from './HomePage';
 import type { NavItem } from './NavMenu';
+import { tabPath } from './paths';
 
 interface TabState {
-  /** 标签页的键 = 路径（不含查询参数）。同一路径只开一个标签，参数变化时更新它。 */
+  /** 标签键为去掉尾斜杠的路径。查询参数仍保留在location，同一路由只开一个标签。 */
   key: string;
   location: Location;
   title: string;
@@ -46,10 +47,10 @@ function isTabPath(pathname: string) {
 
 function defaultTitle(pathname: string, navItems: NavItem[]) {
   if (pathname === HOME) return '首页';
-  const exact = navItems.find((i) => i.to.split('?')[0] === pathname);
+  const exact = navItems.find((i) => tabPath(i.to.split('?')[0]!) === pathname);
   if (exact) return exact.title;
   const prefix = navItems
-    .filter((i) => pathname.startsWith(`${i.to}/`))
+    .filter((i) => pathname.startsWith(`${tabPath(i.to.split('?')[0]!)}/`))
     .sort((a, b) => b.to.length - a.to.length)[0];
   return prefix?.title ?? '加载中…';
 }
@@ -70,12 +71,12 @@ export function TabsHost({
   const location = useLocation();
   const navigate = useNavigate();
   const session = useRequiredSession();
-  const activeKeyRef = useRef(location.pathname);
-  const locationKeyRef = useRef(location.key);
-  if (locationKeyRef.current !== location.key) {
-    locationKeyRef.current = location.key;
-    activeKeyRef.current = location.pathname;
-  }
+  const activeKeyRef = useRef(tabPath(location.pathname));
+  const locationRef = useRef(location);
+  // 点击/关闭先显示所选标签；路由的transition提交后由真实location接管。
+  const [selection, setSelection] = useState<{ from: Location; to: Location } | null>(null);
+  const activeLocation = selection?.from === location ? selection.to : location;
+  const activeKey = tabPath(activeLocation.pathname);
   const modules = visibleModules(session.book.product, devMode);
   const [closing, setClosing] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
@@ -88,37 +89,42 @@ export function TabsHost({
       customTitle: true,
     },
   ]);
+  // 标签与路由在同一次render里对齐，POP即使回到刚关闭的地址也会重建页面。
+  // 不能只监听location的effect：关闭本身也会改变标签集合。
+  const currentTab = tabs.find((tab) => tab.key === activeKey);
+  if (isTabPath(activeKey) && currentTab?.location !== activeLocation) {
+    if (currentTab) {
+      setTabs(
+        tabs.map((tab) => (tab.key === activeKey ? { ...tab, location: activeLocation } : tab)),
+      );
+    } else if (tabs.length < MAX_TABS) {
+      setTabs([
+        ...tabs,
+        {
+          key: activeKey,
+          location: activeLocation,
+          title: defaultTitle(activeKey, navItems),
+          customTitle: false,
+        },
+      ]);
+    }
+  }
   const tabsRef = useRef(tabs);
-  tabsRef.current = tabs;
+  useLayoutEffect(() => {
+    tabsRef.current = tabs;
+    locationRef.current = location;
+    activeKeyRef.current = activeKey;
+  });
   useEffect(() => {
     onWorkspaceChange?.(tabs.map((tab) => tab.key));
   }, [tabs, onWorkspaceChange]);
 
   useLayoutEffect(() => {
-    if (!isTabPath(location.pathname)) {
+    if (!isTabPath(tabPath(location.pathname))) {
       void navigate(HOME, { replace: true });
-      return;
     }
-    setTabs((prev) => {
-      const i = prev.findIndex((t) => t.key === location.pathname);
-      if (i >= 0) {
-        if (prev[i]!.location === location) return prev;
-        const next = [...prev];
-        next[i] = { ...prev[i]!, location };
-        return next;
-      }
-      if (prev.length >= MAX_TABS) return prev;
-      const tab: TabState = {
-        key: location.pathname,
-        location,
-        title: defaultTitle(location.pathname, navItems),
-        customTitle: false,
-      };
-      return [...prev, tab];
-    });
-  }, [location, navigate, navItems]);
+  }, [location.pathname, navigate]);
 
-  const activeKey = location.pathname;
   useEffect(() => {
     if (tabs.length >= MAX_TABS && !tabs.some((t) => t.key === activeKey)) {
       setLimitReached(true);
@@ -140,6 +146,7 @@ export function TabsHost({
       if (key === activeKeyRef.current) {
         const neighbor = next[Math.max(0, idx - 1)] ?? next[0];
         activeKeyRef.current = neighbor?.key ?? HOME;
+        if (neighbor) setSelection({ from: locationRef.current, to: neighbor.location });
         void navigate(
           neighbor
             ? neighbor.location.pathname + neighbor.location.search + neighbor.location.hash
@@ -167,10 +174,15 @@ export function TabsHost({
   }, []);
 
   const closeRef = useRef(close);
-  closeRef.current = close;
+  useLayoutEffect(() => {
+    closeRef.current = close;
+  }, [close]);
 
   // 监听器只注册一次；点击意图与当前回调通过ref同步，避免读取上一标签的闭包。
   useEffect(() => {
+    // POP可以在关闭导航的transition提交前回到原地址，Router会复用原location。
+    // 历史操作必须撤销点击意图，否则同一location会继续显示关闭后的邻页。
+    const onPop = () => setSelection(null);
     const listener = (e: KeyboardEvent) => {
       if (
         !e.defaultPrevented &&
@@ -186,8 +198,12 @@ export function TabsHost({
         if (current !== HOME) closeRef.current(current);
       }
     };
+    window.addEventListener('popstate', onPop);
     window.addEventListener('keydown', listener);
-    return () => window.removeEventListener('keydown', listener);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('keydown', listener);
+    };
   }, []);
 
   const ordered = useMemo(() => {
@@ -204,9 +220,10 @@ export function TabsHost({
         size="small"
         activeKey={activeKey}
         onChange={(key) => {
-          const t = tabs.find((x) => x.key === key);
+          const t = tabsRef.current.find((x) => x.key === key);
           if (t) {
             activeKeyRef.current = key;
+            setSelection({ from: locationRef.current, to: t.location });
             void navigate(t.location.pathname + t.location.search + t.location.hash);
           }
         }}
@@ -224,7 +241,7 @@ export function TabsHost({
           closable: t.key !== HOME,
           children: (
             <TabPane
-              tab={t.key === activeKey ? { ...t, location } : t}
+              tab={t.key === activeKey ? { ...t, location: activeLocation } : t}
               active={t.key === activeKey}
               devMode={devMode}
               setTitle={setTitle}
@@ -245,6 +262,8 @@ export function TabsHost({
         onOk={() => {
           if (!checkBeforeLeave()) return;
           activeKeyRef.current = HOME;
+          const home = tabsRef.current.find((t) => t.key === HOME)!;
+          setSelection({ from: locationRef.current, to: home.location });
           setTabs((prev) => prev.filter((t) => t.key === HOME));
           void navigate(HOME);
           setClosing(false);

@@ -4,7 +4,8 @@ import { loginWithNewBook } from '@caiwu/testkit/e2e';
 test('示范记账单：新增 → 生成凭证 → 凭证号显示在列表里', async ({ page, request }) => {
   await loginWithNewBook(page, request);
   await page.goto('/m/example/memos');
-  await expect(page.getByRole('heading', { name: '示范记账单' })).toBeVisible();
+  const activePage = page.getByRole('tabpanel').filter({ visible: true });
+  await expect(activePage.getByRole('heading', { name: '示范记账单', exact: true })).toBeVisible();
 
   await page.keyboard.press('Alt+N');
   const drawer = page.getByRole('dialog', { name: '新增记账单' });

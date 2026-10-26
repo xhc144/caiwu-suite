@@ -33,11 +33,13 @@ test('密码错误时提示原因', async ({ page, request }) => {
 test('多标签页：切换标签保留页面状态，Ctrl+F4 关闭标签', async ({ page, request }) => {
   await loginWithNewBook(page, request);
   await page.goto('/m/example/memos');
-  await page.getByLabel('摘要').fill('还没提交的筛选');
+  const activePage = page.getByRole('tabpanel').filter({ visible: true });
+  const keyword = activePage.getByLabel('摘要', { exact: true });
+  await keyword.fill('还没提交的筛选');
   await page.getByRole('tab', { name: '首页' }).click();
   await expect(page).toHaveURL(/\/home$/);
   await page.getByRole('tab', { name: '示范记账单' }).click();
-  await expect(page.getByLabel('摘要')).toHaveValue('还没提交的筛选');
+  await expect(keyword).toHaveValue('还没提交的筛选');
   await page.keyboard.press('Control+F4');
   await expect(page.getByRole('tab', { name: '示范记账单' })).toHaveCount(0);
 });

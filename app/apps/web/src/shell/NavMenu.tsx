@@ -2,6 +2,7 @@ import { Menu, Typography, type MenuProps } from 'antd';
 import { useLocation, useNavigate } from 'react-router';
 import { MENU_GROUPS, moduleRoute, type CurrentUser, type ModuleManifest } from '@caiwu/core';
 import { isAdminEntry } from './guards';
+import { tabPath } from './paths';
 
 export interface NavItem {
   key: string;
@@ -83,11 +84,12 @@ export function NavMenu({ items, collapsed }: { items: NavItem[]; collapsed: boo
 }
 
 export function selectedNavKey(items: NavItem[], pathname: string) {
-  const exact = items.find((i) => i.to.split('?')[0] === pathname);
+  pathname = tabPath(pathname);
+  const exact = items.find((i) => tabPath(i.to.split('?')[0]!) === pathname);
   if (exact) return exact.key;
   return (
     [...items]
       .sort((a, b) => b.to.split('?')[0]!.length - a.to.split('?')[0]!.length)
-      .find((i) => pathname.startsWith(`${i.to.split('?')[0]}/`))?.key ?? pathname
+      .find((i) => pathname.startsWith(`${tabPath(i.to.split('?')[0]!)}/`))?.key ?? pathname
   );
 }
