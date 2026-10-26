@@ -19,7 +19,7 @@
 - 完整现金流量表：项目多对多分配及分配完整性、无项目现金分录定位、内部划转/非现金交易自动排除、现金等价物/受限资金定义、汇兑影响、期初期末及比较期间；本切片不根据货币资金余额冒充现金及现金等价物。
 - 已读取并使用共享的实际`BalanceFunctionSchema/balanceFormula({原7字段,options})`，第8参数由唯一helper序列化。`from/to`支持`current|yearStart|previousMonth|previousYearEnd|previousYearSameMonth|previousYear|previousYearStart|YYYYMM`；`previousYear`是上年同月别名。opening取from前期初、closing取to期末、发生额取闭区间、ytd按to年度。`closing=include|exclude|excludePnl`仅允许发生额，余额不排结转；`side=debit|credit`按末级及groupBy先分方向后返回正数，仅本币期初/期末signed。安全比较、惰性IF/MAX使用共享实现，不另造引擎。启用前、缺失期间或未知累计来源拒绝，不编零。
 - 原子模板预检及同编码只读模板的安全升级仍缺，不通过覆盖/删除绕过。当前跨期/排结转/重分类项目禁止使用旧页面底部自动明细链接，表内已显示明确提示；准确期间、结转过滤及分组穿透等待web owner。合同仍需合同ID净额及流动性元数据，民非限定/非限定元数据仍未实现，不用项目替代。
-- 未改共享server/shared/web，无自动模板安装/映射页面。原引擎README全部未完成项继续有效：旧S/W/F别名、外币/数量累计、现金流量期初分配、跨账套/旧备份引入、粘贴撤销及插删行列、完整格式/分页套打、布尔审核、取数追踪及辅助穿透、关闭确认与草稿合并、超大报表性能、报税及共享打印/桌面，均未在此补齐。
+- 仅正常合入根授权的共享PR112快照，没有手改共享server/shared/web；无自动模板安装/映射页面。原引擎README全部未完成项继续有效：旧S/W/F别名、外币/数量累计、现金流量期初分配、跨账套/旧备份引入、粘贴撤销及插删行列、完整格式/分页套打、布尔审核、取数追踪及辅助穿透、关闭确认与草稿合并、超大报表性能、报税及共享打印/桌面，均未在此补齐。
 
 ## 试用
 

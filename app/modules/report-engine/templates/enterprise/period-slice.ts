@@ -83,7 +83,7 @@ function crossPeriodNotice(t: ReportTemplate, detail: string) {
   putText(
     t,
     'A2',
-    `未完成的实际取数切片：${detail}。未覆盖项目保留待配置，不可作为完整法定报表。本切片禁止使用旧页面底部自动明细链接核对金额：旧链接未保留实际期间、结转过滤与辅助分组，禁止用它核对比较数或本切片净额；请按公式口径独立查明细，等待web owner接入准确穿透。`,
+    `未完成的实际取数切片：${detail}。未覆盖项目保留待配置，不可作为完整法定报表。本切片禁止使用旧页面底部自动明细链接核对金额：旧链接未保留实际期间、结转过滤与辅助分组，禁止用它核对比较数或本切片净额；请按表内口径另查明细，自动联查尚未支持。`,
   );
 }
 
@@ -311,7 +311,7 @@ export function buildProfitSlice(
   if (previousBindings) fillProfit(t, previousBindings, scope, true);
   crossPeriodNotice(
     t,
-    `${scope === 'month' ? '本月' : '本年累计'}损益按真实净发生计算，仅排closing_kind为pnl；普通及自定义转账保留`,
+    `${scope === 'month' ? '本月' : '本年累计'}损益按真实净发生计算，仅排损益结转；普通及自定义转账保留`,
   );
   putText(t, 'B4', scope === 'month' ? '本月金额' : '本年累计金额');
   if (previousBindings) putText(t, 'C4', scope === 'month' ? '上年同月金额' : '上年同期累计金额');
