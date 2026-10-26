@@ -10,6 +10,8 @@ import reportServer from '../../server';
 import { balanceSlice, cashSlice, setupEnterpriseFixture } from '../../test/enterprise/fixture';
 import { balanceBindings, cashBindings } from '../../test/enterprise/fixture';
 import { periodProfit, setupPeriodFixture } from '../../test/enterprise/period-fixture';
+import { purchaseTemplate, seedPurchaseFixture } from '../../test/enterprise/purchase-fixture';
+import { enterpriseCashflow } from '../../templates/enterprise';
 import {
   buildBalanceSheetComparatives,
   buildCashflowComparatives,
@@ -22,7 +24,7 @@ export const test = base.extend<{
     request: APIRequestContext;
     seed(
       bookId: string,
-      mode?: 'current' | 'comparative',
+      mode?: 'current' | 'comparative' | 'purchase',
     ): Promise<{ balance: ReportTemplate; cashflow: ReportTemplate; profit?: ReportTemplate }>;
   };
 }>({
@@ -55,6 +57,11 @@ export const test = base.extend<{
             seed: m.procedure
               .meta({ permission: 'report-engine.generate' })
               .mutation(async ({ ctx }) => {
+                if (mode === 'purchase') {
+                  await seedPurchaseFixture(ctx.svc);
+                  // 此模式只造采购201账套；203保留未配置表样，不声称已有取数。
+                  return { balance: await purchaseTemplate(ctx.svc), cashflow: enterpriseCashflow() };
+                }
                 if (mode === 'comparative') {
                   await setupPeriodFixture(ctx.svc);
                   const accounts = await ctx.svc.accounts.list();
