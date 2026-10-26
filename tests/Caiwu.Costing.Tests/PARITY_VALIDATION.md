@@ -6,11 +6,22 @@ SDK：10.0.402；运行时：10.0.13；Linux Debian 13 x64。
 
 ## 本轮实际验证
 
-- 独立领域测试：22 通过，0 失败，0 跳过。核算、单据流程、原始字段保留、静态 PBU 坐标均有行为断言。
-- 独立 adapter 测试：9 通过，0 失败，0 跳过。使用合成 `IParityLedgerService`，核对请求和错误行为；不是生产 Core/SQLite 的事务集成测试。
+- 独立领域测试：37 通过，0 失败，0 跳过。核算、单据流程、原始字段保留、静态 PBU 坐标均有行为断言。
+- 独立 adapter 测试：28 通过，0 失败，0 跳过。使用合成 `IParityLedgerService`，核对请求和错误行为；不是生产 Core/SQLite 的事务集成测试。
 - `Caiwu.Costing.Wpf` Windows target 交叉编译通过，0 warning、0 error。未在 Windows 创建窗口、截图或实测键盘/DPI/焦点。
 - Contracts 对照使用 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85` 的独立只读源树，逐文件 Git blob 哈希核对一致；本分支未修改共享 Contracts。
 - 证据摘要见 [evidence/parity-validation.json](evidence/parity-validation.json)。TRX 为本地测试输出，仅摘要入库，未提交环境私密信息。
+
+## 评审返修与实跑（既有切片，未新增模块）
+
+被审查版本：`4756315aff67e8a565325d587249ccda536e1167`；修复实现：`1dcc08c7186ac61a5a826e83453c080973898990`。
+先加入回归并在旧实现上运行，重复原行的 6 条断言失败（2 行变 1 行），期间边界 9 条断言失败（写入未被拒绝），已使用商品改库存科目的 4 条断言失败；未使用商品改科目仍通过。完成修复后全量运行上述两组测试与 Wpf 构建，全部通过。
+
+- 原始行保存改为按出现次数匹配：既存行不去重、不改行序，候选袋只补超过既存次数的行；重复存盘不会增加次数。被删除明细的原始行移到文档归档袋一次，其余明细仍留在原位置。回归覆盖产品、期初、盘点、单头、单据明细、未知列、NULL、二进制和尾空格，及候选行数 0/1/2/3。
+- adapter 按同一观测快照校验 `FiscalYear/StartMonth/ClosedThroughMonth`。总账 2026 年 10 月启用时不能初始化/载入 2025/10 或 2026/09 状态；10 月已结时可只读载入 10 月，但 `SaveOpening→TryCommit`、`CancelCalculation→TryCommit`（无 claim）及凭证提交均在调用 service 前拒绝。不能借保存把单月文档替换成其他期间。有效未结月仍允许建立状态。
+- 产品已有期初、单据或盘点记录时，`SaveProduct` 和 adapter 保存边界都拒绝直接改 `InventoryAccount`。回归先认领/接收入库 10 件／100 元（借 1405），拒绝改到 1406 后继续销售、核算 10 件，确认出库仍贷 1405／100，库存归零且原科目对消。未使用商品仍可修正科目。没有新增重分类迁移功能。
+
+上述仍为 Linux 合成领域/契约服务验证；生产 Core/SQLite、原账套与 Windows 实机边界不变。
 
 ## 独立手算锚点
 

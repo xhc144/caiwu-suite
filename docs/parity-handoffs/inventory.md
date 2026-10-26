@@ -2,7 +2,7 @@
 
 状态：2026-10-26，单月领域切片及契约 adapter 已验证；真实 Windows/原账套未验；基线 main `3b0c59b02d8941c32ac176309555c03c94bb4213`。
 分支：`codex/parity-inventory-20261026`。独立 checkout：`/workspace/caiwu-inventory`。
-早期 HANDOFF 提交：`2b0d24eeff54d5d2689d6bd7c54866111e89ec46`。已验证实现 SHA：`b5919e4512f2cbbc9a1d04b96776fb072bcc4261`；之后仅交接/证据文档更新以分支 HEAD 为准。
+早期 HANDOFF 提交：`2b0d24eeff54d5d2689d6bd7c54866111e89ec46`。初版实现 SHA：`b5919e4512f2cbbc9a1d04b96776fb072bcc4261`；评审返修已验证实现 SHA：`1dcc08c7186ac61a5a826e83453c080973898990`；之后仅交接/证据文档更新以分支 HEAD 为准。
 草稿 PR：[xhc144/caiwu-suite#51](https://github.com/xhc144/caiwu-suite/pull/51)。没有合并 main。
 
 ## 所有权与来源
@@ -33,6 +33,16 @@ PR38 的“暂不切换实现”已被新授权取代。PR39 的字段/模板变
 4. 总账对接需查询启用末级科目，按 `(ledger, documentId, voucherKind)` 去重；只写草稿；凭证关联状态（草稿/审核/过账）与单据、核算取消的冲突检查须在同事务内完成。计划失效后禁止提交旧 revision。
 5. Desktop 由集成者在 `m_frame_cb` 原菜单路径注册模块窗口和 MDI 归属。不能继续把人工工作表当作“成本核算”。新 UI 组件只在本模块 Wpf。
 
+## 4756315 评审问题返修
+
+本轮只修既有切片，未派新 agent、未扩新模块。修复提交 `1dcc08c7186ac61a5a826e83453c080973898990`：
+
+1. 原 `Preserve(...DistinctBy(Fingerprint))` 会把原始重复行去重，已通过旧实现新增回归实跑复现。现按出现次数匹配候选袋，保持既存行数量/顺序与未知字段，防止重复编辑造成增加；只归档真正删除的明细行，避免每次编辑把保留明细复制到单头。已被旧实现丢失的重复行不能凭空恢复，须以后从保留的原始副本核对；本轮未接触真实数据。
+2. `Ready` 校验总账年度、启用月及结账范围有效；`Load` 联检库存年度/启用月，并允许已结月只读查看；`Initialize/TryCommit/AcceptPlan` 在调用 service 前拒绝已结月写入。`TryCommit` 还禁止用单月文档覆盖其他期间。已覆盖 2026/10 总账初始化 2025/10、启用前月份、已结 10 月 `SaveOpening` 写回及无 claim 的取消核算写回。公共 opaque payload API 不懂库存期间，宿主必须使用库存 adapter 的写边界；全账套 CAS 继续防止编辑后总账期间变化的旧上下文提交。
+3. 产品已有期初/单据/盘点记录时，领域和 adapter 保存边界均拒绝直接更换库存科目。入库草稿借 1405 后不能把商品改到 1406 使后续出库错贷；合成回归确认库存归零时仍借贷同一 1405 科目。未使用商品可改科目，原子重分类仍未实现。
+
+精确复现与最终证据见下方验证文档。最终领域 37、adapter 28 项通过；Wpf 构建零警告/错误。原有未完成验收清单全部保留。
+
 ## 公共接口检查点的实际接入方式与缺口
 
 已按父任务消息读取 integration.md 和 ParityModules.cs（PR52 SHA `5bb60d2`），不是读取浮动 HEAD。
@@ -57,7 +67,7 @@ PR38 的“暂不切换实现”已被新授权取代。PR39 的字段/模板变
 
 ## 验证、文件用途与剩余验收
 
-本轮命令、手算、失败尝试及边界见 [PARITY_VALIDATION.md](../../tests/Caiwu.Costing.Tests/PARITY_VALIDATION.md)。领域 22 项、adapter 9 项合成回归均通过；Wpf Windows target 编译零错误/警告。以上不代表真实 Windows 或完整原版通过。
+本轮命令、手算、失败尝试及边界见 [PARITY_VALIDATION.md](../../tests/Caiwu.Costing.Tests/PARITY_VALIDATION.md)。领域 37 项、adapter 28 项合成回归均通过；Wpf Windows target 编译零错误/警告。以上不代表真实 Windows 或完整原版通过。
 
 文件用途置信度：领域 DTO/规则/流程/计划、独立合成测试为 high（已读、编译及行为断言）；adapter 的契约请求/故障行为为 high，真实 Core/SQLite 接通为 unverified；三个 Wpf 窗口静态位置和编译为 high，原生交互为 unverified。没有新增外部 JSON 权威存储。
 
