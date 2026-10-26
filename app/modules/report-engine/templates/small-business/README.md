@@ -22,7 +22,7 @@
 
 共享契约及仍需的共享改动：
 
-- 正常合入唯一共享owner PR112精确提交 `f9b591d68db15dda909923a8b8aa074a62464c8e`，未手改其core/server/shared。统一 `BALANCE` 原7参加可选第8个JSON字符串，由实际 `BalanceFunctionSchema` / `balanceFormula({原七字段, options})` 编码；不另造API。
+- 正常合入唯一共享owner PR112精确提交 `a8eb1c0b12e2f9931ae2da3f135f6ceee0bcc826`（包含原f9b591d及7f5975），未手改其core/server/shared。统一 `BALANCE` 原7参加可选第8个JSON字符串，由实际 `BalanceFunctionSchema` / `balanceFormula({原七字段, options})` 编码；不另造API。
 - `from/to` 用current、yearStart、previousMonth、previousYearStart、previousYearEnd、previousYearSameMonth/previousYear或YYYYMM；opening为from前期初，closing为to期末，发生额为闭区间，ytd按to年度。`closing:excludePnl`仅发生额排真实pnl；余额不排结转。`side:debit/credit`先按末级及groupBy辅助项取正数，再汇总。
 - 仍需owner提供审核失败/错误阻止正式生成及导出、原子模板预检、逐现金分录分类完整性及现金范围/启用前项目分配、期限/到期日分析数据、年报期间策略。不得用IF除零、缺科目、未知来源或假零替代这些能力。
 
