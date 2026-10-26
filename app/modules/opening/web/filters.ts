@@ -8,6 +8,7 @@ export type OpeningFilters = {
   quantity: boolean;
   account: string;
   dimension: string;
+  item: string;
 };
 const defaults: OpeningFilters = {
   year: 0,
@@ -15,6 +16,7 @@ const defaults: OpeningFilters = {
   quantity: false,
   account: '',
   dimension: '',
+  item: '',
 };
 export function parseFilters(search: string): OpeningFilters {
   const p = new URLSearchParams(search);
@@ -24,6 +26,7 @@ export function parseFilters(search: string): OpeningFilters {
     quantity: ['1', 'true'].includes(p.get('quantity') ?? ''),
     account: p.get('account') ?? '',
     dimension: p.get('dimension') ?? '',
+    item: p.get('item') ?? '',
   };
 }
 /** 壳的标签页 location 在同路径替换参数时可能滞后。保留 useUrlFilters 写地址，
