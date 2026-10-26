@@ -166,6 +166,9 @@ function ShellContent({ devMode }: { devMode: boolean }) {
   };
   return (
     <ConfigProvider
+      getPopupContainer={(trigger) =>
+        (trigger?.closest('.cw-shell-root') as HTMLElement | null) ?? document.body
+      }
       theme={{
         algorithm: dark ? antTheme.darkAlgorithm : antTheme.defaultAlgorithm,
         token: {

@@ -1,4 +1,6 @@
 .cw-shell-root {
+  position: relative;
+  contain: layout paint;
   height: 100vh;
   overflow: hidden;
 }

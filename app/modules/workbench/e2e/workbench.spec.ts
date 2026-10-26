@@ -149,9 +149,20 @@ test('快捷键焦点与反复开关、高DPI下125%/150%主题布局、隐藏�
       'zoom',
       scale === '125%' ? '1.25' : '1.5',
     );
-    expect(
-      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
-    ).toBe(true);
+    const layout = await page.evaluate(() => ({
+      width: document.documentElement.scrollWidth,
+      viewport: window.innerWidth,
+      overflow: [...document.querySelectorAll('body *')]
+        .map((el) => ({
+          tag: el.tagName,
+          class: el.className,
+          right: el.getBoundingClientRect().right,
+          width: el.getBoundingClientRect().width,
+        }))
+        .filter((el) => el.right > window.innerWidth)
+        .slice(0, 10),
+    }));
+    expect(layout.width, JSON.stringify(layout)).toBeLessThanOrEqual(layout.viewport);
     await page.getByRole('button', { name: '搜索 Ctrl+K' }).click();
     const bounds = await page.getByRole('dialog', { name: '全局搜索', exact: true }).boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
