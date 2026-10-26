@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="7b80282a-ecdf-4387-a76b-2df4308f87da" name="@c6d40763e77a 2026-10-26 00:08:16" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-10-26T00:08:16.2849813+00:00" queuing="2026-10-26T00:08:16.2849813+00:00" start="2026-10-26T00:08:14.3550709+00:00" finish="2026-10-26T00:08:17.2616124+00:00" />
+  <TestSettings name="default" id="16c29cda-20a5-4037-9187-e7ba90860b58">
+    <Deployment runDeploymentRoot="_c6d40763e77a_2026-10-26_00_08_16" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="da70053e-59cd-4c52-9f69-267ad28baa9b" testId="13de84fb-b386-799b-68b8-08aaa4bf7068" testName="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.OldContextAndRevokedSessionCannotReachCommit" computerName="c6d40763e77a" duration="00:00:00.3700000" startTime="2026-10-26T00:08:15.6911255+00:00" endTime="2026-10-26T00:08:16.0751573+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="da70053e-59cd-4c52-9f69-267ad28baa9b" />
+    <UnitTestResult executionId="22cdd70b-489b-4ce2-89d7-0f01e7f41846" testId="cb6aacdb-6ad3-f4d2-d427-8e2e82402103" testName="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.ConsumedSourceCannotBeRegeneratedByChangingRuleVersion" computerName="c6d40763e77a" duration="00:00:00.2690000" startTime="2026-10-26T00:08:16.6649183+00:00" endTime="2026-10-26T00:08:16.9345974+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="22cdd70b-489b-4ce2-89d7-0f01e7f41846" />
+    <UnitTestResult executionId="4c837d19-c003-4dca-b20f-d2c068c194f6" testId="3e9d9ec8-b65d-12eb-9058-63d40db94a7e" testName="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.UnknownModuleDimensionsBlockPlainAmountTransfer" computerName="c6d40763e77a" duration="00:00:00.2620000" startTime="2026-10-26T00:08:16.0895927+00:00" endTime="2026-10-26T00:08:16.3518156+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4c837d19-c003-4dca-b20f-d2c068c194f6" />
+    <UnitTestResult executionId="2e4ca9a3-5539-4e66-8e38-5e3aeeb4879a" testId="b98a9cd2-f086-6459-90f4-85c61e216778" testName="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.RegistrationListsOnlyImplementedReversalWindowHandlers" computerName="c6d40763e77a" duration="00:00:00.0060000" startTime="2026-10-26T00:08:16.0826276+00:00" endTime="2026-10-26T00:08:16.0888238+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2e4ca9a3-5539-4e66-8e38-5e3aeeb4879a" />
+    <UnitTestResult executionId="62f2a415-1c23-4d42-9850-1c14f0772f3e" testId="91d05f3d-8682-12c4-d569-b187e978424f" testName="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.ProposalContainsStableSourceAndSameContextWithDocumentAndVoucherTogether" computerName="c6d40763e77a" duration="00:00:00.2600000" startTime="2026-10-26T00:08:16.9357235+00:00" endTime="2026-10-26T00:08:17.1964891+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="62f2a415-1c23-4d42-9850-1c14f0772f3e" />
+    <UnitTestResult executionId="3cd9cdc8-4bba-48c1-bffa-61ce599ace22" testId="70d17df3-9e7f-ac41-4888-30ff18eb6cae" testName="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.RawReferenceJsonRetainsUnknownColumnsAndOriginalNumericTextVerbatim" computerName="c6d40763e77a" duration="00:00:00.3100000" startTime="2026-10-26T00:08:16.3530559+00:00" endTime="2026-10-26T00:08:16.6637701+00:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="3cd9cdc8-4bba-48c1-bffa-61ce599ace22" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.OldContextAndRevokedSessionCannotReachCommit" storage="/workspace/caiwu-ledger-check52/tests/caiwu.accountingextensions.tests/parity/bin/release/net10.0/caiwu.accountingextensions.parity.tests.dll" id="13de84fb-b386-799b-68b8-08aaa4bf7068">
+      <Execution id="da70053e-59cd-4c52-9f69-267ad28baa9b" />
+      <TestMethod codeBase="/workspace/caiwu-ledger-check52/tests/Caiwu.AccountingExtensions.Tests/Parity/bin/Release/net10.0/Caiwu.AccountingExtensions.Parity.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.AccountingExtensions.Tests.ParityAdapterTests" name="OldContextAndRevokedSessionCannotReachCommit" />
+    </UnitTest>
+    <UnitTest name="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.UnknownModuleDimensionsBlockPlainAmountTransfer" storage="/workspace/caiwu-ledger-check52/tests/caiwu.accountingextensions.tests/parity/bin/release/net10.0/caiwu.accountingextensions.parity.tests.dll" id="3e9d9ec8-b65d-12eb-9058-63d40db94a7e">
+      <Execution id="4c837d19-c003-4dca-b20f-d2c068c194f6" />
+      <TestMethod codeBase="/workspace/caiwu-ledger-check52/tests/Caiwu.AccountingExtensions.Tests/Parity/bin/Release/net10.0/Caiwu.AccountingExtensions.Parity.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.AccountingExtensions.Tests.ParityAdapterTests" name="UnknownModuleDimensionsBlockPlainAmountTransfer" />
+    </UnitTest>
+    <UnitTest name="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.RawReferenceJsonRetainsUnknownColumnsAndOriginalNumericTextVerbatim" storage="/workspace/caiwu-ledger-check52/tests/caiwu.accountingextensions.tests/parity/bin/release/net10.0/caiwu.accountingextensions.parity.tests.dll" id="70d17df3-9e7f-ac41-4888-30ff18eb6cae">
+      <Execution id="3cd9cdc8-4bba-48c1-bffa-61ce599ace22" />
+      <TestMethod codeBase="/workspace/caiwu-ledger-check52/tests/Caiwu.AccountingExtensions.Tests/Parity/bin/Release/net10.0/Caiwu.AccountingExtensions.Parity.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.AccountingExtensions.Tests.ParityAdapterTests" name="RawReferenceJsonRetainsUnknownColumnsAndOriginalNumericTextVerbatim" />
+    </UnitTest>
+    <UnitTest name="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.RegistrationListsOnlyImplementedReversalWindowHandlers" storage="/workspace/caiwu-ledger-check52/tests/caiwu.accountingextensions.tests/parity/bin/release/net10.0/caiwu.accountingextensions.parity.tests.dll" id="b98a9cd2-f086-6459-90f4-85c61e216778">
+      <Execution id="2e4ca9a3-5539-4e66-8e38-5e3aeeb4879a" />
+      <TestMethod codeBase="/workspace/caiwu-ledger-check52/tests/Caiwu.AccountingExtensions.Tests/Parity/bin/Release/net10.0/Caiwu.AccountingExtensions.Parity.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.AccountingExtensions.Tests.ParityAdapterTests" name="RegistrationListsOnlyImplementedReversalWindowHandlers" />
+    </UnitTest>
+    <UnitTest name="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.ProposalContainsStableSourceAndSameContextWithDocumentAndVoucherTogether" storage="/workspace/caiwu-ledger-check52/tests/caiwu.accountingextensions.tests/parity/bin/release/net10.0/caiwu.accountingextensions.parity.tests.dll" id="91d05f3d-8682-12c4-d569-b187e978424f">
+      <Execution id="62f2a415-1c23-4d42-9850-1c14f0772f3e" />
+      <TestMethod codeBase="/workspace/caiwu-ledger-check52/tests/Caiwu.AccountingExtensions.Tests/Parity/bin/Release/net10.0/Caiwu.AccountingExtensions.Parity.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.AccountingExtensions.Tests.ParityAdapterTests" name="ProposalContainsStableSourceAndSameContextWithDocumentAndVoucherTogether" />
+    </UnitTest>
+    <UnitTest name="Caiwu.AccountingExtensions.Tests.ParityAdapterTests.ConsumedSourceCannotBeRegeneratedByChangingRuleVersion" storage="/workspace/caiwu-ledger-check52/tests/caiwu.accountingextensions.tests/parity/bin/release/net10.0/caiwu.accountingextensions.parity.tests.dll" id="cb6aacdb-6ad3-f4d2-d427-8e2e82402103">
+      <Execution id="22cdd70b-489b-4ce2-89d7-0f01e7f41846" />
+      <TestMethod codeBase="/workspace/caiwu-ledger-check52/tests/Caiwu.AccountingExtensions.Tests/Parity/bin/Release/net10.0/Caiwu.AccountingExtensions.Parity.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner3/netcore/" className="Caiwu.AccountingExtensions.Tests.ParityAdapterTests" name="ConsumedSourceCannotBeRegeneratedByChangingRuleVersion" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="13de84fb-b386-799b-68b8-08aaa4bf7068" executionId="da70053e-59cd-4c52-9f69-267ad28baa9b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="cb6aacdb-6ad3-f4d2-d427-8e2e82402103" executionId="22cdd70b-489b-4ce2-89d7-0f01e7f41846" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3e9d9ec8-b65d-12eb-9058-63d40db94a7e" executionId="4c837d19-c003-4dca-b20f-d2c068c194f6" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="b98a9cd2-f086-6459-90f4-85c61e216778" executionId="2e4ca9a3-5539-4e66-8e38-5e3aeeb4879a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="91d05f3d-8682-12c4-d569-b187e978424f" executionId="62f2a415-1c23-4d42-9850-1c14f0772f3e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="70d17df3-9e7f-ac41-4888-30ff18eb6cae" executionId="3cd9cdc8-4bba-48c1-bffa-61ce599ace22" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="6" executed="6" passed="6" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v4.0.1+0f7d528729 (64-bit .NET 10.0.13)
+[xUnit.net 00:00:00.21]   Discovering: Caiwu.AccountingExtensions.Parity.Tests
+[xUnit.net 00:00:00.48]   Discovered:  Caiwu.AccountingExtensions.Parity.Tests
+[xUnit.net 00:00:00.75]   Starting:    Caiwu.AccountingExtensions.Parity.Tests
+[xUnit.net 00:00:02.40]   Finished:    Caiwu.AccountingExtensions.Parity.Tests (ID = 'aba82b4dfeee2526c0d2d8b67a029522b8170e52c98770b1d98860381f18ba77')
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

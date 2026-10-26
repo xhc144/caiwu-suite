@@ -68,3 +68,19 @@
 已成功：基础模块行为测试及 SQLite 独立回读/审计故障回滚；WPF 交叉编译零警告零错误；三产品原两窗口静态布局比较；PR52 契约组合编译与 adapter 契约替身测试。最终数量和证据源 SHA 见后续收尾追加。
 
 未完成：共享 Core/SQLite 的真实 parity 接通、共享逆操作、真实 Windows 对话框操作、原账套 SQL Anywhere 兼容及上述未实现验收。原因分别为公共实现/接口尚未提供、当前环境 Linux、原格式无损适配在其他任务；不是权限拒绝。没有被拒绝的动作、待批准动作或结果不确定的远端写入；未运行原程序或真实账套。
+
+## 已冻结源码与最终证据
+
+产品和测试源码提交：`527604b974ef8d4decd2525405c16cfca8c27a2a`；产品子树 `730073fb61487519043f13ce43110b71770aec01`。该提交已推至草稿 PR46。后续收尾提交只添加证据和更新本交接，不改产品源码。
+
+| 实际执行 | 结果 | 支持的结论/边界 |
+|---|---|---|
+| `tools/dotnet-local.sh test tests/Caiwu.AccountingExtensions.Tests/Caiwu.AccountingExtensions.Tests.csproj -c Release --logger 'trx;LogFileName=ledger-synthetic.trx' --results-directory tests/Caiwu.AccountingExtensions.Tests/evidence` | 49 passed，0 failed，0 skipped；构建无警告 | 基础状态机、权限撤销/到期、原 token/CAS、真实 Core 结转及 SQLite 独立回读/触发器故障回滚；只有合成账套 |
+| 固定 PR52 工作树，`dotnet restore .../Parity/Caiwu.AccountingExtensions.Parity.Tests.csproj --locked-mode` 后 `dotnet test ... -c Release --no-restore` | 6 passed，0 failed，0 skipped；构建无警告 | 共享契约编译、稳定来源、原 context、未知 JSON 原样传递、保守维度拒绝；**契约替身，不是共享 Core 真实接通** |
+| `tools/dotnet-local.sh restore src/Caiwu.AccountingExtensions/Wpf/Caiwu.AccountingExtensions.Wpf.csproj --locked-mode` 后 `build ... -c Release --no-restore` | 0 warning，0 error | Windows 交叉编译，未运行真实窗口 |
+| `python -m unittest discover -s tests/Caiwu.AccountingExtensions.Tests -p 'test_*.py' -v` | 3 passed | 三产品两窗口已知控件集合/原相对几何/文字及事件接线；不是目视、UIA、DPI 或键盘验收 |
+| Git 范围/空白检查 | 仅独占模块、测试、本交接；通过 | 未修改共享目录、main、workflow、私有权限或默认 book-project |
+
+原始合成 TRX 与摘要位于 `tests/Caiwu.AccountingExtensions.Tests/evidence/`：`ledger-synthetic.trx`、`parity-contract.trx`、`validation-summary.json`。摘要含源码提交/子树、PR52 checkpoint、每文件 SHA256 和明确 not-run 状态；固定组合工作树中产品/测试 C#/XAML/csproj/lock 文件与源码逐一哈希相符。没有保存原程序、真实账套或新的完整派生资料。
+
+建议集成顺序：先采用 PR52 兼容公共契约，再拣选本分支源码及收尾证据；基础 Wpf 菜单仅对当前无共享模块事件的账套绑定。共享 Core 实现完成后跑 Parity 项目与真实存储的组合验收，并补齐上述逆操作/维度能力接口，再扩展可用范围。不以静态注册激活未实现按钮。
