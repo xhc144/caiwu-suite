@@ -1,0 +1,11 @@
+.ledgers-summary td {
+  font-weight: 600;
+  background: #f0f4f8 !important;
+}
+.ledgers-opening td,
+.ledgers-closing td {
+  background: #e6f4ff !important;
+}
+.ledgers-ytd td {
+  color: #595959;
+}
