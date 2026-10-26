@@ -211,16 +211,16 @@
     },
     {
       "address": "C9",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "BALANCE(\"1122\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\",\\\"side\\\":\\\"debit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")+BALANCE(\"2203\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\",\\\"side\\\":\\\"debit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D9",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "BALANCE(\"1122\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\",\\\"side\\\":\\\"debit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")+BALANCE(\"2203\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\",\\\"side\\\":\\\"debit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
@@ -1023,16 +1023,16 @@
     },
     {
       "address": "G8",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "BALANCE(\"2202\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\",\\\"side\\\":\\\"credit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")+BALANCE(\"1123\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"current\\\",\\\"to\\\":\\\"current\\\",\\\"side\\\":\\\"credit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "H8",
-      "kind": "text",
-      "source": "未实现：需重分类、分析填列或完整合计",
-      "unit": "number",
+      "kind": "formula",
+      "source": "BALANCE(\"2202\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\",\\\"side\\\":\\\"credit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")+BALANCE(\"1123\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"yearStart\\\",\\\"to\\\":\\\"yearStart\\\",\\\"side\\\":\\\"credit\\\",\\\"groupBy\\\":[\\\"partner\\\"]}\")",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
@@ -1822,17 +1822,17 @@
     },
     {
       "address": "C9",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D9",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "A10",
@@ -2634,17 +2634,17 @@
     },
     {
       "address": "G8",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "H8",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "E9",

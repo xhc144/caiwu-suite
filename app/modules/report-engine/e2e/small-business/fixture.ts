@@ -2,12 +2,61 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test as base, type APIRequestContext } from '@playwright/test';
+import { test as base, type APIRequestContext, type Page } from '@playwright/test';
+import type { CoreServices } from '@caiwu/core/server';
+import { callApi } from '@caiwu/testkit/e2e';
 import { createRuntime, moduleKit } from '@caiwu/server-kit';
 import { seedVouchers, type VoucherSpec } from '@caiwu/testkit';
 import { spawnLocalServer } from '@caiwu/testkit/local-server';
 import reportServer from '../../server';
 import { opening, prepareCashflow } from '../../test/small-business/fixture';
+
+/** 用core接口选择基线已有的小企业科目表，不经过建账或凭证模块页面。 */
+export async function loginSmallBook(page: Page, request: APIRequestContext) {
+  const book = await callApi<{ id: string }>(request, 'core.books.create', {
+    name: `小企业报表E2E-${Date.now()}`,
+    orgName: '小企业合成测试',
+    templateId: 'books-small-business',
+    product: 'qingsong',
+    startYear: 2025,
+    startMonth: 1,
+    adminPassword: 'admin',
+  });
+  const login = await callApi<{ token: string; user: unknown; book: unknown }>(
+    request,
+    'core.auth.login',
+    { bookId: book.id, userCode: 'admin', password: 'admin' },
+  );
+  await page.addInitScript(
+    (session) => sessionStorage.setItem('caiwu.session', JSON.stringify(session)),
+    { token: login.token, bookId: book.id, user: login.user, book: login.book },
+  );
+  return { bookId: book.id, token: login.token };
+}
+
+async function runCore(
+  dataDir: string,
+  bookId: string,
+  operation: (svc: CoreServices) => Promise<void>,
+) {
+  const m = moduleKit(reportServer.manifest);
+  const router = m.router({
+    seed: m.procedure
+      .meta({ permission: 'report-engine.generate' })
+      .mutation(({ ctx }) => operation(ctx.svc)),
+  });
+  const runtime = createRuntime({ dataDir, modules: [{ ...reportServer, router }], devMode: true });
+  try {
+    const session = runtime.sessions.create(bookId, 1);
+    try {
+      await router.createCaller({ app: runtime, token: session.token }).seed();
+    } finally {
+      runtime.sessions.delete(session.token);
+    }
+  } finally {
+    await runtime.bookStore.closeAll();
+  }
+}
 
 const specs: VoucherSpec[] = [
   {
@@ -81,6 +130,7 @@ export const test = base.extend<{
     baseURL: string;
     request: APIRequestContext;
     seed(bookId: string): Promise<void>;
+    withCore(bookId: string, operation: (svc: CoreServices) => Promise<void>): Promise<void>;
   };
 }>({
   isolatedSmall: async ({ playwright }, use) => {
@@ -106,6 +156,7 @@ export const test = base.extend<{
       await use({
         baseURL,
         request,
+        withCore: (bookId, operation) => runCore(dataDir, bookId, operation),
         async seed(bookId) {
           const m = moduleKit(reportServer.manifest);
           const router = m.router({

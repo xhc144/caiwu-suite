@@ -1,6 +1,6 @@
 {
   "code": "303",
-  "name": "小企业现金流量表（年报取数试算，未完成）",
+  "name": "小企业现金流量表（年报12月取数试算，未完成）",
   "rows": 52,
   "cols": 6,
   "schemaVersion": 1,
@@ -9,7 +9,7 @@
     {
       "address": "A1",
       "kind": "text",
-      "source": "小企业现金流量表（年报取数试算，未完成）",
+      "source": "小企业现金流量表（年报12月取数试算，未完成）",
       "unit": "number",
       "currency": "CNY"
     },
@@ -100,14 +100,14 @@
     {
       "address": "E30",
       "kind": "text",
-      "source": "本月借方",
+      "source": "上年借方",
       "unit": "number",
       "currency": "CNY"
     },
     {
       "address": "F30",
       "kind": "text",
-      "source": "本月贷方",
+      "source": "上年贷方",
       "unit": "number",
       "currency": "CNY"
     },
@@ -121,7 +121,7 @@
     {
       "address": "A51",
       "kind": "text",
-      "source": "未完成：年报上年金额、单位及日期动态表头、附注；不构成完整法定报表。",
+      "source": "年报仅选12月；上年列固定上年初至上年末。逐分录分类阻止、单位日期及附注仍未完成。",
       "unit": "number",
       "currency": "CNY"
     },
@@ -471,14 +471,14 @@
     {
       "address": "E31",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F31",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -520,14 +520,14 @@
     {
       "address": "E32",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F32",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -569,14 +569,14 @@
     {
       "address": "E33",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F33",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -618,14 +618,14 @@
     {
       "address": "E34",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F34",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -667,14 +667,14 @@
     {
       "address": "E35",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F35",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -716,14 +716,14 @@
     {
       "address": "E36",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F36",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -765,14 +765,14 @@
     {
       "address": "E37",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F37",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -814,14 +814,14 @@
     {
       "address": "E38",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F38",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -863,14 +863,14 @@
     {
       "address": "E39",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F39",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -912,14 +912,14 @@
     {
       "address": "E40",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F40",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -961,14 +961,14 @@
     {
       "address": "E41",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F41",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1010,14 +1010,14 @@
     {
       "address": "E42",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F42",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1059,14 +1059,14 @@
     {
       "address": "E43",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F43",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1108,14 +1108,14 @@
     {
       "address": "E44",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F44",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1157,14 +1157,14 @@
     {
       "address": "E45",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F45",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1206,14 +1206,14 @@
     {
       "address": "E46",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F46",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1255,14 +1255,14 @@
     {
       "address": "E47",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "F47",
       "kind": "formula",
-      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "unit": "cents",
       "currency": "CNY"
     },
@@ -1310,156 +1310,156 @@
     },
     {
       "address": "D6",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "E31-F31",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D7",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "E32-F32",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D8",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F33-E33",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D9",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F34-E34",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D10",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F35-E35",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D11",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F36-E36",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D12",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "D6+D7-D8-D9-D10-D11",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D13",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "E37-F37",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D14",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "E38-F38",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D15",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "E39-F39",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D16",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F40-E40",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D17",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F41-E41",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D18",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "D13+D14+D15-D16-D17",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D19",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "E42-F42",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D20",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "E43-F43",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D21",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F44-E44",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D22",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F45-E45",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D23",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "F46-E46",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D24",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "D19+D20-D21-D22-D23",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D25",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "D12+D18+D24",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D26",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearStart\\\"}\")+BALANCE(\"1002\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearStart\\\"}\")+BALANCE(\"1012\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearStart\\\"}\")",
+      "unit": "cents",
       "currency": "CNY"
     },
     {
       "address": "D27",
-      "kind": "text",
-      "source": "未实现：需上年全年取数",
-      "unit": "number",
+      "kind": "formula",
+      "source": "D25+D26",
+      "unit": "cents",
       "currency": "CNY"
     }
   ],
@@ -2788,157 +2788,157 @@
     },
     {
       "address": "D6",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D7",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D8",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D9",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D10",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D11",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D12",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D13",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D14",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D15",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D16",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D17",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D18",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D19",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D20",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D21",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D22",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D23",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D24",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D25",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D26",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     },
     {
       "address": "D27",
-      "align": "left",
-      "wrap": true,
+      "align": "right",
+      "wrap": false,
       "bold": false,
-      "format": "general"
+      "format": "decimal2"
     }
   ],
   "rowHeights": [
@@ -3001,14 +3001,14 @@
       "tolerance": "0"
     },
     {
-      "name": "本月借方分类完整",
-      "left": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "name": "上年借方分类金额核对",
+      "left": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "right": "SUM(E31:E47)",
       "tolerance": "0"
     },
     {
-      "name": "本月贷方分类完整",
-      "left": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "name": "上年贷方分类金额核对",
+      "left": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "right": "SUM(F31:F47)",
       "tolerance": "0"
     },
@@ -3019,9 +3019,15 @@
       "tolerance": "0"
     },
     {
-      "name": "本月现金内部转存净额为零",
+      "name": "上年现金内部转存净额为零",
       "left": "E47",
       "right": "F47",
+      "tolerance": "0"
+    },
+    {
+      "name": "上年期末现金与总账一致",
+      "left": "D27",
+      "right": "BALANCE(\"1001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
       "tolerance": "0"
     }
   ],
