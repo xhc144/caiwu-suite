@@ -1,15 +1,4 @@
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Drawer,
-  Form,
-  Input,
-  InputNumber,
-  Select,
-  Space,
-  Spin,
-} from 'antd';
+import { Alert, Button, Checkbox, Form, Input, InputNumber, Select, Space, Spin } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type SetStateAction } from 'react';
 import { MoneyInput, FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
@@ -34,6 +23,10 @@ import {
 } from '../shared';
 import { ReportGrid } from './Grid';
 import { FunctionWizard } from './FunctionWizard';
+import { FunctionGuide } from './FunctionGuide';
+import { ChecksEditor } from './ChecksEditor';
+import { PasteDrawer } from './PasteDrawer';
+import { useDefinitionHistory } from './history';
 import { api } from './api';
 import { confirmDiscard, discardQuestion, useUnsavedGuard } from './unsaved';
 
@@ -52,7 +45,7 @@ function Editor({ initial }: { initial: Report }) {
   const session = useRequiredSession();
   const draftKey = `report-engine.draft.${session.bookId}.${session.user.id}.${initial.id}`;
   const [report, setReport] = useState(initial);
-  const [draft, setDraft] = useState<ReportTemplate>(() => {
+  const history = useDefinitionHistory(() => {
     try {
       const raw = JSON.parse(sessionStorage.getItem(draftKey) ?? 'null') as {
         revision?: number;
@@ -64,8 +57,11 @@ function Editor({ initial }: { initial: Report }) {
       return initial.template;
     }
   });
+  const draft = history.draft;
   const [selected, setSelected] = useState('A1');
+  const [pasteStart, setPasteStart] = useState<string | null>(null);
   const [wizard, setWizard] = useState(false);
+  const [guide, setGuide] = useState(false);
   const [checksOpen, setChecksOpen] = useState(false);
   const [mergeRange, setMergeRange] = useState('');
   const [error, setError] = useState('');
@@ -87,7 +83,13 @@ function Editor({ initial }: { initial: Report }) {
   const canChange = canEdit && !isSaving;
   // 同步锁保护尚未渲染 disabled 的事件轮次，以及异步向导回调。
   const editDraft = (next: SetStateAction<ReportTemplate>) => {
-    if (canEdit && !saveInFlight.current && mounted.current) setDraft(next);
+    if (canEdit && !saveInFlight.current && mounted.current) history.edit(next);
+  };
+  const undo = () => {
+    if (canEdit && !saveInFlight.current && mounted.current) history.undo();
+  };
+  const redo = () => {
+    if (canEdit && !saveInFlight.current && mounted.current) history.redo();
   };
   const current: Cell = draft.cells.find((c) => c.address === selected) ?? {
     address: selected,
@@ -128,7 +130,7 @@ function Editor({ initial }: { initial: Report }) {
         } catch {
           /* 存储禁用时仍允许显式离开。 */
         }
-        setDraft(report.template);
+        history.reset(report.template);
         bypassGuard();
         window.location.assign(to);
       },
@@ -166,7 +168,7 @@ function Editor({ initial }: { initial: Report }) {
       });
       if (!mounted.current) return;
       setReport(saved);
-      setDraft(saved.template);
+      history.reset(saved.template);
       setError('');
       queryClient.setQueryData(api.get.queryKey({ id: report.id }), (cached) =>
         cached && cached.revision > saved.revision ? cached : saved,
@@ -181,6 +183,9 @@ function Editor({ initial }: { initial: Report }) {
     }
   };
   useHotkey('F8', () => canChange && setWizard(true));
+  useHotkey('Ctrl+Z', undo, { allowInInput: false });
+  useHotkey('Ctrl+Y', redo, { allowInInput: false });
+  useHotkey('Ctrl+Shift+Z', redo, { allowInInput: false });
   useHotkey('Ctrl+S', () => {
     void submit();
   });
@@ -361,6 +366,15 @@ function Editor({ initial }: { initial: Report }) {
           )}
           {canEdit && (
             <>
+              <Button disabled={!canChange || !history.canUndo} onClick={undo}>
+                撤销
+              </Button>
+              <Button disabled={!canChange || !history.canRedo} onClick={redo}>
+                重做
+              </Button>
+              <Button disabled={!canChange} onClick={() => setPasteStart(selected)}>
+                区域粘贴
+              </Button>
               <Button disabled={!canChange} onClick={() => setWizard(true)}>
                 函数向导（F8）
               </Button>
@@ -470,6 +484,9 @@ function Editor({ initial }: { initial: Report }) {
             />
           </label>
         </Space>
+        <Button disabled={isSaving} style={{ marginTop: 12 }} onClick={() => setGuide(true)}>
+          报表函数指南
+        </Button>
         {canEdit && (
           <Space style={{ marginTop: 12 }}>
             <Input
@@ -517,6 +534,8 @@ function Editor({ initial }: { initial: Report }) {
         {wizard && (
           <FunctionWizard
             disabled={isSaving}
+            cell={current}
+            template={draft}
             onClose={() => setWizard(false)}
             onInsert={(source, unit, currency) => {
               if (saveInFlight.current) return;
@@ -525,78 +544,23 @@ function Editor({ initial }: { initial: Report }) {
             }}
           />
         )}
+        {pasteStart && (
+          <PasteDrawer
+            template={draft}
+            start={pasteStart}
+            disabled={!canChange}
+            onApply={editDraft}
+            onClose={() => setPasteStart(null)}
+          />
+        )}
+        {guide && <FunctionGuide onClose={() => setGuide(false)} />}
         {checksOpen && (
-          <Drawer
-            getContainer={false}
-            open
-            title="审核公式（勾稽）"
-            size={680}
+          <ChecksEditor
+            checks={draft.checks}
+            disabled={!canChange}
+            onChange={(checks) => editDraft((d) => ({ ...d, checks }))}
             onClose={() => setChecksOpen(false)}
-          >
-            <Alert
-              type="info"
-              title="逐项比较左右表达式；差额绝对值不超过阈值才通过"
-              description="左右必须同单位、同币种。金额按分四舍五入后比较，数量/比例保留10位小数；无法计算显示错误。引用与报表使用同一期间、口径和账套快照。"
-            />
-            {draft.checks.map((c, index) => (
-              <Space key={index} orientation="vertical" style={{ display: 'flex', marginTop: 16 }}>
-                {(['name', 'left', 'right', 'tolerance'] as const).map((key) => (
-                  <label key={key}>
-                    {
-                      {
-                        name: '名称',
-                        left: '左表达式',
-                        right: '右表达式',
-                        tolerance: '阈值（金额为分）',
-                      }[key]
-                    }
-                    <Input
-                      disabled={!canChange}
-                      value={c[key]}
-                      onChange={(e) =>
-                        editDraft({
-                          ...draft,
-                          checks: draft.checks.map((v, i) =>
-                            i === index ? { ...v, [key]: e.target.value } : v,
-                          ),
-                        })
-                      }
-                    />
-                  </label>
-                ))}
-                <Button
-                  disabled={!canChange}
-                  danger
-                  onClick={() =>
-                    editDraft({ ...draft, checks: draft.checks.filter((_, i) => i !== index) })
-                  }
-                >
-                  移除此审核项
-                </Button>
-              </Space>
-            ))}
-            <Button
-              disabled={!canChange}
-              style={{ marginTop: 16 }}
-              onClick={() =>
-                editDraft({
-                  ...draft,
-                  checks: [
-                    ...draft.checks,
-                    {
-                      name: `审核${draft.checks.length + 1}`,
-                      left: 'A1',
-                      right: 'A1',
-                      tolerance: '0',
-                    },
-                  ],
-                })
-              }
-            >
-              增加审核项
-            </Button>
-            <p>关闭抽屉保留修改；使用报表的保存按钮持久化。</p>
-          </Drawer>
+          />
         )}
       </PageContainer>
     </div>
