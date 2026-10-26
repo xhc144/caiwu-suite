@@ -6,9 +6,11 @@ import { queryClient, useBootstrap, usePermission, useRequiredSession } from '@c
 import { PageContainer } from '@caiwu/ui';
 import { api } from './api';
 import { useGuidance } from './guidance';
+import { useWorkbenchContext } from './context';
 
 export default function HelpPage() {
   const session = useRequiredSession();
+  const { entries } = useWorkbenchContext();
   const boot = useBootstrap();
   const navigate = useNavigate();
   const prefs = useQuery(api.preferences.queryOptions());
@@ -39,30 +41,32 @@ export default function HelpPage() {
       </Card>
       <Card title="首次使用引导">
         <Typography.Paragraph>
-          按以下顺序检查账套；入口仅用于导航，未安装的模块会显示不可用。
+          按以下顺序检查账套；这里只显示当前产品中已加载且有权进入的功能。
         </Typography.Paragraph>
         <Space wrap>
           {[
             ['建账/选择账套', '/'],
             ['基础档案', '/m/masterdata/accounts'],
             ['期初余额', '/m/opening'],
-            ['凭证录入', '/m/voucher-entry'],
+            ['凭证录入', '/m/voucher-entry/new'],
             ['数据备份', '/m/backup'],
-          ].map(([title, to]) => (
-            <Button
-              key={to}
-              onClick={() => {
-                if (
-                  to === '/' &&
-                  !window.dispatchEvent(new Event('beforeunload', { cancelable: true }))
-                )
-                  return;
-                void navigate(to!);
-              }}
-            >
-              {title}
-            </Button>
-          ))}
+          ]
+            .filter(([, to]) => to === '/' || entries.some((entry) => entry.to === to))
+            .map(([title, to]) => (
+              <Button
+                key={to}
+                onClick={() => {
+                  if (
+                    to === '/' &&
+                    !window.dispatchEvent(new Event('beforeunload', { cancelable: true }))
+                  )
+                    return;
+                  void navigate(to!);
+                }}
+              >
+                {title}
+              </Button>
+            ))}
         </Space>
         <p>制单和审核应由不同操作员完成，管理员应按业务职责授权。</p>
         <Space>
