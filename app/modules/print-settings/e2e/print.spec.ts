@@ -62,6 +62,8 @@ async function actualPdf(page: Page, context: BrowserContext, expectedPages: num
   const html = await page.evaluate(
     () => (window as unknown as { __printHtml: string }).__printHtml,
   );
+  // 取消提示是短暂通知；先验证 bridge 结果，再执行可能超过通知展示时长的 PDF 检查。
+  await expect(page.getByText('已取消 PDF 保存', { exact: true }).first()).toBeVisible();
   const printPage = await context.newPage();
   try {
     await printPage.setContent(html, { waitUntil: 'load' });
@@ -101,7 +103,6 @@ async function actualPdf(page: Page, context: BrowserContext, expectedPages: num
   } finally {
     await printPage.close();
   }
-  await expect(page.getByText('已取消 PDF 保存', { exact: true }).first()).toBeVisible();
 }
 const simple = (i: number): VoucherSpec => ({
   date: '2026-01-05',
