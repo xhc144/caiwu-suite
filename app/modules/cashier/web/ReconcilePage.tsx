@@ -136,6 +136,11 @@ export default function ReconcilePage() {
             <Typography.Title level={5}>出纳待勾项目</Typography.Title>
             <DataTable
               tableId="cashier.reconcile.documents"
+              pagination={{
+                pageSize: 50,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 项`,
+              }}
               rowKey="id"
               dataSource={data.documents}
               exportName="出纳对账项目"
@@ -155,6 +160,11 @@ export default function ReconcilePage() {
             <Typography.Title level={5}>财务只读引用</Typography.Title>
             <DataTable
               tableId="cashier.reconcile.entries"
+              pagination={{
+                pageSize: 50,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 项`,
+              }}
               rowKey="lineId"
               dataSource={data.entries}
               exportName="财务只读分录"
@@ -247,6 +257,11 @@ export default function ReconcilePage() {
             <Typography.Title level={5}>勾账组</Typography.Title>
             <DataTable
               tableId="cashier.matches"
+              pagination={{
+                pageSize: 50,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 项`,
+              }}
               rowKey="id"
               dataSource={data.groups}
               columns={[

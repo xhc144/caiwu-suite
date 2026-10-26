@@ -1059,9 +1059,13 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
     matchId: number | null;
     sourceTo: string | null;
   })[] = [];
+  const voucherCache = new Map<number, Awaited<ReturnType<typeof svc.vouchers.get>>>();
+  const matchesByLine = new Map(lineMatches.map((m) => [m.line_id, m]));
   for (const entry of ledgerEntries) {
-    const v = await svc.vouchers.get(entry.voucherId);
-    const m = lineMatches.find((m) => m.line_id === entry.lineId);
+    if (!voucherCache.has(entry.voucherId))
+      voucherCache.set(entry.voucherId, await svc.vouchers.get(entry.voucherId));
+    const v = voucherCache.get(entry.voucherId);
+    const m = matchesByLine.get(entry.lineId);
     entries.push({
       ...entry,
       signed: safeSum([entry.debit, -entry.credit]),

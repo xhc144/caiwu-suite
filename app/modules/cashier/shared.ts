@@ -127,16 +127,27 @@ export function matchSuggestions<
   D extends { id: number; date: string; signed: number; matchId: number | null },
   E extends { lineId: number; date: string; signed: number; matchId: number | null },
 >(documents: D[], entries: E[]) {
-  const docs = documents.filter((d) => d.matchId == null);
-  const lines = entries.filter((e) => e.matchId == null);
-  return docs
-    .toSorted((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
-    .map((document) => {
-      const candidates = lines
-        .filter((e) => e.signed === document.signed)
-        .toSorted((a, b) => a.date.localeCompare(b.date) || a.lineId - b.lineId);
-      const unique =
-        candidates.length === 1 && docs.filter((d) => d.signed === document.signed).length === 1;
-      return { document, candidates, unique };
-    });
+  // 同方向的整数金额本身就是键；每个分录只进入一个桶，重复金额共享桶引用。
+  const docs = documents
+    .filter((d) => d.matchId == null)
+    .toSorted((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  const counts = new Map<number, number>();
+  for (const d of docs) counts.set(d.signed, (counts.get(d.signed) ?? 0) + 1);
+  const buckets = new Map<number, E[]>();
+  for (const e of entries
+    .filter((e) => e.matchId == null)
+    .toSorted((a, b) => a.date.localeCompare(b.date) || a.lineId - b.lineId)) {
+    const bucket = buckets.get(e.signed);
+    if (bucket) bucket.push(e);
+    else buckets.set(e.signed, [e]);
+  }
+  const empty: E[] = [];
+  return docs.map((document) => {
+    const candidates = buckets.get(document.signed) ?? empty;
+    return {
+      document,
+      candidates,
+      unique: candidates.length === 1 && counts.get(document.signed) === 1,
+    };
+  });
 }
