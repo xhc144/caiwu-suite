@@ -99,3 +99,5 @@
 返修实跑：基础测试 56 passed（0 failed/skipped），含真实 SQLite 跨月生命周期：2 月已过账时 1 月生成/仅反过账前期被拒绝；2 月反过账成 Reviewed 或反审核成 Draft 仍不能补 1 月；删除旧后期结转后，旧 context 失效，按月重算 1 月 100、2 月新增收入 50，最终收入余额 0、利润贷方 150，经独立连接回读确认。Parity 固定 PR52 契约替身测试 14 passed，含删除后期收据、更换代码、前期删除/反过账/改期、正向只结剩余余额和未知来源拒绝。
 
 权限、原 book/revision、CAS 及单事务写入保持；所有拒绝发生在保存之前，实测 revision 与审计不变。共享 Core 直接回溯编辑/过账仍需 integration owner 在公共入口统一检查依赖，本模块不能拦截未经 adapter 的调用；未修改其文件。原账套/Windows/其他未实现项继续保留。最终返修 SHA 与证据摘要在收尾追加中记录。
+
+返修源码已提交并推送：`387be9bbbe543e2fac3f204a55a6ad96fc813fb9`，产品子树 `1aed762c9306aafcfb64392037977b0a3ed93bb1`。下一个收尾提交仅追加本行及证据摘要。`tests/Caiwu.AccountingExtensions.Tests/evidence/order-repair-summary.json` 记录修前复现、修后 56/14 项结果、SQLite 独立回读余额和固定 PR52 组合 C#/XAML/csproj/lock 逐文件哈希。WPF 重新交叉编译 0 warning/0 error；未运行 Windows、原程序或真实账套。没有权限拒绝、待审批或结果不确定的远端操作。PR46 保持草稿，未改 main。

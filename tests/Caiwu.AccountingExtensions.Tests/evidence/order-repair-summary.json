@@ -1,0 +1,120 @@
+{
+  "verified_at_utc": "2026-10-26T00:19:46.467854+00:00",
+  "source_commit": "387be9bbbe543e2fac3f204a55a6ad96fc813fb9",
+  "source_tree": "1aed762c9306aafcfb64392037977b0a3ed93bb1",
+  "reproduced_product_source_before_repair": "946955851055fb09c335c1c4d061e3022a3e1f4a",
+  "parity_contract_checkpoint": "5bb60d24b9c60c9eecfcc5adc37bced4688adf85",
+  "test_results": {
+    "regressions/reverse-month-before-fix.trx": {
+      "sha256": "90ccbdab451a0124b5e6c1a2fbf41b155e869a50912f2e5997fe1c1a843dfa75",
+      "counters": {
+        "total": "1",
+        "executed": "1",
+        "passed": "0",
+        "failed": "1",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "expected_historical_failure": true,
+      "reproduced_failure": "倒序结转未拒绝，实跑收入借方余额=100，利润贷方余额=200"
+    },
+    "ledger-order-repair.trx": {
+      "sha256": "ff2af0617b7fb847c044a7ea4d51c0ce1fb07fe1a293f0d2cf1ec323b9d1f0c6",
+      "counters": {
+        "total": "56",
+        "executed": "56",
+        "passed": "56",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "expected_historical_failure": false
+    },
+    "parity-order-repair.trx": {
+      "sha256": "90878f5e829ef01bc99831ceea6dacd3d09001db4fc3eacc9be34ed2d20c1301",
+      "counters": {
+        "total": "14",
+        "executed": "14",
+        "passed": "14",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      },
+      "expected_historical_failure": false
+    }
+  },
+  "sqlite_recompute_readback": {
+    "income_debit": 0,
+    "income_credit": 0,
+    "profit_credit": 150,
+    "january_income": 100,
+    "new_february_income": 50
+  },
+  "wpf_cross_build": {
+    "warnings": 0,
+    "errors": 0,
+    "native_windows_validation": "not-run"
+  },
+  "shared_parity_checks": "contract double only; not a real shared Core/SQLite transaction validation",
+  "policy": "reject earlier generation while later vouchers touch source/destination accounts; reject earlier reversals with later related vouchers; retained future receipts block rewind; inactive/moved earlier receipt vouchers block further generation; no automatic invalidation/reclaim",
+  "remaining_integration_requirement": "shared Core direct SaveDraft/Post and other backdated mutation entry points need centralized dependency/lifecycle guards; no shared files changed",
+  "matched_composition_source_hashes": {
+    "src/Caiwu.AccountingExtensions/AccountingExtensionService.cs": "c4937864cd106ca20b94fffab8acfba4cfbf2ca6ed06bc152bef61b9fdd49754",
+    "src/Caiwu.AccountingExtensions/Caiwu.AccountingExtensions.csproj": "4c4147a59ebf6edec644e99d867044853da2f480454c9b0f724f05716978446f",
+    "src/Caiwu.AccountingExtensions/ExtendedAccountingData.cs": "4bc55986ce6184ed549a219f66db364d477362977fb1d5b95ca00acb95fd5cd1",
+    "src/Caiwu.AccountingExtensions/LedgerStateRules.cs": "296bdcfde82aa472a4ad8de6fcd9783e7d17d1232564a1ac650cc150176df423",
+    "src/Caiwu.AccountingExtensions/Models.cs": "fc853115b6c0196b7fada34ea959c9076ccd6b91aed7b6159463604dd9f7a2a9",
+    "src/Caiwu.AccountingExtensions/MonthlyTransferPlanner.cs": "393e294557d2e4e6c640c8b2be78a4c09c242a3324f3b6ffbf4fa1c9d2b4cde6",
+    "src/Caiwu.AccountingExtensions/Parity/Caiwu.AccountingExtensions.Parity.csproj": "ffefc9a357e8118cd62a25f274834fb84d209111caaaf539f92d22a0e5c2698b",
+    "src/Caiwu.AccountingExtensions/Parity/ParityAccountingAdapter.cs": "e050f8c4a6b9ae3ba16bb14d34d1a0b821afc26c02e0c0f5584e02efe06089ff",
+    "src/Caiwu.AccountingExtensions/Parity/packages.lock.json": "ef871cd3472e838747d58e4f6635c5ab1cda4735e630afe2812bf306f580ce2b",
+    "src/Caiwu.AccountingExtensions/Wpf/AccountingDialogs.cs": "ce24766024aeb7e2636032b9a0196a4ab1fd9dc7985c994777b65ea0aeb36327",
+    "src/Caiwu.AccountingExtensions/Wpf/Caiwu.AccountingExtensions.Wpf.csproj": "777aa4d97f386501fb9a886e1308543f73e397653edb35e8d826d3eac4c6da27",
+    "src/Caiwu.AccountingExtensions/Wpf/ReopenPeriodWindow.xaml": "eda6e22438f7e9abf42b98335e80d3229f4951ccb02b0bb64341f6cd35fd9a0b",
+    "src/Caiwu.AccountingExtensions/Wpf/ReopenPeriodWindow.xaml.cs": "379bfe670bdcc980a94ae758735a2851fd1a8217b3c4b854a43dba5bc62b3a50",
+    "src/Caiwu.AccountingExtensions/Wpf/ReversePostingWindow.xaml": "2ffcf2b8582d86be0404d2cfda8b180ee749100797d93be6d047c35fb700baff",
+    "src/Caiwu.AccountingExtensions/Wpf/ReversePostingWindow.xaml.cs": "ba3926b8efa663ebc4da5effedae9eaf9a2100d908871b0f698eb23c642ccefe",
+    "src/Caiwu.AccountingExtensions/Wpf/packages.lock.json": "32e9401b77874d07796bfdba9ab24affe27c9db93077e14f92f5caff1d25b7eb",
+    "src/Caiwu.AccountingExtensions/packages.lock.json": "a4b335147cfbd714a487514063e0dfd0ffbc61425f7599e35dfc230a7299a282",
+    "tests/Caiwu.AccountingExtensions.Tests/Caiwu.AccountingExtensions.Tests.csproj": "c8f616b70a297da36ad227b8cb0661f00cc53741b5238aeb18b883353cf35767",
+    "tests/Caiwu.AccountingExtensions.Tests/DataContractTests.cs": "73f464d19f4140c4baca08a72cf223a7987e22cb2537197c8bb86ae8f3d01fc4",
+    "tests/Caiwu.AccountingExtensions.Tests/MonthlyTransferTests.cs": "beecdef2cfc2886f1f46663cc2dc9d1c43860ff5b5edae52c787e14b4df5e400",
+    "tests/Caiwu.AccountingExtensions.Tests/Parity/Caiwu.AccountingExtensions.Parity.Tests.csproj": "c70d13bbf19a71434264a70a84e025c4d68ce7e2927691a83fd9b1ce9eff2f2f",
+    "tests/Caiwu.AccountingExtensions.Tests/Parity/ParityAdapterTests.cs": "0d94ef9213a88b40364cf2392554648bcdecda1dca3b5f53cb5b3dd928c9b5de",
+    "tests/Caiwu.AccountingExtensions.Tests/Parity/packages.lock.json": "f6093aec3c67d6be5f34a8410be5e57ddb27e6ba7165561e90c9c800a2f84daf",
+    "tests/Caiwu.AccountingExtensions.Tests/ReversalTests.cs": "d5bed544899568db6f963e0af463b68a1e636f9889a052e13d15f52b49e6bd86",
+    "tests/Caiwu.AccountingExtensions.Tests/SqliteIntegrationTests.cs": "dd1b32271f3f24bce148a7bc63e090d14c6b0b642b8adbadb2b5926d60f3e1df",
+    "tests/Caiwu.AccountingExtensions.Tests/SyntheticFixture.cs": "b49250a84be0bbf425df4b54795c35e66ba55a81a787eab29a396a1e40b17bd2",
+    "tests/Caiwu.AccountingExtensions.Tests/packages.lock.json": "8bc5d5f55784da26da5d5cfd1b9b19572d479c937e2287e7eacb934c834b206c"
+  }
+}
