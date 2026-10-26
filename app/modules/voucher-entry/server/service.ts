@@ -3,6 +3,7 @@ import {
   Decimal,
   DIMENSION_TYPE_IDS,
   dimensionName,
+  formatMoney,
   notFound,
   periodOfDate,
   sourceRoute,
@@ -21,6 +22,7 @@ import {
   monthDistance,
   parsePaste,
   quantityAmount,
+  foreignAmount,
   type PasteField,
   type Problem,
   type SaveInput,
@@ -132,6 +134,29 @@ export function entryService(svc: CoreServices) {
           add('fcAmount', '外币金额必填且不能为零（红字可为负）');
         if (complete && (!l.exchangeRate || new Decimal(l.exchangeRate).lte(0)))
           add('exchangeRate', '请配置该期间汇率，汇率必须大于零');
+        if (
+          complete &&
+          l.fcAmount != null &&
+          l.fcAmount !== 0 &&
+          l.exchangeRate &&
+          new Decimal(l.exchangeRate).gt(0)
+        ) {
+          try {
+            // 手工凭证没有汇兑差额豁免契约；借贷平衡不能替代本行折算一致性。
+            const expected = foreignAmount(l.fcAmount, l.exchangeRate);
+            const side = l.credit ? 'credit' : 'debit';
+            const actual = l[side] ?? 0;
+            if (actual !== expected) {
+              const difference = new Decimal(actual).minus(expected).div(100).toFixed(2);
+              add(
+                side,
+                `原币金额×汇率折算应为 ${formatMoney(expected)}，当前${side === 'debit' ? '借方' : '贷方'} ${formatMoney(actual)}，差额 ${difference}；请按 F6 核对原币与汇率并重新折算（四舍五入到分）`,
+              );
+            }
+          } catch {
+            add('exchangeRate', '原币金额×汇率超出安全整数分范围，请核对原币金额和汇率');
+          }
+        }
       } else if (
         (l.currency && l.currency !== 'CNY') ||
         (l.fcAmount ?? 0) !== 0 ||

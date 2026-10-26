@@ -3,9 +3,14 @@ import { loginWithNewBook } from '@caiwu/testkit/e2e';
 import { seedVouchers } from '@caiwu/testkit';
 import { fixture } from './fixture';
 
-async function select(page: Page, label: string, value: string) {
-  await page.getByRole('combobox', { name: label, exact: true }).fill(value);
+async function select(page: Page, label: string, value: string, expectedAccount?: string) {
+  const input = page.getByRole('combobox', { name: label, exact: true });
+  await input.fill(value);
   await page.keyboard.press('Enter');
+  if (expectedAccount) {
+    const row = Number(/^第(\d+)行/.exec(label)![1]) - 1;
+    await expect(page.locator(`[data-line="${row}"]`)).toContainText(expectedAccount);
+  }
 }
 
 test('w_pz_pzedit：全键盘三行、部门项目和 USD → Ctrl+S → 重开 → 差1分阻止 → 草稿刷新 → 双标签冲突 → 已审核只读', async ({
@@ -34,12 +39,12 @@ test('w_pz_pzedit：全键盘三行、部门项目和 USD → Ctrl+S → 重开 
     await page.getByLabel('第1行摘要', { exact: true }).fill('键盘费用');
     await page.keyboard.press('Enter');
     await expect(page.getByRole('combobox', { name: '第1行科目', exact: true })).toBeFocused();
-    await select(page, '第1行科目', 'glfy');
+    await select(page, '第1行科目', 'glfy', '6602 管理费用');
     await select(page, '第1行部门', '01');
     await select(page, '第1行项目', 'XM01');
     await page.getByLabel('第1行借方', { exact: true }).fill('100');
     await page.getByLabel('第2行摘要', { exact: true }).fill('美元收款');
-    await select(page, '第2行科目', '100202');
+    await select(page, '第2行科目', '100202', '100202 银行存款/美元户');
     await select(page, '第2行现金流量', 'CF01');
     await page.getByLabel('第2行借方', { exact: true }).fill('71');
     await page.keyboard.press('F6');
@@ -49,7 +54,7 @@ test('w_pz_pzedit：全键盘三行、部门项目和 USD → Ctrl+S → 重开 
     await detail.getByLabel('第2行原币金额', { exact: true }).fill('10');
     await page.keyboard.press('Escape');
     await page.getByLabel('第3行摘要', { exact: true }).fill('收入合计');
-    await select(page, '第3行科目', '6001');
+    await select(page, '第3行科目', '6001', '6001 主营业务收入');
     await page.getByLabel('第3行贷方', { exact: true }).fill('171');
     await page.keyboard.press('Control+s');
     await expect(page.getByRole('status')).toContainText('已保存 记-0002');
@@ -380,6 +385,174 @@ test('w_pz_pzedit.closequery / u_new：壳关闭按钮与 Ctrl+F4 提供取消/�
     await reset.getByRole('button', { name: '确认', exact: true }).click();
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('');
     expect(await svc.vouchers.get(original.id)).not.toBeNull();
+  } finally {
+    await request.dispose();
+    await local.close();
+  }
+});
+
+test('w_pz_pzedit.u_pzsave：USD折算后手改本币且借贷平衡仍阻止，重新折算后才能正式保存', async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const local = await fixture();
+  const request = await requestFactory.newContext({ baseURL: local.url });
+  try {
+    const { bookId } = await loginWithNewBook(page, request, { seed: false });
+    const svc = await local.seed(bookId);
+    await page.goto(`${local.url}/m/voucher-entry/new`);
+    await expect(page.getByRole('status')).toContainText('已恢复');
+    await page.getByLabel('第1行摘要', { exact: true }).fill('外币一致性回归');
+    await select(page, '第1行科目', '100202');
+    await select(page, '第1行现金流量', 'CF01');
+    await page.getByLabel('第1行借方', { exact: true }).focus();
+    await page.keyboard.press('F6');
+    let detail = page.getByRole('dialog', { name: '第1行分录信息' });
+    await expect(detail.getByLabel('第1行汇率', { exact: true })).toHaveValue('7.1');
+    await detail.getByLabel('第1行原币金额', { exact: true }).fill('10');
+    await page.keyboard.press('Escape');
+    await expect(page.getByLabel('第1行借方', { exact: true })).toHaveValue('71.00');
+    await page.getByLabel('第2行摘要', { exact: true }).fill('对方收入');
+    await select(page, '第2行科目', '6001');
+    await page.getByLabel('第2行贷方', { exact: true }).fill('71');
+    await page.getByLabel('第3行摘要', { exact: true }).focus();
+    await page.keyboard.press('Control+d');
+    // 两边同时改为100，排除凭证借贷不平的阻止因素。
+    await page.getByLabel('第1行借方', { exact: true }).fill('100');
+    await page.getByLabel('第2行贷方', { exact: true }).fill('100');
+    await expect(page.getByTestId('difference')).toContainText('差额 0.00');
+    await expect(page.getByRole('note').filter({ hasText: '本币折算不一致' })).toContainText(
+      '71.00',
+    );
+    await page.keyboard.press('Control+s');
+    const error = page.getByRole('alert').filter({ hasText: '原币金额×汇率' }).first();
+    await expect(error).toContainText('71.00');
+    await expect(error).toContainText('100.00');
+    await expect(error).toContainText('29.00');
+    await expect(page.getByLabel('第1行借方', { exact: true })).toBeFocused();
+    expect((await svc.vouchers.list({ statuses: ['pending'] })).total).toBe(0);
+    await page.keyboard.press('F6');
+    detail = page.getByRole('dialog', { name: '第1行分录信息' });
+    await detail.getByRole('button', { name: '原币×汇率折算（四舍五入到分）' }).click();
+    await page.keyboard.press('Escape');
+    await page.getByLabel('第2行贷方', { exact: true }).fill('71');
+    await page.keyboard.press('Control+s');
+    await expect(page.getByRole('status')).toContainText('已保存 记-0001');
+    const formal = (await svc.vouchers.list({ statuses: ['pending'] })).items[0]!;
+    expect((await svc.vouchers.get(formal.id))!.lines[0]).toMatchObject({
+      debit: 7100,
+      fcAmount: 1000,
+      exchangeRate: '7.1',
+    });
+    await page.getByRole('link', { name: '重新打开凭证', exact: true }).click();
+    await expect(page.getByLabel('第1行借方', { exact: true })).toHaveValue('71.00');
+  } finally {
+    await request.dispose();
+    await local.close();
+  }
+});
+
+test('w_pz_pzedit.closequery：自动草稿后30秒内关壳标签再菜单重开，不能复用最初null缓冲或丢无科目行', async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const local = await fixture();
+  const request = await requestFactory.newContext({ baseURL: local.url });
+  try {
+    const { bookId } = await loginWithNewBook(page, request, { seed: false });
+    const svc = await local.seed(bookId);
+    await page.goto(`${local.url}/m/voucher-entry/new`);
+    await expect(page.getByRole('status')).toContainText('已恢复');
+    await page.getByLabel('第1行摘要', { exact: true }).fill('30秒内重开保留无科目摘要');
+    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    const before = (await svc.vouchers.list({ statuses: ['draft'] })).items;
+    expect(before).toHaveLength(1);
+    await page.keyboard.press('Control+F4');
+    await expect(page).toHaveURL(`${local.url}/home`);
+    await page.getByRole('menuitem', { name: '凭证录入', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('已恢复');
+    await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue(
+      '30秒内重开保留无科目摘要',
+    );
+    await page.getByLabel('第2行摘要', { exact: true }).fill('重开后继续输入');
+    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    await expect(page.getByRole('alert').filter({ hasText: '版本冲突' })).toHaveCount(0);
+    const after = (await svc.vouchers.list({ statuses: ['draft'] })).items;
+    expect(after).toHaveLength(1);
+    expect(after[0]!.id).toBe(before[0]!.id);
+    expect(after[0]!.number).toBeNull();
+    expect(after[0]!.revision).toBeGreaterThan(before[0]!.revision);
+  } finally {
+    await request.dispose();
+    await local.close();
+  }
+});
+
+test('w_pz_pzedit_b：已保存get在30秒内关标签并返回时必须读取新内容和revision', async ({ page }) => {
+  test.setTimeout(60000);
+  const local = await fixture();
+  const request = await requestFactory.newContext({ baseURL: local.url });
+  try {
+    const { bookId } = await loginWithNewBook(page, request, { seed: false });
+    const svc = await local.seed(bookId);
+    const [voucher] = await seedVouchers(svc, [
+      {
+        date: '2026-01-10',
+        lines: [
+          { account: '6603', debit: 100 },
+          { account: '6001', credit: 100 },
+        ],
+      },
+    ]);
+    await page.goto(`${local.url}/m/voucher-entry/edit?id=${voucher!.id}`);
+    await expect(page.getByRole('status')).toContainText('已恢复');
+    await page.getByLabel('第1行摘要', { exact: true }).fill('已保存get新内容');
+    await page.keyboard.press('Control+s');
+    await expect
+      .poll(async () => (await svc.vouchers.get(voucher!.id))!.lines[0]!.summary)
+      .toBe('已保存get新内容');
+    const revision = (await svc.vouchers.get(voucher!.id))!.revision;
+    await page.keyboard.press('Control+F4');
+    await expect(page).toHaveURL(`${local.url}/home`);
+    await page.goBack();
+    await expect(page).toHaveURL(`${local.url}/m/voucher-entry/edit?id=${voucher!.id}`);
+    await expect(page.getByRole('status')).toContainText('已恢复');
+    await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('已保存get新内容');
+    await page.getByLabel('附单据数', { exact: true }).fill('2');
+    await page.keyboard.press('Control+s');
+    await expect
+      .poll(async () => (await svc.vouchers.get(voucher!.id))!.revision)
+      .toBeGreaterThan(revision);
+    await expect(page.getByRole('alert').filter({ hasText: '版本冲突' })).toHaveCount(0);
+  } finally {
+    await request.dispose();
+    await local.close();
+  }
+});
+
+test('w_pz_pzedit / w_pz_km_find：关闭分录抽屉后已进入下一行搜索，关闭动画不得抢走焦点或吞掉Enter选科目', async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const local = await fixture();
+  const request = await requestFactory.newContext({ baseURL: local.url });
+  try {
+    const { bookId } = await loginWithNewBook(page, request, { seed: false });
+    await local.seed(bookId);
+    await page.goto(`${local.url}/m/voucher-entry/new`);
+    await expect(page.getByRole('status')).toContainText('已恢复');
+    await page.getByLabel('第1行借方', { exact: true }).focus();
+    await page.keyboard.press('F6');
+    const detail = page.getByRole('dialog', { name: '第1行分录信息', includeHidden: true });
+    await expect(detail).toBeVisible();
+    await page.keyboard.press('Escape');
+    const nextAccount = page.getByRole('combobox', { name: '第2行科目', exact: true });
+    await nextAccount.fill('6001');
+    // 等待的是关闭动画完成；用户已在下一行输入，不能再把焦点还给上一行。
+    await expect(detail).toBeHidden();
+    await expect(nextAccount).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('[data-line="1"]')).toContainText('6001 主营业务收入');
   } finally {
     await request.dispose();
     await local.close();

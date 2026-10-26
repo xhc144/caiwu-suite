@@ -121,7 +121,7 @@ export default function TemplatePage() {
                 <Button
                   onClick={() =>
                     void queryClient
-                      .fetchQuery(api.template.queryOptions({ id: t.id }))
+                      .fetchQuery({ ...api.template.queryOptions({ id: t.id }), staleTime: 0 })
                       .then((v) => {
                         setDraft({
                           id: v.id,

@@ -790,3 +790,299 @@ it('w_pz_pzedit：Excel预览提前列出必填辅助、方向与数量业务错
   expect(quantity.rows[0]?.errors.some((e) => e.includes('数量×单价'))).toBe(true);
   expect((await app.svc.vouchers.list({})).total).toBe(0);
 });
+
+it('w_pz_pzedit.u_pzsave：借贷已平仍拒绝 USD10×7.1 却录本币100，错误定位当前金额格', async () => {
+  const data = await base();
+  const cf = await itemId('cashflow', 'CF01');
+  await app.svc.db
+    .updateTable('dimension_item')
+    .set({ attrs: JSON.stringify({ cashflowDirection: 'inflow' }) })
+    .where('id', '=', cf)
+    .execute();
+  const bad = {
+    ...data,
+    lines: [
+      {
+        ...data.lines[0]!,
+        accountId: await id('100202'),
+        dimensions: { cashflow: cf },
+        currency: 'USD',
+        exchangeRate: '7.1',
+        fcAmount: 1000,
+        debit: 10000,
+      },
+      { ...data.lines[1]!, credit: 10000 },
+    ],
+  };
+  const error = await code(save(bad, { key: 'fx-balanced-repro' }));
+  expect(error.code).toBe('ENTRY_INVALID');
+  expect(error.message).toContain('原币金额×汇率');
+  expect(error.message).toContain('71.00');
+  expect(error.message).toContain('100.00');
+  expect(error.message).toContain('29.00');
+  expect(
+    'details' in error && (error.details?.problems as { line: number; field: string }[])[0],
+  ).toMatchObject({ line: 1, field: 'debit' });
+  expect((await app.svc.vouchers.list({ statuses: ['pending'] })).total).toBe(0);
+  expect(await api().buffer({ key: 'fx-balanced-repro' })).toBeNull();
+});
+
+type FxCase = { side: 'debit' | 'credit'; fcAmount: number | null; rate: string; amount: number };
+async function fxEntry({ side, fcAmount, rate, amount }: FxCase): Promise<Entry> {
+  const data = await base();
+  const cf = await itemId('cashflow', 'CF01');
+  const signed = side === 'debit' ? amount : -amount;
+  await app.svc.db
+    .updateTable('dimension_item')
+    .set({ attrs: JSON.stringify({ cashflowDirection: signed < 0 ? 'outflow' : 'inflow' }) })
+    .where('id', '=', cf)
+    .execute();
+  return {
+    ...data,
+    lines: [
+      {
+        ...data.lines[0]!,
+        accountId: await id('100202'),
+        dimensions: { cashflow: cf },
+        currency: 'USD',
+        fcAmount,
+        exchangeRate: rate,
+        debit: side === 'debit' ? amount : 0,
+        credit: side === 'credit' ? amount : 0,
+      },
+      {
+        ...data.lines[1]!,
+        debit: side === 'credit' ? amount : 0,
+        credit: side === 'debit' ? amount : 0,
+      },
+    ],
+  };
+}
+
+it.each([
+  { side: 'debit', fcAmount: 1000, rate: '7.1', amount: 7100 },
+  { side: 'credit', fcAmount: 1000, rate: '7.1', amount: 7100 },
+  { side: 'debit', fcAmount: -1000, rate: '7.1', amount: -7100 },
+  { side: 'credit', fcAmount: -1000, rate: '7.1', amount: -7100 },
+  { side: 'debit', fcAmount: 1, rate: '0.5', amount: 1 },
+  { side: 'credit', fcAmount: 1, rate: '0.5', amount: 1 },
+  { side: 'debit', fcAmount: -1, rate: '0.5', amount: -1 },
+  { side: 'credit', fcAmount: -1, rate: '0.5', amount: -1 },
+  { side: 'debit', fcAmount: 1, rate: '0.50000000000000000001', amount: 1 },
+  { side: 'credit', fcAmount: 1000, rate: '7.10000000000000000000001', amount: 7100 },
+  { side: 'debit', fcAmount: Number.MAX_SAFE_INTEGER, rate: '1', amount: Number.MAX_SAFE_INTEGER },
+  { side: 'credit', fcAmount: Number.MAX_SAFE_INTEGER, rate: '1', amount: Number.MAX_SAFE_INTEGER },
+  {
+    side: 'debit',
+    fcAmount: -Number.MAX_SAFE_INTEGER,
+    rate: '1',
+    amount: -Number.MAX_SAFE_INTEGER,
+  },
+] satisfies FxCase[])(
+  'w_pz_pzedit.u_pzsave：外币正数/红字/半分/安全边界正式保存读回 $side $fcAmount×$rate=$amount 分',
+  async (input) => {
+    const result = await save(await fxEntry(input));
+    const restored = (await api().get({ id: result.voucher!.id })).voucher;
+    expect(restored.status).toBe('pending');
+    expect(restored.lines[0]).toMatchObject({
+      [input.side]: input.amount,
+      fcAmount: input.fcAmount,
+      exchangeRate: input.rate,
+      currency: 'USD',
+    });
+    expect(restored.debitTotal).toBe(restored.creditTotal);
+  },
+);
+
+it.each([
+  { side: 'debit', fcAmount: 1000, rate: '7.1', amount: 10000, message: '原币金额×汇率' },
+  { side: 'credit', fcAmount: 1000, rate: '7.1', amount: 10000, message: '原币金额×汇率' },
+  { side: 'debit', fcAmount: -1000, rate: '7.1', amount: -10000, message: '原币金额×汇率' },
+  { side: 'credit', fcAmount: -1000, rate: '7.1', amount: -10000, message: '原币金额×汇率' },
+  { side: 'debit', fcAmount: 1000, rate: '7.1', amount: 7101, message: '差额 0.01' },
+  { side: 'credit', fcAmount: 1000, rate: '7.1', amount: 7099, message: '差额 -0.01' },
+  { side: 'debit', fcAmount: -1000, rate: '7.1', amount: 7100, message: '差额 142.00' },
+  { side: 'credit', fcAmount: 1000, rate: '7.1', amount: -7100, message: '差额 -142.00' },
+  { side: 'debit', fcAmount: 1, rate: '0.49999999999999999999', amount: 1, message: '差额 0.01' },
+  {
+    side: 'credit',
+    fcAmount: -1,
+    rate: '0.49999999999999999999',
+    amount: -1,
+    message: '差额 -0.01',
+  },
+  { side: 'debit', fcAmount: 1000, rate: '7.1', amount: 0, message: '借贷金额不能都为零' },
+  {
+    side: 'credit',
+    fcAmount: 1,
+    rate: '0.49999999999999999999',
+    amount: 0,
+    message: '借贷金额不能都为零',
+  },
+  { side: 'debit', fcAmount: 0, rate: '7.1', amount: 7100, message: '外币金额必填且不能为零' },
+  { side: 'credit', fcAmount: null, rate: '7.1', amount: 7100, message: '外币金额必填且不能为零' },
+  { side: 'debit', fcAmount: 1000, rate: '0', amount: 7100, message: '汇率必须大于零' },
+  { side: 'credit', fcAmount: 1000, rate: '-7.1', amount: 7100, message: '汇率必须大于零' },
+  {
+    side: 'debit',
+    fcAmount: Number.MAX_SAFE_INTEGER,
+    rate: '1.0000000000000001',
+    amount: Number.MAX_SAFE_INTEGER,
+    message: '超出安全整数分范围',
+  },
+  {
+    side: 'credit',
+    fcAmount: 1000,
+    rate: '99999999999999999999',
+    amount: 1,
+    message: '超出安全整数分范围',
+  },
+  {
+    side: 'debit',
+    fcAmount: -Number.MAX_SAFE_INTEGER,
+    rate: '1',
+    amount: Number.MAX_SAFE_INTEGER,
+    message: '差额 180143985094819.82',
+  },
+] satisfies (FxCase & { message: string })[])(
+  'w_pz_pzedit.u_pzsave：借贷平衡仍拒绝外币矛盾/零/溢出 $side $fcAmount×$rate 与 $amount 分',
+  async (input) => {
+    const error = await code(save(await fxEntry(input)));
+    expect(error.code).toBe('ENTRY_INVALID');
+    expect(error.message).toContain(input.message);
+    expect((await app.svc.vouchers.list({})).total).toBe(0);
+  },
+);
+
+it('w_pz_pzedit_b：外币折算不一致的更新不改变已存金额、revision 或缓冲', async () => {
+  const data = await fxEntry({ side: 'debit', fcAmount: 1000, rate: '7.1', amount: 7100 });
+  const saved = await save(data, { key: 'fx-update' });
+  const original = saved.voucher!;
+  const buffer = await api().buffer({ key: 'fx-update' });
+  const bad = {
+    ...data,
+    lines: [
+      { ...data.lines[0]!, debit: 10000 },
+      { ...data.lines[1]!, credit: 10000 },
+    ],
+  };
+  const error = await code(
+    api().save({
+      key: 'fx-update',
+      id: original.id,
+      expectedRevision: original.revision,
+      bufferRevision: saved.bufferRevision,
+      data: bad,
+    }),
+  );
+  expect(error.message).toContain('差额 29.00');
+  expect(await app.svc.vouchers.get(original.id)).toEqual(original);
+  expect(await api().buffer({ key: 'fx-update' })).toEqual(buffer);
+});
+
+it('w_pz_pzedit：矛盾金额可明确保留为不入账草稿，不能用同一ID转正式绕过折算', async () => {
+  const data = await fxEntry({ side: 'debit', fcAmount: 1000, rate: '7.1', amount: 10000 });
+  const draft = await save({ ...data, draft: true }, { key: 'fx-draft' });
+  expect(draft.voucher).toMatchObject({ status: 'draft', number: null, debitTotal: 10000 });
+  expect(
+    await app.svc.ledger.entries({ periodFrom: 202601, periodTo: 202601, includeUnposted: true }),
+  ).toEqual([]);
+  const error = await code(
+    api().save({
+      key: 'fx-draft',
+      id: draft.voucher!.id,
+      expectedRevision: draft.voucher!.revision,
+      bufferRevision: draft.bufferRevision,
+      data: { ...data, draft: false },
+    }),
+  );
+  expect(error.message).toContain('原币金额×汇率');
+  expect((await app.svc.vouchers.get(draft.voucher!.id))!.status).toBe('draft');
+  expect((await app.svc.vouchers.list({ statuses: ['pending'] })).total).toBe(0);
+});
+
+it('wf_pzmb_save / w_pz_pzedit.u_pzclock / Excel：相同外币一致性规则覆盖模版、审核入口和粘贴预览', async () => {
+  const data = await fxEntry({ side: 'debit', fcAmount: 1000, rate: '7.1', amount: 10000 });
+  expect(
+    (
+      await code(
+        api().saveTemplate({
+          code: 'FX',
+          name: '不一致模版',
+          voucherTypeId: data.voucherTypeId,
+          lines: data.lines,
+        }),
+      )
+    ).message,
+  ).toContain('原币金额×汇率');
+  expect(await api().templates({})).toEqual([]);
+  const preview = await api().paste({
+    text: '美元矛盾\t100202\t100\t0\tCF01\tUSD\t7.1\t10\n对方\t6001\t0\t100',
+    mapping: [
+      'summary',
+      'account',
+      'debit',
+      'credit',
+      'cashflow',
+      'currency',
+      'exchangeRate',
+      'fcAmount',
+    ],
+  });
+  expect(preview.rows[0]?.errors.some((e) => e.includes('差额 29.00'))).toBe(true);
+  expect((await app.svc.vouchers.list({})).total).toBe(0);
+  // 真实 core 暂不兜底；测试只通过 core 造遗留数据，再检查本模块审核导航边界。
+  const legacy = await app.svc.vouchers.create(data);
+  expect((await code(api().reviewCheck({ id: legacy.id }))).message).toContain('原币金额×汇率');
+  expect((await app.svc.vouchers.get(legacy.id))!.revision).toBe(1);
+});
+
+it('w_pz_pzedit：fast-check 随机正负原币和汇率经 router 读回一致，差一分必拒绝', async () => {
+  const seed = await fxEntry({ side: 'debit', fcAmount: 1000, rate: '7.1', amount: 7100 });
+  await fc.assert(
+    fc.asyncProperty(
+      fc.integer({ min: 1, max: 1000000 }),
+      fc.integer({ min: 10000, max: 100000 }),
+      fc.boolean(),
+      async (magnitude, rateE4, red) => {
+        const fcAmount = red ? -magnitude : magnitude;
+        const rate = new Decimal(rateE4).div('10000').toFixed();
+        const numerator = BigInt(fcAmount) * BigInt(rateE4);
+        const expected = Number(
+          (numerator < 0n ? -1n : 1n) *
+            (((numerator < 0n ? -numerator : numerator) + 5000n) / 10000n),
+        );
+        const cf = seed.lines[0]!.dimensions!.cashflow!;
+        await app.svc.db
+          .updateTable('dimension_item')
+          .set({ attrs: JSON.stringify({ cashflowDirection: red ? 'outflow' : 'inflow' }) })
+          .where('id', '=', cf)
+          .execute();
+        const data = {
+          ...seed,
+          lines: [
+            { ...seed.lines[0]!, fcAmount, exchangeRate: rate, debit: expected },
+            { ...seed.lines[1]!, credit: expected },
+          ],
+        };
+        const saved = await save(data);
+        expect(saved.voucher!.lines[0]).toMatchObject({
+          debit: expected,
+          fcAmount,
+          exchangeRate: rate,
+        });
+        const error = await code(
+          save({
+            ...data,
+            lines: [
+              { ...data.lines[0]!, debit: expected + (red ? -1 : 1) },
+              { ...data.lines[1]!, credit: expected + (red ? -1 : 1) },
+            ],
+          }),
+        );
+        expect(error.message).toContain('原币金额×汇率');
+      },
+    ),
+    { numRuns: 20 },
+  );
+});

@@ -13,6 +13,7 @@ import {
   type VoucherLineInput,
 } from '@caiwu/core';
 import { AccountSelect, MoneyInput } from '@caiwu/ui';
+import { useAccounts } from '@caiwu/web-kit';
 import { isEntryDate, foreignAmount, quantityAmount } from '../shared';
 import { api } from './api';
 
@@ -30,6 +31,7 @@ type Props = {
   onInfo: () => void;
 };
 export default function LineGrid(p: Props) {
+  const accountCatalog = useAccounts();
   const defaultWidths = [48, 200, 250, 150, 150, 300];
   const minimumWidths = [42, 140, 180, 110, 110, 200];
   const [widths, setWidths] = useState<number[]>(() => {
@@ -204,7 +206,7 @@ export default function LineGrid(p: Props) {
                     data-field="accountId"
                     style={{ width: '100%' }}
                     value={l.accountId ?? undefined}
-                    disabled={p.readonly}
+                    disabled={p.readonly || accountCatalog.loading}
                     notFoundContent="未搜索到可用末级科目，请更换编码、名称或拼音"
                     onChange={(id: number) => {
                       const account = p.accounts.find((x) => x.id === id);
@@ -321,6 +323,23 @@ function AccountContext({
     enabled: isEntryDate(date),
   });
   const side = balanceSide(q.data?.balance ?? 0, account.direction);
+  let conversionProblem = '';
+  if (
+    account.currency &&
+    line.fcAmount != null &&
+    line.exchangeRate &&
+    isDecimalString(line.exchangeRate) &&
+    new Decimal(line.exchangeRate).gt(0)
+  ) {
+    try {
+      const expected = foreignAmount(line.fcAmount, line.exchangeRate);
+      const actual = line.credit ? line.credit : (line.debit ?? 0);
+      if (expected !== actual)
+        conversionProblem = `本币折算不一致：原币金额×汇率应为 ${formatMoney(expected)}，当前 ${formatMoney(actual)}；F6 核对后重新折算。正式保存会阻止。`;
+    } catch {
+      conversionProblem = '原币金额×汇率超出安全整数分范围，请核对；正式保存会阻止。';
+    }
+  }
   useEffect(() => {
     if (!readonly && account.currency && !line.exchangeRate && q.data?.rate) onRate(q.data.rate);
   }, [readonly, account.currency, line.exchangeRate, q.data?.rate, onRate]);
@@ -341,6 +360,11 @@ function AccountContext({
         ) : (
           <span style={{ color: '#c33' }}>该期间缺少汇率，请到外币档案设置</span>
         ))}
+      {conversionProblem && (
+        <div role="note" style={{ color: '#c33' }}>
+          {conversionProblem}
+        </div>
+      )}
     </div>
   );
 }
@@ -536,6 +560,9 @@ export function LineDetails({
       </label>
       {a?.currency && (
         <>
+          <div style={{ color: '#666' }}>
+            本位币须等于原币金额×汇率，四舍五入到分。手动修改本位币后仍会核验，不能用借贷找平替代折算。
+          </div>
           {textField('汇率', 'exchangeRate')}
           <label>
             原币金额

@@ -84,9 +84,12 @@ export default function EntryPage() {
   const existing = useQuery({
     ...api.get.queryOptions({ id: filters.id || 1 }),
     enabled: !!filters.id,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
-  if (initial.isLoading || (filters.id && existing.isLoading)) return <Spin />;
-  if (!initial.data || (filters.id && !existing.data))
+  if (initial.isLoading || (filters.id && (existing.isLoading || !existing.isFetchedAfterMount)))
+    return <Spin />;
+  if (!initial.data || (filters.id && (existing.isError || !existing.data)))
     return <Alert type="error" title="无法打开凭证，请刷新并核对编号和查看权限" />;
   return (
     <Editor
@@ -189,7 +192,7 @@ function Editor({
   useEffect(() => {
     let liveEffect = true;
     void queryClient
-      .fetchQuery(api.buffer.queryOptions({ key: editorKey }))
+      .fetchQuery({ ...api.buffer.queryOptions({ key: editorKey }), staleTime: 0 })
       .then(async (buffer) => {
         if (!liveEffect) return;
         let restoredStatus = '已恢复；尚未修改';
@@ -198,8 +201,12 @@ function Editor({
           const current =
             voucher ??
             (buffer.voucherId
-              ? (await queryClient.fetchQuery(api.get.queryOptions({ id: buffer.voucherId })))
-                  .voucher
+              ? (
+                  await queryClient.fetchQuery({
+                    ...api.get.queryOptions({ id: buffer.voucherId }),
+                    staleTime: 0,
+                  })
+                ).voucher
               : null);
           if (!liveEffect) return;
           if (current) {
@@ -321,6 +328,16 @@ function Editor({
         live.current.bufferRevision = result.bufferRevision;
         live.current.savedVersion = version;
         setHeader(result.voucher);
+        if (result.voucher)
+          queryClient.setQueryData(api.get.queryKey({ id: result.voucher.id }), {
+            voucher: result.voucher,
+            sourceUrl: null,
+          });
+        // 同一凭证可从新建 UUID 或 edit-id 读取；其它缓存别名必须重新读取。
+        void queryClient.invalidateQueries({
+          queryKey: api.buffer.queryKey(),
+          refetchType: 'none',
+        });
         setStatus(
           result.coreError
             ? `编辑缓冲已保存；core 草稿未保存：${result.coreError}`
@@ -701,7 +718,7 @@ function Editor({
             <Button
               onClick={() =>
                 void queryClient
-                  .fetchQuery(api.buffer.queryOptions({ key: editorKey }))
+                  .fetchQuery({ ...api.buffer.queryOptions({ key: editorKey }), staleTime: 0 })
                   .then((b) => {
                     if (b)
                       void confirm(
@@ -954,29 +971,47 @@ function Editor({
           open={details}
           title={`第${active + 1}行分录信息`}
           size={480}
-          onClose={() => {
-            setDetails(false);
-            focus(active, 'summary');
+          focusable={{ focusTriggerAfterClose: false }}
+          onClose={() => setDetails(false)}
+          afterOpenChange={(open) => {
+            if (
+              !open &&
+              (document.activeElement === document.body ||
+                document.activeElement?.closest('[data-voucher-line-details]'))
+            )
+              requestAnimationFrame(() => {
+                if (
+                  document.activeElement === document.body ||
+                  document.activeElement?.closest('[data-voucher-line-details]')
+                )
+                  root.current
+                    ?.querySelector<HTMLInputElement>(
+                      `[data-line="${active}"] input[data-field="summary"]`,
+                    )
+                    ?.focus();
+              });
           }}
           destroyOnHidden
         >
           {data.lines[active] && (
-            <LineDetails
-              line={data.lines[active]}
-              index={active}
-              accounts={boot.accounts}
-              items={boot.items}
-              methods={boot.methods}
-              readonly={readonly}
-              onChange={(patch) =>
-                change({
-                  ...live.current.data,
-                  lines: live.current.data.lines.map((l, i) =>
-                    i === active ? { ...l, ...patch } : l,
-                  ),
-                })
-              }
-            />
+            <div data-voucher-line-details>
+              <LineDetails
+                line={data.lines[active]}
+                index={active}
+                accounts={boot.accounts}
+                items={boot.items}
+                methods={boot.methods}
+                readonly={readonly}
+                onChange={(patch) =>
+                  change({
+                    ...live.current.data,
+                    lines: live.current.data.lines.map((l, i) =>
+                      i === active ? { ...l, ...patch } : l,
+                    ),
+                  })
+                }
+              />
+            </div>
           )}
         </Drawer>
         {paste && (
@@ -1002,7 +1037,7 @@ function Editor({
             const requestedEpoch = ++templateEpoch.current;
             if (templateChoice)
               void queryClient
-                .fetchQuery(api.template.queryOptions({ id: templateChoice }))
+                .fetchQuery({ ...api.template.queryOptions({ id: templateChoice }), staleTime: 0 })
                 .then(async (t) => {
                   if (requestedEpoch !== templateEpoch.current) return;
                   if (
