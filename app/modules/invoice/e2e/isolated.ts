@@ -1,5 +1,5 @@
+import { spawnLocalServer } from '@caiwu/testkit/local-server';
 import { test as base, type APIRequestContext } from '@playwright/test';
-import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -13,36 +13,14 @@ export type Isolated = {
   request: APIRequestContext;
   inBook<T>(bookId: string, fn: (svc: CoreServices) => Promise<T>): Promise<T>;
 };
-type ServerExit = { code: number | null; signal: string | null; error?: Error };
-
-async function closeServer(child: ChildProcess, exited: Promise<ServerExit>, dataDir: string) {
-  if (child.exitCode == null && child.signalCode == null) child.kill('SIGTERM');
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    const result = await Promise.race([
-      exited,
-      new Promise<never>((_, reject) => {
-        timer = setTimeout(
-          () => reject(new Error(`发票服务未正常退出，保留临时目录：${dataDir}`)),
-          5_000,
-        );
-      }),
-    ]);
-    if (result.error || result.code !== 0)
-      throw new Error(
-        `发票服务异常退出（${result.code ?? result.signal ?? result.error?.message}），保留临时目录：${dataDir}`,
-      );
-    await rm(dataDir, { recursive: true, force: true });
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 export const test = base.extend<{ isolated: Isolated }>({
   isolated: async ({ playwright }, use) => {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), 'caiwu-invoice-e2e-'));
-    const child = spawn(process.execPath, ['--import', 'tsx', 'apps/server/src/main.ts'], {
+    const localServer = spawnLocalServer({
       cwd: process.cwd(),
+      dataDir,
+      shutdownProtocol: 'sigterm-bridge',
       env: {
         ...process.env,
         CAIWU_DATA_DIR: dataDir,
@@ -51,37 +29,10 @@ export const test = base.extend<{ isolated: Isolated }>({
         CAIWU_DEV: '1',
         CAIWU_WEB_DIST: path.resolve('apps/web/dist'),
       },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    const exited = new Promise<ServerExit>((resolve) => {
-      child.once('exit', (code, signal) => resolve({ code, signal }));
-      child.once('error', (error) => resolve({ code: null, signal: null, error }));
     });
     let request: APIRequestContext | undefined;
     try {
-      const port = await new Promise<number>((resolve, reject) => {
-        let output = '';
-        const timer = setTimeout(() => reject(new Error('独立发票服务启动超时')), 20000);
-        child.once('error', (e) => {
-          clearTimeout(timer);
-          reject(e);
-        });
-        child.once('exit', (code) => {
-          clearTimeout(timer);
-          reject(new Error(`独立发票服务退出 ${code}: ${output}`));
-        });
-        child.stdout.on('data', (b: Buffer) => {
-          output += b.toString();
-          const match = /CAIWU_READY (\{[^\n]+\})/.exec(output);
-          if (match) {
-            clearTimeout(timer);
-            resolve((JSON.parse(match[1]!) as { port: number }).port);
-          }
-        });
-        child.stderr.on('data', (b: Buffer) => {
-          output += b.toString();
-        });
-      });
+      const port = await localServer.ready();
       const origin = `http://127.0.0.1:${port}`;
       request = await playwright.request.newContext({ baseURL: origin });
       await use({
@@ -114,7 +65,8 @@ export const test = base.extend<{ isolated: Isolated }>({
       try {
         await request?.dispose();
       } finally {
-        await closeServer(child, exited, dataDir);
+        await localServer.close();
+        await rm(dataDir, { recursive: true, force: true });
       }
     }
   },

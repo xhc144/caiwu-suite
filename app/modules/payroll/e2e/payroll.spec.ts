@@ -1,8 +1,7 @@
-import { spawn } from 'node:child_process';
+import { spawnLocalServer } from '@caiwu/testkit/local-server';
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { once } from 'node:events';
 import { test, expect, type Locator } from '@playwright/test';
 import ExcelJS from 'exceljs';
 import { createRuntime, moduleKit } from '@caiwu/server-kit';
@@ -43,7 +42,9 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
   test.setTimeout(90000);
   // 此测试独占目录及随机端口，只打开自己创建的账套；生产 router 无任何造数接口。
   const dataDir = mkdtempSync(path.join(os.tmpdir(), 'payroll-e2e-'));
-  const child = spawn(process.execPath, ['--import', 'tsx', 'apps/server/src/main.ts'], {
+  const server = spawnLocalServer({
+    dataDir,
+    shutdownProtocol: 'sigterm-bridge',
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -53,29 +54,10 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       CAIWU_DATA_DIR: dataDir,
       CAIWU_WEB_DIST: path.resolve('apps/web/dist'),
     },
-    stdio: ['ignore', 'pipe', 'pipe'],
   });
   let runtime: ReturnType<typeof createRuntime> | undefined;
-  let output = '';
-  child.stderr.on('data', (data) => {
-    output += String(data);
-  });
   try {
-    const port = await new Promise<number>((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error(`工资测试服务未就绪：${output}`)), 20000);
-      child.once('exit', (code) => {
-        clearTimeout(timeout);
-        reject(new Error(`工资测试服务退出 ${code}：${output}`));
-      });
-      child.stdout.on('data', (data) => {
-        output += String(data);
-        const ready = /CAIWU_READY (\{[^\n]+\})/.exec(output);
-        if (ready) {
-          clearTimeout(timeout);
-          resolve((JSON.parse(ready[1]!) as { port: number }).port);
-        }
-      });
-    });
+    const port = await server.ready();
     // server 取得目录占用并 READY 后，辅助 runtime 才能合法加入同一 dataDir。
     runtime = createRuntime({ dataDir, modules: [payroll], devMode: true });
     const baseURL = `http://127.0.0.1:${port}`;
@@ -369,10 +351,7 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
     try {
       await runtime?.bookStore.closeAll();
     } finally {
-      if (child.exitCode == null && child.signalCode == null) {
-        child.kill('SIGTERM');
-        await once(child, 'exit');
-      }
+      await server.close();
       rmSync(dataDir, { recursive: true, force: true });
     }
   }
