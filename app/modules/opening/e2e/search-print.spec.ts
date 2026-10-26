@@ -71,6 +71,8 @@ test('w_xt_bmnc/w_xt_bm_sc：编码/拼音查部门、重载保持范围、新�
     .getByRole('dialog', { name: '有未保存修改', exact: true })
     .getByRole('button', { name: '放弃修改', exact: true })
     .click();
+  // 等抽屉和确认框真正结束退场及焦点归还，避免它们关闭新打开的 Select。
+  await expect(page.locator('.ant-drawer:visible, .ant-modal:visible')).toHaveCount(0);
   await page.getByLabel('期初视图', { exact: true }).click();
   await page
     .locator('.ant-select-dropdown:visible .ant-select-item-option-content')
