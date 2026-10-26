@@ -15,7 +15,9 @@ test('健康合成账套：应用真实备份/排空退出 → Windows Shell 实
   const root = process.env.CAIWU_DESKTOP_UPDATE_QA_FIXTURE;
   const oldInstaller = process.env.CAIWU_DESKTOP_OLD_INSTALLER;
   const installer = process.env.CAIWU_DESKTOP_NEW_INSTALLER;
-  const executable = process.env.CAIWU_DESKTOP_HANDOFF_EXECUTABLE;
+  const executable = process.env.CAIWU_DESKTOP_HANDOFF_EXECUTABLE
+    ? path.resolve(process.env.CAIWU_DESKTOP_HANDOFF_EXECUTABLE)
+    : undefined;
   const output = process.env.CAIWU_DESKTOP_HANDOFF_LOG;
   const version = process.env.CAIWU_DESKTOP_EXPECTED_VERSION;
   if (
@@ -52,7 +54,23 @@ test('健康合成账套：应用真实备份/排空退出 → Windows Shell 实
     child.once('exit', (code) => resolve(code ?? -1));
   });
   expect(setup).toBe(0);
-  expect(existsSync(executable)).toBe(true);
+  if (!existsSync(executable)) {
+    const registration = execFileSync(
+      'powershell.exe',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        "Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq '财务软件' } | Select-Object InstallLocation,DisplayVersion | ConvertTo-Json -Compress",
+      ],
+      { encoding: 'utf8', timeout: 10_000, windowsHide: true },
+    );
+    record('setup-target-missing', { registration });
+  }
+  expect(
+    existsSync(executable),
+    'NSIS 必须安装到规范化后的指定绝对目录；不回退到注册表中的其他目录',
+  ).toBe(true);
   const previousBackup = path.join(fixture.dataDir, 'backups', '合成账套备份.caiwu');
   const previousHash = createHash('sha256').update(readFileSync(previousBackup)).digest('hex');
   let desktop: ElectronApplication | undefined;
