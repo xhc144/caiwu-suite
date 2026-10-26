@@ -10,6 +10,7 @@ export default defineManifest({
     { id: 'invoice.import', name: '导入发票' },
     { id: 'invoice.audit', name: '审核发票' },
     { id: 'invoice.voucher', name: '生成和撤销来源凭证' },
+    { id: 'invoice.account', name: '制证时确认新增往来下级科目' },
     { id: 'invoice.close', name: '发票月结账' },
     { id: 'invoice.reopen', name: '发票月反结账' },
     { id: 'invoice.settings', name: '配置发票科目映射' },

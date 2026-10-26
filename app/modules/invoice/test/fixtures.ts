@@ -59,6 +59,7 @@ export async function mapping(
     expectedRevision: 0,
     taxpayerBasis: 'other',
     inputTaxTreatment: 'separate',
+    settlementMode: 'unified',
     business: {
       accountId: business.id,
       dimensions: direction === 'input' ? { department: department.id } : {},
