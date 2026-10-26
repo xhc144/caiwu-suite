@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
 import { api } from './api';
+import { CostingData } from './CostingData';
 import { InventoryNavigation } from './common';
 import { Grid, ProductSelect, WarehouseSelect, useCatalog, useInventoryNavigate } from './common';
 export default function StockPage() {
@@ -18,7 +19,7 @@ export default function StockPage() {
   const warehouseId =
     f.warehouseId || warehouses.find((w) => !w.disabled)?.id || warehouses[0]?.id || 0;
   const navigate = useInventoryNavigate();
-  const [valuation, setValuation] = useState('receipt');
+  const [valuation, setValuation] = useState('cost');
   const filter = {
     warehouseId: warehouseId || undefined,
     productCode: f.productCode || undefined,
@@ -34,9 +35,10 @@ export default function StockPage() {
   return (
     <PageContainer
       title="库存与台账"
-      subtitle="数量 = 期初 + 已保存入库 − 已保存出库；盘点差异尚未转库存。所有估价均不是已核算成本。"
+      subtitle="数量 = 期初 + 已保存入库 − 已保存出库。账面金额扣除已核算出库成本；缺少成本时留空。盘点差异尚未转库存。"
     >
       <InventoryNavigation />
+      <CostingData />
       <FilterBar initialValues={f} onSearch={setF}>
         <Form.Item label="当前仓库">
           <WarehouseSelect
@@ -65,6 +67,7 @@ export default function StockPage() {
         value={valuation}
         onChange={setValuation}
         options={[
+          { value: 'cost', label: '账面成本（未核算留空）' },
           { value: 'receipt', label: '默认入库价估算' },
           { value: 'issue', label: '默认出库价估算' },
         ]}
@@ -72,7 +75,7 @@ export default function StockPage() {
       {q.error && <Alert type="error" title={q.error.message} />}
       <Grid
         id="stock"
-        title="库存汇总余额表（未核算/估算）"
+        title="库存汇总余额表"
         rows={q.data ?? []}
         columns={[
           { key: 'warehouseName', title: '仓库', dataIndex: 'warehouseName' },
@@ -81,9 +84,16 @@ export default function StockPage() {
           { key: 'opening', title: '期初数量', dataIndex: 'opening' },
           { key: 'received', title: '期间入库', dataIndex: 'received' },
           { key: 'issued', title: '期间出库', dataIndex: 'issued' },
+          { key: 'adjustmentQuantity', title: '正式盘点调整', dataIndex: 'adjustmentQuantity' },
           { key: 'balance', title: '结余数量', dataIndex: 'balance' },
           { key: 'openingCents', title: '期初金额', dataIndex: 'openingCents', money: true },
           { key: 'receiptCents', title: '入库金额', dataIndex: 'receiptCents', money: true },
+          {
+            key: 'adjustmentCents',
+            title: '正式核算调整金额',
+            dataIndex: 'adjustmentCents',
+            money: true,
+          },
           {
             key: 'issueCostCents',
             title: '出库成本（未核算留空）',
@@ -92,13 +102,21 @@ export default function StockPage() {
           },
           {
             key: 'estimate',
-            title: '结余估算金额',
+            title: valuation === 'cost' ? '结余账面金额' : '结余估算金额',
             money: true,
             exportValue: (r) =>
-              valuation === 'receipt' ? r.estimatedReceiptCents : r.estimatedIssueCents,
+              valuation === 'cost'
+                ? r.balanceCents
+                : valuation === 'receipt'
+                  ? r.estimatedReceiptCents
+                  : r.estimatedIssueCents,
             render: (_, r) =>
               formatMoney(
-                valuation === 'receipt' ? r.estimatedReceiptCents : r.estimatedIssueCents,
+                valuation === 'cost'
+                  ? r.balanceCents
+                  : valuation === 'receipt'
+                    ? r.estimatedReceiptCents
+                    : r.estimatedIssueCents,
               ),
           },
           { key: 'costStatus', title: '成本状态', dataIndex: 'costStatus' },
@@ -130,6 +148,12 @@ export default function StockPage() {
               { key: 'issued', title: '出库数量', dataIndex: 'issued' },
               { key: 'balance', title: '结余数量', dataIndex: 'balance' },
               { key: 'amountCents', title: '金额', dataIndex: 'amountCents', money: true },
+              {
+                key: 'balanceCents',
+                title: '结余账面金额',
+                dataIndex: 'balanceCents',
+                money: true,
+              },
               { key: 'costStatus', title: '核算状态', dataIndex: 'costStatus' },
               {
                 key: 'source',
