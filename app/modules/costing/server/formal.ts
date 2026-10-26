@@ -79,20 +79,15 @@ export async function commitCalculation(
       const snapshot = await inv.snapshot(input.period);
       await assertSnapshotContext(t, snapshot);
       if (snapshot.fingerprint !== input.fingerprint)
-        fail(
-          'STALE',
-          '来源数据或操作员已变化，不能发布旧试算',
-          '请重新试算并核对结果后再次确认',
-        );
+        fail('STALE', '来源数据或操作员已变化，不能发布旧试算', '请重新试算并核对结果后再次确认');
       assertHistory(snapshot);
       const expectedPeriod =
         snapshot.control.costPeriod === null
           ? snapshot.startPeriod
           : nextPeriod(snapshot.control.costPeriod);
-      if (
-        input.period !== expectedPeriod ||
-        snapshot.previousBatchId !== snapshot.control.costBatch
-      )
+      const wrongPeriod = input.period !== expectedPeriod;
+      const wrongPrevious = snapshot.previousBatchId !== snapshot.control.costBatch;
+      if (wrongPeriod || wrongPrevious)
         fail(
           'SEQUENCE',
           '必须从启用月份逐月连续正式核算，不能跳月或重复发布',

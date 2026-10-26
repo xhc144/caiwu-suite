@@ -49,10 +49,7 @@ async function emptyBook(page: Page, request: APIRequestContext) {
   return { get, post, batches, snapshot, warehouseId };
 }
 
-test('w_cb_hz 空启用月页面：明确确认真实空月→2月首次采购正常发布→只能从末月撤销', async ({
-  page,
-  request,
-}) => {
+test('w_cb_hz：空月发布后次月采购', async ({ page, request }) => {
   const t = await emptyBook(page, request);
   expect((await t.snapshot()).opening).toEqual([]);
   expect((await t.snapshot()).documents).toEqual([]);
@@ -62,7 +59,9 @@ test('w_cb_hz 空启用月页面：明确确认真实空月→2月首次采购�
   await expect(page.getByText('本月没有库存数据，可确认按空月正式核算')).toBeVisible();
   await expect(page.getByRole('button', { name: '保存试算', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: '发布正式核算', exact: true }).click();
-  await expect(page.getByRole('dialog').getByText('本月没有库存数据，将按空月正式核算')).toBeVisible();
+  await expect(
+    page.getByRole('dialog').getByText('本月没有库存数据，将按空月正式核算'),
+  ).toBeVisible();
   expect(await t.batches()).toEqual([]);
   await page.getByRole('dialog').getByRole('button', { name: '返回核对', exact: true }).click();
   expect(await t.batches()).toEqual([]);
@@ -97,10 +96,7 @@ test('w_cb_hz 空启用月页面：明确确认真实空月→2月首次采购�
   expect((await t.snapshot(202602)).periodOpeningReady).toBe(false);
 });
 
-test('w_cb_hz / w_cb_fgz 空月HTTP：确认、幂等、旧版本保护、撤销重试及新批次重新发布', async ({
-  page,
-  request,
-}) => {
+test('w_cb_fgz：空月HTTP幂等与撤销保护', async ({ page, request }) => {
   const t = await emptyBook(page, request);
   const preview = await t.get<CalculationResult>('m.costing.preview', { period: 202601 });
   expect(preview.rows).toEqual([]);

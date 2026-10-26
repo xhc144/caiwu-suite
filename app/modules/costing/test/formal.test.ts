@@ -94,7 +94,7 @@ async function link(documentId: number, purpose: 'cost' | 'revenue', revision?: 
 }
 
 describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的同事务闭环', () => {
-  it('空启用月明确确认后保存真实零批次；次月首次入库正常承接，空月同样受末月撤销保护', async () => {
+  it('w_cb_hz：空启用月正式发布后承接首笔业务', async () => {
     // 没有任何期初、单据或盘点；档案存在不构成库存期初。
     const preview = await t.api.preview(january);
     expect(preview.rows).toEqual([]);
@@ -155,7 +155,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     expect((await snapshot()).control.costBatch).toBeNull();
   });
 
-  it('空月发布/撤销均原子，版本、权限、结账和确认保护保留；可重试撤销并重新发布', async () => {
+  it('w_cb_fgz：空月确认、版本、权限、结账、幂等与回滚', async () => {
     const payload = input(await t.api.preview(january));
     const before = await state();
     await expect(
@@ -198,7 +198,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     expect((await t.api.batches()).filter((b) => b.status === 'calculated')).toHaveLength(1);
   });
 
-  it('10×1+10×3−5：出库1000分、余15/3000分，保存真实批次和原始DTO，不假生成凭证', async () => {
+  it('w_cb_hz：黄金成本1000分与结存3000分', async () => {
     const { issue } = await seed();
     const before = await snapshot();
     const preview = await t.api.preview(january);
@@ -253,7 +253,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     await expect(count('14')).rejects.toThrow(/核算|锁定/);
   });
 
-  it('w_cb_pdk：盘点14，盘亏200分、正式余14/2800；撤销恢复盘点金额前态', async () => {
+  it('w_cb_pdk：盘点14及撤销恢复金额', async () => {
     await seed();
     await count('14');
     const before = await snapshot();
@@ -282,7 +282,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     expect((await t.api.batches())[0]).toMatchObject({ status: 'cancelled', revision: 2 });
   });
 
-  it('w_cb_pdk：半分累计尾差与零数量金额调整必须明确选择，发布后不留下残值', async () => {
+  it('w_cb_pdk：半分尾差与零数量调整', async () => {
     await t.opening('1', '0.01');
     await t.document('receipt', '1', '0');
     await t.document('issue', '1', '10');
@@ -305,7 +305,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     });
   });
 
-  it('正式发布之后外层抛错：成本批次、库存字段、全月锁及两边日志全部回滚', async () => {
+  it('w_cb_hz：发布后异常全部回滚', async () => {
     await seed();
     const payload = input(await t.api.preview(january));
     const before = await state();
@@ -321,7 +321,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     expect(await t.api.batches()).toHaveLength(1);
   });
 
-  it('过期指纹、不同操作员快照、未确认、无权限和已结账均零写入', async () => {
+  it('w_cb_hz：旧指纹、操作员、权限、确认与结账保护', async () => {
     await seed();
     const old = input(await t.api.preview(january));
     await t.document('receipt', '1', '2');
@@ -346,7 +346,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     expect(await state()).toEqual(closed);
   });
 
-  it('同请求重试与并发重试只有一组真实写入；请求号改内容或撤销后复用均拒绝', async () => {
+  it('w_cb_hz：相同请求幂等与重放保护', async () => {
     await seed();
     const payload = input(await t.api.preview(january));
     const [a, b] = await Promise.all([t.api.commit(payload), t.api.commit(payload)]);
@@ -360,7 +360,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     expect(await t.api.batches()).toHaveLength(1);
   });
 
-  it('不同请求并发不能重复发布同月，只有一个成本批次和一个库存批次', async () => {
+  it('w_cb_hz：不同请求并发同月仅发布一次', async () => {
     await seed();
     const preview = await t.api.preview(january);
     const results = await Promise.allSettled([
@@ -374,7 +374,7 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
 });
 
 describe('w_cb_fgz 正式撤销和历史成本链', () => {
-  it('必须连续逐月；不能从试算推造下月期初，只能逆序撤销，撤销可重试并可重新核算', async () => {
+  it('w_cb_fgz：连续月份及末月逆序撤销', async () => {
     await seed();
     const future = await snapshot(202602);
     expect(future.periodOpeningReady).toBe(false);
@@ -426,7 +426,7 @@ describe('w_cb_fgz 正式撤销和历史成本链', () => {
     expect((await t.api.batches()).filter((b) => b.status === 'calculated')).toHaveLength(1);
   });
 
-  it('相邻月份存在、ready=true仍不能证明历史；断链使利润和成本凭证未知且拒绝继续发布', async () => {
+  it('w_cb_hz：相邻月存在但正式链断裂时拒绝', async () => {
     const { issue } = await seed();
     await publish();
     const february = await publish(202602);
@@ -461,7 +461,7 @@ describe('w_cb_fgz 正式撤销和历史成本链', () => {
     expect(await state()).toEqual(before);
   });
 
-  it('前月余额项目缺失时即使ready=true也拒绝补零；不会用本月新入库掩盖丢失期初', async () => {
+  it('w_cb_hz：正式期初缺项拒绝补零', async () => {
     await seed();
     const januaryBatch = await publish();
     await t.document('receipt', '10', '5', { date: '2026-02-10' });
@@ -484,27 +484,24 @@ describe('w_cb_fgz 正式撤销和历史成本链', () => {
     expect(await state()).toEqual(before);
   });
 
-  it.each(['audited', 'posted'] as const)(
-    '已%s来源凭证拒绝撤销；收入与成本双用途使用返回revision，两个批次均保留',
-    async (status) => {
-      const { issue } = await seed();
-      const batch = await publish();
-      const revenue = await link(issue.id, 'revenue');
-      const cost = await link(issue.id, 'cost', revenue.revision);
-      expect(cost.revision).toBe(revenue.revision + 1);
-      await t.app.svc.vouchers.changeStatus({ ids: [revenue.voucherId], to: 'audited' });
-      if (status === 'posted')
-        await t.app.svc.vouchers.changeStatus({ ids: [revenue.voucherId], to: 'posted' });
-      const before = await state();
-      await expect(
-        t.api.cancelCalculation({ id: batch.id, revision: 1, confirmed: true }),
-      ).rejects.toThrow(/审核|过账/);
-      expect(await state()).toEqual(before);
-      expect((await t.app.svc.vouchers.get(cost.voucherId))!.status).toBe('pending');
-    },
-  );
+  it.each(['audited', 'posted'] as const)('w_cb_fgz：已%s来源拒绝撤销', async (status) => {
+    const { issue } = await seed();
+    const batch = await publish();
+    const revenue = await link(issue.id, 'revenue');
+    const cost = await link(issue.id, 'cost', revenue.revision);
+    expect(cost.revision).toBe(revenue.revision + 1);
+    await t.app.svc.vouchers.changeStatus({ ids: [revenue.voucherId], to: 'audited' });
+    if (status === 'posted')
+      await t.app.svc.vouchers.changeStatus({ ids: [revenue.voucherId], to: 'posted' });
+    const before = await state();
+    await expect(
+      t.api.cancelCalculation({ id: batch.id, revision: 1, confirmed: true }),
+    ).rejects.toThrow(/审核|过账/);
+    expect(await state()).toEqual(before);
+    expect((await t.app.svc.vouchers.get(cost.voucherId))!.status).toBe('pending');
+  });
 
-  it('撤销时核心释放已删除成本凭证，调用方不二次删除；收入用途保留，后续异常全部回滚', async () => {
+  it('w_cb_fgz：撤销成本凭证仅删除一次且保持原子', async () => {
     const { issue } = await seed();
     const batch = await publish();
     const revenue = await link(issue.id, 'revenue');
@@ -525,7 +522,7 @@ describe('w_cb_fgz 正式撤销和历史成本链', () => {
     await t.document('receipt', '1', '1');
   });
 
-  it('已结账月份不能撤销；未知批次、其他账套和跨模块调用不能修改本账套', async () => {
+  it('w_cb_fgz：结账、账套隔离及模块身份保护', async () => {
     await seed();
     const batch = await publish();
     await t.app.svc.periods.setStatus(202601, 'closed');

@@ -73,9 +73,7 @@ const test = base.extend<{ guarded: GuardApp }>({
   },
 });
 
-test('w_cb_fgz 页面：真实已审核来源阻止撤销，成本记录、库存字段及凭证全部保留', async ({
-  guarded: t,
-}) => {
+test('w_cb_fgz：已审核来源阻止撤销', async ({ guarded: t }) => {
   await preview(t.page);
   await confirmPublish(t.page);
   await expect(t.page.getByText(/202601 正式成本核算已发布/)).toBeVisible();
@@ -109,7 +107,9 @@ test('w_cb_fgz 页面：真实已审核来源阻止撤销，成本记录、库�
   const before = await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 });
   await t.page.reload();
   await cancelLatest(t.page);
-  await expect(t.page.getByText('关联凭证缺失、已审核或过账，不能取消成本核算').first()).toBeVisible();
+  await expect(
+    t.page.getByText('关联凭证缺失、已审核或过账，不能取消成本核算').first(),
+  ).toBeVisible();
   expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 })).toEqual(before);
   expect((await t.batches())[0]).toMatchObject({ status: 'calculated', revision: 1 });
   expect(await t.withCore((svc) => svc.vouchers.get(voucher.id))).toMatchObject({
@@ -117,7 +117,7 @@ test('w_cb_fgz 页面：真实已审核来源阻止撤销，成本记录、库�
   });
 });
 
-test('w_cb_hz 页面：调用方后续抛错全部回滚；同一试算仍可正式发布', async ({ guarded: t }) => {
+test('w_cb_hz：异常回滚后可从页面发布', async ({ guarded: t }) => {
   await preview(t.page);
   const before = await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 });
   await expect(
@@ -141,9 +141,7 @@ test('w_cb_hz 页面：调用方后续抛错全部回滚；同一试算仍可正
   expect(await t.batches()).toHaveLength(1);
 });
 
-test('w_cb_hzsj_cblr / w_cb_pz 页面：相邻前月ready=true但链断裂时，利润与成本凭证均未知', async ({
-  guarded: t,
-}) => {
+test('w_cb_pz：历史断链时成本未知', async ({ guarded: t }) => {
   await preview(t.page);
   await confirmPublish(t.page);
   await expect(t.page.getByText(/202601 正式成本核算已发布/)).toBeVisible();
@@ -160,7 +158,9 @@ test('w_cb_hzsj_cblr / w_cb_pz 页面：相邻前月ready=true但链断裂时，
   expect(source.periodOpeningReady).toBe(true);
   await t.page.goto('/m/costing/profit');
   await t.page.getByRole('button', { name: '查询销售明细', exact: true }).click();
-  await expect(t.page.getByText('不含税收入 50.00；销售成本 历史成本未知；销售毛利 历史成本未知')).toBeVisible();
+  await expect(
+    t.page.getByText('不含税收入 50.00；销售成本 历史成本未知；销售毛利 历史成本未知'),
+  ).toBeVisible();
   await t.page.goto(`/m/costing/vouchers?id=${t.issue.id}`);
   await t.page.getByRole('combobox', { name: '凭证用途', exact: true }).click();
   await t.page

@@ -17,11 +17,11 @@ export function calculate(
   if (snapshot.periodOpening.some((o) => o.sourceBatchId !== snapshot.previousBatchId))
     fail('OPENING_SOURCE', '本月期初来源与上一有效批次不一致', '请核对库存正式结存');
   const previous = snapshot.previousBatchId && history.get(snapshot.previousBatchId);
-  if (
-    period === snapshot.startPeriod
-      ? snapshot.previousBatchId !== null
-      : !previous || nextPeriod(previous.period) !== period
-  )
+  let validOpening = snapshot.previousBatchId === null;
+  if (period !== snapshot.startPeriod) {
+    validOpening = !!previous && nextPeriod(previous.period) === period;
+  }
+  if (!validOpening)
     fail('OPENING_SOURCE', '本月期初没有连续有效的前月正式批次', '请先核对正式批次链');
   const openingKeys = new Set(snapshot.periodOpening.map((o) => `${o.warehouseId}:${o.productId}`));
   const requiredKeys = new Set(snapshot.opening.map((o) => `${o.warehouseId}:${o.productId}`));
@@ -32,8 +32,11 @@ export function calculate(
     const d = oldDocuments.get(l.documentId);
     if (d) requiredKeys.add(`${d.warehouseId}:${l.productId}`);
   }
-  for (const c of snapshot.counts.filter((c) => c.period < period))
-    for (const l of c.lines) requiredKeys.add(`${c.warehouseId}:${l.productId}`);
+  for (const c of snapshot.counts.filter((c) => c.period < period)) {
+    for (const l of c.lines) {
+      requiredKeys.add(`${c.warehouseId}:${l.productId}`);
+    }
+  }
   if (
     openingKeys.size !== snapshot.periodOpening.length ||
     [...requiredKeys].some((key) => !openingKeys.has(key))
@@ -63,8 +66,11 @@ export function calculate(
     keys.set(`${warehouseId}:${productId}`, { warehouseId, productId });
   for (const o of snapshot.periodOpening) addKey(o.warehouseId, o.productId);
   for (const l of movements) addKey(documentMap.get(l.documentId)!.warehouseId, l.productId);
-  for (const c of counts)
-    for (const l of c.lines) addKey(c.warehouseId, l.productId);
+  for (const c of counts) {
+    for (const l of c.lines) {
+      addKey(c.warehouseId, l.productId);
+    }
+  }
   for (const { warehouseId, productId } of keys.values()) {
     const product = snapshot.products.find((p) => p.id === productId);
     const warehouse = snapshot.warehouses.find((w) => w.id === warehouseId);
@@ -76,16 +82,17 @@ export function calculate(
     const openingQ = opening ? e6(opening.quantity) : 0;
     const openingA = opening?.amountCents ?? 0;
     const current = movements
-      .filter(
-        (l) =>
-          l.productId === productId && documentMap.get(l.documentId)!.warehouseId === warehouseId,
-      )
+      .filter((l) => {
+        const document = documentMap.get(l.documentId)!;
+        return l.productId === productId && document.warehouseId === warehouseId;
+      })
       .sort((a, b) => {
         const da = documentMap.get(a.documentId)!;
         const db = documentMap.get(b.documentId)!;
-        return (
-          da.date.localeCompare(db.date) || da.id - db.id || a.position - b.position || a.id - b.id
-        );
+        const dateOrder = da.date.localeCompare(db.date);
+        const documentOrder = da.id - db.id;
+        const positionOrder = a.position - b.position;
+        return dateOrder || documentOrder || positionOrder || a.id - b.id;
       });
     const count = counts.find((c) => c.warehouseId === warehouseId);
     const countLine = count?.lines.find((l) => l.productId === productId);
@@ -105,10 +112,10 @@ export function calculate(
       const expectedBook =
         integer(openingQ) +
         current.reduce(
-          (n, l) =>
-            n +
-            (documentMap.get(l.documentId)!.kind === 'receipt' ? 1n : -1n) *
-              integer(e6(l.quantity)),
+          (n, l) => {
+            const sign = documentMap.get(l.documentId)!.kind === 'receipt' ? 1n : -1n;
+            return n + sign * integer(e6(l.quantity));
+          },
           0n,
         );
       if (integer(e6(countLine.bookQuantity)) !== expectedBook)

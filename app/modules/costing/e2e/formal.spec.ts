@@ -3,10 +3,7 @@ import type { InventorySnapshot } from '@caiwu/core';
 import { callApi } from '@caiwu/testkit/e2e';
 import { seed, preview, confirmPublish, cancelLatest } from './fixtures';
 
-test('w_cb_hz / w_cb_fgz 页面闭环：黄金成本1000分、余15/3000→确认发布→刷新真实结果→撤销解锁', async ({
-  page,
-  request,
-}) => {
+test('w_cb_hz / w_cb_fgz：黄金成本正式发布与撤销', async ({ page, request }) => {
   const t = await seed(page, request);
   await preview(page);
   const row = page.getByRole('row').filter({ hasText: '黄金产品' });
@@ -18,7 +15,9 @@ test('w_cb_hz / w_cb_fgz 页面闭环：黄金成本1000分、余15/3000→确�
   await page.getByRole('dialog').getByRole('button', { name: '返回核对', exact: true }).click();
   expect(await t.batches()).toEqual([]);
   await confirmPublish(page);
-  await expect(page.getByText('202601 正式成本核算已发布，本月库存已锁定；凭证尚未生成。')).toBeVisible();
+  await expect(
+    page.getByText('202601 正式成本核算已发布，本月库存已锁定；凭证尚未生成。'),
+  ).toBeVisible();
   const official = await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 });
   const batches = await t.batches();
   expect(batches).toHaveLength(1);
@@ -55,7 +54,7 @@ test('w_cb_hz / w_cb_fgz 页面闭环：黄金成本1000分、余15/3000→确�
   expect(vouchers.total).toBe(0);
 });
 
-test('w_cb_pdk 页面正式发布：盘点14余2800分，撤销恢复盘点金额快照', async ({ page, request }) => {
+test('w_cb_pdk：盘点14正式发布与撤销', async ({ page, request }) => {
   const t = await seed(page, request);
   const count = await t.post<{ revision: number }>('generateCount', {
     warehouseId: t.warehouseId,
@@ -99,13 +98,15 @@ test('w_cb_pdk 页面正式发布：盘点14余2800分，撤销恢复盘点金�
   ).toEqual(before.counts[0]!.lines);
 });
 
-test('w_cb_hz 页面旧预览拒绝：来源变化后确认不会保存成本批次或库存字段', async ({ page, request }) => {
+test('w_cb_hz：过期预览确认后零写入', async ({ page, request }) => {
   const t = await seed(page, request);
   await preview(page);
   await t.document('receipt', '1', '2');
   const before = await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 });
   await confirmPublish(page);
-  await expect(page.getByRole('dialog').getByText('来源数据或操作员已变化，不能发布旧试算')).toBeVisible();
+  await expect(
+    page.getByRole('dialog').getByText('来源数据或操作员已变化，不能发布旧试算'),
+  ).toBeVisible();
   expect(await t.batches()).toEqual([]);
   expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 })).toEqual(before);
   await page.getByRole('dialog').getByRole('button', { name: '返回核对', exact: true }).click();
@@ -118,10 +119,7 @@ test('w_cb_hz 页面旧预览拒绝：来源变化后确认不会保存成本批
   expect(await t.batches()).toHaveLength(1);
 });
 
-test('w_cb_hz / w_cb_fgz 页面连续月份：2月未就绪拒绝→1月发布→承接正式结存→仅末月撤销', async ({
-  page,
-  request,
-}) => {
+test('w_cb_fgz：页面连续月份及末月撤销', async ({ page, request }) => {
   const t = await seed(page, request);
   await page.goto('/m/costing/calculation');
   await page.getByRole('spinbutton', { name: '核算年月', exact: true }).fill('202602');

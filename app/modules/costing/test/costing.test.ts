@@ -14,6 +14,7 @@ afterEach(async () => {
   await t.app.close();
 });
 const january = { period: 202601 };
+const readJanuary = () => readInventory(t.app.svcFor('costing'), 202601);
 async function seed() {
   await t.opening();
   const receipt = await t.document('receipt', '10', '3');
@@ -24,7 +25,7 @@ async function seed() {
 describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
   it('试算不写库存；跨月只承接已正式发布的结存，盘点调整进入下月', async () => {
     const { issue } = await seed();
-    const before = await readInventory(t.app.svcFor('costing'), 202601);
+    const before = await readJanuary();
     const r = await t.api.preview(january);
     expect(r.rows[0]).toMatchObject({
       openingCents: 1000,
@@ -41,9 +42,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
         unitCost: '2.000000000000',
       },
     ]);
-    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(
-      before.fingerprint,
-    );
+    expect((await readJanuary()).fingerprint).toBe(before.fingerprint);
     const count = await t.inventory.generateCount({
       warehouseId: t.warehouseId,
       period: 202601,
@@ -79,7 +78,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
   it('保存/取消试算、重复保存、来源锁版本与确认保护；库存未被假核算', async () => {
     await seed();
     const preview = await t.api.preview(january);
-    const before = await readInventory(t.app.svcFor('costing'), 202601);
+    const before = await readJanuary();
     const saved = await t.api.saveWorksheet({ ...january, fingerprint: preview.fingerprint });
     expect((await t.api.worksheet(saved)).stale).toBe(false);
     await expect(
@@ -94,9 +93,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
     await expect(t.api.cancelWorksheet({ ...saved, revision: 2, confirmed: true })).rejects.toThrow(
       /已经取消/,
     );
-    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(
-      before.fingerprint,
-    );
+    expect((await readJanuary()).fingerprint).toBe(before.fingerprint);
     await t.document('receipt', '1', '2');
     expect((await t.api.worksheet(saved)).stale).toBe(true);
     await expect(
@@ -171,7 +168,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
     await expect(
       t.api.commit({
         ...january,
-        fingerprint: (await readInventory(t.app.svcFor('costing'), 202601)).fingerprint,
+        fingerprint: (await readJanuary()).fingerprint,
         requestKey: randomUUID(),
         confirmed: true,
       }),
@@ -179,7 +176,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
   });
   it('正式发布必须确认，拒绝时来源与余额不变；权限逐接口检查', async () => {
     await seed();
-    const before = await readInventory(t.app.svcFor('costing'), 202601);
+    const before = await readJanuary();
     const input = {
       ...january,
       fingerprint: before.fingerprint,
@@ -187,9 +184,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
       confirmed: false,
     };
     await expect(t.api.commit(input)).rejects.toThrow(/明确确认/);
-    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(
-      before.fingerprint,
-    );
+    expect((await readJanuary()).fingerprint).toBe(before.fingerprint);
     const viewer = caller(t.app, await t.app.addUser('viewer', { permissions: ['costing.view'] }));
     const r = await viewer.preview(january);
     await expect(viewer.saveWorksheet({ ...january, fingerprint: r.fingerprint })).rejects.toThrow(
@@ -235,7 +230,7 @@ describe('w_cb_pz / w_ck_ck1 / w_ck_rk1：实际单据凭证接口', () => {
       t.app.svc.db,
     );
     await t.app.svc.vouchers.changeStatus({ ids: [voucher.id], to: 'audited' });
-    const before = await readInventory(t.app.svcFor('costing'), 202601);
+    const before = await readJanuary();
     await expect(t.app.svc.vouchers.delete(voucher.id)).rejects.toThrow(/成本核算/);
     await expect(t.app.svcFor('costing').vouchers.delete(voucher.id)).rejects.toThrow(/审核/);
     await expect(
@@ -243,9 +238,7 @@ describe('w_cb_pz / w_ck_ck1 / w_ck_rk1：实际单据凭证接口', () => {
     ).rejects.toMatchObject({
       cause: { data: { code: 'COSTING_VOUCHER_NOT_IMPLEMENTED' } },
     });
-    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(
-      before.fingerprint,
-    );
+    expect((await readJanuary()).fingerprint).toBe(before.fingerprint);
     expect(await t.app.svc.vouchers.get(voucher.id)).toMatchObject({
       status: 'audited',
       source: { module: 'costing', type: 'worksheet', id: String(worksheet.id) },
@@ -458,7 +451,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
       await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch=${documentBatch}, calculation_period=202601 WHERE document_id=${issue.id}`.execute(
         t.app.svc.db,
       );
-      const snapshot = await readInventory(t.app.svcFor('costing'), 202601);
+      const snapshot = await readJanuary();
       const doc = snapshot.documents.find((d) => d.id === issue.id)!;
       const line = snapshot.movements.find((l) => l.documentId === issue.id)!;
       expect(officialCost(snapshot, doc, line)).toBeNull();
@@ -473,9 +466,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
         t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' }),
       ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_HISTORY_UNVERIFIED' } } });
       expect((await t.app.svc.vouchers.list()).total).toBe(0);
-      expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(
-        snapshot.fingerprint,
-      );
+      expect((await readJanuary()).fingerprint).toBe(snapshot.fingerprint);
     },
   );
   it.each(['current-B', 'history-A'])(
@@ -491,7 +482,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
       await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch='history-A', calculation_period=202601 WHERE document_id=${issue.id}`.execute(
         t.app.svc.db,
       );
-      const snapshot = await readInventory(t.app.svcFor('costing'), 202601);
+      const snapshot = await readJanuary();
       expect(
         officialCost(
           snapshot,
@@ -518,9 +509,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
         },
       });
       expect((await t.app.svc.vouchers.list()).total).toBe(0);
-      expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(
-        snapshot.fingerprint,
-      );
+      expect((await readJanuary()).fingerprint).toBe(snapshot.fingerprint);
     },
   );
 });

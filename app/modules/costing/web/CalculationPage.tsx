@@ -18,25 +18,23 @@ import type { CalculationInput, CalculationResult, CostRow } from '../shared';
 import { api } from './api';
 import FormalBatches from './FormalBatches';
 
+type ResultView = { result: CalculationResult; label: string };
+type PublishIntent = { result: CalculationResult; requestKey: string };
+type PublishRequest = {
+  fingerprint: string;
+  adjustZeroQuantity: boolean;
+  requestKey: string;
+};
+
 export default function CalculationPage() {
   const context = useQuery(api.context.queryOptions());
   const [filters, setFilters] = useUrlFilters({ id: 0 });
   const [period, setPeriod] = useState<number | null>(null);
   const [adjust, setAdjust] = useState(false);
   const [requested, setRequested] = useState<CalculationInput | null>(null);
-  const [formalView, setFormalView] = useState<{
-    result: CalculationResult;
-    label: string;
-  } | null>(null);
-  const [publishIntent, setPublishIntent] = useState<{
-    result: CalculationResult;
-    requestKey: string;
-  } | null>(null);
-  const [publishRequest, setPublishRequest] = useState<{
-    fingerprint: string;
-    adjustZeroQuantity: boolean;
-    requestKey: string;
-  } | null>(null);
+  const [formalView, setFormalView] = useState<ResultView | null>(null);
+  const [publishIntent, setPublishIntent] = useState<PublishIntent | null>(null);
+  const [publishRequest, setPublishRequest] = useState<PublishRequest | null>(null);
   const [notice, setNotice] = useState('');
   const current = period ?? context.data?.nextCalculationPeriod ?? 202601;
   const preview = useQuery(
@@ -83,6 +81,13 @@ export default function CalculationPage() {
     requested.adjustZeroQuantity === adjust &&
     preview.data.period === current;
   const result = formalView?.result ?? (filters.id ? selected.data?.result : preview.data);
+  const publishRows = publishIntent?.result.rows ?? [];
+  const issuedTotal = sumCents(publishRows.map((r) => r.issuedCents));
+  const closingTotal = sumCents(publishRows.map((r) => r.closingCents));
+  let publishTitle = '确认正式发布';
+  if (publishIntent) {
+    publishTitle = `确认发布 ${publishIntent.result.period} 正式成本核算？`;
+  }
 
   const columns = [
     { title: '仓库', dataIndex: 'warehouseName', key: 'warehouseName' },
@@ -283,7 +288,7 @@ export default function CalculationPage() {
         />
       </Space>
       <Modal
-        title={publishIntent ? `确认发布 ${publishIntent.result.period} 正式成本核算？` : '确认正式发布'}
+        title={publishTitle}
         open={!!publishIntent}
         okText="确认发布并锁定本月"
         cancelText="返回核对"
@@ -313,11 +318,9 @@ export default function CalculationPage() {
                 description="确认后将保存空月正式核算记录并锁定本月，下一月可继续核算；不会补造库存期初或结存。"
               />
             )}
+            <Typography.Paragraph>核算范围为本月全部仓库和产品。</Typography.Paragraph>
             <Typography.Paragraph>
-              核算范围为本月全部仓库和产品。出库成本{' '}
-              {formatMoney(sumCents(publishIntent.result.rows.map((r) => r.issuedCents)))}；{' '}
-              月末结存{' '}
-              {formatMoney(sumCents(publishIntent.result.rows.map((r) => r.closingCents)))}。
+              出库成本：{formatMoney(issuedTotal)}；月末结存：{formatMoney(closingTotal)}。
             </Typography.Paragraph>
             <Typography.Paragraph>
               确认后将正式写入库存成本、盘点调整和月末结存，并锁定本月库存。来源有变化时会拒绝本次发布，请重新试算。
