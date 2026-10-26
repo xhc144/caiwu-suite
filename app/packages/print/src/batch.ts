@@ -5,7 +5,7 @@ import { printHtml, type PrintJob } from './driver';
 export type PrintBatchOptions = {
   pages: number[];
   copies: number;
-  pause: 'none' | 'page' | 'voucher';
+  pause: 'none' | 'page' | 'voucher' | 'account';
   duplex?: boolean;
   confirm: (message: string) => Promise<boolean>;
   send?: (job: PrintJob) => Promise<void>;
@@ -19,20 +19,26 @@ export async function runPrintBatch(view: PrintView, options: PrintBatchOptions)
   viewToPrintJob(view, pages);
   if (options.pause === 'voucher' && pages.some((p) => view.pages[p - 1]!.entityIds.length !== 1))
     throw new Error('每张暂停需要每页一张凭证，请先调整版式');
+  if (options.pause === 'account' && pages.some((p) => !view.pages[p - 1]!.account))
+    throw new Error('逐科目提示需要账册科目分组，请重新查询账册');
+  if (pages.length * copies > 100000) throw new Error('打印总页数过多，请减少份数后分批打印');
   const sent: number[] = [];
   const send = options.send ?? printHtml;
   // 连续模式将所有份数放在同一次系统作业内；取消对话框就不会启动下一份作业。
   if (options.pause === 'none' && !options.duplex) {
     if (signal?.aborted) return { sent, cancelled: true };
-    if (pages.length * copies > 100000) throw new Error('打印总页数过多，请减少份数后分批打印');
     const job = viewToPrintJob(view, pages);
     await send({ ...job, html: job.html.repeat(copies) });
     return { sent: Array.from({ length: copies }, () => pages).flat(), cancelled: false };
   }
   const passes = options.duplex
     ? [
-        pages.filter((p) => (view.layout.startPage + p - 1) % 2 === 1),
-        pages.filter((p) => (view.layout.startPage + p - 1) % 2 === 0),
+        pages.filter(
+          (p) => (view.pages[p - 1]!.pageNumber ?? view.layout.startPage + p - 1) % 2 === 1,
+        ),
+        pages.filter(
+          (p) => (view.pages[p - 1]!.pageNumber ?? view.layout.startPage + p - 1) % 2 === 0,
+        ),
       ]
     : [pages];
   for (let copy = 0; copy < copies; copy++)
@@ -52,9 +58,11 @@ export async function runPrintBatch(view: PrintView, options: PrintBatchOptions)
         for (const p of selected) {
           const last = groups.at(-1);
           if (
-            options.pause === 'voucher' &&
             last &&
-            view.pages[last[0]! - 1]!.entityIds[0] === view.pages[p - 1]!.entityIds[0]
+            ((options.pause === 'voucher' &&
+              view.pages[last[0]! - 1]!.entityIds[0] === view.pages[p - 1]!.entityIds[0]) ||
+              (options.pause === 'account' &&
+                view.pages[last[0]! - 1]!.account === view.pages[p - 1]!.account))
           )
             last.push(p);
           else groups.push([p]);

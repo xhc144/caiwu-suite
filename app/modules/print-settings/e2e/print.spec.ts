@@ -391,3 +391,50 @@ test('w_pz_prn_1 实际字体检查失败时拦截 bridge、显示原因并清�
   await expect(page.locator('.cw-print-check')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'PDF', exact: true })).toBeEnabled();
 });
+
+test('w_print_2_zw：独立造数后明细科目连续打印，跳过空科目并取消下一科目', async ({
+  page,
+  request,
+}) => {
+  const book = await loginWithNewBook(page, request);
+  await seedBook(
+    book.bookId,
+    Array.from({ length: 5 }, (_, i) => simple(i + 1)),
+  );
+  const settings = structuredClone(defaultSettings);
+  settings.ledger.rows = 2;
+  settings.ledger.startPage = 7;
+  await callApi(request, 'm.print-settings.saveSettings', settings, { token: book.token });
+  await page.addInitScript(() => {
+    const target = window as unknown as { __printJobs: string[]; caiwuDesktop: unknown };
+    target.__printJobs = [];
+    target.caiwuDesktop = {
+      print: async (html: string) => {
+        target.__printJobs.push(html);
+      },
+      printToPdf: async () => null,
+    };
+  });
+  await page.goto('/m/print-settings/preview?mode=ledger&accountScope=leaf&queried=1');
+  await expect(page.getByTestId('page-count')).toHaveText('共 6 页');
+  await expect(page.getByText(/以下科目无符合条件的记录，已跳过/)).toBeVisible();
+  await page.getByLabel('每个科目打印前提示', { exact: true }).check();
+  await page.getByRole('button', { name: '打印全部', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('1001 库存现金');
+  await page.getByRole('button', { name: '继续打印', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('6603 财务费用');
+  await page.getByRole('button', { name: '取消后续', exact: true }).click();
+  await expect(page.getByText('已停止后续打印，已提交 3 页', { exact: true })).toBeVisible();
+  const jobs = await page.evaluate(
+    () => (window as unknown as { __printJobs: string[] }).__printJobs,
+  );
+  expect(jobs).toHaveLength(1);
+  expect(jobs[0]!.match(/class="print-sheet"/g)).toHaveLength(3);
+  expect(jobs[0]).toContain('1001 库存现金');
+  expect(jobs[0]).not.toContain('科目：6603');
+  await expect(page.locator('.cw-print-check')).toHaveCount(0);
+  await page.getByLabel('打印科目选择', { exact: true }).selectOption('first');
+  await expect(page.getByLabel('科目编码（可用逗号选择多个）', { exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '查询并预览', exact: true }).click();
+  await expect(page.getByTestId('page-count')).toHaveText('共 6 页');
+});

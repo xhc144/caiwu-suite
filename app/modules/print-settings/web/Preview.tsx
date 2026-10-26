@@ -23,7 +23,7 @@ export default function Preview({
   view: PrintView;
   kind: 'voucher' | 'ledger' | 'format';
   onClose: () => void;
-  pause?: 'none' | 'page' | 'voucher';
+  pause?: 'none' | 'page' | 'voucher' | 'account';
 }) {
   const [page, setPage] = useState(1),
     [zoom, setZoom] = useState(75),
