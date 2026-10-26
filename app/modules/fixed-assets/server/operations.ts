@@ -626,6 +626,24 @@ export function operations(svc: CoreServices) {
               : '没有记录，无法打印及导出',
       };
     },
+    async exportOpening() {
+      permit(svc, 'view');
+      return svc.tx(async (ts) => {
+        const service = assetService(ts);
+        const [cards, masters, departments, accessories] = await Promise.all([
+          service.list({ includeDisposed: true }),
+          service.masters(),
+          ts.dimensions.items('department'),
+          table(ts)
+            .selectFrom('fixed_assets_accessory')
+            .selectAll()
+            .orderBy('asset_id')
+            .orderBy('code')
+            .execute(),
+        ]);
+        return { cards, masters, departments, accessories };
+      });
+    },
     async importPreview(rows: { row: number; data: unknown }[]) {
       permit(svc, 'import');
       const seen = new Set<string>();
