@@ -18,15 +18,8 @@ import {
 type Values = Record<string, string | null>;
 type Row = { ref: NativeRowRef; values: Values };
 const empty = (s: string | null | undefined) => s == null || s === '';
-const limits: Record<string, number> = {
-  kmbm: 20,
-  pz_zy: 80,
-  pzdj_zdr: 8,
-  pzdj_shr: 8,
-  pzdj_jzr: 8,
-  pzlx_jc: 20,
-  pzlx_qc: 20,
-};
+// The DW proves a projection, not physical column widths of one recovered database version.
+// Keep text verbatim under the document resource limit; do not join display-DDL variants.
 const checked = new Set([
   ...NATIVE_KEYS,
   'pz_xh',
@@ -288,7 +281,7 @@ export function nativePreflight(input: { name: string; text: string }): NativeRe
   };
   const key = (r: Row) => {
     const parts = [
-      integer(r, 'nf', 1900, 9999),
+      integer(r, 'nf', 1, 9999),
       integer(r, 'yf', 1, 12),
       integer(r, 'pzlx', 1, 32767),
       integer(r, 'pzbh', 1, 10000),
@@ -297,7 +290,7 @@ export function nativePreflight(input: { name: string; text: string }): NativeRe
   };
   const dict = new Map<string, Row>();
   for (const r of rows.get('pzlx') ?? []) {
-    const id = integer(r, 'pzlx', 1, 32767);
+    const id = integer(r, 'pzlx', 1, 2147483647);
     if (id == null) continue;
     if (dict.has(String(id)))
       issue(r, 'TYPE_DUPLICATE', 'structure', 'pzlx', '类型字典代码重复，禁止以名称猜对应关系。');
@@ -367,9 +360,6 @@ export function nativePreflight(input: { name: string; text: string }): NativeRe
   for (const [table, records] of rows)
     for (const r of records)
       for (const [f, v] of Object.entries(r.values)) {
-        const max = limits[f];
-        if (max != null && v != null && v.length > max)
-          issue(r, 'TEXT_LENGTH', 'structure', f, `超过原定义 ${max} 字符上限。`);
         if (table === 'pzlx' || checked.has(f) || f === 'pzdj_bz') continue;
         if (!empty(v))
           issue(
@@ -397,13 +387,13 @@ export function nativePreflight(input: { name: string; text: string }): NativeRe
     const list = grouped.get(k) ?? [];
     list.push(r);
     grouped.set(k, list);
-    if (empty(r.values.kmbm) || !/^\d+$/.test(r.values.kmbm ?? ''))
+    if (empty(r.values.kmbm))
       issue(
         r,
         'ACCOUNT_INVALID',
         'structure',
         'kmbm',
-        '科目编码必须是非空数字文本；本报告不证明科目档案及末级关系。',
+        '科目编码不能为空；原字符标识不改写，本报告不证明目标科目档案及末级关系。',
       );
   }
   const money = (r: Row, f: string): bigint | null => {

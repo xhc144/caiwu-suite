@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from 'vitest';
 import fc from 'fast-check';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { createTestApp, type TestApp } from '@caiwu/testkit';
+import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import { sql } from '@caiwu/db';
 import { syntheticNative } from '../native-sample';
 import {
@@ -354,6 +354,60 @@ describe('w_pz_get / dw_pz_saveas 原生结构只读预检', () => {
     expect(nativePreflight({ name: 'large.json', text: '中'.repeat(100000) }).issues[0]!.code).toBe(
       'SOURCE_LIMIT',
     );
+  });
+  test('kmbm 原字符标识不误判成数字编码，不据此证明目标科目有效', () => {
+    const d = syntheticNative();
+    cell(table(d, 'pz'), 0, 'kmbm', 'A001');
+    const r = run(d);
+    expect(r.structurePassed).toBe(true);
+    expect(r.records[0]!.values.kmbm).toBe('A001');
+    expect(r.document).toEqual(d);
+    expect(r.migrationAllowed).toBe(false);
+  });
+  test('日期与四键核对，不自造 1900 年下限或把历史年份改成目标年度', () => {
+    const d = syntheticNative();
+    for (const t of d.tables.filter((t) => t.name !== 'pzlx')) {
+      for (const [index] of t.rows.entries()) cell(t, index, 'nf', '1899');
+    }
+    cell(table(d, 'pzdj'), 0, 'pzdj_rq', '1899-01-05');
+    cell(table(d, 'pzdj'), 0, 'pzdj_shrq', '1899-01-06');
+    const r = run(d);
+    expect(r.structurePassed).toBe(true);
+    expect(r.vouchers[0]!.key).toBe('1899/1/3/7');
+    expect(r.migrationAllowed).toBe(false);
+  });
+  test('pzlx 字典是 integer，未被分录引用的代码不错误套用 pz.smallint 上限', () => {
+    const d = syntheticNative();
+    table(d, 'pzlx').rows.push(['40000', '保留', '虚构保留类型']);
+    const r = run(d);
+    expect(r.structurePassed).toBe(true);
+    expect(r.records.at(-1)!.values.pzlx).toBe('40000');
+    expect(r.vouchers[0]!.typeName).toBe('记');
+    expect(r.migrationAllowed).toBe(false);
+  });
+  test('已有真实已过账凭证及余额的账套也完全不变，不把原生预检当覆盖或迁移', async () => {
+    const app = await createTestApp({ modules: [server] });
+    apps.push(app);
+    await seedVouchers(app.svc, [
+      {
+        date: '2026-01-08',
+        status: 'posted',
+        lines: [
+          { account: '1001', debit: 98765 },
+          { account: '6001', credit: 98765 },
+        ],
+      },
+    ]);
+    const before = await state(app);
+    const api = app.call(server);
+    expect(
+      await api.nativePreflight({
+        name: 'synthetic.json',
+        text: JSON.stringify(syntheticNative()),
+      }),
+    ).toMatchObject({ migrationAllowed: false, targetChanges: 0 });
+    expect(await state(app)).toEqual(before);
+    expect(await api.list()).toEqual([]);
   });
   test('真实接口正常/异常只读，所有持久表完全一致，权限拒绝；不产生可执行批次', async () => {
     const app = await createTestApp({ modules: [server] });
