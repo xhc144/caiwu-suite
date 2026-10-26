@@ -13,6 +13,7 @@ interface ExpectedTemplate {
   creditPnl?: string[];
   reviewCodes: string[];
   categories: AccountCategoryDef[];
+  partnerCodes?: string[];
 }
 const category = (
   id: string,
@@ -46,6 +47,8 @@ export const expectedTemplates: ExpectedTemplate[] = [
   {
     id: 'nonprofit-2026',
     regime: 'nonprofit',
+    // PDF第65页1121第四项、第69页1141第四项、第96页2202/2203第三项。
+    partnerCodes: ['1121', '1141', '2202', '2203'],
     width: 4,
     categories: nonprofitCategories,
     creditAssets: ['1102', '1131', '1202', '1421', '1502', '1602'],
