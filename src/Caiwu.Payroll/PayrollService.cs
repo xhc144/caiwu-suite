@@ -7,9 +7,9 @@ namespace Caiwu.Payroll;
 /// An outdated session fails rather than overwriting another window's changes.</summary>
 public sealed partial class PayrollService
 {
-    private readonly SqlitePayrollStore store;
+    private readonly IPayrollStore store;
     private PayrollDocument document;
-    public PayrollService(SqlitePayrollStore store) { this.store = store; document = store.Read(); }
+    public PayrollService(IPayrollStore store) { this.store = store; document = store.Read(); }
     public PayrollDocument Snapshot => PayrollJson.Clone(document);
     public long Revision => document.Revision;
     public void Refresh() => document = store.Read();
@@ -96,7 +96,8 @@ public sealed partial class PayrollService
                 var previous = book.Columns.SingleOrDefault(c => c.FieldName == column.FieldName);
                 if (previous is not null && previous.Kind != column.Kind)
                     Guard.Require(!book.Periods.SelectMany(p => p.Rows).Any(r => r.Inputs.ContainsKey(column.FieldName)
-                        || r.Employee.Attributes.ContainsKey(column.FieldName)), "已有数据的栏目不能直接改变类型。");
+                        || r.Results.ContainsKey(column.FieldName) || r.Employee.Attributes.ContainsKey(column.FieldName))
+                        && !book.Employees.Any(e => e.Attributes.ContainsKey(column.FieldName)), "已有数据的栏目不能直接改变类型。");
             }
             _ = FormulaEngine.Compile(rows, book.Formulas);
             book.Columns = rows;
@@ -250,7 +251,11 @@ public sealed partial class PayrollService
         Guard.Require(document.VoucherSettings is not null, "请先进行凭证设置。");
         var plan = VoucherPlanner.Create(document, period, document.VoucherSettings!, request, accounts);
         var existing = document.VoucherPlans.SingleOrDefault(p => p.SourceKey == plan.SourceKey);
-        if (existing is not null) return PayrollJson.Clone(existing);
+        if (existing is not null)
+        {
+            Guard.Require(existing.ContentHash == plan.ContentHash, "该月份和种类已有不同的凭证计划，不能另换编号重复生成。");
+            return PayrollJson.Clone(existing);
+        }
         // Different plans cannot silently refresh or overwrite the same voucher identity.
         Guard.Require(!document.VoucherPlans.Any(p => p.Request.Date.Year == request.Date.Year
             && p.Request.Date.Month == request.Date.Month && p.Request.VoucherType == request.VoucherType

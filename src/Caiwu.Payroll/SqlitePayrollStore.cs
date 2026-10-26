@@ -4,7 +4,7 @@ using Microsoft.Data.Sqlite;
 namespace Caiwu.Payroll;
 
 /// <summary>Dedicated module workspace, never the shared ledger or an original SQL Anywhere book.</summary>
-public sealed class SqlitePayrollStore
+public sealed class SqlitePayrollStore : IPayrollStore
 {
     private const int ApplicationId = 0x43505731;
     private readonly string path;
@@ -67,7 +67,7 @@ public sealed class SqlitePayrollStore
         return document;
     }
 
-    internal PayrollDocument Commit(PayrollDocument document, long expectedRevision)
+    public PayrollDocument Commit(PayrollDocument document, long expectedRevision)
     {
         Guard.Require(document.BookId == BookId && document.Revision == expectedRevision,
             "不能跨账套或跨修订保存工资数据。");

@@ -198,9 +198,16 @@ public static class FormulaEngine
         }
         private Node And()
         {
-            var left = Compare();
-            while (token.Equals("AND", StringComparison.OrdinalIgnoreCase)) { Next(); left = Count(new Binary("AND", left, Compare())); }
+            var left = NotValue();
+            while (token.Equals("AND", StringComparison.OrdinalIgnoreCase)) { Next(); left = Count(new Binary("AND", left, NotValue())); }
             return left;
+        }
+        private Node NotValue()
+        {
+            if (!token.Equals("NOT", StringComparison.OrdinalIgnoreCase)) return Compare();
+            Guard.Require(++depth <= 64, "公式嵌套超过 64 层。");
+            try { Next(); return Count(new Unary("NOT", NotValue())); }
+            finally { depth--; }
         }
         private Node Compare()
         {
@@ -226,7 +233,7 @@ public static class FormulaEngine
             Guard.Require(++depth <= 64, "公式嵌套超过 64 层。");
             try
             {
-                if (token is "+" or "-" || token.Equals("NOT", StringComparison.OrdinalIgnoreCase))
+                if (token is "+" or "-")
                 { var op = token.ToUpperInvariant(); Next(); return Count(new Unary(op, UnaryValue())); }
                 return Primary();
             }

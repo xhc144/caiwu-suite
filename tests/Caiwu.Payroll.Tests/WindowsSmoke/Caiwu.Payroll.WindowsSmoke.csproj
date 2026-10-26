@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <OutputType>Exe</OutputType>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Caiwu.Payroll/Wpf/Caiwu.Payroll.Wpf.csproj" />
+    <Compile Include="../SyntheticFixture.cs" Link="SyntheticFixture.cs" />
+  </ItemGroup>
+</Project>

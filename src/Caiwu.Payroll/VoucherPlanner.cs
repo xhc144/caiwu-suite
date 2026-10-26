@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Globalization;
 
 namespace Caiwu.Payroll;
 
@@ -60,7 +61,10 @@ internal static class VoucherPlanner
             book.BookId, period.Month, period.DataVersion, book.ConfigurationVersion,
             Settings = settings, Request = request, plan.Lines
         });
-        plan.SourceKey = "payroll:" + Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint))).ToLowerInvariant();
+        // A changed amount/date/number must not create a new business source and permit
+        // a second payment for the same month. Content identity is tracked separately.
+        plan.SourceKey = $"payroll:{book.BookId:D}:{period.Month.ToString("yyyy-MM", CultureInfo.InvariantCulture)}:{request.Kind}";
+        plan.ContentHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint))).ToLowerInvariant();
         return plan;
 
         void Add(string accountCode, decimal amount, bool debit, PayrollRow row)
@@ -74,7 +78,7 @@ internal static class VoucherPlanner
             if (amount == 0) return;
             if (amount < 0) { debit = !debit; amount = Math.Abs(amount); }
             plan.Lines.Add(new(accountCode, request.Summary, debit ? amount : 0, debit ? 0 : amount,
-                row.Employee.DepartmentCode, row.Employee.Code));
+                row.Employee.DepartmentCode, row.Employee.Code, account.RequiresDepartment, account.RequiresEmployee));
         }
     }
 

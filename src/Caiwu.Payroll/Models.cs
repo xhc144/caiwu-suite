@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Caiwu.Payroll;
 
@@ -15,6 +16,7 @@ public sealed record Department
     public string Code { get; set; } = "";
     public string Name { get; set; } = "";
     public Dictionary<string, string?> OriginalFields { get; set; } = [];
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 }
 
 public sealed record Employee
@@ -26,10 +28,12 @@ public sealed record Employee
     // g_j4..g_j8, g_f1/g_f2 and extension fields; never truncated on save.
     public Dictionary<string, string?> Attributes { get; set; } = [];
     public Dictionary<string, string?> OriginalFields { get; set; } = [];
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 }
 
 public sealed record PayrollPrintLayout
 {
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
     public bool Enabled { get; set; }
     public int IntegerDigits { get; set; } = 10;
     public int DecimalDigits { get; set; } = 2;
@@ -50,6 +54,7 @@ public sealed record PayrollColumn
     public PayrollPrintLayout Summary { get; set; } = new();
     public PayrollPrintLayout Payslip { get; set; } = new();
     public Dictionary<string, string?> OriginalFields { get; set; } = [];
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 }
 
 public sealed record PayrollFormula
@@ -63,10 +68,12 @@ public sealed record PayrollFormula
     // A tax formula evaluates its expression as the tax base using the explicit profile.
     public bool IsTaxFormula { get; set; }
     public Dictionary<string, string?> OriginalFields { get; set; } = [];
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 }
 
 public sealed record TaxBand
 {
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
     public decimal? UpperLimit { get; set; }
     public decimal Rate { get; set; }
 }
@@ -75,6 +82,7 @@ public sealed record TaxBand
 // single-period progressive arithmetic only; annual/cumulative withholding is separate.
 public sealed record PayrollTaxProfile
 {
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
     public string Name { get; set; } = "";
     public string SourceTitle { get; set; } = "";
     public string SourceUri { get; set; } = "";
@@ -126,10 +134,12 @@ public sealed record PayrollRow
     public Dictionary<string, decimal?> Inputs { get; set; } = [];
     public Dictionary<string, decimal?> Results { get; set; } = [];
     public Dictionary<string, string?> OriginalFields { get; set; } = [];
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 }
 
 public sealed record PayrollPeriod
 {
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
     public DateOnly Month { get; set; }
     public List<PayrollRow> Rows { get; set; } = [];
     public long DataVersion { get; set; } = 1;
@@ -142,6 +152,7 @@ public sealed record PayrollAccount(string Code, bool Enabled = true, bool IsLea
 
 public sealed record PayrollCreditMapping
 {
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
     public string FieldName { get; set; } = "";
     public string AccountCode { get; set; } = "";
 }
@@ -153,17 +164,27 @@ public sealed record PayrollVoucherSettings
     public string DistributionAccountField { get; set; } = "g_j4";
     public List<PayrollCreditMapping> Credits { get; set; } = [];
     public Dictionary<string, string?> OriginalFields { get; set; } = [];
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 }
 
 public sealed record PayrollVoucherRequest(PayrollVoucherKind Kind, DateOnly Date,
-    string VoucherType, int Number, string Summary);
+    string VoucherType, int Number, string Summary)
+{
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
+}
 public sealed record PayrollVoucherLine(string AccountCode, string Summary, decimal Debit,
-    decimal Credit, string DepartmentCode, string EmployeeCode);
+    decimal Credit, string DepartmentCode, string EmployeeCode,
+    bool DepartmentIsRequired = false, bool EmployeeIsRequired = false)
+{
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
+}
 
 public sealed record PayrollVoucherPlan
 {
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
     public Guid Id { get; set; }
     public string SourceKey { get; set; } = "";
+    public string ContentHash { get; set; } = "";
     public Guid BookId { get; set; }
     public DateOnly Month { get; set; }
     public long DataVersion { get; set; }
@@ -172,6 +193,7 @@ public sealed record PayrollVoucherPlan
     public List<PayrollVoucherLine> Lines { get; set; } = [];
     // A persisted plan is never a posted voucher. No fake TransferToLedger method.
     public string Status { get; set; } = "planned";
+    public Guid? VoucherId { get; set; }
 }
 
 public sealed record WageTable(DateOnly Month, bool IsCalculated, IReadOnlyList<PayrollColumn> Columns,
@@ -194,6 +216,7 @@ public sealed record PayrollDocument
     public List<PayrollPeriod> Periods { get; set; } = [];
     public List<PayrollVoucherPlan> VoucherPlans { get; set; } = [];
     public Dictionary<string, string?> OriginalFields { get; set; } = [];
+    [JsonExtensionData] public Dictionary<string, JsonElement> ExtensionData { get; set; } = [];
 
     public static List<PayrollColumn> CreateColumnSlots()
     {
