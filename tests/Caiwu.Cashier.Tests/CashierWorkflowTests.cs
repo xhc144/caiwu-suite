@@ -163,6 +163,7 @@ public sealed class CashierWorkflowTests : IDisposable
     public void Generated_voucher_blocks_direct_edit_and_delete()
     {
         var d = Add(); SeedDocument(d with { GeneratedVoucherId = "synthetic-generated" });
+        Assert.Equal("document.voucher", Assert.Throws<CashierRuleException>(() => service.GetEditableDocument(Snapshot().Revision, d.Id)).Code);
         Assert.Equal("document.voucher", Assert.Throws<CashierRuleException>(() => service.DeleteDocument(Snapshot().Revision, d.Id, Actor)).Code);
         Assert.Equal("document.voucher", Assert.Throws<CashierRuleException>(() => service.UpdateDocument(Snapshot().Revision, d.Id, Input(), Actor)).Code);
     }
@@ -187,6 +188,7 @@ public sealed class CashierWorkflowTests : IDisposable
         var a = Add(Input(60)); var b = Add(Input(40)); Stage(Entry("ledger", 100));
         var group = service.Reconcile(Snapshot().Revision, Cash, [a.Id, b.Id], ["ledger"], Actor);
         Assert.All(Snapshot().Documents, x => Assert.Equal(group.Code, x.ReconciliationCode));
+        Assert.Equal("document.matched", Assert.Throws<CashierRuleException>(() => service.GetEditableDocument(Snapshot().Revision, a.Id, deleting: true)).Code);
         Assert.Equal(group.Code, Snapshot().LedgerEntries[0].ReconciliationCode);
         Assert.Equal("document.matched", Assert.Throws<CashierRuleException>(() => service.DeleteDocument(Snapshot().Revision, a.Id, Actor)).Code);
         Assert.Empty(service.ReadReconciliation(new(Cash, 2026, 1)).Documents);

@@ -32,7 +32,7 @@ public sealed class CashierVoucherProposalAdapter(IParityLedgerService ledger, B
         var canonical = new CashierService(new SnapshotOnlyStore(state)).CreateVoucherPlan(sources[0].Date.Year,
             sources[0].Date.Month, plan.Grouping, rates);
         var match = canonical.Vouchers.SingleOrDefault(x => x.PlanKey == selected.PlanKey);
-        if (match is null || !match.SourceDocuments.SequenceEqual(selected.SourceDocuments) || !match.Lines.SequenceEqual(selected.Lines))
+        if (match is null || match.Date != selected.Date || !match.SourceDocuments.SequenceEqual(selected.SourceDocuments) || !match.Lines.SequenceEqual(selected.Lines))
             throw new CashierRuleException("voucher.plan.changed", "凭证计划与原始单据不一致，请重新生成计划。");
         var claimed = sources.Select(x => x.Id).ToHashSet();
         var next = state with { Revision = checked(state.Revision + 1), Documents = state.Documents.Select(d => claimed.Contains(d.Id)

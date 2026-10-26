@@ -37,6 +37,7 @@ public sealed class CashierWindows(CashierService service, string actor, ICashie
             var key = Selected(account); var book = service.Read().Book;
             var old = (grid.SelectedItem as JournalRow)?.Document;
             if (!add && old is null) throw new CashierRuleException("document.selection", "请选择需要修改的单据。");
+            if (!add) old = service.GetEditableDocument(revision, old!.Id);
             DocumentInput input = old is null
                 ? new(key, Max(ParseMonth(month.Text), book.OpeningDate), "", DocumentDirection.Receipt, 0, null, actor)
                 : new(old.Account, old.Date, old.Summary, old.Debit != 0 ? DocumentDirection.Receipt : DocumentDirection.Payment,
@@ -62,6 +63,7 @@ public sealed class CashierWindows(CashierService service, string actor, ICashie
         {
             if (grid.SelectedItem is not JournalRow { Document: { } d })
                 throw new CashierRuleException("document.selection", "请选择需要删除的单据。");
+            _ = service.GetEditableDocument(revision, d.Id, deleting: true);
             if (MessageBox.Show(window, "删除本条数据，请确认。", "删除记录", MessageBoxButton.YesNo,
                     MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
             service.DeleteDocument(revision, d.Id, actor); Refresh();

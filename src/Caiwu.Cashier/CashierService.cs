@@ -65,6 +65,16 @@ public sealed class CashierService(ICashierStore store, TimeProvider? timeProvid
             return s with { Documents = s.Documents.Where(x => x.Id != id).ToArray() };
         });
 
+    /// <summary>Checks a selection before opening the original edit dialog or deletion confirmation.</summary>
+    public CashierDocument GetEditableDocument(long revision, Guid id, bool deleting = false)
+    {
+        var state = Read();
+        if (state.Revision != revision) throw new CashierConcurrencyException(revision, state.Revision);
+        var document = Find(state, id);
+        RequireEditable(state.Book, document, deleting ? "删除" : "修改");
+        return document;
+    }
+
     /// <summary>
     /// Stage an explicitly supplied, versioned synthetic/integration snapshot. Existing matched entries
     /// cannot disappear or change. This does not post a voucher or write to the authoritative GL.
