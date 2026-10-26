@@ -51,8 +51,8 @@
 
 已读指定 `enterprise-cost.md` 正式规则研究材料（本容器副本来自已核验规则ZIP），并核对[存货准则第5—9、14条](https://www.mof.gov.cn/zhengwuxinxi/zhengcefabu/2006zcfb/200805/t20080519_23107.htm)及[财会〔2013〕17号成本核算制度](https://cwfwpt.ggj.gov.cn/zcfg/qykjzd/202306/P020230620583246761887.pdf)。前者规定采购/加工成本及可选发出计价法，后者要求按经营特点归集分配、区分成本与期间费、政策不可随意变更。移动加权、精度边界、尾差排序、零产量拒绝及业务幂等机制是本首版明确的软件选择，不冒充财政部指定算法或全行业适用结论。2026科目征求稿未作为正式规则部署。
 
-独立手算及实际命令结果见 `tests/Caiwu.Costing.Tests/VALIDATION.md`。未覆盖减值、盘点、调拨、换算、批次FIFO、退料、供应商退货、在产品、复杂分步/联副产品、特殊行业、完整增值税及财务报表。
+旧文档曾引用 `tests/Caiwu.Costing.Tests/VALIDATION.md`，该旧记录不在本基线，不能作为本轮证据。本轮实际结果见 [PARITY_VALIDATION.md](../../tests/Caiwu.Costing.Tests/PARITY_VALIDATION.md)。未覆盖减值、盘点、调拨、换算、批次FIFO、退料、供应商退货、在产品、复杂分步/联副产品、特殊行业、完整增值税及财务报表。
 
 ## 可编辑工作表与独立页面（本轮新增）
 
-成本来源已明确、需要手工输入与复算时，使用 `CostWorksheetService` / `CostWorksheetEditor`；支持材料/人工/制造费用池、精确尾差审计、有限整批多阶段承接、JSON复算导入与安全JSON/CSV导出。独立WPF组件位于 `Wpf/`，主入口、Core、Contracts及SQLite均未改动。完整操作、API和接入约束见 [WORKSHEET.md](WORKSHEET.md)；验证与未验项见 [tests验证](../../tests/Caiwu.Costing.Tests/SPRINT_VALIDATION.md)。这不是原库存事件API的替代入口，也不会自动记账。
+成本来源已明确、需要手工输入与复算时，使用 `CostWorksheetService` / `CostWorksheetEditor`；支持材料/人工/制造费用池、精确尾差审计、有限整批多阶段承接、JSON复算导入与安全JSON/CSV导出。独立WPF组件位于 `Wpf/`，主入口、Core、Contracts及SQLite均未改动。完整操作、API和接入约束见 [WORKSHEET.md](WORKSHEET.md)；旧 `SPRINT_VALIDATION.md` 未随本基线入库，不作为已验证证据。这不是原库存事件API的替代入口，也不会自动记账。
