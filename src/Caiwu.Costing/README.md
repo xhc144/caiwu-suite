@@ -1,3 +1,15 @@
+# 原版成本／进销存保真切片
+
+新入口是 [Parity/](Parity/) 的 `InventoryWorkflow` 与 `InventoryVoucherPlanner`，不再把人工工作表作为原版成本核算路线。实现产品档案、仓库／车间隔离、期初、采购入库／销售出库／领用出库、审核保护、盘点、单月月末加权核算／取消、四类平衡凭证计划。原始行袋保留变体字段、NULL、原数值文字和尾空格；不包含原账套驱动或自动迁移。
+
+[Wpf/InventoryParityDialogs.cs](Wpf/InventoryParityDialogs.cs) 提供成本核算、取消核算、仓库／车间选择的实际窗口操作；控件矩形按原 PBU 等比缩放，未发明 DataWindow 内部坐标。其余窗口 UI、Desktop 菜单注册及原格式验收仍待补齐。
+
+[Adapters/](Adapters/) 是独立项目，对接公共接口检查点 `5bb60d2`；权威状态通过 `SaveModuleDocuments` 保存，凭证通过一次 `AcceptVoucherProposal` 同送来源认领与模块变更。每个 adapter 只使用用户开始本次操作时的同一 `ModuleLedgerSnapshot`，提交后必须显式重载，不自动更新 token 或重试。当前只验证契约和合成服务，未宣称 Core/SQLite 已接通。完整接口、构建命令、实现选择及未完成验收见 [inventory handoff](../../docs/parity-handoffs/inventory.md) 和 [本轮验证](../../tests/Caiwu.Costing.Tests/PARITY_VALIDATION.md)。
+
+以下保留旧实验 API 的说明供已有调用兼容；其移动加权与人工工作表不作为原版保真完成证据。
+
+---
+
 # 成本核算领域首版（实验模块）
 
 仅支持人民币、单月、单库存账册/仓位、单计量单位的普通商品与简单完工批次，未获生产制度验收。全部输入输出为本命名空间的record，计算无I/O、时钟、随机数、总账或共享Contracts依赖；不构成完整ERP、完整行业成本制度或税务模块。
