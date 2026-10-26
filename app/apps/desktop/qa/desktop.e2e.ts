@@ -309,6 +309,9 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
       ).not.toBe(0);
       expect(page.isClosed()).toBe(false);
     }
+    // 模拟用户开始编辑，满足标准 beforeunload 提示所需的 sticky activation。
+    await page.locator('body').click({ position: { x: 4, y: 4 } });
+    expect(await page.evaluate(() => navigator.userActivation.hasBeenActive)).toBe(true);
     await page.evaluate(() => {
       window.onbeforeunload = (event) => {
         event.preventDefault();
@@ -332,6 +335,11 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
       });
       win.maximize();
     });
+    await expect
+      .poll(() =>
+        desktop!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isMaximized()),
+      )
+      .toBe(true);
     await desktop
       .evaluate(({ dialog, BrowserWindow }) => {
         dialog.showMessageBoxSync = () => 1;
