@@ -42,6 +42,37 @@ const generate = (r: Report) =>
   });
 
 describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
+  it('历史账户或现金流量项目停用后仍可真实取数，新引用仍由core拒绝', async () => {
+    await seedCashflowBook(app.svc);
+    await app.svc.db
+      .updateTable('account')
+      .set({ disabled: 1 })
+      .where('code', '=', '100201')
+      .execute();
+    await app.svc.db
+      .updateTable('dimension_item')
+      .set({ disabled: 1 })
+      .where('type_id', '=', 'cashflow')
+      .where('code', '=', 'NF_donations')
+      .execute();
+    await checkCashflow403Sources(app.svc, 202602, fixtureMapping());
+    const r = await api().importTemplate(cashflow403Template(fixtureMapping()));
+    const out = await generate(r);
+    expect(
+      out.kind === 'generated' && out.snapshot.cells.find((c) => c.address === 'B41')?.value,
+    ).toBe('121700');
+    await expect(
+      seedVouchers(app.svc, [
+        {
+          date: '2026-02-20',
+          lines: [
+            { account: '100201', debit: 100, dims: { cashflow: 'NF_donations' } },
+            { account: '410101', credit: 100 },
+          ],
+        },
+      ]),
+    ).rejects.toThrow(/停用/);
+  });
   it('401/402/403完整表样使用ReportTemplateSchema；未接入金额不以零或假公式代替', async () => {
     for (const code of ['401', '402', '403'] as const) {
       const template = nonprofitFormDraft(code, 2026);

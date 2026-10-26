@@ -162,8 +162,9 @@ export async function checkCashflowSourceRange(
   const covered = new Set([...selected, ...mapping.excludedAccounts.map((a) => a.code)]);
   for (const code of covered) {
     const a = await svc.accounts.require(code);
-    if (!a.isLeaf || (selected.has(code) && a.disabled) || a.direction !== 'debit')
-      throw new Error(`现金及现金等价物范围必须使用启用的借方末级科目：${code}`);
+    // 停用限制新增业务，不应使历史报表无法读取既有分录。
+    if (!a.isLeaf || a.direction !== 'debit')
+      throw new Error(`现金及现金等价物范围必须使用借方末级科目：${code}`);
     if (selected.has(code) && !isCashAccount(code))
       throw new Error(`本切片仅支持现金和可随时支付的银行账户；其他现金等价物尚未接入：${code}`);
   }
@@ -173,8 +174,7 @@ export async function checkCashflowSourceRange(
   const cfIds = new Set<number>();
   for (const spec of [...Object.values(mapping.items), mapping.internalTransfer]) {
     const d = await svc.dimensions.getByCode('cashflow', spec.code);
-    if (!d || !d.isLeaf || d.disabled)
-      throw new Error(`请选择存在且启用的末级现金流量项目：${spec.code}`);
+    if (!d || !d.isLeaf) throw new Error(`请选择存在的末级现金流量项目：${spec.code}`);
     cfIds.add(d.id);
   }
   const internal = (await svc.dimensions.getByCode('cashflow', mapping.internalTransfer.code))!;
