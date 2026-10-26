@@ -3,6 +3,9 @@ import periodCloseServer from '../server';
 import { seedPostedMonths } from '../test/posted-months';
 import { test, expect } from './fixture';
 
+// 本模块在 CI 和本地都只执行一次，失败必须保留。
+test.describe.configure({ retries: 0 });
+
 test('w_zw_fz：连续结账真实预览、取消、关闭三个月及原地反结；结转全选只选启用类型', async ({
   page,
   local,

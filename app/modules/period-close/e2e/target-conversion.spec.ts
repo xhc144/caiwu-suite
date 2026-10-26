@@ -2,6 +2,9 @@ import { seedVouchers } from '@caiwu/testkit';
 import periodCloseServer from '../server';
 import { test, expect } from './fixture';
 
+// 本模块在 CI 和本地都只执行一次，失败必须保留。
+test.describe.configure({ retries: 0 });
+
 test('w_xt_jzwh / w_zw_ydjz：从真实入口设置外币数量换算、重开、取消预览及生成待审核来源凭证', async ({
   page,
   local,
