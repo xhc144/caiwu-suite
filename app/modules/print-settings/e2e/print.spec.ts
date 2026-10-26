@@ -186,8 +186,10 @@ test('w_preview_zc：多页账簿承前过次不重复累计，PDF 实际分页�
   await page.getByLabel('奇偶页分次打印（手动翻面）').check();
   await page.getByRole('button', { name: '打印全部', exact: true }).click();
   await expect(page.getByRole('dialog', { name: /现在打印奇页/ })).toBeVisible();
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
   await page.getByRole('dialog').getByRole('button', { name: '继续打印', exact: true }).click();
   await expect(page.getByRole('dialog', { name: /请翻面，现在打印偶页/ })).toBeVisible();
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
   await page
     .getByRole('dialog', { name: /请翻面，现在打印偶页/ })
     .getByRole('button', { name: '取消后续', exact: true })
@@ -440,4 +442,90 @@ test('w_print_2_zw：独立造数后明细科目连续打印，跳过空科目�
   await expect(page.getByLabel('科目编码（可用逗号选择多个）', { exact: true })).toBeDisabled();
   await page.getByRole('button', { name: '查询并预览', exact: true }).click();
   await expect(page.getByTestId('page-count')).toHaveText('共 6 页');
+});
+
+test('w_preview_zc A3+B2：逐科目双面保留空白背槽，取消后恢复不重印正面，PDF保留纸槽', async ({
+  page,
+  request,
+}) => {
+  const book = await loginWithNewBook(page, request);
+  await seedBook(
+    book.bookId,
+    [
+      ...Array.from({ length: 3 }, (_, i) => ({ account: '1001', summary: `双面A${i + 1}` })),
+      ...Array.from({ length: 2 }, (_, i) => ({ account: '100201', summary: `双面B${i + 1}` })),
+    ].map((x) => ({
+      date: '2026-01-05',
+      status: 'posted' as const,
+      summary: x.summary,
+      lines: [
+        { account: x.account, debit: 100 },
+        { account: '6603', credit: 100 },
+      ],
+    })),
+  );
+  const settings = structuredClone(defaultSettings);
+  settings.ledger.rows = 1;
+  settings.ledger.continuousPage = false;
+  await callApi(request, 'm.print-settings.saveSettings', settings, { token: book.token });
+  await page.addInitScript(() => {
+    const target = window as unknown as {
+      __duplexJobs: string[];
+      __duplexPdf: string;
+      caiwuDesktop: unknown;
+    };
+    target.__duplexJobs = [];
+    target.caiwuDesktop = {
+      print: async (html: string) => {
+        target.__duplexJobs.push(html);
+      },
+      printToPdf: async (html: string) => {
+        target.__duplexPdf = html;
+        return null;
+      },
+    };
+  });
+  await page.goto('/m/print-settings/preview?mode=ledger&account=1001,100201&queried=1');
+  await expect(page.getByTestId('page-count')).toHaveText('共 5 页');
+  await page.getByLabel('奇偶页分次打印（手动翻面）', { exact: true }).check();
+  const answer = async (text: string, proceed: boolean) => {
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText(text);
+    await expect(dialog).not.toHaveClass(/ant-zoom-(appear|enter)/);
+    await dialog
+      .getByRole('button', { name: proceed ? '继续打印' : '取消后续', exact: true })
+      .click();
+  };
+  await page.getByRole('button', { name: '打印全部', exact: true }).click();
+  await answer('1001 库存现金', true);
+  await answer('请翻面', false);
+  await expect(page.getByRole('button', { name: '打印全部', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '恢复后续双面作业', exact: true }).click();
+  await answer('含 1 个空白', true);
+  await answer('100201', false);
+  await page.getByRole('button', { name: '恢复后续双面作业', exact: true }).click();
+  await answer('现在打印奇页账册', true);
+  await answer('请翻面', true);
+  await expect(page.getByRole('button', { name: '恢复后续双面作业', exact: true })).toHaveCount(0);
+  const jobs = await page.evaluate(
+    () => (window as unknown as { __duplexJobs: string[] }).__duplexJobs,
+  );
+  expect(
+    jobs.map((html) => [...html.matchAll(/data-duplex-source="([^"]+)"/g)].map((m) => m[1])),
+  ).toEqual([['1', '3'], ['2', 'blank'], ['4'], ['5']]);
+  await page.getByRole('button', { name: 'PDF', exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { __duplexPdf?: string }).__duplexPdf ?? ''),
+    )
+    .toContain('data-duplex-source="blank"');
+  const pdf = await page.evaluate(() => (window as unknown as { __duplexPdf: string }).__duplexPdf);
+  expect([...pdf.matchAll(/data-duplex-source="([^"]+)"/g)].map((m) => m[1])).toEqual([
+    '1',
+    '2',
+    '3',
+    'blank',
+    '4',
+    '5',
+  ]);
 });

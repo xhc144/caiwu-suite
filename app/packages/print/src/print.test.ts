@@ -233,7 +233,12 @@ describe('账册与批次', () => {
       send,
     });
     expect(send).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ sent: [1, 3], cancelled: true });
+    expect(result).toEqual({
+      sent: [1, 3],
+      cancelled: true,
+      blankPages: 0,
+      resume: { key: expect.any(String), nextStep: 1 },
+    });
     expect(confirm.mock.calls[0]![0]).toContain('奇页');
     expect(confirm.mock.calls[1]![0]).toContain('翻面');
   });
@@ -476,7 +481,7 @@ it('w_print_2_zw 每科目提示包含所有续页，取消后不发送下一科
   expect(confirm.mock.calls[1]![0]).toContain('6603 财务费用');
 });
 
-it('w_preview_zc 重置科目页码时按印刷页码分奇偶，单页科目不进入偶页作业', async () => {
+it('w_preview_zc 重置科目页码时按印刷页码分奇偶，单页科目背面仍保留空白纸槽', async () => {
   const { buildLedgerBookView } = await import('./index');
   const view = buildLedgerBookView([ledgerModel, { ...ledgerModel, account: '6603 财务费用' }], {
     ...defaultLayout,
@@ -495,9 +500,10 @@ it('w_preview_zc 重置科目页码时按印刷页码分奇偶，单页科目不
     confirm,
   });
   expect(view.pages.map((p) => p.pageNumber)).toEqual([5, 5]);
-  expect(send).toHaveBeenCalledTimes(1);
-  expect(confirm).toHaveBeenCalledTimes(1);
+  expect(send).toHaveBeenCalledTimes(4);
+  expect(confirm).toHaveBeenCalledTimes(4);
   expect(result.sent).toEqual([1, 2]);
+  expect(result.blankPages).toBe(2);
 });
 
 it('w_print_zc 承前过次跨长摘要仍按分录首次分片累计，红字金额不重复', () => {

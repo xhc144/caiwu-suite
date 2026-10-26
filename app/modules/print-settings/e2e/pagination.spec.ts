@@ -8,16 +8,22 @@ import {
   viewToPrintJob,
   assertRenderedPrintFits,
   type PrintView,
+  type PrintJob,
+  planManualDuplex,
+  duplexStepToPrintJob,
+  manualDuplexPdfJob,
 } from '@caiwu/print';
 import server from '../server';
 
 async function physicalPdf(
   page: Page,
-  view: PrintView,
+  view: PrintView | PrintJob,
   name: string,
   expected: { pages: number; width: number; height: number },
 ) {
-  await page.setContent(renderPrintDocument(viewToPrintJob(view)), { waitUntil: 'load' });
+  await page.setContent(renderPrintDocument('pages' in view ? viewToPrintJob(view) : view), {
+    waitUntil: 'load',
+  });
   await page.emulateMedia({ media: 'print' });
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(`(${assertRenderedPrintFits.toString()})(document)`);
@@ -37,6 +43,85 @@ async function physicalPdf(
     expect(Math.abs((Number(box![2]) * 25.4) / 72 - expected.height)).toBeLessThan(0.5);
   }
   await test.info().attach(name, { path: file, contentType: 'application/pdf' });
+}
+
+for (const [a, start, physicalPages] of [
+  [3, 1, 6],
+  [1, 1, 4],
+  [3, 2, 8],
+  [1, 5, 4],
+] as const) {
+  test(`w_preview_zc 手动双面 A${a}+B2 起点${start}：各科目正反 PDF 纸槽及空白背页真实保留`, async ({
+    page,
+  }) => {
+    const app = await createTestApp({ modules: [server] });
+    try {
+      await seedVouchers(
+        app.svc,
+        [
+          ...Array.from({ length: a }, (_, i) => ({ account: '1001', summary: `双面A${i + 1}` })),
+          ...Array.from({ length: 2 }, (_, i) => ({ account: '100201', summary: `双面B${i + 1}` })),
+        ].map((x) => ({
+          date: '2026-01-05',
+          status: 'posted' as const,
+          summary: x.summary,
+          lines: [
+            { account: x.account, debit: 100 },
+            { account: '6603', credit: 100 },
+          ],
+        })),
+      );
+      const models = await app
+        .call(server)
+        .ledgerBook({ from: 202601, to: 202601, account: '1001,100201', kind: 'detail' });
+      const view = buildLedgerBookView(models, {
+        ...defaultLayout,
+        rows: 1,
+        startPage: start,
+        continuousPage: false,
+      });
+      expect(view.pages).toHaveLength(a + 2);
+      const selected = view.pages.map((_, i) => i + 1),
+        steps = planManualDuplex(view, selected);
+      expect(steps).toHaveLength(4);
+      for (const [i, step] of steps.entries()) {
+        await physicalPdf(
+          page,
+          duplexStepToPrintJob(view, step),
+          `duplex-A${a}-start${start}-step${i}`,
+          { pages: step.slots.length, width: 210, height: 297 },
+        );
+        const actual = await page
+          .locator('[data-duplex-source]')
+          .evaluateAll((els) => els.map((el) => el.getAttribute('data-duplex-source')));
+        expect(actual).toEqual(step.slots.map((p) => String(p ?? 'blank')));
+        for (const [j, p] of step.slots.entries()) {
+          const text = await page.locator('.print-sheet').nth(j).textContent();
+          if (p == null) expect(text?.trim()).toBe('');
+          else expect(text).toContain(view.pages[p - 1]!.account!);
+        }
+      }
+      const job = manualDuplexPdfJob(view, selected);
+      const slots = steps.reduce((n, s) => n + s.slots.length, 0);
+      expect(slots).toBe(physicalPages);
+      await physicalPdf(page, job, `duplex-A${a}-start${start}-booklet`, {
+        pages: physicalPages,
+        width: 210,
+        height: 297,
+      });
+      if (a === 3 && start === 1)
+        expect([...job.html.matchAll(/data-duplex-source="([^"]+)"/g)].map((m) => m[1])).toEqual([
+          '1',
+          '2',
+          '3',
+          'blank',
+          '4',
+          '5',
+        ]);
+    } finally {
+      await app.close();
+    }
+  });
 }
 
 test('w_print_zc / w_preview_zc：跨两科目六张实际 PDF，承前过次、红字和每行内容完整', async ({

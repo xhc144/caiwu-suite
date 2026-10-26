@@ -1,6 +1,7 @@
 import type { PrintView } from './models';
 import { viewToPrintJob } from './models';
 import { printHtml, type PrintJob } from './driver';
+import { runManualDuplex, type DuplexResume, type DuplexResult } from './manual-duplex';
 
 export type PrintBatchOptions = {
   pages: number[];
@@ -10,9 +11,13 @@ export type PrintBatchOptions = {
   confirm: (message: string) => Promise<boolean>;
   send?: (job: PrintJob) => Promise<void>;
   signal?: AbortSignal;
+  resume?: DuplexResume;
 };
 /** 成功提交后才推进；取消停止后续，不重试已提交部分。物理打印结果由系统对话框决定。 */
-export async function runPrintBatch(view: PrintView, options: PrintBatchOptions) {
+export async function runPrintBatch(
+  view: PrintView,
+  options: PrintBatchOptions,
+): Promise<DuplexResult> {
   const { pages, copies, confirm, signal } = options;
   if (!Number.isInteger(copies) || copies < 1 || copies > 99)
     throw new Error('份数必须为 1 至 99 的整数');
@@ -24,6 +29,12 @@ export async function runPrintBatch(view: PrintView, options: PrintBatchOptions)
   if (pages.length * copies > 100000) throw new Error('打印总页数过多，请减少份数后分批打印');
   const sent: number[] = [];
   const send = options.send ?? printHtml;
+  if (options.duplex) {
+    if (options.pause === 'page' || options.pause === 'voucher')
+      throw new Error('手动双面按科目分正反两轮走纸，请关闭每页或每张暂停');
+    return runManualDuplex(view, { ...options, send });
+  }
+  if (options.resume) throw new Error('恢复点只适用于原手动双面作业');
   // 连续模式将所有份数放在同一次系统作业内；取消对话框就不会启动下一份作业。
   if (options.pause === 'none' && !options.duplex) {
     if (signal?.aborted) return { sent, cancelled: true };
@@ -31,28 +42,12 @@ export async function runPrintBatch(view: PrintView, options: PrintBatchOptions)
     await send({ ...job, html: job.html.repeat(copies) });
     return { sent: Array.from({ length: copies }, () => pages).flat(), cancelled: false };
   }
-  const passes = options.duplex
-    ? [
-        pages.filter(
-          (p) => (view.pages[p - 1]!.pageNumber ?? view.layout.startPage + p - 1) % 2 === 1,
-        ),
-        pages.filter(
-          (p) => (view.pages[p - 1]!.pageNumber ?? view.layout.startPage + p - 1) % 2 === 0,
-        ),
-      ]
-    : [pages];
+  const passes = [pages];
   for (let copy = 0; copy < copies; copy++)
     for (let pass = 0; pass < passes.length; pass++) {
       const selected = passes[pass]!;
       if (!selected.length) continue;
       if (signal?.aborted) return { sent, cancelled: true };
-      if (
-        options.duplex &&
-        !(await confirm(
-          `${pass === 0 ? '现在打印奇页账册' : '请翻面，现在打印偶页账册'}（第 ${copy + 1} 份）。系统打印机的双面能力需自行设置，是否继续？`,
-        ))
-      )
-        return { sent, cancelled: true };
       const groups: number[][] = options.pause === 'none' ? [selected] : [];
       if (options.pause !== 'none')
         for (const p of selected) {
