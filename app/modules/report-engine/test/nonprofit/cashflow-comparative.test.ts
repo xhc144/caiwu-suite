@@ -111,10 +111,13 @@ describe('403本年/比较期统一取数接线', () => {
     ).rejects.toThrow('2027年02月还没有建立');
     expect(await api.snapshot({ id: r.id, period: 202702 })).toBeNull();
     expect(() =>
-      comparativeCashflow403Template({
-        ...mapping(),
-        previous: { ...fixtureMapping(), year: 2027 },
-      }, 202702),
+      comparativeCashflow403Template(
+        {
+          ...mapping(),
+          previous: { ...fixtureMapping(), year: 2027 },
+        },
+        202702,
+      ),
     ).toThrow(/上年度/);
     await expect(
       validateComparativeCashflow403Generation(

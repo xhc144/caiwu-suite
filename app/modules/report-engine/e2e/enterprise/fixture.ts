@@ -55,12 +55,23 @@ export const test = base.extend<{
         request,
         async withCore(bookId, operation) {
           const m = moduleKit(reportServer.manifest);
-          const router = m.router({ run: m.procedure.meta({ permission: 'report-engine.generate' })
-            .mutation(({ ctx }) => operation(ctx.svc)) });
-          const runtime = createRuntime({ dataDir, modules: [{ ...reportServer, router }], devMode: true });
+          const router = m.router({
+            run: m.procedure
+              .meta({ permission: 'report-engine.generate' })
+              .mutation(({ ctx }) => operation(ctx.svc)),
+          });
+          const runtime = createRuntime({
+            dataDir,
+            modules: [{ ...reportServer, router }],
+            devMode: true,
+          });
           const session = runtime.sessions.create(bookId, 1);
-          try { await router.createCaller({ app: runtime, token: session.token }).run(); }
-          finally { runtime.sessions.delete(session.token); await runtime.bookStore.closeAll(); }
+          try {
+            await router.createCaller({ app: runtime, token: session.token }).run();
+          } finally {
+            runtime.sessions.delete(session.token);
+            await runtime.bookStore.closeAll();
+          }
         },
         async seed(bookId, mode = 'current') {
           const m = moduleKit(reportServer.manifest);
@@ -71,7 +82,10 @@ export const test = base.extend<{
                 if (mode === 'purchase') {
                   await seedPurchaseFixture(ctx.svc);
                   // 此模式只造采购201账套；203保留未配置表样，不声称已有取数。
-                  return { balance: await purchaseTemplate(ctx.svc), cashflow: enterpriseCashflow() };
+                  return {
+                    balance: await purchaseTemplate(ctx.svc),
+                    cashflow: enterpriseCashflow(),
+                  };
                 }
                 if (mode === 'comparative') {
                   await setupPeriodFixture(ctx.svc);

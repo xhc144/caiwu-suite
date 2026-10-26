@@ -114,7 +114,9 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
     expect(nonprofitFormDraft('402', 2027).cells.find((c) => c.address === 'I4')?.source).toBe(
       '上年可比累计·合计',
     );
-    expect(() => cashflow403Template({ ...fixtureMapping(), year: 2027 } as never, 202602)).toThrow();
+    expect(() =>
+      cashflow403Template({ ...fixtureMapping(), year: 2027 } as never, 202602),
+    ).toThrow();
   });
 
   it('403真实导入、生成、勾稽、重算及xlsx逐项等于手算固定账套；含退回、处置净额及内部划转', async () => {
@@ -160,11 +162,14 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
     expect(() => cashflow403Template(missing, 202602)).toThrow(/缺少/);
     expect(() => cashflow403Template({ ...base, policyBasis: '' }, 202602)).toThrow(/依据/);
     expect(() =>
-      cashflow403Template({ ...base, items: { ...base.items, fake: base.items.donations! } }, 202602),
+      cashflow403Template(
+        { ...base, items: { ...base.items, fake: base.items.donations! } },
+        202602,
+      ),
     ).toThrow(/未知/);
-    expect(() => cashflow403Template({ ...base, internalTransfer: base.items.donations! }, 202602)).toThrow(
-      /重复/,
-    );
+    expect(() =>
+      cashflow403Template({ ...base, internalTransfer: base.items.donations! }, 202602),
+    ).toThrow(/重复/);
     await seedCashflowBook(app.svc);
     await expect(checkCashflow403Sources(app.svc, 202702, base)).rejects.toThrow(/比较数/);
     await expect(
@@ -229,11 +234,20 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
       unit: 'cents',
       currency: 'CNY',
     });
-    await expect(api().save({ id: report.id, expectedRevision: 1, template })).rejects.toThrow(/公式|profile/);
+    await expect(api().save({ id: report.id, expectedRevision: 1, template })).rejects.toThrow(
+      /公式|profile/,
+    );
     // 故意破坏实际来源也会在公共生成事务被拒绝，不依赖只读UI保护。
-    await seedVouchers(app.svc, [{ date: '2026-02-20', status: 'posted', lines: [
-      { account: '1001', debit: 123 }, { account: '410101', credit: 123 },
-    ] }]);
+    await seedVouchers(app.svc, [
+      {
+        date: '2026-02-20',
+        status: 'posted',
+        lines: [
+          { account: '1001', debit: 123 },
+          { account: '410101', credit: 123 },
+        ],
+      },
+    ]);
     await expect(generate(report)).rejects.toThrow(/未分类|来源.*变更/);
     expect(await api().snapshot({ id: report.id, period: 202602 })).toEqual(good.snapshot);
   });
@@ -287,7 +301,8 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
         ]);
         await checkCashflow403Sources(app.svc, 202602, fixtureMapping());
         // 新增来源后显式重确认完整映射；不能复用旧profile。
-        const template = cashflow403Template(fixtureMapping(), 202602); template.code = String(500 + revision++);
+        const template = cashflow403Template(fixtureMapping(), 202602);
+        template.code = String(500 + revision++);
         const report = await api().importTemplate(template);
         const out = await generate(report);
         expect(

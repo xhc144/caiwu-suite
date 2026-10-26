@@ -44,9 +44,9 @@ test('公共guard：w_bb_get→w_bb_proc→w_bb_saveas采购201正黄金，两�
   await expect(page.getByTestId('result-A2')).toContainText('不可作为完整法定报表');
   await expect(page.getByTestId('result-A3')).toContainText('202512');
   // Grid仅渲染30行；必须经真实控件切换到总计所在范围后检查B40。
-  await page.getByLabel('网格起始行', { exact: true }).fill(
-    balanceSheetSlots.assetsTotal!.current.slice(1),
-  );
+  await page
+    .getByLabel('网格起始行', { exact: true })
+    .fill(balanceSheetSlots.assetsTotal!.current.slice(1));
   await page.getByLabel('网格起始行', { exact: true }).press('Tab');
   await expect(page.getByTestId(`result-${balanceSheetSlots.assetsTotal!.current}`)).toContainText(
     '待配置',
@@ -69,7 +69,10 @@ test('公共guard：w_bb_get→w_bb_proc→w_bb_saveas采购201正黄金，两�
 });
 
 for (const period of [202601, 202602])
-  test(`采购201旧无guard/错期负例：期间${period}不能生成或导出候选`, async ({ page, enterprise }) => {
+  test(`采购201旧无guard/错期负例：期间${period}不能生成或导出候选`, async ({
+    page,
+    enterprise,
+  }) => {
     const { bookId } = await loginWithNewBook(page, enterprise.request, {
       product: 'qingsong',
       startYear: 2025,

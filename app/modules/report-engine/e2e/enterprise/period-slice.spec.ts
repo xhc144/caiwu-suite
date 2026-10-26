@@ -69,8 +69,15 @@ for (const c of cases)
     );
     await expect(page.getByTestId('result-A2')).toContainText('禁止用它核对比较数');
     await page.getByRole('button', { name: '导出 Excel', exact: true }).click();
-    await expect(page.getByRole('alert').filter({ hasText: '失败操作不会覆盖上次成功结果。' })).toContainText('审核');
-    const saved = await callApi<ReportSnapshot>(enterprise.request, 'm.report-engine.snapshot', { id: Number(id), period: 202601 }, { token, method: 'GET' });
+    await expect(
+      page.getByRole('alert').filter({ hasText: '失败操作不会覆盖上次成功结果。' }),
+    ).toContainText('审核');
+    const saved = await callApi<ReportSnapshot>(
+      enterprise.request,
+      'm.report-engine.snapshot',
+      { id: Number(id), period: 202601 },
+      { token, method: 'GET' },
+    );
     // 全表审核尚未接通的旧切片只能离线检查格式；公共接口不返回xlsx。
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(Uint8Array.from(Buffer.from(await workbookBase64(saved), 'base64')).buffer);

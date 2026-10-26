@@ -58,18 +58,25 @@ export const ActivityClassifiedMappingSchema = z
         .strict(),
     ),
     /** 可逐笔复核的确认清单；提供时必须完整，不能只列部分有利分录。 */
-    recognitions: z.array(z.object({
-      voucherId: z.number().int().positive(),
-      lineId: z.number().int().positive(),
-      revision: z.number().int().positive(),
-      period: z.number().int(),
-      account: account,
-      debit: z.number().int().safe(),
-      credit: z.number().int().safe(),
-      classification: z.enum(['unrestricted', 'restricted']),
-      resourceReference: reference,
-      sourceReference: reference,
-    }).strict()).max(200000).optional(),
+    recognitions: z
+      .array(
+        z
+          .object({
+            voucherId: z.number().int().positive(),
+            lineId: z.number().int().positive(),
+            revision: z.number().int().positive(),
+            period: z.number().int(),
+            account: account,
+            debit: z.number().int().safe(),
+            credit: z.number().int().safe(),
+            classification: z.enum(['unrestricted', 'restricted']),
+            resourceReference: reference,
+            sourceReference: reference,
+          })
+          .strict(),
+      )
+      .max(200000)
+      .optional(),
   })
   .strict()
   .superRefine((v, ctx) => {
@@ -174,7 +181,14 @@ export function activity402ClassifiedTemplate(raw: ActivityClassifiedMapping): R
     '后续事件来源：双向互转须逐笔关联非限定/限定净资产分录（制度3101/3102）、发生时点、资源批次及外部设限/全部解除凭据；以前年度调整须关联以前年度净资产调整分录（制度3201）、原期间及调整依据，科目均须按实际账套显式映射；净变动须待上述完整事件及净资产勾稽接通，不能以0补齐。',
   );
   t.reportIdentity = 'nonprofit-activity402-classified';
-  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.totals.period, mapping };
+  t.profile = {
+    mode: 'declaration',
+    version: 1,
+    kind: t.reportIdentity,
+    scope: 'posted',
+    period: mapping.totals.period,
+    mapping,
+  };
   return ReportTemplateSchema.parse(t);
 }
 

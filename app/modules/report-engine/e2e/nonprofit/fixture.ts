@@ -65,12 +65,23 @@ export const test = base.extend<{
         request,
         async withCore(bookId, operation) {
           const m = moduleKit(nonprofitTestServer.manifest);
-          const router = m.router({ run: m.procedure.meta({ permission: 'report-engine.generate' })
-            .mutation(({ ctx }) => operation(ctx.svc)) });
-          const runtime = createRuntime({ dataDir, modules: [{ ...nonprofitTestServer, router }], devMode: true });
+          const router = m.router({
+            run: m.procedure
+              .meta({ permission: 'report-engine.generate' })
+              .mutation(({ ctx }) => operation(ctx.svc)),
+          });
+          const runtime = createRuntime({
+            dataDir,
+            modules: [{ ...nonprofitTestServer, router }],
+            devMode: true,
+          });
           const session = runtime.sessions.create(bookId, 1);
-          try { await router.createCaller({ app: runtime, token: session.token }).run(); }
-          finally { runtime.sessions.delete(session.token); await runtime.bookStore.closeAll(); }
+          try {
+            await router.createCaller({ app: runtime, token: session.token }).run();
+          } finally {
+            runtime.sessions.delete(session.token);
+            await runtime.bookStore.closeAll();
+          }
         },
         async createBook(kind = 'cashflow') {
           // 本测试独占数据目录；临时runtime只负责core/testkit造数，不挂HTTP造数后门。

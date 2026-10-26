@@ -199,14 +199,23 @@ export function buildPurchaseReclassificationComparatives(
   fill(t, b.current, b.period, false);
   fill(t, b.previous, previousPeriod, true);
   // 未配置的整表合计仍显示文字，不把它们作为本两行切片的已接入审核。
-  t.checks = t.cells.filter(c => c.source.includes('采购侧完整性：')).flatMap(c => {
-    const row = c.address.slice(1);
-    return [
-      { name: `${row}采购来源借方完整分类`, left: `B${row}`, right: `C${row}`, tolerance: '0' },
-      { name: `${row}采购来源贷方完整分类`, left: `E${row}`, right: `F${row}`, tolerance: '0' },
-    ];
-  });
+  t.checks = t.cells
+    .filter((c) => c.source.includes('采购侧完整性：'))
+    .flatMap((c) => {
+      const row = c.address.slice(1);
+      return [
+        { name: `${row}采购来源借方完整分类`, left: `B${row}`, right: `C${row}`, tolerance: '0' },
+        { name: `${row}采购来源贷方完整分类`, left: `E${row}`, right: `F${row}`, tolerance: '0' },
+      ];
+    });
   t.reportIdentity = 'enterprise-purchase';
-  t.profile = { mode: 'declaration', version: 1, kind: 'enterprise-purchase', scope: 'posted', period: b.period, mapping: b };
+  t.profile = {
+    mode: 'declaration',
+    version: 1,
+    kind: 'enterprise-purchase',
+    scope: 'posted',
+    period: b.period,
+    mapping: b,
+  };
   return ReportTemplateSchema.parse(t);
 }

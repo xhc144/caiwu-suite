@@ -61,7 +61,9 @@ it('公共guard：w_bb_proc采购201正黄金，两日期手算13000/5500、4000
     expect(value(snapshot, `B${row}`).value).toBe(debit);
     expect(value(snapshot, `E${row}`).value).toBe(credit);
   }
-  expect(snapshot.cells.some((c) => c.unit === 'text' && c.value.includes('排除本流动项目'))).toBe(true);
+  expect(snapshot.cells.some((c) => c.unit === 'text' && c.value.includes('排除本流动项目'))).toBe(
+    true,
+  );
   expect(value(snapshot, balanceSheetSlots.assetsTotal!.current).unit).toBe('text');
   expect(value(snapshot, balanceSheetSlots.contractAssets!.current).unit).toBe('text');
   const out = await app.call(reportServer).exportResult({ id: r.id, period: 202601 });
@@ -162,13 +164,24 @@ it('公共guard：w_bb_proc采购201新增两往来借贷净零仍拒绝，不�
       period: 202601,
       requestId: randomUUID(),
     }),
-    ).rejects.toThrow(/来源.*变更|文本，不能作为数值/);
+  ).rejects.toThrow(/来源.*变更|文本，不能作为数值/);
   expect((await api.snapshot({ id: r.id, period: 202601 }))!.id).toBe(snapshot.id);
 });
 
 it('公共guard：w_bb_proc采购201上年末缺真实期间拒绝，不用本月期初或零替代', async () => {
   const api = app.call(reportServer);
   const r = await api.importTemplate(await purchaseTemplate(app.svc));
+  // 先经core删除本合成期间的凭证，才能真实移除期间；不关闭外键或直写分录。
+  const vouchers = await app.svc.db
+    .selectFrom('voucher')
+    .select('id')
+    .where('period', '=', 202512)
+    .execute();
+  for (const { id } of vouchers) {
+    await app.svc.vouchers.changeStatus({ ids: [id], to: 'audited' });
+    await app.svc.vouchers.changeStatus({ ids: [id], to: 'pending' });
+    await app.svc.vouchers.delete(id);
+  }
   await app.svc.db.deleteFrom('period').where('period', '=', 202512).execute();
   await expect(
     api.generate({
@@ -183,11 +196,14 @@ it('公共guard：w_bb_proc采购201上年末缺真实期间拒绝，不用本�
 
 it('w_bb_saveas局部正确不代表整表审核通过，非正式整表审核错误禁止公共导出', async () => {
   const template = await purchaseTemplate(app.svc);
-  delete template.profile; delete template.reportIdentity;
+  delete template.profile;
+  delete template.reportIdentity;
   template.checks.push({ name: '整表待配置审核', left: 'B40', right: 'E40', tolerance: '0' });
   const { r, snapshot } = await generated(template);
   expect(snapshot.checks.some((c) => c.status === 'error')).toBe(true);
-  await expect(app.call(reportServer).exportResult({ id: r.id, period: 202601 })).rejects.toThrow(/审核/);
+  await expect(app.call(reportServer).exportResult({ id: r.id, period: 202601 })).rejects.toThrow(
+    /审核/,
+  );
 });
 
 it('w_bb_proc采购201公共绑定：旧无guard的202601及错期202602均拒绝且无可导出快照', async () => {
@@ -197,7 +213,8 @@ it('w_bb_proc采购201公共绑定：旧无guard的202601及错期202602均拒�
     for (const address of [slot.current, slot.comparative])
       expect(template.cells.find((c) => c.address === address)!.source).not.toMatch(/^IF\(1,A3,/);
   for (const period of [202601, 202602]) {
-    const selected = structuredClone(template); selected.code = period === 202601 ? '211' : '212';
+    const selected = structuredClone(template);
+    selected.code = period === 202601 ? '211' : '212';
     if (period === 202601) delete selected.profile;
     const r = await api.importTemplate(selected);
     await expect(

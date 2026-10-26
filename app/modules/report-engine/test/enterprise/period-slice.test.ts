@@ -57,7 +57,9 @@ it('联合202：损益结转后收入14000、净利润10195；比较数为上年
   expect(value(s, profitSlots.netProfit!.comparative).value).toBe('800');
   expect(value(s, profitSlots.continuingProfit!.current).unit).toBe('text');
   expect(value(s, profitSlots.basicEps!.current).unit).toBe('text');
-  await expect(app.call(reportServer).exportResult({ id: r.id, period: 202601 })).rejects.toThrow(/审核/);
+  await expect(app.call(reportServer).exportResult({ id: r.id, period: 202601 })).rejects.toThrow(
+    /审核/,
+  );
   const result = { base64: await workbookBase64(s) };
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(Uint8Array.from(Buffer.from(result!.base64, 'base64')).buffer);

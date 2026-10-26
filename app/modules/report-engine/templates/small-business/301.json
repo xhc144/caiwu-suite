@@ -3307,54 +3307,34 @@
     "mapping": {
       "inventory": {
         "purchases": {
-          "accounts": [
-            "1401"
-          ]
+          "accounts": ["1401"]
         },
         "inTransit": {
-          "accounts": [
-            "1402"
-          ]
+          "accounts": ["1402"]
         },
         "rawMaterials": {
-          "accounts": [
-            "1403"
-          ]
+          "accounts": ["1403"]
         },
         "materialVariance": {
-          "accounts": [
-            "1404"
-          ]
+          "accounts": ["1404"]
         },
         "workInProgress": {
-          "accounts": [
-            "4001"
-          ]
+          "accounts": ["4001"]
         },
         "finishedGoods": {
-          "accounts": [
-            "1405"
-          ]
+          "accounts": ["1405"]
         },
         "merchandiseVariance": {
-          "accounts": [
-            "1407"
-          ]
+          "accounts": ["1407"]
         },
         "outsourcedProcessing": {
-          "accounts": [
-            "1408"
-          ]
+          "accounts": ["1408"]
         },
         "turnoverMaterials": {
-          "accounts": [
-            "1411"
-          ]
+          "accounts": ["1411"]
         },
         "consumableBiologicalAssets": {
-          "accounts": [
-            "1421"
-          ]
+          "accounts": ["1421"]
         }
       }
     },

@@ -41,7 +41,10 @@ function movement(account: string, options: BalanceOptions, item?: string) {
 }
 
 /** 共享统一第8参数实际取数；年初至报告月、上年同期。门禁尚未注册，仍标明切片。 */
-export function comparativeCashflow403Template(raw: ComparativeCashflowMapping, period: number): ReportTemplate {
+export function comparativeCashflow403Template(
+  raw: ComparativeCashflowMapping,
+  period: number,
+): ReportTemplate {
   const mapping = ComparativeCashflowSchema.parse(raw);
   if (!isPeriod(period) || Math.floor(period / 100) !== mapping.current.year)
     throw new Error('比较现金流量分类报告期必须属于本年来源年度');
@@ -94,7 +97,14 @@ export function comparativeCashflow403Template(raw: ComparativeCashflowMapping, 
     }
   }
   t.reportIdentity = 'nonprofit-cashflow403-comparative';
-  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period, mapping };
+  t.profile = {
+    mode: 'declaration',
+    version: 1,
+    kind: t.reportIdentity,
+    scope: 'posted',
+    period,
+    mapping,
+  };
   return ReportTemplateSchema.parse(t);
 }
 

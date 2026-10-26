@@ -181,7 +181,14 @@ export function balance401ClosingTemplate(raw: Balance401Mapping): ReportTemplat
   t.checks = [{ name: '期末资产等于负债和净资产', left: 'C37', right: 'F28', tolerance: '0' }];
   appendSources(t, mapping, '期末来源');
   t.reportIdentity = 'nonprofit-balance401';
-  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.period, mapping };
+  t.profile = {
+    mode: 'declaration',
+    version: 1,
+    kind: t.reportIdentity,
+    scope: 'posted',
+    period: mapping.period,
+    mapping,
+  };
   return ReportTemplateSchema.parse(t);
 }
 
@@ -214,7 +221,14 @@ export function balance401AnnualTemplate(
   t.checks.push({ name: '年初资产等于负债和净资产', left: 'B37', right: 'E28', tolerance: '0' });
   appendSources(t, opening, '年初来源');
   t.reportIdentity = 'nonprofit-balance401-annual';
-  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period: closing.period, mapping: { closing, opening } };
+  t.profile = {
+    mode: 'declaration',
+    version: 1,
+    kind: t.reportIdentity,
+    scope: 'posted',
+    period: closing.period,
+    mapping: { closing, opening },
+  };
   return ReportTemplateSchema.parse(t);
 }
 
@@ -270,9 +284,9 @@ export async function validateBalance401AnnualGeneration(
   for (const code of new Set(Object.values(opening.groups).flatMap((g) => g.accounts)))
     if (!(await svc.accounts.require(code)).isLeaf)
       throw new Error(`年初来源必须是末级科目：${code}`);
-  const mapped = new Set(Object.values(opening.groups).flatMap(g => g.accounts));
-  const pnl = new Set((await svc.accounts.categories()).filter(c => c.isPnl).map(c => c.id));
-  const accounts = new Map((await svc.accounts.list()).map(a => [a.id, a]));
+  const mapped = new Set(Object.values(opening.groups).flatMap((g) => g.accounts));
+  const pnl = new Set((await svc.accounts.categories()).filter((c) => c.isPnl).map((c) => c.id));
+  const accounts = new Map((await svc.accounts.list()).map((a) => [a.id, a]));
   const rows = await svc.ledger.balances({ periodFrom: first, periodTo: first, rollup: false });
   for (const row of rows) {
     if (row.opening === 0) continue;

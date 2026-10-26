@@ -103,7 +103,11 @@ export function applyInventoryBalances(t: ReportTemplate, config?: InventoryConf
   if (!dynamicMothers && config?.period === undefined)
     throw new Error('absent或显式明细分类须明确固定报告期，不能在首次生成时隐式选择');
   t.reportIdentity = 'small-business-inventory';
-  t.profile = { mode: 'declaration', version: 1, kind: 'small-business-inventory', scope: 'posted',
+  t.profile = {
+    mode: 'declaration',
+    version: 1,
+    kind: 'small-business-inventory',
+    scope: 'posted',
     ...(config?.period === undefined ? {} : { period: config.period }),
     mapping: { inventory: mapping },
   };
@@ -111,19 +115,23 @@ export function applyInventoryBalances(t: ReportTemplate, config?: InventoryConf
     const source = (role: InventoryRole) => {
       const entry = mapping[role];
       if ('absent' in entry) return '0';
-      return entry.accounts.map(account => balanceFormula({
-        account,
-        metric: column === 'closing' ? 'closing' : 'opening',
-        unit: 'cents',
-        currency: 'CNY',
-        direction: 'signed',
-        dimension: 'none',
-        item: '',
-        options:
-          column === 'closing'
-            ? { from: 'current', to: 'current' }
-            : { from: 'yearStart', to: 'yearStart' },
-      })).join('+');
+      return entry.accounts
+        .map((account) =>
+          balanceFormula({
+            account,
+            metric: column === 'closing' ? 'closing' : 'opening',
+            unit: 'cents',
+            currency: 'CNY',
+            direction: 'signed',
+            dimension: 'none',
+            item: '',
+            options:
+              column === 'closing'
+                ? { from: 'current', to: 'current' }
+                : { from: 'yearStart', to: 'yearStart' },
+          }),
+        )
+        .join('+');
     };
     const total = inventoryRoles.map(({ role }) => `(${source(role)})`).join('+');
     replace(t, balanceAddress(9, column), total);

@@ -215,7 +215,9 @@ describe('w_bb_get / w_bb_proc / w_bb_saveas 小企业301存货', () => {
       workInProgress: { accounts: ['400101', '400102'] },
     };
     expect(() => validateInventoryMapping(mapping, accounts)).not.toThrow();
-    expect(extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile?.kind).toBe('small-business-inventory');
+    expect(extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile?.kind).toBe(
+      'small-business-inventory',
+    );
     const r = await api().importTemplate(
       extendedBalanceSheetTemplate({ mapping: officialInventoryMapping, accounts }),
     );
@@ -268,7 +270,9 @@ describe('w_bb_get / w_bb_proc / w_bb_saveas 小企业301存货', () => {
       ),
     ).toThrow(/明确依据/);
     expect(() => validateInventoryMapping(mapping, actual)).not.toThrow();
-    expect(extendedBalanceSheetTemplate({ mapping, accounts: actual, period: 202602 }).profile?.mapping).toEqual({ inventory: mapping });
+    expect(
+      extendedBalanceSheetTemplate({ mapping, accounts: actual, period: 202602 }).profile?.mapping,
+    ).toEqual({ inventory: mapping });
     expect(await api().list({})).toHaveLength(0);
   });
 
@@ -281,7 +285,9 @@ describe('w_bb_get / w_bb_proc / w_bb_saveas 小企业301存货', () => {
       consumableBiologicalAssets: { absent: { reason: '构造时完整科目表中无1421' } },
     };
     expect(() => validateInventoryMapping(mapping, accounts)).not.toThrow();
-    expect(extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile).toBeDefined();
+    expect(
+      extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile,
+    ).toBeDefined();
 
     // 已导入的旧无guard模板仍是公共P1；保留原来的0值及全过断言，揭示虚假自洽。
     const legacy = legacyInventoryTemplate('absent-1421');
@@ -289,7 +295,9 @@ describe('w_bb_get / w_bb_proc / w_bb_saveas 小企业301存货', () => {
     delete legacy.profile;
     const old = await api().importTemplate({ ...legacy, code: '312' });
     await expect(generate(old)).rejects.toThrow(/旧无guard|缺少持久/);
-    const r = await api().importTemplate(extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }));
+    const r = await api().importTemplate(
+      extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }),
+    );
     const before = await generate(r);
     expect(value(before, 9, 'closing')).toBe('0');
     expect(before.checks.every((c) => c.status === 'pass')).toBe(true);
@@ -319,7 +327,9 @@ describe('w_bb_get / w_bb_proc / w_bb_saveas 小企业301存货', () => {
       rollup: false,
     });
     expect(ledger.reduce((sum, row) => sum + row.closing, 0)).toBe(12345);
-    expect(extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile).toBeDefined();
+    expect(
+      extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile,
+    ).toBeDefined();
     const currentAccounts = await app.svc.accounts.list();
     expect(() => validateInventoryMapping(mapping, currentAccounts)).toThrow(/仍然存在/);
     const current = await generate(dynamicReport);
@@ -337,11 +347,16 @@ describe('w_bb_get / w_bb_proc / w_bb_saveas 小企业301存货', () => {
       rawMaterials: { accounts: ['140301', '140302'] },
     };
     expect(() => validateInventoryMapping(mapping, accounts)).not.toThrow();
-    expect(extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile).toBeDefined();
-    const legacy = legacyInventoryTemplate('raw-material-leaves'); delete legacy.profile;
+    expect(
+      extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }).profile,
+    ).toBeDefined();
+    const legacy = legacyInventoryTemplate('raw-material-leaves');
+    delete legacy.profile;
     const old = await api().importTemplate({ ...legacy, code: '312' });
     await expect(generate(old)).rejects.toThrow(/旧无guard|缺少持久/);
-    const r = await api().importTemplate(extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }));
+    const r = await api().importTemplate(
+      extendedBalanceSheetTemplate({ mapping, accounts, period: 202602 }),
+    );
     expectGolden(await generate(r), inventoryGolden.february2026);
     const dynamic = ReportTemplateSchema.parse(structuredClone(balanceJson));
     dynamic.code = '311';
@@ -380,7 +395,8 @@ describe('w_bb_get / w_bb_proc / w_bb_saveas 小企业301存货', () => {
   it('包含关系审核识别自定义试算其中项误填，公共审核失败强制禁止导出', async () => {
     await seedInventoryBook(app.svc);
     const t = extendedBalanceSheetTemplate();
-    delete t.profile; delete t.reportIdentity;
+    delete t.profile;
+    delete t.reportIdentity;
     const cell = t.cells.find((c) => c.address === balanceAddress(10, 'closing'))!;
     cell.source = `(${cell.source})*100`;
     const r = await api().importTemplate(t);

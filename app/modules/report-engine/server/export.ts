@@ -52,9 +52,12 @@ export async function workbookBase64(snapshot: ReportSnapshot) {
     ...snapshot.dependencies.map((d) => [d.code, d.revision]),
   ]);
   meta.addRows([
-    ['结果身份', snapshot.assurance === 'guarded-slice'
-      ? '已绑定来源的局部取数切片；不代表完整法定报表或法律认证'
-      : '非正式自定义试算；无可信法定profile绑定'],
+    [
+      '结果身份',
+      snapshot.assurance === 'guarded-slice'
+        ? '已绑定来源的局部取数切片；不代表完整法定报表或法律认证'
+        : '非正式自定义试算；无可信法定profile绑定',
+    ],
     ['相关profile、定义及来源指纹', JSON.stringify(snapshot.profileProofs ?? [])],
   ]);
   return Buffer.from(await wb.xlsx.writeBuffer()).toString('base64');

@@ -124,7 +124,10 @@ test('w_bb_proc缺少存货组成科目不能默认零，失败生成保留上�
   const { bookId, token } = await loginSmallBook(page, isolatedSmall.request);
   await isolatedSmall.withCore(bookId, async (svc) => {
     await svc.periods.ensureYear(2026);
-    for (const [code, balance] of [['1403', 101], ['3001', -101]] as const)
+    for (const [code, balance] of [
+      ['1403', 101],
+      ['3001', -101],
+    ] as const)
       await svc.opening.upsert({
         year: 2025,
         accountId: (await svc.accounts.require(code)).id,
