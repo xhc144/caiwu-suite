@@ -27,6 +27,10 @@ export const EntryFilterSchema = z.object({
   currency: z.string().optional(),
   /** false（默认）只看已过账；true 包含待审核、已审核 */
   includeUnposted: z.boolean().default(false),
+  /** 排除 closingKind 非 NULL 的结转凭证；不按摘要或来源推测。 */
+  excludeClosing: z.boolean().default(false),
+  /** 按确切的 closingKind 排除；NULL 和其它标记保留。excludeClosing=true 时排除全部。 */
+  excludeClosingKinds: z.array(z.string().min(1).max(80)).max(32).default([]),
   limit: z.number().int().min(1).max(200_000).default(50_000),
 });
 export type EntryFilter = z.input<typeof EntryFilterSchema>;
@@ -72,6 +76,10 @@ export const BalanceQuerySchema = z.object({
   /** 指定本位币时包含 NULL 行；不填时汇总全部本位币金额，原币金额不混加。 */
   currency: z.string().optional(),
   includeUnposted: z.boolean().default(false),
+  /** 本期发生及本年累计排除标记为结转的凭证；历史期初仍按真实账面余额。 */
+  excludeClosing: z.boolean().default(false),
+  /** 仅筛本期及累计发生额；历史期初不重写。 */
+  excludeClosingKinds: z.array(z.string().min(1).max(80)).max(32).default([]),
   /** true 时同时返回各级上级科目的汇总行 */
   rollup: z.boolean().default(true),
   /** false（默认）去掉期初、发生、期末全为 0 的行 */
