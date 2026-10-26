@@ -106,9 +106,14 @@ test('w_xt_kgzb_1 信息确认：真实账套选择/登录壳打开民非账，�
   for (const [index, book] of books.entries()) {
     if (index === 0) await page.goto('/');
     await expect(page.getByText('选择账套', { exact: true })).toBeVisible();
-    const row = page.getByRole('listitem').filter({ hasText: book.name });
-    await expect(row).toContainText(book.templateName);
-    await row.getByRole('button', { name: '进入' }).click();
+    // 账套入口可由壳列表或模块表格提供，按唯一账套名定位对应条目。
+    const entry = page
+      .getByRole('listitem')
+      .or(page.getByRole('row'))
+      .filter({ has: page.getByText(book.name, { exact: true }) });
+    await expect(entry).toHaveCount(1);
+    await expect(entry).toContainText(book.templateName);
+    await entry.getByRole('button', { name: '进入', exact: true }).click();
     await expect(page).toHaveURL(`/login/${book.id}`);
     await expect(page.getByText(book.name, { exact: true })).toBeVisible();
     await page.getByLabel('密码').fill('m02-password');
@@ -130,7 +135,10 @@ test('w_xt_kgzb_1 信息确认：真实账套选择/登录壳打开民非账，�
     );
     if (index === 0) {
       await page.getByRole('button', { name: /系统管理员/ }).hover();
-      await page.getByRole('menuitem', { name: '切换账套' }).click();
+      const userMenu = page.getByRole('menu').filter({
+        has: page.getByRole('menuitem', { name: /退出登录$/ }),
+      });
+      await userMenu.getByRole('menuitem', { name: /切换账套$/ }).click();
       await expect(page).toHaveURL('/');
     }
   }
