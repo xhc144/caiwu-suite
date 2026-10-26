@@ -3,9 +3,10 @@
 import { build } from 'esbuild';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createIcon } from './build/create-icon.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const appRoot = path.resolve(here, '../..');
+createIcon(path.join(here, 'dist/icon.ico'));
 const common = {
   bundle: true,
   platform: 'node',
@@ -29,7 +30,7 @@ await build({
 });
 await build({
   ...common,
-  entryPoints: [path.join(appRoot, 'apps/server/src/main.ts')],
+  entryPoints: [path.join(here, 'src/server-entry.ts')],
   outfile: path.join(here, 'dist/server.cjs'),
   // 原生模块不打包，安装包里单独带上并为 Electron 重新编译
   external: ['better-sqlite3'],

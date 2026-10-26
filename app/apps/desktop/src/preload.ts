@@ -1,4 +1,4 @@
-// 只向页面暴露打印相关的最小接口（见 @caiwu/print 的 DesktopBridge）。页面拿不到 Node 和 Electron 的其它能力。
+// 保持 @caiwu/print 的 DesktopBridge 兼容。新增能力放在桌面自有的可选命名空间。
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('caiwuDesktop', {
@@ -6,4 +6,16 @@ contextBridge.exposeInMainWorld('caiwuDesktop', {
     ipcRenderer.invoke('caiwu:print', html, opts),
   printToPdf: (html: string, opts: { title: string; landscape?: boolean }) =>
     ipcRenderer.invoke('caiwu:printToPdf', html, opts),
+});
+
+contextBridge.exposeInMainWorld('caiwuDesktopHost', {
+  dataDirectory: {
+    get: () => ipcRenderer.invoke('caiwu:host:dataDir'),
+    choose: () => ipcRenderer.invoke('caiwu:host:chooseDataDir'),
+  },
+  files: {
+    open: () => ipcRenderer.invoke('caiwu:host:openFile'),
+    save: (defaultName: string) => ipcRenderer.invoke('caiwu:host:saveFile', defaultName),
+    directory: () => ipcRenderer.invoke('caiwu:host:chooseDirectory'),
+  },
 });
