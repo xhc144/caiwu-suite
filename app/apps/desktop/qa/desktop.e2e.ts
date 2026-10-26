@@ -268,26 +268,41 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     expect(
       await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
     ).toBe(1);
-    await desktop.evaluate(
-      ({ dialog }, file) => {
-        dialog.showSaveDialog = async () => ({ canceled: false, filePath: file });
-      },
-      path.join(root, 'missing', 'fail.pdf'),
-    );
+    const missingDir = path.join(root, 'missing');
+    const failedPdf = path.join(missingDir, 'fail.pdf');
+    expect(existsSync(missingDir)).toBe(false);
+    await desktop.evaluate(({ dialog }, file) => {
+      dialog.showSaveDialog = async () => ({ canceled: false, filePath: file });
+    }, failedPdf);
     const failed = await page.evaluate(async () => {
       try {
-        await (window as unknown as PrintWindow).caiwuDesktop.printToPdf('<p>失败</p>', {
-          title: '失败',
-        });
-        return false;
+        const result = await (window as unknown as PrintWindow).caiwuDesktop.printToPdf(
+          '<p>失败</p>',
+          {
+            title: '失败',
+          },
+        );
+        return { rejected: false, message: '', result };
       } catch (error) {
-        return String(error).includes('PDF 未保存成功');
+        return { rejected: true, message: String(error), result: null };
       }
     });
-    expect(failed).toBe(true);
+    expect(failed.rejected, '写入不存在的父目录必须拒绝 Promise').toBe(true);
+    expect(failed.message).toContain('PDF 未保存成功');
+    expect(existsSync(missingDir)).toBe(false);
+    expect(existsSync(failedPdf)).toBe(false);
+    const logEvents = readFileSync(path.join(fixture.configDir, 'logs', 'desktop.log'), 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as { event: string; code?: string });
+    expect(
+      logEvents.some((event) => event.event === 'pdf-write-failed' && event.code === 'ENOENT'),
+      '本地去敏日志必须记录真实写入 ENOENT',
+    ).toBe(true);
     expect(
       await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
     ).toBe(1);
+    console.log('PDF 写失败：Promise 已拒绝，目标目录/文件未创建，ENOENT 已记录，隐藏打印窗已清理');
     if (newInstaller) {
       expect(
         await run(newInstaller, ['/S', '/currentuser', `/D=${path.dirname(executable)}`]),
