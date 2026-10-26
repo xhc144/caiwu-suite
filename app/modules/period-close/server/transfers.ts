@@ -14,7 +14,14 @@ import {
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { requireOpening } from './preconditions';
-import { RuleSchema, type TransferRule, type RuleInput } from '../shared';
+import {
+  RuleSchema,
+  requiresCashflow,
+  type TransferRule,
+  type RuleInput,
+  type Cashflows,
+} from '../shared';
+import { validateCashflows, cashflowForLine } from './cashflows';
 import type { PeriodCloseTables } from './migrations';
 import { applyLines, canonicalBuckets, closingBuckets, digest, type Bucket } from './buckets';
 
@@ -127,10 +134,30 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
   for (const s of r.sources)
     if (new Decimal(s.ratio).lt(0) || new Decimal(s.ratio).gt(100))
       fail('RATIO', '转出比例应在 0 到 100 之间', '用十进制字符串填写百分比');
+  await validateCashflows(svc, target, r.targetCashflows, '转入');
+  if (r.targetDimensions.cashflow != null && !r.targetCashflows)
+    fail(
+      'CASHFLOW_DIRECTION',
+      '转入现金流量项目尚未明确流入/流出方向',
+      '请在转入流入/流出现金流量字段选择项目，不自动猜测旧辅助字段方向',
+    );
+  const sourceCashflows = new Map<number, Cashflows | undefined>();
+  for (const accountId of sourceIds) {
+    const account = accounts.find((a) => a.id === accountId)!;
+    const matches = r.sources.filter((s) => {
+      const parent = accounts.find((a) => a.id === s.accountId);
+      return parent && (account.id === parent.id || account.code.startsWith(parent.code));
+    });
+    if (matches.length > 1)
+      fail('DUPLICATE_ACCOUNT', '转出现金流设置范围重叠', '每个末级科目只设置一组现金流项目');
+    const choice = matches[0]?.cashflows;
+    await validateCashflows(svc, account, choice, '转出');
+    sourceCashflows.set(accountId, choice);
+  }
   for (const d of DIMENSION_TYPES) {
     const config = target.dimensions.find((c) => c.type === d.id);
     const id = r.targetDimensions[d.id] ?? config?.defaultItemId;
-    if (config?.required && id == null)
+    if (d.id !== 'cashflow' && config?.required && id == null)
       fail('TARGET_DIMENSION', `转入科目需要填写${d.name}`, '在结转设置填写转入辅助项');
     if (id != null) {
       const item = await svc.dimensions.get(id);
@@ -144,7 +171,7 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
         fail('TARGET_DIMENSION', `转入${d.name}无效`, '重新选择转入辅助项');
     }
   }
-  return { rule: r, sourceIds, sourceRatios, accounts, target };
+  return { rule: r, sourceIds, sourceRatios, sourceCashflows, accounts, target };
 }
 export async function saveRule(svc: CoreServices, raw: RuleInput, id?: number, revision?: number) {
   return svc.tx(async (t) => {
@@ -196,6 +223,7 @@ function makeLines(
   sourceRatios: Map<number, string>,
   accounts: Account[],
   rates: Map<string, string | null>,
+  sourceCashflows: Map<number, Cashflows | undefined>,
 ) {
   const lines: VoucherLineInput[] = [];
   let targetAmount = 0;
@@ -230,7 +258,7 @@ function makeLines(
         '核对该科目的期初币种，不会自动合并或改写币种',
       );
     for (const config of account.dimensions)
-      if (config.required && b.dimensions[config.type] == null)
+      if (config.type !== 'cashflow' && config.required && b.dimensions[config.type] == null)
         fail(
           'SOURCE_DIMENSION',
           `转出科目 ${account.code} 的余额缺少必填辅助项`,
@@ -240,7 +268,10 @@ function makeLines(
     lines.push({
       summary: rule.summary,
       accountId: b.accountId,
-      dimensions: b.dimensions,
+      dimensions: {
+        ...b.dimensions,
+        cashflow: cashflowForLine(account, sourceCashflows.get(b.accountId), -amount, '转出'),
+      },
       debit: amount < 0 ? -amount : 0,
       credit: amount > 0 ? amount : 0,
       currency: b.currency,
@@ -268,7 +299,10 @@ function makeLines(
         '选择不带外币/数量的利润或结余科目；转出行会完整保留外币和数量',
       );
     const dimensions = { ...rule.targetDimensions };
-    for (const d of target.dimensions) dimensions[d.type] ??= d.defaultItemId;
+    for (const d of target.dimensions)
+      if (d.type !== 'cashflow') dimensions[d.type] ??= d.defaultItemId;
+    if (requiresCashflow(target) || rule.targetCashflows)
+      dimensions.cashflow = cashflowForLine(target, rule.targetCashflows, targetAmount, '转入');
     lines.push({
       summary: rule.summary,
       accountId: target.id,
@@ -317,6 +351,7 @@ export async function transferPreview(
     svc,
     period,
     existing.map((r) => r.voucher_id),
+    false,
   );
   const rates = new Map<string, string | null>();
   for (const currency of new Set(
@@ -337,6 +372,7 @@ export async function transferPreview(
       validated.sourceRatios,
       validated.accounts,
       rates,
+      validated.sourceCashflows,
     );
     const prior = existing.find((r) => r.rule_id === rule.id);
     if (
@@ -362,7 +398,7 @@ export async function transferPreview(
         debit: sumCents(lines.map((l) => l.debit)),
         credit: sumCents(lines.map((l) => l.credit)),
       });
-    applyLines(buckets, lines);
+    applyLines(buckets, lines, false);
   }
   return {
     period,

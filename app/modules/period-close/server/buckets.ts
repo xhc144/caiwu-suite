@@ -88,14 +88,14 @@ export async function closingBuckets(
   }
   return map;
 }
-export function applyLines(map: Map<string, Bucket>, lines: VoucherLineInput[]) {
+export function applyLines(map: Map<string, Bucket>, lines: VoucherLineInput[], cashflow = true) {
   for (const l of lines) {
     const debit = l.debit ?? 0;
     const credit = l.credit ?? 0;
     const sign = debit !== 0 ? 1 : -1;
     addBucket(map, {
       accountId: l.accountId!,
-      dimensions: l.dimensions ?? {},
+      dimensions: cashflow ? (l.dimensions ?? {}) : { ...l.dimensions, cashflow: null },
       currency: l.currency ?? null,
       amount: sumCents([debit, -credit]),
       fc: assertCents(sign * (l.fcAmount ?? 0)),

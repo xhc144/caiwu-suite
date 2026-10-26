@@ -185,3 +185,82 @@ test('独立账套逆年结：影响预览 → 在线备份 → 取消不改账 
   expect(await app.svc.opening.list(2026)).toHaveLength(1);
   expect((await app.svc.periods.require(202612)).status).toBe('open');
 });
+
+test('独立现金流标志：自定义现金转出/银行转入可分别录项目与方向，生成行不丢项目', async ({
+  page,
+  local,
+}) => {
+  const { app, url } = local;
+  const incoming = await app.svc.dimensions.create({
+    type: 'cashflow',
+    code: 'CT_IN',
+    name: '测试调拨流入',
+    attrs: { direction: 'in' },
+  });
+  const outgoing = await app.svc.dimensions.create({
+    type: 'cashflow',
+    code: 'CT_OUT',
+    name: '测试调拨流出',
+    attrs: { direction: 'out' },
+  });
+  await seedVouchers(app.svc, [
+    {
+      date: '2026-01-05',
+      status: 'posted',
+      lines: [
+        { account: '1001', debit: 10000, dims: { cashflow: 'CF01' } },
+        { account: '4001', credit: 10000 },
+      ],
+    },
+  ]);
+  const cash = await app.svc.accounts.require('1001');
+  const bank = await app.svc.accounts.require('100201');
+  expect(cash.dimensions).toEqual([]);
+  expect(bank.dimensions).toEqual([]);
+  expect(cash.cashflowRequired && bank.cashflowRequired).toBe(true);
+  await local.login(page);
+  await page.goto(`${url}/m/period-close?period=202601`);
+  await page.getByRole('button', { name: '新增结转类型', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '新增结转类型' });
+  await drawer.getByLabel('代码', { exact: true }).fill('CASH_MOVE');
+  await drawer.getByLabel('结转内容', { exact: true }).click();
+  await page.getByText('自定义科目余额比例', { exact: true }).last().click();
+  await drawer.getByLabel('凭证类型', { exact: true }).click();
+  await page.getByText('记 记账凭证', { exact: true }).last().click();
+  await drawer.getByLabel('唯一转入末级科目').fill('100201');
+  await page.keyboard.press('Enter');
+  await expect(drawer.getByLabel('转入流入现金流量项目', { exact: true })).toBeVisible();
+  await drawer.getByLabel('转入流入现金流量项目', { exact: true }).fill('CT_IN');
+  await page.keyboard.press('Enter');
+  await drawer.getByRole('button', { name: '增加转出科目' }).click();
+  await drawer.getByLabel('转出科目', { exact: true }).fill('1001');
+  await page.keyboard.press('Enter');
+  await expect(drawer.getByLabel('转出流出现金流量项目', { exact: true })).toBeVisible();
+  await drawer.getByLabel('转出流出现金流量项目', { exact: true }).fill('CT_OUT');
+  await page.keyboard.press('Enter');
+  await drawer.getByRole('button', { name: '保存设置' }).click();
+  await expect(drawer).not.toBeVisible();
+  const definition = (await app.call(periodCloseServer).rules())[0]!;
+  expect(definition.targetCashflows).toMatchObject({ in: incoming.id });
+  expect(definition.sources[0]!.cashflows).toMatchObject({ out: outgoing.id });
+  await page.getByRole('button', { name: '结转预览', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: '月度结转预览' });
+  await expect(preview).toContainText('借方 100.00 / 贷方 100.00');
+  await preview.getByRole('checkbox').check();
+  await preview.getByRole('button', { name: '确认生成待审核凭证' }).click();
+  await expect(preview).not.toBeVisible();
+  const headers = (await app.svc.vouchers.list({ sourceModule: 'period-close' })).items;
+  expect(headers).toHaveLength(1);
+  const generated = (await app.svc.vouchers.get(headers[0]!.id))!;
+  expect(generated.status).toBe('pending');
+  expect(generated.lines.find((l) => l.accountId === cash.id)).toMatchObject({
+    debit: 0,
+    credit: 10000,
+    dimensions: { cashflow: outgoing.id },
+  });
+  expect(generated.lines.find((l) => l.accountId === bank.id)).toMatchObject({
+    debit: 10000,
+    credit: 0,
+    dimensions: { cashflow: incoming.id },
+  });
+});

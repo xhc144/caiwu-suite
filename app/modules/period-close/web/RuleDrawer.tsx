@@ -9,11 +9,11 @@ import {
   Space,
   Typography,
 } from 'antd';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { DIMENSION_TYPES } from '@caiwu/core';
-import { useAccounts, useVoucherTypes } from '@caiwu/web-kit';
+import { coreApi, useAccounts, useVoucherTypes } from '@caiwu/web-kit';
 import { AccountSelect, DimensionSelect } from '@caiwu/ui';
-import type { RuleInput, TransferRule } from '../shared';
+import { requiresCashflow, type RuleInput, type TransferRule } from '../shared';
 import { api } from './api';
 
 export default function RuleDrawer({
@@ -27,8 +27,13 @@ export default function RuleDrawer({
 }) {
   const [form] = Form.useForm<RuleInput>();
   const types = useVoucherTypes();
-  const { byId } = useAccounts();
+  const { byId, accounts } = useAccounts();
   const kind = Form.useWatch('kind', form);
+  const categories = useQuery(coreApi.accounts.categories.queryOptions()).data ?? [];
+  const pnlCategories = new Set(categories.filter((c) => c.isPnl).map((c) => c.id));
+  const cashPnl = accounts.some(
+    (a) => a.isLeaf && pnlCategories.has(a.categoryId) && requiresCashflow(a),
+  );
   const target = byId.get(Form.useWatch('targetAccountId', form));
   const save = useMutation(
     api.saveRule.mutationOptions({
@@ -75,7 +80,7 @@ export default function RuleDrawer({
           save.mutate({
             data: {
               ...data,
-              sources: data.kind === 'pnl' ? [] : (data.sources ?? []),
+              sources: data.sources ?? [],
               targetDimensions: data.targetDimensions ?? {},
             },
             id: rule === 'new' ? undefined : rule.id,
@@ -91,6 +96,7 @@ export default function RuleDrawer({
         </Form.Item>
         <Form.Item name="kind" label="结转内容" rules={[{ required: true }]}>
           <Select
+            onChange={() => form.setFieldValue('sources', [])}
             options={[
               { value: 'pnl', label: '损益（按本账套损益类别）' },
               { value: 'custom', label: '自定义科目余额比例' },
@@ -115,45 +121,85 @@ export default function RuleDrawer({
           <InputNumber min={1} max={9999} />
         </Form.Item>
         <Form.Item name="targetAccountId" label="唯一转入末级科目" rules={[{ required: true }]}>
-          <AccountSelect />
+          <AccountSelect
+            onChange={() => {
+              form.setFieldValue('targetCashflows', undefined);
+              form.setFieldValue('targetDimensions', {});
+            }}
+          />
         </Form.Item>
         <Typography.Paragraph type="secondary">
           按当前会计制度选择利润或结余科目。转入辅助项须明确填写；外币或数量转入换算尚未开放。
         </Typography.Paragraph>
-        {DIMENSION_TYPES.filter((d) => target?.dimensions.some((c) => c.type === d.id)).map((d) => (
+        {DIMENSION_TYPES.filter(
+          (d) => d.id !== 'cashflow' && target?.dimensions.some((c) => c.type === d.id),
+        ).map((d) => (
           <Form.Item key={d.id} name={['targetDimensions', d.id]} label={`转入${d.name}`}>
             <DimensionSelect type={d.id} />
           </Form.Item>
         ))}
-        {kind === 'custom' && (
+        {target &&
+          (requiresCashflow(target) || target.dimensions.some((d) => d.type === 'cashflow')) && (
+            <>
+              <p>
+                此转入科目启用现金流量核算。请明确选择流入或流出项目；预览会按实际现金增减检查对应方向，未填会阻止生成。
+              </p>
+              <Form.Item name={['targetCashflows', 'in']} label="转入流入现金流量项目">
+                <DimensionSelect type="cashflow" />
+              </Form.Item>
+              <Form.Item name={['targetCashflows', 'out']} label="转入流出现金流量项目">
+                <DimensionSelect type="cashflow" />
+              </Form.Item>
+            </>
+          )}
+        {(kind === 'custom' || cashPnl) && (
           <Form.List name="sources">
             {(fields, { add, remove }) => (
               <>
                 {fields.map((field) => (
-                  <Space key={field.key} align="start">
-                    <Form.Item
-                      name={[field.name, 'accountId']}
-                      label="转出科目"
-                      rules={[{ required: true }]}
-                    >
-                      <AccountSelect leafOnly={false} style={{ width: 280 }} />
-                    </Form.Item>
-                    <Form.Item
-                      name={[field.name, 'ratio']}
-                      label="比例（%）"
-                      rules={[{ required: true }]}
-                    >
-                      <Input style={{ width: 110 }} />
-                    </Form.Item>
-                    <Form.Item name={[field.name, 'mode']} hidden initialValue="balance">
-                      <Input />
-                    </Form.Item>
-                    <Button onClick={() => remove(field.name)}>移除</Button>
-                  </Space>
+                  <div key={field.key}>
+                    <Space align="start">
+                      <Form.Item
+                        name={[field.name, 'accountId']}
+                        label={kind === 'pnl' ? '损益现金流设置科目' : '转出科目'}
+                        rules={[{ required: true }]}
+                      >
+                        <AccountSelect
+                          leafOnly={kind === 'pnl'}
+                          filter={
+                            kind === 'pnl'
+                              ? (a) => pnlCategories.has(a.categoryId) && requiresCashflow(a)
+                              : undefined
+                          }
+                          onChange={() =>
+                            form.setFieldValue(['sources', field.name, 'cashflows'], undefined)
+                          }
+                          style={{ width: 280 }}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        name={[field.name, 'ratio']}
+                        label="比例（%）"
+                        hidden={kind === 'pnl'}
+                        initialValue="100"
+                        rules={[{ required: true }]}
+                      >
+                        <Input style={{ width: 110 }} />
+                      </Form.Item>
+                      <Form.Item name={[field.name, 'mode']} hidden initialValue="balance">
+                        <Input />
+                      </Form.Item>
+                      <Button onClick={() => remove(field.name)}>移除</Button>
+                    </Space>
+                    <SourceCashflowFields index={field.name} />
+                  </div>
                 ))}
-                <Button onClick={() => add({ mode: 'balance', ratio: '100' })}>增加转出科目</Button>
+                <Button onClick={() => add({ mode: 'balance', ratio: '100' })}>
+                  {kind === 'pnl' ? '增加损益现金流设置' : '增加转出科目'}
+                </Button>
                 <Typography.Paragraph type="secondary">
-                  仅实现“科目期末余额 × 比例”，按顺序更新基数并舍入到分；原版未知转出类型不作推测。
+                  自定义按“科目期末余额 ×
+                  比例”结转；损益范围仍由类别识别，此处只设置现金流项目。现金流项目按本次现金增减重新选择，不沿用历史流向。
                 </Typography.Paragraph>
               </>
             )}
@@ -164,5 +210,37 @@ export default function RuleDrawer({
         </Form.Item>
       </Form>
     </Drawer>
+  );
+}
+
+function SourceCashflowFields({ index }: { index: number }) {
+  const form = Form.useFormInstance<RuleInput>();
+  const id = Form.useWatch(['sources', index, 'accountId'], form);
+  const { byId, accounts } = useAccounts();
+  const selected = byId.get(id);
+  if (
+    !selected ||
+    !accounts.some(
+      (a) =>
+        a.isLeaf &&
+        (a.id === selected.id || a.code.startsWith(selected.code)) &&
+        requiresCashflow(a),
+    )
+  )
+    return null;
+  return (
+    <>
+      <p>
+        此转出范围含现金流量科目。请选择生成分录的项目和方向；未设置实际流入/流出对应项时会阻止生成。
+      </p>
+      <Space align="start">
+        <Form.Item name={[index, 'cashflows', 'in']} label="转出流入现金流量项目">
+          <DimensionSelect type="cashflow" />
+        </Form.Item>
+        <Form.Item name={[index, 'cashflows', 'out']} label="转出流出现金流量项目">
+          <DimensionSelect type="cashflow" />
+        </Form.Item>
+      </Space>
+    </>
   );
 }

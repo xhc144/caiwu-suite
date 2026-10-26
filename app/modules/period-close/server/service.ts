@@ -71,7 +71,7 @@ export function numberGaps(vouchers: VoucherHeader[]) {
 export async function pnlBalances(svc: CoreServices, period: number) {
   const pnl = new Set((await svc.accounts.categories()).filter((c) => c.isPnl).map((c) => c.id));
   const accounts = await svc.accounts.list();
-  return [...(await closingBuckets(svc, period)).values()]
+  return [...(await closingBuckets(svc, period, [], false)).values()]
     .filter(
       (b) =>
         accounts.some((a) => a.id === b.accountId && a.isLeaf && pnl.has(a.categoryId)) &&

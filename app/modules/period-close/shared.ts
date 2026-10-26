@@ -1,8 +1,15 @@
 import { z } from 'zod';
-import { zId, zPeriod, zDecimal } from '@caiwu/core';
+import { zId, zPeriod, zDecimal, type Account } from '@caiwu/core';
 
 export const RangeSchema = z.object({ from: zPeriod, to: zPeriod });
 export const PeriodSchema = z.object({ period: zPeriod });
+export const CashflowsSchema = z.object({
+  in: zId.nullable().optional(),
+  out: zId.nullable().optional(),
+});
+export type Cashflows = z.input<typeof CashflowsSchema>;
+export const requiresCashflow = (account: Pick<Account, 'cashflowRequired' | 'dimensions'>) =>
+  account.cashflowRequired || account.dimensions.some((d) => d.type === 'cashflow' && d.required);
 export const RuleSchema = z.object({
   code: z
     .string()
@@ -26,8 +33,16 @@ export const RuleSchema = z.object({
       cashflow: zId.nullable().optional(),
     })
     .default({}),
+  targetCashflows: CashflowsSchema.optional(),
   sources: z
-    .array(z.object({ accountId: zId, mode: z.literal('balance'), ratio: zDecimal }))
+    .array(
+      z.object({
+        accountId: zId,
+        mode: z.literal('balance'),
+        ratio: zDecimal,
+        cashflows: CashflowsSchema.optional(),
+      }),
+    )
     .max(300),
 });
 export type RuleInput = z.input<typeof RuleSchema>;

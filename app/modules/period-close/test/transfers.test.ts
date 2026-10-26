@@ -9,6 +9,7 @@ beforeEach(async () => {
 });
 afterEach(async () => app.close());
 const id = async (code: string) => (await app.svc.accounts.require(code)).id;
+const outflow = async () => ({ out: (await app.svc.dimensions.getByCode('cashflow', 'CF02'))!.id });
 describe('结转定义和原子生成', () => {
   it('w_xt_jzwh / f_ydjz_1_bak/_bak1/_new_bak：凭证类型、唯一末级转入、至少一个转出及重复校验', async () => {
     const api = call(app);
@@ -29,7 +30,12 @@ describe('结转定义和原子生成', () => {
     expect((await errorData(api.saveRule({ data: base }))).code).toBe(
       'PERIOD_CLOSE_SOURCE_REQUIRED',
     );
-    const source = { accountId: await id('1001'), mode: 'balance' as const, ratio: '100' };
+    const source = {
+      accountId: await id('1001'),
+      mode: 'balance' as const,
+      ratio: '100',
+      cashflows: await outflow(),
+    };
     expect(
       (await errorData(api.saveRule({ data: { ...base, sources: [source, source] } }))).code,
     ).toBe('PERIOD_CLOSE_DUPLICATE_ACCOUNT');
@@ -81,7 +87,9 @@ describe('结转定义和原子生成', () => {
       data: await rule(app, {
         code: 'A',
         kind: 'custom',
-        sources: [{ accountId: await id('1001'), mode: 'balance', ratio: '50' }],
+        sources: [
+          { accountId: await id('1001'), mode: 'balance', ratio: '50', cashflows: await outflow() },
+        ],
       }),
     });
     await api.saveRule({
@@ -163,7 +171,9 @@ describe('结转定义和原子生成', () => {
       data: await rule(app, {
         code: 'A',
         kind: 'custom',
-        sources: [{ accountId: await id('1001'), mode: 'balance', ratio: '50' }],
+        sources: [
+          { accountId: await id('1001'), mode: 'balance', ratio: '50', cashflows: await outflow() },
+        ],
       }),
     });
     await api.saveRule({
@@ -291,7 +301,12 @@ it('w_xt_jzwh：父级转出展开末级，不重复汇总，父子重叠范围�
       ],
     },
   ]);
-  const source = { accountId: await id('1002'), mode: 'balance' as const, ratio: '100' };
+  const source = {
+    accountId: await id('1002'),
+    mode: 'balance' as const,
+    ratio: '100',
+    cashflows: await outflow(),
+  };
   const definition = await rule(app, { code: 'BANK', kind: 'custom', sources: [source] });
   expect(
     (
@@ -325,7 +340,9 @@ it('w_zw_jz：不能先过账同批后序结转、把前序待审核结转当正
     data: await rule(app, {
       code: 'A',
       kind: 'custom',
-      sources: [{ accountId: await id('1001'), mode: 'balance', ratio: '50' }],
+      sources: [
+        { accountId: await id('1001'), mode: 'balance', ratio: '50', cashflows: await outflow() },
+      ],
     }),
   });
   await api.saveRule({
