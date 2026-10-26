@@ -17,6 +17,7 @@ import { PageContainer } from '@caiwu/ui';
 import { formatPeriod, type BookInfo, type BookSummary } from '@caiwu/core';
 import { api } from './api';
 import Wizard from './Wizard';
+import { filterBooks } from '../shared';
 
 type Credentials = { userCode: string; password: string; name?: string; confirmed?: boolean };
 type Operation = { mode: 'copy' | 'delete'; target: BookSummary; requestId: string };
@@ -32,6 +33,7 @@ export default function ManagePage() {
   const canCopy = usePermission('books.copy');
   const canDelete = usePermission('books.delete');
   const [creating, setCreating] = useState(false);
+  const [keyword, setKeyword] = useState('');
   const [operation, setOperation] = useState<Operation | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [form] = Form.useForm<Credentials>();
@@ -89,20 +91,43 @@ export default function ManagePage() {
       {diagnostics.data?.map((d) => (
         <Alert key={d.id} type="error" title={d.message} description={`文件编号：${d.id}`} />
       ))}
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Input
+          aria-label="搜索账套"
+          placeholder="搜索编号、名称、单位或会计制度"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          allowClear
+          style={{ width: 440, maxWidth: '75vw' }}
+        />
+        <Button onClick={refresh}>刷新列表</Button>
+        <Typography.Text type="secondary">
+          共{filterBooks(books.data ?? [], keyword).length}个匹配账套
+        </Typography.Text>
+      </Space>
       <Table<BookSummary>
         rowKey="id"
-        dataSource={books.data ?? []}
+        dataSource={filterBooks(books.data ?? [], keyword)}
         loading={books.isLoading}
         pagination={false}
+        locale={{ emptyText: keyword ? '没有匹配的账套，请修改搜索内容' : '没有可用账套' }}
         columns={[
           {
-            title: '账套名称',
+            title: '账套名称 / 编号',
             dataIndex: 'name',
             render: (name: string, b) => (
-              <span>
-                {name}
-                {b.id === session.bookId ? '（当前使用）' : ''}
-              </span>
+              <>
+                <div>
+                  {name}
+                  {b.id === session.bookId ? '（当前使用）' : ''}
+                </div>
+                <Typography.Text
+                  type="secondary"
+                  copyable={{ tooltips: ['复制账套编号', '编号已复制'] }}
+                >
+                  {b.id}
+                </Typography.Text>
+              </>
             ),
           },
           { title: '单位', dataIndex: 'orgName' },
@@ -154,6 +179,7 @@ export default function ManagePage() {
               column={1}
               bordered
               items={[
+                { key: 'id', label: '目标编号', children: operation.target.id },
                 { key: 'name', label: '目标账套', children: operation.target.name },
                 { key: 'org', label: '单位', children: operation.target.orgName },
                 {
@@ -190,7 +216,11 @@ export default function ManagePage() {
                 <Alert
                   type="info"
                   title="请输入目标账套管理员或具有对应权限的用户及当前密码"
-                  description="当前登录账套的权限不能代替目标账套身份验证。"
+                  description={
+                    operation.mode === 'copy'
+                      ? '副本继承来源账套的操作员、密码、权限及全部业务数据；请仅向有权访问这些数据的人员提供副本。当前登录账套的权限不能代替来源身份验证。'
+                      : '当前登录账套的权限不能代替目标账套身份验证。'
+                  }
                 />
                 <Form.Item
                   name="userCode"
