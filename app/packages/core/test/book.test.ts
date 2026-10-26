@@ -105,6 +105,7 @@ describe('账套', () => {
       book.raw.prepare("SELECT name FROM sqlite_master WHERE name = 'later_x'").get(),
     ).toBeTruthy();
     await store.closeAll();
+    expect(book.raw.open).toBe(false);
   });
 
   it('非法账套 id 不会拼出越界路径', () => {

@@ -66,26 +66,27 @@ export const coreRouter = t.router({
         if (!ctx.app.bookStore.exists(input.bookId)) {
           throw new BusinessError({ code: 'BOOK_NOT_FOUND', message: '账套不存在，可能已被删除' });
         }
-        const book = ctx.app.bookStore.open(input.bookId);
-        const user = await authenticateUser(book.db, input.userCode, input.password);
-        if (!user) {
-          throw new BusinessError({
-            code: 'LOGIN_FAILED',
-            message: '用户编号或密码不对',
-            hint: '忘记密码请联系系统管理员重置',
+        return ctx.app.bookStore.withBook(input.bookId, async (book) => {
+          const user = await authenticateUser(book.db, input.userCode, input.password);
+          if (!user) {
+            throw new BusinessError({
+              code: 'LOGIN_FAILED',
+              message: '用户编号或密码不对',
+              hint: '忘记密码请联系系统管理员重置',
+            });
+          }
+          const svc = createCoreServices({
+            db: book.db,
+            user,
+            moduleId: null,
+            now: ctx.app.now,
+            modules: ctx.app.modules.lookup,
           });
-        }
-        const svc = createCoreServices({
-          db: book.db,
-          user,
-          moduleId: null,
-          now: ctx.app.now,
-          modules: ctx.app.modules.lookup,
+          await svc.settings.set('lastOpenedAt', ctx.app.now().toISOString());
+          await svc.log.write({ action: 'auth.login', summary: `${user.name} 登录` });
+          const session = ctx.app.sessions.create(input.bookId, user.id);
+          return { token: session.token, user: currentUser(user), book: await svc.book.info() };
         });
-        await svc.settings.set('lastOpenedAt', ctx.app.now().toISOString());
-        await svc.log.write({ action: 'auth.login', summary: `${user.name} 登录` });
-        const session = ctx.app.sessions.create(input.bookId, user.id);
-        return { token: session.token, user: currentUser(user), book: await svc.book.info() };
       }),
     logout: authedProcedure.meta({ noPermission: true }).mutation(({ ctx }) => {
       ctx.app.sessions.delete(ctx.session.token);

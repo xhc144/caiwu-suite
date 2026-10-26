@@ -26,14 +26,41 @@ async function main() {
     webDist: process.env.CAIWU_WEB_DIST || undefined,
     version: process.env.CAIWU_VERSION || '0.1.0-dev',
   });
-  await fastify.listen({ host: '127.0.0.1', port: Number(process.env.CAIWU_PORT ?? 0) });
+  try {
+    await fastify.listen({ host: '127.0.0.1', port: Number(process.env.CAIWU_PORT ?? 0) });
+  } catch (error) {
+    await fastify.close();
+    throw error;
+  }
   const address = fastify.server.address();
   const port = typeof address === 'object' && address ? address.port : 0;
   console.log(`CAIWU_READY ${JSON.stringify({ port, token })}`);
 
+  let shutdown: Promise<void> | undefined;
+  const stop = () => {
+    shutdown ??= fastify.close();
+    void shutdown.then(
+      () => process.exit(0),
+      (error: unknown) => {
+        console.error('本地服务退出未完成：', error);
+        process.exitCode = 1;
+        if (process.connected) process.disconnect();
+      },
+    );
+  };
   for (const sig of ['SIGINT', 'SIGTERM'] as const) {
-    process.on(sig, () => {
-      void fastify.close().then(() => process.exit(0));
+    process.on(sig, stop);
+  }
+  // Windows 宿主可通过 Node IPC 等待正常退出；强制终止不能执行 hook。
+  if (process.send) {
+    process.on('message', (message) => {
+      if (
+        message &&
+        typeof message === 'object' &&
+        'type' in message &&
+        message.type === 'CAIWU_SHUTDOWN'
+      )
+        stop();
     });
   }
 }

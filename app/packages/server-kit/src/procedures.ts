@@ -10,7 +10,9 @@ import { businessErrors, t } from './trpc';
 import type { Session } from './sessions';
 
 /** 不需要登录的过程（账套列表、新建账套、登录）。 */
-export const publicProcedure = t.procedure.use(businessErrors);
+export const publicProcedure = t.procedure
+  .use(businessErrors)
+  .use(({ ctx, next }) => ctx.app.lifecycle.request(() => next()));
 
 export interface AuthedContext {
   session: Session;
@@ -36,22 +38,23 @@ export const authedProcedure = publicProcedure.use(async ({ ctx, meta, next }) =
     ctx.app.sessions.deleteForBook(session.bookId);
     throw unauthorized();
   }
-  const book = ctx.app.bookStore.open(session.bookId);
-  const user = await loadServiceUser(book.db, session.userId);
-  if (!user) {
-    ctx.app.sessions.delete(session.token);
-    throw unauthorized();
-  }
-  const svc = createCoreServices({
-    db: book.db,
-    user,
-    moduleId: null,
-    now: ctx.app.now,
-    modules: ctx.app.modules.lookup,
-  });
-  if (meta?.permission) svc.permissions.require(meta.permission);
-  return next({
-    ctx: { session, book, user, svc, moduleId: null as string | null } satisfies AuthedContext,
+  return ctx.app.bookStore.withBook(session.bookId, async (book) => {
+    const user = await loadServiceUser(book.db, session.userId);
+    if (!user) {
+      ctx.app.sessions.delete(session.token);
+      throw unauthorized();
+    }
+    const svc = createCoreServices({
+      db: book.db,
+      user,
+      moduleId: null,
+      now: ctx.app.now,
+      modules: ctx.app.modules.lookup,
+    });
+    if (meta?.permission) svc.permissions.require(meta.permission);
+    return next({
+      ctx: { session, book, user, svc, moduleId: null as string | null } satisfies AuthedContext,
+    });
   });
 });
 

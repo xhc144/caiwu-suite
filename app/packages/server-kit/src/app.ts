@@ -6,15 +6,18 @@ import { SessionStore } from './sessions';
 import { t } from './trpc';
 import type { AppRuntime, RequestContext } from './context';
 import type { ServerModule } from './module';
+import { RuntimeLifecycle } from './lifecycle';
 
 export interface CreateRuntimeOptions {
   dataDir: string;
+  exclusiveServer?: boolean;
   modules: readonly ServerModule[];
   /** modules[i] 应该在的目录名，用于检查 id 与目录一致 */
   moduleDirs?: readonly string[];
   devMode?: boolean;
   version?: string;
   now?: () => Date;
+  lifecycleTimeoutMs?: number;
 }
 
 /** 组装运行环境：模块登记、模板登记、账套存储、会话。 */
@@ -28,23 +31,32 @@ export function createRuntime(opts: CreateRuntimeOptions): AppRuntime {
   const templates = new TemplateRegistry({ devMode });
   templates.register('core', builtinTemplates);
   for (const { source, templates: list } of modules.templates()) templates.register(source, list);
+  const sessions = new SessionStore();
   const bookStore = new BookStore({
     dataDir: opts.dataDir,
+    exclusiveServer: opts.exclusiveServer,
     templates,
     modules: modules.lookup,
     migrationSets: () => modules.migrationSets(),
     now: opts.now,
+    beforeClose: (book, signal, reason) => lifecycle.beforeBookClose(book, signal, reason),
+    maintenanceStarted: (bookId) => sessions.deleteForBook(bookId),
   });
-  return {
+  const runtime: AppRuntime = {
+    get lifecycle() {
+      return lifecycle;
+    },
     devMode,
     version: opts.version ?? '0.0.0',
     dataDir: opts.dataDir,
     bookStore,
     templates,
     modules,
-    sessions: new SessionStore(),
+    sessions,
     now: opts.now ?? (() => new Date()),
   };
+  const lifecycle = new RuntimeLifecycle(runtime, opts.lifecycleTimeoutMs);
+  return runtime;
 }
 
 /** 应用 router：core.* + m.<模块id>.* */
