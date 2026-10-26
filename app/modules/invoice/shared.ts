@@ -67,6 +67,7 @@ export const SettingsSchema = z.object({
   expectedRevision: z.number().int().min(0),
   taxpayerBasis: z.enum(['general', 'small', 'other']),
   inputTaxTreatment: z.enum(['separate', 'cost']),
+  settlementMode: z.enum(['unified', 'partnerName']).default('unified'),
   business: MappingSchema,
   tax: MappingSchema,
   settlement: MappingSchema,

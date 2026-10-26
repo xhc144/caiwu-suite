@@ -98,6 +98,35 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
   const target = await svc.accounts.require(r.targetAccountId);
   if (!target.isLeaf || target.disabled)
     fail('TARGET_LEAF', '转入必须且只能是一个启用的末级科目', '重新选择转入科目');
+  const conversion = r.targetConversion;
+  if (conversion) {
+    if (
+      (conversion.currency != null || conversion.exchangeRate != null) &&
+      (!target.currency || conversion.currency !== target.currency || !conversion.exchangeRate)
+    )
+      fail(
+        'TARGET_CONVERSION',
+        '转入汇率与当前科目币种不匹配',
+        '重新选择转入科目并填写对应币种汇率',
+      );
+    if (
+      (conversion.quantityUnit != null || conversion.unitPrice != null) &&
+      (!target.quantityUnit ||
+        conversion.quantityUnit !== target.quantityUnit ||
+        !conversion.unitPrice)
+    )
+      fail(
+        'TARGET_CONVERSION',
+        '转入单价与当前科目计量单位不匹配',
+        '重新选择转入科目并填写本币单价',
+      );
+    for (const [label, value] of [
+      ['汇率', conversion.exchangeRate],
+      ['本币单价', conversion.unitPrice],
+    ] as const)
+      if (value != null && !new Decimal(value).gt(0))
+        fail('TARGET_CONVERSION', `转入${label}必须大于零`, '填写正的十进制数，重新预览后确认');
+  }
   const accounts = await svc.accounts.list();
   const pnl = new Set((await svc.accounts.categories()).filter((c) => c.isPnl).map((c) => c.id));
   if (r.kind === 'pnl' && pnl.has(target.categoryId))
@@ -291,13 +320,29 @@ function makeLines(
     targetAmount = sumCents([targetAmount, amount]);
   }
   if (targetAmount) {
-    // 跨科目的外币和数量不凭空换算；具有这些要求的转入科目须先扩展显式映射。
-    if (target.currency || target.quantityUnit)
+    const conversion = rule.targetConversion;
+    if (
+      (target.currency && !conversion?.exchangeRate) ||
+      (target.quantityUnit && !conversion?.unitPrice)
+    )
       fail(
         'TARGET_SEMANTICS',
-        '转入科目启用了外币或数量，尚未配置可靠换算语义',
-        '选择不带外币/数量的利润或结余科目；转出行会完整保留外币和数量',
+        '转入科目启用了外币或数量，但尚未填写显式换算设置',
+        '编辑结转类型，填写转入币种汇率及本币单价，重新预览；不会沿用转出科目的外币或数量',
       );
+    const magnitude = new Decimal(targetAmount).abs();
+    const scaledInteger = (value: Decimal, label: string) => {
+      const integer = value.toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
+      if (!Number.isSafeInteger(integer))
+        fail('TARGET_RANGE', `转入${label}超出安全整数范围`, '核对转入汇率和本币单价后重新预览');
+      return integer;
+    };
+    const fcAmount = target.currency
+      ? scaledInteger(magnitude.div(conversion!.exchangeRate!), '外币金额')
+      : undefined;
+    const quantity = target.quantityUnit
+      ? qtyFromE6(scaledInteger(magnitude.mul(10000).div(conversion!.unitPrice!), '数量'))
+      : undefined;
     const dimensions = { ...rule.targetDimensions };
     for (const d of target.dimensions)
       if (d.type !== 'cashflow') dimensions[d.type] ??= d.defaultItemId;
@@ -309,6 +354,11 @@ function makeLines(
       dimensions,
       debit: targetAmount > 0 ? targetAmount : 0,
       credit: targetAmount < 0 ? -targetAmount : 0,
+      currency: target.currency,
+      exchangeRate: target.currency ? conversion!.exchangeRate : undefined,
+      fcAmount,
+      quantity,
+      unitPrice: target.quantityUnit ? conversion!.unitPrice : undefined,
     });
   }
   return lines;
@@ -319,11 +369,22 @@ export async function transferPreview(
   ruleIds: number[],
   allowPendingExisting = true,
 ) {
+  return calculateTransferPreview(svc, period, ruleIds, allowPendingExisting, 'prepare-generation');
+}
+
+async function calculateTransferPreview(
+  svc: CoreServices,
+  period: number,
+  ruleIds: number[],
+  allowPendingExisting: boolean,
+  purpose: 'prepare-generation' | 'verify-existing',
+) {
   if (!ruleIds.length) fail('NO_SELECTION', '请选择需要结转的内容', '在结转列表勾选后重新预览');
   if (new Set(ruleIds).size !== ruleIds.length) fail('NO_SELECTION', '结转类型不能重复选择');
   await svc.periods.assertOpen(period, '月度结转');
   await requireOpening(svc, periodYear(period));
-  await noLaterRun(svc, period);
+  // 生成/重算会影响后月基数；只读核验已有快照不会改变基数。
+  if (purpose === 'prepare-generation') await noLaterRun(svc, period);
   const allRules = await rules(svc);
   const selected = allRules.filter((r) => ruleIds.includes(r.id));
   if (selected.length !== ruleIds.length || selected.some((r) => !r.enabled))
@@ -334,6 +395,8 @@ export async function transferPreview(
     (v) => !v.voided && v.status !== 'draft' && v.status !== 'posted',
   );
   const selectedExisting = existing.filter((r) => ruleIds.includes(r.rule_id));
+  if (purpose === 'verify-existing' && selectedExisting.length !== selected.length)
+    fail('SOURCE_MISMATCH', '只读核验缺少对应的已生成结转快照', '保留数据并检查来源关联', period);
   if (
     unposted.some(
       (v) => !allowPendingExisting || !selectedExisting.some((r) => r.voucher_id === v.id),
@@ -452,8 +515,8 @@ export async function verifyPostedRuns(svc: CoreServices, from: number, to: numb
         );
     }
     const ids = periodRuns.map((r) => r.rule_id);
-    // 同一算法验证已生成快照，且不受待审核状态阻止。
-    await transferPreview(svc, period, ids);
+    // 只读重建并比较已有快照：保留来源、顺序和基数校验，允许后月已有结转。
+    await calculateTransferPreview(svc, period, ids, true, 'verify-existing');
   }
 }
 export async function generate(

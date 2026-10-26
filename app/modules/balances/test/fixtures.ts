@@ -154,3 +154,108 @@ export async function seedForeignRedActivityCase(
     ]);
   }
 }
+
+/** 不同单位共用父科目；本位币红字抵消但数量仍有发生，辅助组合全部由 core 创建。 */
+export async function seedAuxiliaryQuantityCases(svc: CoreServices) {
+  const dimensions = [
+    { type: 'project' as const, required: false },
+    { type: 'partner' as const, required: false },
+    { type: 'department' as const, required: false },
+    { type: 'person' as const, required: false },
+  ];
+  for (const [code, name, quantityUnit, currency] of [
+    ['140301', '合成原料甲', '千克', 'USD'],
+    ['140302', '合成原料乙', '件', null],
+    ['140303', '合成原料丙', '千克', null],
+  ] as const)
+    await svc.accounts.create({ code, name, quantityUnit, currency, dimensions }, [4, 2, 2]);
+  const ids = {
+    department: (await svc.dimensions.getByCode('department', '01'))!.id,
+    partner: (await svc.dimensions.getByCode('partner', 'C001'))!.id,
+    project: (await svc.dimensions.getByCode('project', 'XM01'))!.id,
+    person: (await svc.dimensions.getByCode('person', 'P01'))!.id,
+  };
+  await svc.opening.upsert({
+    year: 2026,
+    accountId: (await svc.accounts.require('140301')).id,
+    balance: 7100,
+    currency: 'USD',
+    fcBalance: 1000,
+    quantity: '1.000001',
+    dimensions: ids,
+  });
+  await svc.opening.upsert({
+    year: 2026,
+    accountId: (await svc.accounts.require('140302')).id,
+    balance: 20000,
+    quantity: '100.000002',
+    dimensions: { department: (await svc.dimensions.getByCode('department', '02'))!.id },
+  });
+  await svc.opening.upsert({
+    year: 2026,
+    accountId: (await svc.accounts.require('140303')).id,
+    balance: 3000,
+    quantity: '2',
+    dimensions: ids,
+  });
+  const dims = { department: '01', partner: 'C001', project: 'XM01', person: 'P01' };
+  await seedVouchers(svc, [
+    {
+      date: '2026-02-01',
+      status: 'posted',
+      lines: [
+        {
+          account: '140301',
+          debit: 7100,
+          currency: 'USD',
+          rate: '7.1',
+          fcAmount: 1000,
+          quantity: '0.000003',
+          dims,
+        },
+        { account: '4001', credit: 7100 },
+      ],
+    },
+    {
+      date: '2026-02-02',
+      status: 'posted',
+      lines: [
+        {
+          account: '140301',
+          debit: -7100,
+          currency: 'USD',
+          rate: '3.55',
+          fcAmount: -2000,
+          quantity: '-0.000001',
+          dims,
+        },
+        { account: '4001', credit: -7100 },
+      ],
+    },
+    {
+      date: '2026-02-03',
+      status: 'posted',
+      lines: [
+        { account: '140302', debit: 2000, quantity: '2', dims: { department: '02' } },
+        { account: '4001', credit: 2000 },
+      ],
+    },
+    {
+      date: '2026-02-04',
+      status: 'posted',
+      lines: [
+        { account: '140303', credit: 1000, quantity: '0.5', dims },
+        { account: '6401', debit: 1000 },
+      ],
+    },
+    {
+      date: '2026-02-05',
+      status: 'pending',
+      lines: [
+        { account: '140303', debit: 1234, quantity: '0.123456', dims },
+        { account: '4001', credit: 1234 },
+      ],
+    },
+  ]);
+  return ids;
+}

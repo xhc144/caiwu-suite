@@ -29,6 +29,10 @@ export const printRouter = m.router({
     .meta({ permission: 'print-settings.ledger.print' })
     .input(LedgerSelectionSchema)
     .query(({ ctx, input }) => printService(ctx.svc).ledgerBook(input)),
+  ledgerBatch: m.procedure
+    .meta({ permission: 'print-settings.ledger.print' })
+    .input(LedgerSelectionSchema)
+    .query(({ ctx, input }) => printService(ctx.svc).ledgerBatch(input)),
   formats: m.procedure
     .meta({ permission: 'print-settings.view' })
     .query(({ ctx }) => printService(ctx.svc).formats()),

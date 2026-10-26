@@ -70,7 +70,9 @@ export default function AccountsPage() {
       render: (_, r) =>
         canEdit && (
           <Space>
-            <Button onClick={() => setEditing(r)}>修改</Button>
+            <Button disabled={r.period !== status.data?.period} onClick={() => setEditing(r)}>
+              修改
+            </Button>
             <Button
               loading={disable.isPending}
               onClick={() =>

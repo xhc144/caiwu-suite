@@ -75,6 +75,48 @@ async function opening(balance: number, account = '1122', partner = 'C001', curr
 }
 
 describe('w_fx_zl 账龄分析（真实账套及核心服务）', () => {
+  it('起龄日期保留原始业务日期与凭证日期替代来源；原始到期日和逾期天数明确未知', async () => {
+    await opening(1000);
+    await withBizDate(charge('2026-04-01', 2000), '2026-02-01');
+    await seedVouchers(app.svc, [charge('2026-04-02', 3000)]);
+    const report = await api.aging(filter);
+    expect(report.rows[0]!.lots).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          voucherId: null,
+          originalBizDate: null,
+          dateBasis: 'unknown',
+          bizDate: null,
+        }),
+        expect.objectContaining({
+          originalBizDate: '2026-02-01',
+          dateBasis: 'business',
+          bizDate: '2026-02-01',
+        }),
+        expect.objectContaining({
+          originalBizDate: null,
+          dateBasis: 'voucher',
+          bizDate: '2026-04-02',
+        }),
+      ]),
+    );
+    const exported = await api.exportAging(filter);
+    const wb = new Workbook();
+    await wb.xlsx.load(Uint8Array.from(Buffer.from(exported.base64, 'base64')).buffer);
+    const sheet = wb.getWorksheet('账龄来源')!;
+    expect(sheet.rowCount).toBe(4);
+    for (const row of [2, 3, 4]) {
+      expect(sheet.getCell(row, 11).value).toBe('未知');
+      expect(sheet.getCell(row, 12).value).toBe('未知');
+    }
+    expect(sheet.getCell('H2').value).toBe('未知');
+    expect(sheet.getCell('J2').value).toBe('期初历史日期未知');
+    expect(sheet.getCell('H3').value).toBe('2026-02-01');
+    expect(sheet.getCell('J3').value).toBe('原始业务日期');
+    expect(sheet.getCell('H4').value).toBe('未知');
+    expect(sheet.getCell('I4').value).toBe('2026-04-02');
+    expect(sheet.getCell('J4').value).toBe('业务日期缺失，取凭证日期');
+  });
   it('同客供不同业务日期、两次部分回款，按业务日期 FIFO 精确分桶', async () => {
     await withBizDate(charge('2026-01-20', 10000), '2025-12-01');
     await withBizDate(charge('2026-01-10', 20000), '2026-03-01');

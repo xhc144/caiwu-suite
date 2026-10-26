@@ -187,7 +187,7 @@ export const systemAdminRouter = m.router({
           counts,
           executable: false as const,
           reason:
-            '当前版本缺少账套级独占维护锁及包含完整在线备份的原子重置服务。执行入口禁用，尚未备份或更改数据。',
+            '现有账套维护仅支持重连，删除及覆盖仍被核心拒绝；尚无包含完整在线备份和恢复校验的原子重置服务。执行入口禁用，尚未备份或更改数据。',
           impact:
             '重置可能删除全部凭证、期初、科目、辅助档案及报表，并影响已加载模块的业务引用。必须完整备份、校验备份可恢复并两次确认。新建账套请使用账套管理。',
         };
@@ -201,7 +201,7 @@ export const systemAdminRouter = m.router({
         throw new BusinessError({
           code: 'RESET_UNAVAILABLE',
           message: '系统初始化执行尚未开放',
-          hint: '需要账套级独占维护锁、完整在线备份及原子重置服务；当前没有数据被修改',
+          hint: '需要核心支持破坏性独占维护、完整在线备份及恢复校验和原子重置服务；当前没有数据被修改',
         });
       }),
     adjustStartDate: m.procedure

@@ -99,7 +99,12 @@ async function entriesWithMetadata(
   return entries.map((e) => {
     const meta = byId.get(e.lineId);
     if (!meta) fail('SNAPSHOT_MISMATCH', '分录元数据缺失', '请刷新重试并检查凭证资料');
-    return { ...e, bizDate: meta.biz_date ?? e.date, closingKind: meta.closing_kind };
+    return {
+      ...e,
+      bizDate: meta.biz_date ?? e.date,
+      originalBizDate: meta.biz_date,
+      closingKind: meta.closing_kind,
+    };
   });
 }
 
@@ -246,6 +251,8 @@ export function analysisService(svc: CoreServices) {
             voucherNo: '期初未分龄',
             date: null,
             bizDate: null,
+            originalBizDate: null,
+            dateBasis: 'unknown',
             amount: cents(o.balance * sign),
             remaining: 0,
           });
@@ -258,6 +265,8 @@ export function analysisService(svc: CoreServices) {
             voucherNo: e.displayNo,
             date: e.date,
             bizDate: e.bizDate,
+            originalBizDate: e.originalBizDate,
+            dateBasis: e.originalBizDate === null ? 'voucher' : 'business',
             amount: cents(cents(e.debit - e.credit) * sign),
             remaining: 0,
           });

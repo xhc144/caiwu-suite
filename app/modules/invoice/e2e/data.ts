@@ -49,6 +49,7 @@ export async function createInvoiceAccounts(svc: CoreServices): Promise<Settings
     expectedRevision: 0,
     taxpayerBasis: 'other',
     inputTaxTreatment: 'separate',
+    settlementMode: 'unified',
     business: { accountId: business.id, dimensions: { department: department.id } },
     tax: { accountId: tax.id, dimensions: {} },
     settlement: { accountId: settlement.id, dimensions: { partner: partner.id } },

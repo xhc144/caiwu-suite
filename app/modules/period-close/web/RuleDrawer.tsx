@@ -87,6 +87,23 @@ export default function RuleDrawer({
               ...data,
               sources: data.sources ?? [],
               targetDimensions: data.targetDimensions ?? {},
+              targetConversion:
+                target?.currency || target?.quantityUnit
+                  ? {
+                      ...(target.currency
+                        ? {
+                            currency: target.currency,
+                            exchangeRate: data.targetConversion?.exchangeRate,
+                          }
+                        : {}),
+                      ...(target.quantityUnit
+                        ? {
+                            quantityUnit: target.quantityUnit,
+                            unitPrice: data.targetConversion?.unitPrice,
+                          }
+                        : {}),
+                    }
+                  : undefined,
             },
             id: rule === 'new' ? undefined : rule.id,
             revision: rule === 'new' ? undefined : rule.revision,
@@ -130,12 +147,31 @@ export default function RuleDrawer({
             onChange={() => {
               form.setFieldValue('targetCashflows', undefined);
               form.setFieldValue('targetDimensions', {});
+              form.setFieldValue('targetConversion', undefined);
             }}
           />
         </Form.Item>
         <Typography.Paragraph type="secondary">
-          按当前会计制度选择利润或结余科目。转入辅助项须明确填写；外币或数量转入换算尚未开放。
+          损益结转按当前制度选择利润或结余科目。转入辅助项须明确填写。外币按转入本币金额除以汇率，四舍五入到外币分；数量按转入本币金额（元）除以本币单价，四舍五入到六位小数。仅换算转入行，不合并转出外币或数量。
         </Typography.Paragraph>
+        {target?.currency && (
+          <Form.Item
+            name={['targetConversion', 'exchangeRate']}
+            label={`转入汇率（本币元/${target.currency}）`}
+            rules={[{ required: true, message: '请填写转入币种的正汇率' }]}
+          >
+            <Input />
+          </Form.Item>
+        )}
+        {target?.quantityUnit && (
+          <Form.Item
+            name={['targetConversion', 'unitPrice']}
+            label={`转入本币单价（元/${target.quantityUnit}）`}
+            rules={[{ required: true, message: '请填写转入计量单位的正本币单价' }]}
+          >
+            <Input />
+          </Form.Item>
+        )}
         {DIMENSION_TYPES.filter(
           (d) => d.id !== 'cashflow' && target?.dimensions.some((c) => c.type === d.id),
         ).map((d) => (

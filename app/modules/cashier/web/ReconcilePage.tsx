@@ -6,7 +6,8 @@ import { formatMoney } from '@caiwu/core';
 import { useCurrentPeriod, usePermission } from '@caiwu/web-kit';
 import { DataTable, FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
 import { safeSum } from '../shared';
-import { api, refresh } from './api';
+import { api, refresh, type Outputs } from './api';
+import AutoMatchDrawer from './AutoMatchDrawer';
 import { CashierNav, QueryState, useCashierConfirm, printRows } from './common';
 
 export default function ReconcilePage() {
@@ -23,6 +24,7 @@ export default function ReconcilePage() {
     ),
   );
   const [docKeys, setDocKeys] = useState<React.Key[]>([]);
+  const [suggestions, setSuggestions] = useState<Outputs['reconcile'] | null>(null);
   const [lineKeys, setLineKeys] = useState<React.Key[]>([]);
   const canMatch = usePermission('cashier.reconcile');
   const [confirm, holder] = useCashierConfirm();
@@ -126,9 +128,19 @@ export default function ReconcilePage() {
             <Button loading={fetching} disabled={fetching} onClick={() => void refetch()}>
               刷新财务分录
             </Button>
+            {canMatch && (
+              <Button disabled={stale} onClick={() => setSuggestions(data)}>
+                预览自动勾账建议
+              </Button>
+            )}
             <Typography.Title level={5}>出纳待勾项目</Typography.Title>
             <DataTable
               tableId="cashier.reconcile.documents"
+              pagination={{
+                pageSize: 50,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 项`,
+              }}
               rowKey="id"
               dataSource={data.documents}
               exportName="出纳对账项目"
@@ -148,6 +160,11 @@ export default function ReconcilePage() {
             <Typography.Title level={5}>财务只读引用</Typography.Title>
             <DataTable
               tableId="cashier.reconcile.entries"
+              pagination={{
+                pageSize: 50,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 项`,
+              }}
               rowKey="lineId"
               dataSource={data.entries}
               exportName="财务只读分录"
@@ -240,6 +257,11 @@ export default function ReconcilePage() {
             <Typography.Title level={5}>勾账组</Typography.Title>
             <DataTable
               tableId="cashier.matches"
+              pagination={{
+                pageSize: 50,
+                showSizeChanger: false,
+                showTotal: (total) => `共 ${total} 项`,
+              }}
               rowKey="id"
               dataSource={data.groups}
               columns={[
@@ -327,6 +349,18 @@ export default function ReconcilePage() {
           </>
         )}
       </QueryState>
+      {suggestions && (
+        <AutoMatchDrawer
+          key={suggestions.snapshot}
+          data={suggestions}
+          stale={stale || suggestions.snapshot !== data?.snapshot}
+          onClose={() => {
+            setSuggestions(null);
+            setDocKeys([]);
+            setLineKeys([]);
+          }}
+        />
+      )}
       {holder}
     </PageContainer>
   );
