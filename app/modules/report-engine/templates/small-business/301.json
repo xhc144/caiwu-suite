@@ -1,0 +1,3278 @@
+{
+  "code": "301",
+  "name": "小企业资产负债表（部分取数，未完成）",
+  "rows": 39,
+  "cols": 8,
+  "schemaVersion": 1,
+  "readOnly": true,
+  "cells": [
+    {
+      "address": "A1",
+      "kind": "text",
+      "source": "小企业资产负债表（部分取数，未完成）",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A2",
+      "kind": "text",
+      "source": "取数切片：尚未完成完整法定报表；请阅读同目录README的未完成项。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A3",
+      "kind": "text",
+      "source": "金额以整数分取数、以元显示；生成期间及仅已过账口径见导出“口径与审核”。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A4",
+      "kind": "text",
+      "source": "会小企01表；small-appendix.pdf第68—75页",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A5",
+      "kind": "text",
+      "source": "资产",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B5",
+      "kind": "text",
+      "source": "行次",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C5",
+      "kind": "text",
+      "source": "期末余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D5",
+      "kind": "text",
+      "source": "年初余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E5",
+      "kind": "text",
+      "source": "负债和所有者权益",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F5",
+      "kind": "text",
+      "source": "行次",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G5",
+      "kind": "text",
+      "source": "期末余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H5",
+      "kind": "text",
+      "source": "年初余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A37",
+      "kind": "text",
+      "source": "小企业（中外合作经营）须增加“减：已归还投资”；本切片尚未实现。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A38",
+      "kind": "text",
+      "source": "附注及附表：应付职工薪酬明细、应交税费明细、利润分配表尚未实现。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A39",
+      "kind": "text",
+      "source": "年初采用期末－本年借方累计＋本年贷方累计；需以正确录入的期初及累计为前提。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A6",
+      "kind": "text",
+      "source": "货币资金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B6",
+      "kind": "text",
+      "source": "1",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C6",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D6",
+      "kind": "formula",
+      "source": "(BALANCE(\"1001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))+(BALANCE(\"1002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))+(BALANCE(\"1012\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A7",
+      "kind": "text",
+      "source": "短期投资",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B7",
+      "kind": "text",
+      "source": "2",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C7",
+      "kind": "formula",
+      "source": "BALANCE(\"1101\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D7",
+      "kind": "formula",
+      "source": "(BALANCE(\"1101\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1101\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1101\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A8",
+      "kind": "text",
+      "source": "应收票据",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B8",
+      "kind": "text",
+      "source": "3",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C8",
+      "kind": "formula",
+      "source": "BALANCE(\"1121\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D8",
+      "kind": "formula",
+      "source": "(BALANCE(\"1121\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1121\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1121\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A9",
+      "kind": "text",
+      "source": "应收账款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B9",
+      "kind": "text",
+      "source": "4",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C9",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D9",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A10",
+      "kind": "text",
+      "source": "预付账款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B10",
+      "kind": "text",
+      "source": "5",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C10",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D10",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A11",
+      "kind": "text",
+      "source": "应收股利",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B11",
+      "kind": "text",
+      "source": "6",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C11",
+      "kind": "formula",
+      "source": "BALANCE(\"1131\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D11",
+      "kind": "formula",
+      "source": "(BALANCE(\"1131\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1131\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1131\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A12",
+      "kind": "text",
+      "source": "应收利息",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B12",
+      "kind": "text",
+      "source": "7",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C12",
+      "kind": "formula",
+      "source": "BALANCE(\"1132\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D12",
+      "kind": "formula",
+      "source": "(BALANCE(\"1132\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1132\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1132\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A13",
+      "kind": "text",
+      "source": "其他应收款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B13",
+      "kind": "text",
+      "source": "8",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C13",
+      "kind": "formula",
+      "source": "BALANCE(\"1221\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D13",
+      "kind": "formula",
+      "source": "(BALANCE(\"1221\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1221\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1221\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A14",
+      "kind": "text",
+      "source": "存货",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B14",
+      "kind": "text",
+      "source": "9",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C14",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D14",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A15",
+      "kind": "text",
+      "source": "其中：原材料",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B15",
+      "kind": "text",
+      "source": "10",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C15",
+      "kind": "formula",
+      "source": "BALANCE(\"1403\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D15",
+      "kind": "formula",
+      "source": "(BALANCE(\"1403\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1403\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1403\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A16",
+      "kind": "text",
+      "source": "在产品",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B16",
+      "kind": "text",
+      "source": "11",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C16",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D16",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A17",
+      "kind": "text",
+      "source": "库存商品",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B17",
+      "kind": "text",
+      "source": "12",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C17",
+      "kind": "formula",
+      "source": "BALANCE(\"1405\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D17",
+      "kind": "formula",
+      "source": "(BALANCE(\"1405\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1405\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1405\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A18",
+      "kind": "text",
+      "source": "周转材料",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B18",
+      "kind": "text",
+      "source": "13",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C18",
+      "kind": "formula",
+      "source": "BALANCE(\"1411\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D18",
+      "kind": "formula",
+      "source": "(BALANCE(\"1411\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1411\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1411\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A19",
+      "kind": "text",
+      "source": "其他流动资产",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B19",
+      "kind": "text",
+      "source": "14",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C19",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D19",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A20",
+      "kind": "text",
+      "source": "流动资产合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B20",
+      "kind": "text",
+      "source": "15",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C20",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D20",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A21",
+      "kind": "text",
+      "source": "长期债券投资",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B21",
+      "kind": "text",
+      "source": "16",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C21",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D21",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A22",
+      "kind": "text",
+      "source": "长期股权投资",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B22",
+      "kind": "text",
+      "source": "17",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C22",
+      "kind": "formula",
+      "source": "BALANCE(\"1511\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D22",
+      "kind": "formula",
+      "source": "(BALANCE(\"1511\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1511\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1511\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A23",
+      "kind": "text",
+      "source": "固定资产原价",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B23",
+      "kind": "text",
+      "source": "18",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C23",
+      "kind": "formula",
+      "source": "BALANCE(\"1601\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D23",
+      "kind": "formula",
+      "source": "(BALANCE(\"1601\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1601\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1601\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A24",
+      "kind": "text",
+      "source": "减：累计折旧",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B24",
+      "kind": "text",
+      "source": "19",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C24",
+      "kind": "formula",
+      "source": "-(BALANCE(\"1602\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D24",
+      "kind": "formula",
+      "source": "-((BALANCE(\"1602\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1602\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1602\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A25",
+      "kind": "text",
+      "source": "固定资产账面价值",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B25",
+      "kind": "text",
+      "source": "20",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C25",
+      "kind": "formula",
+      "source": "BALANCE(\"1601\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1602\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D25",
+      "kind": "formula",
+      "source": "(BALANCE(\"1601\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1601\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1601\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))+(BALANCE(\"1602\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1602\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1602\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A26",
+      "kind": "text",
+      "source": "在建工程",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B26",
+      "kind": "text",
+      "source": "21",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C26",
+      "kind": "formula",
+      "source": "BALANCE(\"1604\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D26",
+      "kind": "formula",
+      "source": "(BALANCE(\"1604\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1604\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1604\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A27",
+      "kind": "text",
+      "source": "工程物资",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B27",
+      "kind": "text",
+      "source": "22",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C27",
+      "kind": "formula",
+      "source": "BALANCE(\"1605\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D27",
+      "kind": "formula",
+      "source": "(BALANCE(\"1605\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1605\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1605\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A28",
+      "kind": "text",
+      "source": "固定资产清理",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B28",
+      "kind": "text",
+      "source": "23",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C28",
+      "kind": "formula",
+      "source": "BALANCE(\"1606\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D28",
+      "kind": "formula",
+      "source": "(BALANCE(\"1606\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1606\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1606\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A29",
+      "kind": "text",
+      "source": "生产性生物资产",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B29",
+      "kind": "text",
+      "source": "24",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C29",
+      "kind": "formula",
+      "source": "BALANCE(\"1621\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1622\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D29",
+      "kind": "formula",
+      "source": "(BALANCE(\"1621\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1621\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1621\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))+(BALANCE(\"1622\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1622\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1622\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A30",
+      "kind": "text",
+      "source": "无形资产",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B30",
+      "kind": "text",
+      "source": "25",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C30",
+      "kind": "formula",
+      "source": "BALANCE(\"1701\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1702\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D30",
+      "kind": "formula",
+      "source": "(BALANCE(\"1701\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1701\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1701\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))+(BALANCE(\"1702\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1702\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1702\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A31",
+      "kind": "text",
+      "source": "开发支出",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B31",
+      "kind": "text",
+      "source": "26",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C31",
+      "kind": "formula",
+      "source": "BALANCE(\"4301\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D31",
+      "kind": "formula",
+      "source": "(BALANCE(\"4301\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"4301\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"4301\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A32",
+      "kind": "text",
+      "source": "长期待摊费用",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B32",
+      "kind": "text",
+      "source": "27",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C32",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D32",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A33",
+      "kind": "text",
+      "source": "其他非流动资产",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B33",
+      "kind": "text",
+      "source": "28",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C33",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D33",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A34",
+      "kind": "text",
+      "source": "非流动资产合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B34",
+      "kind": "text",
+      "source": "29",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C34",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D34",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A35",
+      "kind": "text",
+      "source": "资产总计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B35",
+      "kind": "text",
+      "source": "30",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C35",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D35",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E6",
+      "kind": "text",
+      "source": "短期借款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F6",
+      "kind": "text",
+      "source": "31",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G6",
+      "kind": "formula",
+      "source": "-(BALANCE(\"2001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H6",
+      "kind": "formula",
+      "source": "-((BALANCE(\"2001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"2001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"2001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E7",
+      "kind": "text",
+      "source": "应付票据",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F7",
+      "kind": "text",
+      "source": "32",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G7",
+      "kind": "formula",
+      "source": "-(BALANCE(\"2201\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H7",
+      "kind": "formula",
+      "source": "-((BALANCE(\"2201\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"2201\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"2201\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E8",
+      "kind": "text",
+      "source": "应付账款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F8",
+      "kind": "text",
+      "source": "33",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G8",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H8",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E9",
+      "kind": "text",
+      "source": "预收账款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F9",
+      "kind": "text",
+      "source": "34",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G9",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H9",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E10",
+      "kind": "text",
+      "source": "应付职工薪酬",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F10",
+      "kind": "text",
+      "source": "35",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G10",
+      "kind": "formula",
+      "source": "-(BALANCE(\"2211\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H10",
+      "kind": "formula",
+      "source": "-((BALANCE(\"2211\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"2211\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"2211\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E11",
+      "kind": "text",
+      "source": "应交税费",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F11",
+      "kind": "text",
+      "source": "36",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G11",
+      "kind": "formula",
+      "source": "-(BALANCE(\"2221\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H11",
+      "kind": "formula",
+      "source": "-((BALANCE(\"2221\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"2221\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"2221\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E12",
+      "kind": "text",
+      "source": "应付利息",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F12",
+      "kind": "text",
+      "source": "37",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G12",
+      "kind": "formula",
+      "source": "-(BALANCE(\"2231\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H12",
+      "kind": "formula",
+      "source": "-((BALANCE(\"2231\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"2231\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"2231\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E13",
+      "kind": "text",
+      "source": "应付利润",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F13",
+      "kind": "text",
+      "source": "38",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G13",
+      "kind": "formula",
+      "source": "-(BALANCE(\"2232\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H13",
+      "kind": "formula",
+      "source": "-((BALANCE(\"2232\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"2232\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"2232\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E14",
+      "kind": "text",
+      "source": "其他应付款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F14",
+      "kind": "text",
+      "source": "39",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G14",
+      "kind": "formula",
+      "source": "-(BALANCE(\"2241\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H14",
+      "kind": "formula",
+      "source": "-((BALANCE(\"2241\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"2241\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"2241\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E15",
+      "kind": "text",
+      "source": "其他流动负债",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F15",
+      "kind": "text",
+      "source": "40",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G15",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H15",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E16",
+      "kind": "text",
+      "source": "流动负债合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F16",
+      "kind": "text",
+      "source": "41",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G16",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H16",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E17",
+      "kind": "text",
+      "source": "长期借款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F17",
+      "kind": "text",
+      "source": "42",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G17",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H17",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E18",
+      "kind": "text",
+      "source": "长期应付款",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F18",
+      "kind": "text",
+      "source": "43",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G18",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H18",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E19",
+      "kind": "text",
+      "source": "递延收益",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F19",
+      "kind": "text",
+      "source": "44",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G19",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H19",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E20",
+      "kind": "text",
+      "source": "其他非流动负债",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F20",
+      "kind": "text",
+      "source": "45",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G20",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H20",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E21",
+      "kind": "text",
+      "source": "非流动负债合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F21",
+      "kind": "text",
+      "source": "46",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G21",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H21",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E22",
+      "kind": "text",
+      "source": "负债合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F22",
+      "kind": "text",
+      "source": "47",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G22",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H22",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E23",
+      "kind": "text",
+      "source": "实收资本（或股本）",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F23",
+      "kind": "text",
+      "source": "48",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G23",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H23",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E24",
+      "kind": "text",
+      "source": "资本公积",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F24",
+      "kind": "text",
+      "source": "49",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G24",
+      "kind": "formula",
+      "source": "-(BALANCE(\"3002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H24",
+      "kind": "formula",
+      "source": "-((BALANCE(\"3002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"3002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"3002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E25",
+      "kind": "text",
+      "source": "盈余公积",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F25",
+      "kind": "text",
+      "source": "50",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G25",
+      "kind": "formula",
+      "source": "-(BALANCE(\"3101\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "H25",
+      "kind": "formula",
+      "source": "-((BALANCE(\"3101\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"3101\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"3101\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E26",
+      "kind": "text",
+      "source": "未分配利润",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F26",
+      "kind": "text",
+      "source": "51",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G26",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H26",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E27",
+      "kind": "text",
+      "source": "所有者权益（或股东权益）合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F27",
+      "kind": "text",
+      "source": "52",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G27",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H27",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E28",
+      "kind": "text",
+      "source": "负债和所有者权益（或股东权益）总计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F28",
+      "kind": "text",
+      "source": "53",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "G28",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "H28",
+      "kind": "text",
+      "source": "未实现：需重分类、分析填列或完整合计",
+      "unit": "number",
+      "currency": "CNY"
+    }
+  ],
+  "merges": [
+    {
+      "row": 1,
+      "col": 1,
+      "rows": 1,
+      "cols": 8
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "rows": 1,
+      "cols": 8
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "rows": 1,
+      "cols": 8
+    }
+  ],
+  "styles": [
+    {
+      "address": "A1",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A2",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A3",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A4",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A37",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A38",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A39",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A6",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B6",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C6",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D6",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A7",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B7",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C7",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D7",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C8",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D8",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A11",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B11",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C11",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D11",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A12",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B12",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C12",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D12",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A13",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B13",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C13",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D13",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C15",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D15",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C17",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D17",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C18",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D18",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C22",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D22",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C23",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D23",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A24",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B24",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C24",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D24",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A25",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B25",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C25",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D25",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C26",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D26",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C27",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D27",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A28",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B28",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C28",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D28",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A29",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B29",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C29",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D29",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C30",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D30",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A31",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B31",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C31",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D31",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A32",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B32",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C32",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D32",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A33",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B33",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C33",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D33",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A34",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B34",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C34",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D34",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A35",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B35",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C35",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D35",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E6",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F6",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G6",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H6",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E7",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F7",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G7",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H7",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G10",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H10",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E11",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F11",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G11",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H11",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E12",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F12",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G12",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H12",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E13",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F13",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G13",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H13",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G14",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H14",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E24",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F24",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G24",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H24",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E25",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F25",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G25",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "H25",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E28",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F28",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "G28",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "H28",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    }
+  ],
+  "rowHeights": [
+    {
+      "row": 1,
+      "height": 44
+    },
+    {
+      "row": 2,
+      "height": 44
+    },
+    {
+      "row": 3,
+      "height": 44
+    }
+  ],
+  "colWidths": [
+    {
+      "col": 1,
+      "width": 420
+    },
+    {
+      "col": 2,
+      "width": 60
+    },
+    {
+      "col": 3,
+      "width": 200
+    },
+    {
+      "col": 4,
+      "width": 200
+    },
+    {
+      "col": 5,
+      "width": 420
+    },
+    {
+      "col": 6,
+      "width": 60
+    },
+    {
+      "col": 7,
+      "width": 200
+    },
+    {
+      "col": 8,
+      "width": 200
+    }
+  ],
+  "checks": [
+    {
+      "name": "期末固定资产账面价值＝原价－累计折旧",
+      "left": "C25",
+      "right": "C23-C24",
+      "tolerance": "0"
+    },
+    {
+      "name": "年初固定资产账面价值＝原价－累计折旧",
+      "left": "D25",
+      "right": "D23-D24",
+      "tolerance": "0"
+    }
+  ],
+  "accounting": {
+    "defaultScope": "posted",
+    "sign": "debit-positive",
+    "moneyUnit": "cents",
+    "rounding": "half-up"
+  }
+}
