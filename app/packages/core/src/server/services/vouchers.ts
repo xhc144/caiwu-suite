@@ -674,6 +674,7 @@ export function voucherService(ctx: ServiceContext) {
         if (rows.length !== updates.length)
           throw notFound('凭证', updates.map((u) => u.id).join(','));
         for (const r of rows) {
+          assertCanModify(r, '调整凭证编号');
           if (r.status === 'draft')
             throw new BusinessError({ code: 'VOUCHER_DRAFT', message: '草稿没有编号' });
           await periods.assertOpen(r.period, '调整凭证编号');
