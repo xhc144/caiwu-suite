@@ -84,9 +84,16 @@ export default function StockPage() {
           { key: 'opening', title: '期初数量', dataIndex: 'opening' },
           { key: 'received', title: '期间入库', dataIndex: 'received' },
           { key: 'issued', title: '期间出库', dataIndex: 'issued' },
+          { key: 'adjustmentQuantity', title: '正式盘点调整', dataIndex: 'adjustmentQuantity' },
           { key: 'balance', title: '结余数量', dataIndex: 'balance' },
           { key: 'openingCents', title: '期初金额', dataIndex: 'openingCents', money: true },
           { key: 'receiptCents', title: '入库金额', dataIndex: 'receiptCents', money: true },
+          {
+            key: 'adjustmentCents',
+            title: '正式核算调整金额',
+            dataIndex: 'adjustmentCents',
+            money: true,
+          },
           {
             key: 'issueCostCents',
             title: '出库成本（未核算留空）',

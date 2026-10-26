@@ -141,6 +141,14 @@ export function inventoryService(svc: CoreServices) {
   };
   const unlocked = async (date: string) => {
     await svc.periods.assertOpen(periodOfDate(date), '修改仓库业务');
+    if (
+      await db
+        .selectFrom('inventory_costing_month_lock')
+        .select('period')
+        .where('period', '=', periodOfDate(date))
+        .executeTakeFirst()
+    )
+      fail('CUTOFF', '本月库存已经正式核算，来源业务已锁定');
     const c = await control();
     if (
       (c.cost_cutoff_date && date <= c.cost_cutoff_date) ||
@@ -163,6 +171,18 @@ export function inventoryService(svc: CoreServices) {
   };
   const sourceUnlocked = async (r: Awaited<ReturnType<typeof document>>, audit = false) => {
     await unlocked(r.date);
+    if (
+      await db
+        .selectFrom('inventory_voucher_source')
+        .select('voucher_id')
+        .where('document_id', '=', r.id)
+        .executeTakeFirst()
+    )
+      fail(
+        'VOUCHER',
+        `单据 ${r.number} 已关联来源凭证，不能修改、删除或撤销审核`,
+        '请在所属模块处理对应用途的凭证',
+      );
     if (
       r.calculation_status !== 'uncalculated' ||
       r.calculation_batch ||
@@ -199,6 +219,8 @@ export function inventoryService(svc: CoreServices) {
       );
   };
   const openingUnlocked = async () => {
+    if (await db.selectFrom('inventory_costing_month_lock').select('period').executeTakeFirst())
+      fail('OPENING_LOCKED', '库存期初已被正式成本批次锁定');
     const b = await svc.book.info();
     const c = await control();
     const current = await svc.periods.current();
@@ -292,7 +314,24 @@ export function inventoryService(svc: CoreServices) {
         ),
       );
     }
+    for (const a of await adjustments(warehouseId, to))
+      out.set(a.product_id, safe((out.get(a.product_id) ?? 0) + a.quantity_e6));
     return out;
+  };
+  const adjustments = async (warehouseId: number, to?: string) => {
+    const rows = await db
+      .selectFrom('inventory_costing_adjustment as a')
+      .innerJoin('inventory_costing_batch as b', 'b.id', 'a.batch_id')
+      .selectAll('a')
+      .select('b.period')
+      .where('b.status', '=', 'calculated')
+      .where('a.warehouse_id', '=', warehouseId)
+      .orderBy('b.period')
+      .orderBy('a.product_id')
+      .execute();
+    return rows
+      .map((a) => ({ ...a, date: periodEndDate(a.period) }))
+      .filter((a) => !to || a.date <= to);
   };
   const prepare = async (raw: DocumentInput) => {
     const input = DocumentSchema.parse(raw);
@@ -715,7 +754,19 @@ export function inventoryService(svc: CoreServices) {
           ]),
         );
       if (f.unaudited) q = q.where('d.audited_by', 'is', null);
-      if (f.unvouchered) q = q.where('d.voucher_id', 'is', null);
+      if (f.unvouchered)
+        q = q
+          .where('d.voucher_id', 'is', null)
+          .where((eb) =>
+            eb.not(
+              eb.exists(
+                eb
+                  .selectFrom('inventory_voucher_source as vs')
+                  .select('vs.voucher_id')
+                  .whereRef('vs.document_id', '=', 'd.id'),
+              ),
+            ),
+          );
       if (f.productCode) {
         const p = await product(f.productCode);
         q = q.where(
@@ -724,10 +775,21 @@ export function inventoryService(svc: CoreServices) {
           db.selectFrom('inventory_line').select('document_id').where('product_id', '=', p.id),
         );
       }
-      return q.execute();
+      const documents = await q.execute();
+      const links = await db.selectFrom('inventory_voucher_source').selectAll().execute();
+      return documents.map((d) => ({
+        ...d,
+        voucherSources: links.filter((l) => l.document_id === d.id),
+        voucher_id: d.voucher_id ?? links.find((l) => l.document_id === d.id)?.voucher_id ?? null,
+      }));
     },
     async getDocument(id: number) {
       const r = await document(id);
+      const voucherSources = await db
+        .selectFrom('inventory_voucher_source')
+        .selectAll()
+        .where('document_id', '=', id)
+        .execute();
       const lines = await db
         .selectFrom('inventory_line as l')
         .innerJoin('inventory_product as p', 'p.id', 'l.product_id')
@@ -738,6 +800,8 @@ export function inventoryService(svc: CoreServices) {
         .execute();
       return {
         ...r,
+        voucher_id: r.voucher_id ?? voucherSources[0]?.voucher_id ?? null,
+        voucherSources,
         lines: lines.map((l) => ({
           ...l,
           quantity: quantity(l.quantity_e6),
@@ -979,6 +1043,7 @@ export function inventoryService(svc: CoreServices) {
           .where('warehouse_id', '=', w.id)
           .execute();
         const moves = await movements({ ...f, warehouseId: w.id });
+        const adjusted = await adjustments(w.id, f.to);
         for (const p of products) {
           if (f.productCode && p.code !== f.productCode) continue;
           const opening =
@@ -987,8 +1052,19 @@ export function inventoryService(svc: CoreServices) {
           const during = moves.filter(
             (l) => l.product_id === p.id && (!f.from || l.date >= f.from),
           );
+          const beforeAdjustments = adjusted.filter(
+            (a) => a.product_id === p.id && f.from && a.date < f.from,
+          );
+          const duringAdjustments = adjusted.filter(
+            (a) => a.product_id === p.id && (!f.from || a.date >= f.from),
+          );
+          const adjustmentE6 = duringAdjustments.reduce((n, a) => safe(n + a.quantity_e6), 0);
+          const adjustmentCents = sumCents(
+            duringAdjustments.flatMap((a) => [a.amount_cents, a.zero_cents]),
+          );
           const start = safe(
             (opening?.quantity_e6 ?? 0) +
+              beforeAdjustments.reduce((n, a) => safe(n + a.quantity_e6), 0) +
               before.reduce(
                 (n, l) => safe(n + (l.kind === 'receipt' ? l.quantity_e6 : -l.quantity_e6)),
                 0,
@@ -1000,8 +1076,9 @@ export function inventoryService(svc: CoreServices) {
           const issued = during
             .filter((l) => l.kind === 'issue')
             .reduce((n, l) => safe(n + l.quantity_e6), 0);
-          const end = safe(start + received - issued);
-          if (f.hideZero && !start && !received && !issued) continue;
+          const end = safe(start + received - issued + adjustmentE6);
+          if (f.hideZero && !start && !received && !issued && !adjustmentE6 && !adjustmentCents)
+            continue;
           const issues = during.filter((l) => l.kind === 'issue');
           const cost = totalIssueCost(issues);
           const beforeCost = totalIssueCost(before.filter((l) => l.kind === 'issue'));
@@ -1012,6 +1089,7 @@ export function inventoryService(svc: CoreServices) {
                   opening?.amount_cents,
                   ...before.filter((l) => l.kind === 'receipt').map((l) => l.net_cents),
                   -beforeCost,
+                  ...beforeAdjustments.flatMap((a) => [a.amount_cents, a.zero_cents]),
                 ]);
           const receiptCents = sumCents(
             during.filter((l) => l.kind === 'receipt').map((l) => l.net_cents),
@@ -1019,7 +1097,7 @@ export function inventoryService(svc: CoreServices) {
           const balanceCents =
             openingCents == null || cost == null
               ? null
-              : sumCents([openingCents, receiptCents, -cost]);
+              : sumCents([openingCents, receiptCents, -cost, adjustmentCents]);
           rows.push({
             key: `${w.id}-${p.id}`,
             warehouseId: w.id,
@@ -1036,6 +1114,8 @@ export function inventoryService(svc: CoreServices) {
             receiptCents,
             issueCostCents: cost,
             balanceCents,
+            adjustmentQuantity: quantity(adjustmentE6),
+            adjustmentCents,
             costStatus: balanceCents == null ? '待成本核算' : '账面金额完整',
             estimatedReceiptCents: multiplyToCents(quantity(end), p.receiptPrice),
             estimatedIssueCents: multiplyToCents(quantity(end), p.issuePrice),
@@ -1091,7 +1171,42 @@ export function inventoryService(svc: CoreServices) {
             l.kind === 'receipt' ? '入库原单金额' : amountCents == null ? '待成本核算' : '已核算',
         });
       }
-      return rows;
+      for (const a of await adjustments(f.warehouseId, f.to)) {
+        if (a.product_id !== p.id || (f.from && a.date < f.from)) continue;
+        rows.push({
+          key: `adjustment-${a.batch_id}-${p.id}`,
+          date: a.date,
+          number: '盘点/零数量调整',
+          documentId: null,
+          kind: 'adjustment',
+          received: a.quantity_e6 >= 0 ? quantity(a.quantity_e6) : '0',
+          issued: a.quantity_e6 < 0 ? quantity(-a.quantity_e6) : '0',
+          balance: '0',
+          amountCents: sumCents([a.amount_cents, a.zero_cents]),
+          balanceCents: null,
+          costStatus: '正式核算调整',
+        });
+      }
+      const openingRow = rows.shift()!;
+      balance = e6(stock.opening);
+      balanceCents = stock.openingCents;
+      rows.sort(
+        (a, b) =>
+          a.date.localeCompare(b.date) ||
+          (a.kind === 'adjustment' ? 1 : b.kind === 'adjustment' ? -1 : 0) ||
+          Number(a.key) - Number(b.key),
+      );
+      return [
+        openingRow,
+        ...rows.map((r) => {
+          balance = safe(balance + e6(r.received) - e6(r.issued));
+          balanceCents =
+            balanceCents == null || r.amountCents == null
+              ? null
+              : sumCents([balanceCents, r.kind === 'issue' ? -r.amountCents : r.amountCents]);
+          return { ...r, balance: quantity(balance), balanceCents };
+        }),
+      ];
     },
     async sales(filter: Filter = {}) {
       const f = FilterSchema.parse(filter);
@@ -1215,11 +1330,24 @@ export function inventoryService(svc: CoreServices) {
         .where('count_id', '=', c.id)
         .orderBy('p.code')
         .execute();
+      const officialAdjustments =
+        c.calculation_status === 'calculated' && c.calculation_batch
+          ? await db
+              .selectFrom('inventory_costing_adjustment')
+              .selectAll()
+              .where('batch_id', '=', c.calculation_batch)
+              .where('count_id', '=', c.id)
+              .execute()
+          : [];
       return {
         id: c.id,
         revision: c.revision,
         rows: rows.map((r) => {
-          const actualCents = countAmount(r.book_cents, r.book_e6, r.actual_e6);
+          const adjustment = officialAdjustments.find((a) => a.product_id === r.product_id);
+          const actualCents =
+            c.calculation_status === 'calculated' && r.book_cents != null
+              ? sumCents([r.book_cents, adjustment?.amount_cents, adjustment?.zero_cents])
+              : countAmount(r.book_cents, r.book_e6, r.actual_e6);
           return {
             ...r,
             book: quantity(r.book_e6),
@@ -1232,11 +1360,13 @@ export function inventoryService(svc: CoreServices) {
                 ? null
                 : sumCents([actualCents, -r.book_cents]),
             amountStatus:
-              r.book_cents == null
-                ? '金额快照缺失或待成本核算'
-                : r.book_e6 === 0 && (r.actual_e6 !== 0 || r.book_cents !== 0)
-                  ? '零账面数量，无法确定单价'
-                  : '按账面快照折算',
+              c.calculation_status === 'calculated' && actualCents != null
+                ? '正式核算金额'
+                : r.book_cents == null
+                  ? '金额快照缺失或待成本核算'
+                  : r.book_e6 === 0 && (r.actual_e6 !== 0 || r.book_cents !== 0)
+                    ? '零账面数量，无法确定单价'
+                    : '按账面快照折算',
           };
         }),
       };

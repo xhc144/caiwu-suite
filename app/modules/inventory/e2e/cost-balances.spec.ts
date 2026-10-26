@@ -222,3 +222,118 @@ test('W2-20 独立账套：真实核算成本与估价分开 → 跨月结余 �
     if (clean) rmSync(dataDir, { recursive: true, force: true });
   }
 });
+
+test('w_cb_hz/w_cb_fgz 正式API闭环：盘亏调整真实库存与台账 → 全月锁 → 撤销恢复；不依赖costing页面', async ({
+  page,
+  request,
+}) => {
+  const { bookId, token } = await loginWithNewBook(page, request, { product: 'chengben' });
+  const post = <T>(name: string, input: unknown) =>
+    callApi<T>(request, `m.inventory.${name}`, input, { token, method: 'POST' });
+  const get = <T>(name: string, input: unknown) =>
+    callApi<T>(request, `m.inventory.${name}`, input, { token, method: 'GET' });
+  const warehouseId = await post<number>('saveWarehouse', { code: '01', name: '正式发布仓' });
+  const p = await post<{ id: number }>('saveProduct', { code: 'P1', name: '正式成本产品' });
+  await post('saveOpening', {
+    warehouseId,
+    revision: 0,
+    rows: [{ productCode: 'P1', quantity: '10', unitPrice: '1' }],
+  });
+  const accounts = await callApi<{ id: number; code: string }[]>(
+    request,
+    'core.accounts.list',
+    undefined,
+    { token, method: 'GET' },
+  );
+  const id = (code: string) => accounts.find((a) => a.code === code)!.id;
+  await post('saveDocument', {
+    requestKey: 'formal-receipt',
+    kind: 'receipt',
+    warehouseId,
+    number: 'RK',
+    date: '2026-01-10',
+    category: '采购',
+    accountId: id('1001'),
+    lines: [{ productCode: 'P1', quantity: '10', unitPrice: '3' }],
+  });
+  const issue = await post<{ id: number }>('saveDocument', {
+    requestKey: 'formal-issue',
+    kind: 'issue',
+    warehouseId,
+    number: 'CK',
+    date: '2026-01-15',
+    category: '销售',
+    accountId: id('1001'),
+    costAccountId: id('6401'),
+    lines: [{ productCode: 'P1', quantity: '5', unitPrice: '10' }],
+  });
+  const count = await post<{ id: number; revision: number }>('generateCount', {
+    warehouseId,
+    period: 202601,
+    revision: 0,
+    confirmed: false,
+  });
+  await post('saveCount', {
+    warehouseId,
+    period: 202601,
+    revision: count.revision,
+    rows: [{ productCode: 'P1', actual: '14' }],
+  });
+  const snapshot = await get<{
+    fingerprint: string;
+    stockRevision: number;
+    openingRevision: number;
+    previousBatchId: string | null;
+    movements: { id: number; documentId: number }[];
+  }>('costingSnapshot', { period: 202601 });
+  const batch = await post<{ batchId: string; revision: number }>('commitCosting', {
+    bookId,
+    period: 202601,
+    requestKey: 'formal-publication',
+    expectedStockRevision: snapshot.stockRevision,
+    expectedOpeningRevision: snapshot.openingRevision,
+    previousBatchId: snapshot.previousBatchId,
+    fingerprint: snapshot.fingerprint,
+    lines: [
+      {
+        lineId: snapshot.movements.find((l) => l.documentId === issue.id)!.id,
+        documentId: issue.id,
+        costCents: 1000,
+        unitCost: '2',
+      },
+    ],
+    balances: [{ warehouseId, productId: p.id, quantity: '14', amountCents: 2800 }],
+    countAdjustments: [
+      {
+        warehouseId,
+        productId: p.id,
+        countId: count.id,
+        quantity: '-1',
+        amountCents: -200,
+        zeroQuantityAdjustmentCents: 0,
+      },
+    ],
+  });
+  await page.goto('/m/inventory/stock?productCode=P1');
+  const stock = page
+    .getByRole('row')
+    .filter({ has: page.getByRole('button', { name: '查看台账', exact: true }) });
+  await expect(stock).toContainText('14');
+  await expect(stock).toContainText('28.00');
+  await expect(page.getByRole('row').filter({ hasText: '盘点/零数量调整' })).toContainText('-2.00');
+  await expect(
+    post('generateCount', { warehouseId, period: 202601, revision: 2, confirmed: true }),
+  ).rejects.toThrow(/锁定|核算/);
+  await page.goto('/m/inventory/counts');
+  const row = page.getByRole('row').filter({ hasText: 'P1' });
+  await expect(row).toContainText('30.00');
+  await expect(row).toContainText('28.00');
+  await post('cancelCosting', { bookId, batchId: batch.batchId, expectedRevision: batch.revision });
+  await page.goto('/m/inventory/stock?productCode=P1');
+  await expect(stock).toContainText('15');
+  await expect(stock).toContainText('待成本核算');
+  await expect(page.getByRole('row').filter({ hasText: '盘点/零数量调整' })).toHaveCount(0);
+  expect(
+    (await get<{ calculation_status: string }>('document', { id: issue.id })).calculation_status,
+  ).toBe('uncalculated');
+});

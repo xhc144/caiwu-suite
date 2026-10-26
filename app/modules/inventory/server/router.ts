@@ -14,7 +14,8 @@ import {
   WarehouseSchema,
 } from '../shared';
 import { inventoryService } from './service';
-import { readCostingSnapshot } from './costing-snapshot';
+import { inventoryCosting, withInventoryCosting } from './costing';
+import { CostingCommitSchema, CostingCancelSchema } from '../costing-contract';
 import { ImportSchema, importInventory } from './imports';
 const m = moduleKit(manifest);
 const base = m.procedure.use(async ({ next }) => {
@@ -70,7 +71,19 @@ const confirmedCount = countKey.extend({
 export const inventoryRouter = m.router({
   costingSnapshot: view
     .input(z.object({ period: zPeriod }))
-    .query(({ ctx, input }) => readCostingSnapshot(ctx.svc, input.period)),
+    .query(({ ctx, input }) => inventoryCosting(ctx.svc).snapshot(input.period)),
+  commitCosting: base
+    .meta({ permission: 'inventory.costing' })
+    .input(CostingCommitSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.svc.tx((svc) => withInventoryCosting(svc, (inventory) => inventory.commitCosting(input))),
+    ),
+  cancelCosting: base
+    .meta({ permission: 'inventory.costing' })
+    .input(CostingCancelSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.svc.tx((svc) => withInventoryCosting(svc, (inventory) => inventory.cancelCosting(input))),
+    ),
   context: view.query(({ ctx }) => inventoryService(ctx.svc).context()),
   products: view
     .input(z.object({ keyword: z.string().default('') }).default({ keyword: '' }))
