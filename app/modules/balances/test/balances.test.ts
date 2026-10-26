@@ -272,6 +272,49 @@ describe('w_zw_ye 汇总余额表', () => {
 });
 
 describe('w_zw_wbye 外币余额表', () => {
+  it('w_zw_ye/w_zw_wbye 共享修复后本位币代码包含未标币种行，逐币原币字段不混加', async () => {
+    await seedBalanceCases(app.svc);
+    const base = (await query().query({ ...range, currency: 'CNY' })).groups[0]!;
+    expect(base.rows.find((r) => r.accountCode === '100201')).toMatchObject({
+      opening: 110_000,
+      debit: 25_000,
+      credit: 20_000,
+      closing: 115_000,
+    });
+    expect(base.rows.find((r) => r.accountCode === '100202')).toMatchObject({
+      opening: 0,
+      debit: 0,
+      credit: 0,
+      closing: 0,
+    });
+    expect(base.totals).toMatchObject({
+      debit: 66_734,
+      credit: 73_834,
+      fcOpening: 0,
+      fcDebit: 0,
+      fcCredit: 0,
+      fcClosing: 0,
+    });
+    const usd = (await query().query({ ...range, mode: 'foreign', currency: 'USD' })).groups[0]!;
+    expect(usd.totals).toMatchObject({
+      debit: 7_100,
+      credit: 0,
+      fcOpening: 10_000,
+      fcDebit: 1_000,
+      fcCredit: 0,
+      fcClosing: 11_000,
+    });
+    const all = (await query().query(range)).groups[0]!;
+    expect(all.totals).toMatchObject({
+      debit: 73_834,
+      credit: 73_834,
+      fcOpening: 0,
+      fcDebit: 0,
+      fcCredit: 0,
+      fcClosing: 0,
+    });
+  });
+
   it.each([
     { side: 'debit' as const, label: '借方', fcDebit: -10_000, fcCredit: 0, fcClosing: 0 },
     { side: 'credit' as const, label: '贷方', fcDebit: 0, fcCredit: -10_000, fcClosing: 20_000 },
@@ -325,6 +368,19 @@ describe('w_zw_wbye 外币余额表', () => {
   it('w_zw_wbye_1 跨年本位币为零而原币贷方余额非零时，行、合计及导出数据均保留原币余额', async () => {
     await seedForeignZeroBaseCase(app.svc);
     const input = { mode: 'foreign' as const, periodFrom: 202701, periodTo: 202701 };
+    const core = await app.svc.ledger.balances({
+      periodFrom: 202701,
+      periodTo: 202701,
+      currency: 'USD',
+      includeZero: false,
+      rollup: false,
+    });
+    expect(core.find((r) => r.accountCode === '100202')).toMatchObject({
+      opening: 0,
+      closing: 0,
+      fcOpening: -10_000,
+      fcClosing: -10_000,
+    });
     for (const currency of ['', 'USD']) {
       for (const includeUnposted of [false, true]) {
         const report = await query().query({ ...input, currency, includeUnposted });

@@ -180,10 +180,10 @@ export function balancesService(svc: CoreServices) {
           dimensions: dims,
           includeUnposted: q.includeUnposted,
           rollup: true,
-          // W0 的零行判断只检查本位币，跨年时会漏掉“本位币结清、原币非零”。
-          // 先让 core 保留所有行，再按当前报表实际展示的金额字段过滤；不重算余额。
-          includeZero: true,
+          // 汇总表保留零科目；外币的非零原币行由已修复的 core 零行判断保留。
+          includeZero: q.mode === 'summary',
         });
+        // 外币表只展示本位币或原币有金额的行；数量字段不属于该表的显示口径。
         const selected = coreRows.filter(
           (r) =>
             selectedIds.has(r.accountId) &&
