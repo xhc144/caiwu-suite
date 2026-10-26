@@ -57,9 +57,8 @@ public sealed partial class NonprofitParityAdapter
             throw new NonprofitValidationException("NP_PROPOSAL_ID", "只接受具有稳定业务来源键的新草稿；不得以新随机来源绕过重复检查。");
         if (edited.ProposalReceipts.Any(r => r.ProposalId == proposalId || r.ModuleId == ModuleId && r.SourceKeys.Intersect(sourceKeys, StringComparer.Ordinal).Any()))
             throw new NonprofitValidationException("NP_DUPLICATE_REQUEST", "提案或业务来源已接纳；包括已删除的草稿，不能再次生成。");
-        var existingIds = ReadAcceptedVouchers(edited).SelectMany(v => v.Enriched.Draft.Lines).Select(l => l.Id).ToHashSet();
-        if (draft.Lines.Any(l => existingIds.Contains(l.Id)))
-            throw new NonprofitValidationException("NP_LINE_ID", "稳定分录ID已用于其他业务来源。");
+        var opening = Documents(edited).Any(d => d.DocumentId == OpeningDocumentId) ? ReadOpening(edited).Opening : [];
+        ValidateCombinedLineIds(edited, opening, draft.Lines);
         var now = clock.GetUtcNow();
         var candidate = new NonprofitLedgerVoucher(proposalId, draft.Date, draft.Kind, draft.Number ?? 1, draft.AttachmentCount,
             operatorId, null, null, now, null, null, NonprofitVoucherState.Draft, draft.Role, draft.EvidenceReference,
@@ -117,6 +116,19 @@ public sealed partial class NonprofitParityAdapter
         new OriginalWindowReference("minfeiqi/main", "w_zw_ydjz", "menu:m_frame_zw/m_o/m_o20/m_o20_15")
     }));
     private static LedgerMutationContext Context(ModuleLedgerSnapshot source) => new(source.Ledger.Book.Id, source.Ledger.Revision);
+    private void ValidateCombinedLineIds(ModuleLedgerSnapshot source, IReadOnlyList<NonprofitOpening> opening,
+        IReadOnlyList<NonprofitLedgerLine> candidateLines)
+    {
+        // Both write boundaries must use the same whole-book identity space as the full-state reader.
+        // Retain the existing reservation of accepted identities even when their core draft was deleted.
+        var ids = new HashSet<Guid>();
+        var combined = opening.Select(o => o.Id)
+            .Concat(ReadAcceptedVouchers(source).SelectMany(v => v.Enriched.Draft.Lines).Select(l => l.Id))
+            .Concat(candidateLines.Select(l => l.Id));
+        foreach (var id in combined)
+            if (id == Guid.Empty || !ids.Add(id))
+                throw new NonprofitValidationException("NP_LINE_ID", "期初行与已有/新增分录须具有账套内唯一稳定ID。");
+    }
     private static void RequireBook(ModuleLedgerSnapshot source)
     {
         ArgumentNullException.ThrowIfNull(source);

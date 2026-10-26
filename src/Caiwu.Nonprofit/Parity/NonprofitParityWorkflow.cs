@@ -20,6 +20,7 @@ public sealed partial class NonprofitParityAdapter
         authorizer.Require(operatorId, NonprofitPermission.MaintainOpening); var d = ReadBookDefinition(edited);
         if (Documents(edited).Any(doc => doc.DocumentId == OpeningDocumentId))
             throw new NonprofitValidationException("NP_OPENING_METADATA_EXISTS", "期初分类已保存；本切片不覆盖历史分类，请使用集成者的无损变更事务。");
+        ValidateCombinedLineIds(edited, opening, []);
         var state = ValidationSnapshot(d, edited.Ledger) with { Opening = opening, OpeningConfirmed = true };
         NonprofitLedgerValidation.Validate(state);
         foreach (var account in edited.Ledger.Accounts)

@@ -130,6 +130,68 @@ public sealed class NonprofitParityAdapterTests
         Assert.Equal("NP_AUDIT_PROVENANCE", Assert.Throws<NonprofitValidationException>(() => adapter.ReadWritableSnapshot(host.Current)).Code);
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void OpeningFirstRejectsReusedVoucherLineIdBeforeAnyHostWrite(int lineIndex)
+    {
+        var d = Definition(); var host = new ContractHost(d); var adapter = new NonprofitParityAdapter(host, new Authorizer());
+        adapter.RegisterBookDefinition(host.Current, d, "maker"); var openingId = Guid.NewGuid();
+        adapter.ConfirmOpeningClassification(host.Current,
+            [new(openingId, "1002", 0, 0, null, new(), [])], "synthetic:zero-opening", "maker");
+        var draft = Draft(); var lines = draft.Lines.ToArray(); lines[lineIndex] = lines[lineIndex] with { Id = openingId };
+        draft = draft with { Lines = lines }; var proposalId = Guid.NewGuid();
+        var before = JsonSerializer.Serialize(host.GetModuleSnapshot()); var documentCalls = host.DocumentCalls; var proposalCalls = host.ProposalCalls;
+        var error = Assert.Throws<NonprofitValidationException>(() => adapter.AcceptDraft(host.Current, proposalId, ["stable-collision"], draft, "maker"));
+        Assert.Equal("NP_LINE_ID", error.Code); Assert.Equal(before, JsonSerializer.Serialize(host.GetModuleSnapshot()));
+        Assert.Equal(documentCalls, host.DocumentCalls); Assert.Equal(proposalCalls, host.ProposalCalls);
+        Assert.Equal(openingId, new NonprofitParityAdapter(host, new Authorizer()).ReadWritableSnapshot(host.GetModuleSnapshot()).Opening.Single().Id);
+        lines[lineIndex] = lines[lineIndex] with { Id = Guid.NewGuid() };
+        adapter.AcceptDraft(host.Current, proposalId, ["stable-collision"], draft with { Lines = lines }, "maker");
+        var reloaded = new NonprofitParityAdapter(host, new Authorizer()).ReadWritableSnapshot(host.GetModuleSnapshot());
+        Assert.NotEqual(reloaded.Opening.Single().Id, reloaded.Vouchers.Single().Lines[lineIndex].Id);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void VoucherFirstRejectsReusedOpeningIdBeforeAnyHostWrite(int lineIndex)
+    {
+        var d = Definition(); var host = new ContractHost(d); var adapter = new NonprofitParityAdapter(host, new Authorizer());
+        adapter.RegisterBookDefinition(host.Current, d, "maker"); var draft = Draft();
+        adapter.AcceptDraft(host.Current, Guid.NewGuid(), ["stable-existing"], draft, "maker");
+        NonprofitOpening[] opening = [new(draft.Lines[lineIndex].Id, "1002", 0, 0, null, new(), [])];
+        var before = JsonSerializer.Serialize(host.GetModuleSnapshot()); var documentCalls = host.DocumentCalls; var proposalCalls = host.ProposalCalls;
+        var error = Assert.Throws<NonprofitValidationException>(() => adapter.ConfirmOpeningClassification(host.Current, opening, "synthetic:zero-opening", "maker"));
+        Assert.Equal("NP_LINE_ID", error.Code); Assert.Equal(before, JsonSerializer.Serialize(host.GetModuleSnapshot()));
+        Assert.Equal(documentCalls, host.DocumentCalls); Assert.Equal(proposalCalls, host.ProposalCalls);
+        opening[0] = opening[0] with { Id = Guid.NewGuid() };
+        adapter.ConfirmOpeningClassification(host.Current, opening, "synthetic:zero-opening", "maker");
+        var reloaded = new NonprofitParityAdapter(host, new Authorizer()).ReadWritableSnapshot(host.GetModuleSnapshot());
+        Assert.NotEqual(reloaded.Opening.Single().Id, reloaded.Vouchers.Single().Lines[lineIndex].Id);
+    }
+
+    [Fact]
+    public void FullStateReadStillRejectsAlreadyConflictingStoredLineIdentity()
+    {
+        var d = Definition(); var host = new ContractHost(d); var adapter = new NonprofitParityAdapter(host, new Authorizer());
+        adapter.RegisterBookDefinition(host.Current, d, "maker"); var openingId = Guid.NewGuid();
+        adapter.ConfirmOpeningClassification(host.Current,
+            [new(openingId, "1002", 0, 0, null, new(), [])], "synthetic:zero-opening", "maker");
+        var proposalId = Guid.NewGuid(); adapter.AcceptDraft(host.Current, proposalId, ["stable-existing"], Draft(), "maker");
+        // Reproduce a previously stored invalid state without weakening the production read validator.
+        host.Current = host.Current with { Modules = host.Current.Modules.Select(m => m.ModuleId == NonprofitParityAdapter.ModuleId
+            ? m with { Documents = m.Documents.Select(doc =>
+            {
+                if (doc.DocumentId != NonprofitParityAdapter.ProposalDocumentPrefix + proposalId.ToString("N")) return doc;
+                var accepted = JsonSerializer.Deserialize<AcceptedNonprofitDraft>(doc.PayloadJson)!;
+                var lines = accepted.Draft.Lines.ToArray(); lines[0] = lines[0] with { Id = openingId };
+                return doc with { PayloadJson = JsonSerializer.Serialize(accepted with { Draft = accepted.Draft with { Lines = lines } }) };
+            }).ToArray() } : m).ToArray() };
+        var error = Assert.Throws<NonprofitValidationException>(() => adapter.ReadWritableSnapshot(host.GetModuleSnapshot()));
+        Assert.Equal("NP_LINE_ID", error.Code);
+    }
+
     private sealed class ContractHost : IParityLedgerService, ILedgerService
     {
         internal const string UnrelatedJson = "{ \"unknown\":123.456789012345678901,\"raw\":\"保留\" }";
