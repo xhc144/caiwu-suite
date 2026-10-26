@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Caiwu.Cashier/Wpf/Caiwu.Cashier.Wpf.csproj" />
+    <ProjectReference Include="../../../src/Caiwu.Cashier/Integration/Caiwu.Cashier.Integration.csproj" />
+  </ItemGroup>
+</Project>

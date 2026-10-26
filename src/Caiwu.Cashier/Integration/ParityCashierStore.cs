@@ -27,7 +27,13 @@ public sealed class ParityCashierStore(IParityLedgerService ledger, BookDefiniti
         if (current.Revision != expectedRevision) throw new CashierConcurrencyException(expectedRevision, current.Revision);
         var changed = transform(current) with { Revision = checked(expectedRevision + 1) };
         if (changed.Book.Id != current.Book.Id) throw new CashierRuleException("store.book", "事务不能切换账套身份。");
-        ledger.SaveModuleDocuments(new(ModuleId, Context(sameSnapshot), [Change(changed)]), actor);
+        try { ledger.SaveModuleDocuments(new(ModuleId, Context(sameSnapshot), [Change(changed)]), actor); }
+        catch (StoreConcurrencyException e)
+        {
+            // CAS can lose after the read above. Preserve the original context and exception; do not
+            // fetch the winning revision or retry. The module's WPF boundary handles this exception.
+            throw new CashierConcurrencyException(expectedRevision, e);
+        }
         // Core v1 performs one whole-book write, incrementing revision by one. Never refresh/retry a failed context.
         return Clone(changed);
     }

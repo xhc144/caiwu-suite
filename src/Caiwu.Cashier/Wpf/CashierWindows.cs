@@ -5,7 +5,6 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
-using Microsoft.Data.Sqlite;
 
 namespace Caiwu.Cashier.Wpf;
 
@@ -14,7 +13,8 @@ namespace Caiwu.Cashier.Wpf;
 /// Known outer controls follow cn/windows/cn.md. DataWindow column visual order remains unverified.
 /// No synthetic ledger input button is exposed; the integration adapter supplies its versioned snapshot.
 /// </summary>
-public sealed class CashierWindows(CashierService service, string actor, ICashierDataWindowFactory editorFactory)
+public sealed class CashierWindows(CashierService service, string actor, ICashierDataWindowFactory editorFactory,
+    Action<Window, string>? reportFailure = null)
 {
     public Window CreateEntryWindow()
     {
@@ -244,12 +244,12 @@ public sealed class CashierWindows(CashierService service, string actor, ICashie
         AutomationProperties.SetAutomationId(w, id); return w;
     }
     private static TextBlock Text(string text) => new() { Text = text, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap };
-    private static Button Button(string id, string text, Action action, Window owner)
+    private Button Button(string id, string text, Action action, Window owner)
     {
         var button = new Button { Content = text }; AutomationProperties.SetAutomationId(button, id);
         button.Click += (_, _) => Run(owner, action); return button;
     }
-    private static Menu OperationMenu(Window owner, params (string Text, string? Key, Action Action)[] actions)
+    private Menu OperationMenu(Window owner, params (string Text, string? Key, Action Action)[] actions)
     {
         var menu = new Menu(); var operation = new MenuItem { Header = "O.操作" }; menu.Items.Add(operation);
         foreach (var a in actions.Append(("F.返回 Ctrl+F4", "Ctrl+F4", (Action)owner.Close)))
@@ -290,12 +290,13 @@ public sealed class CashierWindows(CashierService service, string actor, ICashie
     private static DateOnly Max(DateOnly a, DateOnly b) => a > b ? a : b;
     private static bool Confirm(Window w, string text) => MessageBox.Show(w, text, "出纳", MessageBoxButton.YesNo,
         MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
-    private static void Run(Window owner, Action action)
+    private void Run(Window owner, Action action)
     {
-        try { action(); }
-        catch (Exception e) when (e is CashierRuleException or CashierConcurrencyException or FormatException
-            or ArgumentOutOfRangeException or OverflowException or System.IO.IOException or SqliteException)
-        { MessageBox.Show(owner, e.Message, "出纳", MessageBoxButton.OK, MessageBoxImage.Information); }
+        CashierOperationBoundary.Run(action, message =>
+        {
+            if (reportFailure is not null) reportFailure(owner, message);
+            else MessageBox.Show(owner, message, "出纳", MessageBoxButton.OK, MessageBoxImage.Information);
+        });
     }
     private sealed record AccountChoice(AccountKey Key, string Label);
     private sealed class ActionCommand(Action execute) : ICommand

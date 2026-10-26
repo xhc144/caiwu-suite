@@ -34,6 +34,13 @@ dotnet test tests/Caiwu.Cashier.Tests/Integration/Caiwu.Cashier.Integration.Test
 
 该接口进入集成分支后可省略 `ParityContractsProject`。模块没有修改根解决方案或工作流。
 
+公共 CAS 在读取后失败时，适配器规范为模块并发异常，保留公共异常与原 Context，不重读 token 或重试。WPF 事件统一经过 `CashierOperationBoundary`：冲突只提示，保留输入与窗口。Windows 可运行实际菜单事件回归（当前仅编译，未执行）：
+
+```sh
+dotnet run --project tests/Caiwu.Cashier.Tests/WindowsRegression/Caiwu.Cashier.WindowsRegression.csproj \
+  -p:ParityContractsProject=/path/to/pr52/src/Caiwu.Contracts/Caiwu.Contracts.csproj
+```
+
 ## WPF 的完成边界
 
 `Wpf/CashierWindows` 提供原 `w_cn_lr_qc`、`w_cn_lr`、`w_cn_lr_add`、`w_cn_slz_1`、`w_cn_dz_xz`、`w_cn_dz_ny`、`w_cn_dz` 的可执行窗口/事件。已知外层控件采用原 PBU 的相对矩形，未宣称 PBU 到像素的换算。单据增加/修改强制注入 `ICashierDataWindowFactory`；原 `dw_cn_lr_add` 内部坐标、编辑风格、焦点流未完整恢复，产品代码不猜这些值。日记账第二表面和各表视觉列序也未通过原版对照。
