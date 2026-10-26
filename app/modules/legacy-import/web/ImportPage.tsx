@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   Alert,
@@ -12,7 +12,7 @@ import {
   Table,
   Typography,
 } from 'antd';
-import { centsToYuan } from '@caiwu/core';
+import { centsToYuan, sumCents } from '@caiwu/core';
 import { coreApi, usePermission, useSession } from '@caiwu/web-kit';
 import { PageContainer, useUrlFilters } from '@caiwu/ui';
 import {
@@ -57,6 +57,10 @@ export default function ImportPage() {
   const [localError, setLocalError] = useState('');
   const inspect = useMutation(
     api.inspect.mutationOptions({
+      onMutate: () => {
+        setPrepared(null);
+        setConfirmation('');
+      },
       onSuccess: (value) => {
         setInspection(value);
         setMappings(value.mappings);
@@ -66,6 +70,10 @@ export default function ImportPage() {
   );
   const prepare = useMutation(
     api.prepare.mutationOptions({
+      onMutate: () => {
+        setPrepared(null);
+        setConfirmation('');
+      },
       onSuccess: (value) => {
         setPrepared(value);
         setFilters({ id: value.id });
@@ -84,6 +92,34 @@ export default function ImportPage() {
     }),
   );
   const busy = inspect.isPending || prepare.isPending || execute.isPending;
+  // 地址栏、前进/后退也会切换批次；历史批次不能恢复旧的提交资格。
+  useEffect(() => {
+    setPrepared((current) => (current?.id === filters.id ? current : null));
+    setConfirmation('');
+  }, [filters.id]);
+  const matchesSelection =
+    prepared != null &&
+    prepared.id === filters.id &&
+    selected.data?.id === prepared.id &&
+    selected.data.status === 'prepared' &&
+    !selected.isFetching &&
+    !selected.isError;
+  const submit = () => {
+    // 提交事件再检查三方身份，不能只依赖确认卡片/按钮的显示条件。
+    if (
+      busy ||
+      !matchesSelection ||
+      !prepared ||
+      selected.data?.id !== prepared.id ||
+      filters.id !== prepared.id ||
+      confirmation !== `导入 ${book?.name}`
+    ) {
+      setPrepared(null);
+      setConfirmation('');
+      return;
+    }
+    execute.mutate({ id: selected.data.id, confirmation });
+  };
   const invalidate = () => {
     setInspection(null);
     setPrepared(null);
@@ -250,6 +286,7 @@ export default function ImportPage() {
                           }))}
                           onChange={(value: string | undefined) => {
                             setPrepared(null);
+                            setConfirmation('');
                             const next = { ...mappings[kind] };
                             if (value) next[field] = value;
                             else delete next[field];
@@ -291,6 +328,7 @@ export default function ImportPage() {
                       disabled={busy}
                       onChange={(value) => {
                         setPrepared(null);
+                        setConfirmation('');
                         setExpected({ ...expected, [key]: value ?? undefined });
                       }}
                     />
@@ -313,13 +351,20 @@ export default function ImportPage() {
             </Space>
           </Card>
         )}
-        {prepared && canExecute && (
+        {prepared && data && matchesSelection && canExecute && (
           <Card title="3. 确认导入">
             <Space orientation="vertical">
               <Alert
                 type="info"
                 title="全量演练及回读通过，演练写入已回滚。预检 30 分钟内有效；全部凭证按来源待审核状态导入。"
               />
+              <Typography.Text>待提交批次：{prepared.id}</Typography.Text>
+              <Typography.Text>
+                来源凭证：{data.plan.vouchers.map((v) => v.sourceId).join('、')}；借方合计：
+                {centsToYuan(
+                  sumCents(data.plan.vouchers.flatMap((v) => v.lines.map((l) => l.debit))),
+                )}
+              </Typography.Text>
               <label>
                 请输入「导入 {book?.name}」
                 <Input
@@ -330,9 +375,9 @@ export default function ImportPage() {
               </label>
               <Button
                 type="primary"
-                disabled={busy || confirmation !== `导入 ${book?.name}`}
+                disabled={busy || !matchesSelection || confirmation !== `导入 ${book?.name}`}
                 loading={execute.isPending}
-                onClick={() => execute.mutate({ id: prepared.id, confirmation })}
+                onClick={submit}
               >
                 确认导入新空账
               </Button>
@@ -343,7 +388,17 @@ export default function ImportPage() {
         <Card title="导入批次与来源核对">
           <Space wrap>
             {batches.data?.map((b) => (
-              <Button key={b.id} onClick={() => setFilters({ id: b.id })}>
+              <Button
+                key={b.id}
+                aria-label={`查看导入批次 ${b.id}`}
+                aria-pressed={filters.id === b.id}
+                disabled={busy}
+                onClick={() => {
+                  setPrepared(null);
+                  setConfirmation('');
+                  setFilters({ id: b.id });
+                }}
+              >
                 {b.status === 'completed' ? '已导入' : '已预检'} {b.createdAt}（{b.counts.vouchers}{' '}
                 张）
               </Button>
