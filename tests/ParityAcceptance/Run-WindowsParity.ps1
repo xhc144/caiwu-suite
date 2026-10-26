@@ -63,11 +63,47 @@ try {
         & dotnet run --project $project -c Release --no-restore -p:TreatWarningsAsErrors=true -- (Join-Path $OutputDirectory 'delivery-components.json')
         if ($LASTEXITCODE -ne 0) { throw 'Delivery safety regressions failed.' }
     }
+    if (Test-Path 'tests/ParityAcceptance/Authorization/Caiwu.ParityAuthorization.csproj') {
+        Invoke-EvidenceStep 'real-session-preview-core-sqlite-and-cashier' {
+            $project = 'tests/ParityAcceptance/Authorization/Caiwu.ParityAuthorization.csproj'
+            & dotnet restore $project --locked-mode --nologo
+            if ($LASTEXITCODE -ne 0) { throw 'Protected composition locked restore failed.' }
+            & dotnet run --project $project -c Release --no-restore -p:TreatWarningsAsErrors=true -- (Join-Path $OutputDirectory 'authorized-integration.json')
+            if ($LASTEXITCODE -ne 0) { throw 'Actual protected Core/SQLite composition failed.' }
+        }
+    }
+    if (Test-Path 'tests/Caiwu.Cashier.Tests/WindowsRegression/Caiwu.Cashier.WindowsRegression.csproj') {
+        Invoke-EvidenceStep 'cashier-wpf-cas-boundary-synthetic-ledger-double' {
+            $project = 'tests/Caiwu.Cashier.Tests/WindowsRegression/Caiwu.Cashier.WindowsRegression.csproj'
+            & dotnet restore $project --locked-mode --nologo
+            if ($LASTEXITCODE -ne 0) { throw 'Cashier native regression locked restore failed.' }
+            & dotnet build $project -c Release --no-restore -p:TreatWarningsAsErrors=true --nologo
+            if ($LASTEXITCODE -ne 0) { throw 'Cashier native regression build failed.' }
+            $dll = Join-Path $root 'tests/Caiwu.Cashier.Tests/WindowsRegression/bin/Release/net10.0-windows/Caiwu.Cashier.WindowsRegression.dll'
+            $process = Start-Process (Get-Command dotnet).Source -ArgumentList ('"' + $dll + '"') -PassThru -RedirectStandardOutput (Join-Path $OutputDirectory 'cashier-wpf-stdout.log') -RedirectStandardError (Join-Path $OutputDirectory 'cashier-wpf-stderr.log')
+            if (-not $process.WaitForExit(60000)) { $process.Kill($true); throw 'Cashier WPF regression timed out.' }
+            if ($process.ExitCode -ne 0) { throw 'Cashier WPF regression failed; inspect logs.' }
+        }
+    }
     if ($CaptureNative) {
         Invoke-EvidenceStep 'native-product-rendering-diagnostic' {
             # Existing capture harness runs only self-authored WPF with synthetic identities/books.
             # Its PNGs establish rendering of this SHA; original UI parity stays not-tested.
-            & ./tests/Caiwu.Acceptance/HighResolution/run.ps1 -OutputDirectory (Join-Path $OutputDirectory 'native')
+            if (Test-Path 'src/Caiwu.Desktop/Shell/Tests/Windows/run.ps1') {
+                $nativeOutput = Join-Path $OutputDirectory 'native'
+                New-Item -ItemType Directory -Force $nativeOutput | Out-Null
+                & dotnet build src/Caiwu.Desktop/Shell/Tests/Windows/Caiwu.Shell.Windows.Tests.csproj -c Release -p:TreatWarningsAsErrors=true --nologo
+                if ($LASTEXITCODE -ne 0) { throw 'Candidate shell native host build failed.' }
+                $env:CAIWU_SHELL_SOURCE_SHA = $ExpectedCommit
+                $hostDll = Join-Path $root 'src/Caiwu.Desktop/Shell/Tests/Windows/bin/Release/net10.0-windows/Caiwu.Shell.Windows.Tests.dll'
+                $nativeProcess = Start-Process (Get-Command dotnet).Source -ArgumentList @(('"' + $hostDll + '"'), ('"' + $nativeOutput + '"')) -PassThru -RedirectStandardOutput (Join-Path $nativeOutput 'stdout.log') -RedirectStandardError (Join-Path $nativeOutput 'stderr.log')
+                if (-not $nativeProcess.WaitForExit(90000)) { $nativeProcess.Kill($true); throw 'Candidate shell native host timed out; no UI pass inferred.' }
+                if ($nativeProcess.ExitCode -ne 0) { throw 'Candidate shell native host failed.' }
+                $shell = Get-Content -Raw (Join-Path $OutputDirectory 'native/native-shell.json') | ConvertFrom-Json
+                if (-not $shell.succeeded -or $shell.sourceSha -cne $ExpectedCommit) { throw 'Candidate native shell identity/result mismatch.' }
+            } else {
+                & ./tests/Caiwu.Acceptance/HighResolution/run.ps1 -OutputDirectory (Join-Path $OutputDirectory 'native')
+            }
             if ($LASTEXITCODE -ne 0) { throw 'Native product capture failed.' }
         }
     }

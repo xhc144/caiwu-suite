@@ -1,7 +1,7 @@
 name: Exact-SHA parity integration components
 on:
   push:
-    branches: [codex/parity-integration-20261026]
+    branches: [codex/parity-integration-20261026, codex/parity-integration-candidate-20261026]
     paths:
       - '.github/workflows/parity-integration.yml'
       - 'src/**'
@@ -38,6 +38,7 @@ jobs:
           path: |
             artifacts/parity-windows/*.json
             artifacts/parity-windows/*.trx
+            artifacts/parity-windows/*.log
             artifacts/parity-windows/native/*.png
             artifacts/parity-windows/native/*.json
             artifacts/parity-windows/native/*.log
