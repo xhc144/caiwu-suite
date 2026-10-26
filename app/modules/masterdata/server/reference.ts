@@ -49,6 +49,7 @@ export function referenceService(svc: CoreServices) {
           sort: r.sort,
           symbol: r.symbol,
           isBase: !!r.is_base,
+          pinyin: initials(r.name),
         }));
       if (kind === 'summaries')
         return (
@@ -83,6 +84,7 @@ export function referenceService(svc: CoreServices) {
             : r.code,
         shortName: kind === 'voucherTypes' ? r.code : '',
         name: r.name,
+        pinyin: initials(r.name),
         disabled: !!r.disabled,
         sort: r.sort,
       }));
