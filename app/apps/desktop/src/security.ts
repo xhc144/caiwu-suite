@@ -20,6 +20,17 @@ export function safeExternalUrl(raw: string): string | null {
   }
 }
 
+/** 保留现有 Excel 等 Blob 导出，仅本地服务 URL 或该 origin 的 Blob 可以进入保存对话框。 */
+export function isLocalDownload(raw: string, origin: string): boolean {
+  if (isLocalUrl(raw, origin)) return true;
+  try {
+    const url = new URL(raw);
+    return url.protocol === 'blob:' && isLocalUrl(url.pathname, origin);
+  } catch {
+    return false;
+  }
+}
+
 export function assertSender(
   event: { sender: unknown; senderFrame: unknown },
   owner: { webContents: unknown; mainFrame: unknown; url: string } | null,

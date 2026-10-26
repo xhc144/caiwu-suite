@@ -67,7 +67,16 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
   const install = async (file: string) => {
     const code = await run(file, ['/S', '/currentuser', `/D=${path.dirname(executable)}`]);
     expect(code, 'NSIS 安装退出码').toBe(0);
-    await expect.poll(() => existsSync(executable)).toBe(true);
+    const base = path.dirname(executable);
+    const actual = existsSync(base)
+      ? readdirSync(base, { recursive: true })
+          .filter((name) => typeof name === 'string' && name.endsWith('.exe'))
+          .slice(0, 20)
+      : [];
+    expect(
+      existsSync(executable),
+      `NSIS 必须安装到指定位置；本次安装目录中的 exe：${JSON.stringify(actual)}`,
+    ).toBe(true);
   };
   const launch = () =>
     _electron.launch({
@@ -94,6 +103,11 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     desktop = await launch();
     let page = await desktop.firstWindow();
     await expect(page.getByText('测试账套', { exact: true })).toBeVisible();
+    await expect
+      .poll(() =>
+        desktop!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible()),
+      )
+      .toBe(true);
     expect(
       await page.evaluate(
         async () => (await (window.caiwuDesktopHost as DesktopHost).dataDirectory.get()).path,
@@ -118,6 +132,23 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     expect(
       await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
     ).toBe(1);
+
+    // 验证主窗口原有 Blob 导出仍可保存；适配原生保存路径，文件由真实下载管理器写入。
+    const exported = path.join(root, '合成导出.txt');
+    await desktop.evaluate(({ session }, file) => {
+      session.defaultSession.once('will-download', (_event, item) => item.setSavePath(file));
+    }, exported);
+    await page.evaluate(() => {
+      const url = URL.createObjectURL(new Blob(['合成导出'], { type: 'text/plain;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = '合成导出.txt';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+    await expect
+      .poll(() => (existsSync(exported) ? readFileSync(exported, 'utf8') : ''))
+      .toBe('合成导出');
 
     if (installed) {
       const installDir = path.dirname(executable);

@@ -22,6 +22,7 @@ import {
   assertSender,
   fileName,
   isLocalUrl,
+  isLocalDownload,
   pdfName,
   printDocument,
   printInput,
@@ -665,7 +666,30 @@ async function initialize() {
     callback(false),
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
-  session.defaultSession.on('will-download', (event) => event.preventDefault());
+  session.defaultSession.on('will-download', (event, item, owner) => {
+    const win = mainWindow;
+    if (
+      !win ||
+      win.isDestroyed() ||
+      owner !== win.webContents ||
+      !isLocalUrl(owner.getURL(), origin) ||
+      !isLocalDownload(item.getURL(), origin)
+    ) {
+      event.preventDefault();
+      return;
+    }
+    try {
+      item.setSaveDialogOptions({
+        title: '保存导出文件',
+        defaultPath: path.join(app.getPath('documents'), fileName(item.getFilename())),
+        buttonLabel: '保存',
+        properties: ['showOverwriteConfirmation', 'createDirectory'],
+      });
+    } catch {
+      event.preventDefault();
+      dialog.showErrorBox('导出未保存', '导出文件名含有不支持的字符，请修改名称后重新导出');
+    }
+  });
   registerIpc();
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([

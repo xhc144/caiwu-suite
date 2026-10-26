@@ -11,6 +11,7 @@ import {
   assertSender,
   fileName,
   isLocalUrl,
+  isLocalDownload,
   pdfName,
   printDocument,
   printInput,
@@ -259,6 +260,15 @@ describe('IPC、导航及打印安全', () => {
     ])
       expect(safeExternalUrl(url)).toBeNull();
     expect(safeExternalUrl('https://example.com/help')).toBe('https://example.com/help');
+    expect(isLocalDownload(`blob:${origin}/synthetic-export`, origin)).toBe(true);
+    expect(isLocalDownload(`${origin}/export`, origin)).toBe(true);
+    for (const url of [
+      `blob:${origin}9/export`,
+      'blob:https://example.com/export',
+      'data:text/plain,x',
+      'file:///tmp/x',
+    ])
+      expect(isLocalDownload(url, origin)).toBe(false);
   });
   it('其他窗口、iframe、失效的主窗口以及外部网页均无文件/打印能力', () => {
     const sender = {};
