@@ -176,4 +176,16 @@ public sealed class WritableLedgerTests
         Assert.Equal("NP_TOTAL_OVERFLOW", Assert.Throws<NonprofitValidationException>(() => f.Service.PostMonth(1, f.Context, "poster")).Code);
         Assert.Equal(before, File.ReadAllBytes(f.FilePath)); Assert.Equal(NonprofitVoucherState.Reviewed, f.Service.GetSnapshot().Vouchers.Single(x => x.Id == v.Id).State);
     }
+
+    [Fact]
+    public void SourceClaimsSurviveDraftDeletionAndCannotBeReboundDuringEdit()
+    {
+        using var f = new WritableLedgerFixture(); var proposal = Guid.NewGuid();
+        var draft = Draft(Line("1002", 1, 0), Line("4101", 0, 1, U)) with { SourceProposalId = proposal };
+        var v = f.Save(draft);
+        Assert.Equal("NP_REQUEST_ID_CONFLICT", Assert.Throws<NonprofitValidationException>(() => f.Save(draft with { Id = v.Id, SourceProposalId = Guid.NewGuid() })).Code);
+        var retained = f.Save(draft with { Id = v.Id, SourceProposalId = null }); Assert.Equal(proposal, retained.SourceProposalId);
+        f.Service.DeleteDraft(v.Id, f.Context, "maker");
+        Assert.Equal("NP_DUPLICATE_REQUEST", Assert.Throws<NonprofitValidationException>(() => f.Save(draft)).Code);
+    }
 }

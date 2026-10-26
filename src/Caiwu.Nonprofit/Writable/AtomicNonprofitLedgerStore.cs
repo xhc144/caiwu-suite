@@ -32,7 +32,9 @@ public sealed class AtomicNonprofitLedgerStore : INonprofitLedgerStore
 
     public NonprofitLedgerSnapshot Read()
     {
-        var bytes = File.ReadAllBytes(path);
+        byte[] bytes;
+        using (var input = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+        using (var copy = new MemoryStream()) { input.CopyTo(copy); bytes = copy.ToArray(); }
         using (var document = JsonDocument.Parse(bytes)) RejectDuplicateKeys(document.RootElement);
         var envelope = JsonSerializer.Deserialize<Envelope>(bytes, Json) ?? throw new InvalidDataException("账簿为空。");
         if (envelope.Format != Format || envelope.Snapshot is null || envelope.Sha256 != Digest(envelope.Snapshot))

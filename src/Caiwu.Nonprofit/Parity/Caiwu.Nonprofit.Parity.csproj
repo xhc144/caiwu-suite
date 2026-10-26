@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <ParityContractsProject Condition="'$(ParityContractsProject)' == ''">$(MSBuildThisFileDirectory)../../Caiwu.Contracts/Caiwu.Contracts.csproj</ParityContractsProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Caiwu.Nonprofit.csproj" />
+    <ProjectReference Include="$(ParityContractsProject)" />
+  </ItemGroup>
+</Project>

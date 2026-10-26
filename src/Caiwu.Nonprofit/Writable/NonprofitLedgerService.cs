@@ -88,14 +88,21 @@ public sealed partial class NonprofitLedgerService
         var old = draft.Id is { } id ? Voucher(s, id) : null;
         Check(old is null || old.State == NonprofitVoucherState.Draft, "NP_VOUCHER_READONLY", "已审核/过账凭证不能直接修改，请先执行逆操作。");
         if (old is not null) OpenMonth(s, old.Date.Month);
+        Check(draft.SourceProposalId != Guid.Empty, "NP_REQUEST_ID", "来源提案ID不能是空GUID。");
+        Check(old?.SourceProposalId is null || draft.SourceProposalId is null || old.SourceProposalId == draft.SourceProposalId,
+            "NP_REQUEST_ID_CONFLICT", "已有草稿不能改绑其他来源提案。");
+        var sourceProposalId = old?.SourceProposalId ?? draft.SourceProposalId;
+        var sourceDetail = sourceProposalId is { } source ? "source-proposal:" + source.ToString("D") : "";
+        if (sourceProposalId.HasValue && old is null)
+            Check(!s.Audit.Any(a => a.Action == "SaveDraft" && a.Detail == sourceDetail), "NP_DUPLICATE_REQUEST", "此来源已生成过草稿；删除草稿也不解除来源认领。");
         var number = draft.Number ?? old?.Number ?? checked(s.Vouchers.Where(v => v.Date.Month == draft.Date.Month && v.Kind == draft.Kind).Select(v => v.Number).DefaultIfEmpty().Max() + 1);
         var prior = old?.Lines.ToDictionary(l => l.Id) ?? [];
         var lines = draft.Lines.Select(l => prior.TryGetValue(l.Id, out var before) ? l with { OriginalFields = Preserve(before.OriginalFields, l.OriginalFields) } : l).ToArray();
         foreach (var line in lines) Check(Leaf(s, line.AccountCode).Active, "NP_INACTIVE_ACCOUNT", "停用科目不能新增/修改分录。");
         var v = new NonprofitLedgerVoucher(old?.Id ?? Guid.NewGuid(), draft.Date, draft.Kind, number, draft.AttachmentCount,
             old?.PreparedBy ?? actor, null, null, old?.PreparedAt ?? clock.GetUtcNow(), null, null, NonprofitVoucherState.Draft,
-            draft.Role, draft.EvidenceReference, draft.SourceProposalId, lines, Preserve(old?.OriginalFields ?? [], draft.OriginalFields));
-        Commit(s, s with { Vouchers = s.Vouchers.Where(x => x.Id != v.Id).Append(v).ToArray() }, actor, "SaveDraft", v.Id);
+            draft.Role, draft.EvidenceReference, sourceProposalId, lines, Preserve(old?.OriginalFields ?? [], draft.OriginalFields));
+        Commit(s, s with { Vouchers = s.Vouchers.Where(x => x.Id != v.Id).Append(v).ToArray() }, actor, "SaveDraft", v.Id, sourceDetail);
         return AtomicNonprofitLedgerStore.Freeze(s with { Vouchers = [v] }).Vouchers[0];
     }
 

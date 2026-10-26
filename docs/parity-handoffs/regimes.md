@@ -55,3 +55,15 @@
 - 模块报表需要同次读取账簿与民非文档；能否把全部不含基础金额的分类/到期分析与复核作为模块文档统一备份，避免外置JSON成为权威。
 
 仍未实现：受限复币/数量损益的自动结转（有据拒绝，不猜方向）；所得税自动结转/转类/3201前期调整的独立审批；跨年、SQL Anywhere原账套无损导入、完整44模板内容、主桌面可写接线及Windows实机。普通手工合成凭证可保留复币/数量全部精度与辅助信息，但这不代表全部原外币/数量业务规则已经实现。
+
+## 同账套桥接检查点（PR52 冻结契约）
+
+第一实现提交 `6aa963f4ada1ab373ca3b08a2b489fe7e3c1b641`已推私有PR48。新增独占 `src/Caiwu.Nonprofit/Parity` 项目及 `tests/Caiwu.Nonprofit.Tests/Parity`，基线领域/报表/WPF项目仍独立可构建；Parity项目需公共契约PR52（未拣选到本分支共享文件）。
+
+实际API `NonprofitParityAdapter`：RegisterBookDefinition、ConfirmOpeningClassification、AcceptDraft、ReadAcceptedVouchers、ReviewAccepted、CancelReviewAccepted、PostAccepted、DeleteAcceptedDraft、ReadWritableSnapshot、Registration。默认要求同一host同时实现 IParityLedgerService/ILedgerService；缺宿主不能悄悄退回独立JSON。模块ID `regimes.nonprofit.v1`。完整文档、来源认领与公共新草稿通过一次 AcceptVoucherProposal 事务提交；没有外部权威JSON。基础投影不丢掉完整文档中的原列、未知列、限定分类、稳定ID和所有精度维度。文档/实际凭证不符、未分类公共凭证、未知文档版本、缺真正Review/Post时间或已变期初均明确失败。
+
+仅对“已经保存”的公共科目/期初添加一致的完整元数据/分类；不能据此说新账初始化或期初编辑已同事务接通。原窗口注册引用 minfeiqi/main 的 w_zw_jz 与 w_zw_ydjz 真实菜单路径；w_pz_pzedit 开窗入口已知静态资料为空，标为 unknown，不编造菜单。
+
+独立临时契约checkout `/tmp/caiwu-regimes-contracts` 固定 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85`。Parity Release/最终TRX另记；当前Debug对冻结契约0警告0错误，7个适配器合成宿主测试通过，验证同次投影/文档、原字段精度、旧token/提交失败、已删来源认领、增强草稿失配、高版本/重复键拒绝、权限、真实审计来源缺失。**没有把合成ContractHost当作真实Core/SQLite实现。**
+
+给integration下一步：注册这两个独占项目（Nonprofit.Wpf、Nonprofit.Parity）与已有Nonprofit.Reporting；正式读写使用Parity而不是AtomicNonprofitLedgerStore。普通Core Review/Post必须保留全部模块文档和收据，动作审计沿既有 `Review`/`Post` 与稳定VoucherId。新开民非账套需由books/integration在科目/期初写入的同事务初始化book-definition/opening-classification；已有草稿增强编辑、月度批量/反向操作的公共API仍待ledger/integration统一，不在本模块绕过公共权限或直接写SQLite。
