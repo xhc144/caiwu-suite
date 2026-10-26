@@ -194,11 +194,7 @@ test('w_preview_zc：多页账簿承前过次不重复累计，PDF 实际分页�
     .click();
   await expect(page.getByText('已停止后续打印，已提交 2 页', { exact: true })).toBeVisible();
 });
-test('w_xt_tz_zc / w_bb_def_gs：设置立即生效与恢复确认，模板未保存关闭保存/放弃/取消', async ({
-  page,
-  request,
-  context,
-}) => {
+test('w_xt_tz_zc：设置立即生效、刷新持久化与恢复默认取消', async ({ page, request }) => {
   await loginWithNewBook(page, request);
   await installBridge(page);
   await page.goto('/m/print-settings/preview');
@@ -215,6 +211,16 @@ test('w_xt_tz_zc / w_bb_def_gs：设置立即生效与恢复确认，模板未�
   await expect(page.getByLabel('打印单位名称', { exact: true })).toHaveValue('保存后立即生效');
   await page.getByRole('link', { name: '特殊打印格式', exact: true }).click();
   await expect(page).toHaveURL(/\/formats/);
+});
+
+test('w_bb_def_gs：未保存关闭取消/保存/放弃与保存模板实际 PDF', async ({
+  page,
+  request,
+  context,
+}) => {
+  await loginWithNewBook(page, request);
+  await installBridge(page);
+  await page.goto('/m/print-settings/formats');
   await page.getByRole('button', { name: '新建格式', exact: true }).click();
   await page.getByLabel('格式名称', { exact: true }).fill('我的模板');
   await page.getByRole('button', { name: '关闭定义', exact: true }).click();
@@ -237,7 +243,54 @@ test('w_xt_tz_zc / w_bb_def_gs：设置立即生效与恢复确认，模板未�
   await actualPdf(page, context, 1);
 });
 
-test('w_pz_prn_1_a4：1/2/3 张和复杂凭证续页实际 PDF，无跨号、丢行或金额覆盖', async ({
+// 每种纸张布局、实际比例及复杂续页分别使用独立账套和原有 30 秒预算。
+for (const perPage of [1, 2, 3] as const) {
+  test(`w_pz_prn_1_a4：每页 ${perPage} 张的实际 PDF 页数与内容边界`, async ({
+    page,
+    request,
+    context,
+  }) => {
+    const book = await loginWithNewBook(page, request);
+    await seedBook(
+      book.bookId,
+      Array.from({ length: 3 }, (_, i) => simple(i + 1)),
+    );
+    await installBridge(page);
+    const s = structuredClone(defaultSettings);
+    s.voucher.perPage = perPage;
+    await callApi(request, 'm.print-settings.saveSettings', s, { token: book.token });
+    await page.goto('/m/print-settings/preview?from=202601&to=202601&queried=1');
+    await expect(page.getByTestId('page-count')).toHaveText(`共 ${Math.ceil(3 / perPage)} 页`);
+    await actualPdf(page, context, Math.ceil(3 / perPage));
+  });
+}
+
+test('w_pz_prn_1_a4：实际比例 50% 保存后刷新，三张同页实际 PDF', async ({
+  page,
+  request,
+  context,
+}) => {
+  const book = await loginWithNewBook(page, request);
+  await seedBook(
+    book.bookId,
+    Array.from({ length: 3 }, (_, i) => simple(i + 1)),
+  );
+  await installBridge(page);
+  const s = structuredClone(defaultSettings);
+  s.voucher.perPage = 3;
+  await callApi(request, 'm.print-settings.saveSettings', s, { token: book.token });
+  await page.goto('/m/print-settings/preview?from=202601&to=202601&queried=1');
+  await expect(page.getByTestId('page-count')).toHaveText('共 1 页');
+  const scaled = structuredClone(defaultSettings);
+  scaled.voucher.scale = 50;
+  scaled.voucher.perPage = 3;
+  await callApi(request, 'm.print-settings.saveSettings', scaled, { token: book.token });
+  await page.reload();
+  await expect(page.getByTestId('page-count')).toHaveText('共 1 页');
+  await actualPdf(page, context, 1);
+});
+
+test('w_pz_prn_1_a4：复杂凭证续页实际 PDF，无跨号、丢行或金额覆盖', async ({
   page,
   request,
   context,
@@ -248,21 +301,6 @@ test('w_pz_prn_1_a4：1/2/3 张和复杂凭证续页实际 PDF，无跨号、丢
     Array.from({ length: 3 }, (_, i) => simple(i + 1)),
   );
   await installBridge(page);
-  for (const perPage of [1, 2, 3] as const) {
-    const s = structuredClone(defaultSettings);
-    s.voucher.perPage = perPage;
-    await callApi(request, 'm.print-settings.saveSettings', s, { token: book.token });
-    await page.goto('/m/print-settings/preview?from=202601&to=202601&queried=1');
-    await expect(page.getByTestId('page-count')).toHaveText(`共 ${Math.ceil(3 / perPage)} 页`);
-    await actualPdf(page, context, Math.ceil(3 / perPage));
-  }
-  const scaled = structuredClone(defaultSettings);
-  scaled.voucher.scale = 50;
-  scaled.voucher.perPage = 3;
-  await callApi(request, 'm.print-settings.saveSettings', scaled, { token: book.token });
-  await page.reload();
-  await expect(page.getByTestId('page-count')).toHaveText('共 1 页');
-  await actualPdf(page, context, 1);
   const complex = await seedBook(book.bookId, [
     {
       date: '2026-01-08',
