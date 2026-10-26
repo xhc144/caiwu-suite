@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Logic/*.cs" Link="Logic/%(Filename)%(Extension)" />
+    <Compile Include="../../../Presentation/LedgerSession.cs" Link="LedgerSession.cs" />
+    <Compile Include="../../../Presentation/SessionBoundMutation.cs" Link="SessionBoundMutation.cs" />
+    <ProjectReference Include="../../../../Caiwu.Core/Caiwu.Core.csproj" />
+    <ProjectReference Include="../../../../Caiwu.Operators/Caiwu.Operators.csproj" />
+    <ProjectReference Include="../../../../Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />
+  </ItemGroup>
+</Project>

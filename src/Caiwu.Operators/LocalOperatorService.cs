@@ -39,6 +39,13 @@ public sealed class LocalOperatorService
         });
     }
 
+    /// <summary>Local login picker only: enabled login codes, no roles, hashes, stamps or session credentials.</summary>
+    public IReadOnlyList<string> GetLoginNames()
+    {
+        lock (_gate) return _store.Access(doc => (IReadOnlyList<string>)(doc?.Operators
+            .Where(x => x.IsEnabled).Select(x => x.LoginName).OrderBy(x => x, StringComparer.Ordinal).ToArray() ?? []));
+    }
+
     public OperatorSession Login(string loginName, string password)
     {
         lock (_gate)
@@ -99,6 +106,21 @@ public sealed class LocalOperatorService
         ArgumentNullException.ThrowIfNull(operation);
         RequireSynchronous<T>();
         lock (_gate) return _store.Access(doc => operation(Require(doc, session, permission).Identity));
+    }
+
+    /// <summary>Authorize every required grant and execute under one identity-store lock.</summary>
+    public T ExecuteWithPermissions<T>(OperatorSession session, IReadOnlyCollection<OperatorPermission> permissions, Func<OperatorIdentity, T> operation)
+    {
+        ArgumentNullException.ThrowIfNull(permissions); ArgumentNullException.ThrowIfNull(operation);
+        var required = permissions.Distinct().ToArray();
+        if (required.Length == 0 || required.Any(p => !Enum.IsDefined(p))) throw new ArgumentException("必须指定有效操作权限。", nameof(permissions));
+        RequireSynchronous<T>();
+        lock (_gate) return _store.Access(doc =>
+        {
+            var actor = Require(doc, session, required[0]);
+            foreach (var permission in required.Skip(1)) Require(doc, session, permission);
+            return operation(actor.Identity);
+        });
     }
 
     /// <summary>Legacy names are rejected. Pass the actual persisted voucher PreparedBy, not UI text.</summary>

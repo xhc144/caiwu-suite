@@ -6,6 +6,10 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
+  <!-- The pinned baseline has no parity contract. Activate only with the integrator-owned actual contract file. -->
+  <PropertyGroup Condition="Exists('$(MSBuildThisFileDirectory)../Caiwu.Contracts/ParityModules.cs')">
+    <DefineConstants>$(DefineConstants);CAIWU_PARITY_MODULES</DefineConstants>
+  </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Caiwu.Contracts/Caiwu.Contracts.csproj" />
     <ProjectReference Include="../Caiwu.Core/Caiwu.Core.csproj" />
@@ -25,5 +29,6 @@
   <ItemGroup>
     <!-- Synthetic verification is compiled only by independent test hosts, never the shipped application. -->
     <Compile Remove="Verification/**/*.cs" />
+    <Compile Remove="Shell/Tests/**/*.cs" />
   </ItemGroup>
 </Project>

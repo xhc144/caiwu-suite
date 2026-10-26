@@ -7,17 +7,22 @@ namespace Caiwu.Operators;
 /// Legacy operatorName/reviewer parameters are ignored; trusted immutable actor keys come from the session.
 /// Original mutation contexts and draft tokens pass through unchanged to Core's final CAS check.
 /// </summary>
-public sealed class AuthorizedLedgerService : ILedgerService
+public sealed partial class AuthorizedLedgerService : ILedgerService
+#if CAIWU_PARITY_MODULES
+    , IParityLedgerService
+#endif
 {
     private readonly ILedgerService _inner;
     private readonly LocalOperatorService _operators;
     private readonly OperatorSession _session;
+    private readonly ParityModuleWritePolicy? _moduleWritePermissions;
 
-    public AuthorizedLedgerService(ILedgerService inner, LocalOperatorService operators, OperatorSession session)
+    public AuthorizedLedgerService(ILedgerService inner, LocalOperatorService operators, OperatorSession session, ParityModuleWritePolicy? moduleWritePermissions = null)
     {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _operators = operators ?? throw new ArgumentNullException(nameof(operators));
         _session = session ?? throw new ArgumentNullException(nameof(session));
+        _moduleWritePermissions = moduleWritePermissions;
         _operators.RequirePermission(_session, OperatorPermission.ReadLedger);
     }
 
@@ -82,7 +87,7 @@ public sealed class AuthorizedLedgerService : ILedgerService
 public static class AuthorizedLedgerServiceFactory
 {
     public static Func<ILedgerStore, ILedgerService> BindSession(LocalOperatorService operators, OperatorSession session,
-        Func<ILedgerStore, ILedgerService> trustedFactory)
+        Func<ILedgerStore, ILedgerService> trustedFactory, ParityModuleWritePolicy? moduleWritePermissions = null)
     {
         ArgumentNullException.ThrowIfNull(operators); ArgumentNullException.ThrowIfNull(session); ArgumentNullException.ThrowIfNull(trustedFactory);
         operators.RequirePermission(session, OperatorPermission.ReadLedger);
@@ -90,7 +95,7 @@ public static class AuthorizedLedgerServiceFactory
         {
             // Reject a logged-out factory before invoking even the trusted raw factory.
             operators.RequirePermission(session, OperatorPermission.ReadLedger);
-            return new AuthorizedLedgerService(trustedFactory(store), operators, session);
+            return new AuthorizedLedgerService(trustedFactory(store), operators, session, moduleWritePermissions);
         };
     }
 }

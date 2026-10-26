@@ -3,8 +3,13 @@ using Caiwu.Contracts;
 namespace Caiwu.Desktop.Presentation;
 
 /// <summary>The current desktop has no complete nonprofit restriction model; keep such books read-only.</summary>
-public sealed class PreviewLedgerService(ILedgerService inner) : ILedgerService
+public sealed partial class PreviewLedgerService : ILedgerService
+#if CAIWU_PARITY_MODULES
+    , IParityLedgerService
+#endif
 {
+    private readonly ILedgerService inner;
+    public PreviewLedgerService(ILedgerService inner) => this.inner = inner ?? throw new ArgumentNullException(nameof(inner));
     public static bool AllowsWrites(BookInfo book) => book.Regime != AccountingRegime.Nonprofit;
     public static void DemandWritable(BookInfo book)
     {
