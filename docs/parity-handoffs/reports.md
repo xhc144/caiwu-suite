@@ -57,3 +57,11 @@ WPF：`Wpf/Cells/CellReportControl` 为模块所有；使用真实DataGrid，实
 Linux合成模块测试82/82通过（其中旧列设计器57、新二维切片25），可选PR52契约适配测试4/4通过；WPF+CellWindowsSmoke严格Release交叉编译0警告/0错误。具体命令、手算、合成I/O和未验Windows项见 `tests/Caiwu.ReportDesigner.Tests/CELL-VALIDATION.md`。编译和数量不表示原版全功能完成。
 
 没有权限拒绝、待批准或不确定远端写入：独占分支与草稿PR已创建。默认沙箱的.NET缓存/命名迁移锁失败后，仅对构建/合成测试申请沙箱外执行，自动审批通过。没有运行原程序、操作真实账套、上传原资源/完整新派生材料、改main或权限。
+
+## Frozen implementation checkpoint
+
+代码冻结提交：`4b7fbb5791c54412ce43fdd920ebd461a2181d02`。此前早期交接为 `1cf81228b2ded561dd022384200f7904605516ee`。集成需按此顺序取提交，不能只cherry-pick实现提交而漏掉新建handoff文件；本段属于随后单独的文档提交，不改已测代码。PR #44 保持草稿，分支独占私有。
+
+最终本轮证据：`tests/Caiwu.ReportDesigner.Tests/evidence/cell-parity-20261026.json` 保存真实TRX计数/时间/哈希与对应模块源文件SHA256；最后源代码测试82/82、契约适配4/4，最后WPF/CellWindowsSmoke严格交叉编译退出0、0警告/0错误。局部手算与I/O链说明见CELL-VALIDATION。未运行Windows宿主、原程序、原账套；无原版全部功能/菜单或像素视觉完成声明。
+
+文件用途（已读/已验证）：Cells/*.cs 为模型/闭语法/拓扑计算/完整快照/原子JSON/安全导出（high，合成行为测试）；Wpf/Cells/*.cs 为本模块单元格界面和比例格式对话框（medium，仅交叉编译）；Integration/* 为PR52可选权威模块文档适配（medium，固定契约fake服务验证，真实事务未接通）；CellSheetTests.cs 为独立手算及实际I/O闭环（high，已运行）；CellWindowsSmoke/* 为新WPF原生合成宿主（medium，仅编译）；ParityIntegration/* 为契约调用/未知字段保留/失败传播（high，仅其合成声明范围）。
