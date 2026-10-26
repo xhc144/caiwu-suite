@@ -14,6 +14,7 @@ public sealed class CashierService(ICashierStore store, TimeProvider? timeProvid
         {
             RequireAccount(s.Book, account);
             Require(year == s.Book.OpeningDate.Year, "opening.year", "当前切片只编辑开账年度期初；其他年度须由结账建立。");
+            RequireOpeningEditable(s.Book);
             return s with { Openings = s.Openings.Where(x => x.Account != account || x.Year != year)
                 .Append(new OpeningBalance(account, year, balance)).ToArray() };
         });
@@ -21,6 +22,7 @@ public sealed class CashierService(ICashierStore store, TimeProvider? timeProvid
     public CashierSnapshot SaveOpenings(long revision, OpeningBalance[] openings, string actor) =>
         Change(revision, "opening.save.all", actor, "openings", s =>
         {
+            RequireOpeningEditable(s.Book);
             Require(openings.Length > 0 && openings.Select(x => (x.Account, x.Year)).Distinct().Count() == openings.Length,
                 "opening.duplicate", "期初账户重复或没有需要保存的数据。");
             foreach (var opening in openings)
@@ -278,6 +280,11 @@ public sealed class CashierService(ICashierStore store, TimeProvider? timeProvid
         Require(d.GeneratedVoucherId is null, "document.voucher", $"已经生成凭证，不能直接{verb}！请先删除生成凭证。");
         Require(d.Origin == DocumentOrigin.Cashier, "document.origin", $"此记录是其他系统转入，不能{verb}！");
     }
+
+    private static void RequireOpeningEditable(BookDefinition book) => Require(
+        book.ActiveMonth == new DateOnly(book.OpeningDate.Year, book.OpeningDate.Month, 1),
+        "opening.history.protected",
+        "已有结账期间。原版结账后的期初修改规则尚未核实，本切片保护期初为只读；未更新任何历史余额。");
 
     private static T[] SelectUnique<T, TKey>(T[] source, TKey[] ids, Func<T, TKey> key) where TKey : notnull
     {

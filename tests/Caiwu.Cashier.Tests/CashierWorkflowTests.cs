@@ -105,6 +105,24 @@ public sealed class CashierWorkflowTests : IDisposable
         Assert.Equal(200.000002m, service.GetJournal(Usd, Day, Day).Closing);
     }
 
+    [Theory]
+    [InlineData(false)] [InlineData(true)]
+    public void Closed_history_cannot_be_rewritten_by_single_or_screen_opening_save(bool screen)
+    {
+        service.SaveOpening(0, Cash, 2026, 123.123456m, Actor);
+        store.Transact(Snapshot().Revision, s => s with { Book = s.Book with { ActiveMonth = new(2026, 2, 1) } });
+        var before = Snapshot();
+        var failure = Assert.Throws<CashierRuleException>(() =>
+        {
+            if (screen) service.SaveOpenings(before.Revision, [new(Cash, 2026, 999), new(Usd, 2026, 1)], Actor);
+            else service.SaveOpening(before.Revision, Cash, 2026, 999, Actor);
+        });
+        Assert.Equal("opening.history.protected", failure.Code);
+        var after = Snapshot();
+        Assert.Equal(before.Revision, after.Revision); Assert.Equal(before.Openings, after.Openings); Assert.Equal(before.Audit, after.Audit);
+        Assert.Equal(123.123456m, service.GetJournal(Cash, Day, Day).Opening);
+    }
+
     [Fact]
     public void Views_carry_the_revision_they_actually_read_for_stale_selection_protection()
     {

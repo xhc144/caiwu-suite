@@ -53,7 +53,7 @@
 
 - 当前状态：独立模块、事务持久化、窗口外壳/事件、测试用 Windows 工具、公共适配器已实现。
 - 编译：独立模块、WPF、Windows 合成工具、对 PR52 冻结契约的 Integration 项目均成功（0 警告/0 错误）。
-- 合成行为：独立 SQLite 工作流 32 项通过；公共契约适配 14 项通过（替身，非 Core 实机）。包括闭环夹具、实际磁盘重开、整屏期初回滚、SQLite 写入失败回滚、两连接并发 CAS、单号不复用、结账改删限制、已生成/已勾账/外来记录保护、金额精度、月范围、前期未勾账、勾账与整组取消、原差额阈值、稳定来源键、字段降级拒绝，以及下述审核修复回归。
+- 合成行为：独立 SQLite 工作流 34 项通过；公共契约适配 18 项通过（替身，非 Core 实机）。包括闭环夹具、实际磁盘重开、整屏期初回滚、SQLite 写入失败回滚、两连接并发 CAS、单号不复用、结账改删限制、已生成/已勾账/外来记录保护、金额精度、月范围、前期未勾账、勾账与整组取消、原差额阈值、稳定来源键、字段降级拒绝，以及下述审核修复回归。
 - 首轮发现/修复：外币乘积的测试预期手算错误；对账本身不套用单据改删的结账限制；视图携带真实读取 revision，避免显示明细和提交 token 来自不同读取。初次 SDK 命名互斥量初始化失败经允许的 SDK 初始化后消除，无审批拒绝。测试通过仅支持列出的合成行为。
 - 最终定向复核：已生成/已勾账/已结账/外来记录在打开编辑器或删除确认前即检查；建议日期也与原计划核对，禁止只改日期后转凭证。Linux SDK `10.0.403`，锁文件模式下 32+12 合成测试全部通过、无跳过；WPF 与 Windows 合成工具编译 0 警告/0 错误。TRX 本地证据：`tests/Caiwu.Cashier.Tests/TestResults/cashier-domain.trx`、`tests/Caiwu.Cashier.Tests/Integration/TestResults/cashier-adapter.trx`（忽略的构建产物，未入库）。所有 Git 差异均在分配目录内，固定公共契约 worktree 源文件状态干净。
 - Windows UI/键盘/DPI/原版逐窗口对照：未执行。
@@ -87,3 +87,12 @@ dotnet test tests/Caiwu.Cashier.Tests/Integration/Caiwu.Cashier.Integration.Test
 - Linux 已实跑：适配测试 14 项通过（新增公共异常→真实窗口共用操作边界、不重试/不刷新/不清输入/不执行关闭，以及凭证建议同类竞争）；既有 SQLite 32 项通过。
 - `tests/Caiwu.Cashier.Tests/WindowsRegression` 是实际 WPF 菜单事件回归：两窗口读取后在公共 writer 注入 CAS 失败，触发真实期初窗口“存盘”菜单，断言提示、输入/窗口留存、原 Context、无额外 read/write/commit；第二次存盘仍拒绝旧 token。项目编译 0 警告/0 错误，但当前 Linux 未执行 Windows 程序，保持 `not-tested`，不可据此宣告实机通过。
 - Windows 集成者可运行 `dotnet run --project tests/Caiwu.Cashier.Tests/WindowsRegression/Caiwu.Cashier.WindowsRegression.csproj -p:ParityContractsProject=/path/to/fixed-pr52/src/Caiwu.Contracts/Caiwu.Contracts.csproj`。真实公共 Core 竞争、Windows 运行与后续独立审核仍待完成。
+
+## 独立审核修复：定义差异与结账后期初保护
+
+- 已核实固定 PR52 `5bb60d2` 的 `Exceptions.cs`：`StoreConcurrencyException : Exception`，不是原 WPF 过滤器里的任一基类；因此上一项在这一精确契约下确为未处理异常风险。没有凭名称推断继承关系。若集成者更换契约，仍须定点复核，不把本结论扩大到未读版本。
+- 原 P1 确认：旧 `ParityCashierStore.Project` 首次保存后直接沿用 `state.Book`，只替换 `ActiveMonth`，使宿主新定义失效。现在逐字段对照已保存与当前定义：开账日、日期上限、本位币、科目顺序/代码/名称/明细标志/现金流量标志/币种列表。任一差异抛出明确 `store.definition.changed`，不读旧定义后继续写入、不自动迁移、不刷新/重试。唯一排除项是 `ActiveMonth`，它始终取同次公共账套快照的结账期间，不采用宿主的旧值。
+- 回归覆盖：重建 store 后删除 USD、撤销现金流量标志、收紧 LatestDocumentDate 均拒绝读写，旧模块 JSON、revision、写入次数保持；公共 ClosedThroughMonth 前进仍正常生效，不误报定义迁移。
+- 期初政策证据：[w_cn_lr_qc](../original-analysis/products/qingsong/cn/windows/cn.md#w_cn_lr_qc--单据录入) 静态资料只记录期初表与刷新提示，没有直接给出结账后的编辑条件；[w_cn_fz](../original-analysis/products/qingsong/cn/windows/cn.md#w_cn_fz--结账) 明文显示“结账后，将不能再输入…月数据”；[w_cn_lr_qc_nf](../original-analysis/products/qingsong/cn/windows/cn.md#w_cn_lr_qc_nf--选择年份) 表明后续年度期初需结账建立。这不足以声称原版绝对禁止任何年度期初调整，也不能据提示缺失视为允许覆写已结账历史。
+- 当前切片的明确保护：当公共/模块有效月份已经越过开账月份，`SaveOpening` 和整屏 `SaveOpenings` 均以 `opening.history.protected` 拒绝更新，保留原余额/审计/revision；读取与日记账仍可用。提示明确说明“原版结账后的期初修改规则尚未核实，本切片保护期初为只读”，不伪装成已证原规则。完整原版期初调整/反结账策略与无损重算依赖继续留在验收缺口，不能借此永久删除原功能。
+- 此轮新增单项/整屏期初保护和定义回归；Linux 实跑 34+18 合成测试通过，真实窗口竞态回归编译通过。Windows 运行、真实公共 Core 竞争及原版政策对照保持未验证。没有扩大并行或实现新功能。

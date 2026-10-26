@@ -102,6 +102,39 @@ public sealed class ParityAdapterTests
         Assert.Equal(0, ledger.SaveCount);
     }
 
+    [Theory]
+    [InlineData("remove-usd")] [InlineData("revoke-cashflow")] [InlineData("tighten-date")]
+    public void Reopening_with_changed_definition_refuses_old_currency_flags_and_date_policies(string change)
+    {
+        var (ledger, _, service) = Setup();
+        service.SaveOpening(7, Cash, 2026, 100, Actor);
+        var originalPayload = ledger.State.Modules.Single(x => x.ModuleId == "cashier").Documents[0].PayloadJson;
+        var definition = Definition();
+        definition = change switch
+        {
+            "remove-usd" => definition with { Accounts = [definition.Accounts[0] with { Currencies = ["CNY"] }, definition.Accounts[1]] },
+            "revoke-cashflow" => definition with { Accounts = [definition.Accounts[0] with { HasCashFlow = false }, definition.Accounts[1]] },
+            "tighten-date" => definition with { LatestDocumentDate = new(2026, 1, 5) },
+            _ => throw new InvalidOperationException()
+        };
+        var reopened = new CashierService(new ParityCashierStore(ledger, definition, Actor));
+        Assert.Equal("store.definition.changed", Assert.Throws<CashierRuleException>(() => reopened.Read()).Code);
+        Assert.Equal("store.definition.changed", Assert.Throws<CashierRuleException>(() => reopened.AddDocument(8, Input(1, "USD"))).Code);
+        Assert.Equal(1, ledger.SaveCount); Assert.Equal(8, ledger.State.Ledger.Revision);
+        Assert.Equal(originalPayload, ledger.State.Modules.Single(x => x.ModuleId == "cashier").Documents[0].PayloadJson);
+    }
+
+    [Fact]
+    public void Closing_month_uses_current_authoritative_period_and_protects_saved_opening()
+    {
+        var (ledger, _, service) = Setup(); service.SaveOpening(7, Cash, 2026, 100.123456m, Actor);
+        ledger.State = ledger.State with { Ledger = ledger.State.Ledger with
+        { Book = ledger.State.Ledger.Book with { ClosedThroughMonth = 1 }, Revision = 9 } };
+        Assert.Equal(new DateOnly(2026, 2, 1), service.Read().Book.ActiveMonth);
+        Assert.Equal("opening.history.protected", Assert.Throws<CashierRuleException>(() => service.SaveOpening(9, Cash, 2026, 1, Actor)).Code);
+        Assert.Equal(100.123456m, service.Read().Openings[0].Balance); Assert.Equal(1, ledger.SaveCount);
+    }
+
     [Fact]
     public void Proposal_keeps_stable_business_keys_context_and_claims_in_the_same_batch()
     {
