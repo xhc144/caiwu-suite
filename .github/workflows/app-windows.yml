@@ -26,6 +26,10 @@ jobs:
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      # 仅影响本 job 的 Git 检出；保留仓库 LF，避免 Windows autocrlf 使全仓格式检查误报。
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
