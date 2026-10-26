@@ -1,6 +1,6 @@
 import { today, periodOfDate } from '@caiwu/core';
 import { useInvoiceFilters } from './useInvoiceFilters';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Alert, Button, Card, Checkbox, Form, Input, Popconfirm, Select, Space } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -30,6 +30,23 @@ export default function ProcessPage() {
   const [loading, setLoading] = useState(false);
   const [requestId, setRequestId] = useState('');
   const [newAccountsConfirmed, setNewAccountsConfirmed] = useState(false);
+  const previewGeneration = useRef(0);
+  const discardPreview = useCallback(() => {
+    previewGeneration.current++;
+    setPlan(null);
+    setRequestId('');
+    setNewAccountsConfirmed(false);
+    setLoading(false);
+  }, []);
+  useEffect(() => {
+    discardPreview();
+  }, [direction, filters.period, list.data, discardPreview]);
+  useEffect(
+    () => () => {
+      previewGeneration.current++;
+    },
+    [],
+  );
   const [form] = Form.useForm<{ date: string; voucherTypeId: number; mode: PlanInput['mode'] }>();
   const can = usePermission('invoice.voucher');
   const canCreateAccounts = usePermission('invoice.account');
@@ -43,7 +60,7 @@ export default function ProcessPage() {
   const generate = useMutation(
     api.generate.mutationOptions({
       onSuccess: () => {
-        setPlan(null);
+        discardPreview();
         setSelected([]);
         void refresh();
       },
@@ -54,6 +71,7 @@ export default function ProcessPage() {
     .filter((r) => selected.includes(r.id))
     .map((r) => ({ id: r.id, revision: r.revision }));
   async function preview(v: { date: string; voucherTypeId: number; mode: PlanInput['mode'] }) {
+    const generation = ++previewGeneration.current;
     setPlan(null);
     setNewAccountsConfirmed(false);
     setLoading(true);
@@ -62,12 +80,13 @@ export default function ProcessPage() {
         ...api.previewVoucher.queryOptions({ ...v, selection }),
         staleTime: 0,
       });
+      if (generation !== previewGeneration.current) return;
       setRequestId(crypto.randomUUID());
       setPlan(p);
     } catch (e) {
-      showError(e);
+      if (generation === previewGeneration.current) showError(e);
     } finally {
-      setLoading(false);
+      if (generation === previewGeneration.current) setLoading(false);
     }
   }
   return (
@@ -77,7 +96,7 @@ export default function ProcessPage() {
         initialValues={{ direction, period: filters.period }}
         onSearch={(v) => {
           setFilters(v);
-          setPlan(null);
+          discardPreview();
           setSelected([]);
         }}
       >
@@ -110,7 +129,7 @@ export default function ProcessPage() {
           selectedRowKeys: selected,
           onChange: (keys) => {
             setSelected(keys);
-            setPlan(null);
+            discardPreview();
           },
           getCheckboxProps: (r) => ({
             disabled: r.state !== 'audited' || r.invoiceStatus !== 'normal',
@@ -123,7 +142,7 @@ export default function ProcessPage() {
           form={form}
           layout="inline"
           initialValues={{ mode: 'monthly', date: today() }}
-          onValuesChange={() => setPlan(null)}
+          onValuesChange={discardPreview}
           onFinish={(v) => void preview(v)}
           style={{ margin: '20px 0' }}
         >
@@ -247,13 +266,7 @@ export default function ProcessPage() {
               确认生成凭证
             </Button>
           </Popconfirm>
-          <Button
-            disabled={generate.isPending}
-            onClick={() => {
-              setPlan(null);
-              setNewAccountsConfirmed(false);
-            }}
-          >
+          <Button disabled={generate.isPending} onClick={discardPreview}>
             取消预览
           </Button>
         </Card>

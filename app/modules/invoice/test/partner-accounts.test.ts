@@ -81,6 +81,8 @@ describe('w_fp_sz/_2 → w_fp_pz 往来名称匹配与确认新增科目', () =>
         generated = await api.generate(req);
       expect(await api.generate(req)).toEqual(generated);
       const account = (await app.svc.accounts.getByCode('980002'))!;
+      expect(account.id).not.toBe(plan.settings.business.accountId);
+      expect(account.id).not.toBe(plan.settings.tax.accountId);
       expect(account).toMatchObject({ name: '合成新增往来', parentId: parent.id, isLeaf: true });
       const voucher = (await app.svc.vouchers.get(generated[0]!.voucher_id!))!;
       expect(voucher.lines.filter((l) => l.accountId === account.id)).toHaveLength(2);
@@ -189,10 +191,14 @@ describe('w_fp_sz/_2 → w_fp_pz 往来名称匹配与确认新增科目', () =>
     '名称匹配结果与 %s 科目重合时拒绝，保持原科目角色隔离',
     async (role) => {
       const { api, input, existing } = await setup();
+      const validPreview = await api.previewVoucher(input);
       const cfg = (await api.settings({ direction: 'input' }))!;
       cfg[role] = { accountId: existing.id, dimensions: {} };
       await api.saveSettings(cfg);
       await expect(api.previewVoucher(input)).rejects.toThrow(/与业务或税额科目重复/);
+      await expect(api.generate(request(input, validPreview.fingerprint))).rejects.toThrow(
+        /与业务或税额科目重复/,
+      );
       expect(await app.svc.accounts.getByCode('980002')).toBeNull();
       expect((await app.svc.vouchers.list({})).total).toBe(0);
     },

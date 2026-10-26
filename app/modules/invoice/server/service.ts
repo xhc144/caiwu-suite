@@ -48,6 +48,15 @@ export function safeSum(values: number[]) {
   if (!Number.isSafeInteger(n)) problem('RANGE', '汇总金额超出安全整数范围', '缩小所选范围');
   return n;
 }
+function assertSettlementRole(account: Pick<Account, 'id' | 'code' | 'name'>, cfg: Settings) {
+  if (account.id === cfg.business.accountId || account.id === cfg.tax.accountId)
+    problem(
+      'ACCOUNT',
+      `往来下级科目 ${account.code} ${account.name} 与业务或税额科目重复，不能生成凭证`,
+      '分别配置业务、税额和往来结算科目后重新预览',
+      '/m/invoice/settings',
+    );
+}
 export function validateInvoice(raw: InvoiceInput): InvoiceData {
   const result = InvoiceSchema.safeParse(raw);
   if (!result.success)
@@ -348,13 +357,7 @@ export function invoiceService(svc: CoreServices) {
         };
         newAccounts.push(account);
       }
-      if (account.id === cfg.business.accountId || account.id === cfg.tax.accountId)
-        problem(
-          'ACCOUNT',
-          `往来下级科目 ${account.code} ${account.name} 与业务或税额科目重复，不能生成凭证`,
-          '分别配置业务、税额和往来结算科目后重新预览',
-          '/m/invoice/settings',
-        );
+      assertSettlementRole(account, cfg);
       maps.set(name, await validateMapping(cfg.settlement, account));
     }
     return { maps, newAccounts };
@@ -839,6 +842,7 @@ export function invoiceService(svc: CoreServices) {
               },
               scheme,
             );
+            assertSettlementRole(created, plan.settings);
             createdAccounts.set(a.code, created.id);
             await tsvc.log.write({
               action: 'invoice.account.create',
