@@ -5,6 +5,7 @@ import {
   use,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -69,6 +70,12 @@ export function TabsHost({
   const location = useLocation();
   const navigate = useNavigate();
   const session = useRequiredSession();
+  const activeKeyRef = useRef(location.pathname);
+  const locationKeyRef = useRef(location.key);
+  if (locationKeyRef.current !== location.key) {
+    locationKeyRef.current = location.key;
+    activeKeyRef.current = location.pathname;
+  }
   const modules = visibleModules(session.book.product, devMode);
   const [closing, setClosing] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
@@ -87,7 +94,7 @@ export function TabsHost({
     onWorkspaceChange?.(tabs.map((tab) => tab.key));
   }, [tabs, onWorkspaceChange]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isTabPath(location.pathname)) {
       void navigate(HOME, { replace: true });
       return;
@@ -128,9 +135,11 @@ export function TabsHost({
       const prev = tabsRef.current;
       const idx = prev.findIndex((t) => t.key === key);
       const next = prev.filter((t) => t.key !== key);
+      tabsRef.current = next;
       setTabs(next);
-      if (key === activeKey) {
+      if (key === activeKeyRef.current) {
         const neighbor = next[Math.max(0, idx - 1)] ?? next[0];
+        activeKeyRef.current = neighbor?.key ?? HOME;
         void navigate(
           neighbor
             ? neighbor.location.pathname + neighbor.location.search + neighbor.location.hash
@@ -138,7 +147,7 @@ export function TabsHost({
         );
       }
     },
-    [activeKey, navigate],
+    [navigate],
   );
 
   const setTitle = useCallback((key: string, title: string) => {
@@ -157,7 +166,10 @@ export function TabsHost({
     );
   }, []);
 
-  // 原版快捷键：Ctrl+F4 关闭当前窗口
+  const closeRef = useRef(close);
+  closeRef.current = close;
+
+  // 监听器只注册一次；点击意图与当前回调通过ref同步，避免读取上一标签的闭包。
   useEffect(() => {
     const listener = (e: KeyboardEvent) => {
       if (
@@ -170,12 +182,13 @@ export function TabsHost({
         e.key === 'F4'
       ) {
         e.preventDefault();
-        if (activeKey !== HOME) close(activeKey);
+        const current = activeKeyRef.current;
+        if (current !== HOME) closeRef.current(current);
       }
     };
     window.addEventListener('keydown', listener);
     return () => window.removeEventListener('keydown', listener);
-  }, [activeKey, close]);
+  }, []);
 
   const ordered = useMemo(() => {
     const home = tabs.find((t) => t.key === HOME);
@@ -192,7 +205,10 @@ export function TabsHost({
         activeKey={activeKey}
         onChange={(key) => {
           const t = tabs.find((x) => x.key === key);
-          if (t) void navigate(t.location.pathname + t.location.search + t.location.hash);
+          if (t) {
+            activeKeyRef.current = key;
+            void navigate(t.location.pathname + t.location.search + t.location.hash);
+          }
         }}
         onEdit={(key, action) => {
           if (action === 'remove' && typeof key === 'string') close(key);
@@ -228,6 +244,7 @@ export function TabsHost({
         cancelText="取消"
         onOk={() => {
           if (!checkBeforeLeave()) return;
+          activeKeyRef.current = HOME;
           setTabs((prev) => prev.filter((t) => t.key === HOME));
           void navigate(HOME);
           setClosing(false);
