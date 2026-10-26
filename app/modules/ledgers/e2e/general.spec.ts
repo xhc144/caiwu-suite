@@ -83,7 +83,18 @@ test('w_zc_zc_1：期中未知、月发生/累计展开、查询刷新、精确�
 test('w_zc_zc_1：跨年109个月分页与折叠不截断金额；Excel保留大额整分', async ({ page, general }) => {
   test.setTimeout(60000);
   const book = await loginWithNewBook(page, general.request, { startMonth: 7 });
+  await page.goto(`${general.baseURL}/m/ledgers/general?account=1001&from=202607&to=203507`);
+  await expect(
+    page
+      .getByRole('tabpanel', { name: '总分类账' })
+      .getByText('本年累计实际范围中有尚未建立的期间，不能按零发生额计算', { exact: true }),
+  ).toBeVisible();
   await general.withBook(book.bookId, async (svc) => {
+    // 真实建齐109个月的期间，不用不存在的年度冒充零发生额，也不覆盖原始期初。
+    for (let year = 2027; year <= 2035; year++) await svc.periods.ensureYear(year);
+    expect(
+      (await svc.periods.list()).filter((p) => p.period >= 202607 && p.period <= 203507),
+    ).toHaveLength(109);
     await svc.opening.upsert({
       year: 2026,
       accountId: (await svc.accounts.require('1001')).id,
