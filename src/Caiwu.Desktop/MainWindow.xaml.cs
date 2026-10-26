@@ -31,13 +31,14 @@ public partial class MainWindow : Window
         DesktopFeatureOptions? featureOptions = null)
     {
         InitializeComponent(); _backend = backend;
+        InitializeShell();
         _session = backend is null || authentication is null ? null : new LedgerSession(backend);
         OpeningGrid.ItemsSource = _opening;
         OperatorInput.Items.Clear(); OperatorInput.Items.Add(authentication?.Session.Identity.DisplayName ?? "尚未登录");
         OperatorInput.IsEditable = false; OperatorInput.SelectedIndex = 0; OperatorInput.IsEnabled = false;
         if (backend is null || authentication is null) BackendNoticeText.Text = "尚未完成真实操作员登录，业务动作已禁用；任意姓名不能作为认证。";
         InitializeDesktopFeatures((featureOptions ?? new()) with { Authentication = authentication });
-        Loaded += (_, _) => { _ready = true; Reload(); };
+        Loaded += (_, _) => { _ready = true; Reload(); if (HasBook) Workspace.Arrange(Shell.MdiArrangement.Fill); };
     }
 
     private bool HasBook => _session?.Snapshot is not null;
@@ -89,8 +90,9 @@ public partial class MainWindow : Window
     private void Reload()
     {
         _session?.Refresh();
-        WelcomePanel.Visibility = HasBook ? Visibility.Collapsed : Visibility.Visible;
-        Pages.Visibility = HasBook ? Visibility.Visible : Visibility.Collapsed;
+        WelcomePanel.Visibility = HasBook || loginFrameOnly ? Visibility.Collapsed : Visibility.Visible;
+        Pages.Visibility = Visibility.Collapsed;
+        Workspace.Visibility = HasBook ? Visibility.Visible : Visibility.Collapsed;
         if (!HasBook)
         {
             Title = "财务套件 · 开发预览"; BookNameText.Text = "财务工作台";
@@ -126,12 +128,13 @@ public partial class MainWindow : Window
 
     private void BookOpened()
     {
+        browseKind = ""; browseFirst = browseLast = null;
         var book = Snapshot.Book; var month = Math.Clamp(book.ClosedThroughMonth + 1, book.StartMonth, 12);
         var from = new DateTime(book.FiscalYear, month, 1);
         var to = from.AddMonths(1).AddDays(-1);
         VoucherFrom.SelectedDate = TrialFrom.SelectedDate = LedgerFrom.SelectedDate = from;
         VoucherTo.SelectedDate = TrialTo.SelectedDate = LedgerTo.SelectedDate = to;
-        Pages.SelectedIndex = 0; Reload();
+        Pages.SelectedIndex = 0; Reload(); EnsureShellPage(0);
     }
 
     private void NewBook_Click(object sender, RoutedEventArgs e) => Run(() =>
@@ -148,12 +151,7 @@ public partial class MainWindow : Window
         NotificationText.Text = "账套已建立。请核对科目并录入期初余额。";
     }, requireBook: false, discardOpening: true);
 
-    private void OpenBook_Click(object sender, RoutedEventArgs e) => Run(() =>
-    {
-        var open = new OpenFileDialog { Title = "打开账套", InitialDirectory = managedFeatureContext?.Data.DataRoot ?? "", Filter = "财务账套 (*.caiwu)|*.caiwu|所有文件|*.*", CheckFileExists = true };
-        if (open.ShowDialog(this) != true) return;
-        _session!.Open(open.FileName); BookOpened(); NotificationText.Text = "账套已打开，数据已从本地文件载入。";
-    }, requireBook: false, discardOpening: true);
+    private void OpenBook_Click(object sender, RoutedEventArgs e) => RequestBookSwitch();
 
     private void CloseBook_Click(object sender, RoutedEventArgs e) => Run(() =>
     { _session!.Close(); _openingDirty = false; Reload(); }, "账套已关闭。", discardOpening: true);
@@ -211,10 +209,12 @@ public partial class MainWindow : Window
         var operatorName = OperatorName();
         var summaryBinding = featureAuthentication is not null && editorSummaryCatalog is not null
             ? new Features.FeatureSessionBinding(_session!, editSnapshot, featureAuthentication) : null;
-        return new VoucherEditorWindow(editSnapshot.Book, editSnapshot.Accounts, voucher, operatorName,
+        var editor = new VoucherEditorWindow(editSnapshot.Book, editSnapshot.Accounts, voucher, operatorName,
             draft => origin.GetService().SaveDraft(draft, operatorName), forceReadOnly: !PreviewLedgerService.AllowsWrites(editSnapshot.Book),
             expectedRevision: editSnapshot.Revision,
             pickSummary: summaryBinding is null ? null : window => PickVoucherSummary(window, summaryBinding)) { Owner = owner ?? this };
+        if (voucher is null && editor.FindName("DateInput") is DatePicker date) date.SelectedDate = operationDate.ToDateTime(TimeOnly.MinValue);
+        return editor;
     }
     private void EditVoucher(Voucher? voucher, Window? owner = null)
     {
@@ -253,7 +253,9 @@ public partial class MainWindow : Window
         if (from > to) throw new LedgerValidationException("查询开始日期不能晚于结束日期。");
         var query = VoucherSearch.Text.Trim(); var state = VoucherStatusInput.SelectedIndex;
         _voucherRows = Snapshot.Vouchers.Where(v => v.Date >= from && v.Date <= to && (state <= 0 || (int)v.Status == state - 1))
-            .Where(v => ReportingQueries.Matches(v, query)).Select(v => new VoucherListRow(v))
+            .Where(v => ReportingQueries.Matches(v, query))
+            .Where(v => (browseKind.Length == 0 || v.Kind == browseKind) && (browseFirst is null || v.Number >= browseFirst) && (browseLast is null || v.Number <= browseLast))
+            .Select(v => new VoucherListRow(v))
             .OrderBy(v => v.Value.Date).ThenBy(v => v.Value.Kind, StringComparer.Ordinal).ThenBy(v => v.Value.Number).ToArray();
         VoucherGrid.ItemsSource = _voucherRows;
         _voucherOrigin = new SessionBoundMutation(_session!, Snapshot);
@@ -428,7 +430,7 @@ public partial class MainWindow : Window
         dialog.ShowDialog();
     }, discardOpening: true);
 
-    private void ShowPage(int index) => Run(() => { Pages.SelectedIndex = index; QueryCurrent(); });
+    private void ShowPage(int index) => Run(() => { Pages.SelectedIndex = index; EnsureShellPage(index); QueryCurrent(); });
     private void VoucherPage_Click(object sender, RoutedEventArgs e) => ShowPage(1);
     private void AccountPage_Click(object sender, RoutedEventArgs e) => ShowPage(2);
     private void OpeningPage_Click(object sender, RoutedEventArgs e) => ShowPage(3);
@@ -436,30 +438,19 @@ public partial class MainWindow : Window
     private void LedgerPage_Click(object sender, RoutedEventArgs e) => ShowPage(5);
     private void AuditPage_Click(object sender, RoutedEventArgs e) => ShowPage(6);
     private void Pages_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    { if (_ready && HasBook && ReferenceEquals(e.Source, Pages)) Run(QueryCurrent); }
+    { if (_ready && HasBook && ReferenceEquals(e.Source, Pages)) { if (!changingSheet) EnsureShellPage(Pages.SelectedIndex); Run(QueryCurrent); } }
 
     private void BookInfo_Click(object sender, RoutedEventArgs e) => Run(() => MessageBox.Show(this,
         $"单位：{Snapshot.Book.Name}\n制度：{Snapshot.Book.Regime}\n模板版本：{Snapshot.Book.TemplateVersion}\n年度：{Snapshot.Book.FiscalYear}\n启用月份：{Snapshot.Book.StartMonth}\n已结账至：{Snapshot.Book.ClosedThroughMonth}月\n\n账套位置：{_session!.DatabasePath}\n\n当前为实验首版，未完成生产账务验收。",
         "账套信息", MessageBoxButton.OK, MessageBoxImage.Information));
     private void About_Click(object sender, RoutedEventArgs e) => MessageBox.Show(this,
-        "财务套件 · 开发预览\n\n本版提供单年度人民币基础账务试用。财务报表、年结、成本分配、电子凭证与完整权限认证尚未完成，不能据此声称符合全部现行规范。\n\nCtrl+N 新凭证；Ctrl+O 打开账套；Ctrl+Shift+N 新建账套；Ctrl+L 凭证列表；F4 科目查找/列表审核；F7 平衡复制；Ctrl+S 保存；F10 备份。\n\n保留熟悉的业务流程，使用独立编写的代码与界面。",
-        "本版范围与快捷键", MessageBoxButton.OK, MessageBoxImage.Information);
+        "财务软件原版结构升级 · 当前垂直切片\n\n已恢复：同窗选择账套/用户/日期、原账务菜单层级、左侧快捷区和三页工作台、可并存和排列的 MDI 风格业务窗口。\n\n当前服务可执行基础凭证草稿/审核/记账、科目期初、余额明细、备份副本和已接入的本机权限校验。标为未完成的入口不能执行业务；现有工具不等于完整原窗口。\n\n仍待完成：原 SQL Anywhere 账套、两位账套代码、完整建账向导/模板、原逐菜单授权及原版各模块差距清单。工作台暂用 1/2/3 编号，原页签文字未证实。\n\nCtrl+F4 关闭当前子窗；Shift+F5 级联；Shift+F4 垂直排列；Alt+X 退出。序时簿 F5 刷新、F4 单张审核、Ctrl+N 新增。编辑窗仍沿用现有基础实现，原保存/返回与辅助细节契约未完成。\n\n本切片未执行 Windows 交互和视觉验收。",
+        "当前实现与未完成项", MessageBoxButton.OK, MessageBoxImage.Information);
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (Keyboard.Modifiers == ModifierKeys.None &&
-            (e.Key == Key.F10 || (e.Key == Key.System && e.SystemKey == Key.F10)))
-        {
-            e.Handled = true; // F10 is a system key; consume it before opening the modal confirmation.
-            Backup_Click(sender, e); return;
-        }
-        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift) && e.Key == Key.N) NewBook_Click(sender, e);
-        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.O) OpenBook_Click(sender, e);
-        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.N) NewVoucher_Click(sender, e);
-        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.L) VoucherPage_Click(sender, e);
-        else if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.S && Pages.SelectedIndex == 3) SaveOpening_Click(sender, e);
-        else if (Keyboard.Modifiers == ModifierKeys.None && e.Key == Key.F4 && Pages.SelectedIndex == 1) Review_Click(sender, e);
-        else return;
-        e.Handled = true;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var modifiers = Keyboard.Modifiers;
+        if (TryShellShortcut(key, modifiers)) e.Handled = true;
     }
     private void Window_Closing(object? sender, CancelEventArgs e)
     {

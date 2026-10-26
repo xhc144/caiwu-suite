@@ -1,40 +1,7 @@
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" x:Class="Caiwu.Desktop.MainWindow" Title="财务套件 · 开发预览" Width="1440" Height="920" MinWidth="1080" MinHeight="700" Style="{StaticResource {x:Type Window}}" WindowStartupLocation="CenterScreen" UseLayoutRounding="True" PreviewKeyDown="Window_PreviewKeyDown" Closing="Window_Closing">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:shell="clr-namespace:Caiwu.Desktop.Shell.Wpf" x:Class="Caiwu.Desktop.MainWindow" Title="财务套件 · 开发预览" Width="1440" Height="920" MinWidth="1080" MinHeight="700" Style="{StaticResource {x:Type Window}}" WindowStartupLocation="CenterScreen" UseLayoutRounding="True" PreviewKeyDown="Window_PreviewKeyDown" Closing="Window_Closing">
   <DockPanel Background="{DynamicResource AppCanvas}">
-    <Menu DockPanel.Dock="Top">
-      <MenuItem Header="文件(_F)">
-        <MenuItem Header="新建账套…" Click="NewBook_Click" InputGestureText="Ctrl+Shift+N" />
-        <MenuItem Header="打开账套…" Click="OpenBook_Click" InputGestureText="Ctrl+O" />
-        <MenuItem Header="关闭账套" Click="CloseBook_Click" />
-        <Separator />
-        <MenuItem Header="备份当前账套…" Click="Backup_Click" InputGestureText="F10" />
-        <MenuItem Header="从备份恢复副本…" Click="Restore_Click" />
-        <Separator />
-        <MenuItem Header="退出" Click="Exit_Click" />
-      </MenuItem>
-      <MenuItem Header="实务操作(_B)">
-        <MenuItem Header="新增凭证" Click="NewVoucher_Click" Tag="WriteOperation" InputGestureText="Ctrl+N" />
-        <MenuItem Header="凭证序时簿" Click="VoucherPage_Click" />
-        <MenuItem Header="科目余额表" Click="TrialPage_Click" />
-        <MenuItem Header="明细分类账" Click="LedgerPage_Click" />
-        <Separator />
-        <MenuItem Header="月度结账…" Click="CloseMonth_Click" Tag="WriteOperation" />
-      </MenuItem>
-      <MenuItem Header="会计档案(_A)">
-        <MenuItem Header="会计科目" Click="AccountPage_Click" />
-        <MenuItem Header="期初余额" Click="OpeningPage_Click" />
-      </MenuItem>
-      <MenuItem Header="报表(_R)">
-        <MenuItem Header="账簿报表与导出…" Click="ReportCenter_Click" />
-      </MenuItem>
-      <MenuItem Header="系统管理(_S)">
-        <MenuItem Header="账套信息" Click="BookInfo_Click" />
-        <MenuItem Header="操作日志" Click="AuditPage_Click" />
-      </MenuItem>
-      <MenuItem Header="帮助(_H)">
-        <MenuItem Header="本版范围与快捷键" Click="About_Click" />
-      </MenuItem>
-    </Menu>
-    <Border DockPanel.Dock="Top" Background="White" BorderBrush="{DynamicResource AppLine}" BorderThickness="0,1,0,1" Padding="24,20">
+    <Menu x:Name="ShellMenuBar" DockPanel.Dock="Top" />
+    <Border DockPanel.Dock="Top" Background="White" BorderBrush="{DynamicResource AppLine}" BorderThickness="0,1,0,1" Padding="14,8">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
           <TextBlock Text="当前操作员" VerticalAlignment="Center" Margin="0,0,8,0" />
@@ -42,16 +9,12 @@
             <ComboBoxItem Content="制单员" />
             <ComboBoxItem Content="审核员" />
           </ComboBox>
-          <Button Content="新建账套" Click="NewBook_Click" Style="{StaticResource QuietButton}" />
-          <Button Content="打开账套" Click="OpenBook_Click" Style="{StaticResource PrimaryButton}" />
+          <TextBlock x:Name="OperationDateText" VerticalAlignment="Center" Margin="0,0,8,0"/>
         </StackPanel>
         <StackPanel Orientation="Horizontal">
-          <Border Width="46" Height="46" CornerRadius="11" Background="{DynamicResource AppAccent}" Margin="0,0,15,0" VerticalAlignment="Center">
-            <Path Data="M 0,2 L 18,2 M 0,10 L 18,10 M 0,18 L 11,18 M 5,0 L 5,21" Stroke="White" StrokeThickness="2" Width="22" Height="25" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Border>
           <StackPanel>
-          <TextBlock x:Name="BookNameText" Text="财务工作台" FontSize="25" FontWeight="SemiBold" Foreground="{DynamicResource AppInk}" />
-          <TextBlock x:Name="BookSubtitleText" Text="现代界面 · 熟悉的账务流程" Foreground="{DynamicResource AppMuted}" Margin="0,5,0,0" />
+          <TextBlock x:Name="BookNameText" Text="财务工作台" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource AppInk}" />
+          <TextBlock x:Name="BookSubtitleText" Text="原版结构升级 · 已接入基础账务" Foreground="{DynamicResource AppMuted}" Margin="0,5,0,0" />
           </StackPanel>
         </StackPanel>
       </DockPanel>
@@ -64,9 +27,10 @@
       <StatusBarItem Content="开发预览 · 尚未完成生产账务验收" />
     </StatusBar>
     <Border DockPanel.Dock="Bottom" Background="#E9EFF8" Padding="24,10">
-      <TextBlock x:Name="NotificationText" Text="Ctrl+N 新增凭证 · F4 科目查找 · F7 平衡复制 · F10 备份" TextWrapping="Wrap" Foreground="#405C73" />
+      <TextBlock x:Name="NotificationText" Text="灰色入口为未完成；可用入口目前连接基础实现，完整原窗口与账套兼容仍待验收。" TextWrapping="Wrap" Foreground="#405C73" />
     </Border>
-    <Grid Margin="24,18,24,18">
+    <Grid Margin="8">
+      <shell:MdiWorkspace x:Name="Workspace" Visibility="Collapsed"/>
       <Border x:Name="WelcomePanel" Background="White" CornerRadius="10" BorderBrush="{DynamicResource AppLine}" BorderThickness="1" Padding="36">
         <StackPanel MaxWidth="720" HorizontalAlignment="Left">
           <TextBlock Text="开始本期账务" FontSize="28" FontWeight="SemiBold" Foreground="#173F61" />
@@ -80,24 +44,8 @@
         </StackPanel>
       </Border>
       <TabControl x:Name="Pages" Visibility="Collapsed" SelectionChanged="Pages_SelectionChanged">
-        <TabItem Header="工作台">
-          <StackPanel Margin="22">
-            <TextBlock Text="本期账务" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource AppInk}" />
-            <TextBlock Text="工作流程" Margin="0,24,0,0" FontSize="12" Foreground="{DynamicResource AppMuted}" />
-            <TextBlock x:Name="OverviewText" Margin="0,12,0,18" FontSize="15" TextWrapping="Wrap" />
-            <WrapPanel Margin="0,0,0,10">
-              <Button Content="① 会计科目" Click="AccountPage_Click" />
-              <Button Content="② 期初余额" Click="OpeningPage_Click" />
-              <Button Content="③ 新增凭证" Style="{StaticResource PrimaryButton}" Click="NewVoucher_Click" Tag="WriteOperation" />
-              <Button Content="④ 审核 / 记账" Click="VoucherPage_Click" />
-              <Button Content="⑤ 余额与账簿" Click="TrialPage_Click" />
-              <Button Content="⑥ 数据备份" Click="Backup_Click" />
-            </WrapPanel>
-            <TextBlock Text="凭证保存为草稿 → 更换为审核操作员审核 → 记账。已记账凭证只读，不能直接删除或修改。" TextWrapping="Wrap" Margin="0,22,0,12" />
-            <TextBlock Text="余额表双击科目进入明细账；明细账双击分录查看凭证。结账前请核对并备份。" TextWrapping="Wrap" Margin="0,0,0,12" />
-            <TextBlock Text="首版范围：单年度、人民币、基础账务。尚未提供完整财务报表、年结、税务、成本分配及原账套导入。" TextWrapping="Wrap" Foreground="#805C24" />
-          </StackPanel>
-        </TabItem>
+        <!-- Internal compatibility selection only; InitializeShell moves these contents into coexisting MDI sheets. -->
+        <TabItem Header="工作台"><TextBlock x:Name="OverviewText" /></TabItem>
         <TabItem Header="凭证序时簿">
           <DockPanel Margin="12">
             <StackPanel DockPanel.Dock="Top">
@@ -245,7 +193,7 @@
         <TabItem Header="操作日志">
           <DockPanel Margin="12">
             <StackPanel DockPanel.Dock="Top">
-              <TextBlock Text="实际业务事件。首版操作员名称用于职责记录，不代表完整身份认证。" TextWrapping="Wrap" Margin="0,0,0,12" />
+              <TextBlock Text="当前账套实际业务事件；操作员身份由已登录的本机账户核验，原逐菜单权限尚未接入。" TextWrapping="Wrap" Margin="0,0,0,12" />
             </StackPanel>
             <DataGrid x:Name="AuditGrid" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False" SelectionMode="Single" SelectionUnit="FullRow" RowHeight="36" GridLinesVisibility="Horizontal" AlternatingRowBackground="#F8FAFD" HeadersVisibility="Column" IsReadOnly="True" EnableRowVirtualization="True">
               <DataGrid.Columns>

@@ -26,6 +26,7 @@ namespace Caiwu.Desktop;
 public partial class MainWindow
 {
     private bool featuresInitialized, featureOpening;
+    private MenuItem? shellBookCopy;
     private FeatureAuthentication? featureAuthentication;
     private ManagedFeatureContext? managedFeatureContext;
     private Func<FeatureSessionBinding, SummaryFeatureRegistration>? editorSummaryCatalog;
@@ -41,21 +42,14 @@ public partial class MainWindow
         if (options.BookCopy is { } configured && (configured.AcquireDataLease is null ||
             configured.ValidateManagedDestination is null || configured.RegisterCreatedBook is null))
             throw new ArgumentException("账套复制必须同时配置数据租约、受管路径和新账套登记。", nameof(options));
-        var menu = (Content as DockPanel)?.Children.OfType<Menu>().SingleOrDefault()
-            ?? throw new InvalidOperationException("未找到宿主菜单，不能接入桌面新功能。");
-        MenuItem Group(string prefix) => menu.Items.OfType<MenuItem>().Single(m => m.Header is string h && h.StartsWith(prefix, StringComparison.Ordinal));
-        var business = Group("实务操作"); var archives = Group("会计档案");
-        InitializeOperatorMenus(Group("系统管理"));
-        var copy = new MenuItem { Header = "复制凭证为新草稿…", ToolTip = "从当前显示的凭证复制，人工核对后单独保存。" };
-        var summary = new MenuItem { Header = "常用摘要管理…" };
-        var cost = new MenuItem { Header = "成本工作表（审核建议）…", ToolTip = "独立工作表，只预览与人工审核，不自动记账。" };
-        var bookCopy = new MenuItem { Header = "复制账套…", IsEnabled = false,
-            ToolTip = "暂未开放：宿主尚未配置 Delivery 受管路径、数据租约及新账套登记；默认不切换新账套。" };
+        var copy = new MenuItem { Header = "复制凭证为新草稿…", ToolTip = "现有扩展；原凭证复制窗口未完成。" };
+        var summary = ShellMenu("m_i20");
+        var cost = new MenuItem { Header = "成本工作表（审核建议）…" };
+        var bookCopy = new MenuItem { Header = "复制当前账套…", IsEnabled = false };
+        shellBookCopy = bookCopy;
         var nonprofit = new MenuItem { Header = "民非报表分类与预览（当前月）…" };
-        Group("报表").Items.Add(nonprofit);
-        var designer = new MenuItem { Header = "自定义当前账表…" }; Group("报表").Items.Add(designer);
-        business.Items.Add(new Separator()); business.Items.Add(copy); business.Items.Add(cost);
-        archives.Items.Add(new Separator()); archives.Items.Add(summary); archives.Items.Add(bookCopy);
+        var designer = new MenuItem { Header = "自定义当前基础账表…" };
+        foreach (var tool in new[] { copy, cost, bookCopy, nonprofit, designer }) extensionMenu.Items.Add(tool);
         copy.Click += async (_, _) =>
         {
             if (featureOpening) return;
@@ -108,6 +102,7 @@ public partial class MainWindow
         };
         summary.Click += async (_, _) =>
         {
+            if (registeredWindows.ContainsKey(new("qingsong/main", "w_xt_zy", "m_frame_zw/m_i20"))) return;
             if (featureOpening) return;
             try
             {
@@ -234,7 +229,7 @@ public partial class MainWindow
             const string noAuthentication = "未认证：需要固定 OperatorSession 与集中授权账套服务；任意姓名不能启用业务动作。";
             copy.IsEnabled = authenticated && !featureOpening && CanWriteBook && VoucherGrid.SelectedItem is VoucherListRow;
             copy.ToolTip = authenticated ? "从原快照复制，显式保存为新草稿。" : noAuthentication;
-            summary.IsEnabled = authenticated && !featureOpening && HasBook && options.OpenSummaryCatalog is not null;
+            summary.IsEnabled = authenticated && !featureOpening && HasBook && (options.OpenSummaryCatalog is not null || registeredWindows.ContainsKey(new("qingsong/main", "w_xt_zy", "m_frame_zw/m_i20")));
             summary.ToolTip = !authenticated ? noAuthentication : options.OpenSummaryCatalog is null ? "未配置：宿主需明确用户数据路径、摘要库原子版本及备份附件登记。" : "管理当前账套的常用摘要。";
             cost.IsEnabled = authenticated && !featureOpening && HasBook;
             cost.ToolTip = authenticated ? "仅人工审核建议，不自动记账。" : noAuthentication;
