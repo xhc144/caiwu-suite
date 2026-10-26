@@ -1,5 +1,5 @@
 import type { CoreServices } from '@caiwu/core/server';
-import { seedVouchers, type VoucherSpec } from '@caiwu/testkit';
+import { seedVouchers, voucherInputFromSpec, type VoucherSpec } from '@caiwu/testkit';
 import { buildBalanceSheetSlice, buildCashflowSlice } from '../../templates/enterprise';
 
 /** 编码全部是测试账套自定义映射，绝不据此声称存在完整官方科目表。 */
@@ -211,3 +211,14 @@ export const closingTransfer: VoucherSpec = {
     { account: '4103', credit: 10195 },
   ],
 };
+
+export async function seedProfitClosing(svc: CoreServices) {
+  const v = await svc.vouchers.create({
+    ...(await voucherInputFromSpec(svc, closingTransfer)),
+    // 与 period-close/server/transfers.ts 的损益结转标识一致；现有BALANCE仍会计入它。
+    closingKind: 'pnl',
+  });
+  await svc.vouchers.changeStatus({ ids: [v.id], to: 'audited' });
+  await svc.vouchers.changeStatus({ ids: [v.id], to: 'posted' });
+  return v.id;
+}

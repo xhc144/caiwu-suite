@@ -44,7 +44,7 @@ function formula(t: ReportTemplate, address: string, source: string) {
 function base(code: string, name: string, rows: number, cols: number) {
   const t = emptyTemplate({ code, name: `${name}（未完成，局部取数）`, rows, cols });
   t.readOnly = true;
-  text(t, 'A1', `${name}　会企 ${code === '201' ? '01' : code === '202' ? '02' : '03'} 表`);
+  text(t, 'A1', `${name}\u3000会企 ${code === '201' ? '01' : code === '202' ? '02' : '03'} 表`);
   text(t, 'A2', STATUS);
   text(t, 'A3', '编制单位：待填写　期间：以生成页及导出口径页为准　单位：元（底层整数分）');
   for (const row of [1, 2, 3]) {
@@ -161,7 +161,6 @@ export const SIMPLE_BALANCE_KEYS = [
   'shortTermLoans',
   'notesPayable',
   'employeePayable',
-  'taxesPayable',
   'deferredTaxLiabilities',
   'capital',
   'capitalReserve',
@@ -202,7 +201,6 @@ export function buildBalanceSheetSlice(raw: BalanceBindings): ReportTemplate {
     'shortTermLoans',
     'notesPayable',
     'employeePayable',
-    'taxesPayable',
     'deferredTaxLiabilities',
     'capital',
     'capitalReserve',

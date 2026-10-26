@@ -26,8 +26,8 @@ import {
   balanceSlice,
   cashBindings,
   cashSlice,
-  closingTransfer,
   GOLDEN,
+  seedProfitClosing,
   setupEnterpriseFixture,
 } from './fixture';
 
@@ -260,7 +260,8 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
 
   it('202保留结转前利润缺口：结转后总账损益净额归零，不能冒充手算营业收入与净利润', async () => {
     await setupEnterpriseFixture(app.svc);
-    await seedVouchers(app.svc, [closingTransfer]);
+    const transferId = await seedProfitClosing(app.svc);
+    expect((await app.svc.vouchers.get(transferId))!.closingKind).toBe('pnl');
     const rows = await app.svc.ledger.balances({
       periodFrom: 202601,
       periodTo: 202601,
@@ -376,6 +377,8 @@ describe('W2-02 w_bb_get / w_bb_proc / w_bb_saveas 企业三表', () => {
     expect(() => buildBalanceSheetSlice({ cash: ['1002', '100201'] })).toThrow(/重叠/);
     expect(() => buildBalanceSheetSlice({ cash: ['1001'], fixedAssets: ['1001'] })).toThrow(/重复/);
     expect(() => buildBalanceSheetSlice({ accountsReceivable: ['1122'] } as never)).toThrow();
+    // 增值税待抵扣等借方明细可能须转列资产，不能把整个应交税费科目直接反号。
+    expect(() => buildBalanceSheetSlice({ taxesPayable: ['2221'] } as never)).toThrow();
     const accounts = await app.svc.accounts.list();
     expect(() =>
       buildCashflowSlice({ cashAccounts: ['1001', '1001'], items: {} }, accounts),
