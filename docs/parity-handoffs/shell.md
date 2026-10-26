@@ -1,7 +1,7 @@
 # Shell parity handoff
 
-- Status: in progress; first vertical slice, not full parity.
-- Branch: `codex/parity-shell-20261026`; baseline/current inspected SHA `3b0c59b02d8941c32ac176309555c03c94bb4213` (2026-10-25 UTC).
+- Status: partial slice complete; source compiles and synthetic checks pass. Windows runtime/visual and full original parity remain not run/unimplemented.
+- Branch: `codex/parity-shell-20261026`; baseline `3b0c59b02d8941c32ac176309555c03c94bb4213`; code checkpoint `cde5f6863dc3aebc52adac0f8d7dbe087ec67113`; early handoff `9e2543a7649a1d8f398eca6cd9f83e78bd34ee69`.
 - Exclusive ownership: `src/Caiwu.Desktop/**` except `Verification/**`; `src/Caiwu.Operators/**` and operator tests. No shared Contracts/Core/Persistence/solution/props/workflow edits. Integrator must cherry-pick; do not edit MainWindow concurrently.
 - Original windows: `w_login`, `w_xt_tz_find`, `w_login_1`, `w_frame`, `w_main1`; first slice uses accounting shell and existing working accounting services.
 - Planned local APIs: shell-owned login result (selected managed book path + explicit operation date + real OperatorSession), menu/route metadata, MDI sheet host and deterministic arrangement. New WPF controls under `src/Caiwu.Desktop/Shell/Wpf/`.
@@ -52,3 +52,11 @@ Read exact integration checkpoint `5bb60d24b9c60c9eecfcc5adc37bced4688adf85` (`P
 3. Approved exact ModuleId/write grants and original entry descriptors/real WPF handler SHAs are needed from module owners. Preserve unknown/raw fields, foreign currency, quantity, auxiliaries and source keys in their DTOs. No automatic module writes or success popups are wired.
 4. Integration must provide real same-revision ModuleLedgerSnapshot and atomic SaveModuleDocuments/AcceptVoucherProposal beneath these wrappers, then run actual Core/SQLite + wrapper composition regressions and receipts/source-dedup recovery. This slice's probe cannot establish those guarantees.
 5. Product profiles and module sheets/menus (minfeiqi/chengben, payroll/assets/inventory; independent cashier/invoice programs), original automatic backups, complete 44-template initialization, all gap-analysis rows and PR40 unknowns remain on the acceptance list. No removal of an unimplemented item is authorized.
+
+## Final delivery checkpoint
+
+- Draft PR: [#41](https://github.com/xhc144/caiwu-suite/pull/41). Code commit: `cde5f6863dc3aebc52adac0f8d7dbe087ec67113`. Cherry-pick this shell-only code commit; early handoff and final evidence commits are documentation. No integration-owned commit was imported into this branch.
+- Current checked production `src` tree: `d59fc9019a1f74a4e87245eea8a39f4ff82c91b5`. [Validation record](shell-validation.json) distinguishes exact-baseline/combined-contract cross-build, real synthetic SQLite business checks, existing regressions and the labeled facade boundary probe.
+- Commands completed with exit 0: Desktop build; independent Windows host cross-build; shell synthetic logic/SQLite; existing presentation logic; existing authenticated feature logic; combined-contract facade tests and Windows-host cross-build. All builds zero warnings/errors. These are not full-function or native-runtime acceptance.
+- Remaining execution blocker: running `src/Caiwu.Desktop/Shell/Tests/Windows/run.ps1` and reviewing its new-UI captures requires an actual Windows target; status **not run**, not denied. Original program is intentionally never part of that host. Installed-App lifecycle remains separate.
+- No action was rejected by automatic approval review. One CLI default-home failure was resolved by task-local state, and fixture assumptions about normalized login codes, separated admin/preparer roles and wrapped open errors were corrected before passing tests. No permission/security check was weakened.
