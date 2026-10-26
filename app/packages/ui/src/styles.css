@@ -1,0 +1,59 @@
+/* 通用组件样式。颜色尽量用 antd 的 CSS 变量，跟随主题。 */
+.cw-money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.cw-money-negative {
+  color: var(--ant-color-error, #d4380d);
+}
+.cw-money-input input,
+.cw-money-input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cw-code {
+  font-family: 'JetBrains Mono', 'Cascadia Mono', Consolas, monospace;
+  color: var(--ant-color-text-secondary);
+}
+.cw-col-resizer {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 8px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1;
+}
+.cw-col-resizer:hover {
+  background: var(--ant-color-primary-bg-hover, rgba(22, 119, 255, 0.15));
+}
+.cw-table-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+.cw-filter-bar {
+  row-gap: 8px;
+  margin-bottom: 12px;
+}
+.cw-page {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  min-height: 100%;
+}
+.cw-page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cw-page-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

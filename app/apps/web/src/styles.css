@@ -1,0 +1,52 @@
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  background: #f5f6f8;
+}
+.cw-shell-header {
+  display: flex;
+  align-items: center;
+  line-height: normal;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid #eef0f3;
+}
+.cw-brand {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  font-weight: 600;
+  font-size: 15px;
+  border-bottom: 1px solid #eef0f3;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.cw-tabs {
+  height: 100%;
+}
+.cw-tabs > .ant-tabs-nav {
+  margin: 0 !important;
+  padding: 6px 8px 0;
+  background: #ffffff;
+}
+.cw-tabs > .ant-tabs-content-holder {
+  overflow: auto;
+}
+.cw-tabs > .ant-tabs-content-holder > .ant-tabs-content,
+.cw-tabs > .ant-tabs-content-holder > .ant-tabs-content > .ant-tabs-tabpane {
+  height: 100%;
+}
+.cw-center-page {
+  min-height: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 48px 16px;
+  box-sizing: border-box;
+}

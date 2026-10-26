@@ -1,0 +1,16 @@
+{
+  "name": "@caiwu/server-kit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@trpc/server": "11.19.0",
+    "zod": "4.6.7",
+    "kysely": "0.29.7",
+    "@caiwu/core": "workspace:*",
+    "@caiwu/db": "workspace:*"
+  }
+}

@@ -10,10 +10,20 @@
 | 民非企会计 | 民非企单机版 | 民间非营利组织会计制度 |
 | 成本会计 | 成本会计单机版 | 企业成本核算 |
 
-## 技术选型（暂定）
+## 新版（app/，正在开发）
 
-- C# .NET 10 LTS + WPF（现代桌面外观，保留熟悉的菜单、凭证表格与键盘流程）
-- SQLite（单文件账套，便于备份）
+用 TypeScript 全栈重做：React + Ant Design 前端、Fastify + tRPC 本地服务、SQLite（一个账套一个文件）、Electron 桌面壳。一个程序覆盖三套产品。
+
+- 开发指南（所有开发任务必读）：[AGENTS.md](AGENTS.md)
+- 新版说明：[app/README.md](app/README.md)
+- 并行开发计划与总控提示词：[docs/rewrite/](docs/rewrite/README.md)
+- 原版功能对照资料：[docs/original-analysis/](docs/original-analysis/README.md)
+
+```sh
+cd app && pnpm install && pnpm check
+```
+
+以下是旧版（C# .NET 10 + WPF 实验版，`src/`、`tests/`、`packaging*/`）的说明，旧版已冻结，不再开发。
 
 ## 参考资料
 
