@@ -121,3 +121,23 @@ Var /GLOBAL CaiwuScanDepth
 !macro customUnInstall
   DetailPrint "保留账套、备份和用户配置；未对数据目录执行删除操作。"
 !macroend
+
+; 锁版 NSIS 模板仍识别 --delete-app-data，即使 deleteAppDataOnUninstall=false。
+; 本产品的卸载约定是保留用户数据，显式拒绝该参数，避免隐藏路径删除用户配置。
+!macro customUnInit
+  Push $R0
+  Push $R1
+  ClearErrors
+  ${GetParameters} $R0
+  ${GetOptions} $R0 "--delete-app-data" $R1
+  ${IfNot} ${Errors}
+    ${IfNot} ${Silent}
+      MessageBox MB_OK|MB_ICONSTOP "卸载将保留账套、备份及用户配置，不支持删除用户数据参数。请移除该参数后重试。"
+    ${EndIf}
+    SetErrorLevel 4
+    Quit
+  ${EndIf}
+  Pop $R1
+  Pop $R0
+  ClearErrors
+!macroend

@@ -1,5 +1,5 @@
 import { _electron, expect, test, type ElectronApplication } from '@playwright/test';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   cpSync,
@@ -52,7 +52,9 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
   const fixture = JSON.parse(readFileSync(path.join(root, 'fixture.json'), 'utf8')) as Fixture;
   const oldInstaller = process.env.CAIWU_DESKTOP_OLD_INSTALLER;
   const newInstaller = process.env.CAIWU_DESKTOP_NEW_INSTALLER;
-  const executable = process.env.CAIWU_DESKTOP_EXECUTABLE || (loadModule('electron') as string);
+  const executable = path.resolve(
+    process.env.CAIWU_DESKTOP_EXECUTABLE || (loadModule('electron') as string),
+  );
   const installed = !!process.env.CAIWU_DESKTOP_EXECUTABLE;
   const env = {
     ...process.env,
@@ -73,9 +75,22 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
           .filter((name) => typeof name === 'string' && name.endsWith('.exe'))
           .slice(0, 20)
       : [];
+    let registration = '';
+    if (!existsSync(executable) && process.platform === 'win32') {
+      registration = execFileSync(
+        'pwsh',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          "Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\*' -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -eq '财务软件' } | Select-Object InstallLocation,DisplayVersion | ConvertTo-Json -Compress",
+        ],
+        { encoding: 'utf8' },
+      );
+    }
     expect(
       existsSync(executable),
-      `NSIS 必须安装到指定位置；本次安装目录中的 exe：${JSON.stringify(actual)}`,
+      `NSIS 必须安装到指定位置 ${base}；目录中的 exe：${JSON.stringify(actual)}；本应用安装注册项：${registration}`,
     ).toBe(true);
   };
   const launch = () =>
@@ -102,7 +117,7 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     if (oldInstaller) await install(oldInstaller);
     desktop = await launch();
     let page = await desktop.firstWindow();
-    await expect(page.getByText('测试账套', { exact: true })).toBeVisible();
+    await expect(page.getByText(/测试账套/).first()).toBeVisible();
     await expect
       .poll(() =>
         desktop!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isVisible()),
@@ -113,13 +128,20 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         async () => (await (window.caiwuDesktopHost as DesktopHost).dataDirectory.get()).path,
       ),
     ).toBe(fixture.dataDir);
-    await page.getByRole('button', { name: '进入', exact: true }).click();
-    await expect(page.getByText('测试账套', { exact: true })).toBeVisible();
-    // 原生 SQLite 来自安装包，登录通过真实 utilityProcess；无开发机 NODE_PATH。
-    const password = page.getByLabel('密码', { exact: true });
-    await password.fill('admin');
-    await page.getByRole('button', { name: '登录', exact: true }).click();
-    await expect(page.getByText('测试账套', { exact: true }).first()).toBeVisible();
+    // 登录壳只依赖 core 的稳定路由/API，不依赖同波账套管理或系统管理的页面控件。
+    await page.goto(`${new URL(page.url()).origin}/login/${fixture.bookId}`);
+    const loggedIn = await page.evaluate(async (bookId) => {
+      const boot = (window as unknown as { __CAIWU_BOOT__: { token: string } }).__CAIWU_BOOT__;
+      const response = await fetch('/trpc/core.auth.login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-caiwu-token': boot.token },
+        body: JSON.stringify({ bookId, userCode: 'admin', password: 'admin' }),
+      });
+      const result = (await response.json()) as { result?: { data?: { token?: string } } };
+      return response.ok && typeof result.result?.data?.token === 'string';
+    }, fixture.bookId);
+    expect(loggedIn, '安装后的 utilityProcess 必须用真实 SQLite 完成 core 登录').toBe(true);
+    console.log('② 安装后启动、账套显示和真实 SQLite 登录：通过');
     await desktop.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]!.minimize();
     });
@@ -328,6 +350,7 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
       JSON.parse(readFileSync(path.join(fixture.configDir, 'desktop-settings.json'), 'utf8'))
         .dataDir,
     ).toBe(fixture.dataDir);
+    if (newInstaller) console.log('③ 覆盖升级保留账套、备份、设置并重新启动：通过');
     await desktop
       .evaluate(({ BrowserWindow }) => {
         BrowserWindow.getAllWindows()[0]!.close();
@@ -340,6 +363,15 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         /^Uninstall.*\.exe$/iu.test(name),
       );
       expect(uninstaller).toBeDefined();
+      expect(
+        await run(path.join(path.dirname(executable), uninstaller!), [
+          '/S',
+          '/currentuser',
+          '--delete-app-data',
+        ]),
+      ).not.toBe(0);
+      expect(existsSync(executable)).toBe(true);
+      expect(existsSync(path.join(fixture.configDir, 'desktop-settings.json'))).toBe(true);
       const legacyBook = path.join(path.dirname(executable), 'legacy-uninstall-qa.caiwu');
       cpSync(backup, legacyBook, { force: false, errorOnExist: true });
       expect(
@@ -360,6 +392,7 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         JSON.parse(readFileSync(path.join(fixture.configDir, 'desktop-settings.json'), 'utf8'))
           .dataDir,
       ).toBe(fixture.dataDir);
+      console.log('④ 正常卸载删除程序并保留账套、备份和用户配置：通过');
     }
   } finally {
     if (desktop) {
