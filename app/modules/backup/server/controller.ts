@@ -6,7 +6,7 @@ export type AutomaticBackupBinding = {
   /** 必须等待完整备份、真实校验及轮替结束后返回。 */
   backup: (kind: 'automatic') => Promise<Result>;
 };
-type Clock = {
+export type Clock = {
   now: () => number;
   set: (fn: () => void, ms: number) => unknown;
   clear: (id: unknown) => void;
@@ -23,10 +23,14 @@ type Entry = {
 };
 const systemClock: Clock = {
   now: Date.now,
-  set: (fn, ms) => setTimeout(fn, ms),
+  set: (fn, ms) => {
+    const timer = setTimeout(fn, ms);
+    timer.unref();
+    return timer;
+  },
   clear: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
 };
-/** 可接入 runtime 的控制器。W0 没有模块生命周期，当前未自动实例化或从页面启动。 */
+/** 运行时控制器；每个账套串行执行，调度不依赖页面存活。 */
 export class AutomaticBackupController {
   readonly #clock: Clock;
   readonly #books = new Map<string, Entry>();
@@ -46,7 +50,7 @@ export class AutomaticBackupController {
         }
       : { lastSuccess: null, lastFailure: null, nextAt: null, running: false, attached: false };
   }
-  async attach(id: string, binding: AutomaticBackupBinding) {
+  async attach(id: string, binding: AutomaticBackupBinding, runOnStart = true) {
     if (this.#shutdown) throw new Error('自动备份控制器正在退出，不能再接入账套');
     if (this.#books.has(id)) return;
     const s: Entry = {
@@ -60,7 +64,7 @@ export class AutomaticBackupController {
     this.#books.set(id, s);
     try {
       const config = SettingsSchema.parse(await binding.settings());
-      if (config.enabled && config.onStart) await this.run(id);
+      if (runOnStart && config.enabled && config.onStart) await this.run(id);
     } catch (e) {
       s.lastFailure = this.#message(e);
     }
@@ -117,6 +121,16 @@ export class AutomaticBackupController {
   async reconfigure(id: string) {
     await this.#schedule(id);
   }
+  async detach(id: string) {
+    const s = this.#books.get(id);
+    if (!s) return;
+    s.stopped = true;
+    s.generation++;
+    s.nextAt = null;
+    if (s.timer != null) this.#clock.clear(s.timer);
+    await s.running;
+    this.#books.delete(id);
+  }
   shutdown() {
     if (!this.#shutdown) this.#shutdown = this.#stop();
     return this.#shutdown;
@@ -142,8 +156,8 @@ export class AutomaticBackupController {
         }
       } catch (e) {
         s.lastFailure = this.#message(e);
+        failures.push({ bookId: id, reason: s.lastFailure });
       }
-      if (s.lastFailure) failures.push({ bookId: id, reason: s.lastFailure });
     }
     return failures;
   }

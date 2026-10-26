@@ -3,7 +3,7 @@ import type * as FsPromises from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
 import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
-import backupServer from '../server';
+import backupServer from './isolated-server';
 import { backupService, waitForJobs } from '../server/service';
 import { DEFAULT_SETTINGS } from '../shared';
 import { directory, packagePath } from '../server/files';

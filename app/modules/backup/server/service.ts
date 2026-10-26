@@ -32,7 +32,10 @@ import {
   writePackage,
 } from './files';
 
-type Context = AuthedContext & { app: AppRuntime };
+type Context = Omit<AuthedContext, 'session'> & {
+  app: AppRuntime;
+  session?: AuthedContext['session'];
+};
 type Protection = {
   protectionId: string;
   createdAt: string;
@@ -284,6 +287,101 @@ function backupOperations(ctx: Context) {
   return { db, now, load, fileOf, verify, settings, doBackup, pruneAutomatic };
 }
 
+/** 仅由已登记的生命周期 hook 调用；系统身份由共享层创建，不接收浏览器身份。 */
+export function automaticBinding(app: AppRuntime, bookId: string, signal: AbortSignal) {
+  const withService = <T>(fn: (ctx: Context) => Promise<T>) =>
+    app.lifecycle.withSystemBook('backup', bookId, (svc, book) =>
+      fn({ app, svc, book, user: svc.user, moduleId: 'backup' }),
+    );
+  return {
+    settings: () => withService((ctx) => backupOperations(ctx).settings()),
+    backup: () => {
+      const id = randomUUID();
+      let started = false;
+      const abort = new AbortController();
+      const cancel = () => abort.abort(signal.reason);
+      signal.addEventListener('abort', cancel, { once: true });
+      if (signal.aborted) cancel();
+      const task = withService((ctx) =>
+        exclusive(ctx, async () => {
+          const { db, now, settings, doBackup, pruneAutomatic, load } = backupOperations(ctx);
+          const config = await settings();
+          abort.signal.throwIfAborted();
+          await db
+            .insertInto('backup_item')
+            .values({
+              id,
+              owner_id: bookId,
+              request_id: randomUUID(),
+              name: `自动备份 ${now()}`,
+              directory: config.directory,
+              kind: 'automatic',
+              status: 'running',
+              reason: '',
+              metadata: null,
+              bytes: 0,
+              digest: null,
+              created_at: now(),
+              progress: 0,
+              retention_note: '',
+            })
+            .execute();
+          started = true;
+          try {
+            await doBackup(id, abort.signal);
+            abort.signal.throwIfAborted();
+            let note: string;
+            try {
+              const removed = await pruneAutomatic(config.keep);
+              note = `保留最新 ${config.keep} 份有效自动备份；已轮替 ${removed.length} 份`;
+            } catch {
+              note = '新备份成功；轮替失败，旧备份保留，请检查目录权限';
+            }
+            await db
+              .updateTable('backup_item')
+              .set({ retention_note: note })
+              .where('id', '=', id)
+              .execute();
+            await ctx.svc.log.write({
+              action: 'backup.retention',
+              summary: note,
+              targetType: 'backup_item',
+              targetId: id,
+            });
+          } catch (error) {
+            const err = fileError(error);
+            await db
+              .updateTable('backup_item')
+              .set({ status: abort.signal.aborted ? 'cancelled' : 'failed', reason: err.message })
+              .where('id', '=', id)
+              .execute();
+            await ctx.svc.log.write({
+              action: 'backup.failed',
+              summary: err.message,
+              targetType: 'backup_item',
+              targetId: id,
+            });
+          }
+          return load(id);
+        }),
+      )
+        .catch((error: unknown) => {
+          // 任务创建前的 BUSY 不阻塞退出；已创建却未能保存终态/日志则必须保留租约。
+          if (started) state(app).failures.set(id, { bookId, error });
+          throw error;
+        })
+        .finally(() => {
+          signal.removeEventListener('abort', cancel);
+          state(app).jobs.delete(id);
+        });
+      const completion = task.then(() => {});
+      state(app).jobs.set(id, { bookId, abort, promise: completion, progress: 0 });
+      void completion.catch(() => {});
+      return task;
+    },
+  };
+}
+
 export function backupService(ctx: Context) {
   const { db, now, load, fileOf, verify, settings } = backupOperations(ctx);
   const admin = () => {
@@ -480,8 +578,6 @@ export function backupService(ctx: Context) {
         last,
         lastSuccess,
         lastFailure,
-        nextAt: null,
-        runtimeStatus: '启动 / 正常退出 / 定时未接入；配置已保存，尚未全程生效',
         transferLimit: TRANSFER_LIMIT,
         managedRoot: `backups/${ctx.book.id}`,
       };
@@ -616,7 +712,7 @@ export function backupService(ctx: Context) {
       await ctx.svc.settings.set('automatic', config);
       await ctx.svc.log.write({
         action: 'backup.settings',
-        summary: '更新自动备份配置；运行时钩子尚未接入',
+        summary: '更新自动备份配置',
       });
       return config;
     },
@@ -801,7 +897,7 @@ export function backupService(ctx: Context) {
           throw fail(
             'MAINTENANCE_REQUIRED',
             '当前版本暂不能安全覆盖活动账套',
-            '需要共享层提供跨模块独占维护锁、在途请求排空及重新登录控制；可选择恢复为新账套',
+            '共享维护接口目前仅支持重连，缺少原子替换与失败回滚协议；请恢复为新账套',
           );
         }
         const checked = await verify(plan.backup_id);
@@ -825,8 +921,18 @@ export function backupService(ctx: Context) {
               throw e;
             },
           );
+          for (const suffix of ['-wal', '-shm', '-journal']) {
+            const sidecar = await lstat(`${target}${suffix}`).then(
+              () => true,
+              (error: NodeJS.ErrnoException) => {
+                if (error.code === 'ENOENT') return false;
+                throw error;
+              },
+            );
+            if (sidecar) throw fail('COLLISION', '目标新 ID 已有数据库辅助文件，禁止发布或认领');
+          }
           if (existingStat) {
-            if (!existingStat.isFile() || existingStat.isSymbolicLink())
+            if (!existingStat.isFile() || existingStat.isSymbolicLink() || existingStat.nlink !== 1)
               throw fail('COLLISION', '目标新 ID 已被其他文件或符号链接占用，禁止覆盖');
             // 只对本计划已完成暂存的目标恢复登记，不能认领同名不相关文件。
             let existing: Database.Database | undefined;

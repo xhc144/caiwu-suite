@@ -4,7 +4,7 @@ import Database from 'better-sqlite3';
 import { createHTTPServer } from '@trpc/server/adapters/standalone';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
-import backupServer from '../server';
+import backupServer from './isolated-server';
 import { waitForJobs } from '../server/service';
 
 function deferred() {

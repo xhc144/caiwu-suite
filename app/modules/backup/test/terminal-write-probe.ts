@@ -2,7 +2,7 @@
 import { randomUUID } from 'node:crypto';
 import { createHTTPServer } from '@trpc/server/adapters/standalone';
 import { buildAppRouter, coreRouter, createRuntime } from '@caiwu/server-kit';
-import backupServer from '../server';
+import backupServer from './isolated-server';
 import { waitForJobs } from '../server/service';
 
 const app = createRuntime({ dataDir: process.argv[2]!, modules: [backupServer], devMode: true });

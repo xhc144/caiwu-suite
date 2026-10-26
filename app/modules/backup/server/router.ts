@@ -11,13 +11,15 @@ import {
   UploadSchema,
 } from '../shared';
 import { backupService } from './service';
+import { automaticStatus, reconfigureAutomaticBackups } from './automatic';
 
 const m = moduleKit(manifest);
 const id = z.object({ id: IdSchema });
 export const backupRouter = m.router({
-  overview: m.procedure
-    .meta({ permission: 'backup.view' })
-    .query(({ ctx }) => backupService(ctx).overview()),
+  overview: m.procedure.meta({ permission: 'backup.view' }).query(async ({ ctx }) => ({
+    ...(await backupService(ctx).overview()),
+    ...automaticStatus(ctx.app, ctx.book.id),
+  })),
   list: m.procedure
     .meta({ permission: 'backup.view' })
     .query(({ ctx }) => backupService(ctx).list()),
@@ -44,7 +46,11 @@ export const backupRouter = m.router({
   saveSettings: m.procedure
     .meta({ permission: 'backup.settings' })
     .input(SettingsSchema)
-    .mutation(({ ctx, input }) => backupService(ctx).saveSettings(input)),
+    .mutation(async ({ ctx, input }) => {
+      const config = await backupService(ctx).saveSettings(input);
+      await reconfigureAutomaticBackups(ctx.app, ctx.book.id);
+      return config;
+    }),
   prune: m.procedure
     .meta({ permission: 'backup.prune' })
     .input(DeleteSchema)
