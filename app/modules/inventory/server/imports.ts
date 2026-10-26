@@ -47,9 +47,25 @@ export async function importInventory(
           const old = products.find((p) => p.code === code);
           if (old && !v.overwrite)
             fail('REPLACE', `产品 ${code} 已存在`, '勾选覆盖已有产品并再次预览');
+          const resolveAccount = async (
+            key: 'inventoryAccountCode' | 'salesAccountCode',
+            fallback: number | null | undefined,
+          ) => {
+            if (row[key] === undefined) return fallback ?? null;
+            const code = String(row[key]).trim();
+            return code ? (await t.accounts.require(code)).id : null;
+          };
           const input = ProductSchema.parse({
             ...old,
             ...row,
+            inventoryAccountId: await resolveAccount(
+              'inventoryAccountCode',
+              (row.inventoryAccountId ?? old?.inventoryAccountId) as number | null | undefined,
+            ),
+            salesAccountId: await resolveAccount(
+              'salesAccountCode',
+              (row.salesAccountId ?? old?.salesAccountId) as number | null | undefined,
+            ),
             id: old?.id,
             revision: old?.revision,
           });
@@ -89,6 +105,8 @@ export async function importInventory(
           errors.push({ row: i + 2, message: errorText(e) });
         }
       }
+      if (v.document.id && !v.overwrite)
+        errors.push({ row: 0, message: '当前单据已有明细，请明确确认覆盖全部原明细' });
       if (!errors.length)
         try {
           await s.previewDocument({

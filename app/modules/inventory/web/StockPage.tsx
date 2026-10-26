@@ -15,7 +15,8 @@ export default function StockPage() {
     hideZero: false,
   });
   const { warehouses } = useCatalog();
-  const warehouseId = f.warehouseId || warehouses[0]?.id || 0;
+  const warehouseId =
+    f.warehouseId || warehouses.find((w) => !w.disabled)?.id || warehouses[0]?.id || 0;
   const navigate = useInventoryNavigate();
   const [valuation, setValuation] = useState('receipt');
   const filter = {

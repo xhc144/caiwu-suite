@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Button, Checkbox, Drawer, Form, Input, Select, Space } from 'antd';
+import { App, Alert, Button, Checkbox, Drawer, Form, Input, Select, Space } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router';
 import { AccountSelect, FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
@@ -23,6 +23,7 @@ import {
 import ImportButton from './ImportButton';
 import type { DocumentInput } from '../shared';
 export default function DocumentPage() {
+  const { modal } = App.useApp();
   const location = useLocation(),
     navigate = useInventoryNavigate(),
     client = useQueryClient();
@@ -36,7 +37,8 @@ export default function DocumentPage() {
     unvouchered: false,
   });
   const { warehouses, context } = useCatalog();
-  const warehouseId = f.warehouseId || warehouses[0]?.id || 0;
+  const warehouseId =
+    f.warehouseId || warehouses.find((w) => !w.disabled)?.id || warehouses[0]?.id || 0;
   const query = useQuery(
     api.documents.queryOptions({
       kind,
@@ -48,6 +50,8 @@ export default function DocumentPage() {
     }),
   );
   const loaded = useRef('');
+  const submitting = useRef(false);
+  const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<DocumentInput | null>(null),
     [dirty, setDirty] = useState(false);
   const canEdit = usePermission('inventory.edit'),
@@ -131,25 +135,52 @@ export default function DocumentPage() {
     preview.reset();
   };
   const submit = async () => {
-    if (!editing) return;
-    const p = await preview.mutateAsync(editing);
-    let confirmation: string | undefined;
-    if (p.shortages.length) {
-      if (
-        !window.confirm(
-          `库存不足，默认取消。${p.shortages.map((s) => `${s.productCode} ${s.productName}：当前 ${s.current}，申请 ${s.requested}，差额 ${s.difference}`).join('；')}。确认当前版本允许负库存并记录日志吗？`,
-        )
-      )
-        return;
-      confirmation = p.confirmation;
+    if (!editing || submitting.current) return;
+    submitting.current = true;
+    setSaving(true);
+    try {
+      const p = await preview.mutateAsync(editing);
+      let confirmation: string | undefined;
+      if (p.shortages.length) {
+        const agreed = await new Promise<boolean>((resolve) =>
+          modal.confirm({
+            title: '库存不足，默认取消',
+            content: (
+              <ul>
+                {p.shortages.map((r) => (
+                  <li key={r.productCode}>
+                    {r.productCode} {r.productName}：当前 {r.current}，申请 {r.requested}，差额{' '}
+                    {r.difference}
+                  </li>
+                ))}
+              </ul>
+            ),
+            autoFocusButton: 'cancel',
+            okText: '确认允许负库存',
+            cancelText: '取消',
+            okButtonProps: { danger: true },
+            onOk: () => {
+              resolve(true);
+            },
+            onCancel: () => {
+              resolve(false);
+            },
+          }),
+        );
+        if (!agreed) return;
+        confirmation = p.confirmation;
+      }
+      const saved = await save.mutateAsync({ ...editing, negativeConfirmation: confirmation });
+      setDirty(false);
+      setEditing(null);
+      loaded.current = '';
+      setF({ id: 0 });
+      await refresh();
+      return saved;
+    } finally {
+      submitting.current = false;
+      setSaving(false);
     }
-    const saved = await save.mutateAsync({ ...editing, negativeConfirmation: confirmation });
-    setDirty(false);
-    setEditing(null);
-    loaded.current = '';
-    setF({ id: 0 });
-    await refresh();
-    return saved;
   };
   useHotkey('Ctrl+S', () => {
     if (editing && canEdit) void submit();
@@ -321,11 +352,7 @@ export default function DocumentPage() {
           <Space>
             <Button onClick={close}>返回</Button>
             {canEdit && !locked && (
-              <Button
-                type="primary"
-                loading={save.isPending || preview.isPending}
-                onClick={() => void submit()}
-              >
+              <Button type="primary" loading={saving} onClick={() => void submit()}>
                 保存单据
               </Button>
             )}
@@ -444,8 +471,17 @@ export default function DocumentPage() {
                 value={editing.taxRate}
                 onChange={(taxRate) => change({ taxRate })}
               />
-              <LineEditor lines={editing.lines} onChange={(lines) => change({ lines })} />
+              <LineEditor
+                taxRate={editing.taxRate}
+                lines={editing.lines}
+                onChange={(lines) => change({ lines })}
+              />
             </Form>
+            {!locked && (
+              <Button loading={preview.isPending} onClick={() => preview.mutate(editing)}>
+                检查库存及金额
+              </Button>
+            )}
             {!locked && (
               <ImportButton
                 kind="document"

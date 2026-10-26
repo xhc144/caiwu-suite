@@ -9,7 +9,8 @@ import { Grid, WarehouseSelect, mayDiscard, useCatalog, useRefresh, useUnsaved }
 export default function CountPage() {
   const [f, setF] = useUrlFilters({ warehouseId: 0, period: 0 });
   const { warehouses, context } = useCatalog();
-  const warehouseId = f.warehouseId || warehouses[0]?.id || 0,
+  const warehouseId =
+      f.warehouseId || warehouses.find((w) => !w.disabled)?.id || warehouses[0]?.id || 0,
     period = f.period || context?.current?.period || 202601;
   const key = { warehouseId, period };
   const q = useQuery({

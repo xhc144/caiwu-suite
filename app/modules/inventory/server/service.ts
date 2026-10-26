@@ -7,7 +7,6 @@ import {
   periodOfDate,
   periodStartDate,
   sumCents,
-  toCents,
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { sql } from '@caiwu/db';
@@ -29,6 +28,7 @@ import {
   type ProductInput,
 } from '../shared';
 import type { z } from 'zod';
+import { priceLine } from '../math';
 import type { InventoryTables } from './migrations';
 const secret = randomBytes(32);
 const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
@@ -47,23 +47,7 @@ function safe(n: number) {
   if (!Number.isSafeInteger(n)) fail('OVERFLOW', '数量或金额合计超出允许范围');
   return n;
 }
-export function priceLine(q: string, price: string, rate: string, inclusive: boolean) {
-  const factor = new Decimal(rate).div(100).plus(1);
-  if (new Decimal(rate).gt(100)) fail('TAX', '税率必须在 0 到 100 之间');
-  const netPrice = inclusive ? new Decimal(price).div(factor) : new Decimal(price);
-  const taxPrice = inclusive ? new Decimal(price) : new Decimal(price).mul(factor);
-  const net = toCents(new Decimal(q).mul(netPrice));
-  const gross = inclusive
-    ? multiplyToCents(q, price)
-    : safe(net + toCents(new Decimal(net).div(100).mul(rate).div(100)));
-  return {
-    unit_price: netPrice.toFixed(),
-    tax_unit_price: taxPrice.toFixed(),
-    net_cents: net,
-    tax_cents: gross - net,
-    gross_cents: gross,
-  };
-}
+export { priceLine } from '../math';
 export function inventoryService(svc: CoreServices) {
   const db = svc.db.withTables<InventoryTables>();
   const control = () =>
@@ -125,10 +109,13 @@ export function inventoryService(svc: CoreServices) {
   const unlocked = async (date: string) => {
     await svc.periods.assertOpen(periodOfDate(date), '修改仓库业务');
     const c = await control();
-    if (c.cost_cutoff_date && date <= c.cost_cutoff_date)
+    if (
+      (c.cost_cutoff_date && date <= c.cost_cutoff_date) ||
+      (c.cost_period && periodOfDate(date) <= c.cost_period)
+    )
       fail(
         'CUTOFF',
-        `日期 ${date} 已在成本核算截止点 ${c.cost_cutoff_date} 内`,
+        `日期 ${date} 已在成本核算截止点 ${c.cost_cutoff_date ?? periodEndDate(c.cost_period!)} 内`,
         '请查询历史单据，成本核算撤销由后续成本模块处理',
       );
   };
@@ -143,7 +130,12 @@ export function inventoryService(svc: CoreServices) {
   };
   const sourceUnlocked = async (r: Awaited<ReturnType<typeof document>>, audit = false) => {
     await unlocked(r.date);
-    if (r.calculation_status !== 'uncalculated' || r.calculation_batch || r.calculation_cutoff_date)
+    if (
+      r.calculation_status !== 'uncalculated' ||
+      r.calculation_batch ||
+      r.calculation_period ||
+      r.calculation_cutoff_date
+    )
       fail('CALCULATED', `单据 ${r.number} 已核算，不能修改或撤销`);
     if (
       await db
@@ -193,7 +185,13 @@ export function inventoryService(svc: CoreServices) {
       await db
         .selectFrom('inventory_opening')
         .select('id')
-        .where('calculation_status', '!=', 'uncalculated')
+        .where((eb) =>
+          eb.or([
+            eb('calculation_status', '!=', 'uncalculated'),
+            eb('calculation_batch', 'is not', null),
+            eb('calculation_period', 'is not', null),
+          ]),
+        )
         .executeTakeFirst()
     )
       fail('OPENING_LOCKED', '库存期初已参与成本核算');
@@ -1038,8 +1036,16 @@ export function inventoryService(svc: CoreServices) {
           received: l.kind === 'receipt' ? quantity(l.quantity_e6) : '0',
           issued: l.kind === 'issue' ? quantity(l.quantity_e6) : '0',
           balance: quantity(balance),
-          amountCents: l.kind === 'receipt' ? l.net_cents : l.outbound_cost_cents,
-          costStatus: l.calculation_status === 'calculated' ? '已核算' : '未核算',
+          amountCents:
+            l.kind === 'receipt'
+              ? l.net_cents
+              : l.calculation_status === 'calculated' && l.line_calculation_status === 'calculated'
+                ? l.outbound_cost_cents
+                : null,
+          costStatus:
+            l.calculation_status === 'calculated' && l.line_calculation_status === 'calculated'
+              ? '已核算'
+              : '未核算',
         });
       }
       return rows;
@@ -1084,6 +1090,9 @@ export function inventoryService(svc: CoreServices) {
       valuation: 'document' | 'cost';
     }) {
       const f = FilterSchema.parse(v.filter);
+      const accounts = new Map(
+        (await svc.accounts.list()).map((a) => [a.id, `${a.code} ${a.fullName}`]),
+      );
       const rows = new Map<
         string,
         {
@@ -1109,7 +1118,8 @@ export function inventoryService(svc: CoreServices) {
             ? `${l.code} ${l.name}`
             : v.group === 'category'
               ? l.category
-              : String((v.group === 'account' ? l.account_id : l.cost_account_id) ?? '未设置');
+              : (accounts.get((v.group === 'account' ? l.account_id : l.cost_account_id) ?? 0) ??
+                '未设置');
         const key = `${label}-${v.detail ? l.product_id : ''}`;
         let r = rows.get(key);
         if (!r) {
@@ -1220,7 +1230,8 @@ export function inventoryService(svc: CoreServices) {
             .selectAll()
             .where('id', '=', old.id)
             .executeTakeFirstOrThrow();
-          if (h.calculation_status !== 'uncalculated') fail('CALCULATED', '盘点表已核算');
+          if (h.calculation_status !== 'uncalculated' || h.calculation_batch)
+            fail('CALCULATED', '盘点表已核算');
           await tdb.deleteFrom('inventory_count_line').where('count_id', '=', old.id).execute();
           await tdb
             .updateTable('inventory_count')
@@ -1280,7 +1291,8 @@ export function inventoryService(svc: CoreServices) {
           .selectAll()
           .where('id', '=', old.id)
           .executeTakeFirstOrThrow();
-        if (header.calculation_status !== 'uncalculated') fail('CALCULATED', '盘点表已核算');
+        if (header.calculation_status !== 'uncalculated' || header.calculation_batch)
+          fail('CALCULATED', '盘点表已核算');
         const seen = new Set<number>();
         if (old.rows.length !== v.rows.length)
           fail('COUNT_ROWS', '保存实盘必须包含原快照的完整产品集合');
@@ -1342,7 +1354,8 @@ export function inventoryService(svc: CoreServices) {
           .selectAll()
           .where('id', '=', old.id)
           .executeTakeFirstOrThrow();
-        if (h.calculation_status !== 'uncalculated') fail('CALCULATED', '盘点表已核算');
+        if (h.calculation_status !== 'uncalculated' || h.calculation_batch)
+          fail('CALCULATED', '盘点表已核算');
         await tdb.deleteFrom('inventory_count').where('id', '=', old.id).execute();
         await t.log.write({ action: 'inventory.count.delete', summary: `删除盘点 ${v.period}` });
       });

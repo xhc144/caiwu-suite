@@ -19,7 +19,8 @@ import ImportButton from './ImportButton';
 export default function OpeningPage() {
   const [f, setF] = useUrlFilters({ warehouseId: 0 });
   const { warehouses, context } = useCatalog();
-  const warehouseId = f.warehouseId || warehouses[0]?.id || 0;
+  const warehouseId =
+    f.warehouseId || warehouses.find((w) => !w.disabled)?.id || warehouses[0]?.id || 0;
   const q = useQuery({
     ...api.opening.queryOptions({ warehouseId: warehouseId || 1 }),
     enabled: !!warehouseId,

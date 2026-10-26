@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Alert, Checkbox, Form, Input, Select, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
+import { Decimal, sumCents } from '@caiwu/core';
 import { api } from './api';
 import { InventoryNavigation } from './common';
 import { Grid, ProductSelect, WarehouseSelect, useCatalog, useInventoryNavigate } from './common';
@@ -14,7 +15,8 @@ export default function ReportPage() {
     category: '',
   });
   const { warehouses } = useCatalog();
-  const warehouseId = f.warehouseId || warehouses[0]?.id || 0;
+  const warehouseId =
+    f.warehouseId || warehouses.find((w) => !w.disabled)?.id || warehouses[0]?.id || 0;
   const [mode, setMode] = useState<'receipt' | 'issue' | 'sales'>('receipt'),
     [group, setGroup] = useState<'product' | 'category' | 'account' | 'costAccount'>('product'),
     [detail, setDetail] = useState(false),
@@ -32,11 +34,33 @@ export default function ReportPage() {
       filter: { ...filter, kind: mode === 'sales' ? undefined : mode },
       group,
       detail,
-      valuation,
+      valuation: mode === 'receipt' ? 'document' : valuation,
     }),
     enabled: mode !== 'sales',
   });
   const sales = useQuery({ ...api.sales.queryOptions(filter), enabled: mode === 'sales' });
+  const groups = summary.data ?? [];
+  const summaryRows = groups.length
+    ? [
+        ...groups,
+        {
+          key: 'total',
+          group: '合计',
+          productCode: '',
+          quantity: groups.reduce((n, r) => n.plus(r.quantity), new Decimal(0)).toFixed(),
+          amountCents: groups.some((r) => r.amountCents == null)
+            ? null
+            : sumCents(groups.map((r) => r.amountCents)),
+          taxCents: sumCents(groups.map((r) => r.taxCents)),
+          grossCents: sumCents(groups.map((r) => r.grossCents)),
+          costStatus: groups.some((r) => r.amountCents == null)
+            ? '待成本核算'
+            : mode === 'issue' && valuation === 'cost'
+              ? '已核算'
+              : '单据金额',
+        },
+      ]
+    : [];
   return (
     <PageContainer
       title="汇总与销售明细"
@@ -70,7 +94,10 @@ export default function ReportPage() {
         <Select
           aria-label="报表类型"
           value={mode}
-          onChange={setMode}
+          onChange={(v) => {
+            setMode(v);
+            if (v === 'receipt' && group === 'costAccount') setGroup('product');
+          }}
           options={[
             { value: 'receipt', label: '入库汇总' },
             { value: 'issue', label: '出库汇总' },
@@ -86,8 +113,8 @@ export default function ReportPage() {
               options={[
                 { value: 'product', label: '按产品' },
                 { value: 'category', label: '按类别' },
-                { value: 'account', label: mode === 'receipt' ? '按付款科目ID' : '按收款科目ID' },
-                ...(mode === 'issue' ? [{ value: 'costAccount', label: '按成本科目ID' }] : []),
+                { value: 'account', label: mode === 'receipt' ? '按付款科目' : '按收款科目' },
+                ...(mode === 'issue' ? [{ value: 'costAccount', label: '按成本科目' }] : []),
               ]}
             />
             <Checkbox checked={detail} onChange={(e) => setDetail(e.target.checked)}>
@@ -146,7 +173,7 @@ export default function ReportPage() {
         <Grid
           id="summary"
           title={mode === 'receipt' ? '入库汇总' : '出库汇总'}
-          rows={summary.data ?? []}
+          rows={summaryRows}
           columns={[
             { key: 'group', title: '汇总项目', dataIndex: 'group' },
             { key: 'productCode', title: '产品编号', dataIndex: 'productCode' },

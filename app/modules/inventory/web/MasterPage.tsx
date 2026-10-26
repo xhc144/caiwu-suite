@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Checkbox, Drawer, Form, Input, Modal, Select, Space, Typography } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { AccountSelect, FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
-import { usePermission } from '@caiwu/web-kit';
+import { useAccounts, usePermission } from '@caiwu/web-kit';
 import type { ProductInput } from '../shared';
 import { api } from './api';
 import { InventoryNavigation } from './common';
@@ -22,6 +22,7 @@ const blank: ProductInput = {
   disabled: false,
 };
 export default function MasterPage() {
+  const { byId: accounts } = useAccounts();
   const [f, setF] = useUrlFilters({ keyword: '' });
   const products = useQuery(api.products.queryOptions({ keyword: f.keyword }));
   const { warehouses } = useCatalog();
@@ -120,8 +121,24 @@ export default function MasterPage() {
           { key: 'issuePrice', title: '默认出库价', dataIndex: 'issuePrice' },
           { key: 'planPrice', title: '计划价', dataIndex: 'planPrice' },
           { key: 'allocationFactor', title: '费用分摊系数', dataIndex: 'allocationFactor' },
-          { key: 'inventoryAccountId', title: '存货科目ID', dataIndex: 'inventoryAccountId' },
-          { key: 'salesAccountId', title: '销售科目ID', dataIndex: 'salesAccountId' },
+          {
+            key: 'inventoryAccountId',
+            title: '存货科目编码',
+            exportValue: (p) => accounts.get(p.inventoryAccountId ?? 0)?.code ?? '',
+            render: (_, p) => {
+              const a = accounts.get(p.inventoryAccountId ?? 0);
+              return a ? `${a.code} ${a.fullName}` : '未设置';
+            },
+          },
+          {
+            key: 'salesAccountId',
+            title: '销售科目编码',
+            exportValue: (p) => accounts.get(p.salesAccountId ?? 0)?.code ?? '',
+            render: (_, p) => {
+              const a = accounts.get(p.salesAccountId ?? 0);
+              return a ? `${a.code} ${a.fullName}` : '未设置';
+            },
+          },
           {
             key: 'disabled',
             title: '状态',

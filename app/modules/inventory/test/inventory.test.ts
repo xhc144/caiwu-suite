@@ -507,6 +507,7 @@ describe('B 导入、合同、权限及隔离', () => {
     const d = await api.saveDocument(input('receipt', 'R1'));
     const v = {
       kind: 'document' as const,
+      overwrite: true,
       rows: [{ productCode: 'P1', quantity: '1', unitPrice: '1' }],
       document: { ...input('receipt', 'R1'), id: d.id, revision: 1 },
     };

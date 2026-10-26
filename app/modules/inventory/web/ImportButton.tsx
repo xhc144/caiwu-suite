@@ -15,7 +15,9 @@ const aliases: Record<string, string> = {
   默认出库价: 'issuePrice',
   计划价: 'planPrice',
   费用分摊系数: 'allocationFactor',
+  存货科目编码: 'inventoryAccountCode',
   存货科目ID: 'inventoryAccountId',
+  销售科目编码: 'salesAccountCode',
   销售科目ID: 'salesAccountId',
   数量: 'quantity',
   单价: 'unitPrice',
@@ -50,6 +52,7 @@ export default function ImportButton({
     preview.reset();
     setError('');
     try {
+      if (file.size > 5 * 1024 * 1024) throw new Error('Excel 文件不能超过 5 MB');
       const { Workbook } = await import('exceljs');
       const wb = new Workbook();
       await wb.xlsx.load(await file.arrayBuffer());
@@ -129,7 +132,7 @@ export default function ImportButton({
       >
         <Typography.Paragraph>
           {kind === 'products'
-            ? '列名：产品编号、产品名称、规格、计量单位、默认入库价、默认出库价、计划价、费用分摊系数、存货科目ID、销售科目ID。已有产品覆盖时保留稳定 ID。'
+            ? '列名：产品编号、产品名称、规格、计量单位、默认入库价、默认出库价、计划价、费用分摊系数、存货科目编码、销售科目编码。已有产品覆盖时保留稳定 ID。'
             : '列名：产品编号、数量、单价（元）' +
               (kind === 'document'
                 ? '、含税口径（是/否）、说明。单据头取当前编辑内容。'
@@ -144,7 +147,7 @@ export default function ImportButton({
             if (f) void read(f);
           }}
         />
-        {kind !== 'document' && (
+        {(kind !== 'document' || document?.id) && (
           <Checkbox
             checked={overwrite}
             onChange={(e) => {
@@ -152,7 +155,9 @@ export default function ImportButton({
               preview.reset();
             }}
           >
-            允许覆盖已有数据（需再次预览）
+            {kind === 'document'
+              ? '确认覆盖当前单据全部明细（需再次预览）'
+              : '允许覆盖已有数据（需再次预览）'}
           </Checkbox>
         )}
         {error && <Alert type="error" title={error} />}

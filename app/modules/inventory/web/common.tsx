@@ -6,6 +6,7 @@ import { escapeHtml, printHtml } from '@caiwu/print';
 import { formatMoney } from '@caiwu/core';
 import { useTab } from '@caiwu/web-kit';
 import { api } from './api';
+import { priceLine } from '../math';
 import type { DocumentInput } from '../shared';
 /** W0 TabsHost loops while mounting a second lazy module tab. A native location
  * change is the owner-local fallback until its title callback is stabilized.
@@ -264,11 +265,20 @@ export function LineEditor({
   lines,
   onChange,
   opening = false,
+  taxRate = '0',
 }: {
   lines: EditLine[];
   onChange: (lines: EditLine[]) => void;
   opening?: boolean;
+  taxRate?: string;
 }) {
+  const calculated = (r: EditLine) => {
+    try {
+      return priceLine(r.quantity, r.unitPrice, opening ? '0' : taxRate, !!r.priceIncludesTax);
+    } catch {
+      return null;
+    }
+  };
   const update = (index: number, patch: Partial<EditLine>) =>
     onChange(lines.map((l, i) => (i === index ? { ...l, ...patch } : l)));
   const columns: DataColumn<EditLine & { key: string }>[] = [
@@ -342,6 +352,46 @@ export function LineEditor({
                 onChange={(e) => update(index, { note: e.target.value })}
               />
             ),
+          },
+        ]
+      : []),
+    ...(!opening
+      ? [
+          {
+            key: 'netPrice',
+            title: '不含税单价',
+            width: 140,
+            render: (_: unknown, r: EditLine) => calculated(r)?.unit_price ?? '待校验',
+          },
+          {
+            key: 'taxPrice',
+            title: '含税单价',
+            width: 140,
+            render: (_: unknown, r: EditLine) => calculated(r)?.tax_unit_price ?? '待校验',
+          },
+        ]
+      : []),
+    {
+      key: 'net',
+      title: '金额（元）',
+      width: 140,
+      render: (_, r) => (calculated(r) ? formatMoney(calculated(r)!.net_cents) : '待校验'),
+    },
+    ...(!opening
+      ? [
+          {
+            key: 'taxAmount',
+            title: '税额（元）',
+            width: 140,
+            render: (_: unknown, r: EditLine) =>
+              calculated(r) ? formatMoney(calculated(r)!.tax_cents) : '待校验',
+          },
+          {
+            key: 'gross',
+            title: '价税合计（元）',
+            width: 140,
+            render: (_: unknown, r: EditLine) =>
+              calculated(r) ? formatMoney(calculated(r)!.gross_cents) : '待校验',
           },
         ]
       : []),
