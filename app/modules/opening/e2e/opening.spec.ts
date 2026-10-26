@@ -357,3 +357,131 @@ test('w_xt_ye：Ctrl+F4/F5取消退出，原生刷新保留草稿，明确放弃
   await page.getByRole('button', { name: '新增期初', exact: true }).click();
   await expect(drawer.getByLabel('年初余额（本位币）', { exact: true })).toHaveValue('');
 });
+
+test('w_xt_ye：7月红字账前累计UI录入重载、三项试算与Excel覆盖往返不移列', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60000);
+  const { token } = await loginWithNewBook(page, request, { startMonth: 7 });
+  await page.goto('/m/opening?year=2026');
+  for (const row of [
+    { code: '1001', side: '借', debit: '-1.00', credit: '0.00' },
+    { code: '4001', side: '贷', debit: '0.00', credit: '-1.00' },
+  ]) {
+    await page.getByRole('button', { name: '新增期初', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: '新增期初', exact: true });
+    await select(page, '末级科目', row.code);
+    if (row.side === '贷') {
+      await drawer.getByLabel('年初余额方向', { exact: true }).click();
+      await page
+        .locator('.ant-select-dropdown:visible .ant-select-item-option-content')
+        .filter({ hasText: /^贷$/ })
+        .click();
+    }
+    await drawer.getByLabel('年初余额（本位币）', { exact: true }).fill('1.00');
+    await drawer.getByLabel('账前累计借方', { exact: true }).fill(row.debit);
+    await drawer.getByLabel('账前累计贷方', { exact: true }).fill(row.credit);
+    await expect(drawer).toContainText('启用余额：0.00 元');
+    await drawer.getByRole('button', { name: '保存', exact: true }).click();
+    await expect(drawer).not.toBeVisible();
+  }
+  await expect(page.getByTestId('trial-result')).toContainText('试算平衡通过');
+  await expect(page.getByTestId('trial-result')).toContainText(
+    '账前累计借方 -1.00 / 贷方 -1.00，差额 0.00',
+  );
+  await page.reload();
+  const before = (
+    await callApi<{ rows: SavedRow[] }>(
+      request,
+      'm.opening.list',
+      { year: 2026 },
+      { token, method: 'GET' },
+    )
+  ).rows;
+  expect(before.map((r) => [r.balance, r.ytdDebit, r.ytdCredit])).toEqual([
+    [0, -100, 0],
+    [0, 0, -100],
+  ]);
+  for (const row of [
+    { code: '1001', debit: '-1.00', credit: '0.00' },
+    { code: '4001', debit: '0.00', credit: '-1.00' },
+  ]) {
+    await details(page)
+      .getByRole('row')
+      .filter({ hasText: row.code })
+      .getByRole('button', { name: '修改', exact: true })
+      .click();
+    const drawer = page.getByRole('dialog', { name: '修改期初', exact: true });
+    await expect(drawer.getByLabel('账前累计借方', { exact: true })).toHaveValue(row.debit);
+    await expect(drawer.getByLabel('账前累计贷方', { exact: true })).toHaveValue(row.credit);
+    await drawer
+      .locator('.ant-drawer-footer')
+      .getByRole('button', { name: '关闭', exact: true })
+      .click();
+    await expect(drawer).not.toBeVisible();
+  }
+  const downloading = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出 Excel', exact: true }).click();
+  const path = await (await downloading).path();
+  await page.getByRole('button', { name: '导入 Excel', exact: true }).click();
+  const modal = page.getByRole('dialog', { name: 'Excel 导入预览', exact: true });
+  await modal.getByLabel('导入模式', { exact: true }).click();
+  await page
+    .locator('.ant-select-dropdown:visible .ant-select-item-option-content')
+    .filter({ hasText: /^覆盖（明确修改已有键）$/ })
+    .click();
+  await expect(modal.getByLabel('导入模式', { exact: true }).locator('..')).toContainText(
+    '覆盖（明确修改已有键）',
+  );
+  await modal.getByLabel('选择 Excel 文件', { exact: true }).setInputFiles(path!);
+  await modal.getByRole('button', { name: '解析预览', exact: true }).click();
+  await expect(modal).toContainText('预览通过');
+  await expect(modal).toContainText('-1.00 / 0.00');
+  await expect(modal).toContainText('0.00 / -1.00');
+  await modal.getByRole('button', { name: '确认整批写入', exact: true }).click();
+  await expect(modal).not.toBeVisible();
+  expect(
+    (
+      await callApi<{ rows: SavedRow[] }>(
+        request,
+        'm.opening.list',
+        { year: 2026 },
+        { token, method: 'GET' },
+      )
+    ).rows,
+  ).toEqual(before);
+  await expect(page.getByTestId('trial-result')).toContainText('试算平衡通过');
+});
+
+test('w_xt_ye：USD筛选下新增选择科目保留USD，不能静默写为本位币', async ({ page, request }) => {
+  const { token } = await loginWithNewBook(page, request);
+  await page.goto('/m/opening?year=2026&currency=USD');
+  await page.getByRole('button', { name: '新增期初', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '新增期初', exact: true });
+  await drawer.getByLabel('末级科目', { exact: true }).fill('1001');
+  await expect(
+    page.locator('.ant-select-dropdown:visible .ant-select-item-option-content'),
+  ).toHaveCount(0);
+  await select(page, '末级科目', '100202');
+  await expect(drawer.getByLabel('外币启用余额（借正贷负）', { exact: true })).toBeVisible();
+  await expect(drawer.getByLabel('录入币种', { exact: true }).locator('..')).toContainText('USD');
+  await drawer.getByLabel('年初余额（本位币）', { exact: true }).fill('7.11');
+  await drawer.getByLabel('外币启用余额（借正贷负）', { exact: true }).fill('1.01');
+  await drawer.getByRole('button', { name: '保存', exact: true }).click();
+  await expect(drawer).not.toBeVisible();
+  await page.reload();
+  const rows = (
+    await callApi<{ rows: SavedRow[] }>(
+      request,
+      'm.opening.list',
+      { year: 2026 },
+      { token, method: 'GET' },
+    )
+  ).rows;
+  expect(rows).toHaveLength(1);
+  expect(rows[0]).toMatchObject({ currency: 'USD', balance: 711, fcBalance: 101 });
+  await expect(details(page)).toContainText('USD');
+  await expect(details(page)).toContainText('7.11');
+  await expect(details(page)).toContainText('1.01');
+});

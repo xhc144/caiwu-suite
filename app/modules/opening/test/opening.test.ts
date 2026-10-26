@@ -101,13 +101,20 @@ it('w_xt_ye：不平可保存，准确显示一分差额和当前科目，不允
   expect((await saved())[0]!.balance).toBe(10001);
 });
 it('w_xt_ye：1月不能伪造启用前累计；现金流量不进入期初', async () => {
-  expect(
-    (
-      await errorData(
-        caller().save({ year: 2026, changes: [{ data: { ...(await input()), ytdDebit: 1 } }] }),
-      )
-    ).code,
-  ).toBe('OPENING_JANUARY_YTD');
+  for (const field of ['ytdDebit', 'ytdCredit']) {
+    for (const amount of [1, -1]) {
+      expect(
+        (
+          await errorData(
+            caller().save({
+              year: 2026,
+              changes: [{ data: { ...(await input()), [field]: amount } }],
+            }),
+          )
+        ).code,
+      ).toBe('OPENING_JANUARY_YTD');
+    }
+  }
   await expect(
     caller().save({
       year: 2026,

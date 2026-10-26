@@ -31,8 +31,9 @@ export const RowSchema = YearSchema.extend({
   currency: z.string().min(1).nullable().default(null),
   /** core 的起算余额：首年为启用余额，后续年度为年初余额。借正贷负，分。 */
   balance: zCents,
-  ytdDebit: zCents.refine((v) => v >= 0, '账前累计借方不能为负').default(0),
-  ytdCredit: zCents.refine((v) => v >= 0, '账前累计贷方不能为负').default(0),
+  /** 账前同方向红字保留负数及原借贷列，与 core 的发生额累计口径一致。 */
+  ytdDebit: zCents.default(0),
+  ytdCredit: zCents.default(0),
   fcBalance: zCents.default(0),
   quantity: z
     .string()

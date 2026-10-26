@@ -96,6 +96,7 @@ export default function OpeningPage() {
     canImport = usePermission('opening.import'),
     canLock = usePermission('opening.lock');
   const [filters, setFilters] = useOpeningFilters();
+  const foreignCurrency = filters.currency && filters.currency !== 'base' ? filters.currency : null;
   const years = useQuery(api.years.queryOptions());
   const year = filters.year || Math.trunc((years.data?.book.startPeriod ?? 0) / 100);
   const list = useQuery(
@@ -308,7 +309,7 @@ export default function OpeningPage() {
       : {
           ...emptyDraft(),
           accountId: a?.id,
-          currency: filters.currency && filters.currency !== 'base' ? filters.currency : null,
+          currency: foreignCurrency ?? '',
         };
     form.resetFields();
     form.setFieldsValue(next);
@@ -331,6 +332,7 @@ export default function OpeningPage() {
   const filteredAccounts = (data?.accounts ?? []).filter(
     (a) =>
       (!filters.quantity || !!a.quantityUnit) &&
+      (!foreignCurrency || a.currency === foreignCurrency) &&
       (!filters.dimension || a.dimensions.some((d) => d.type === filters.dimension)),
   );
   const tree = accountTree(data?.accounts ?? [], rows);
@@ -784,10 +786,13 @@ export default function OpeningPage() {
           >
             <AccountSelect
               disabled={draft?.id != null}
-              onChange={() => {
+              filter={(a) => !foreignCurrency || a.currency === foreignCurrency}
+              onChange={(accountId) => {
+                const selected = data?.accounts.find((a) => a.id === accountId);
+                const currency = form.getFieldValue('currency') as string | null | undefined;
                 form.setFieldsValue({
                   dimensions: { project: null, partner: null, department: null, person: null },
-                  currency: '',
+                  currency: currency && selected?.currency === currency ? currency : '',
                   fcBalance: 0,
                   quantity: '0',
                 });
@@ -837,17 +842,12 @@ export default function OpeningPage() {
           >
             <MoneyInput allowNegative={false} />
           </Form.Item>
+          <p>账前累计的同方向红字冲销请填负数，保留原借、贷列。</p>
           <Form.Item name="ytdDebit" label="账前累计借方">
-            <MoneyInput
-              allowNegative={false}
-              disabled={(data?.fiscal.opening_period ?? 101) % 100 === 1}
-            />
+            <MoneyInput allowNegative disabled={(data?.fiscal.opening_period ?? 101) % 100 === 1} />
           </Form.Item>
           <Form.Item name="ytdCredit" label="账前累计贷方">
-            <MoneyInput
-              allowNegative={false}
-              disabled={(data?.fiscal.opening_period ?? 101) % 100 === 1}
-            />
+            <MoneyInput allowNegative disabled={(data?.fiscal.opening_period ?? 101) % 100 === 1} />
           </Form.Item>
           {watchedCurrency && (
             <>
