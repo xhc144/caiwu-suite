@@ -11,7 +11,7 @@ import {
   Spin,
 } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type SetStateAction } from 'react';
 import { MoneyInput, FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
 import {
   notify,
@@ -69,12 +69,26 @@ function Editor({ initial }: { initial: Report }) {
   const [checksOpen, setChecksOpen] = useState(false);
   const [mergeRange, setMergeRange] = useState('');
   const [error, setError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const saveInFlight = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const tab = useTab();
   const root = useRef<HTMLDivElement>(null);
   const canEdit = usePermission('report-engine.edit') && !report.template.readOnly;
   const dirty = JSON.stringify(draft) !== JSON.stringify(report.template);
   const list = useQuery(api.list.queryOptions({}));
   const save = useMutation(api.save.mutationOptions());
+  const canChange = canEdit && !isSaving;
+  // 同步锁保护尚未渲染 disabled 的事件轮次，以及异步向导回调。
+  const editDraft = (next: SetStateAction<ReportTemplate>) => {
+    if (canEdit && !saveInFlight.current && mounted.current) setDraft(next);
+  };
   const current: Cell = draft.cells.find((c) => c.address === selected) ?? {
     address: selected,
     kind: 'text',
@@ -90,7 +104,7 @@ function Editor({ initial }: { initial: Report }) {
     format: 'general' as const,
   };
   const point = coordinates(selected);
-  const bypassGuard = useUnsavedGuard(dirty, tab.active, root);
+  const bypassGuard = useUnsavedGuard(dirty, tab.active, root, isSaving);
   useEffect(() => {
     try {
       if (dirty)
@@ -103,8 +117,9 @@ function Editor({ initial }: { initial: Report }) {
       setError('本机草稿空间不足或存储被禁用；当前编辑仍在页面中，请先保存报表后离开。');
     }
   }, [dirty, draft, draftKey, report.revision]);
-  const leave = (to: string) =>
-    confirmDiscard(
+  const leave = (to: string) => {
+    if (saveInFlight.current) return;
+    return confirmDiscard(
       dirty,
       () => window.confirm(discardQuestion),
       () => {
@@ -118,9 +133,10 @@ function Editor({ initial }: { initial: Report }) {
         window.location.assign(to);
       },
     );
+  };
   const updateCell = (cell: Cell) => {
     if (!canEdit) return;
-    setDraft((d) => ({
+    editDraft((d) => ({
       ...d,
       cells: [
         ...d.cells.filter((c) => c.address !== cell.address),
@@ -129,33 +145,47 @@ function Editor({ initial }: { initial: Report }) {
     }));
   };
   const updateStyle = (patch: Partial<CellStyle>) =>
-    setDraft((d) => ({
+    editDraft((d) => ({
       ...d,
       styles: [...d.styles.filter((s) => s.address !== selected), { ...currentStyle, ...patch }],
     }));
   const submit = async () => {
+    if (!canEdit || saveInFlight.current) return;
     const parsed = ReportTemplateSchema.safeParse(draft);
     if (!parsed.success) {
       setError(parsed.error.issues.map((e) => e.message).join('；'));
       return;
     }
-    const saved = await save.mutateAsync({
-      id: report.id,
-      expectedRevision: report.revision,
-      template: parsed.data,
-    });
-    setReport(saved);
-    setDraft(saved.template);
-    setError('');
-    queryClient.setQueryData(api.get.queryKey({ id: report.id }), saved);
-    void queryClient.invalidateQueries({ queryKey: api.list.queryKey() });
-    notify.success('报表定义已保存');
+    saveInFlight.current = true;
+    setIsSaving(true);
+    try {
+      const saved = await save.mutateAsync({
+        id: report.id,
+        expectedRevision: report.revision,
+        template: parsed.data,
+      });
+      if (!mounted.current) return;
+      setReport(saved);
+      setDraft(saved.template);
+      setError('');
+      queryClient.setQueryData(api.get.queryKey({ id: report.id }), (cached) =>
+        cached && cached.revision > saved.revision ? cached : saved,
+      );
+      void queryClient.invalidateQueries({ queryKey: api.list.queryKey() });
+      notify.success('报表定义已保存');
+    } catch {
+      // mutationCache 显示业务错误；保留当前定义和本机草稿以便继续编辑。
+    } finally {
+      saveInFlight.current = false;
+      if (mounted.current) setIsSaving(false);
+    }
   };
-  useHotkey('F8', () => canEdit && setWizard(true));
+  useHotkey('F8', () => canChange && setWizard(true));
   useHotkey('Ctrl+S', () => {
-    if (canEdit && !save.isPending) void submit();
+    void submit();
   });
   const merge = () => {
+    if (!canEdit || saveInFlight.current) return;
     const m = /^([A-Z]{1,2}[1-9]\d{0,2}):([A-Z]{1,2}[1-9]\d{0,2})$/.exec(mergeRange.toUpperCase());
     if (!m) {
       setError('合并范围格式为 A1:B2');
@@ -175,7 +205,7 @@ function Editor({ initial }: { initial: Report }) {
       setError(parsed.error.issues.map((i) => i.message).join('；'));
       return;
     }
-    setDraft(parsed.data);
+    editDraft(parsed.data);
     setError('');
   };
   return (
@@ -185,12 +215,22 @@ function Editor({ initial }: { initial: Report }) {
         subtitle="金额输入元；保存后参与报表生成。"
         extra={
           <Space>
-            <Button onClick={() => leave('/m/report-engine')}>返回列表</Button>
-            <Button onClick={() => leave(`/m/report-engine/view?id=${report.id}`)}>
+            <Button disabled={isSaving} onClick={() => leave('/m/report-engine')}>
+              返回列表
+            </Button>
+            <Button
+              disabled={isSaving}
+              onClick={() => leave(`/m/report-engine/view?id=${report.id}`)}
+            >
               生成/查看
             </Button>
             {canEdit && (
-              <Button type="primary" loading={save.isPending} onClick={() => void submit()}>
+              <Button
+                type="primary"
+                disabled={isSaving}
+                loading={isSaving}
+                onClick={() => void submit()}
+              >
                 保存（Ctrl+S）
               </Button>
             )}
@@ -209,6 +249,7 @@ function Editor({ initial }: { initial: Report }) {
         >
           <Form.Item name="id" label="切换报表">
             <Select
+              disabled={isSaving}
               style={{ width: 260 }}
               options={(list.data ?? []).map((r) => ({
                 value: r.id,
@@ -217,6 +258,7 @@ function Editor({ initial }: { initial: Report }) {
             />
           </Form.Item>
         </FilterBar>
+        {isSaving && <Alert type="info" title="报表正在保存，完成前暂不能编辑或切换报表。" />}
         {!canEdit && (
           <Alert
             type="info"
@@ -238,9 +280,9 @@ function Editor({ initial }: { initial: Report }) {
             <Input
               aria-label="定义编码"
               value={draft.code}
-              disabled={!canEdit}
+              disabled={!canChange}
               style={{ width: 80 }}
-              onChange={(e) => setDraft({ ...draft, code: e.target.value })}
+              onChange={(e) => editDraft({ ...draft, code: e.target.value })}
             />
           </label>
           <label>
@@ -248,9 +290,9 @@ function Editor({ initial }: { initial: Report }) {
             <Input
               aria-label="定义名称"
               value={draft.name}
-              disabled={!canEdit}
+              disabled={!canChange}
               style={{ width: 220 }}
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+              onChange={(e) => editDraft({ ...draft, name: e.target.value })}
             />
           </label>
           <label>
@@ -260,9 +302,9 @@ function Editor({ initial }: { initial: Report }) {
               value={draft.rows}
               min={1}
               max={999}
-              disabled={!canEdit}
+              disabled={!canChange}
               onChange={(n) => {
-                if (n) setDraft({ ...draft, rows: n });
+                if (n) editDraft({ ...draft, rows: n });
               }}
             />
           </label>
@@ -273,9 +315,9 @@ function Editor({ initial }: { initial: Report }) {
               value={draft.cols}
               min={1}
               max={250}
-              disabled={!canEdit}
+              disabled={!canChange}
               onChange={(n) => {
-                if (n) setDraft({ ...draft, cols: n });
+                if (n) editDraft({ ...draft, cols: n });
               }}
             />
           </label>
@@ -285,7 +327,7 @@ function Editor({ initial }: { initial: Report }) {
           <Select
             aria-label="单元格类型"
             value={current.kind}
-            disabled={!canEdit}
+            disabled={!canChange}
             style={{ width: 110 }}
             options={CellSchema.shape.kind.options.map((value) => ({
               value,
@@ -303,7 +345,7 @@ function Editor({ initial }: { initial: Report }) {
           <Select
             aria-label="单元格单位"
             value={current.unit}
-            disabled={!canEdit || current.kind === 'text'}
+            disabled={!canChange || current.kind === 'text'}
             style={{ width: 230 }}
             options={Object.entries(UNIT_LABELS).map(([value, label]) => ({ value, label }))}
             onChange={(unit) => updateCell({ ...current, unit })}
@@ -313,15 +355,21 @@ function Editor({ initial }: { initial: Report }) {
               aria-label="单元格币种"
               style={{ width: 80 }}
               value={current.currency}
-              disabled={!canEdit}
+              disabled={!canChange}
               onChange={(e) => updateCell({ ...current, currency: e.target.value.toUpperCase() })}
             />
           )}
           {canEdit && (
             <>
-              <Button onClick={() => setWizard(true)}>函数向导（F8）</Button>
-              <Button onClick={() => setChecksOpen(true)}>审核公式</Button>
-              <Button onClick={() => updateCell({ ...current, source: '' })}>清空当前格</Button>
+              <Button disabled={!canChange} onClick={() => setWizard(true)}>
+                函数向导（F8）
+              </Button>
+              <Button disabled={!canChange} onClick={() => setChecksOpen(true)}>
+                审核公式
+              </Button>
+              <Button disabled={!canChange} onClick={() => updateCell({ ...current, source: '' })}>
+                清空当前格
+              </Button>
             </>
           )}
         </Space>
@@ -329,7 +377,7 @@ function Editor({ initial }: { initial: Report }) {
           <MoneyInput
             aria-label="当前单元格内容"
             value={Number(current.source || 0)}
-            disabled={!canEdit}
+            disabled={!canChange}
             onChange={(cents) => updateCell({ ...current, source: String(cents ?? 0) })}
           />
         ) : (
@@ -338,7 +386,7 @@ function Editor({ initial }: { initial: Report }) {
             autoSize={{ minRows: 1, maxRows: 4 }}
             style={{ marginTop: 8 }}
             value={current.source}
-            disabled={!canEdit}
+            disabled={!canChange}
             onChange={(e) => updateCell({ ...current, source: e.target.value })}
           />
         )}
@@ -346,7 +394,7 @@ function Editor({ initial }: { initial: Report }) {
           <Select
             aria-label="水平对齐"
             value={currentStyle.align}
-            disabled={!canEdit}
+            disabled={!canChange}
             style={{ width: 100 }}
             options={[
               { value: 'left', label: '左对齐' },
@@ -357,14 +405,14 @@ function Editor({ initial }: { initial: Report }) {
           />
           <Checkbox
             checked={currentStyle.wrap}
-            disabled={!canEdit}
+            disabled={!canChange}
             onChange={(e) => updateStyle({ wrap: e.target.checked })}
           >
             自动换行
           </Checkbox>
           <Checkbox
             checked={currentStyle.bold}
-            disabled={!canEdit}
+            disabled={!canChange}
             onChange={(e) => updateStyle({ bold: e.target.checked })}
           >
             粗体
@@ -372,7 +420,7 @@ function Editor({ initial }: { initial: Report }) {
           <Select
             aria-label="数字格式"
             value={currentStyle.format}
-            disabled={!canEdit}
+            disabled={!canChange}
             style={{ width: 120 }}
             options={[
               { value: 'general', label: '常规' },
@@ -388,10 +436,10 @@ function Editor({ initial }: { initial: Report }) {
               value={draft.rowHeights.find((r) => r.row === point.row)?.height ?? 36}
               min={20}
               max={200}
-              disabled={!canEdit}
+              disabled={!canChange}
               onChange={(height) =>
                 height &&
-                setDraft({
+                editDraft({
                   ...draft,
                   rowHeights: [
                     ...draft.rowHeights.filter((r) => r.row !== point.row),
@@ -408,10 +456,10 @@ function Editor({ initial }: { initial: Report }) {
               value={draft.colWidths.find((r) => r.col === point.col)?.width ?? 160}
               min={60}
               max={600}
-              disabled={!canEdit}
+              disabled={!canChange}
               onChange={(width) =>
                 width &&
-                setDraft({
+                editDraft({
                   ...draft,
                   colWidths: [
                     ...draft.colWidths.filter((c) => c.col !== point.col),
@@ -428,12 +476,16 @@ function Editor({ initial }: { initial: Report }) {
               aria-label="合并范围"
               placeholder="A1:B2"
               value={mergeRange}
+              disabled={!canChange}
               onChange={(e) => setMergeRange(e.target.value)}
             />
-            <Button onClick={merge}>合并</Button>
+            <Button disabled={!canChange} onClick={merge}>
+              合并
+            </Button>
             <Button
+              disabled={!canChange}
               onClick={() =>
-                setDraft({
+                editDraft({
                   ...draft,
                   merges: draft.merges.filter(
                     (m) =>
@@ -456,7 +508,7 @@ function Editor({ initial }: { initial: Report }) {
           selected={selected}
           onSelect={setSelected}
           onChange={updateCell}
-          disabled={!canEdit}
+          disabled={!canChange}
         />
         <span style={{ color: '#666' }}>
           方向键/Enter 选择相邻单元格。当前列 {columnName(point.col)}
@@ -464,8 +516,10 @@ function Editor({ initial }: { initial: Report }) {
         </span>
         {wizard && (
           <FunctionWizard
+            disabled={isSaving}
             onClose={() => setWizard(false)}
             onInsert={(source, unit, currency) => {
+              if (saveInFlight.current) return;
               updateCell({ address: selected, kind: 'formula', source, unit, currency });
               setWizard(false);
             }}
@@ -497,9 +551,10 @@ function Editor({ initial }: { initial: Report }) {
                       }[key]
                     }
                     <Input
+                      disabled={!canChange}
                       value={c[key]}
                       onChange={(e) =>
-                        setDraft({
+                        editDraft({
                           ...draft,
                           checks: draft.checks.map((v, i) =>
                             i === index ? { ...v, [key]: e.target.value } : v,
@@ -510,9 +565,10 @@ function Editor({ initial }: { initial: Report }) {
                   </label>
                 ))}
                 <Button
+                  disabled={!canChange}
                   danger
                   onClick={() =>
-                    setDraft({ ...draft, checks: draft.checks.filter((_, i) => i !== index) })
+                    editDraft({ ...draft, checks: draft.checks.filter((_, i) => i !== index) })
                   }
                 >
                   移除此审核项
@@ -520,9 +576,10 @@ function Editor({ initial }: { initial: Report }) {
               </Space>
             ))}
             <Button
+              disabled={!canChange}
               style={{ marginTop: 16 }}
               onClick={() =>
-                setDraft({
+                editDraft({
                   ...draft,
                   checks: [
                     ...draft.checks,

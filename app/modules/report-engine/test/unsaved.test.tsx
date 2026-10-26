@@ -7,6 +7,31 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 describe('w_bb_def 未保存确认', () => {
+  it('保存中阻止切页和关闭快捷键，无需放弃确认；完成后恢复正常保护', () => {
+    const ref = { current: document.createElement('div') };
+    const button = document.createElement('button');
+    document.body.appendChild(button);
+    const next = vi.fn();
+    button.addEventListener('click', next);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const hook = renderHook(({ busy }) => useUnsavedGuard(false, true, ref, busy), {
+      initialProps: { busy: true },
+    });
+    expect(fireEvent.click(button)).toBe(false);
+    expect(
+      window.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'F4', ctrlKey: true, cancelable: true }),
+      ),
+    ).toBe(false);
+    expect(next).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(window.dispatchEvent(new Event('beforeunload', { cancelable: true }))).toBe(false);
+    hook.rerender({ busy: false });
+    expect(fireEvent.click(button)).toBe(true);
+    expect(next).toHaveBeenCalledOnce();
+    hook.unmount();
+  });
+
   it('取消阻止实际外部点击和Ctrl+F4，页内编辑与函数向导按钮不被拦截', () => {
     const root = document.createElement('div'),
       inside = document.createElement('button'),

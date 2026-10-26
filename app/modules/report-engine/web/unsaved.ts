@@ -13,10 +13,11 @@ export function useUnsavedGuard(
   dirty: boolean,
   active: boolean,
   root: RefObject<HTMLDivElement | null>,
+  busy = false,
 ) {
   const bypass = useRef(false);
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !busy) return;
     const unload = (e: BeforeUnloadEvent) => {
       if (bypass.current) return;
       e.preventDefault();
@@ -26,13 +27,13 @@ export function useUnsavedGuard(
       if (!active || !(e.target instanceof Element) || root.current?.contains(e.target)) return;
       if (!e.target.closest('a,button,[role="tab"],[role="menuitem"]')) return;
       if (bypass.current) return;
-      if (!window.confirm(discardQuestion)) {
+      if (busy || !window.confirm(discardQuestion)) {
         e.preventDefault();
         e.stopImmediatePropagation();
       }
     };
     const key = (e: KeyboardEvent) => {
-      if (active && e.ctrlKey && e.key === 'F4' && !window.confirm(discardQuestion)) {
+      if (active && e.ctrlKey && e.key === 'F4' && (busy || !window.confirm(discardQuestion))) {
         e.preventDefault();
         e.stopImmediatePropagation();
       }
@@ -45,7 +46,7 @@ export function useUnsavedGuard(
       document.removeEventListener('click', click, true);
       window.removeEventListener('keydown', key, true);
     };
-  }, [dirty, active, root]);
+  }, [dirty, active, root, busy]);
   return () => {
     bypass.current = true;
   };

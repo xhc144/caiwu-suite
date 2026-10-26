@@ -15,8 +15,10 @@ import { api } from './api';
 
 export function FunctionWizard({
   onClose,
+  disabled = false,
   onInsert,
 }: {
+  disabled?: boolean;
   onClose(): void;
   onInsert(source: string, unit: BalanceFunction['unit'], currency: string): void;
 }) {
@@ -65,6 +67,7 @@ export function FunctionWizard({
         }
       />
       <Form
+        disabled={disabled}
         form={form}
         layout="vertical"
         initialValues={{ metric: 'closing', unit: 'cents', currency: 'CNY', direction: 'signed' }}
