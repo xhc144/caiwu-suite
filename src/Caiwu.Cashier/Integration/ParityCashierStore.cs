@@ -67,6 +67,9 @@ public sealed class ParityCashierStore(IParityLedgerService ledger, BookDefiniti
         var state = stored is null ? CashierSnapshot.Empty(definition)
             : JsonSerializer.Deserialize<CashierSnapshot>(stored.PayloadJson) ?? throw new InvalidDataException("出纳状态无法读取。");
         if (state.Book.Id != definition.Id) throw new InvalidDataException("出纳状态属于其他账套。");
+        if (!SameDefinition(state.Book, definition))
+            throw new CashierRuleException("store.definition.changed",
+                "当前出纳科目、币种或日期定义与已保存状态不同；请先显式核对并迁移定义，未沿用旧定义或写入数据。");
         var active = new DateOnly(snapshot.Ledger.Book.FiscalYear, 1, 1).AddMonths(snapshot.Ledger.Book.ClosedThroughMonth);
         var book = state.Book with { ActiveMonth = active };
         // Cash-flow flags and currency definitions are explicitly supplied, never inferred from code prefixes.
@@ -102,4 +105,15 @@ public sealed class ParityCashierStore(IParityLedgerService ledger, BookDefiniti
         new LedgerModuleDocument(StateDocumentId, StateSchemaVersion, JsonSerializer.Serialize(state)));
     internal static string SourceKey(Guid id) => $"document:{id:D}";
     internal static CashierSnapshot Clone(CashierSnapshot state) => JsonSerializer.Deserialize<CashierSnapshot>(JsonSerializer.Serialize(state))!;
+
+    private static bool SameDefinition(BookDefinition saved, BookDefinition current) =>
+        saved.Id == current.Id && saved.OpeningDate == current.OpeningDate
+        && saved.LatestDocumentDate == current.LatestDocumentDate && saved.BaseCurrency == current.BaseCurrency
+        && saved.Accounts.Length == current.Accounts.Length
+        && saved.Accounts.Zip(current.Accounts).All(pair => pair.First.Code == pair.Second.Code
+            && pair.First.Name == pair.Second.Name && pair.First.IsDetail == pair.Second.IsDetail
+            && pair.First.HasCashFlow == pair.Second.HasCashFlow
+            && pair.First.Currencies.SequenceEqual(pair.Second.Currencies, StringComparer.Ordinal));
+    // ActiveMonth deliberately comes from the same authoritative LedgerSnapshot on every read.
+    // It is the sole derived field, not a host-defined catalog or permission policy to silently retain.
 }
