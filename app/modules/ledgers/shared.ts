@@ -1,12 +1,20 @@
 import { z } from 'zod';
-import { DIMENSION_TYPE_IDS, zId, zPeriod, type DimensionTypeId } from '@caiwu/core';
+import {
+  DIMENSION_TYPE_IDS,
+  makePeriod,
+  periodYear,
+  zId,
+  zPeriod,
+  type DimensionTypeId,
+} from '@caiwu/core';
 
-export const KindSchema = z.enum(['detail', 'cash', 'bank']);
+export const KindSchema = z.enum(['detail', 'cash', 'bank', 'general']);
 export type LedgerKind = z.infer<typeof KindSchema>;
 export const TITLES: Record<LedgerKind, string> = {
   detail: '三栏明细账',
   cash: '现金日记账',
   bank: '银行日记账',
+  general: '总分类账',
 };
 export const DimensionsSchema = z.strictObject(
   Object.fromEntries(DIMENSION_TYPE_IDS.map((id) => [id, zId.optional()])) as {
@@ -52,6 +60,18 @@ export const DEFAULT_COLUMNS: ColumnId[] = [
   'side',
   'balance',
 ];
+export const GENERAL_COLUMNS: ColumnId[] = [
+  'date',
+  'account',
+  'summary',
+  'voucherNo',
+  'debit',
+  'credit',
+  'side',
+  'balance',
+];
+export const defaultColumns = (kind: LedgerKind) =>
+  kind === 'general' ? GENERAL_COLUMNS : DEFAULT_COLUMNS;
 export const FormatSchema = z.object({
   columns: z
     .array(z.enum(COLUMN_IDS))
@@ -83,8 +103,11 @@ export type LedgerRow = {
   debit: number | null;
   credit: number | null;
   side: string;
-  balance: number;
-  signedBalance: number;
+  balance: number | null;
+  signedBalance: number | null;
+  /** 总账只向既有明细账追溯，不将汇总行冒充凭证。 */
+  detailHref?: string;
+  children?: LedgerRow[];
 };
 export type LedgerReport = {
   query: LedgerQuery;
@@ -92,6 +115,7 @@ export type LedgerReport = {
   entryCount: number;
   scope: string;
   title: string;
+  orgName?: string;
 };
 
 /** 地址栏必须严格校验；不把坏 JSON、未知维度或错误布尔值默默变成全部查询。 */
@@ -102,7 +126,11 @@ export function parseLedgerUrl(raw: Record<string, string>, current: number, kin
     const dimensions: unknown = JSON.parse(raw.dims || '{}');
     const parsed = QuerySchema.safeParse({
       kind,
-      periodFrom: period(raw.from),
+      periodFrom: raw.from
+        ? period(raw.from)
+        : kind === 'general'
+          ? makePeriod(periodYear(current), 1)
+          : current,
       periodTo: period(raw.to),
       account: raw.account ?? '',
       accountTo: raw.accountTo ?? '',

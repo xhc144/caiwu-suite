@@ -10,7 +10,7 @@ import {
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
-  DEFAULT_COLUMNS,
+  defaultColumns,
   FormatSchema,
   QuerySchema,
   TITLES,
@@ -20,6 +20,7 @@ import {
   type LedgerReport,
   type LedgerRow,
 } from '../shared';
+import { buildGeneralReport } from './general';
 
 type MoneyBalance = {
   opening: number;
@@ -60,7 +61,7 @@ export function ledgersService(svc: CoreServices) {
   const self = {
     async format(kind: LedgerKind): Promise<LedgerFormat> {
       return FormatSchema.parse(
-        await svc.settings.get(formatKey(kind), { columns: DEFAULT_COLUMNS, revision: 0 }),
+        await svc.settings.get(formatKey(kind), { columns: defaultColumns(kind), revision: 0 }),
       );
     },
     async saveFormat(
@@ -83,7 +84,7 @@ export function ledgersService(svc: CoreServices) {
             hint: '请刷新格式后重新保存。',
           });
         const next = FormatSchema.parse({
-          columns: restore ? DEFAULT_COLUMNS : input.columns,
+          columns: restore ? defaultColumns(input.kind) : input.columns,
           revision: current.revision + 1,
         });
         await tsvc.settings.set(formatKey(input.kind), next);
@@ -131,6 +132,7 @@ async function buildReport(svc: CoreServices, input: LedgerQuery): Promise<Ledge
         hint: '请重新选择辅助核算项。',
       });
   }
+  if (input.kind === 'general') return buildGeneralReport(svc, input, all);
   // 每个末级科目独立成账，上级筛选展开下级，绝不把父级汇总再加一遍。
   const selected = all.filter(
     (a) =>
