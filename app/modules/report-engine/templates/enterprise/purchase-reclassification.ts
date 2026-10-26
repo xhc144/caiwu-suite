@@ -101,7 +101,8 @@ function description(c: Classification, debit: boolean) {
     ? `列入${debit ? '预付款项' : '应付账款'}；依据：${c.reason}`
     : `排除本流动项目；另列去向：${c.destination}；依据：${c.reason}`;
 }
-function amount(account: string, partner: string | undefined, period: number, debit: boolean) {
+function amount(account: string, partner: string | undefined, previous: boolean, debit: boolean) {
+  const period = previous ? 'previousYearEnd' : 'current';
   return balanceFormula({
     account,
     metric: 'closing',
@@ -111,8 +112,8 @@ function amount(account: string, partner: string | undefined, period: number, de
     dimension: partner === undefined ? 'none' : 'partner',
     item: partner ?? '',
     options: {
-      from: String(period),
-      to: String(period),
+      from: period,
+      to: period,
       groupBy: ['partner'],
       side: debit ? 'debit' : 'credit',
     },
@@ -135,9 +136,9 @@ function fill(t: ReportTemplate, b: DateBindings, period: number, previous: bool
   for (const account of [...b.prepayments, ...b.payables]) {
     const row = ++t.rows;
     put(t, `A${row}`, `${label}采购来源 ${account}：逐末级逐往来先分借贷，不相互抵销`);
-    put(t, `B${row}`, amount(account, undefined, period, true), true);
+    put(t, `B${row}`, amount(account, undefined, previous, true), true);
     // side=credit 已返回正贷方金额，不能再取负。
-    put(t, `E${row}`, amount(account, undefined, period, false), true);
+    put(t, `E${row}`, amount(account, undefined, previous, false), true);
     all.debit.push(`B${row}`);
     all.credit.push(`E${row}`);
   }
@@ -146,8 +147,8 @@ function fill(t: ReportTemplate, b: DateBindings, period: number, previous: bool
     note(t, `${label} ${item.account}/${item.partner}：贷方${description(item.credit, false)}`);
     const row = ++t.rows;
     put(t, `A${row}`, `${label}已分类明细 ${item.account}/${item.partner}（B借方/E正贷方）`);
-    put(t, `B${row}`, amount(item.account, item.partner, period, true), true);
-    put(t, `E${row}`, amount(item.account, item.partner, period, false), true);
+    put(t, `B${row}`, amount(item.account, item.partner, previous, true), true);
+    put(t, `E${row}`, amount(item.account, item.partner, previous, false), true);
     declared.debit.push(`B${row}`);
     declared.credit.push(`E${row}`);
     if (item.debit.state === 'current') current.debit.push(`B${row}`);
@@ -167,7 +168,9 @@ function fill(t: ReportTemplate, b: DateBindings, period: number, previous: bool
 }
 
 /**
- * 201采购侧两行、两日期切片。日期固定在公式内，分类不会被默认为其它报告日有效。
+ * 201采购侧候选，当前不可生成。相对期间可取数，但不能证明分类仍适用该报告日。
+ * 公共持久化期间/profile guard 尚不存在；四个结果格无条件引用文本而拒绝生成。
+ * 不提供参数、环境开关或本地验证成功标记绕过停用；待公共owner实现契约后再接入。
  * 仅核对调用方明确指定的预付/应付来源；不推断遗漏的来源科目、合同净额或期限。
  */
 export function buildPurchaseReclassificationComparatives(
@@ -183,12 +186,12 @@ export function buildPurchaseReclassificationComparatives(
   put(
     t,
     'A2',
-    '未完成的采购侧实际取数切片：只配置预付款项/应付账款；其余官方项目及合计仍待配置，不可作为完整法定报表。禁止使用旧页面底部自动明细链接核对本切片金额，旧链接未保留真实期间与往来分组。',
+    '已停用的采购侧候选：共享期间/profile持久绑定及原子校验尚未实现，本切片在任何期间均拒绝生成。其余官方项目及合计仍待配置，不可作为完整法定报表。禁止使用旧页面底部自动明细链接核对本切片金额。',
   );
   put(
     t,
     'A3',
-    `采购分类报告期固定为${b.period}，比较日固定为${previousPeriod}；单位：元（底层整数分）。改变生成页期间不会重判期限；其他报告期或科目结构变化须重新配置模板。`,
+    `采购切片已停用：分类依据仅声明用于${b.period}/${previousPeriod}。公共生成接口尚不能强制匹配这两日期、profile及映射版本，不能生成或导出本候选的新快照。`,
   );
   note(
     t,
@@ -196,5 +199,12 @@ export function buildPurchaseReclassificationComparatives(
   );
   fill(t, b.current, b.period, false);
   fill(t, b.previous, previousPeriod, true);
+  for (const slot of [balanceSheetSlots.prepayments!, balanceSheetSlots.accountsPayable!])
+    for (const address of [slot.current, slot.comparative]) {
+      const candidate = t.cells.find((c) => c.address === address)!;
+      // 局部停用哨兵，不是共享guard：IF惰性选择文本引用，真实generate必报公式错误。
+      // 保留数值候选及黄金断言；不能只改相对期间就复用旧日期的流动分类。
+      put(t, address, `IF(1,A3,${candidate.source})`, true);
+    }
   return ReportTemplateSchema.parse(t);
 }
