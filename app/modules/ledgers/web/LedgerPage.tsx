@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type Key } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useLocation, useNavigate } from 'react-router';
 import {
@@ -34,10 +34,10 @@ import {
   type DataColumn,
 } from '@caiwu/ui';
 import { printHtml } from '@caiwu/print';
-import { displayColumns } from '../presentation';
+import { displayColumns, generalTableRows } from '../presentation';
 import {
   COLUMN_IDS,
-  DEFAULT_COLUMNS,
+  defaultColumns,
   parseLedgerUrl,
   TITLES,
   type ColumnId,
@@ -62,11 +62,13 @@ type Filters = {
 export default function LedgerPage() {
   const location = useLocation();
   const current = useCurrentPeriod();
-  const kind: LedgerKind = location.pathname.endsWith('/cash')
-    ? 'cash'
-    : location.pathname.endsWith('/bank')
-      ? 'bank'
-      : 'detail';
+  const kind: LedgerKind = location.pathname.endsWith('/general')
+    ? 'general'
+    : location.pathname.endsWith('/cash')
+      ? 'cash'
+      : location.pathname.endsWith('/bank')
+        ? 'bank'
+        : 'detail';
   if (!current)
     return (
       <Spin tip="正在读取会计期间">
@@ -99,10 +101,11 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
   const canPrint = usePermission('ledgers.print');
   const canConfig = usePermission('ledgers.config.edit');
   const resetting = useRef(false);
+  const [expanded, setExpanded] = useState<readonly Key[]>([]);
   const [editing, setEditing] = useState(false);
   const [output, setOutput] = useState<'export' | 'print' | null>(null);
   const [modal, modalContext] = Modal.useModal();
-  const columns = displayColumns(kind, format.data?.columns ?? DEFAULT_COLUMNS);
+  const columns = displayColumns(kind, format.data?.columns ?? defaultColumns(kind));
   const tableColumns: DataColumn<LedgerRow>[] = columns.map((c) => ({
     key: c.id,
     title: c.label,
@@ -112,15 +115,15 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
     ...(c.id === 'voucherNo'
       ? {
           render: (_: unknown, row: LedgerRow) =>
-            row.href ? (
+            row.detailHref || row.href ? (
               <Typography.Link
-                href={row.href}
+                href={row.detailHref || row.href!}
                 onClick={(event) => {
                   event.preventDefault();
-                  void navigate(row.href!);
+                  void navigate(row.detailHref || row.href!);
                 }}
               >
-                {row.voucherNo}
+                {row.detailHref ? '查看明细' : row.voucherNo}
               </Typography.Link>
             ) : null,
         }
@@ -140,13 +143,14 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
     if (!input || output) return;
     setOutput(mode);
     try {
-      const request = { ...input, columns: format.data?.columns ?? DEFAULT_COLUMNS };
+      const request = { ...input, columns: format.data?.columns ?? defaultColumns(kind) };
       if (mode === 'export') {
         const result = await queryClient.fetchQuery({
           ...api.export.queryOptions(request),
           staleTime: 0,
         });
         const bytes = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+        queryClient.setQueryData(api.report.queryKey(input), result.report);
         downloadBlob(
           new Blob([bytes], {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -158,6 +162,7 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
           ...api.print.queryOptions(request),
           staleTime: 0,
         });
+        queryClient.setQueryData(api.report.queryKey(input), job.report);
         await printHtml(job);
       }
     } catch (error) {
@@ -176,7 +181,7 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
     if (!yes || !format.data) return;
     restoreMutation.mutate({
       kind,
-      columns: DEFAULT_COLUMNS,
+      columns: defaultColumns(kind),
       expectedRevision: format.data.revision,
       confirmed: true,
     });
@@ -188,7 +193,11 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
   return (
     <PageContainer
       title={TITLES[kind]}
-      subtitle="各科目独立成账；点击凭证号或双击分录查看凭证。账簿内不提供凭证修改和删除。"
+      subtitle={
+        kind === 'general'
+          ? '按月查看科目发生额，展开月份查看本年累计与期末；点击查看明细继续追溯。账簿只读。'
+          : '各科目独立成账；点击凭证号或双击分录查看凭证。账簿内不提供凭证修改和删除。'
+      }
     >
       {modalContext}
       <FilterBar<Filters>
@@ -236,7 +245,9 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             leafOnly={false}
             includeDisabled
             allowClear
-            filter={(a) => kind === 'detail' || (kind === 'cash' ? a.isCash : a.isBank)}
+            filter={(a) =>
+              kind === 'detail' || kind === 'general' || (kind === 'cash' ? a.isCash : a.isBank)
+            }
             style={{ width: 220 }}
           />
         </Form.Item>
@@ -245,7 +256,9 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             leafOnly={false}
             includeDisabled
             allowClear
-            filter={(a) => kind === 'detail' || (kind === 'cash' ? a.isCash : a.isBank)}
+            filter={(a) =>
+              kind === 'detail' || kind === 'general' || (kind === 'cash' ? a.isCash : a.isBank)
+            }
             style={{ width: 220 }}
           />
         </Form.Item>
@@ -321,6 +334,19 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             打印
           </Button>
         )}
+        {kind === 'general' && (
+          <Button
+            onClick={() =>
+              setExpanded(
+                expanded.length
+                  ? []
+                  : (list.data?.rows ?? []).filter((r) => r.kind === 'month').map((r) => r.id),
+              )
+            }
+          >
+            {expanded.length ? '收起月份' : '展开全部月份'}
+          </Button>
+        )}
         {canConfig && (
           <>
             <Button disabled={!format.data} onClick={() => setEditing(true)}>
@@ -336,21 +362,35 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
           </>
         )}
         <Typography.Text type="secondary">
-          金额单位：元（本位币）；未填科目范围表示全部，单选上级科目展开下级
+          金额单位：元（本位币）；
+          {kind === 'general'
+            ? '上级科目汇总完整下级，范围边缘按实际覆盖展开；未知历史留空'
+            : '未填科目范围表示全部，单选上级科目展开下级'}
         </Typography.Text>
       </Space>
       <DataTable<LedgerRow>
         tableId={`ledgers.${kind}`}
         rowKey="id"
         columns={tableColumns}
-        dataSource={input && !list.error ? (list.data?.rows ?? []) : []}
+        dataSource={
+          input && !list.error
+            ? kind === 'general'
+              ? generalTableRows(list.data?.rows ?? [])
+              : (list.data?.rows ?? [])
+            : []
+        }
+        expandable={
+          kind === 'general'
+            ? { expandedRowKeys: expanded, onExpandedRowsChange: setExpanded }
+            : undefined
+        }
         loading={list.isFetching}
         pagination={{ pageSize: 100, showSizeChanger: true }}
         locale={{ emptyText: '当前筛选没有账簿记录，请调整期间或科目范围' }}
         rowClassName={(r) => (r.kind === 'entry' ? '' : `ledgers-summary ledgers-${r.kind}`)}
         onRow={(r) => ({
           onDoubleClick: () => {
-            if (r.href) void navigate(r.href);
+            if (r.detailHref || r.href) void navigate(r.detailHref || r.href!);
           },
         })}
       />

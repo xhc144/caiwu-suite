@@ -53,6 +53,7 @@ export async function exportReport(
   return {
     fileName: `${report.title}-${input.periodFrom}-${input.periodTo}.xlsx`,
     base64: Buffer.from(buffer).toString('base64'),
+    report,
   };
 }
 export async function printReport(svc: CoreServices, input: LedgerQuery & { columns: ColumnId[] }) {
@@ -60,6 +61,7 @@ export async function printReport(svc: CoreServices, input: LedgerQuery & { colu
   const columns = displayColumns(input.kind, input.columns);
   return {
     title: report.title,
+    report,
     html: `<h1>${escapeHtml(report.title)}</h1><p>${escapeHtml(reportCaption(report))}</p><table><thead><tr>${columns.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody>${report.rows.map((row) => `<tr${row.kind !== 'entry' ? ' style="font-weight:bold;background:#f0f2f5"' : ''}>${columns.map((c) => `<td${c.money ? ' class="num"' : ''}>${escapeHtml(cellText(row, c.id))}</td>`).join('')}</tr>`).join('')}</tbody></table>`,
   };
 }
