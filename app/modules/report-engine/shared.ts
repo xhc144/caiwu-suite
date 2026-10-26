@@ -201,9 +201,21 @@ export const ReportProfileSchema = z.object({
     'nonprofit-cashflow403', 'nonprofit-cashflow403-comparative',
   ]),
   scope: z.literal('posted'),
+  /** 新声明是显式重新确认；已绑定文件须保留服务端原来源印记。 */
+  mode: z.enum(['declaration', 'bound']),
+  binding: z.object({
+    bookId: z.string().min(1),
+    sourcePeriod: zPeriod,
+    accountFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    sourceFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    dimensionFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  }).strict().optional(),
   period: zPeriod.optional(),
   mapping: z.record(z.string(), z.unknown()),
-}).strict();
+}).strict().superRefine((v, ctx) => {
+  if ((v.mode === 'bound') !== (v.binding !== undefined))
+    ctx.addIssue({ code: 'custom', message: '已绑定profile须完整保留来源印记；新声明须明确重新确认，不能携带旧印记' });
+});
 export type ReportProfile = z.infer<typeof ReportProfileSchema>;
 export const ReportTemplateSchema = HeaderSchema.extend({
   schemaVersion: z.literal(1),

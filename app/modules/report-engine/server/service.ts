@@ -22,8 +22,8 @@ import {
 } from '../shared';
 import type { ReportTables } from './migrations';
 import {
-  createProfileBinding, definitionFingerprint, fingerprint, profileError,
-  readProfileBinding, rollingInventory, validateSavedProfile,
+  boundTemplate, createProfileBinding, definitionFingerprint, fingerprint, profileError,
+  readProfileBinding, validateSavedProfile,
   type ProfileBinding,
 } from './profile';
 import {
@@ -116,9 +116,10 @@ export function reportService(svc: CoreServices) {
   const insert = async (t: ReportTemplate, copiedBinding?: ProfileBinding | null) => {
     await uniqueCode(t.code);
     const binding = copiedBinding === undefined ? await createProfileBinding(svc, t) : copiedBinding;
+    const savedTemplate = boundTemplate(t, binding);
     const row = await db
       .insertInto('report_engine_template')
-      .values({ code: t.code, name: t.name, revision: 1, definition_json: JSON.stringify(t),
+      .values({ code: t.code, name: t.name, revision: 1, definition_json: JSON.stringify(savedTemplate),
         profile_binding_json: binding ? JSON.stringify({ ...binding, definitionRevision: 1 }) : null })
       .returning('id')
       .executeTakeFirstOrThrow();
@@ -266,6 +267,7 @@ export function reportService(svc: CoreServices) {
         const report = await service.get(input.id);
         if (report.revision !== input.expectedRevision)
           fail('CONFLICT', '报表定义已更改，请刷新后再生成');
+        await tsvc.periods.require(input.period);
         const proofs = new Map<number, NonNullable<ReportSnapshot['profileProofs']>[number]>();
         const checked = new Set<number>();
         const verify = async (r: Report) => {
@@ -298,7 +300,6 @@ export function reportService(svc: CoreServices) {
             snapshot: saved,
           };
         }
-        await tsvc.periods.require(input.period);
         if (!report.template.cells.some((c) => c.source.trim() !== ''))
           fail('EMPTY', '报表没有可生成的内容', '请先定义文本或取数公式并保存。');
         const engine = await createEngine(tsvc, input.period, input.includeUnposted, verify);
@@ -385,15 +386,6 @@ export function reportService(svc: CoreServices) {
           checks,
           dependencies: engine.dependencies(),
         };
-        // 无固定月份的专用映射在首次成功时固定报告期；标准母科目动态范围每次完整复核。
-        for (const id of proofs.keys()) {
-          const r = await service.get(id);
-          const binding = await readProfileBinding(tsvc, id);
-          if (binding && binding.fixedPeriod === null && r.template.profile && !rollingInventory(r.template.profile))
-            await tdb.updateTable('report_engine_template')
-              .set({ profile_binding_json: JSON.stringify({ ...binding, fixedPeriod: input.period }) })
-              .where('id', '=', id).execute();
-        }
         const saved = await tdb
           .insertInto('report_engine_snapshot')
           .values({

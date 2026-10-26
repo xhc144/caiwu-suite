@@ -64,7 +64,7 @@ describe('403本年/比较期统一取数接线', () => {
       ),
     );
     const api = app.call(nonprofitTestServer);
-    const r = await api.importTemplate(comparativeCashflow403Template(mapping()));
+    const r = await api.importTemplate(comparativeCashflow403Template(mapping(), 202702));
     const result = await api.generate({
       id: r.id,
       expectedRevision: 1,
@@ -99,7 +99,7 @@ describe('403本年/比较期统一取数接线', () => {
   it('未建立比较期间和来源年份不匹配必须报错，不用首次2026例外豁免2027比较数', async () => {
     await seedCashflowBook(app.svc);
     const api = app.call(nonprofitTestServer);
-    const r = await api.importTemplate(comparativeCashflow403Template(mapping()));
+    const r = await api.importTemplate(comparativeCashflow403Template(mapping(), 202702));
     await expect(
       api.generate({
         id: r.id,
@@ -114,7 +114,7 @@ describe('403本年/比较期统一取数接线', () => {
       comparativeCashflow403Template({
         ...mapping(),
         previous: { ...fixtureMapping(), year: 2027 },
-      }),
+      }, 202702),
     ).toThrow(/上年度/);
     await expect(
       validateComparativeCashflow403Generation(

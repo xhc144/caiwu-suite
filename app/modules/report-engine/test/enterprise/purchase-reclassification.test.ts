@@ -28,8 +28,8 @@ async function generated(t: ReportTemplate) {
   return { r, snapshot: result.snapshot };
 }
 
-// 正黄金不删减、不标skip：当前停用哨兵会阻止生成，公共guard接入后才可能满足此目标。
-it('待共享guard：w_bb_proc采购201正黄金，两日期手算13000/5500、4000/15000分及真实xlsx', async () => {
+// 正黄金通过公共生成/导出门禁；保留全部金额及格式断言。
+it('公共guard：w_bb_proc采购201正黄金，两日期手算13000/5500、4000/15000分及真实xlsx', async () => {
   // 独立手算：期末借方8000+3000+2000=13000，排除借3000；
   // 期末正贷方仅4000，排除2000+9000；上年末借4000+1500=5500，排除10000；
   // 上年末正贷方3000+12000=15000，排除2000+6000。
@@ -117,7 +117,7 @@ it('w_bb_get采购201：流动及排除均须依据，两方向及上年末缺�
   }
 });
 
-it('待共享guard：w_bb_proc采购201漏掉流动或排除依据，真实router拒绝且无部分快照', async () => {
+it('公共guard：w_bb_proc采购201漏掉流动或排除依据，真实router拒绝且无部分快照', async () => {
   // 先要求完整正例能生成，避免把无条件停用造成的拒绝误算为分类完整性已通过。
   await generated(await purchaseTemplate(app.svc));
   for (const [i, column] of ['current', 'previous'].entries()) {
@@ -140,7 +140,7 @@ it('待共享guard：w_bb_proc采购201漏掉流动或排除依据，真实route
   }
 });
 
-it('待共享guard：w_bb_proc采购201新增两往来借贷净零仍拒绝，不复用旧快照冒充成功', async () => {
+it('公共guard：w_bb_proc采购201新增两往来借贷净零仍拒绝，不复用旧快照冒充成功', async () => {
   const { r, snapshot } = await generated(await purchaseTemplate(app.svc));
   await app.svc.dimensions.create({ type: 'partner', code: 'S003', name: '新增供应商三' });
   await app.svc.dimensions.create({ type: 'partner', code: 'S004', name: '新增供应商四' });
@@ -166,7 +166,7 @@ it('待共享guard：w_bb_proc采购201新增两往来借贷净零仍拒绝，�
   expect((await api.snapshot({ id: r.id, period: 202601 }))!.id).toBe(snapshot.id);
 });
 
-it('待共享guard：w_bb_proc采购201上年末缺真实期间拒绝，不用本月期初或零替代', async () => {
+it('公共guard：w_bb_proc采购201上年末缺真实期间拒绝，不用本月期初或零替代', async () => {
   const api = app.call(reportServer);
   const r = await api.importTemplate(await purchaseTemplate(app.svc));
   await app.svc.db.deleteFrom('period').where('period', '=', 202512).execute();
@@ -177,7 +177,7 @@ it('待共享guard：w_bb_proc采购201上年末缺真实期间拒绝，不用�
       period: 202601,
       requestId: randomUUID(),
     }),
-  ).rejects.toThrow(/尚未建立/);
+  ).rejects.toThrow('2025年12月还没有建立');
   expect(await api.snapshot({ id: r.id, period: 202601 })).toBeNull();
 });
 
@@ -213,8 +213,8 @@ it('w_bb_proc采购201公共绑定：旧无guard的202601及错期202602均拒�
   }
 });
 
-it('待共享持久化guard：202601正黄金可生成，换202602即拒绝，不能复用旧日期分类或覆盖快照', async () => {
-  // 此测试是共享接入目标，目前会在202601正例被停用保护阻断，不能按负例通过宣称P1已完整修复。
+it('持久化guard：202601正黄金可生成，换202602即拒绝，不能复用旧日期分类或覆盖快照', async () => {
+  // 先要求固定月正例实际生成，再检查换月拒绝，不能把无条件停用误算为门禁。
   const { r, snapshot } = await generated(await purchaseTemplate(app.svc));
   expect(value(snapshot, balanceSheetSlots.prepayments!.current).value).toBe('13000');
   expect(value(snapshot, balanceSheetSlots.prepayments!.comparative).value).toBe('5500');

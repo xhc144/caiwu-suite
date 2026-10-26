@@ -32,4 +32,6 @@
 - 需要结构化、带来源的重分类输入：到期日/受托现金明细/各类减值分配/比较数调整/净资产转限制/以前年度调整/现金等价物政策及汇兑影响；无来源时阻止生成。年初受托现金和到期分类须按年初状态，不能拿期末分类回填。
 - 共享生成入口需要同事务校验年度、适用制度、仅已过账、逐笔现金分类覆盖及内部划转；需保存分类依据、取数期间和预检来源版本，防止预检后账务变化。2026比较例外只豁免两张表的上年数。
 
-试用：在`app`下运行`pnpm exec vitest run modules/report-engine/test/nonprofit`；设置`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`后运行`pnpm build:web`和`pnpm exec playwright test modules/report-engine/e2e/nonprofit --retries=0`。七条E2E会自行建临时民非企账套、用testkit造数据、调用真实`router.importTemplate`，再打开现有生成页并下载Excel。开发入口为`balance401AnnualTemplate`（两时点来源）、`activity402TotalsTemplate`（合计列）、`activity402ClassifiedTemplate`（收入费用四分类列）、`cashflow403Template`（2026首次执行）、`comparativeCashflow403Template`（本年/上年同期）。相关fixture与虚构依据仅供测试，不得用于真实账套；这些入口均不是完整生产制度报表安装入口。外部材料真伪、主体资格和法律效力仍由人工核实，程序不提供法律认证。
+试用：在`app`下运行`pnpm exec vitest run modules/report-engine/test/nonprofit`；设置`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`后运行`pnpm build:web`和`pnpm exec playwright test modules/report-engine/e2e/nonprofit --retries=0`。浏览器流程会自行建临时民非企账套、用testkit造数据、调用真实`router.importTemplate`，再打开现有生成页并下载Excel。开发入口为`balance401AnnualTemplate`（两时点来源）、`activity402TotalsTemplate`（合计列）、`activity402ClassifiedTemplate`（收入费用四分类列）、`cashflow403Template`（2026首次执行）、`comparativeCashflow403Template`（本年/上年同期）。相关fixture与虚构依据仅供测试，不得用于真实账套；这些入口均不是完整生产制度报表安装入口。外部材料真伪、主体资格和法律效力仍由人工核实，程序不提供法律认证。
+
+403两个工厂均要求第二参数为明确的固定报告期，例如`cashflow403Template(mapping, 202602)`或`comparativeCashflow403Template(mapping, 202702)`；不会在首次生成时猜月份。新工厂产物为`mode:declaration`的显式来源确认；保存/导出文件为`mode:bound`并保留原账套/来源印记，换编码重导入不能刷新已失效分类。

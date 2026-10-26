@@ -168,10 +168,9 @@ function fill(t: ReportTemplate, b: DateBindings, period: number, previous: bool
 }
 
 /**
- * 201采购侧候选，当前不可生成。相对期间可取数，但不能证明分类仍适用该报告日。
- * 公共持久化期间/profile guard 尚不存在；四个结果格无条件引用文本而拒绝生成。
- * 不提供参数、环境开关或本地验证成功标记绕过停用；待公共owner实现契约后再接入。
- * 仅核对调用方明确指定的预付/应付来源；不推断遗漏的来源科目、合同净额或期限。
+ * 201采购侧两行切片。固定报告期和逐方向分类由公共profile事务门禁复核。
+ * 仅核对调用方明确指定的预付/应付来源；不推断遗漏来源、合同净额或期限。
+ * 未配置的其余官方项目保持文字，不作为完整法定报表。
  */
 export function buildPurchaseReclassificationComparatives(
   raw: PurchaseBindings,
@@ -208,6 +207,6 @@ export function buildPurchaseReclassificationComparatives(
     ];
   });
   t.reportIdentity = 'enterprise-purchase';
-  t.profile = { version: 1, kind: 'enterprise-purchase', scope: 'posted', period: b.period, mapping: b };
+  t.profile = { mode: 'declaration', version: 1, kind: 'enterprise-purchase', scope: 'posted', period: b.period, mapping: b };
   return ReportTemplateSchema.parse(t);
 }

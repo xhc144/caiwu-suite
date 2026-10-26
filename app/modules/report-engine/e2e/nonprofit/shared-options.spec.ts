@@ -31,7 +31,7 @@ for (const scenario of [
       comparativeCashflow403Template({
         current: { ...fixtureMapping(), year: 2027 },
         previous: fixtureMapping(),
-      }),
+      }, 202702),
     golden: { B41: 300, C41: 1217, B6: 330, C6: 980 },
   },
 ]) {

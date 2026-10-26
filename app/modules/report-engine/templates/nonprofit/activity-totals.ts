@@ -101,11 +101,11 @@ export function activity402TotalsTemplate(raw: ActivityTotalsMapping): ReportTem
     t.merges.push({ row: n, col: 1, rows: 1, cols: t.cols });
   }
   t.reportIdentity = 'nonprofit-activity402-totals';
-  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.period, mapping };
+  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.period, mapping };
   return ReportTemplateSchema.parse(t);
 }
 
-/** 供共享事务门禁调用的只读检查；当前公共generate尚未注册。 */
+/** 供公共profile事务门禁调用的只读检查。 */
 export async function checkActivityTotalsSources(
   svc: CoreServices,
   period: number,

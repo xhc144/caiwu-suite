@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { sumCents, type EntryRow } from '@caiwu/core';
+import { isPeriod, sumCents, type EntryRow } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { balanceFormula, ReportTemplateSchema, type ReportTemplate } from '../../shared';
 import { cashflowDetails, cashflowRows, nonprofitFormDraft, textCell } from './forms';
@@ -58,8 +58,10 @@ function movement(account: string, cashflow?: string) {
 }
 
 /** 2026本年取数切片；调用前须逐期间运行 checkCashflow403Sources，尚无自动挂载入口。 */
-export function cashflow403Template(raw: Cashflow403Mapping): ReportTemplate {
+export function cashflow403Template(raw: Cashflow403Mapping, period: number): ReportTemplate {
   const mapping = Cashflow403MappingSchema.parse(raw);
+  if (!isPeriod(period) || Math.floor(period / 100) !== mapping.year)
+    throw new Error('现金流量分类报告期必须属于来源年度');
   const t = nonprofitFormDraft('403', mapping.year);
   t.name = '民非现金流量表（2026本年取数切片）';
   t.cells = t.cells.filter((c) => !/^B(?:[5-9]|[1-3]\d|4[01])$/.test(c.address));
@@ -109,7 +111,7 @@ export function cashflow403Template(raw: Cashflow403Mapping): ReportTemplate {
     });
   });
   t.reportIdentity = 'nonprofit-cashflow403';
-  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', mapping };
+  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period, mapping };
   return ReportTemplateSchema.parse(t);
 }
 
@@ -213,7 +215,7 @@ export async function checkCashflowSourceRange(
   }
 }
 
-/** 供唯一共享owner挂入generate的同一svc.tx回调。当前公共router尚未调用此门禁。 */
+/** 公共profile注册点在generate的同一svc.tx回调调用此门禁。 */
 export type Cashflow403GenerateGuard = {
   kind: 'nonprofit-cashflow403';
   year: 2026;

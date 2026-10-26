@@ -45,9 +45,12 @@ function ordered(v: unknown): unknown {
 }
 export const fingerprint = (v: unknown) =>
   createHash('sha256').update(JSON.stringify(ordered(v)) ?? 'undefined').digest('hex');
+const profileMeaning = (p: ReportProfile | undefined) => p === undefined ? undefined : ({
+  version: p.version, kind: p.kind, scope: p.scope, period: p.period, mapping: p.mapping,
+});
 /** 复制可改编码/名称和版式；公式、审核及结构化身份不允许借此降级。 */
 export const definitionFingerprint = (t: ReportTemplate) => fingerprint({
-  rows: t.rows, cols: t.cols, reportIdentity: t.reportIdentity, profile: t.profile,
+  rows: t.rows, cols: t.cols, reportIdentity: t.reportIdentity, profile: profileMeaning(t.profile),
   cells: [...t.cells].sort((a, b) => a.address.localeCompare(b.address)), checks: t.checks,
 });
 const inventorySchema = z.record(z.enum(inventoryRoles.map(r => r.role)), z.union([
@@ -82,9 +85,9 @@ async function canonical(svc: CoreServices, p: ReportProfile): Promise<ReportTem
     case 'nonprofit-activity402-classified':
       return activity402ClassifiedTemplate(ActivityClassifiedMappingSchema.parse(p.mapping));
     case 'nonprofit-cashflow403':
-      return cashflow403Template(Cashflow403MappingSchema.parse(p.mapping));
+      return cashflow403Template(Cashflow403MappingSchema.parse(p.mapping), p.period ?? profileError('现金流量profile缺少固定报告期'));
     case 'nonprofit-cashflow403-comparative':
-      return comparativeCashflow403Template(ComparativeCashflowSchema.parse(p.mapping));
+      return comparativeCashflow403Template(ComparativeCashflowSchema.parse(p.mapping), p.period ?? profileError('比较现金流量profile缺少固定报告期'));
   }
 }
 export async function validateProfileDefinition(svc: CoreServices, t: ReportTemplate) {
@@ -199,6 +202,8 @@ export async function createProfileBinding(svc: CoreServices, t: ReportTemplate)
   if (!t.profile) return null;
   await validateProfileDefinition(svc, t);
   const p = t.profile;
+  if (p.period === undefined && !rollingInventory(p))
+    profileError('分类profile必须明确固定报告期，不能由首次生成或重新导入隐式改变');
   let sourcePeriod = p.period;
   if (sourcePeriod === undefined) {
     const mapping = p.mapping;
@@ -206,12 +211,20 @@ export async function createProfileBinding(svc: CoreServices, t: ReportTemplate)
       : p.kind === 'nonprofit-cashflow403-comparative' ? ComparativeCashflowSchema.parse(mapping).current.year : undefined;
     sourcePeriod = year === undefined ? Math.max(...(await svc.periods.list()).map(v => v.period)) : year * 100 + 12;
   }
-  return { version: 1, definitionRevision: 1, profileFingerprint: fingerprint(p),
+  const initial = (await profileSourceState(svc, p, sourcePeriod)).state;
+  if (p.mode === 'bound' && fingerprint(p.binding) !== fingerprint({ ...initial, sourcePeriod }))
+    profileError('导入的已绑定profile与原账套或实际来源印记不一致，不能靠换编码重新绑定旧分类');
+  return { version: 1, definitionRevision: 1, profileFingerprint: fingerprint(profileMeaning(p)),
     definitionFingerprint: definitionFingerprint(t), sourcePeriod, fixedPeriod: p.period ?? null,
-    initial: (await profileSourceState(svc, p, sourcePeriod)).state,
+    initial,
     recognitions: await recognitionManifest(svc, p, sourcePeriod),
     confirmedBy: svc.user.id, confirmedAt: svc.ctx.now().toISOString(),
     accountMeanings: (await svc.accounts.list({ includeDisabled: true })).map(accountMeaning) };
+}
+export function boundTemplate(t: ReportTemplate, binding: ProfileBinding | null): ReportTemplate {
+  if (!t.profile || !binding) return t;
+  return { ...t, profile: { ...t.profile, mode: 'bound',
+    binding: { ...binding.initial, sourcePeriod: binding.sourcePeriod } } };
 }
 export async function readProfileBinding(svc: CoreServices, id: number) {
   const row = await svc.db.withTables<ReportTables>().selectFrom('report_engine_template')
@@ -230,8 +243,9 @@ export async function validateSavedProfile(svc: CoreServices, report: Report,
       profileError('法定模板缺少持久profile绑定，旧无guard定义不能作为可信报表生成');
     return null;
   }
-  if (!binding || binding.version !== 1 || binding.definitionRevision !== report.revision
-      || binding.profileFingerprint !== fingerprint(p)
+  if (!binding || p.mode !== 'bound' || binding.version !== 1 || binding.definitionRevision !== report.revision
+      || binding.profileFingerprint !== fingerprint(profileMeaning(p))
+      || fingerprint(p.binding) !== fingerprint({ ...binding.initial, sourcePeriod: binding.sourcePeriod })
       || binding.definitionFingerprint !== definitionFingerprint(report.template))
     profileError('已保存模板及revision与持久profile绑定不一致');
   if (input.includeUnposted) profileError('已绑定切片仅允许已过账口径');

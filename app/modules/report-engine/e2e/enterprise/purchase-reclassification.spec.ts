@@ -4,8 +4,8 @@ import { loginWithNewBook } from '@caiwu/testkit/e2e';
 import { balanceSheetSlots } from '../../templates/enterprise';
 import { test } from './fixture';
 
-// 正例目标保留：共享guard落地并接入前，此测试会被明确的停用哨兵阻止，不标skip或删断言。
-test('待共享guard：w_bb_get→w_bb_proc→w_bb_saveas采购201正黄金，两行两列及Excel读回', async ({
+// 浏览器正例经公共guard；保留金额、网格窗口和真实下载断言。
+test('公共guard：w_bb_get→w_bb_proc→w_bb_saveas采购201正黄金，两行两列及Excel读回', async ({
   page,
   enterprise,
 }) => {
@@ -69,7 +69,7 @@ test('待共享guard：w_bb_get→w_bb_proc→w_bb_saveas采购201正黄金，�
 });
 
 for (const period of [202601, 202602])
-  test(`采购201停用负黄金：期间${period}不能生成或导出候选`, async ({ page, enterprise }) => {
+  test(`采购201旧无guard/错期负例：期间${period}不能生成或导出候选`, async ({ page, enterprise }) => {
     const { bookId } = await loginWithNewBook(page, enterprise.request, {
       product: 'qingsong',
       startYear: 2025,

@@ -96,8 +96,14 @@ export function applyInventoryBalances(t: ReportTemplate, config?: InventoryConf
   if (config) validateInventoryMapping(config.mapping, config.accounts);
   // 默认十项全部强制引用；缺任一母科目由共享BALANCE.require明确报错，不回退零。
   const mapping = config?.mapping ?? officialInventoryMapping;
+  const dynamicMothers = inventoryRoles.every(({ role, code }) => {
+    const entry = mapping[role];
+    return 'accounts' in entry && entry.accounts.length === 1 && entry.accounts[0] === code;
+  });
+  if (!dynamicMothers && config?.period === undefined)
+    throw new Error('absent或显式明细分类须明确固定报告期，不能在首次生成时隐式选择');
   t.reportIdentity = 'small-business-inventory';
-  t.profile = { version: 1, kind: 'small-business-inventory', scope: 'posted',
+  t.profile = { mode: 'declaration', version: 1, kind: 'small-business-inventory', scope: 'posted',
     ...(config?.period === undefined ? {} : { period: config.period }),
     mapping: { inventory: mapping },
   };

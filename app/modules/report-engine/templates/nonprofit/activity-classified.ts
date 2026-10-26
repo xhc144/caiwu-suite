@@ -44,7 +44,7 @@ const ids = [...incomeIds, ...expenseIds] as const;
 
 /** 外部依据逐末级绑定；普通项目、摘要、科目名称或内部用途决议均不能替代分类依据。
  * nonprofit-2026.pdf 第28–29、33–36、130–131、142–146页。
- * 本结构尚未由公共法定profile持久绑定；说明行不能还原为受保护的分类元数据。 */
+ * 本结构由公共profile持久绑定；说明行不能替代受保护的分类元数据。 */
 export const ActivityClassifiedMappingSchema = z
   .object({
     totals: ActivityTotalsMappingSchema,
@@ -174,11 +174,11 @@ export function activity402ClassifiedTemplate(raw: ActivityClassifiedMapping): R
     '后续事件来源：双向互转须逐笔关联非限定/限定净资产分录（制度3101/3102）、发生时点、资源批次及外部设限/全部解除凭据；以前年度调整须关联以前年度净资产调整分录（制度3201）、原期间及调整依据，科目均须按实际账套显式映射；净变动须待上述完整事件及净资产勾稽接通，不能以0补齐。',
   );
   t.reportIdentity = 'nonprofit-activity402-classified';
-  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.totals.period, mapping };
+  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.totals.period, mapping };
   return ReportTemplateSchema.parse(t);
 }
 
-/** 供公共generate同事务调用的预检。当前未注册，单独调用不构成公共强制门禁。 */
+/** 供公共profile注册点在generate同事务调用的预检；单独调用不授予跨请求凭据。 */
 export async function checkActivityClassifiedSources(
   svc: CoreServices,
   period: number,

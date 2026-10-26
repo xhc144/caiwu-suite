@@ -56,7 +56,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
       .where('code', '=', 'NF_donations')
       .execute();
     await checkCashflow403Sources(app.svc, 202602, fixtureMapping());
-    const r = await api().importTemplate(cashflow403Template(fixtureMapping()));
+    const r = await api().importTemplate(cashflow403Template(fixtureMapping(), 202602));
     const out = await generate(r);
     expect(
       out.kind === 'generated' && out.snapshot.cells.find((c) => c.address === 'B41')?.value,
@@ -114,14 +114,14 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
     expect(nonprofitFormDraft('402', 2027).cells.find((c) => c.address === 'I4')?.source).toBe(
       '上年可比累计·合计',
     );
-    expect(() => cashflow403Template({ ...fixtureMapping(), year: 2027 } as never)).toThrow();
+    expect(() => cashflow403Template({ ...fixtureMapping(), year: 2027 } as never, 202602)).toThrow();
   });
 
   it('403真实导入、生成、勾稽、重算及xlsx逐项等于手算固定账套；含退回、处置净额及内部划转', async () => {
     await seedCashflowBook(app.svc);
     const mapping = fixtureMapping();
     await checkCashflow403Sources(app.svc, 202602, mapping);
-    const report = await api().importTemplate(cashflow403Template(mapping));
+    const report = await api().importTemplate(cashflow403Template(mapping, 202602));
     const out = await generate(report);
     expect(out.kind).toBe('generated');
     if (out.kind !== 'generated') throw new Error('未生成');
@@ -157,12 +157,12 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
     const base = fixtureMapping();
     const missing = structuredClone(base);
     delete missing.items.donations;
-    expect(() => cashflow403Template(missing)).toThrow(/缺少/);
-    expect(() => cashflow403Template({ ...base, policyBasis: '' })).toThrow(/依据/);
+    expect(() => cashflow403Template(missing, 202602)).toThrow(/缺少/);
+    expect(() => cashflow403Template({ ...base, policyBasis: '' }, 202602)).toThrow(/依据/);
     expect(() =>
-      cashflow403Template({ ...base, items: { ...base.items, fake: base.items.donations! } }),
+      cashflow403Template({ ...base, items: { ...base.items, fake: base.items.donations! } }, 202602),
     ).toThrow(/未知/);
-    expect(() => cashflow403Template({ ...base, internalTransfer: base.items.donations! })).toThrow(
+    expect(() => cashflow403Template({ ...base, internalTransfer: base.items.donations! }, 202602)).toThrow(
       /重复/,
     );
     await seedCashflowBook(app.svc);
@@ -215,7 +215,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
 
   it('w_bb_proc失败事务不覆盖成功快照；w_bb_get重复编码不产生部分写入', async () => {
     await seedCashflowBook(app.svc);
-    const original = await api().importTemplate(cashflow403Template(fixtureMapping()));
+    const original = await api().importTemplate(cashflow403Template(fixtureMapping(), 202602));
     await expect(api().importTemplate(original.template)).rejects.toThrow(/已存在/);
     expect(await api().list({})).toHaveLength(1);
     const report = await api().copy({ sourceId: original.id, code: '404', name: '失败回滚测试' });
@@ -240,7 +240,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
 
   it('w_bb_get/proc/saveas按真实权限拒绝只读用户，金额拒绝小数分', async () => {
     await seedCashflowBook(app.svc);
-    const template = cashflow403Template(fixtureMapping());
+    const template = cashflow403Template(fixtureMapping(), 202602);
     const report = await api().importTemplate(template);
     const viewer = app.call(
       nonprofitTestServer,
@@ -287,7 +287,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas', () => {
         ]);
         await checkCashflow403Sources(app.svc, 202602, fixtureMapping());
         // 新增来源后显式重确认完整映射；不能复用旧profile。
-        const template = cashflow403Template(fixtureMapping()); template.code = String(500 + revision++);
+        const template = cashflow403Template(fixtureMapping(), 202602); template.code = String(500 + revision++);
         const report = await api().importTemplate(template);
         const out = await generate(report);
         expect(

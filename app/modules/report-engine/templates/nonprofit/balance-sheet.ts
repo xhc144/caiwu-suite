@@ -181,7 +181,7 @@ export function balance401ClosingTemplate(raw: Balance401Mapping): ReportTemplat
   t.checks = [{ name: '期末资产等于负债和净资产', left: 'C37', right: 'F28', tolerance: '0' }];
   appendSources(t, mapping, '期末来源');
   t.reportIdentity = 'nonprofit-balance401';
-  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.period, mapping };
+  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period: mapping.period, mapping };
   return ReportTemplateSchema.parse(t);
 }
 
@@ -210,11 +210,11 @@ export function balance401AnnualTemplate(
   );
   t.name = '民非资产负债表（年初期末取数切片）';
   t.cells.find((c) => c.address === 'A1')!.source =
-    '资产负债表（年初期末取数切片，制度门禁未接入）';
+    '资产负债表（年初期末取数切片，非完整法定报表）';
   t.checks.push({ name: '年初资产等于负债和净资产', left: 'B37', right: 'E28', tolerance: '0' });
   appendSources(t, opening, '年初来源');
   t.reportIdentity = 'nonprofit-balance401-annual';
-  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', period: closing.period, mapping: { closing, opening } };
+  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period: closing.period, mapping: { closing, opening } };
   return ReportTemplateSchema.parse(t);
 }
 
@@ -248,7 +248,7 @@ export async function checkBalance401Sources(
   }
 }
 
-/** 公共generate待注册的年度门禁：两时点来源和实际取数范围须与本次生成绑定。 */
+/** 公共generate调用的年度门禁：两时点来源和实际取数范围须与本次生成绑定。 */
 export async function validateBalance401AnnualGeneration(
   svc: CoreServices,
   input: { period: number; includeUnposted: boolean },

@@ -24,7 +24,7 @@ test('民非w_bb_get → w_bb_proc本年真实取数 → w_bb_saveas下载Excel�
   const report = await callApi<Report>(
     nonprofit.request,
     'm.report-engine.importTemplate',
-    cashflow403Template(fixtureMapping()),
+    cashflow403Template(fixtureMapping(), 202602),
     { token, method: 'POST' },
   );
   await page.goto(`${nonprofit.baseURL}/m/report-engine/view?id=${report.id}&period=202602`);

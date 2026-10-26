@@ -153,7 +153,7 @@ describe('401期末真实取数切片与共享契约接线准备', () => {
     expect(await api.snapshot({ id: r.id, period: 202607 })).toBeNull();
   });
 
-  it('401年度事务预检明确拒绝含未过账、错误年初时点及范围缺月，公共注册仍待owner', async () => {
+  it('401年度事务预检明确拒绝含未过账、错误年初时点及范围缺月，公共入口使用相同合同', async () => {
     await seedBalance401Book(app.svc);
     const sources = { closing: balanceFixtureMapping(), opening: balanceFixtureMapping(202601) };
     await app.svc.tx((s) =>

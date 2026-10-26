@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import ExcelJS from 'exceljs';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
+import type { CoreServices } from '@caiwu/core/server';
 import reportServer from '../../server';
 import { reportService } from '../../server/service';
 import { readProfileBinding } from '../../server/profile';
@@ -85,6 +86,11 @@ it('w_bb_def/copy/get 不能剥离guard、偷改公式或重新绑定旧来源�
   await seedVouchers(t.svc, [{ date: '2026-01-28', status: 'posted', lines: [
     { account: '190101', debit: 33, dims: { partner: 'S001' } }, { account: '4001', credit: 33 },
   ] }]);
+  const exported = await api.exportTemplate({ id: original.id }); exported.code = '215';
+  expect(exported.profile?.mode).toBe('bound');
+  await expect(api.importTemplate(exported)).rejects.toThrow(/换编码|来源印记/);
+  const missingSeal = structuredClone(exported); delete missingSeal.profile!.binding;
+  await expect(api.importTemplate(missingSeal)).rejects.toThrow(/来源印记|完整保留/);
   const staleCopy = await api.copy({ sourceId: saved.id, code: '214', name: '复制不能洗白已变化来源' });
   await expect(generate(staleCopy)).rejects.toThrow(/来源.*变更/);
 });
@@ -151,7 +157,7 @@ it('w_bb_proc 民非逐笔排他来源持久化，预检后向410101混入限定
   expect((await api.snapshot({ id: r.id, period: 202602 }))?.id).toBe(first.snapshot.id);
 });
 
-it('w_bb_saveas 通用自定义仍可生成试算，audit fail/error HTTP服务层均拒绝导出，不能绕UI', async () => {
+it('w_bb_saveas 通用自定义仍可生成试算，audit fail/error router服务层均拒绝导出，不能绕UI', async () => {
   app = await createTestApp({ modules: [reportServer] }); const api = app.call(reportServer);
   const template = emptyTemplate({ code: '901', name: '通用自定义试算', rows: 5, cols: 3 });
   template.cells = [{ address: 'A1', kind: 'money', source: '100', unit: 'cents', currency: 'CNY' }];
@@ -187,4 +193,72 @@ it('w_bb_proc 生成事务实际服务取数与预检相同，排队写入不能
   const assertion = expect(pending).rejects.toThrow(/来源.*变更/);
   release(); await write; await assertion;
   expect(await service.snapshot(r.id, 202601, false)).toBeNull();
+});
+
+it('w_bb_proc 真实事务预检后暂停取数，并发修改排队到提交后；快照保持旧一致值，随后回放和导出拒绝', async () => {
+  const t = await purchaseApp(); const svc = t.svcFor('report-engine');
+  const r = await reportService(svc).importTemplate(await purchaseTemplate(t.svc));
+  let reached!: () => void; let resume!: () => void;
+  const ready = new Promise<void>(resolve => reached = resolve);
+  const held = new Promise<void>(resolve => resume = resolve);
+  const actualTx = svc.tx.bind(svc);
+  let paused = false;
+  // 仅暂停真实查询的调用时点，不替换校验器、数据库、余额或返回值。
+  svc.tx = <T>(fn: (s: CoreServices) => Promise<T>): Promise<T> => actualTx(async transaction => {
+    const balances = transaction.ledger.balances.bind(transaction.ledger);
+    transaction.ledger.balances = async query => {
+      if (!paused) { paused = true; reached(); await held; }
+      return balances(query);
+    };
+    return fn(transaction);
+  });
+  const requestId = randomUUID();
+  const input = { id: r.id, expectedRevision: 1, period: 202601, includeUnposted: false,
+    confirmUnposted: false, requestId };
+  const generating = reportService(svc).generate(input);
+  await ready;
+  const writing = seedVouchers(t.svc, [{ date: '2026-01-30', status: 'posted', lines: [
+    { account: '190101', debit: 7, dims: { partner: 'S001' } }, { account: '4001', credit: 7 },
+  ] }]);
+  resume();
+  const consistent = await generating;
+  await writing;
+  if (consistent.kind !== 'generated') throw new Error('旧一致事务未生成');
+  expect(consistent.snapshot.cells.find(c => c.address === balanceSheetSlots.prepayments!.current)?.value).toBe('13000');
+  await expect(reportService(svc).generate(input)).rejects.toThrow(/来源.*变更/);
+  await expect(reportService(svc).exportSnapshot(r.id, 202601, false)).rejects.toThrow(/来源.*变更/);
+  expect((await reportService(svc).snapshot(r.id, 202601, false))?.id).toBe(consistent.snapshot.id);
+});
+
+it('w_bb_proc/saveas 实际REF依赖也校验profile和来源，自定义外层不能绕过依赖门禁', async () => {
+  const t = await purchaseApp(); const api = t.call(reportServer);
+  const source = await api.importTemplate(await purchaseTemplate(t.svc));
+  const template = emptyTemplate({ code: '901', name: '非正式自定义依赖试算', rows: 3, cols: 3 });
+  template.cells = [{ address: 'A1', kind: 'formula', source: `REF("201","${balanceSheetSlots.prepayments!.current}")`, unit: 'cents', currency: 'CNY' }];
+  const report = await api.importTemplate(template);
+  const before = await generate(report);
+  if (before.kind !== 'generated') throw new Error('未生成');
+  expect(before.snapshot.assurance).toBe('custom-trial');
+  expect(before.snapshot.cells[0]!.value).toBe('13000');
+  expect(before.snapshot.profileProofs?.map(p => p.reportId)).toContain(source.id);
+  expect(await api.exportResult({ id: report.id, period: 202601 })).not.toBeNull();
+  await seedVouchers(t.svc, [{ date: '2026-01-30', status: 'posted', lines: [
+    { account: '190101', debit: 7, dims: { partner: 'S001' } }, { account: '4001', credit: 7 },
+  ] }]);
+  await expect(generate(report)).rejects.toThrow(/来源.*变更/);
+  await expect(api.exportResult({ id: report.id, period: 202601 })).rejects.toThrow(/来源.*变更/);
+  expect((await api.snapshot({ id: report.id, period: 202601 }))?.id).toBe(before.snapshot.id);
+});
+
+it('w_bb_proc 已绑定切片审核失败不写新快照；旧通过结果保留且来源已变时不能导出', async () => {
+  app = await smallBusinessApp(1, 2025); const t = app; const api = t.call(reportServer);
+  await seedInventoryBook(t.svc);
+  const report = await api.importTemplate(extendedBalanceSheetTemplate());
+  const before = await generate(report, 202602);
+  if (before.kind !== 'generated') throw new Error('未生成正例');
+  await t.svc.opening.upsert({ year: 2025, accountId: (await t.svc.accounts.require('1401')).id, balance: -100000 });
+  await expect(generate(report, 202602)).rejects.toThrow(/审核/);
+  await expect(api.exportResult({ id: report.id, period: 202602 })).rejects.toThrow(/来源指纹|profile/);
+  expect((await api.snapshot({ id: report.id, period: 202602 }))?.id).toBe(before.snapshot.id);
+  expect(await t.svc.db.withTables<{report_engine_snapshot:{id:number}}>().selectFrom('report_engine_snapshot').selectAll().execute()).toHaveLength(1);
 });

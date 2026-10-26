@@ -38,7 +38,9 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas：402实际末级分类切�
     const api = app.call(classifiedServer);
     const template = activity402ClassifiedTemplate(mapping);
     const report = await api.importTemplate(template);
-    expect(await api.exportTemplate({ id: report.id })).toEqual(template);
+    expect(await api.exportTemplate({ id: report.id })).toEqual({ ...template, profile: report.template.profile });
+    expect(report.template.profile?.binding?.bookId).toBe(app.book.id);
+    expect(report.template.profile?.mapping).toEqual(template.profile?.mapping);
     const generate = () =>
       api.generate({
         id: report.id,

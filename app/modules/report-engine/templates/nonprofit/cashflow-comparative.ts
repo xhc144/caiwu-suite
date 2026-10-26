@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { CoreServices } from '@caiwu/core/server';
+import { isPeriod } from '@caiwu/core';
 import {
   balanceFormula,
   ReportTemplateSchema,
@@ -40,11 +41,13 @@ function movement(account: string, options: BalanceOptions, item?: string) {
 }
 
 /** 共享统一第8参数实际取数；年初至报告月、上年同期。门禁尚未注册，仍标明切片。 */
-export function comparativeCashflow403Template(raw: ComparativeCashflowMapping): ReportTemplate {
+export function comparativeCashflow403Template(raw: ComparativeCashflowMapping, period: number): ReportTemplate {
   const mapping = ComparativeCashflowSchema.parse(raw);
+  if (!isPeriod(period) || Math.floor(period / 100) !== mapping.current.year)
+    throw new Error('比较现金流量分类报告期必须属于本年来源年度');
   const t = nonprofitFormDraft('403', mapping.current.year);
   t.name = '民非现金流量表（本年与上年同期取数切片）';
-  t.cells.find((c) => c.address === 'A1')!.source = '现金流量表（比较取数切片，制度门禁未接入）';
+  t.cells.find((c) => c.address === 'A1')!.source = '现金流量表（比较取数切片，非完整法定报表）';
   t.cells.find((c) => c.address === 'A3')!.source =
     '仅已过账；本年累计与上年同期；需分别核实两年度分类及现金政策';
   t.cells.find((c) => c.address === 'C4')!.source = '上年同期金额';
@@ -91,7 +94,7 @@ export function comparativeCashflow403Template(raw: ComparativeCashflowMapping):
     }
   }
   t.reportIdentity = 'nonprofit-cashflow403-comparative';
-  t.profile = { version: 1, kind: t.reportIdentity, scope: 'posted', mapping };
+  t.profile = { mode: 'declaration', version: 1, kind: t.reportIdentity, scope: 'posted', period, mapping };
   return ReportTemplateSchema.parse(t);
 }
 

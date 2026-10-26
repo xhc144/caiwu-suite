@@ -41,6 +41,11 @@ test('直接HTTP绕过UI：固定报告期、去guard保存/复制、净零科�
   for (const id of [requestId, randomUUID()]) await expect(post('generate', { ...input, requestId: id })).rejects.toThrow(/来源|结构|profile/);
   await expect(get('exportResult', { id: report.id, period: 202601 })).rejects.toThrow(/来源|结构|profile/);
   expect((await get<ReportSnapshot>('snapshot', { id: report.id, period: 202601 })).id).toBe(generated.snapshot.id);
+  const sealed = await get<Report['template']>('exportTemplate', { id: report.id }); sealed.code = '216';
+  expect(sealed.profile?.mode).toBe('bound');
+  await expect(post('importTemplate', sealed)).rejects.toThrow(/来源印记|换编码/);
+  const missingSeal = structuredClone(sealed); delete missingSeal.profile!.binding;
+  await expect(post('importTemplate', missingSeal)).rejects.toThrow(/来源印记|完整保留/);
   // 来源和分类再次明确后才能建立另一个固定月的profile。
   let renewed = balance;
   await enterprise.withCore(bookId, async svc => {
