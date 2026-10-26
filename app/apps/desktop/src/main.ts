@@ -308,14 +308,8 @@ async function finishQuit() {
           const { file } = await updates!.installer();
           if (pendingWindowState) saveSettings({ ...settings, window: pendingWindowState });
           // 正常交互式 NSIS；不抑制系统安全提示，也不自动发布或运行安装后的版本。
-          await new Promise<void>((resolve, reject) => {
-            const child = spawn(file, [], { detached: true, stdio: 'ignore', windowsHide: false });
-            child.once('error', reject);
-            child.once('spawn', () => {
-              child.unref();
-              resolve();
-            });
-          });
+          const error = await shell.openPath(file);
+          if (error) throw new Error('Windows 未能打开更新安装器，请保留备份并检查系统安全提示');
         },
       });
       if (!started) return;

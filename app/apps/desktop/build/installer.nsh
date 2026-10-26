@@ -1,4 +1,5 @@
 ; 仅检查，不强杀财务进程。用户保存/退出后重试；静默安装遇到运行实例会失败退出。
+!include "WordFunc.nsh"
 !ifdef BUILD_UNINSTALLER
   !define CAIWU_FUNCTION_PREFIX "un."
 !else
@@ -103,6 +104,31 @@ Var /GLOBAL CaiwuScanDepth
       SetErrorLevel 2
       Quit
     ${EndIf}
+    !ifndef BUILD_UNINSTALLER
+      ; 手动启动安装包也不得覆盖更高版本；分别核对用户级和系统级注册信息。
+      ReadRegStr $R0 HKCU "${UNINSTALL_REGISTRY_KEY}" "DisplayVersion"
+      ${If} $R0 != ""
+        ${VersionCompare} "$R0" "${VERSION}" $R1
+        ${If} $R1 == 1
+          Goto caiwu_downgrade_abort
+        ${EndIf}
+      ${EndIf}
+      ReadRegStr $R0 HKLM "${UNINSTALL_REGISTRY_KEY}" "DisplayVersion"
+      ${If} $R0 != ""
+        ${VersionCompare} "$R0" "${VERSION}" $R1
+        ${If} $R1 == 1
+          Goto caiwu_downgrade_abort
+        ${EndIf}
+      ${EndIf}
+      Goto caiwu_version_ok
+      caiwu_downgrade_abort:
+      ${IfNot} ${Silent}
+        MessageBox MB_OK|MB_ICONSTOP "已安装的财务软件版本高于本安装包。为避免旧程序误读新版账套，本次安装已停止。请使用更新的正式安装包；不要覆盖或回滚账套。"
+      ${EndIf}
+      SetErrorLevel 5
+      Quit
+      caiwu_version_ok:
+    !endif
     Call ${CAIWU_FUNCTION_PREFIX}CaiwuGuardInstallTree
 !macroend
 

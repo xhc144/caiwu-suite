@@ -257,9 +257,18 @@ export async function downloadUpdate(
     }
     await verifyInstaller(temporary, update);
     await rename(temporary, target);
+    if (process.platform === 'win32') {
+      // 保留 Internet 来源标记，交给 Windows Shell 正常显示安全检查；写入失败则拒绝安装。
+      await writeFile(
+        `${target}:Zone.Identifier`,
+        `[ZoneTransfer]\r\nZoneId=3\r\nReferrerUrl=${update.page}\r\nHostUrl=${update.url}\r\n`,
+        { flag: 'wx' },
+      );
+    }
     return target;
   } catch (error) {
     await rm(temporary, { force: true });
+    await rm(target, { force: true });
     throw new Error('更新下载未完成或校验失败，请重新检查更新后再下载；当前程序和账套未更改', {
       cause: error,
     });

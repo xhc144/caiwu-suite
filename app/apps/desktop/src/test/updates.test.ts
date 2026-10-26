@@ -131,6 +131,8 @@ it('下载真实落盘，拒绝截断、超长、非 PE、摘要错和安装前�
   const directory = await temp();
   const target = await downloadUpdate(f.update, directory, f.request);
   expect(await readFile(target)).toEqual(bytes);
+  if (process.platform === 'win32')
+    expect(await readFile(`${target}:Zone.Identifier`, 'utf8')).toContain('ZoneId=3');
   await verifyInstaller(target, f.update);
   await writeFile(target, Buffer.alloc(bytes.length));
   await expect(verifyInstaller(target, f.update)).rejects.toThrow('完整性');

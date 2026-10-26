@@ -380,6 +380,11 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
       rmSync(legacyBook);
       rmdirSync(legacyDir);
       await install(newInstaller);
+      // 同代码测试旧包仅用于验证安装器的版本保护，不能作为历史兼容验收。
+      expect(
+        await run(oldInstaller!, ['/S', '/currentuser', `/D=${path.dirname(executable)}`]),
+        '原生 NSIS 拒绝以更低版本覆盖已安装新版',
+      ).toBe(5);
     }
     desktop = await launch();
     page = await desktop.firstWindow();
