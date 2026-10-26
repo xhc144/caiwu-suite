@@ -167,7 +167,13 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
             辅助查询
           </Button>
           {canSettings && (
-            <Button loading={openingSettings} onClick={() => void openSettings()}>
+            <Button
+              aria-label="展示设置"
+              aria-busy={openingSettings}
+              loading={openingSettings}
+              disabled={openingSettings}
+              onClick={() => void openSettings()}
+            >
               展示设置
             </Button>
           )}
