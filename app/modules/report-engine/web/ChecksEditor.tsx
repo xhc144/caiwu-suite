@@ -37,7 +37,13 @@ export function ChecksEditor({
       for (const [index, check] of checks.entries()) {
         const parsed = CheckSchema.safeParse(check);
         if (!parsed.success) {
-          errors.push(`第${index + 1}项：${parsed.error.issues.map((i) => i.message).join('；')}`);
+          const messages = parsed.error.issues.map((issue) => {
+            if (issue.path[0] === 'name') return '审核名称不能为空，且最多80字';
+            if (issue.path[0] === 'left') return '左表达式不能为空，且最多2000字';
+            if (issue.path[0] === 'right') return '右表达式不能为空，且最多2000字';
+            return issue.message;
+          });
+          errors.push(`第${index + 1}项：${messages.join('；')}`);
           continue;
         }
         const checked = await Promise.all(

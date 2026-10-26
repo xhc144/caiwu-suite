@@ -128,6 +128,7 @@ export function preparePaste(
       changes.push(cell);
     }),
   );
+  if (cells.size > 5000) throw new Error('报表最多定义5000个单元格，请减少内容后再粘贴');
   const parsed = ReportTemplateSchema.safeParse({ ...template, cells: [...cells.values()] });
   if (!parsed.success) throw new Error(parsed.error.issues.map((i) => i.message).join('；'));
   return {

@@ -76,7 +76,7 @@ describe('w_bb_def 复制/粘贴区域', () => {
       ...large.cells[i]!,
       address: `${String.fromCharCode(65 + Math.floor(i / 250))}${(i % 250) + 1}`,
     }));
-    expect(() => preparePaste(large, 'U1', '新格', 'text')).toThrow(/5000/);
+    expect(() => preparePaste(large, 'U1', '新格', 'text')).toThrow(/最多定义5000个单元格/);
   });
   it('整数分→元文本→粘贴金额往返保持精确值，含负数与零', () => {
     fc.assert(
