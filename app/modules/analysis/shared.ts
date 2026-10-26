@@ -100,6 +100,7 @@ export type AgingReport = {
     difference: number;
   }[];
   totals: {
+    aged: number;
     buckets: number[];
     unaged: number;
     future: number;

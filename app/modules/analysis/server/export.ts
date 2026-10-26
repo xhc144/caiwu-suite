@@ -23,7 +23,7 @@ export async function exportAging(report: AgingReport) {
     `截止 ${report.filter.cutoff}；${report.filter.includeUnposted ? '含未过账' : '仅已过账'}；${report.filter.direction === 'receivable' ? '应收' : '应付'}；借正贷负；金额均为本位币 ${report.baseCurrency}`,
   ]);
   sheet.addRow([
-    '期初优先核销，其余按业务日期 FIFO；当日为0天；期初残额未分龄；客供和币种分别核销；未来业务日期单列',
+    '按期初优先约定核销，其余按业务日期 FIFO；当日为0天；期初残额未分龄；客供和币种分别核销；未来业务日期单列',
   ]);
   sheet.addRow(['快照', report.generatedAt]);
   sheet.addRow([
@@ -72,7 +72,7 @@ export async function exportTrend(report: TrendReport) {
     report.filter.metric
   ];
   ws.addRow([
-    `${report.filter.period}；${report.filter.mode === 'annual' ? '年度' : '月度'}；${metric}；${report.filter.scope === 'operating' ? '经营分析：排除损益结转' : '原始总账'}；${report.filter.includeUnposted ? '含未过账' : '仅已过账'}`,
+    `${report.filter.period}；${report.filter.mode === 'annual' ? '年度' : '月度'}；${metric}；${report.filter.scope === 'operating' ? '经营分析：排除本年度损益结转，年初按总账' : '原始总账'}；${report.filter.includeUnposted ? '含未过账' : '仅已过账'}`,
   ]);
   ws.addRow([
     '快照',

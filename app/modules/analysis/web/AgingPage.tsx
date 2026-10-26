@@ -243,7 +243,7 @@ function AgingPage() {
             type="info"
             showIcon
             title="口径说明"
-            description="凭证日期≤截止日才纳入；账龄天数=截止日−业务日期（未填取凭证日期），当日为0天，区间含两端且连续。先核销期初，再按业务日期先进先出；期初缺历史日期的残额单列未分龄。客供、末级科目、交易币种之间不互相核销；所有金额均折合本位币、借正贷负。未来业务日期和反向余额单列。账龄保留全部结转，便于核对原始总账。"
+            description="凭证日期≤截止日才纳入；账龄天数=截止日−业务日期（未填取凭证日期），当日为0天，区间含两端且连续。期初优先是核销约定，不代表其属于最老账龄；其余按业务日期先进先出，期初缺历史日期的残额单列未分龄。客供、末级科目、交易币种之间不互相核销；所有金额均折合本位币、借正贷负。未来业务日期和反向余额单列。账龄保留全部结转，便于核对原始总账。"
           />
           {config.isError && (
             <ReportError error={config.error} retry={() => void config.refetch()} />
@@ -304,7 +304,7 @@ function AgingPage() {
                 {formatMoney(report.totals.difference)}。快照：{report.generatedAt}
               </p>
               <span>
-                已分龄：{formatMoney(report.totals.buckets.reduce((a, b) => a + b, 0))}
+                已分龄：{formatMoney(report.totals.aged)}
                 ；期初未分龄：{formatMoney(report.totals.unaged)}；未来业务日期：
                 {formatMoney(report.totals.future)}；反向余额：{formatMoney(report.totals.reverse)}
               </span>

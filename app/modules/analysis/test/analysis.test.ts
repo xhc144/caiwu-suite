@@ -308,6 +308,18 @@ describe('w_fx_zl 账龄分析（真实账套及核心服务）', () => {
       closing: 0,
     });
   });
+  it('跨区间已分龄合计也须为安全整数，不能由前端不精确加总', async () => {
+    for (const partner of ['C002', 'C003', 'C004'])
+      await app.svc.dimensions.create({ type: 'partner', code: partner, name: partner });
+    const amount = 6_000_000_000_000_000;
+    await seedVouchers(app.svc, [
+      charge('2026-01-01', amount),
+      charge('2026-04-01', -amount, '1122', 'C002'),
+      charge('2026-04-01', amount, '1122', 'C003'),
+      charge('2026-04-01', -amount, '1122', 'C004'),
+    ]);
+    expect(await code(api.aging(filter))).toBe('ANALYSIS_AMOUNT_OVERFLOW');
+  });
   it('达到分录读取上限时拒绝出报告，不静默截断', () => {
     expect(() => assertCompleteEntries(199999)).not.toThrow();
     expect(() => assertCompleteEntries(200000)).toThrow(/无法保证分析完整/);
@@ -437,6 +449,19 @@ describe('w_fx_km / w_fx_nd / w_fx_yd / w_fx_demo', () => {
     } finally {
       await mid.close();
     }
+  });
+  it('w_fx_km 跨年余额承接原始年初，上年已结转损益不重新带入本年经营余额', async () => {
+    await seedVouchers(app.svc, [charge('2026-01-01', 10000)]);
+    await withBizDate(charge('2026-12-31', -10000), '2026-12-31', 'pnl');
+    await app.svc.periods.ensureYear(2027);
+    await seedVouchers(app.svc, [charge('2027-01-01', 5000)]);
+    const r = await api.trend({
+      accountCode: '1122',
+      period: 202701,
+      mode: 'monthly',
+      metric: 'balance',
+    });
+    expect(r.rows[0]).toMatchObject({ current: 5000, ledgerCurrent: 5000, pnlAdjustment: 0 });
   });
   it('w_main1 便捷入口可持久化科目，无硬编码并保护并发覆盖', async () => {
     await api.saveShortcut({ kind: 'finance', accountCode: '1122', expectedRevision: 0 });

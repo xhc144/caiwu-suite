@@ -361,6 +361,7 @@ export function analysisService(svc: CoreServices) {
           rows: visible,
           controls: [...controls.values()],
           totals: {
+            aged: sum(visible.flatMap((r) => r.buckets)),
             buckets: f.bounds
               .map((_, i) => sum(visible.map((r) => r.buckets[i]!)))
               .concat(sum(visible.map((r) => r.buckets[f.bounds.length]!))),
@@ -389,7 +390,8 @@ export function analysisService(svc: CoreServices) {
           accounts.map((a) => a.id),
           f.includeUnposted,
         );
-        const pnl = entries.filter((e) => e.closingKind === 'pnl');
+        // 期初/年初承接原始总账；只调整所分析年度的损益结转，避免跨年重新带入上年损益。
+        const pnl = entries.filter((e) => e.closingKind === 'pnl' && e.period >= year * 100 + 1);
         const first = Math.max(year * 100 + 1, book.startPeriod);
         const rows: TrendRow[] = accounts.map((a) => ({
           accountCode: a.code,
