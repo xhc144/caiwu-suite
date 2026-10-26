@@ -78,3 +78,14 @@
 原主要 schema 和 24 组录入控件锚点的**静态核验**已过；DataWindow 可视列序、原字段编辑风格、运行时布局/可见性、DPI/字体、焦点与快捷键、MDI/独立进程、原完整参数/打印/汇总/库存联动及所有前述未实现项继续保留。Linux 测试、Windows 目标编译、合成宿主和契约测试均不替代这些验收。
 
 当前无被拒绝/结果不明的远端写入；早期分支推送和草稿 PR 创建均已确认。后续最终提交/推送结果以 PR 和本轮最终回复为准。
+
+## PR45 静审返修：拒绝未知结构成员（2026-10-26）
+
+只返修已有 PR45，审阅基线 `ad6e772d937dbca1929f456dfc5bae4dcad571c3`，不新增业务功能或任务。审阅指出的缺陷确认成立：`InvoiceJson.Options` 默认忽略 DTO 未匹配成员，原测试只证明 `Rows.Fields` 扩展列保留，不能证明 `InvoiceModuleState`/`InvoiceDocument` 等结构层无损。
+
+- **复现：** 先新增合成回归，实际执行 `ParityInvoiceAdapter.Read → SetReviewed → PrepareSave`。在 module/document/key/row wrapper/month 五个层级分别注入 `FutureField=null`、超出 IEEE754 精确范围的高精度数值、包含空值和高精度数值/大指数的嵌套对象数组。修复前 15 案例全部未抛错误，严格拒绝断言失败（退出 1，15 失败）；静审指出的危险改写路径仍可执行。
+- **修正：** `InvoiceJson.Options.UnmappedMemberHandling = Disallow`。不认识的结构成员现在抛含字段名的 `JsonException`，在读取阶段停止，不能将结构层扩展当作可忽略字段后降级保存。未增加另一套猜测的 schema，也未改源字段含义；`Rows.Fields` 仍是明确支持的原列扩展容器。
+- **持久化回归：** 新合成文件分别在 workspace/document/row wrapper 注入多层未知对象；读取及 `TrySave` 均拒绝，前后文件字节相同且无临时替换残留；交换包内未知成员（包括 null）也拒绝。合法原列扩展里的 null 与 `9007199254740993.1234567890123456789` 经过审核和 `PrepareSave` 后保持类型及数值原文。
+- **复验：** 原领域测试全量加此次回归 **41 通过/0 失败/0 跳过**；指定 PR52 契约 SHA 的适配测试全量 **28 通过/0 失败/0 跳过**；WPF Windows 目标交叉编译 **0 警告/0 错误**。仍使用前述三条命令，附加 `--no-restore`，全部 `-warnaserror`，退出均为 0。`git diff --check` 通过。
+
+此修正采用“未知结构明确拒绝”，不会把未知结构层内容伪称为已支持。更高 schema、真实原账套和 Windows 原版验收的既有边界不变。没有自动审批拒绝或结果不明的写入；最终返修 SHA 以本轮提交/PR HEAD 为准。

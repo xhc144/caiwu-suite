@@ -15,7 +15,7 @@
 - `CommitVoucherPlanToSandbox` 只提交本模块的**合成总账**，不是生产总账接口。它与源 `pz_bz/p_nf/p_yf/p_pzlx/p_pzbh` 在一个快照 CAS 中保存；删未审未过账合成凭证同时清除所有关联票回链，不能只清一票。原 SQL Anywhere、`pz/pzdj/pz_fj` 等真实表完全未接触。
 - `CompareVat` 接受显式账面分录。销项取贷−借、进项取借−贷；进项使用认证日期（无认证日时暂用开票日，待原事件完整复核），按月或季度输出票面/账面/差额。账面未提供、票面税额缺失时保持 null，不能显示匹配；票面当前汇总所有记录，未擅自推断作废等状态的税务排除规则。
 
-`InvoiceJson` 拒绝任意层级重复键。`SyntheticJsonInvoiceStore` 只接受显式 `.invoice-synthetic.json`，新建不覆盖、侧车排他锁、revision CAS、完整快照原子替换与独立实例读回。此文件只作独立合成切片，不能与真实总账宣称跨文件原子一致。
+`InvoiceJson` 拒绝任意层级重复键，并通过 `UnmappedMemberHandling.Disallow` 拒绝模块、单据、票键、行包装、期间、交换包等 DTO 结构层未识别成员，含值为 null 的成员；读取失败后不能继续改写并静默丢字段。原列扩展仍由 `Rows.Fields` 的 `JsonElement` 字典无损承载，空值和数值原文不经 double 转换。`SyntheticJsonInvoiceStore` 只接受显式 `.invoice-synthetic.json`，新建不覆盖、侧车排他锁、revision CAS、完整快照原子替换与独立实例读回。此文件只作独立合成切片，不能与真实总账宣称跨文件原子一致。
 
 ## 构建与合成测试
 

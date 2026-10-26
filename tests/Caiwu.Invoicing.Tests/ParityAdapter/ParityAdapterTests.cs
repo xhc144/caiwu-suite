@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Caiwu.Contracts;
 using Caiwu.Invoicing.ParityAdapter;
 
@@ -158,6 +159,71 @@ public sealed class ParityAdapterTests
         var consumed = snapshot with { ProposalReceipts = [new(prior.ProposalId, "invoices", prior.SourceKeys, Guid.NewGuid(), 20)] };
         Assert.Empty(consumed.Ledger.Vouchers);
         Assert.Equal("source-consumed", Assert.Throws<InvoiceException>(() => Proposal(consumed)).Code);
+    }
+
+    public static IEnumerable<object[]> UnknownStructuralMembers()
+    {
+        foreach (var level in new[] { "module", "document", "key", "row", "month" })
+        foreach (var payload in new[]
+        {
+            "null",
+            "9007199254740993.1234567890123456789",
+            """{"Nested":[null,{"Amount":9007199254740993.1234567890123456789,"Huge":1e1000}]}"""
+        }) yield return [level, payload];
+    }
+
+    [Theory]
+    [MemberData(nameof(UnknownStructuralMembers))]
+    public void UnknownStructuralMembersCannotDisappearThroughReviewAndPrepareSave(string level, string payload)
+    {
+        var snapshot = WithDocuments(Snapshot());
+        var module = JsonNode.Parse(snapshot.Modules[0].Documents[0].PayloadJson)!.AsObject();
+        var document = module["Documents"]![0]!;
+        var target = level switch
+        {
+            "module" => module,
+            "document" => document.AsObject(),
+            "key" => document["Key"]!.AsObject(),
+            "row" => document["Rows"]![0]!.AsObject(),
+            "month" => module["OpenMonth"]!.AsObject(),
+            _ => throw new ArgumentOutOfRangeException(nameof(level))
+        };
+        target["FutureField"] = JsonNode.Parse(payload);
+        var originalPayload = module.ToJsonString();
+        var extended = snapshot with { Modules = [new("invoices", [new("workspace", 1, originalPayload)])] };
+
+        // Exercise the reported read → review → save preparation path. Unknown schema must stop it before data can be rewritten.
+        var error = Assert.Throws<JsonException>(() =>
+        {
+            var state = ParityInvoiceAdapter.Read(extended, InvoiceProduct.Qingsong);
+            var service = new InvoiceService(new MemoryInvoiceStore(state));
+            service.SetReviewed(state.Revision, state.Documents[0].Id, true);
+            ParityInvoiceAdapter.PrepareSave(extended, service.Read());
+        });
+        Assert.Contains("FutureField", error.Message);
+        Assert.Equal(originalPayload, extended.Modules[0].Documents[0].PayloadJson);
+        Assert.Equal(snapshot.Ledger.Revision, extended.Ledger.Revision);
+    }
+
+    [Fact]
+    public void RawColumnNullAndHighPrecisionSurviveReviewAndPrepareSave()
+    {
+        const string precise = "9007199254740993.1234567890123456789";
+        var snapshot = WithDocuments(Snapshot());
+        var module = JsonNode.Parse(snapshot.Modules[0].Documents[0].PayloadJson)!;
+        var fields = module["Documents"]![0]!["Rows"]![0]!["Fields"]!.AsObject();
+        fields["future_null"] = null;
+        fields["future_precise"] = JsonNode.Parse(precise);
+        var extended = snapshot with { Modules = [new("invoices", [new("workspace", 1, module.ToJsonString())])] };
+        var state = ParityInvoiceAdapter.Read(extended, InvoiceProduct.Qingsong);
+        var service = new InvoiceService(new MemoryInvoiceStore(state));
+        service.SetReviewed(state.Revision, state.Documents[0].Id, true);
+        var batch = ParityInvoiceAdapter.PrepareSave(extended, service.Read());
+        using var saved = JsonDocument.Parse(Assert.Single(batch.Changes).Document!.PayloadJson);
+        var restored = saved.RootElement.GetProperty("Documents")[0].GetProperty("Rows")[0].GetProperty("Fields");
+        Assert.Equal(JsonValueKind.Null, restored.GetProperty("future_null").ValueKind);
+        Assert.Equal(precise, restored.GetProperty("future_precise").GetRawText());
+        Assert.Equal("1", restored.GetProperty("sh_bz").GetString());
     }
 
     private sealed class ContractSpy(ModuleLedgerSnapshot snapshot) : IParityLedgerService

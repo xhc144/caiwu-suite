@@ -16,6 +16,9 @@ public static class InvoiceJson
     public static JsonSerializerOptions Options { get; } = new()
     {
         WriteIndented = true,
+        // Unknown schema members must stop read/edit/save instead of silently disappearing.
+        // Legacy raw columns remain supported through LegacyInvoiceRow.Fields.
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
         Converters = { new JsonStringEnumConverter() }
     };
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Options);
