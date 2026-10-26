@@ -2,6 +2,7 @@ import { BusinessError, levelOfCode, parentCodeOf, periodOfDate } from '@caiwu/c
 import type { CoreServices } from '@caiwu/core/server';
 import type { CheckItem } from '../shared';
 import { checkedCents, exactCents, sumCents } from './amounts';
+import { foreignAmountIssues, referenceIssues } from './references';
 
 type CheckLine = {
   period: number;
@@ -56,6 +57,12 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
   const book = await svc.book.info();
   const accounts = await svc.accounts.list();
   const accountMap = new Map(accounts.map((a) => [a.id, a]));
+  const items = await svc.db
+    .selectFrom('dimension_item')
+    .select(['id', 'type_id', 'is_leaf'])
+    .execute();
+  const itemMap = new Map(items.map((item) => [item.id, item]));
+  const currencies = new Set((await svc.reference.currencies()).map((c) => c.code));
   if (!accounts.length)
     add('科目', '无数据', '科目表', '没有科目数据', '在基础档案建立科目', '/m/masterdata/accounts');
   for (const a of accounts) {
@@ -79,10 +86,7 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
   }
   const periods = await svc.periods.list();
   const pm = new Map(periods.map((p) => [p.period, p]));
-  const openings = await svc.db
-    .selectFrom('opening_balance')
-    .select(['year', 'account_id', 'balance'])
-    .execute();
+  const openings = await svc.db.selectFrom('opening_balance').selectAll().execute();
   for (const year of new Set(periods.map((p) => p.year))) {
     const os = openings.filter((o) => o.year === year);
     let diff: number;
@@ -119,6 +123,26 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
         '联系管理员检查档案和备份',
         '/m/opening',
       );
+    else {
+      const issues = referenceIssues(o, accountMap.get(o.account_id)!, itemMap, currencies, {
+        opening: true,
+      });
+      for (const value of [o.balance, o.ytd_debit, o.ytd_credit, o.fc_balance])
+        if (!Number.isSafeInteger(value)) {
+          issues.push('期初金额或累计发生额不是安全整数分');
+          break;
+        }
+      if (o.fc_balance !== 0 && (!o.currency_code || !accountMap.get(o.account_id)!.currency))
+        issues.push('外币余额缺少对应的科目币种');
+      add(
+        '期初核算项',
+        issues.length ? '不通过' : '通过',
+        `${o.year} 年 / ${accountMap.get(o.account_id)!.code} / 期初 ID ${o.id}`,
+        issues.join('；') || '辅助项、币种、整数分与数量字段一致',
+        issues.length ? '核对原始期初及档案；检查不会自动修改数据' : '无需处理',
+        `/m/opening?year=${o.year}`,
+      );
+    }
   const vouchers = await svc.db
     .selectFrom('voucher')
     .select([
@@ -135,10 +159,7 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
     .orderBy('period')
     .orderBy('number')
     .execute();
-  const lines = await svc.db
-    .selectFrom('voucher_line')
-    .select(['id', 'voucher_id', 'line_no', 'period', 'account_id', 'debit', 'credit'])
-    .execute();
+  const lines = await svc.db.selectFrom('voucher_line').selectAll().execute();
   const vm = new Map(vouchers.map((v) => [v.id, v]));
   const grouped = new Map<number, typeof lines>();
   for (const l of lines) {
@@ -173,6 +194,29 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
           '检查该行业务内容',
           to,
         );
+    for (const l of ls) {
+      const account = accountMap.get(l.account_id);
+      if (!account) continue; // 科目不存在已由头行检查单独定位。
+      const issues = [
+        ...referenceIssues(l, account, itemMap, currencies, {
+          opening: false,
+          draft: v.status === 'draft',
+        }),
+        ...foreignAmountIssues(l, account, v.status === 'draft'),
+        l.debit !== 0 && l.credit !== 0 ? '同一行同时有借方和贷方金额' : '',
+        account.quantityUnit && l.quantity_e6 == null && v.status !== 'draft'
+          ? '数量科目缺少数量'
+          : '',
+      ].filter(Boolean);
+      add(
+        '分录核算项',
+        issues.length ? '不通过' : '通过',
+        `${label} 第 ${l.line_no} 行`,
+        issues.join('；') || '辅助项、币种、汇率与数量字段一致',
+        issues.length ? '核对原始单据及科目设置；已审核或来源凭证应按原业务流程处理' : '无需处理',
+        to,
+      );
+    }
     const p = pm.get(v.period);
     if (
       !p ||
@@ -317,7 +361,7 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
     '无法检查',
     '当前账套',
     '未开放破坏性修复和开账日期调整',
-    '需完整在线备份、独占维护锁、强确认及核心原子服务后再开放',
+    '需完整在线备份及恢复校验、破坏性独占维护、强确认及核心原子服务后再开放',
   );
   return rows;
 }

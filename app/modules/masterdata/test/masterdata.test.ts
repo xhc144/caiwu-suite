@@ -13,6 +13,9 @@ import type { AccountInput, DimensionInput, ExcelInput } from '../shared';
 let app: TestApp;
 const caller = (a: TestApp, token?: string) => a.call(server, token);
 let api: ReturnType<typeof caller>;
+async function withPreview(input: ExcelInput): Promise<ExcelInput> {
+  return { ...input, previewToken: (await api.excel.preview(input)).previewToken };
+}
 beforeEach(async () => {
   app = await createTestApp({ modules: [server] });
   api = caller(app);
@@ -183,7 +186,7 @@ describe('科目维护与历史保护', () => {
     const exported = await api.excel.export({ kind: 'accounts' });
     const imported = { ...exported, kind: 'accounts' as const };
     expect((await api.excel.preview(imported)).valid).toBe(true);
-    await api.excel.commit({ ...imported, confirmations: ['import'] });
+    await api.excel.commit(await withPreview({ ...imported, confirmations: ['import'] }));
     expect((await app.svc.accounts.require(account.id)).dimensions).toEqual(account.dimensions);
 
     const input = {
@@ -567,7 +570,7 @@ describe('五类共享辅助档案', () => {
       const exported = await api.excel.export({ kind: 'dimensions', type });
       const input = { ...exported, kind: 'dimensions' as const, type };
       expect((await api.excel.preview(input)).valid).toBe(true);
-      await api.excel.commit({ ...input, confirmations: ['import'] });
+      await api.excel.commit(await withPreview({ ...input, confirmations: ['import'] }));
       expect(await app.svc.dimensions.items(type)).toEqual(beforeImport);
       expect(await api.dimensions.scheme({ type })).toEqual(originalScheme);
     },
@@ -818,7 +821,12 @@ describe('参考档案与Excel', () => {
     expect(p.rows.some((r) => r.error.includes('上级'))).toBe(true);
     expect(await app.svc.accounts.getByCode('1701')).toBeNull();
     await expect(
-      api.excel.commit({ ...bad, confirmations: [...p.confirmations.map((w) => w.key), 'import'] }),
+      api.excel.commit(
+        await withPreview({
+          ...bad,
+          confirmations: [...p.confirmations.map((w) => w.key), 'import'],
+        }),
+      ),
     ).rejects.toThrow();
     expect((await app.svc.accounts.list()).length).toBe(before);
     const good = await file((rows) => {
@@ -832,11 +840,13 @@ describe('参考档案与Excel', () => {
     });
     const preview = await api.excel.preview(good);
     expect(preview.valid).toBe(true);
-    await api.excel.commit({
-      ...good,
-      confirmations: [...preview.confirmations.map((w) => w.key), 'import'],
-    });
-    await api.excel.commit({ ...good, confirmations: ['import'] });
+    await api.excel.commit(
+      await withPreview({
+        ...good,
+        confirmations: [...preview.confirmations.map((w) => w.key), 'import'],
+      }),
+    );
+    await api.excel.commit(await withPreview({ ...good, confirmations: ['import'] }));
     expect((await app.svc.accounts.list()).length).toBe(before + 1);
   });
   it('w_xt_kmbm_get：已使用科目不能借导入改变方向，辅助导入坏行撤销整批', async () => {
@@ -858,7 +868,9 @@ describe('参考档案与Excel', () => {
       'department',
     );
     expect((await api.excel.preview(dimFile)).valid).toBe(false);
-    await expect(api.excel.commit({ ...dimFile, confirmations: ['import'] })).rejects.toThrow();
+    await expect(
+      api.excel.commit(await withPreview({ ...dimFile, confirmations: ['import'] })),
+    ).rejects.toThrow();
     expect(await app.svc.dimensions.getByCode('department', '03')).toBeNull();
   });
   it('w_xt_kmbm_get：超限编码与不合法标志逐行报错；父子顺序预览后一次事务导入', async () => {
@@ -894,7 +906,7 @@ describe('参考档案与Excel', () => {
     const preview = await api.excel.preview(valid);
     expect(preview.valid).toBe(true);
     expect(preview.rows.map((r) => r.code)).toEqual(['1701', '170101']);
-    await api.excel.commit({ ...valid, confirmations: ['import'] });
+    await api.excel.commit(await withPreview({ ...valid, confirmations: ['import'] }));
     expect((await app.svc.accounts.require('170101')).fullName).toBe('测试设备/导入子级');
   });
 });
@@ -1025,16 +1037,30 @@ it('fast-check：不同合法科目级次的父子/全名一致、分类无环�
           const excel = excelService(t.forModule('masterdata'));
           const out = await excel.export('accounts');
           const imported = { kind: 'accounts' as const, ...out };
-          expect((await excel.process(imported, false)).valid).toBe(true);
-          await excel.process({ ...imported, confirmations: ['import'] }, true);
+          const accountPreview = await excel.process(imported, false);
+          expect(accountPreview.valid).toBe(true);
+          await excel.process(
+            { ...imported, previewToken: accountPreview.previewToken, confirmations: ['import'] },
+            true,
+          );
           expect(await t.svc.accounts.require(leaf.id)).toMatchObject({
             quantityUnit: '件',
             mnemonic: String(fraction),
             fullName: '测试设备/父级/末级',
           });
           const dimOut = await excel.export('dimensions', 'department');
+          const dimensionInput = {
+            kind: 'dimensions' as const,
+            type: 'department' as const,
+            ...dimOut,
+          };
+          const dimensionPreview = await excel.process(dimensionInput, false);
           await excel.process(
-            { kind: 'dimensions', type: 'department', ...dimOut, confirmations: ['import'] },
+            {
+              ...dimensionInput,
+              previewToken: dimensionPreview.previewToken,
+              confirmations: ['import'],
+            },
             true,
           );
           expect((await t.svc.dimensions.get(a.id))!.attrs).toEqual({

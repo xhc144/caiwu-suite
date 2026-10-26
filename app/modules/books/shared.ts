@@ -57,8 +57,19 @@ export const DeleteSchema = TargetSchema.extend({ ticket: z.uuid(), confirmName:
 export function filterBooks(books: BookSummary[], keyword: string) {
   const text = keyword.trim().toLocaleLowerCase('zh-CN');
   return books.filter((b) =>
-    [b.name, b.orgName, b.templateName, b.regime].some((v) =>
+    [b.id, b.name, b.orgName, b.templateName, b.regime].some((v) =>
       v.toLocaleLowerCase('zh-CN').includes(text),
     ),
   );
+}
+
+// 按身份保留选择；刷新后原账套消失时不能悄悄改选另一个账套。
+export function selectedBook(books: BookSummary[], id: string | null) {
+  return id === null ? books[0] : books.find((b) => b.id === id);
+}
+
+export function moveBookSelection(books: BookSummary[], id: string | null, direction: 1 | -1) {
+  const current = selectedBook(books, id);
+  const index = current ? books.indexOf(current) : direction === 1 ? -1 : books.length;
+  return books[Math.max(0, Math.min(books.length - 1, index + direction))]?.id ?? null;
 }

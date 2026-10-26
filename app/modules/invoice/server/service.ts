@@ -11,6 +11,7 @@ import {
   VOUCHER_STATUS_LABELS,
   type VoucherLineInput,
   type DimensionValues,
+  type Account,
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
@@ -46,6 +47,15 @@ export function safeSum(values: number[]) {
   const n = values.reduce((a, b) => a.add(b), new Decimal(0)).toNumber();
   if (!Number.isSafeInteger(n)) problem('RANGE', '汇总金额超出安全整数范围', '缩小所选范围');
   return n;
+}
+function assertSettlementRole(account: Pick<Account, 'id' | 'code' | 'name'>, cfg: Settings) {
+  if (account.id === cfg.business.accountId || account.id === cfg.tax.accountId)
+    problem(
+      'ACCOUNT',
+      `往来下级科目 ${account.code} ${account.name} 与业务或税额科目重复，不能生成凭证`,
+      '分别配置业务、税额和往来结算科目后重新预览',
+      '/m/invoice/settings',
+    );
 }
 export function validateInvoice(raw: InvoiceInput): InvoiceData {
   const result = InvoiceSchema.safeParse(raw);
@@ -216,8 +226,8 @@ export function invoiceService(svc: CoreServices) {
     await writeLines(row.id, d);
     return row.id;
   };
-  const validateMapping = async (map: Settings['business']) => {
-    const a = await svc.accounts.require(map.accountId);
+  const validateMapping = async (map: Settings['business'], account?: Account) => {
+    const a = account ?? (await svc.accounts.require(map.accountId));
     if (!a.isLeaf || a.disabled)
       problem(
         'ACCOUNT',
@@ -271,6 +281,86 @@ export function invoiceService(svc: CoreServices) {
       dimensions,
       dimensionText: dimensionNames.join('；'),
     };
+  };
+  const settlementParent = async (cfg: Settings) => {
+    const parent = await svc.accounts.require(cfg.settlement.accountId);
+    if (parent.disabled || parent.isLeaf)
+      problem(
+        'PARTNER_PARENT',
+        '按名称匹配时，结算科目必须是已有下级的可用非末级科目',
+        '在科目维护中准备上级和下级科目，再到参数设置选择该上级',
+        '/m/invoice/settings',
+      );
+    // Validate the dimensions a newly created direct child will inherit.
+    await validateMapping(cfg.settlement, { ...parent, isLeaf: true });
+    return parent;
+  };
+  const settlementPlan = async (cfg: Settings, docs: InvoiceData[]) => {
+    const maps = new Map<string, Awaited<ReturnType<typeof validateMapping>>>();
+    const newAccounts: Account[] = [];
+    if (cfg.settlementMode === 'unified') {
+      maps.set('', await validateMapping(cfg.settlement));
+      return { maps, newAccounts };
+    }
+    const parent = await settlementParent(cfg);
+    const accounts = await svc.accounts.list();
+    const descendants = accounts.filter(
+      (a) => a.code.startsWith(parent.code) && a.id !== parent.id,
+    );
+    const scheme = (await svc.book.info()).codeScheme;
+    const width = scheme[parent.level];
+    const used = new Set(accounts.map((a) => a.code));
+    const names = [
+      ...new Set(docs.map((d) => (cfg.direction === 'input' ? d.sellerName : d.buyerName))),
+    ].sort();
+    for (const name of names) {
+      const matches = descendants.filter((a) => a.name === name);
+      if (matches.length > 1)
+        problem(
+          'PARTNER_AMBIGUOUS',
+          `往来名称“${name}”对应多个下级科目`,
+          '在科目维护中消除同名歧义后重新预览',
+        );
+      let account = matches[0];
+      if (!account) {
+        if (width == null)
+          problem(
+            'PARTNER_SPACE',
+            `科目 ${parent.code} 已到编码末级，不能增加下级`,
+            '核对账套科目级次',
+          );
+        let code = '';
+        // At most one probe per occupied slot, even when a level permits six digits.
+        for (let n = 1; n <= Math.min(10 ** width - 1, used.size + 1); n++) {
+          const candidate = parent.code + String(n).padStart(width, '0');
+          if (!used.has(candidate)) {
+            code = candidate;
+            break;
+          }
+        }
+        if (!code)
+          problem(
+            'PARTNER_SPACE',
+            `科目 ${parent.code} 的下级编码空间已满`,
+            '在套账信息核对科目级次，或在科目维护中整理后重新预览',
+          );
+        used.add(code);
+        account = {
+          ...parent,
+          id: 0,
+          code,
+          name,
+          fullName: `${parent.fullName}/${name}`,
+          parentId: parent.id,
+          level: parent.level + 1,
+          isLeaf: true,
+        };
+        newAccounts.push(account);
+      }
+      assertSettlementRole(account, cfg);
+      maps.set(name, await validateMapping(cfg.settlement, account));
+    }
+    return { maps, newAccounts };
   };
   const settings = async (direction: Direction) => {
     const r = await db
@@ -586,8 +676,10 @@ export function invoiceService(svc: CoreServices) {
         const old = await t.settings(input.direction);
         if ((old?.expectedRevision ?? 0) !== input.expectedRevision)
           problem('STALE', '映射已被更改，请刷新后重设');
-        for (const map of [input.business, input.tax, input.settlement, input.nonDeductible])
+        for (const map of [input.business, input.tax, input.nonDeductible])
           await t.validateMapping(map);
+        if (input.settlementMode === 'partnerName') await t.settlementParent(input);
+        else await t.validateMapping(input.settlement);
         if (
           new Set([input.business.accountId, input.tax.accountId, input.settlement.accountId])
             .size !== 3
@@ -646,8 +738,11 @@ export function invoiceService(svc: CoreServices) {
       if (!type) problem('TYPE', '凭证字不存在或已停用', '选择可用凭证字');
       const business = await validateMapping(cfg.business),
         tax = await validateMapping(cfg.tax),
-        settlement = await validateMapping(cfg.settlement),
         nonDeductible = await validateMapping(cfg.nonDeductible);
+      const settlements = await settlementPlan(
+        cfg,
+        rows.map(({ d }) => d),
+      );
       const groups = (input.mode === 'monthly' ? [rows] : rows.map((r) => [r])).map((group) => {
         const lines: (VoucherLineInput & {
           accountCode: string;
@@ -655,6 +750,13 @@ export function invoiceService(svc: CoreServices) {
           dimensionText: string;
         })[] = [];
         for (const { d } of group) {
+          const settlement = settlements.maps.get(
+            cfg.settlementMode === 'unified'
+              ? ''
+              : direction === 'input'
+                ? d.sellerName
+                : d.buyerName,
+          )!;
           const add = (map: typeof business, amount: number, side: 'debit' | 'credit') => {
             if (amount !== 0)
               lines.push({
@@ -692,10 +794,13 @@ export function invoiceService(svc: CoreServices) {
         settings: cfg,
         groups,
         selection: input.selection,
+        newAccounts: settlements.newAccounts,
       };
       return { ...plan, fingerprint: hash(plan) };
     },
-    async generate(input: PlanInput & { fingerprint: string; requestId: string }) {
+    async generate(
+      input: PlanInput & { fingerprint: string; requestId: string; newAccountsConfirmed?: boolean },
+    ) {
       return svc.tx(async (tsvc) => {
         const t = invoiceService(tsvc);
         const tdb = tsvc.db.withTables<InvoiceTables>();
@@ -712,6 +817,41 @@ export function invoiceService(svc: CoreServices) {
         const plan = await t.previewVoucher(input);
         if (plan.fingerprint !== input.fingerprint)
           problem('STALE', '预览后发票或映射已改变，不能使用旧预览', '重新预览分录并确认');
+        const createdAccounts = new Map<string, number>();
+        if (plan.newAccounts.length) {
+          tsvc.permissions.require('invoice.account');
+          if (!input.newAccountsConfirmed)
+            problem(
+              'ACCOUNT_CONFIRM',
+              '本次将新增往来下级科目，必须逐项核对并确认',
+              '核对预览中的编码、名称及辅助项后确认新增',
+            );
+          const scheme = (await tsvc.book.info()).codeScheme;
+          for (const a of plan.newAccounts) {
+            const created = await tsvc.accounts.create(
+              {
+                code: a.code,
+                name: a.name,
+                categoryId: a.categoryId,
+                direction: a.direction,
+                isCash: a.isCash,
+                isBank: a.isBank,
+                cashflowRequired: a.cashflowRequired,
+                isPartner: a.isPartner,
+                dimensions: a.dimensions,
+              },
+              scheme,
+            );
+            assertSettlementRole(created, plan.settings);
+            createdAccounts.set(a.code, created.id);
+            await tsvc.log.write({
+              action: 'invoice.account.create',
+              summary: `制证新增往来科目 ${a.code} ${a.name}`,
+              targetType: 'account',
+              targetId: created.id,
+            });
+          }
+        }
         const run = await tdb
           .insertInto('invoice_run')
           .values({
@@ -735,7 +875,10 @@ export function invoiceService(svc: CoreServices) {
           const v = await tsvc.vouchers.create({
             date: plan.date,
             voucherTypeId: plan.voucherTypeId,
-            lines: g.lines,
+            lines: g.lines.map((l) => ({
+              ...l,
+              accountId: createdAccounts.get(l.accountCode) ?? l.accountId,
+            })),
             source: { type: 'generation', id: String(group.id) },
           });
           await tdb
@@ -968,6 +1111,7 @@ export function invoiceService(svc: CoreServices) {
     checkRevision,
     duplicate,
     validateMapping,
+    settlementParent,
     selected,
   };
   return self;

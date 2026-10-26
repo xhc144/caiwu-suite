@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import { BusinessError } from '@caiwu/core';
+import { sql } from '@caiwu/db';
 import { buildLedgerView, buildVoucherView, defaultLayout } from '@caiwu/print';
 import server from '../server';
 import { defaultSettings, LayoutSchema, TemplateSchema } from '../shared';
@@ -298,4 +299,127 @@ it('w_pz_prn_1 实际外币汇率和数量保持 Decimal 字符串', async () =>
       .pages.map((x) => x.html)
       .join(''),
   ).toContain('汇率 7.1');
+});
+
+it('w_print_2_zw 全部/一级/明细筛选，跳过无发生科目并保持编码顺序', async () => {
+  await seed();
+  const api = app.call(server);
+  const all = await api.ledgerBatch({
+    ...selection,
+    account: '',
+    kind: 'detail',
+    accountScope: 'all',
+  });
+  expect(all.models.map((x) => x.account.split(' ')[0])).toEqual(['1001', '6603']);
+  expect(all.skipped).toContain('1002');
+  const first = await api.ledgerBatch({
+    ...selection,
+    account: '1001',
+    kind: 'detail',
+    accountScope: 'first',
+    printNoActivity: true,
+    printEmpty: true,
+  });
+  const leaf = await api.ledgerBatch({
+    ...selection,
+    account: '1001',
+    kind: 'detail',
+    accountScope: 'leaf',
+    printNoActivity: true,
+    printEmpty: true,
+  });
+  expect(first.models.some((m) => m.account.startsWith('1002 '))).toBe(true);
+  expect(first.models.some((m) => m.account.startsWith('100201 '))).toBe(false);
+  expect(leaf.models.some((m) => m.account.startsWith('1002 '))).toBe(false);
+  expect(leaf.models.some((m) => m.account.startsWith('100201 '))).toBe(true);
+  const cash = await api.ledgerBatch({
+    ...selection,
+    account: '1001',
+    kind: 'cash',
+    accountScope: 'all',
+  });
+  expect(cash.models.every((m) => m.account.startsWith('1001 '))).toBe(true);
+  await expect(
+    api.ledgerBatch({ ...selection, account: 'missing,1001', kind: 'detail' }),
+  ).rejects.toThrow('不存在');
+  await expect(
+    api.ledgerBatch({ ...selection, account: '100201', kind: 'detail' }),
+  ).rejects.toThrow('均无符合条件');
+});
+
+it('w_print_2_zw 有累计但期初和余额归零仍打印，不把未过账或作废计入', async () => {
+  await seedVouchers(app.svc, [
+    {
+      date: '2026-01-02',
+      status: 'posted',
+      lines: [
+        { account: '1001', debit: 12345 },
+        { account: '6603', credit: 12345 },
+      ],
+    },
+    {
+      date: '2026-01-03',
+      status: 'posted',
+      lines: [
+        { account: '6603', debit: 12345 },
+        { account: '1001', credit: 12345 },
+      ],
+    },
+    {
+      date: '2026-02-03',
+      lines: [
+        { account: '1001', debit: 1 },
+        { account: '6603', credit: 1 },
+      ],
+    },
+  ]);
+  const api = app.call(server);
+  const [voided] = await seedVouchers(app.svc, [
+    {
+      date: '2026-02-04',
+      lines: [
+        { account: '1001', debit: 700 },
+        { account: '6603', credit: 700 },
+      ],
+    },
+  ]);
+  await app.svc.vouchers.setVoided(voided!.id, true);
+  const noActivity = { from: 202602, to: 202602, account: '1001', kind: 'detail' as const };
+  await expect(api.ledger(noActivity)).rejects.toThrow('无记录');
+  const model = await api.ledger({ ...noActivity, printNoActivity: true });
+  expect(model).toMatchObject({
+    opening: 0,
+    debit: 0,
+    credit: 0,
+    ytdDebit: 12345,
+    ytdCredit: 12345,
+  });
+  expect(model.rows[0]!.summary).toBe('本期无发生');
+  const unposted = await api.ledger({ ...noActivity, includeUnposted: true });
+  expect(unposted.debit).toBe(1);
+});
+
+it('w_print_2_zw 新批次接口和旧账册接口都检查打印权限', async () => {
+  const token = await app.addUser('batch-viewer', { permissions: ['print-settings.view'] });
+  const api = app.call(server, token);
+  await expect(
+    api.ledgerBatch({ ...selection, account: '1001', kind: 'detail', accountScope: 'all' }),
+  ).rejects.toThrow('权限');
+  await expect(api.ledgerBook({ ...selection, account: '1001', kind: 'detail' })).rejects.toThrow(
+    '权限',
+  );
+});
+
+it('w_xt_tz_zc 设置与日志在真实 SQLite 事务中一起回滚', async () => {
+  const api = app.call(server);
+  const before = await api.settings();
+  const logs = await app.svc.log.list();
+  await sql`CREATE TRIGGER print_settings_fail_log BEFORE INSERT ON operation_log WHEN NEW.action = 'print.settings' BEGIN SELECT RAISE(ABORT, '模拟日志存储失败'); END`.execute(
+    app.svc.db,
+  );
+  const changed = structuredClone(before);
+  changed.voucher.offsetX = 3;
+  await expect(api.saveSettings(changed)).rejects.toThrow('模拟日志存储失败');
+  expect(await api.settings()).toEqual(before);
+  expect(await app.svc.log.list()).toEqual(logs);
 });
