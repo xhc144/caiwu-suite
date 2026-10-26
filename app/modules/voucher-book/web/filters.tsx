@@ -1,5 +1,5 @@
-import { useId } from 'react';
-import { useSearchParams } from 'react-router';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router';
 import { Alert, Button, Checkbox, Form, Input, Select, Space } from 'antd';
 import { useVoucherTypes } from '@caiwu/web-kit';
 import { VOUCHER_STATUS_LABELS } from '@caiwu/core';
@@ -32,6 +32,22 @@ export type UrlFilters = typeof defaults;
 export function useBookFilters() {
   // 查询条件跟随壳提供的标签页路由上下文；历史导航保持组件和未提交表单。
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
+  const owner = useId();
+  const sequence = useRef(0);
+  const epoch = useRef(0);
+  const [historyVersion, setHistoryVersion] = useState(0);
+  useEffect(() => {
+    // POP 是重新应用历史条件，即使目标曾由本表单提交，也不是待确认的提交。
+    const onPop = () => {
+      epoch.current++;
+      // Router可能在原生POP回调之前提交。显式触发本目标页再次同步，隐藏页不动草稿。
+      if (window.location.pathname.replace(/\/$/, '') === location.pathname.replace(/\/$/, ''))
+        setHistoryVersion(epoch.current);
+    };
+    window.addEventListener('popstate', onPop, true);
+    return () => window.removeEventListener('popstate', onPop, true);
+  }, [location.pathname]);
   const values = { ...defaults };
   for (const [key, value] of params) {
     if (key === 'voided') values.voided = value === '1' || value === 'true';
@@ -43,7 +59,21 @@ export function useBookFilters() {
       if (v === '' || v === undefined || v === false) p.delete(k);
       else p.set(k, v === true ? '1' : String(v));
     }
-    setParams(p);
+    const commit = { owner, epoch: epoch.current, sequence: ++sequence.current };
+    setParams(p, { state: { ...location.state, voucherBookFilterCommit: commit } });
+  };
+  const isOwnCommit = () => {
+    const state = location.state as {
+      voucherBookFilterCommit?: { owner: string; epoch: number; sequence: number };
+    } | null;
+    const commit = state?.voucherBookFilterCommit;
+    return (
+      !!commit &&
+      commit.owner === owner &&
+      commit.epoch === epoch.current &&
+      commit.sequence > 0 &&
+      commit.sequence <= sequence.current
+    );
   };
   const num = (v: string) => (v === '' ? undefined : Number(v));
   let conditionData: unknown = [];
@@ -90,27 +120,72 @@ export function useBookFilters() {
     (values.foreign && !['0', '1'].includes(values.foreign) ? '原币展开参数非法' : '') ||
     (!Number.isSafeInteger(page) || page < 1 ? '页码必须是正整数' : '') ||
     (!result.success ? result.error.issues.map((i) => i.message).join('；') : '');
-  return { values, set, error, filter: result.success && !error ? result.data : null };
+  return {
+    values,
+    set,
+    error,
+    isOwnCommit,
+    historyVersion,
+    filter: result.success && !error ? result.data : null,
+  };
 }
+const formKeys = [
+  'period',
+  'periodTo',
+  'dateFrom',
+  'dateTo',
+  'type',
+  'status',
+  'numberFrom',
+  'numberTo',
+  'account',
+  'amountFrom',
+  'amountTo',
+  'summary',
+  'creator',
+  'voided',
+  'conditions',
+] as const;
 export function Filters({
   values,
   set,
   error,
+  isOwnCommit,
+  historyVersion,
 }: {
   values: UrlFilters;
   set: (v: Partial<UrlFilters>) => void;
   error: string;
+  isOwnCommit: () => boolean;
+  historyVersion: number;
 }) {
   const types = useVoucherTypes();
   const formId = useId();
+  const [form] = Form.useForm<UrlFilters>();
+  const [draft, setDraft] = useState<Partial<UrlFilters>>(values);
+  const applied = JSON.stringify([values, historyVersion]);
+  const previous = useRef(applied);
+  useLayoutEffect(() => {
+    const ownCommit = isOwnCommit();
+    if (previous.current === applied) return;
+    previous.current = applied;
+    // 本次查询的导航确认只更新已应用条件，不能覆盖提交后继续编辑的草稿。
+    // 真正改变条件的外部导航/历史导航同步表单，但保持同一Form及抽屉生命周期。
+    if (!ownCommit) {
+      form.setFieldsValue(values);
+      setDraft(values);
+    }
+  }, [applied, values, form, isOwnCommit]);
+  const dirty = formKeys.some((key) => (draft[key] ?? defaults[key]) !== values[key]);
   return (
     <>
       <Form<UrlFilters>
         name={`voucher-book-filters-${formId}`}
         layout="inline"
         className="cw-filter-bar"
-        key={JSON.stringify(values)}
+        form={form}
         initialValues={values}
+        onValuesChange={(_, all: UrlFilters) => setDraft(all)}
         onFinish={(v) => set({ ...v, page: '1', id: '' })}
       >
         <Form.Item name="period" label="期间">
@@ -177,9 +252,25 @@ export function Filters({
           <Button type="primary" htmlType="submit">
             查询
           </Button>
-          <Button onClick={() => set(defaults)}>重置</Button>
+          <Button
+            onClick={() => {
+              form.setFieldsValue(defaults);
+              setDraft(defaults);
+              set(defaults);
+            }}
+          >
+            重置
+          </Button>
         </Form.Item>
       </Form>
+      {dirty && (
+        <Alert
+          type="info"
+          showIcon
+          title="筛选条件已修改，尚未查询"
+          description={`当前结果仍按已应用条件显示；已应用摘要：${values.summary || '不限'}。点击查询应用新条件。`}
+        />
+      )}
       {error && (
         <Alert type="error" title="查询条件有误，未执行查询" description={error} showIcon />
       )}
