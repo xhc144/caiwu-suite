@@ -131,6 +131,9 @@ export function voucherService(ctx: ServiceContext) {
     const itemIds = new Set<number>();
     for (const l of lines)
       for (const v of Object.values(l.dimensions)) if (v != null) itemIds.add(v);
+    // 默认项也走下面的类型、停用和末级检查，不能只预加载显式输入。
+    for (const account of accountMap.values())
+      for (const d of account.dimensions) if (d.defaultItemId != null) itemIds.add(d.defaultItemId);
     const itemRows = itemIds.size
       ? await ctx.db
           .selectFrom('dimension_item')
@@ -141,8 +144,8 @@ export function voucherService(ctx: ServiceContext) {
     const itemMap = new Map(itemRows.map((r) => [r.id, r]));
 
     const prepared: LineInsert[] = [];
-    let debitTotal = 0;
-    let creditTotal = 0;
+    let debitSum = 0n;
+    let creditSum = 0n;
 
     lines.forEach((l, idx) => {
       const n = idx + 1;
@@ -165,8 +168,8 @@ export function voucherService(ctx: ServiceContext) {
       const credit = l.credit ?? 0;
       if (debit !== 0 && credit !== 0) add('同一行不能同时有借方和贷方金额');
       if (!draft && debit === 0 && credit === 0) add('借方、贷方金额都是 0');
-      debitTotal += debit;
-      creditTotal += credit;
+      debitSum += BigInt(debit);
+      creditSum += BigInt(credit);
 
       // 辅助核算
       const dims: DimensionValues = {};
@@ -243,11 +246,18 @@ export function voucherService(ctx: ServiceContext) {
       });
     });
 
+    const debitTotal = Number(debitSum);
+    const creditTotal = Number(creditSum);
+    if (!Number.isSafeInteger(debitTotal) || !Number.isSafeInteger(creditTotal))
+      problems.push({ line: 0, message: '凭证借方或贷方合计超出安全整数范围' });
+
     if (!draft && problems.length === 0) {
       if (debitTotal !== creditTotal) {
+        const delta = Number(debitSum - creditSum);
+        const difference = Number.isSafeInteger(delta) ? formatMoney(delta) : '超出安全整数范围';
         problems.push({
           line: 0,
-          message: `借贷不平衡：借方合计 ${formatMoney(debitTotal)}，贷方合计 ${formatMoney(creditTotal)}，差额 ${formatMoney(debitTotal - creditTotal)}`,
+          message: `借贷不平衡：借方合计 ${formatMoney(debitTotal)}，贷方合计 ${formatMoney(creditTotal)}，差额 ${difference}`,
         });
       } else if (debitTotal === 0) {
         problems.push({ line: 0, message: '凭证金额合计为 0' });
