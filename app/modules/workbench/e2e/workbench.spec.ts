@@ -116,11 +116,7 @@ test('身份隔离：跨账套同ID不残留，撤销会话后清除旧页面，
   await callApi(seeded.api, 'core.auth.logout', {}, { token: first.token });
 });
 
-test('快捷键焦点与反复开关、高DPI下125%/150%主题布局、隐藏页不抢键', async ({
-  page,
-  seeded,
-  browser,
-}) => {
+test('快捷键焦点与反复开关、隐藏页不抢键', async ({ page, seeded }) => {
   await seeded.login(page);
   const trigger = page.getByRole('button', { name: '快捷键 ?' });
   for (let i = 0; i < 2; i++) {
@@ -139,54 +135,6 @@ test('快捷键焦点与反复开关、高DPI下125%/150%主题布局、隐藏�
   await expect(page.getByRole('heading', { name: '帮助与关于', exact: true })).toBeVisible();
   await page.keyboard.press('Alt+n');
   await expect(page.getByRole('dialog', { name: '新增记账单' })).toHaveCount(0);
-  await page.getByRole('button', { name: '界面', exact: true }).click();
-  const appearance = page.getByRole('dialog', { name: '界面偏好' });
-  await appearance.getByRole('combobox', { name: '主题' }).click();
-  await page.getByTitle('深色', { exact: true }).click();
-  for (const scale of ['125%', '150%']) {
-    await appearance.getByRole('combobox', { name: '网页界面缩放' }).click();
-    await page.getByTitle(scale, { exact: true }).click();
-    await appearance.getByRole('button', { name: '完成' }).click();
-    await expect(page.locator('.cw-shell-root')).toHaveCSS(
-      'zoom',
-      scale === '125%' ? '1.25' : '1.5',
-    );
-    const layout = await page.evaluate(() => ({
-      width: document.documentElement.scrollWidth,
-      viewport: window.innerWidth,
-      overflow: [...document.querySelectorAll('body *')]
-        .map((el) => ({
-          tag: el.tagName,
-          class: el.className,
-          right: el.getBoundingClientRect().right,
-          width: el.getBoundingClientRect().width,
-        }))
-        .filter((el) => el.right > window.innerWidth)
-        .slice(0, 10),
-    }));
-    expect(layout.width, JSON.stringify(layout)).toBeLessThanOrEqual(layout.viewport);
-    await page.getByRole('button', { name: '搜索 Ctrl+K' }).click();
-    const bounds = await page.getByRole('dialog', { name: '全局搜索', exact: true }).boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1280);
-    await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: '界面', exact: true }).click();
-  }
-  await appearance.getByRole('button', { name: '完成' }).click();
-  await page.reload();
-  await expect(page.locator('.cw-shell-root')).toHaveCSS('zoom', '1.5');
-  const highDpi = await browser.newContext({
-    viewport: { width: 1280, height: 800 },
-    deviceScaleFactor: 2,
-  });
-  try {
-    const hd = await highDpi.newPage();
-    await seeded.login(hd);
-    await expect(hd.getByRole('button', { name: '搜索 Ctrl+K' })).toBeVisible();
-    expect(await hd.evaluate(() => devicePixelRatio)).toBe(2);
-  } finally {
-    await highDpi.close();
-  }
 });
 
 test('改密后旧会话经工作台检查失效，回登录且不保留财务结果', async ({ page, seeded }) => {

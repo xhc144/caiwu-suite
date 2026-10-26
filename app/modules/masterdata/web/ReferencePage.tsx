@@ -28,7 +28,7 @@ import {
   type ReferenceRow,
 } from '../shared';
 import { api } from './api';
-import { refresh, run, useConfirm, useUnsaved } from './common';
+import { ExcelActions, refresh, run, useConfirm, useUnsaved } from './common';
 
 const kindNames: Record<ReferenceKind, string> = {
   voucherTypes: '凭证类型',
@@ -118,19 +118,22 @@ export default function ReferencePage() {
     },
   ];
   const rows = (list.data ?? []).filter((r) =>
-    `${r.code} ${r.name} ${r.pinyin} ${r.category} ${r.shortcut}`
+    `${r.code} ${r.shortName} ${r.name} ${r.pinyin} ${r.category} ${r.shortcut} ${r.symbol ?? ''}`
       .toLowerCase()
-      .includes(filters.keyword.toLowerCase()),
+      .includes(filters.keyword.trim().toLowerCase()),
   );
   return (
     <PageContainer
       title="参考档案"
       extra={
-        canEdit && (
-          <Button type="primary" onClick={() => setEditing('new')}>
-            新增{kindNames[kind]}
-          </Button>
-        )
+        <Space>
+          <ExcelActions key={kind} kind="reference" referenceKind={kind} />
+          {canEdit && (
+            <Button type="primary" onClick={() => setEditing('new')}>
+              新增{kindNames[kind]}
+            </Button>
+          )}
+        </Space>
       }
     >
       <Tabs

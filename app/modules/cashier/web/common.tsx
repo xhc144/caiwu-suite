@@ -12,6 +12,8 @@ export function CashierNav() {
       <Link to="/m/cashier/documents">收付单与凭证</Link>
       <Link to="/m/cashier/reconcile">和账务对账</Link>
       <Link to="/m/cashier/reports">日记账</Link>
+      <Link to="/m/cashier/periods">结账与反结账</Link>
+      <Link to="/m/cashier/checks">支票登记簿</Link>
     </Space>
   );
 }

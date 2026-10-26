@@ -17,6 +17,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { balanceSide, formatMoney, type Account, type DimensionValues } from '@caiwu/core';
+import type { PrintJob } from '@caiwu/print';
 import {
   getBusinessError,
   notify,
@@ -36,6 +37,7 @@ import {
 } from '@caiwu/ui';
 import {
   accountTree,
+  PrintSchema,
   exactSum,
   openingDimensions,
   rowVersion,
@@ -48,6 +50,7 @@ import {
 import { api } from './api';
 import { resolveLeave } from './draft';
 import { useOpeningFilters } from './filters';
+import OpeningPrint from './OpeningPrint';
 
 interface Draft {
   id?: number;
@@ -97,6 +100,7 @@ export default function OpeningPage() {
     canLock = usePermission('opening.lock');
   const [filters, setFilters] = useOpeningFilters();
   const foreignCurrency = filters.currency && filters.currency !== 'base' ? filters.currency : null;
+  const dimensionView = openingDimensions.find((d) => d.id === filters.dimension);
   const years = useQuery(api.years.queryOptions());
   const year = filters.year || Math.trunc((years.data?.book.startPeriod ?? 0) / 100);
   const list = useQuery(
@@ -116,6 +120,9 @@ export default function OpeningPage() {
   const savingRef = useRef(false);
   const [form] = Form.useForm<Draft>();
   const data = list.data;
+  const scopedItem = data?.items.find(
+    (item) => item.typeId === dimensionView?.id && String(item.id) === filters.item,
+  );
   const watchedAccount = Form.useWatch('accountId', form) as number | undefined;
   const account = data?.accounts.find((a) => a.id === watchedAccount);
   const watchedCurrency = Form.useWatch('currency', form) as string | undefined;
@@ -159,6 +166,8 @@ export default function OpeningPage() {
     }),
   );
   const [exporting, setExporting] = useState(false);
+  const [printJob, setPrintJob] = useState<PrintJob | null>(null);
+  const [preparingPrint, setPreparingPrint] = useState(false);
   const readOnly = !canEdit || !!data?.locked || !!data?.posted;
   const containerRef = useRef<HTMLDivElement>(null);
   const bypass = useRef(false);
@@ -310,6 +319,10 @@ export default function OpeningPage() {
           ...emptyDraft(),
           accountId: a?.id,
           currency: foreignCurrency ?? '',
+          dimensions:
+            dimensionView && scopedItem && !scopedItem.disabled
+              ? { [dimensionView.id]: scopedItem.id }
+              : {},
         };
     form.resetFields();
     form.setFieldsValue(next);
@@ -327,7 +340,8 @@ export default function OpeningPage() {
     (r) =>
       (!filters.currency ||
         (filters.currency === 'base' ? r.currency == null : r.currency === filters.currency)) &&
-      (!filters.dimension || r.dimensions[filters.dimension as OpeningDimension] != null),
+      (!filters.dimension || r.dimensions[filters.dimension as OpeningDimension] != null) &&
+      (!filters.item || (dimensionView && String(r.dimensions[dimensionView.id]) === filters.item)),
   );
   const filteredAccounts = (data?.accounts ?? []).filter(
     (a) =>
@@ -504,6 +518,23 @@ export default function OpeningPage() {
       setExporting(false);
     }
   }
+  async function previewPrint() {
+    if (dirty || preparingPrint || !data) return;
+    setPreparingPrint(true);
+    try {
+      const input = PrintSchema.parse({ ...filters, year });
+      setPrintJob(await queryClient.fetchQuery({ ...api.print.queryOptions(input), staleTime: 0 }));
+    } catch (error) {
+      notify.error(
+        getBusinessError(error)?.message ?? '无法生成期初打印预览，请检查筛选条件后重试',
+      );
+    } finally {
+      setPreparingPrint(false);
+    }
+  }
+  useHotkey('Ctrl+P', () => {
+    if (!draft && !importOpen && !cleanupOpen && !leave && !printJob) void previewPrint();
+  });
   const result = trial.data;
   const listError = getBusinessError(list.error);
   return (
@@ -575,8 +606,20 @@ export default function OpeningPage() {
               { value: '', label: '科目期初' },
               ...openingDimensions.map((d) => ({ value: d.id, label: `${d.name}期初` })),
             ]}
-            onChange={(dimension) => setFilter({ dimension })}
+            onChange={(dimension) => setFilter({ dimension, item: '' })}
           />
+          {dimensionView && (
+            <DimensionSelect
+              key={dimensionView.id}
+              type={dimensionView.id}
+              includeDisabled
+              aria-label={`${dimensionView.name}筛选`}
+              placeholder={`全部${dimensionView.name}，可搜索编码、名称、拼音`}
+              style={{ width: 280 }}
+              value={scopedItem?.id}
+              onChange={(item) => setFilter({ item: item == null ? '' : String(item) })}
+            />
+          )}
           <Button onClick={() => void refresh()}>重新读取</Button>
         </Space>
         {restored && draft && (
@@ -618,6 +661,9 @@ export default function OpeningPage() {
               {data.posted && <Tag color="red">本年有过账，禁止直接改删；先反过账</Tag>}
               <Button loading={exporting} onClick={() => void exportFile()}>
                 导出 Excel
+              </Button>
+              <Button loading={preparingPrint} disabled={dirty} onClick={() => void previewPrint()}>
+                打印预览
               </Button>
               {canImport && (
                 <Button
@@ -791,7 +837,18 @@ export default function OpeningPage() {
                 const selected = data?.accounts.find((a) => a.id === accountId);
                 const currency = form.getFieldValue('currency') as string | null | undefined;
                 form.setFieldsValue({
-                  dimensions: { project: null, partner: null, department: null, person: null },
+                  dimensions: {
+                    project: null,
+                    partner: null,
+                    department: null,
+                    person: null,
+                    ...(dimensionView &&
+                    scopedItem &&
+                    !scopedItem.disabled &&
+                    selected?.dimensions.some((d) => d.type === dimensionView.id)
+                      ? { [dimensionView.id]: scopedItem.id }
+                      : {}),
+                  },
                   currency: currency && selected?.currency === currency ? currency : '',
                   fcBalance: 0,
                   quantity: '0',
@@ -988,9 +1045,14 @@ export default function OpeningPage() {
         <p>
           沿用导出表头。新增遇重复键报错；覆盖仅更新文件包含的键，其余记录保留。任一错误整批不写入。
         </p>
-        <Space>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, position: 'relative' }}>
           <Select
             aria-label="导入模式"
+            style={{ width: 280, maxWidth: '100%' }}
+            // 不从入场 transform 的 rect.width 伸缩 popup；数字宽度同时启用横向避让。
+            popupMatchSelectWidth={280}
+            getPopupContainer={() => document.body}
+            styles={{ popup: { root: { maxWidth: 'calc(100vw - 32px)' } } }}
             value={mode}
             onChange={(v) => {
               setMode(v);
@@ -1003,6 +1065,7 @@ export default function OpeningPage() {
           />
           <input
             aria-label="选择 Excel 文件"
+            style={{ width: 320, maxWidth: '100%', minWidth: 0 }}
             type="file"
             accept=".xlsx"
             onChange={(e) => {
@@ -1020,7 +1083,7 @@ export default function OpeningPage() {
               }
             }}
           />
-        </Space>
+        </div>
         {preview.data && (
           <>
             <Alert
@@ -1082,6 +1145,7 @@ export default function OpeningPage() {
           </>
         )}
       </Modal>
+      <OpeningPrint job={printJob} onClose={() => setPrintJob(null)} />
     </div>
   );
 }

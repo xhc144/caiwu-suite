@@ -74,9 +74,58 @@ CREATE TABLE cashier_match_line (
 );
 `,
   },
+  {
+    id: '0002_cashier_period_balances',
+    sql: `
+ALTER TABLE cashier_period ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE cashier_period ADD COLUMN closed_at TEXT;
+ALTER TABLE cashier_period ADD COLUMN closed_by INTEGER REFERENCES app_user(id);
+CREATE TABLE cashier_month_balance (
+ period INTEGER NOT NULL REFERENCES cashier_period(period),
+ account_id INTEGER NOT NULL REFERENCES cashier_account(id),
+ opening INTEGER NOT NULL,
+ receipt INTEGER NOT NULL,
+ payment INTEGER NOT NULL,
+ closing INTEGER NOT NULL,
+ PRIMARY KEY(period, account_id)
+);
+`,
+  },
+  {
+    id: '0003_cashier_checks',
+    sql: `
+CREATE TABLE cashier_check (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ account_id INTEGER NOT NULL REFERENCES cashier_account(id),
+ number TEXT NOT NULL,
+ received_date TEXT NOT NULL,
+ issued_date TEXT,
+ finished_date TEXT,
+ payee TEXT,
+ amount INTEGER CHECK(amount > 0),
+ state TEXT NOT NULL DEFAULT 'received' CHECK(state IN ('received', 'issued', 'cleared', 'voided')),
+ note TEXT NOT NULL,
+ revision INTEGER NOT NULL DEFAULT 1,
+ UNIQUE(account_id, number)
+);
+`,
+  },
 ]);
 
 export type CashierTables = {
+  cashier_check: {
+    id: Generated<number>;
+    account_id: number;
+    number: string;
+    received_date: string;
+    issued_date: string | null;
+    finished_date: string | null;
+    payee: string | null;
+    amount: number | null;
+    state: Generated<'received' | 'issued' | 'cleared' | 'voided'>;
+    note: string;
+    revision: Generated<number>;
+  };
   cashier_account: {
     id: Generated<number>;
     name: string;
@@ -87,7 +136,21 @@ export type CashierTables = {
     revision: Generated<number>;
   };
   cashier_opening: { account_id: number; period: number; balance: number };
-  cashier_period: { period: number; closed: Generated<number> };
+  cashier_period: {
+    period: number;
+    closed: Generated<number>;
+    revision: Generated<number>;
+    closed_at: string | null;
+    closed_by: number | null;
+  };
+  cashier_month_balance: {
+    period: number;
+    account_id: number;
+    opening: number;
+    receipt: number;
+    payment: number;
+    closing: number;
+  };
   cashier_batch: {
     id: Generated<number>;
     request_key: string;

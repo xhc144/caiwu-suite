@@ -2,7 +2,8 @@
   position: relative;
   contain: layout paint;
   height: 100vh;
-  overflow: hidden;
+  /* 壳本身不可滚动；焦点/scrollIntoView 只滚动业务页和弹窗自己的容器。 */
+  overflow: clip;
 }
 .cw-shell-root * {
   box-sizing: border-box;
@@ -44,8 +45,14 @@
 .cw-shell-root .ant-tabs-nav-wrap {
   min-width: 0;
 }
-.cw-shell-root .cw-tabs > .ant-tabs-content-holder {
+.cw-shell-root .cw-tabs > .ant-tabs-content-holder,
+.cw-shell-root .cw-tabs > .ant-tabs-body-holder {
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
+}
+.cw-shell-root .cw-tabs > .ant-tabs-body-holder > .ant-tabs-body {
+  min-height: 100%;
 }
 @media (max-width: 700px) {
   .cw-shell-root .cw-header-book .cw-header-secondary {

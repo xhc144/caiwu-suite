@@ -147,7 +147,10 @@ export function workbenchService(svc: CoreServices, manifests: ModuleManifest[],
           })),
         );
       } else denied.push('科目');
-      if (await readable('masterdata', ['/summaries'])) {
+      if (await readable('masterdata', ['/summaries', '/reference'])) {
+        const summaryPath = entries.find(
+          (i) => i.moduleId === 'masterdata' && ['/summaries', '/reference'].includes(i.path),
+        )?.path;
         const rows = await svc.db
           .selectFrom('summary_phrase')
           .selectAll()
@@ -161,7 +164,10 @@ export function workbenchService(svc: CoreServices, manifests: ModuleManifest[],
             category: '摘要' as const,
             title: r.text,
             detail: `${r.code ?? ''} · 拼音 ${r.pinyin}`,
-            to: `/m/masterdata/summaries?${new URLSearchParams({ keyword: r.text })}`,
+            to: `/m/masterdata${summaryPath ?? '/reference'}?${new URLSearchParams({
+              ...(summaryPath === '/summaries' ? {} : { kind: 'summaries' }),
+              keyword: r.text,
+            })}`,
           })),
         );
       } else denied.push('摘要');
