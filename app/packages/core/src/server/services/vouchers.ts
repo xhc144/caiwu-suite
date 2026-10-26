@@ -143,6 +143,32 @@ export function voucherService(ctx: ServiceContext) {
       : [];
     const itemMap = new Map(itemRows.map((r) => [r.id, r]));
 
+    // 只在保存入口核验当前可用性；历史 get/账簿和原有状态流程仍保留已存引用。
+    const currencyCodes = [
+      ...new Set([...accountMap.values()].flatMap((a) => (a.currency ? [a.currency] : []))),
+    ];
+    const currencyRows = currencyCodes.length
+      ? await ctx.db
+          .selectFrom('currency')
+          .select(['code', 'name', 'disabled'])
+          .where('code', 'in', currencyCodes)
+          .execute()
+      : [];
+    const currencyMap = new Map(currencyRows.map((r) => [r.code, r]));
+    const methodIds = [
+      ...new Set(
+        lines.flatMap((l) => (l.settlementMethodId != null ? [l.settlementMethodId] : [])),
+      ),
+    ];
+    const methodRows = methodIds.length
+      ? await ctx.db
+          .selectFrom('settlement_method')
+          .select(['id', 'code', 'name', 'disabled'])
+          .where('id', 'in', methodIds)
+          .execute()
+      : [];
+    const methodMap = new Map(methodRows.map((r) => [r.id, r]));
+
     const prepared: LineInsert[] = [];
     let debitSum = 0n;
     let creditSum = 0n;
@@ -213,6 +239,18 @@ export function voucherService(ctx: ServiceContext) {
           }
         }
         currency = null;
+      }
+      if (currency) {
+        const item = currencyMap.get(currency);
+        if (!item) add(`币种 ${currency} 不存在，请先维护币种或改用有效科目`);
+        else if (item.disabled)
+          add(`币种 ${item.code} ${item.name} 已停用，请先重新启用币种或改用有效科目`);
+      }
+      if (l.settlementMethodId != null) {
+        const method = methodMap.get(l.settlementMethodId);
+        if (!method) add(`结算方式（id ${l.settlementMethodId}）不存在，请改选有效结算方式`);
+        else if (method.disabled)
+          add(`结算方式 ${method.code} ${method.name} 已停用，请改选可用方式或重新启用`);
       }
 
       // 数量
@@ -636,6 +674,7 @@ export function voucherService(ctx: ServiceContext) {
         if (rows.length !== updates.length)
           throw notFound('凭证', updates.map((u) => u.id).join(','));
         for (const r of rows) {
+          assertCanModify(r, '调整凭证编号');
           if (r.status === 'draft')
             throw new BusinessError({ code: 'VOUCHER_DRAFT', message: '草稿没有编号' });
           await periods.assertOpen(r.period, '调整凭证编号');
