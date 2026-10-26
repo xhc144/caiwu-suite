@@ -369,11 +369,22 @@ export async function transferPreview(
   ruleIds: number[],
   allowPendingExisting = true,
 ) {
+  return calculateTransferPreview(svc, period, ruleIds, allowPendingExisting, 'prepare-generation');
+}
+
+async function calculateTransferPreview(
+  svc: CoreServices,
+  period: number,
+  ruleIds: number[],
+  allowPendingExisting: boolean,
+  purpose: 'prepare-generation' | 'verify-existing',
+) {
   if (!ruleIds.length) fail('NO_SELECTION', '请选择需要结转的内容', '在结转列表勾选后重新预览');
   if (new Set(ruleIds).size !== ruleIds.length) fail('NO_SELECTION', '结转类型不能重复选择');
   await svc.periods.assertOpen(period, '月度结转');
   await requireOpening(svc, periodYear(period));
-  await noLaterRun(svc, period);
+  // 生成/重算会影响后月基数；只读核验已有快照不会改变基数。
+  if (purpose === 'prepare-generation') await noLaterRun(svc, period);
   const allRules = await rules(svc);
   const selected = allRules.filter((r) => ruleIds.includes(r.id));
   if (selected.length !== ruleIds.length || selected.some((r) => !r.enabled))
@@ -384,6 +395,8 @@ export async function transferPreview(
     (v) => !v.voided && v.status !== 'draft' && v.status !== 'posted',
   );
   const selectedExisting = existing.filter((r) => ruleIds.includes(r.rule_id));
+  if (purpose === 'verify-existing' && selectedExisting.length !== selected.length)
+    fail('SOURCE_MISMATCH', '只读核验缺少对应的已生成结转快照', '保留数据并检查来源关联', period);
   if (
     unposted.some(
       (v) => !allowPendingExisting || !selectedExisting.some((r) => r.voucher_id === v.id),
@@ -502,8 +515,8 @@ export async function verifyPostedRuns(svc: CoreServices, from: number, to: numb
         );
     }
     const ids = periodRuns.map((r) => r.rule_id);
-    // 同一算法验证已生成快照，且不受待审核状态阻止。
-    await transferPreview(svc, period, ids);
+    // 只读重建并比较已有快照：保留来源、顺序和基数校验，允许后月已有结转。
+    await calculateTransferPreview(svc, period, ids, true, 'verify-existing');
   }
 }
 export async function generate(

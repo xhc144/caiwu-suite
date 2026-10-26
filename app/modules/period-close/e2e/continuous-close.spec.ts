@@ -1,5 +1,6 @@
 import { seedVouchers } from '@caiwu/testkit';
 import periodCloseServer from '../server';
+import { seedPostedMonths } from '../test/posted-months';
 import { test, expect } from './fixture';
 
 test('w_zw_fz：连续结账真实预览、取消、关闭三个月及原地反结；结转全选只选启用类型', async ({
@@ -104,4 +105,52 @@ test('w_zw_fz：后月未过账时逐月定位并禁用连续确认，不提前�
   await expect(page).toHaveURL(/period=202602/);
   await expect(page.getByRole('heading', { name: /2026年02月 · 开放/ })).toBeVisible();
   expect((await app.svc.periods.list()).every((p) => p.status === 'open')).toBe(true);
+});
+
+test('w_zw_fz P1：两月结转已异人审核过账，浏览器连续结账保留全部来源凭证和期初', async ({
+  page,
+  local,
+}) => {
+  const { app, url } = local;
+  const seeded = await seedPostedMonths(app);
+  const api = app.call(periodCloseServer);
+  for (const period of [202601, 202602])
+    expect(
+      (await api.check({ period })).items.filter((i) => i.id !== 'sequence').every((i) => i.pass),
+    ).toBe(true);
+  const vouchers = await Promise.all(
+    (await app.svc.vouchers.list()).items.map((v) => app.svc.vouchers.get(v.id)),
+  );
+  const opening = await app.svc.opening.list(2026);
+  expect(
+    vouchers
+      .filter((v) => seeded.generated.includes(v!.id))
+      .every(
+        (v) =>
+          v!.status === 'posted' &&
+          v!.auditedBy?.id === seeded.reviewerId &&
+          v!.createdBy.id !== seeded.reviewerId,
+      ),
+  ).toBe(true);
+  await local.login(page);
+  await page.goto(`${url}/m/period-close?period=202601&from=202601&to=202602`);
+  await page.getByRole('button', { name: '连续结账预览', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: '本年连续结账预览', exact: true });
+  await expect(preview).toContainText('2026年01月');
+  await expect(preview).toContainText('2026年02月');
+  await expect(preview.getByRole('button', { name: '确认连续结账', exact: true })).toBeEnabled();
+  await preview.getByRole('button', { name: '确认连续结账', exact: true }).click();
+  await expect(preview).not.toBeVisible();
+  await expect(page.getByText('已连续结账 202601—202602 共 2 个月', { exact: true })).toBeVisible();
+  expect(
+    (await app.svc.periods.list()).filter((p) => p.status === 'closed').map((p) => p.period),
+  ).toEqual([202601, 202602]);
+  expect(
+    await Promise.all((await app.svc.vouchers.list()).items.map((v) => app.svc.vouchers.get(v.id))),
+  ).toEqual(vouchers);
+  expect(await app.svc.opening.list(2026)).toEqual(opening);
+  const links = (await api.check({ period: 202601 })).generated.concat(
+    (await api.check({ period: 202602 })).generated,
+  );
+  expect(links.map((g) => g.voucherId)).toEqual(seeded.generated);
 });
