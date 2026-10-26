@@ -8,9 +8,11 @@ namespace Caiwu.FixedAssets.Wpf;
 public sealed class AssetVoucherPlanWindow : AssetOriginalModal
 {
     public AssetVoucherPlan? Result { get; private set; }
-    public AssetVoucherPlanWindow(AssetBookService service, AssetVoucherKind kind, Guid sourceId)
+    public AssetVoucherPlanWindow(AssetBookService service, AssetVoucherKind kind, Guid sourceId, string? additionCreditAccount = null)
         : base("w_pz_build", "生成凭证", 2501, 1212)
     {
+        if (kind == AssetVoucherKind.Addition && string.IsNullOrWhiteSpace(additionCreditAccount))
+            throw new AssetRuleException("addition-credit-account-required", "增加资产凭证计划须由宿主明确提供贷方科目。");
         var snapshot = service.Read();
         var sourceDate = kind == AssetVoucherKind.Depreciation ? snapshot.Batches.Single(x => x.Id == sourceId).Period.LastDay :
             snapshot.Movements.Single(x => x.Id == sourceId).Date;
@@ -27,7 +29,7 @@ public sealed class AssetVoucherPlanWindow : AssetOriginalModal
         {
             Result = service.CreateVoucherPlan(snapshot.Revision, kind, sourceId,
                 DateOnly.ParseExact(date.Text, "yyyy-MM-dd", CultureInfo.InvariantCulture), type.Text,
-                int.Parse(number.Text, NumberStyles.Integer, CultureInfo.CurrentCulture));
+                int.Parse(number.Text, NumberStyles.Integer, CultureInfo.CurrentCulture), additionCreditAccount);
             ShowPlan(this, service, Result); DialogResult = true;
         }).IsDefault = true;
         Action("cb_2", "退出", 1801, 624, 247, 128, () => DialogResult = false).IsCancel = true;

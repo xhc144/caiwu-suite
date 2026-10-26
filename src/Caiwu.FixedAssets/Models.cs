@@ -110,6 +110,7 @@ public sealed record AssetDepreciationBatch(Guid Id, AssetPeriod Period,
 }
 public sealed record AssetVoucherLine(Guid AssetId, string AccountCode, string DepartmentCode,
     string Summary, decimal Debit, decimal Credit);
+public sealed record AssetVoucherReceipt(Guid PlanId, Guid VoucherId, long LedgerRevision, ImmutableArray<string> SourceKeys);
 public sealed record AssetVoucherPlan(Guid Id, string SourceKey, AssetVoucherKind Kind, Guid SourceId,
     DateOnly Date, string VoucherType, int VoucherNumber, ImmutableArray<AssetVoucherLine> Lines, bool Voided)
 {
@@ -127,6 +128,9 @@ public sealed record AssetBookState
     public ImmutableArray<AssetMovement> Movements { get; init; } = [];
     public ImmutableArray<AssetDepreciationBatch> Batches { get; init; } = [];
     public ImmutableArray<AssetVoucherPlan> VoucherPlans { get; init; } = [];
+    public ImmutableArray<AssetVoucherReceipt> VoucherReceipts { get; init; } = [];
+    // Unassigned/reference/settings original rows and unknown columns, not silently projected away.
+    public ImmutableArray<OriginalRow> OriginalRows { get; init; } = [];
     public AssetPeriod NextDepreciationPeriod => Batches.Where(x => !x.Cancelled)
         .OrderByDescending(x => x.Period).Select(x => x.Period.Next()).FirstOrDefault(Settings.OpeningPeriod);
 }

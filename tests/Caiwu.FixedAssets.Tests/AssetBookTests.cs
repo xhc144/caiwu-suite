@@ -195,7 +195,9 @@ public sealed class AssetBookTests
         Assert.Equal(1000, plan.DebitTotal); Assert.Equal("1601", plan.Lines[0].AccountCode);
         Assert.All(plan.Lines, x => Assert.Equal("01", x.DepartmentCode));
         Assert.Contains(Identity.BookId, plan.SourceKey);
-        Fails("plan-exists", () => s.Transfer(s.Read().Revision, a.Id, Jan, "02", "02", "L", "test"));
+        s.Transfer(s.Read().Revision, a.Id, Jan, "02", "02", "L", "合成后续调拨");
+        Assert.Equal("02", s.Read().Cards[a.Id].DepartmentCode);
+        Assert.All(s.Read().VoucherPlans.Single().Lines, x => Assert.Equal("01", x.DepartmentCode));
     }
 
     [Theory]
@@ -288,4 +290,121 @@ public sealed class AssetBookTests
         var (_, copy) = Setup(restored); copy.CancelDepreciation(restored.Revision, feb.Id);
         Assert.Equal(0, copy.Read().Cards[a.Id].AccumulatedDepreciation);
     }
+    [Fact]
+    public void DurableSyntheticWorkspaceReopensAndRejectsStaleWriter()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "caiwu-assets-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        try
+        {
+            var path = Path.Combine(directory, "test.assets.synthetic.json");
+            var store = SyntheticJsonAssetBookStore.Create(path, Initial);
+            Assert.Throws<IOException>(() => SyntheticJsonAssetBookStore.Create(path, Initial));
+            var second = SyntheticJsonAssetBookStore.Open(path, Identity);
+            var stale = second.Load(); var service = new AssetBookService(store, Identity); var a = A();
+            service.AddCard(0, a, Jan); Calc(service, January); var feb = Calc(service, February);
+            Assert.False(second.TrySave(Identity, 0, stale with { Revision = 1 }));
+            var reopened = new AssetBookService(SyntheticJsonAssetBookStore.Open(path, Identity), Identity);
+            Assert.Equal(300m, Assert.Single(reopened.Ledger()).AccumulatedDepreciation);
+            reopened.CancelDepreciation(reopened.Read().Revision, feb.Id);
+            Assert.Equal(0m, Assert.Single(new AssetBookService(SyntheticJsonAssetBookStore.Open(path, Identity), Identity).Ledger()).AccumulatedDepreciation);
+            Assert.Throws<ArgumentException>(() => SyntheticJsonAssetBookStore.Open(Path.Combine(directory, "real.db"), Identity));
+            Assert.Equal("book-mismatch", Assert.Throws<AssetRuleException>(() => SyntheticJsonAssetBookStore.Open(path, Identity with { BookId = "wrong" })).Code);
+            Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public void ModuleCodecPreservesRichStateAndRejectsDuplicateUnknownAndFutureFields()
+    {
+        var (_, service) = Setup(); service.AddCard(0, A(), Jan); Calc(service, January); Calc(service, February);
+        var json = AssetModuleDocumentCodec.Serialize(service.Read());
+        var restored = AssetModuleDocumentCodec.Deserialize(json);
+        Assert.Equal(300m, restored.Cards.Values.Single().AccumulatedDepreciation);
+        Assert.Throws<FormatException>(() => AssetModuleDocumentCodec.Deserialize(json.Replace("\"Version\":1", "\"Version\":2")));
+        Assert.Throws<FormatException>(() => AssetModuleDocumentCodec.Deserialize(json.Replace("\"Version\":1", "\"Version\":1,\"Version\":1")));
+        Assert.Throws<System.Text.Json.JsonException>(() => AssetModuleDocumentCodec.Deserialize(json.Replace("\"Version\":1", "\"Version\":1,\"unknown\":1")));
+    }
+
+    [Fact]
+    public void CostAdjustmentCanBeReversedOnlyBeforeLaterMovementOrDepreciation()
+    {
+        var (_, s) = Setup(); var a = A(); s.AddCard(0, a, Jan);
+        s.AdjustOriginalCost(1, a.Id, Jan, 1300m, 100m, "合成调整");
+        var movement = s.Movements(a.Id).Last(); var restored = s.CancelOriginalCostAdjustment(2, movement.Id);
+        Assert.Equal(1000m, restored.OriginalCost);
+        Assert.Equal(movement.Id, s.Movements(a.Id).Last().ReversesMovementId);
+        Fails("later-movement", () => s.CancelOriginalCostAdjustment(3, movement.Id));
+        s.AdjustOriginalCost(3, a.Id, Jan, 1200m, 100m, "合成调整二"); var second = s.Movements(a.Id).Last();
+        Calc(s, January); Fails("depreciated-period", () => s.CancelOriginalCostAdjustment(s.Read().Revision, second.Id));
+    }
+
+    [Fact]
+    public void DisposalPlanRequiresCompletedMonthAndDateAndNoDuplicateVoucherNumbers()
+    {
+        var (_, s) = Setup(); var a = A(); s.AddCard(0, a, Jan); Calc(s, January);
+        s.Dispose(s.Read().Revision, a.Id, February.FirstDay, "01"); var source = s.Movements(a.Id).Last();
+        Fails("disposal-depreciation", () => s.CreateVoucherPlan(s.Read().Revision, AssetVoucherKind.Disposal, source.Id, February.LastDay, "记", 1));
+        var batch = Calc(s, February);
+        var depPlan = s.CreateVoucherPlan(s.Read().Revision, AssetVoucherKind.Depreciation, batch.Id, February.LastDay, "记", 1);
+        Fails("duplicate-voucher", () => s.CreateVoucherPlan(s.Read().Revision, AssetVoucherKind.Disposal, source.Id, February.LastDay, "记", 1));
+        Fails("voucher-date", () => s.CreateVoucherPlan(s.Read().Revision, AssetVoucherKind.Disposal, source.Id, new(2026, 3, 1), "记", 2));
+        s.VoidVoucherPlan(s.Read().Revision, depPlan.Id);
+        Assert.Equal(700, s.CreateVoucherPlan(s.Read().Revision, AssetVoucherKind.Disposal, source.Id, February.LastDay, "记", 1).Lines.Single(x => x.AccountCode == "1606").Debit);
+    }
+
+    [Fact]
+    public void DeletedDraftAssetCannotReuseItsStableIdentity()
+    {
+        var (_, s) = Setup(); var a = A(); s.AddCard(0, a, Jan); s.DeleteCard(1, a.Id);
+        Fails("duplicate-asset", () => s.AddCard(2, a, Jan));
+        Assert.Empty(s.Ledger()); Assert.Single(s.Movements(a.Id));
+    }
+
+    [Fact]
+    public void RecalculationKeepsBusinessSourceKeyStableEvenWithNewBatchIdentity()
+    {
+        var (_, s) = Setup(); s.AddCard(0, A(), Jan); Calc(s, January); var first = Calc(s, February);
+        var plan = s.CreateVoucherPlan(s.Read().Revision, AssetVoucherKind.Depreciation, first.Id, February.LastDay, "记", 1);
+        s.VoidVoucherPlan(s.Read().Revision, plan.Id); s.CancelDepreciation(s.Read().Revision, first.Id);
+        var recalculated = Calc(s, February);
+        var secondPlan = s.CreateVoucherPlan(s.Read().Revision, AssetVoucherKind.Depreciation, recalculated.Id, February.LastDay, "记", 1);
+        Assert.NotEqual(first.Id, recalculated.Id); Assert.NotEqual(plan.Id, secondPlan.Id);
+        Assert.Equal(plan.SourceKey, secondPlan.SourceKey); Assert.Contains("2026-02", plan.SourceKey);
+    }
+
+    [Fact]
+    public void ShippedSyntheticFixtureRunsCardAdjustmentDepreciationPlanCancellationLedgerLoop()
+    {
+        var fixture = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "empty.assets.synthetic.json"));
+        var state = AssetSnapshotCodec.Deserialize(fixture);
+        var store = new InMemoryAssetBookStore(state); var service = new AssetBookService(store, state.Identity);
+        var card = A(); service.AddCard(0, card, Jan); service.AdjustOriginalCost(1, card.Id, Jan, 1300, 100, "合成价值增加");
+        Calc(service, January); var feb = Calc(service, February); Assert.Equal(400m, feb.Total);
+        var plan = service.CreateVoucherPlan(service.Read().Revision, AssetVoucherKind.Depreciation, feb.Id, February.LastDay, "记", 1);
+        Assert.Equal(400m, plan.DebitTotal); Assert.Equal(plan.DebitTotal, plan.CreditTotal);
+        service.VoidVoucherPlan(service.Read().Revision, plan.Id); service.CancelDepreciation(service.Read().Revision, feb.Id);
+        Assert.Equal(0, Assert.Single(service.Ledger()).AccumulatedDepreciation);
+        Assert.Equal(400m, Calc(service, February).Total);
+        service.Dispose(service.Read().Revision, card.Id, new(2026, 3, 10), "01"); var march = Calc(service, new(2026, 3));
+        Assert.Equal(400m, march.Total); Assert.Empty(service.Ledger(false));
+        var disposal = service.Movements(card.Id).Last();
+        var disposalPlan = service.CreateVoucherPlan(service.Read().Revision, AssetVoucherKind.Disposal, disposal.Id, new(2026, 3, 10), "记", 2);
+        Assert.Equal(1300m, disposalPlan.DebitTotal); Assert.Equal(800m, disposalPlan.Lines.Single(x => x.AccountCode == "1602").Debit);
+        Assert.Equal(500m, disposalPlan.Lines.Single(x => x.AccountCode == "1606").Debit);
+        Assert.Equal(AssetModuleDocumentCodec.Serialize(service.Read()), AssetModuleDocumentCodec.Serialize(AssetModuleDocumentCodec.Deserialize(AssetModuleDocumentCodec.Serialize(service.Read()))));
+    }
+
+    [Fact]
+    public void WorkloadCostIncreaseIsSpreadProspectivelyOverRemainingWorkload()
+    {
+        var (_, s) = Setup(); var a = A() with { Method = AssetDepreciationMethod.UnitsOfProduction, TotalWorkload = 9 };
+        s.AddCard(0, a, Jan); Calc(s, January); Assert.Equal(300m, Calc(s, February, new Dictionary<Guid, decimal> { [a.Id] = 3 }).Total);
+        s.AdjustOriginalCost(s.Read().Revision, a.Id, new(2026, 3, 1), 1600m, 100m, "合成扩建");
+        Assert.Equal(400m, Calc(s, new(2026, 3), new Dictionary<Guid, decimal> { [a.Id] = 2 }).Total);
+        Assert.Equal(800m, Calc(s, new(2026, 4), new Dictionary<Guid, decimal> { [a.Id] = 4 }).Total);
+        Assert.Equal(100m, Assert.Single(s.Ledger()).NetValue);
+    }
+
 }

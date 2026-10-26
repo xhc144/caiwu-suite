@@ -33,7 +33,12 @@ public static class AssetSnapshotCodec
     private sealed record Envelope(string Format, int Version, AssetBookState State);
     private const string Format = "caiwu-fixed-assets-synthetic";
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
-    internal static bool CardsEqual(AssetCard a, AssetCard b) => JsonSerializer.Serialize(a, Options) == JsonSerializer.Serialize(b, Options);
+    internal static bool CardsEqual(AssetCard a, AssetCard b)
+    {
+        using var first = JsonDocument.Parse(JsonSerializer.Serialize(a, Options));
+        using var second = JsonDocument.Parse(JsonSerializer.Serialize(b, Options));
+        return JsonElement.DeepEquals(first.RootElement, second.RootElement);
+    }
     public static string Serialize(AssetBookState state) => JsonSerializer.Serialize(new Envelope(Format, 1, state), Options);
     public static AssetBookState Deserialize(string json)
     {

@@ -38,7 +38,7 @@ public sealed class AssetCardWindow : AssetOriginalModal
         Text("bh", "设备编号*", card.Code); Text("mc", "设备名称*", card.Name);
         Text("sblb", "类别代码*", card.CategoryCode, true); Text("sbzt", "状态代码*", card.StatusCode);
         Text("sydw", "使用部门代码*", card.DepartmentCode, true);
-        Text("gzrq", "购置日期 yyyy-MM-dd*", card.PurchaseDate.ToString("yyyy-MM-dd"));
+        Text("gzrq", "购置日期 yyyy-MM-dd*", card.PurchaseDate.ToString("yyyy-MM-dd"), true);
         Number("yz", "原值*", card.OriginalCost); Number("czl", "残值率(%)", card.ResidualRate * 100);
         Number("yzcz", "预计残值", card.ResidualValue); Text("syrq", "使用日期 yyyy-MM-dd*", card.UseDate.ToString("yyyy-MM-dd"), true);
         Number("zjff", "折旧方法*（1平均年限 / 2工作量）", (int)card.Method); Number("synx", "使用年限(月)*", card.UsefulLifeMonths);

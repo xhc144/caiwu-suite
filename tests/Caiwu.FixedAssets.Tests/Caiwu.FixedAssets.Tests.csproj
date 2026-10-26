@@ -15,5 +15,7 @@
     </PackageReference>
     <ProjectReference Include="../../src/Caiwu.FixedAssets/Caiwu.FixedAssets.csproj" />
     <Using Include="Xunit" />
+    <Compile Remove="ParityAdapter/**/*.cs" />
+    <None Update="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

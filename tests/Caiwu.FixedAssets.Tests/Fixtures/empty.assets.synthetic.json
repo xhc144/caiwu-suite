@@ -1,0 +1,100 @@
+{
+  "Format": "caiwu-fixed-assets-synthetic",
+  "Version": 1,
+  "State": {
+    "Identity": {
+      "Product": "minfeiqi",
+      "BookId": "SYNTHETIC-ASSETS-FIXTURE-001",
+      "Template": "synthetic",
+      "SchemaFingerprint": "assets-fixture-v1"
+    },
+    "Settings": {
+      "OpeningPeriod": {
+        "Year": 2026,
+        "Month": 1
+      },
+      "Catalog": {
+        "Categories": [
+          {
+            "Code": "01",
+            "Name": "合成设备类别",
+            "DefaultResidualRate": 0.05,
+            "AssetAccount": "1601"
+          }
+        ],
+        "Purposes": [
+          {
+            "Code": "01",
+            "Name": "合成管理用途",
+            "ExpenseAccount": "6602"
+          }
+        ],
+        "Statuses": [
+          {
+            "Code": "01",
+            "Name": "合成使用中",
+            "Depreciates": true
+          },
+          {
+            "Code": "02",
+            "Name": "合成停用不计提",
+            "Depreciates": false
+          }
+        ],
+        "Departments": [
+          {
+            "Code": "01",
+            "Name": "合成一部"
+          },
+          {
+            "Code": "02",
+            "Name": "合成二部"
+          }
+        ],
+        "DisposalReasons": [
+          {
+            "Code": "01",
+            "Name": "合成报废"
+          }
+        ],
+        "Accounts": [
+          {
+            "Code": "1601",
+            "IsActive": true,
+            "IsLeaf": true
+          },
+          {
+            "Code": "1602",
+            "IsActive": true,
+            "IsLeaf": true
+          },
+          {
+            "Code": "1606",
+            "IsActive": true,
+            "IsLeaf": true
+          },
+          {
+            "Code": "6602",
+            "IsActive": true,
+            "IsLeaf": true
+          },
+          {
+            "Code": "1002",
+            "IsActive": true,
+            "IsLeaf": true
+          }
+        ]
+      },
+      "AccumulatedDepreciationAccount": "1602",
+      "DisposalClearingAccount": "1606"
+    },
+    "Revision": 0,
+    "ReadOnly": false,
+    "ClosedThrough": null,
+    "Cards": {},
+    "Movements": [],
+    "Batches": [],
+    "VoucherPlans": [],
+    "VoucherReceipts": []
+  }
+}

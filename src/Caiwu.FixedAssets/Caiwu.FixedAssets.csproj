@@ -5,6 +5,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Wpf/**/*.cs" />
+    <Compile Remove="ParityAdapter/**/*.cs" />
     <None Remove="Wpf/**" />
+    <None Remove="ParityAdapter/**" />
   </ItemGroup>
 </Project>

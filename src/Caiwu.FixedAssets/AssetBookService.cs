@@ -54,8 +54,6 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
     private static void OrderedMovement(AssetBookState state, Guid id, DateOnly date)
     {
         Require(!state.Movements.Any(x => x.AssetId == id && x.Date > date), "movement-order", "变动日期不能早于该设备已有的后续变动。");
-        Require(!state.VoucherPlans.Any(x => !x.Voided && state.Movements.Any(m => m.AssetId == id && m.Id == x.SourceId)),
-            "plan-exists", "该设备已有有效凭证计划，请先撤销计划。");
     }
     private static AssetBookState WithMovement(AssetBookState state, AssetCard? before, AssetCard after,
         AssetMovementKind kind, DateOnly date, string description) => state with
@@ -82,7 +80,7 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
         Require(!state.Cards.Values.Any(x => x.Id != old.Id && x.Code == replacement.Code), "duplicate-code", "编号重复！");
         // Financial/custody changes have their own audit operations; card editing cannot rewrite booked history.
         Require(replacement.OriginalCost == old.OriginalCost && replacement.ResidualValue == old.ResidualValue &&
-            replacement.ResidualRate == old.ResidualRate && replacement.UseDate == old.UseDate && replacement.Method == old.Method &&
+            replacement.ResidualRate == old.ResidualRate && replacement.PurchaseDate == old.PurchaseDate && replacement.UseDate == old.UseDate && replacement.Method == old.Method &&
             replacement.UsefulLifeMonths == old.UsefulLifeMonths && replacement.TotalWorkload == old.TotalWorkload &&
             replacement.AccumulatedDepreciation == old.AccumulatedDepreciation && replacement.DepreciatedMonths == old.DepreciatedMonths &&
             replacement.AccumulatedWorkload == old.AccumulatedWorkload && replacement.MonthlyDepreciation == old.MonthlyDepreciation &&
@@ -191,7 +189,7 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
                     Require(workload >= 0 && workload <= card.TotalWorkload - card.AccumulatedWorkload,
                         "excess-workload", $"设备 {card.Code} 本月工作量过大或为负数。");
                     amount = card.AccumulatedWorkload + workload == card.TotalWorkload ? remaining :
-                        Math.Min(remaining, RoundMoney((card.OriginalCost - card.ResidualValue) * workload / card.TotalWorkload));
+                        Math.Min(remaining, RoundMoney(remaining * workload / (card.TotalWorkload - card.AccumulatedWorkload)));
                     if (workload > 0) months++;
                 }
             }
@@ -217,6 +215,8 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
         Require(!state.Batches.Any(x => !x.Cancelled && x.Period > current.Period), "cancel-order", "请先取消最后月份的折旧。");
         Require(!state.VoucherPlans.Any(x => !x.Voided && (x.SourceId == batchId ||
             x.Kind == AssetVoucherKind.Disposal && Period(x.Date) == current.Period && x.Lines.Any(l => current.After.ContainsKey(l.AssetId)))), "plan-exists", "折旧已有有效凭证计划，请先撤销计划。");
+        Require(!state.Movements.Any(x => current.After.ContainsKey(x.AssetId) && x.Date > current.Period.LastDay),
+            "later-movement", "计提后设备已有后续月份变动，不能覆盖后续历史。");
         foreach (var (id, card) in current.After)
             Require(state.Cards.TryGetValue(id, out var value) && AssetSnapshotCodec.CardsEqual(value, card), "later-movement", "计提后设备已有变动，不能覆盖后续变动。");
         var cancelled = current with { Cancelled = true };
@@ -230,12 +230,28 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
         Require(state.Settings.Catalog.Accounts.Any(x => x.Code == code && x.IsActive && x.IsLeaf), "invalid-account", $"科目 {code} 不存在、已停用或非明细科目。");
     }
 
+    private static string StableSourceKey(AssetBookState state, AssetVoucherKind kind, Guid sourceId)
+    {
+        var prefix = $"assets/{state.Identity.Product}/{state.Identity.BookId}";
+        if (kind == AssetVoucherKind.Depreciation)
+        {
+            var batch = state.Batches.SingleOrDefault(x => x.Id == sourceId && !x.Cancelled);
+            Require(batch is not null, "batch-missing", "请先计提折旧。");
+            return $"{prefix}/depreciation/{batch!.Period}";
+        }
+        Require(Enum.IsDefined(kind), "voucher-kind", "不支持的凭证类型。");
+        var movement = state.Movements.SingleOrDefault(x => x.Id == sourceId);
+        Require(movement is not null && (kind == AssetVoucherKind.Addition ? movement.Kind == AssetMovementKind.Addition :
+            movement.Kind == AssetMovementKind.Disposal), "movement-source", "凭证来源与业务类型不一致。");
+        return $"{prefix}/{kind}/{movement!.AssetId:D}";
+    }
+
     public AssetVoucherPlan CreateVoucherPlan(long revision, AssetVoucherKind kind, Guid sourceId,
         DateOnly date, string voucherType, int voucherNumber, string? additionCreditAccount = null) => Change(revision, state =>
     {
         Require(HasText(voucherType) && voucherNumber > 0, "voucher-identity", "请选择凭证类型并输入凭证编号。");
         Require(state.ClosedThrough is null || Period(date) > state.ClosedThrough, "closed-period", "该月份已结账，不能生成凭证计划。");
-        var key = $"{identity.Product}/{identity.BookId}/{kind}/{sourceId:D}";
+        var key = StableSourceKey(state, kind, sourceId);
         var existing = state.VoucherPlans.SingleOrDefault(x => x.SourceKey == key && !x.Voided);
         if (existing is not null)
         {
@@ -301,6 +317,8 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
     {
         var plan = state.VoucherPlans.SingleOrDefault(x => x.Id == planId && !x.Voided);
         Require(plan is not null, "plan-missing", "没有可撤销的凭证计划。");
+        Require(!state.VoucherReceipts.Any(x => x.PlanId == planId || x.SourceKeys.Contains(plan!.SourceKey)),
+            "voucher-accepted", "计划已有总账凭证收据，不能直接撤销。请先按总账流程处理。");
         Require(state.ClosedThrough is null || Period(plan!.Date) > state.ClosedThrough, "closed-period", "该月份已结账，不能撤销凭证计划。");
         return (state with { VoucherPlans = state.VoucherPlans.Replace(plan!, plan! with { Voided = true }) }, true);
     });
@@ -312,7 +330,7 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
     public ImmutableArray<AssetMovement> Movements(Guid id) => Read().Movements.Where(x => x.AssetId == id).OrderBy(x => x.Date).ToImmutableArray();
     public ImmutableArray<AssetDepreciationLine> DepreciationQuery(int year, int firstMonth, int lastMonth, bool hideZero)
     {
-        Require(firstMonth >= 1 && lastMonth <= 12 && firstMonth <= lastMonth, "query-range", "月份范围不正确。");
+        Require(year is >= 1 and <= 9999 && firstMonth >= 1 && lastMonth <= 12 && firstMonth <= lastMonth, "query-range", "月份范围不正确。");
         return Read().Batches.Where(x => !x.Cancelled && x.Period.Year == year && x.Period.Month >= firstMonth && x.Period.Month <= lastMonth)
             .OrderBy(x => x.Period).SelectMany(x => x.Lines).Where(x => !hideZero || x.Amount != 0).ToImmutableArray();
     }
@@ -330,14 +348,18 @@ public sealed class AssetBookService(IAssetBookStore store, AssetBookIdentity id
         Require(card.OriginalCost > 0 && Money(card.OriginalCost), "asset-cost", "请输入大于零且精确到分的原值！");
         Require(card.ResidualRate is >= 0 and <= 1 && card.ResidualValue >= 0 && card.ResidualValue <= card.OriginalCost && Money(card.ResidualValue),
             "asset-residual", "预计残值须在零与原值之间，残值率须在0与1之间。");
-        Require(card.UsefulLifeMonths > 0 && card.DepreciatedMonths >= 0, "asset-life", "请输入有效的使用年限(月)！");
+        Require(card.UsefulLifeMonths > 0 && card.DepreciatedMonths >= 0 &&
+            (card.Method != AssetDepreciationMethod.StraightLine || card.DepreciatedMonths <= card.UsefulLifeMonths), "asset-life", "请输入有效的使用年限(月)！");
         Require(card.AccumulatedDepreciation >= 0 && Money(card.AccumulatedDepreciation) &&
             card.AccumulatedDepreciation + card.ResidualValue <= card.OriginalCost, "asset-accumulated", "原值扣除累计折旧后不能小于预计残值。");
+        Require(card.MonthlyDepreciation >= 0 && Money(card.MonthlyDepreciation), "asset-monthly", "月折旧额须为非负且精确到分。");
         Require(card.Quantity >= 0 && card.TotalWorkload >= 0 && card.AccumulatedWorkload >= 0 && card.MonthlyWorkload >= 0,
             "asset-quantity", "数量和工作量不能为负数。");
         Require(Enum.IsDefined(card.Method), "asset-method", "请输入支持的折旧方法！");
         Require(card.Method != AssetDepreciationMethod.UnitsOfProduction || card.TotalWorkload > 0 && card.AccumulatedWorkload <= card.TotalWorkload,
             "asset-workload", "工作量法须输入总工作量，累计工作量不能超过总工作量。");
+        Require(card.Method != AssetDepreciationMethod.UnitsOfProduction || card.AccumulatedWorkload < card.TotalWorkload ||
+            card.AccumulatedDepreciation + card.ResidualValue == card.OriginalCost, "workload-exhausted", "工作量已用完但可折旧基础未结清，请核实期初资料。");
         Require(card.Accessories.Select(x => x.Code).Distinct(StringComparer.Ordinal).Count() == card.Accessories.Length,
             "accessory-duplicate", "附属设备编号不能重复！");
         Require(card.Accessories.All(x => HasText(x.Code) && HasText(x.Name) && x.Quantity >= 0 && x.UnitPrice >= 0 && x.Amount >= 0),

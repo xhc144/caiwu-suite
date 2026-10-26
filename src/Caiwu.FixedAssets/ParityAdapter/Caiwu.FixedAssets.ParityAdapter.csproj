@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <CaiwuParityContractsProject Condition="'$(CaiwuParityContractsProject)' == ''">../../Caiwu.Contracts/Caiwu.Contracts.csproj</CaiwuParityContractsProject>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Caiwu.FixedAssets.csproj" />
+    <ProjectReference Include="$(CaiwuParityContractsProject)" />
+  </ItemGroup>
+</Project>
