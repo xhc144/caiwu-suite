@@ -1053,13 +1053,39 @@ function BatchEditor({
   const [rows, setRows] = useState<RowInput[]>(batch === 'new' ? [] : batch.rows);
   const [dirty, setDirty] = useState(false);
   useLeaveGuard(dirty);
-  const save = useMutation(api.saveBatch.mutationOptions({ onSuccess: (b) => onSaved(b.id) }));
+  const inFlight = useRef(false),
+    mounted = useRef(true);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const save = useMutation(
+    api.saveBatch.mutationOptions({
+      onSuccess: (b) => {
+        void refresh();
+        if (mounted.current) {
+          setDirty(false);
+          onSaved(b.id);
+        }
+      },
+      onSettled: () => {
+        inFlight.current = false;
+        if (mounted.current) setSaving(false);
+      },
+    }),
+  );
   const patch = (index: number, fn: (r: RowInput) => RowInput) => {
+    if (inFlight.current) return;
     setRows((old) => old.map((r, i) => (i === index ? fn(r) : r)));
     setDirty(true);
   };
   const submit = () => {
-    if (!category) return;
+    if (!category || inFlight.current) return;
+    inFlight.current = true;
+    setSaving(true);
     save.mutate({
       ...(batch === 'new' ? {} : { id: batch.id, revision: batch.revision }),
       period,
@@ -1073,24 +1099,29 @@ function BatchEditor({
       open
       title={batch === 'new' ? '新增工资批次' : '编辑工资'}
       size="large"
+      closable={!saving}
+      keyboard={!saving}
       onClose={() => {
+        if (inFlight.current) return;
         if (!dirty || window.confirm('工资尚未保存，确认放弃修改？')) onClose();
       }}
       extra={
-        <Button type="primary" loading={save.isPending} onClick={submit}>
+        <Button type="primary" disabled={saving} loading={save.isPending} onClick={submit}>
           保存工资
         </Button>
       }
     >
       <ErrorState error={employees.error} />
+      <ErrorState error={save.error} />
       <Space wrap>
         <label>
           工资期间{' '}
           <PeriodPicker
             aria-label="工资期间"
             value={period}
-            disabled={batch !== 'new'}
+            disabled={saving || batch !== 'new'}
             onChange={(v) => {
+              if (inFlight.current) return;
               setPeriod(v);
               setDirty(true);
             }}
@@ -1101,12 +1132,13 @@ function BatchEditor({
           <Select
             aria-label="工资类别"
             value={categoryId}
-            disabled={batch !== 'new'}
+            disabled={saving || batch !== 'new'}
             style={{ width: 160 }}
             options={categories
               .filter((c) => !c.disabled)
               .map((c) => ({ value: c.id, label: c.name }))}
             onChange={(id) => {
+              if (inFlight.current) return;
               setCategoryId(id);
               setRows([]);
               setDirty(true);
@@ -1119,6 +1151,7 @@ function BatchEditor({
           添加人员{' '}
           <Select<number>
             aria-label="添加人员"
+            disabled={saving}
             style={{ width: '100%' }}
             showSearch
             optionFilterProp="label"
@@ -1128,6 +1161,7 @@ function BatchEditor({
               .filter((e) => !e.disabled && !rows.some((r) => r.employeeId === e.id))
               .map((e) => ({ value: e.id, label: `${e.code} ${e.name} ${e.departmentName}` }))}
             onChange={(id) => {
+              if (inFlight.current) return;
               setRows([...rows, { employeeId: id, values: {}, tax: TaxInputSchema.parse({}) }]);
               setDirty(true);
             }}
@@ -1150,6 +1184,7 @@ function BatchEditor({
                 <label key={f.key}>
                   {f.name}
                   <MoneyInput
+                    disabled={saving}
                     aria-label={`${r.employeeId}-${f.key}`}
                     value={r.values[f.key] ?? 0}
                     onChange={(v) =>
@@ -1166,6 +1201,7 @@ function BatchEditor({
                 <label key={k}>
                   {taxLabels[k]}
                   <MoneyInput
+                    disabled={saving}
                     aria-label={`${r.employeeId}-${k}`}
                     allowNegative={false}
                     value={r.tax[k]}
@@ -1176,6 +1212,7 @@ function BatchEditor({
             </Space>
           </details>
           <Checkbox
+            disabled={saving}
             checked={r.tax.confirmed}
             onChange={(e) =>
               patch(i, (r) => ({ ...r, tax: { ...r.tax, confirmed: e.target.checked } }))
@@ -1184,13 +1221,17 @@ function BatchEditor({
             已核对本单位累计扣除、专项附加资格和期初税额
           </Checkbox>
           <Popconfirm
+            disabled={saving}
             title="从本次编辑范围移除该员工？保存前可取消整个编辑。"
             onConfirm={() => {
+              if (inFlight.current) return;
               setRows(rows.filter((_, j) => j !== i));
               setDirty(true);
             }}
           >
-            <Button danger>移除人员</Button>
+            <Button danger disabled={saving}>
+              移除人员
+            </Button>
           </Popconfirm>
         </div>
       ))}

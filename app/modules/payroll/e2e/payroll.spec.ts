@@ -347,3 +347,143 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
     rmSync(dataDir, { recursive: true, force: true });
   }
 });
+
+test('w_gz_gzgl 延迟保存冻结整份草稿、连续点击只保存一次；失败与切人/期间保留输入', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(60000);
+  const { token } = await loginWithNewBook(page, request, { product: 'minfei' });
+  const category = await callApi<{ id: number }>(
+    request,
+    'm.payroll.saveCategory',
+    {
+      name: '合成延迟保存',
+      fields: [{ key: 'base', name: '基本工资', kind: 'money', role: 'earning' }],
+    },
+    { token },
+  );
+  const departments = await callApi<{ id: number }[]>(request, 'm.payroll.departments', undefined, {
+    token,
+    method: 'GET',
+  });
+  const ids: number[] = [];
+  for (let i = 1; i <= 2; i++)
+    ids.push(
+      (
+        await callApi<{ id: number }>(
+          request,
+          'm.payroll.saveEmployee',
+          {
+            code: `D00${i}`,
+            name: `合成延迟人员${i}`,
+            departmentId: departments[0]!.id,
+            startDate: '2026-01-01',
+          },
+          { token },
+        )
+      ).id,
+    );
+  await page.goto('/m/payroll');
+  await page.getByRole('button', { name: '新增工资批次' }).click();
+  let drawer = page.getByRole('dialog', { name: '新增工资批次' });
+  await select(drawer.getByRole('combobox', { name: '添加人员' }), 'D001');
+  const firstId = ids[0]!;
+  await drawer.getByLabel(`${firstId}-base`, { exact: true }).fill('10000');
+  await drawer.locator('summary').first().click();
+  let release!: () => void, arrived!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const reached = new Promise<void>((resolve) => {
+    arrived = resolve;
+  });
+  let count = 0,
+    savedId = 0;
+  const pattern = '**/trpc/m.payroll.saveBatch*';
+  await page.route(pattern, async (route) => {
+    count++;
+    const response = await route.fetch();
+    const body = (await response.json()) as { result?: { data?: { id: number } } }[];
+    savedId = body[0]?.result?.data?.id ?? 0;
+    arrived();
+    await gate;
+    await route.fulfill({ response });
+  });
+  await drawer.getByRole('button', { name: '保存工资' }).dblclick();
+  await reached;
+  await expect(drawer.getByLabel(`${firstId}-base`, { exact: true })).toBeDisabled();
+  for (const key of ['additional', 'openingIncome', 'openingTax'])
+    await expect(drawer.getByLabel(`${firstId}-${key}`, { exact: true })).toBeDisabled();
+  await expect(drawer.getByRole('combobox', { name: '工资期间' })).toBeDisabled();
+  await expect(drawer.getByRole('combobox', { name: '工资类别' })).toBeDisabled();
+  await expect(drawer.getByRole('combobox', { name: '添加人员' })).toBeDisabled();
+  await expect(drawer.getByRole('checkbox')).toBeDisabled();
+  await expect(drawer.getByRole('button', { name: '移除人员' })).toBeDisabled();
+  await expect(drawer.getByRole('button', { name: '保存工资' })).toBeDisabled();
+  await page.keyboard.press('Escape');
+  await expect(drawer).toBeVisible();
+  expect(count).toBe(1);
+  const during = await callApi<Batch>(
+    request,
+    'm.payroll.batch',
+    { id: savedId },
+    { token, method: 'GET' },
+  );
+  expect(during.rows[0]!.values.base).toBe(1000000);
+  release();
+  await expect(drawer).not.toBeVisible();
+  await page.unroute(pattern);
+  // A separate draft is retained on a transport failure; changing its period/person scope keeps typed wages.
+  await page.getByRole('button', { name: '新增工资批次' }).click();
+  drawer = page.getByRole('dialog', { name: '新增工资批次' });
+  await drawer.getByRole('combobox', { name: '工资期间' }).click();
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('2026年02月', { exact: true })
+    .click();
+  await select(drawer.getByRole('combobox', { name: '添加人员' }), 'D001');
+  await drawer.getByLabel(`${firstId}-base`, { exact: true }).fill('20000');
+  let failures = 0;
+  await page.route(pattern, async (route) => {
+    if (failures++ === 0) await route.abort('connectionfailed');
+    else await route.continue();
+  });
+  await drawer.getByRole('button', { name: '保存工资' }).click();
+  await expect(drawer.getByText(/fetch|网络|请求/i)).toBeVisible();
+  await expect(drawer.getByLabel(`${firstId}-base`, { exact: true })).toBeEnabled();
+  await expect(drawer.getByLabel(`${firstId}-base`, { exact: true })).toHaveValue('20,000.00');
+  await drawer.getByRole('combobox', { name: '工资期间' }).click();
+  await page
+    .locator('.ant-select-item-option-content')
+    .getByText('2026年03月', { exact: true })
+    .click();
+  await select(drawer.getByRole('combobox', { name: '添加人员' }), 'D002');
+  await expect(drawer.getByLabel(`${firstId}-base`, { exact: true })).toHaveValue('20,000.00');
+  await drawer.getByLabel(`${ids[1]!}-base`, { exact: true }).fill('30000');
+  await drawer.getByRole('button', { name: '保存工资' }).click();
+  await expect(drawer).not.toBeVisible();
+  await page.unroute(pattern);
+  const batches = await callApi<{ id: number }[]>(
+    request,
+    'm.payroll.batches',
+    { period: 202603, categoryId: category.id },
+    { token, method: 'GET' },
+  );
+  expect(batches).toHaveLength(1);
+  const kept = await callApi<Batch>(
+    request,
+    'm.payroll.batch',
+    { id: batches[0]!.id },
+    { token, method: 'GET' },
+  );
+  expect(kept.rows.map((r) => r.values.base)).toEqual([2000000, 3000000]);
+  expect(
+    await callApi<unknown[]>(
+      request,
+      'm.payroll.batches',
+      { period: 202602, categoryId: category.id },
+      { token, method: 'GET' },
+    ),
+  ).toHaveLength(0);
+});
