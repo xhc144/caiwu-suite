@@ -37,6 +37,10 @@ export default function ReconcilePage() {
   );
   const unmatch = useMutation(api.unmatch.mutationOptions({ onSuccess: () => void refresh() }));
   const data = result.data;
+  const error = result.error ?? accounts.error;
+  const stale = result.isFetching || !!error;
+  // 同一条件的后台刷新保留成功快照；查询键仍隔离账户/截止日，不能借用旧条件数据。
+  const refetch = () => result.refetch({ cancelRefetch: false });
   const adjustmentRows = data
     ? [
         {
@@ -91,11 +95,7 @@ export default function ReconcilePage() {
         </Form.Item>
       </FilterBar>
       {!accountId && <Alert title="请先建立出纳账户及期初" type="info" />}
-      <QueryState
-        loading={result.isFetching}
-        error={result.error ?? accounts.error}
-        retry={result.refetch}
-      >
+      <QueryState loading={!data && result.isFetching} error={data ? null : error} retry={refetch}>
         {data && (
           <>
             <Alert
@@ -103,7 +103,27 @@ export default function ReconcilePage() {
               title={`${data.account.name} · ${data.account.currency} · 截止 ${data.cutoff}`}
               description="勾账只记录本模块匹配组。财务引用不能在出纳编辑或删除；点凭证号查看原凭证。"
             />
-            <Button onClick={() => void result.refetch()}>刷新财务分录</Button>
+            {result.isFetching && (
+              <div role="status" aria-live="polite">
+                正在刷新，当前显示上次成功数据
+              </div>
+            )}
+            {error && (
+              <Alert
+                type="error"
+                showIcon
+                title="刷新失败，当前仍显示上次成功数据"
+                description={error.message}
+                action={<Button onClick={() => void refetch()}>重试</Button>}
+              />
+            )}
+            <Button
+              loading={result.isFetching}
+              disabled={result.isFetching}
+              onClick={() => void refetch()}
+            >
+              刷新财务分录
+            </Button>
             <Typography.Title level={5}>出纳待勾项目</Typography.Title>
             <DataTable
               tableId="cashier.reconcile.documents"
@@ -187,7 +207,7 @@ export default function ReconcilePage() {
               {canMatch && (
                 <Button
                   type="primary"
-                  disabled={!docKeys.length || !lineKeys.length}
+                  disabled={stale || !docKeys.length || !lineKeys.length}
                   loading={match.isPending}
                   onClick={async () => {
                     if (
@@ -239,6 +259,7 @@ export default function ReconcilePage() {
                   render: (_, r) =>
                     canMatch && (
                       <Button
+                        disabled={stale}
                         loading={unmatch.isPending}
                         onClick={async () => {
                           if (
