@@ -4,12 +4,16 @@ import type { CoreServices } from '@caiwu/core/server';
 import {
   AccountInputSchema,
   DimensionInputSchema,
+  ReferenceInputSchema,
+  type ReferenceKind,
+  type ReferenceRow,
   type ExcelInput,
   type ImportPreview,
   type Confirmation,
   type AccountInput,
 } from '../shared';
 import { fail, masterdataService, confirmRequired } from './service';
+import { referenceService } from './reference';
 
 const { Workbook } = ExcelJS;
 
@@ -31,6 +35,45 @@ const accountHeaders = [
   ...dimTypes.flatMap((d) => [`${labels[d]}启用`, `${labels[d]}必填`, `${labels[d]}默认编码`]),
 ];
 const dimensionHeaders = ['编码', '名称', '上级编码', '停用', '属性JSON'];
+const referenceColumns: Record<ReferenceKind, { key: keyof ReferenceRow; title: string }[]> = {
+  voucherTypes: [
+    { key: 'code', title: '编码' },
+    { key: 'shortName', title: '简称' },
+    { key: 'name', title: '全称' },
+    { key: 'disabled', title: '停用' },
+    { key: 'sort', title: '排序' },
+  ],
+  settlementMethods: [
+    { key: 'code', title: '编码' },
+    { key: 'name', title: '名称' },
+    { key: 'disabled', title: '停用' },
+    { key: 'sort', title: '排序' },
+  ],
+  currencies: [
+    { key: 'code', title: '编码' },
+    { key: 'name', title: '名称' },
+    { key: 'symbol', title: '符号' },
+    { key: 'disabled', title: '停用' },
+    { key: 'sort', title: '排序' },
+  ],
+  summaries: [
+    { key: 'code', title: '编码' },
+    { key: 'name', title: '摘要短语' },
+    { key: 'category', title: '类别' },
+    { key: 'shortcut', title: '快捷检索词' },
+    { key: 'sort', title: '排序' },
+  ],
+};
+const referenceNames: Record<ReferenceKind, string> = {
+  voucherTypes: '凭证类型',
+  settlementMethods: '结算类别',
+  currencies: '币种',
+  summaries: '摘要',
+};
+function columnsFor(kind: ReferenceKind | undefined) {
+  if (!kind) fail('REFERENCE_KIND', '请选择参考档案类型');
+  return referenceColumns[kind];
+}
 type SheetRow = { row: number; data: Record<string, string> };
 class PreviewRollback extends Error {
   constructor(readonly result: ImportPreview) {
@@ -58,7 +101,14 @@ async function read(input: ExcelInput): Promise<SheetRow[]> {
   if (!ws || ws.rowCount < 2) fail('FILE_EMPTY', '文件没有档案数据', '表头下面至少填写一行');
   if (ws.rowCount > 5001) fail('FILE_LARGE', '单次最多导入5000条档案', '请分批导入');
   const headers = (ws.getRow(1).values as unknown[]).slice(1).map(String);
-  const required = input.kind === 'accounts' ? accountHeaders : dimensionHeaders;
+  const required =
+    input.kind === 'accounts'
+      ? accountHeaders
+      : input.kind === 'dimensions'
+        ? dimensionHeaders
+        : columnsFor(input.referenceKind).map((c) => c.title);
+  if (new Set(headers).size !== headers.length)
+    fail('FILE_HEADERS', '文件含重复表头', '请保留每个表头一次，避免覆盖同名列');
   if (required.some((h) => !headers.includes(h)))
     fail(
       'FILE_HEADERS',
@@ -87,10 +137,16 @@ async function read(input: ExcelInput): Promise<SheetRow[]> {
 
 export function excelService(svc: CoreServices) {
   const self = {
-    async export(kind: 'accounts' | 'dimensions', type?: DimensionTypeId) {
+    async export(kind: ExcelInput['kind'], type?: DimensionTypeId, referenceKind?: ReferenceKind) {
       const wb = new Workbook();
       const ws = wb.addWorksheet('基础档案');
-      const headers = kind === 'accounts' ? accountHeaders : dimensionHeaders;
+      const columns = kind === 'reference' ? columnsFor(referenceKind) : [];
+      const headers =
+        kind === 'accounts'
+          ? accountHeaders
+          : kind === 'dimensions'
+            ? dimensionHeaders
+            : columns.map((c) => c.title);
       ws.addRow(headers);
       if (kind === 'accounts') {
         for (const a of await svc.accounts.list()) {
@@ -119,7 +175,7 @@ export function excelService(svc: CoreServices) {
             ...dims,
           ]);
         }
-      } else {
+      } else if (kind === 'dimensions') {
         if (!type) fail('DIMENSION_TYPE', '请指定辅助档案类型');
         const items = await svc.dimensions.items(type);
         for (const a of items)
@@ -130,13 +186,20 @@ export function excelService(svc: CoreServices) {
             +a.disabled,
             JSON.stringify(a.attrs),
           ]);
+      } else {
+        for (const row of await referenceService(svc).list(referenceKind!))
+          ws.addRow(
+            columns.map(({ key }) =>
+              typeof row[key] === 'boolean' ? +row[key] : (row[key] ?? ''),
+            ),
+          );
       }
       ws.columns.forEach((c) => {
         c.width = 22;
         c.numFmt = '@';
       });
       return {
-        fileName: `${kind === 'accounts' ? '科目' : '辅助档案'}.xlsx`,
+        fileName: `${kind === 'accounts' ? '科目' : kind === 'dimensions' ? '辅助档案' : referenceNames[referenceKind!]}.xlsx`,
         content: Buffer.from(await wb.xlsx.writeBuffer()).toString('base64'),
       };
     },
@@ -149,7 +212,7 @@ export function excelService(svc: CoreServices) {
           const seen = new Set<string>();
           for (const { row, data: r } of rows) {
             const code = r['编码'] ?? '';
-            const name = r['名称'] ?? '';
+            const name = r['名称'] ?? r['全称'] ?? r['摘要短语'] ?? '';
             try {
               if (seen.has(code)) fail('EXCEL_DUPLICATE', `文件内编号 ${code} 重复`);
               seen.add(code);
@@ -195,7 +258,7 @@ export function excelService(svc: CoreServices) {
                   ...data,
                   confirmations: commit ? input.confirmations : warnings.map((w) => w.key),
                 });
-              } else {
+              } else if (input.kind === 'dimensions') {
                 if (!input.type) fail('DIMENSION_TYPE', '请指定辅助档案类型');
                 const existing = await tsvc.dimensions.getByCode(input.type, code);
                 action = existing ? '更新/保持' : '新增';
@@ -215,6 +278,29 @@ export function excelService(svc: CoreServices) {
                   attrs,
                 });
                 await service.writeDimension(data);
+              } else {
+                if (!input.referenceKind) fail('REFERENCE_KIND', '请选择参考档案类型');
+                const refs = referenceService(tsvc);
+                const existing = (await refs.list(input.referenceKind)).find(
+                  (r) => r.code === code,
+                );
+                action = existing ? '更新/保持' : '新增';
+                const sort = r['排序'] ?? '';
+                if (!/^\d+$/.test(sort)) fail('REFERENCE_SORT', '排序须为0至100000的整数');
+                const data = ReferenceInputSchema.parse({
+                  ...existing,
+                  kind: input.referenceKind,
+                  id: existing?.id,
+                  code,
+                  name,
+                  shortName: r['简称'] ?? '',
+                  disabled: flag(r['停用']),
+                  sort: Number(sort),
+                  symbol: r['符号'] || null,
+                  category: r['类别'] ?? '',
+                  shortcut: r['快捷检索词'] ?? '',
+                });
+                await refs.save(data);
               }
               result.rows.push({ row, code, name, action, error: '' });
               result.confirmations.push(...warnings);
@@ -238,7 +324,7 @@ export function excelService(svc: CoreServices) {
           );
           await tsvc.log.write({
             action: 'masterdata.import',
-            summary: `导入${rows.length}条${input.kind === 'accounts' ? '科目' : '辅助档案'}`,
+            summary: `导入${rows.length}条${input.kind === 'accounts' ? '科目' : input.kind === 'dimensions' ? '辅助档案' : referenceNames[input.referenceKind!]}`,
           });
           return result;
         });

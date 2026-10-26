@@ -108,8 +108,9 @@ export type ReferenceRow = {
   isBase: boolean;
 };
 export const ExcelInputSchema = z.object({
-  kind: z.enum(['accounts', 'dimensions']),
+  kind: z.enum(['accounts', 'dimensions', 'reference']),
   type: DimensionTypeSchema.optional(),
+  referenceKind: ReferenceKindSchema.optional(),
   fileName: z.string().max(200),
   content: z.string().max(900_000, '文件超过单次导入容量，请分批导入'),
   confirmations: ConfirmationSchema,
