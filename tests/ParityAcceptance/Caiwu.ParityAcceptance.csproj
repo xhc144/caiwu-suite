@@ -7,5 +7,6 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Caiwu.Core/Caiwu.Core.csproj" />
     <ProjectReference Include="../../src/Caiwu.Persistence.Sqlite/Caiwu.Persistence.Sqlite.csproj" />
+    <ProjectReference Include="../../packaging-next/src/Caiwu.Delivery/Caiwu.Delivery.csproj" />
   </ItemGroup>
 </Project>

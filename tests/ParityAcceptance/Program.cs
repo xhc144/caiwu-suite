@@ -4,6 +4,7 @@ using System.Text.Json;
 using Caiwu.Contracts;
 using Caiwu.Core;
 using Caiwu.Persistence.Sqlite;
+using Caiwu.Delivery;
 using Microsoft.Data.Sqlite;
 
 // All data is created here. No original database, installer, engine or user ledger is read.
@@ -21,6 +22,7 @@ try
     Case("backup-restore-retains-unknown-json-and-source-consumption", Backup);
     Case("two-writers-one-source-have-exactly-one-atomic-winner", Competing);
     Case("foreign-book-confirmation-cannot-write-either-book", Foreign);
+    Case("managed-policy-accepts-only-canonical-module-retention-guards", ManagedPolicy);
 }
 finally
 {
@@ -173,6 +175,21 @@ void Foreign()
     var a = new LedgerService(first); var b = new LedgerService(second);
     Expect<StoreConcurrencyException>(() => b.AcceptVoucherProposal(Proposal(Context(a)), "合成甲"));
     Check(a.GetSnapshot().Revision == 0 && b.GetSnapshot().Revision == 0, "foreign write changed a book");
+}
+
+void ManagedPolicy()
+{
+    using var store = Create("managed-policy"); var service = new LedgerService(store);
+    LedgerFilePolicy.Validate(store.DatabasePath); // Existing schema1 with no module data is still accepted.
+    service.AcceptVoucherProposal(Proposal(Context(service)), "合成甲");
+    LedgerFilePolicy.Validate(store.DatabasePath);
+    Execute(store.DatabasePath, "CREATE TRIGGER synthetic_unknown BEFORE INSERT ON vouchers BEGIN SELECT 1; END;");
+    Expect<InvalidDataException>(() => LedgerFilePolicy.Validate(store.DatabasePath));
+    Execute(store.DatabasePath, "DROP TRIGGER synthetic_unknown; DROP TRIGGER preserve_parity_module_delete;");
+    Expect<InvalidDataException>(() => LedgerFilePolicy.Validate(store.DatabasePath));
+    Execute(store.DatabasePath, "CREATE TRIGGER preserve_parity_module_delete BEFORE DELETE ON audit_events BEGIN SELECT 1; END;");
+    Expect<InvalidDataException>(() => LedgerFilePolicy.Validate(store.DatabasePath));
+    Check(service.GetSnapshot().Revision == 1 && service.GetSnapshot().Vouchers.Count == 1, "read-only policy mutated the synthetic book");
 }
 
 static void Check(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }

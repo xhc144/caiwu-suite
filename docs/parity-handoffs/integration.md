@@ -25,7 +25,9 @@
 
 第一切片采用现有 `audit_events` 的版本化追加事件 `ParityModuleCommit.v1` 保存模块变更和建议收据，保持 SQLite schema1 和旧 DTO 源兼容。完整状态由追加事件回放；普通账务操作原样保留这些事件，SQLite 原有整快照写入/深读回/备份也保留它们。不是伪造审计成功记录：提交内容与 voucher 在同一真实事务，CAS 或存储失败时一起回滚。后续独立索引表优化必须有无损迁移、备份及旧工具读写门禁，不能静默换格式。
 
-模块事件是**权威业务日志**，不能按普通展示审计裁剪。SQLite 写入先做原 CAS，再逐事件核对旧模块事件的内容、时间偏移和 ordinal；普通写入保留原模块行，只重建普通审计并追加事件。数据库保护触发器拒绝旧客户端 DELETE/UPDATE 权威事件；旧式全删后重插写法会事务失败，不会静默丢失模块数据。新库直接带保护，既有 schema1 在首次模块写入的同一事务内安装保护。没有保证旧二进制继续可写这一新扩展；拒绝写入是兼容门禁，读取/备份不丢字段。展示或导出可以建立过滤视图，不能把过滤后的 AuditEvents 保存回账套。
+模块事件是**权威业务日志**，不能按普通展示审计裁剪。SQLite 写入先做原 CAS，再逐事件核对旧模块事件的内容、时间偏移和 ordinal；普通写入保留原模块行，只重建普通审计并追加事件。数据库保护触发器拒绝旧客户端 DELETE/UPDATE 权威事件；旧式全删后重插写法会事务失败，不会静默丢失模块数据。普通无模块账套保持原 schema1；首次模块写入或含模块历史的新快照创建在同一事务内安装保护。没有保证旧二进制继续可写这一新扩展；拒绝写入是兼容门禁，读取/备份不丢字段。展示或导出可以建立过滤视图，不能把过滤后的 AuditEvents 保存回账套。
+
+Delivery 的只读 schema 门禁仍拒绝任意触发器/视图/额外业务表；现在仅白名单两条由可信安装 Store 自己在全新合成参考中生成、名称/所属表/完整 SQL token 一致的模块保护。缺一条、同名改写或新增任意触发器均拒绝，不会为兼容而修写输入。无模块旧账套保持可用。该相容性门禁已用真实 Core→SQLite→LedgerFilePolicy 链回归，另跑原 Delivery 组件安全套件163通过/0失败/3个Linux上Windows语义跳过。
 
 回放使用 .NET10 `RespectRequiredConstructorParameters=true`、未知成员拒绝及全层重复键检查。缺少 Document 属性是损坏事件，不能等同显式 Document=null。当前已有实际回归包含先保存 x，再追加缺 Document 的删除形状事件；要求失败。显式 null 删除仍由正常授权入口处理。
 
@@ -54,6 +56,10 @@
 第一个实现检查点 `1fe61a6ca60dbb41952f1932c47be0f6b4ebe170` 在真实 Windows [run40247403990](https://github.com/xhc144/caiwu-suite/actions/runs/40247403990) 通过 Core168/SQLite117/6实际 SQLite 集成与四张1920×1080原生图。artifact12619410983，ZIP SHA256 `c576c700517b2656cda613d55e001038f8f2885b5ffe61d17cd7fef71b3cbef0`；已下载核哈希并原尺寸查看主图，仍是待 shell 替换的旧布局。此检查点**不含**随后保留触发器、严格构造参数和 BookCopy 修正，不能替代最终修正 SHA 的 Windows 验证。
 
 后续本地工作树：Core171、SQLite122、BookCopy5 合成回归通过；真实 SQLite 集成6项通过。新增日志保留检查最初在双连接竞争中错误返回 LedgerValidationException，已移到 CAS 成功之后，恢复 StoreConcurrencyException；原失败本地记录保留于 ignored artifacts。完整复制回归明确先保存文档再生成 receipt.Revision=2，并保留旧复制形状拒绝用例。待提交后的完整 SHA Windows 重新验证。
+
+已只读接收待审候选：cashier `346b3ec03cc188effa457fce0489ae6326b0d6b7`（父任务后通知返修公共 CAS 异常的 WPF 处理，**旧 SHA 不回接**）、ledger `946955851055fb09c335c1c4d061e3022a3e1f4a`、reports `89b4c6e7320a3187876615605104d8ce44114294`。父任务另允许独立临时候选分支组合指定 SHA 编译/互操作，审核未完只标 candidate；没有采纳为通过。其余候选按后续父消息读取。
+
+聚合准备：cashier 使用真实 ParityCashierStore→Core→SQLite 做文档/计划/单事务接收/重开/来源防重/同年复制及异常传播；reports 用真实 ParityReportAdapter 保存/重开和同 revision 取数、预算拒绝/未知字段保留；ledger 先实测共享账套逆操作应保守拒绝，随后有明确统一撤销/权限协议才开放。cashier `state.Book.Id` 会校验当前账套，完整复制的旧 payload 身份将被其当前 adapter 拒绝；通用存储不会猜测改写任意 JSON，需 owner 提供明确无损复制/重绑定策略，不能把保存了字节等同于各模块复制后已可用。此项保留为跨模块验收缺口。
 
 仍待父任务提供各 owner 审核 SHA/HANDOFF；不自行拿浮动 branch HEAD 集成。原账套身份/两字符代码/产品/模板/操作日期、原 b_user/b_rights、稳定 LineId、辅助/外币/数量语义、自动年初来源及跨年/逆操作权限均为已读需求，**尚未被通用 JSON 存储能力实现**。原账套实际驱动/无损迁移、原流程全部按钮、44 制度模板、反过账/反结账持久化、打印及 Windows 实机对照都不以本接口替代。旧 gap-analysis 验收行保留。
 

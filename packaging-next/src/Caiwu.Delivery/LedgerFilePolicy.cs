@@ -27,6 +27,7 @@ public static class LedgerFilePolicy
             if ((long)version.ExecuteScalar()! != 1128355669) throw new InvalidDataException("File is not a Caiwu ledger.");
         }
         var actualTables = new HashSet<string>(StringComparer.Ordinal);
+        var moduleTriggers = new HashSet<string>(StringComparer.Ordinal);
         using var command = db.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = "SELECT type,name,tbl_name,sql FROM sqlite_schema";
@@ -42,11 +43,21 @@ public static class LedgerFilePolicy
                 (name == "ix_voucher_lines_account" && table == "voucher_lines" ||
                  name.StartsWith("sqlite_autoindex_", StringComparison.Ordinal) && reader.IsDBNull(3))) { }
             else if (type == "table" && name is "sqlite_stat1" or "sqlite_stat4") { }
-            else throw new InvalidDataException("Unsupported schema object in ledger/backup; triggers, views and extra application tables are not accepted.");
+            else if (type == "trigger" && SchemaV1Layout.IsCanonicalModuleTrigger(name, table,
+                reader.IsDBNull(3) ? null : reader.GetString(3))) moduleTriggers.Add(name);
+            else throw new InvalidDataException("Unsupported schema object in ledger/backup; only exact installed module guards are allowed, and views/extra application tables remain rejected.");
         }
         if (!actualTables.SetEquals(Tables)) throw new InvalidDataException("Required ledger schema tables are missing.");
         reader.Dispose();
         SchemaV1Layout.Validate(db, transaction);
+        using (var hasModuleEvents = db.CreateCommand())
+        {
+            hasModuleEvents.Transaction = transaction;
+            hasModuleEvents.CommandText = "SELECT EXISTS(SELECT 1 FROM audit_events WHERE action GLOB 'ParityModuleCommit.*')";
+            if ((long)hasModuleEvents.ExecuteScalar()! != 0 || moduleTriggers.Count != 0)
+                if (!moduleTriggers.SetEquals(SchemaV1Layout.ModuleTriggerNames))
+                    throw new InvalidDataException("Authoritative module events require both exact installed retention guards; this input is not silently repaired.");
+        }
         transaction.Commit();
     }
 }

@@ -9,6 +9,8 @@ on:
       - 'tests/Caiwu.Core.Tests/**'
       - 'tests/Caiwu.Persistence.Sqlite.Tests/**'
       - 'tests/Caiwu.BookTools.Tests/**'
+      - 'tests/Caiwu.Delivery.Tests/**'
+      - 'packaging-next/src/**'
       - 'Directory.Build.props'
       - 'global.json'
   workflow_dispatch:

@@ -88,7 +88,7 @@ public sealed class ModuleJournalRetentionTests : IDisposable
     {
         using var store = Create();
         // Emulate an original schema1 file, before it contains any authoritative module event.
-        Execute(store.DatabasePath, "DROP TRIGGER preserve_parity_module_delete; DROP TRIGGER preserve_parity_module_update;");
+        Assert.Equal(0L, Scalar(store.DatabasePath, "SELECT count(*) FROM sqlite_schema WHERE type='trigger'"));
         _ = Seed(store);
         Assert.Equal(1L, Scalar(store.DatabasePath, "PRAGMA user_version"));
         Assert.Throws<SqliteException>(() => Execute(store.DatabasePath, "DELETE FROM audit_events"));

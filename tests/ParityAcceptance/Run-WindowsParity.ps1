@@ -56,6 +56,13 @@ try {
         $result = Get-Content -Raw (Join-Path $OutputDirectory 'integration.json') | ConvertFrom-Json
         if ($result.sourceCommit -cne $ExpectedCommit -or $result.sourceBinding -cne 'exact-clean-checkout' -or $result.status -cne 'passed') { throw 'Integration evidence identity or result mismatch.' }
     }
+    Invoke-EvidenceStep 'delivery-security-and-managed-schema' {
+        $project = 'tests/Caiwu.Delivery.Tests/Caiwu.Delivery.Tests.csproj'
+        & dotnet restore $project --locked-mode --nologo
+        if ($LASTEXITCODE -ne 0) { throw 'Delivery locked restore failed.' }
+        & dotnet run --project $project -c Release --no-restore -p:TreatWarningsAsErrors=true -- (Join-Path $OutputDirectory 'delivery-components.json')
+        if ($LASTEXITCODE -ne 0) { throw 'Delivery safety regressions failed.' }
+    }
     if ($CaptureNative) {
         Invoke-EvidenceStep 'native-product-rendering-diagnostic' {
             # Existing capture harness runs only self-authored WPF with synthetic identities/books.

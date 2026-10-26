@@ -60,7 +60,7 @@ internal static class Schema
             voucher_id TEXT,
             detail TEXT NOT NULL
         ) STRICT;
-        """ + ModuleJournalProtection;
+        """;
     // Audit references intentionally survive deletion of a draft voucher.
 
     // Authoritative module data is not disposable presentation audit. An older writer that

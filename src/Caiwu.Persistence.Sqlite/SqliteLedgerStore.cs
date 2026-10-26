@@ -45,6 +45,8 @@ public sealed class SqliteLedgerStore : ILedgerStore
             using (var transaction = db.BeginTransaction())
             {
                 Execute(db, transaction, Schema.Create);
+                if (initial.AuditEvents.Any(IsModuleJournal))
+                    Execute(db, transaction, Schema.ModuleJournalProtection);
                 Execute(db, transaction, """
                     INSERT INTO ledger (singleton,revision,book_id,name,regime,template_version,
                         fiscal_year,start_month,closed_through_month,created_at)

@@ -56,6 +56,12 @@
           "Caiwu.Contracts": "[1.0.0, )"
         }
       },
+      "caiwu.delivery": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Persistence.Sqlite": "[1.0.0, )"
+        }
+      },
       "caiwu.persistence.sqlite": {
         "type": "Project",
         "dependencies": {

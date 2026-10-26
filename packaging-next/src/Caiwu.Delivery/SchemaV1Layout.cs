@@ -9,11 +9,18 @@ namespace Caiwu.Delivery;
 internal static class SchemaV1Layout
 {
     private sealed record TableShape(string Sql, string Columns, string ForeignKeys, string Flags, string Indexes);
-    private static readonly Lazy<IReadOnlyDictionary<string, TableShape>> Expected = new(CreateReference);
+    private sealed record SchemaReference(IReadOnlyDictionary<string, TableShape> Tables,
+        IReadOnlyDictionary<string, string> ModuleTriggers);
+    internal static readonly string[] ModuleTriggerNames = ["preserve_parity_module_delete", "preserve_parity_module_update"];
+    private static readonly Lazy<SchemaReference> Expected = new(CreateReference);
+
+    internal static bool IsCanonicalModuleTrigger(string name, string table, string? sql) =>
+        table == "audit_events" && sql is not null && Expected.Value.ModuleTriggers.TryGetValue(name, out var expected)
+        && NormalizeSql(sql) == expected;
 
     internal static void Validate(SqliteConnection db, SqliteTransaction transaction)
     {
-        foreach (var (table, expected) in Expected.Value)
+        foreach (var (table, expected) in Expected.Value.Tables)
         {
             var actual = CaptureTable(db, transaction, table);
             if (actual != expected)
@@ -21,7 +28,7 @@ internal static class SchemaV1Layout
         }
     }
 
-    private static IReadOnlyDictionary<string, TableShape> CreateReference()
+    private static SchemaReference CreateReference()
     {
         var directory = Directory.CreateTempSubdirectory("caiwu-schema-v1-reference-");
         var path = Path.Combine(directory.FullName, "reference.caiwu");
@@ -30,7 +37,15 @@ internal static class SchemaV1Layout
             // No user ledger is used as a reference. The schema authority is the trusted store's public creator.
             var book = new BookInfo(Guid.Parse("ee6d9b45-cdb7-421d-a9ed-43ed8198dad5"), "Synthetic schema reference",
                 AccountingRegime.SmallBusiness, "delivery-schema-reference", 2000, 1, 0, DateTimeOffset.UnixEpoch);
-            using (var created = SqliteLedgerStore.Create(path, book, [])) { }
+            using (var created = SqliteLedgerStore.Create(path, book, []))
+            {
+                // Exercise the installed store's own guarded module-write path in this fresh
+                // synthetic reference only; input trigger SQL is never executed as authority.
+                var snapshot = created.Read();
+                created.Write(snapshot with { Revision = 1, AuditEvents =
+                    [new(Guid.Parse("68c4bffb-8752-4438-a71b-31448c482795"), DateTimeOffset.UnixEpoch,
+                        "synthetic-schema-reference", "ParityModuleCommit.v1", null, "{}")] }, 0);
+            }
             using var db = new SqliteConnection(new SqliteConnectionStringBuilder
             { DataSource = path, Mode = SqliteOpenMode.ReadOnly, Pooling = false }.ToString());
             db.Open();
@@ -39,8 +54,20 @@ internal static class SchemaV1Layout
                 if ((long)version.ExecuteScalar()! != 1) throw new InvalidDataException("Installed store schema changed; the audited delivery schema-v1 policy must be reviewed.");
             var reference = LedgerFilePolicy.RequiredTables.ToDictionary(table => table,
                 table => CaptureTable(db, transaction, table), StringComparer.Ordinal);
+            var triggers = new Dictionary<string, string>(StringComparer.Ordinal);
+            using (var command = Command(db, transaction, "SELECT name,tbl_name,sql FROM sqlite_schema WHERE type='trigger'"))
+            using (var reader = command.ExecuteReader())
+                while (reader.Read())
+                {
+                    var name = reader.GetString(0);
+                    if (reader.GetString(1) != "audit_events" || !ModuleTriggerNames.Contains(name, StringComparer.Ordinal))
+                        throw new InvalidDataException("Installed module schema guards changed; review the explicit allowlist.");
+                    triggers.Add(name, NormalizeSql(reader.GetString(2)));
+                }
+            if (triggers.Count != ModuleTriggerNames.Length)
+                throw new InvalidDataException("Installed store did not create the required module journal guards.");
             transaction.Commit();
-            return reference;
+            return new(reference, triggers);
         }
         finally
         {
