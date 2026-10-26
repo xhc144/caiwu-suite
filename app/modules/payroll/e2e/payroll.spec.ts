@@ -227,6 +227,10 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       );
       expect(modified.rows.map((r) => r.values.bonus)).toEqual([0, undefined, undefined]);
       expect(modified.calculated).toBe(false);
+      await expect(page.getByRole('heading', { name: /202601 合成月薪.*待计算/ })).toBeVisible();
+      await expect(
+        page.getByRole('heading', { name: '重算前后对照（当前修改待重算）', exact: true }),
+      ).toBeVisible();
       await page.getByRole('button', { name: '计算工资', exact: true }).click();
       await expect(salary.getByRole('row').filter({ hasText: '合成人员1' })).toContainText(
         '10,850.00',
