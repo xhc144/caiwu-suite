@@ -88,7 +88,8 @@ export function layoutGeometry(s: PrintLayout) {
     height,
     contentWidth,
     contentHeight,
-    lineMm: s.fontSize * 0.352778 * 1.45 + 1,
+    // 1mm 单元格上下内边距 + 1px 合并边框 + 像素取整余量。
+    lineMm: s.fontSize * 0.352778 * 1.45 + 1.4,
     warning: s.offsetX || s.offsetY ? '已使用套打偏移，请核对纸张边缘后打印' : '',
   };
 }

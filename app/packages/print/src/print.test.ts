@@ -411,3 +411,18 @@ it('w_pz_prn_3 暂停中取消后即使继续确认也不发送', async () => {
   expect(send).not.toHaveBeenCalled();
   expect(result.cancelled).toBe(true);
 });
+it('w_pz_prn_1 23 个 W/M 必须预分行，保留混合字、完整 emoji 和 tab 空格', () => {
+  for (const char of ['W', 'M']) {
+    const text = char.repeat(23),
+      lines = wrapPrintText(text, 60.8, 10);
+    expect(lines.length).toBeGreaterThan(1);
+    expect(lines.join('')).toBe(text);
+  }
+  const mixed = 'W中文M👨‍👩‍👧‍👦🇨🇳\tMW'.replace('\\t', '\t');
+  const lines = wrapPrintText(mixed, 25, 10);
+  expect(lines.join('')).toBe(mixed.replace(/\t/g, '    '));
+  const graphemes = new Intl.Segmenter('zh-CN', { granularity: 'grapheme' });
+  const flattened = lines.flatMap((line) => [...graphemes.segment(line)].map((x) => x.segment));
+  expect(flattened).toContain('👨‍👩‍👧‍👦');
+  expect(flattened).toContain('🇨🇳');
+});

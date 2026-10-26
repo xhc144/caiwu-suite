@@ -70,3 +70,44 @@ describe('W0 桥接与浏览器生命周期', () => {
     expect(document.querySelector('iframe')).toBeNull();
   });
 });
+it('w_pz_prn_1 实际排版越界时不调用 W0 bridge，并清理检查 iframe', async () => {
+  const print = vi.fn(async () => {});
+  window.caiwuDesktop = { print, printToPdf: async () => null };
+  const pending = printHtml({
+    title: '越界',
+    html: '<article class="print-sheet"><div class="scaled">宽字</div></article>',
+  });
+  const rejected = expect(pending).rejects.toThrow('打印内容超出纸张');
+  const iframe = document.querySelector<HTMLIFrameElement>('.cw-print-check')!;
+  iframe.contentDocument!.body.innerHTML =
+    '<article class="print-sheet"><div class="scaled">宽字</div></article>';
+  vi.spyOn(
+    iframe.contentDocument!.querySelector('.print-sheet')!,
+    'getBoundingClientRect',
+  ).mockReturnValue({ left: 0, right: 100, bottom: 100 } as DOMRect);
+  vi.spyOn(
+    iframe.contentDocument!.querySelector('.scaled')!,
+    'getBoundingClientRect',
+  ).mockReturnValue({ left: 0, right: 200, bottom: 200 } as DOMRect);
+  iframe.dispatchEvent(new Event('load'));
+  await rejected;
+  expect(print).not.toHaveBeenCalled();
+  expect(document.querySelector('.cw-print-check')).toBeNull();
+});
+it('w_print_root 排版检查超时清理并释放作业锁', async () => {
+  vi.useFakeTimers();
+  const print = vi.fn(async () => {});
+  window.caiwuDesktop = { print, printToPdf: async () => null };
+  const pending = printHtml({
+    title: '检查超时',
+    html: '<article class="print-sheet">内容</article>',
+  });
+  const rejected = expect(pending).rejects.toThrow('打印排版检查超时');
+  document.querySelector<HTMLIFrameElement>('.cw-print-check')!.onload = null;
+  await vi.advanceTimersByTimeAsync(10000);
+  await rejected;
+  expect(document.querySelector('.cw-print-check')).toBeNull();
+  expect(print).not.toHaveBeenCalled();
+  await printHtml(job);
+  expect(print).toHaveBeenCalledTimes(1);
+});

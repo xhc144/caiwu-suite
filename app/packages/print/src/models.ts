@@ -31,26 +31,49 @@ export type LedgerPrintModel = {
 export type PrintPage = { html: string; labels: string[]; entityIds: number[] };
 export type PrintView = { title: string; pages: PrintPage[]; layout: PrintLayout };
 
-/** 按实际可用列宽保守换行；中文、拉丁字母和换行都保留，不裁掉长分录。 */
+/** 保守字宽预算，按字素分片；tab 固定为四个空格，避免设备 tab stop 改变行宽。
+ * 字体的实际后备选择仍须在输出前由 preflightPrintDocument 核对。
+ */
 export function wrapPrintText(text: string, widthMm: number, fontSize: number): string[] {
-  const max = Math.max(1, Math.floor((widthMm - 4) / (fontSize * 0.352778) - 1));
+  const max = Math.max(0.1, (widthMm - 2.8) / (fontSize * 0.352778));
   const lines: string[] = [];
   let line = '',
     units = 0;
-  for (const c of text) {
-    const weight = (c.codePointAt(0) ?? 0) <= 127 ? 0.65 : 1;
-    if (c === '\n') {
+  const normalized = text.replace(/\r\n?/g, '\n').replace(/\t/g, '    ');
+  const graphemes = new Intl.Segmenter('zh-CN', { granularity: 'grapheme' }).segment(normalized);
+  for (const { segment } of graphemes) {
+    if (segment === '\n') {
       lines.push(line);
       line = '';
       units = 0;
       continue;
+    }
+    let weight = 0;
+    for (const c of segment) {
+      const cp = c.codePointAt(0)!;
+      if (cp === 0x200d || (cp >= 0xfe00 && cp <= 0xfe0f)) continue;
+      weight +=
+        c === ' '
+          ? 0.6
+          : /[0-9]/.test(c)
+            ? 0.8
+            : cp < 128
+              ? 1.25
+              : (cp >= 0x2e80 && cp <= 0xa4cf) ||
+                  (cp >= 0xac00 && cp <= 0xd7af) ||
+                  (cp >= 0xf900 && cp <= 0xfaff) ||
+                  (cp >= 0x20000 && cp <= 0x3ffff)
+                ? 1.25
+                : cp >= 0xfb50 && cp <= 0xfdff
+                  ? 8
+                  : 2.5;
     }
     if (units + weight > max && line) {
       lines.push(line);
       line = '';
       units = 0;
     }
-    line += c;
+    line += segment;
     units += weight;
   }
   lines.push(line);
@@ -215,7 +238,7 @@ export function buildLedgerView(
           j === 0 ? r.debit : 0,
           j === 0 ? r.credit : 0,
           r.balance,
-        ),
+        ).replace('<tr>', `<tr data-ledger-line="${escapeHtml(r.id)}" data-fragment="${j}">`),
         debit: j === 0 ? r.debit : 0,
         credit: j === 0 ? r.credit : 0,
         balance: r.balance,
@@ -242,7 +265,7 @@ export function buildLedgerView(
     pages.push({
       labels: [`${model.account} 第 ${s.startPage + pages.length} 页`],
       entityIds: [],
-      html: `<section class="scaled">${title.map((t) => `<h2 class="single-line">${escapeHtml(t)}</h2>`).join('')}${metadata.map((t) => `<p class="single-line">${escapeHtml(t)}</p>`).join('')}<table><colgroup><col style="width:11%"><col style="width:11%"><col style="width:25%"><col style="width:15%"><col style="width:12%"><col style="width:12%"><col style="width:4%"><col style="width:10%"></colgroup><thead><tr>${['日期', '凭证字号', '摘要', extra, '借方', '贷方', '方向', '余额'].map((x) => `<th>${x}</th>`).join('')}</tr></thead><tbody>${start}${chunk.map((r) => r.html).join('')}${end}</tbody></table><footer>第 ${s.startPage + pages.length} 页&emsp;打印时间：${escapeHtml(at)}</footer></section>`,
+      html: `<section class="scaled">${title.map((t) => `<h2 class="single-line">${escapeHtml(t)}</h2>`).join('')}${metadata.map((t) => `<p class="single-line">${escapeHtml(t)}</p>`).join('')}<table><colgroup><col style="width:11%"><col style="width:11%"><col style="width:25%"><col style="width:15%"><col style="width:12%"><col style="width:12%"><col style="width:4%"><col style="width:10%"></colgroup><thead><tr>${['日期', '凭证字号', '摘要', extra, '借方', '贷方', '方向', '余额'].map((x) => `<th${x === '方向' ? ' class="ledger-direction"' : ''}>${x}</th>`).join('')}</tr></thead><tbody>${start}${chunk.map((r) => r.html).join('')}${end}</tbody></table><footer>第 ${s.startPage + pages.length} 页&emsp;打印时间：${escapeHtml(at)}</footer></section>`,
     });
   }
   return { title: model.title, pages, layout: s };
@@ -287,6 +310,6 @@ export function viewToPrintJob(
           `<article class="print-sheet" data-page="${p}"><div class="page-content">${view.pages[p - 1]!.html}</div></article>`,
       )
       .join(''),
-    css: `*{box-sizing:border-box} body{font-family:${s.font};font-size:${s.fontSize}pt;color:${s.color ? '#173f69' : '#000'}} .print-sheet{width:${g.width}mm;height:${g.height - 0.2}mm;padding:${s.margins.top}mm ${s.margins.right}mm ${s.margins.bottom}mm ${s.margins.left}mm;break-after:page;break-inside:avoid}.print-sheet:last-child{break-after:auto}.page-content{position:relative;left:${s.offsetX}mm;top:${s.offsetY}mm;width:${g.contentWidth}mm}.scaled{zoom:${s.scale / 100};width:100%}.voucher{box-sizing:border-box;break-inside:avoid} h2{font-size:1.25em;text-align:center;margin:0 0 2mm}p{margin:.5mm 0;font-size:.9em;line-height:1.45}.single-line{white-space:pre}th,td{padding:.5mm 1mm;height:${g.lineMm}mm;line-height:1.45;white-space:pre-wrap;vertical-align:top}th{white-space:nowrap}td.num{white-space:nowrap}.ledger-id{font-size:.65em}footer{margin-top:3mm;text-align:right;font-size:.85em}`,
+    css: `*{box-sizing:border-box} body{font-family:${s.font};font-size:${s.fontSize}pt;color:${s.color ? '#173f69' : '#000'}} .print-sheet{width:${g.width}mm;height:${g.height - 0.2}mm;padding:${s.margins.top}mm ${s.margins.right}mm ${s.margins.bottom}mm ${s.margins.left}mm;break-after:page;break-inside:avoid}.print-sheet:last-child{break-after:auto}.page-content{position:relative;left:${s.offsetX}mm;top:${s.offsetY}mm;width:${g.contentWidth}mm}.scaled{zoom:${s.scale / 100};width:100%}.voucher{box-sizing:border-box;break-inside:avoid} h2{font-size:1.25em;text-align:center;margin:0 0 2mm}p{margin:.5mm 0;font-size:.9em;line-height:1.45}.single-line{white-space:pre}th,td{padding:.5mm 1mm;height:${g.lineMm}mm;line-height:1.45;white-space:pre-wrap;vertical-align:top}th{white-space:nowrap}td.num{white-space:nowrap}.ledger-id{font-size:.65em}.ledger-direction{font-size:.7em}footer{margin-top:3mm;text-align:right;font-size:.85em}`,
   };
 }

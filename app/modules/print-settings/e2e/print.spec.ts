@@ -320,3 +320,35 @@ test('w_print_1 / w_print_2：非法范围不发送，空数据不出空白成�
   await page.getByLabel('页码范围', { exact: true }).fill('2');
   await actualPdf(page, context, 1);
 });
+test('w_pz_prn_1 实际字体检查失败时拦截 bridge、显示原因并清理 iframe', async ({
+  page,
+  request,
+}) => {
+  const book = await loginWithNewBook(page, request);
+  const [v] = await seedBook(book.bookId, [simple(1)]);
+  await installBridge(page);
+  await page.goto(`/m/print-settings/preview?voucherId=${v!.id}`);
+  await expect(page.getByTestId('page-count')).toHaveText('共 1 页');
+  await page.evaluate(() => {
+    const create = document.createElement.bind(document);
+    document.createElement = ((tag: string, options?: ElementCreationOptions) => {
+      const element = create(tag, options);
+      if (tag === 'iframe')
+        element.addEventListener('load', () => {
+          if (!element.classList.contains('cw-print-check')) return;
+          const doc = (element as HTMLIFrameElement).contentDocument!;
+          const style = create('style');
+          style.textContent = 'tbody td{font-size:80pt!important;padding:20mm!important}';
+          doc.head.appendChild(style);
+        });
+      return element;
+    }) as typeof document.createElement;
+  });
+  await page.getByRole('button', { name: 'PDF', exact: true }).click();
+  await expect(page.getByText(/打印内容超出纸张或凭证槽位/)).toBeVisible();
+  expect(
+    await page.evaluate(() => (window as unknown as { __printHtml?: string }).__printHtml),
+  ).toBeUndefined();
+  await expect(page.locator('.cw-print-check')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'PDF', exact: true })).toBeEnabled();
+});

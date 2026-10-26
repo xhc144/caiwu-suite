@@ -3,6 +3,7 @@ import { Alert, App, Button, Space } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 import {
   isDesktop,
+  assertRenderedPrintFits,
   layoutGeometry,
   parsePageRange,
   renderPrintDocument,
@@ -29,7 +30,8 @@ export default function Preview({
     [range, setRange] = useState(''),
     [scope, setScope] = useState('all'),
     [busy, setBusy] = useState(false),
-    [duplex, setDuplex] = useState(false);
+    [duplex, setDuplex] = useState(false),
+    [layoutError, setLayoutError] = useState<string | null>(null);
   const lock = useRef(false),
     abort = useRef<AbortController | null>(null);
   useEffect(() => () => abort.current?.abort(), []);
@@ -56,6 +58,10 @@ export default function Preview({
     });
   const output = async (pdf: boolean, which?: 'current' | 'all') => {
     if (lock.current) return;
+    if (layoutError) {
+      showError(new Error(layoutError));
+      return;
+    }
     lock.current = true;
     setBusy(true);
     abort.current = new AbortController();
@@ -112,6 +118,7 @@ export default function Preview({
   const doc = renderPrintDocument(viewToPrintJob(view, [current]));
   return (
     <section aria-label="打印预览">
+      {layoutError && <Alert type="error" title={layoutError} />}
       {g.warning && <Alert type="warning" title={g.warning} />}
       <Space wrap style={{ margin: '12px 0' }}>
         <Button disabled={current <= 1 || busy} onClick={() => setPage(current - 1)}>
@@ -192,17 +199,17 @@ export default function Preview({
             奇偶页分次打印（手动翻面）
           </label>
         )}
-        <Button disabled={busy} onClick={() => void output(false)}>
+        <Button disabled={busy || !!layoutError} onClick={() => void output(false)}>
           打印所选范围
         </Button>
-        <Button disabled={busy} onClick={() => void output(false, 'current')}>
+        <Button disabled={busy || !!layoutError} onClick={() => void output(false, 'current')}>
           打印本页
         </Button>
-        <Button disabled={busy} onClick={() => void output(false, 'all')}>
+        <Button disabled={busy || !!layoutError} onClick={() => void output(false, 'all')}>
           打印全部
         </Button>
         {canExport && (
-          <Button disabled={busy} onClick={() => void output(true)}>
+          <Button disabled={busy || !!layoutError} onClick={() => void output(true)}>
             PDF
           </Button>
         )}
@@ -221,6 +228,21 @@ export default function Preview({
           }}
         >
           <iframe
+            onLoad={(event) => {
+              const frame = event.currentTarget;
+              void (async () => {
+                try {
+                  const doc = frame.contentDocument;
+                  if (!doc) return;
+                  await doc.fonts?.ready;
+                  if (!frame.isConnected) return;
+                  assertRenderedPrintFits(doc);
+                  setLayoutError(null);
+                } catch (error) {
+                  setLayoutError(error instanceof Error ? error.message : String(error));
+                }
+              })();
+            }}
             title="当前打印页"
             sandbox="allow-same-origin"
             srcDoc={doc}

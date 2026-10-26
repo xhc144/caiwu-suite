@@ -3,3 +3,4 @@ export * from './layout';
 export * from './models';
 export * from './batch';
 export * from './template';
+export { assertRenderedPrintFits } from './preflight';

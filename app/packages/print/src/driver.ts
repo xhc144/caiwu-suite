@@ -1,3 +1,4 @@
+import { preflightPrintDocument } from './preflight';
 export type PageSize = 'A4' | 'A5' | 'B5' | { widthMm: number; heightMm: number };
 export interface PrintJob {
   title: string;
@@ -132,6 +133,7 @@ async function browserPrint(doc: string): Promise<void> {
 export async function printHtml(job: PrintJob): Promise<void> {
   return exclusive(async () => {
     const doc = renderPrintDocument(job);
+    if (doc.includes('class="print-sheet"')) await preflightPrintDocument(doc);
     if (window.caiwuDesktop) return window.caiwuDesktop.print(doc, { title: job.title });
     await browserPrint(doc);
   });
@@ -139,6 +141,7 @@ export async function printHtml(job: PrintJob): Promise<void> {
 export async function saveAsPdf(job: PrintJob): Promise<string | null> {
   return exclusive(async () => {
     const doc = renderPrintDocument(job);
+    if (doc.includes('class="print-sheet"')) await preflightPrintDocument(doc);
     if (window.caiwuDesktop)
       return window.caiwuDesktop.printToPdf(doc, {
         title: job.title,
