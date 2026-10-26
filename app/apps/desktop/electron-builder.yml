@@ -1,19 +1,28 @@
-# 安装包配置（初版，由桌面壳任务 M21 完善：图标、签名、自动更新、卸载保留数据等）。
+# 私有 NSIS 构建；签名与受信任更新分发渠道尚待接入。
 appId: com.caiwu.desktop
 productName: 财务软件
+executableName: caiwu-desktop
+artifactName: caiwu-desktop-${version}-${arch}-setup.${ext}
 directories:
   output: release
 files:
-  - dist/**
+  - dist/*.cjs
+  - dist/icon.ico
   - package.json
 extraResources:
   - from: ../web/dist
     to: web
 asarUnpack:
-  - '**/node_modules/better-sqlite3/**'
+  - '**/node_modules/better-sqlite3/**/*'
 npmRebuild: true
+nativeRebuilder: sequential
+afterPack: build/after-pack.cjs
+publish: null
 win:
-  target: nsis
+  icon: dist/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
 nsis:
   oneClick: false
   perMachine: false
@@ -21,3 +30,9 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   deleteAppDataOnUninstall: false
+  installerLanguages: [zh_CN]
+  language: '2052'
+  include: build/installer.nsh
+  runAfterFinish: false
+  shortcutName: 财务软件
+  uninstallDisplayName: 财务软件
