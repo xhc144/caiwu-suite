@@ -172,3 +172,44 @@ test('w_zc_dlz_1：105笔分页及大金额Excel保持完整整分', async ({ pa
   expect(sheet.getRow(111).getCell(8).value).toBe('89999999999998.96');
   expect(sheet.getRow(111).getCell(8).type).toBe(ExcelJS.ValueType.String);
 });
+
+test('w_zc_dlz：不支持参数URL经两种重置入口清除后可重新选择科目正常查询', async ({
+  page,
+  ledger,
+}) => {
+  const book = await loginWithNewBook(page, ledger.request, { startMonth: 7 });
+  await ledger.withBook(book.bookId, seedMultiBook);
+  for (const button of ['重置筛选', '重置']) {
+    const unsupported = new URLSearchParams({
+      currency: 'USD',
+      dims: '{"partner":1}',
+      accountTo: '499902',
+    });
+    await page.goto(
+      `${ledger.baseURL}/m/ledgers/multicolumn?account=4999&from=202607&to=202607&mode=net&${unsupported}`,
+    );
+    const panel = page.getByRole('tabpanel', { name: '多栏账' });
+    await expect(panel.getByText('筛选条件无效', { exact: true })).toBeVisible();
+    await panel.getByRole('button', { name: button, exact: true }).click();
+    await expect
+      .poll(() => {
+        const params = new URL(page.url()).searchParams;
+        return ['currency', 'dims', 'accountTo'].filter((key) => params.has(key));
+      })
+      .toEqual([]);
+    await expect(
+      panel.getByText('请选择含下级科目的上级科目后查询', { exact: true }),
+    ).toBeVisible();
+    const account = panel.getByRole('combobox', { name: /上级科目/ });
+    await account.fill('4999');
+    await account.press('Enter');
+    await panel.getByRole('button', { name: /查询$/ }).click();
+    await expect(panel.getByRole('row', { name: /本月小计/ })).toContainText('58.00');
+    await expect(panel.getByText('筛选条件无效', { exact: true })).toHaveCount(0);
+    expect(new URL(page.url()).searchParams.get('account')).toBe('4999');
+    await page.reload();
+    await expect(page.getByRole('row', { name: /本月小计/ })).toContainText('58.00');
+    for (const key of ['currency', 'dims', 'accountTo'])
+      expect(new URL(page.url()).searchParams.has(key)).toBe(false);
+  }
+});

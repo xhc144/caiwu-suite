@@ -25,7 +25,18 @@ import { MULTI_MODES, parseMultiUrl, type MultiQuery, type MultiRow } from '../m
 import { api } from './api';
 import './ledger.css';
 
-const defaults = { account: '', from: '', to: '', mode: '', includeEmpty: '', includeUnposted: '' };
+const defaults = {
+  account: '',
+  from: '',
+  to: '',
+  mode: '',
+  includeEmpty: '',
+  includeUnposted: '',
+  // 共享 useUrlFilters 保留未知键；本页重置须显式传空串删除这些已拒绝的筛选。
+  currency: '',
+  dims: '',
+  accountTo: '',
+};
 function useMultiFilters() {
   const location = useLocation();
   const [persisted, persist] = useUrlFilters(defaults);
