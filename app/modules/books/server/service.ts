@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, linkSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { linkSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { openDatabase, type RawDatabase } from '@caiwu/db';
@@ -16,7 +16,6 @@ import type { z } from 'zod';
 
 type Actor = { bookId: string; token: string; userId: number };
 type Target = z.input<typeof TargetSchema>;
-type DeleteResult = { ok: true; backupId: string; archiveId: string };
 type Ticket = {
   actor: string;
   targetId: string;
@@ -24,7 +23,6 @@ type Ticket = {
   name: string;
   expires: number;
   backupId: string;
-  result?: DeleteResult;
 };
 type State = { locks: Map<string, Promise<unknown>>; tickets: Map<string, Ticket> };
 const states = new WeakMap<AppRuntime, State>();
@@ -47,7 +45,6 @@ const problem = (
 export type FileHooks = {
   snapshot?: (raw: RawDatabase, file: string) => Promise<void>;
   beforePublish?: () => void;
-  afterArchive?: () => void;
 };
 
 function assertSnapshot(file: string, id: string) {
@@ -300,104 +297,35 @@ export function booksService(
     },
     async cancelDelete(ticket: string) {
       const t = s.tickets.get(ticket);
-      if (t?.actor === identity(actor) && !t.result) s.tickets.delete(ticket);
+      if (t?.actor === identity(actor)) s.tickets.delete(ticket);
       return { ok: true };
     },
-    async remove(raw: z.input<typeof DeleteSchema>): Promise<DeleteResult> {
+    async remove(raw: z.input<typeof DeleteSchema>): Promise<never> {
       const input = DeleteSchema.parse(raw);
       assertOther(input.targetId);
-      return serialize(input.targetId, async () => {
-        const t = s.tickets.get(input.ticket);
-        if (
-          !t ||
-          t.actor !== identity(actor) ||
-          t.targetId !== input.targetId ||
-          t.userCode !== input.userCode ||
-          t.expires < Date.now()
-        )
-          throw problem('BOOKS_CONFIRM_EXPIRED', '删除确认已失效', '请重新验证目标账套身份并备份');
-        if (input.confirmName !== t.name)
-          throw problem(
-            'BOOKS_CONFIRM_NAME',
-            '输入的账套名称不一致，尚未删除',
-            '请逐字输入确认页显示的目标账套名称',
-          );
-        if (t.result) return t.result;
-        const { book, info } = await target(input, 'books.delete');
-        if (info.name !== t.name)
-          throw problem(
-            'BOOKS_TARGET_CHANGED',
-            '目标名称已变更，尚未删除',
-            '请重新验证并备份后再确认',
-          );
-        const backupDir = path.join(app.dataDir, 'books-backups');
-        const finalBackup = `${input.targetId}-${randomUUID()}.caiwu`;
-        try {
-          await snapshot(book.raw, path.join(backupDir, finalBackup), input.targetId);
-        } catch {
-          throw problem('BOOKS_BACKUP_FAILED', '最终备份失败，账套未删除');
-        }
-        const trashDir = path.join(app.dataDir, 'books-trash');
-        try {
-          mkdirSync(trashDir, { recursive: true });
-        } catch {
-          throw problem(
-            'BOOKS_ARCHIVE_FAILED',
-            '恢复目录不可写，账套未删除',
-            '检查数据目录权限与空间后重试；自动备份已保留',
-          );
-        }
-        const archiveId = `${input.targetId}-${input.ticket}.caiwu`;
-        const archive = path.join(trashDir, archiveId);
-        const active = store.pathOf(input.targetId);
-        if (existsSync(archive))
-          throw problem(
-            'BOOKS_ARCHIVE_EXISTS',
-            '恢复目录中已有同名文件，尚未移动账套',
-            '请保留文件，重新发起删除',
-          );
-        let moved = false;
-        try {
-          if (book.raw.inTransaction)
-            throw problem(
-              'BOOKS_TARGET_BUSY',
-              '目标账套正在处理业务，尚未删除',
-              '请等待目标账套的操作完成后重试',
-            );
-          await store.close(input.targetId);
-          // close完成后的同步重命名不跨越await，防止本进程重新打开窗口。
-          renameSync(active, archive);
-          moved = true;
-          hooks.afterArchive?.();
-          await svc.tx(async (tsvc) => {
-            await tsvc.log.write({
-              action: 'books.delete',
-              summary: `账套「${info.name}」移入恢复目录`,
-              detail: { targetId: input.targetId, backupId: finalBackup, archiveId },
-            });
-          });
-          app.sessions.deleteForBook(input.targetId);
-          t.result = { ok: true, backupId: finalBackup, archiveId };
-          return t.result;
-        } catch {
-          if (moved) {
-            try {
-              renameSync(archive, active);
-            } catch {
-              throw problem(
-                'BOOKS_RECOVERY_REQUIRED',
-                '账套移动后回退失败，尚未确认删除成功',
-                `请保留 books-trash/${archiveId} 和 books-backups/${finalBackup}，联系管理员恢复；不要新建同编号文件`,
-              );
-            }
-          }
-          throw problem(
-            'BOOKS_DELETE_FAILED',
-            '删除未完成，账套已保留或移回活动目录',
-            '请刷新列表后重试，自动备份仍保留',
-          );
-        }
-      });
+      const t = s.tickets.get(input.ticket);
+      if (
+        !t ||
+        t.actor !== identity(actor) ||
+        t.targetId !== input.targetId ||
+        t.userCode !== input.userCode ||
+        t.expires < Date.now()
+      )
+        throw problem('BOOKS_CONFIRM_EXPIRED', '删除预览已失效', '请重新验证目标账套身份并备份');
+      if (input.confirmName !== t.name)
+        throw problem(
+          'BOOKS_CONFIRM_NAME',
+          '输入的账套名称不一致，账套未删除',
+          '请核对预览中的目标账套名称；当前版本仅支持验证身份和备份',
+        );
+      // 本模块无法排空其它模块的在途请求或其它进程的SQLite连接。
+      // 无条件阻止执行；不再访问目标DB、不关闭句柄、不移动主文件/WAL，也不使会话失效。
+      // 恢复执行前必须由共享层提供覆盖认证、打开、迁移、读写请求和其它进程的维护锁。
+      throw problem(
+        'BOOKS_DELETE_UNAVAILABLE',
+        '删除执行暂不可用，账套未删除',
+        '当前无法保证其它窗口或进程已停止写入；为保护数据，仅保留身份验证、备份和预览。已有备份会保留，请继续使用原账套。',
+      );
     },
   };
 }

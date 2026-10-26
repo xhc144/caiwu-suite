@@ -20,7 +20,7 @@ import Wizard from './Wizard';
 
 type Credentials = { userCode: string; password: string; name?: string; confirmed?: boolean };
 type Operation = { mode: 'copy' | 'delete'; target: BookSummary; requestId: string };
-type Prepared = { ticket: string; backupId: string; book: BookInfo; credentials: Credentials };
+type Prepared = { ticket: string; backupId: string; book: BookInfo };
 
 import { useBookNavigation } from './useBookNavigation';
 
@@ -34,7 +34,6 @@ export default function ManagePage() {
   const [creating, setCreating] = useState(false);
   const [operation, setOperation] = useState<Operation | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
-  const [confirmName, setConfirmName] = useState('');
   const [form] = Form.useForm<Credentials>();
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: coreApi.books.list.queryKey() });
@@ -50,24 +49,13 @@ export default function ManagePage() {
     }),
   );
   const prepare = useMutation(api.prepareDelete.mutationOptions());
-  const remove = useMutation(
-    api.remove.mutationOptions({
-      onSuccess: (result) => {
-        notify.success(`账套已移入恢复目录，备份编号：${result.backupId}`);
-        setOperation(null);
-        setPrepared(null);
-        refresh();
-      },
-    }),
-  );
   const cancel = useMutation(api.cancelDelete.mutationOptions());
-  const busy = copy.isPending || prepare.isPending || remove.isPending;
+  const busy = copy.isPending || prepare.isPending;
   const close = () => {
     if (busy) return;
     if (prepared) cancel.mutate({ ticket: prepared.ticket });
     setOperation(null);
     setPrepared(null);
-    setConfirmName('');
     form.resetFields();
   };
   const begin = (mode: Operation['mode'], target: BookSummary) => {
@@ -80,12 +68,11 @@ export default function ManagePage() {
     });
     setOperation({ mode, target, requestId: crypto.randomUUID() });
     setPrepared(null);
-    setConfirmName('');
   };
   return (
     <PageContainer
       title="账套管理"
-      subtitle="复制和删除均需目标账套的有效身份；每套账数据独立"
+      subtitle="复制及删除预览需验证目标账套身份；当前版本不执行删除"
       extra={
         <Button type="primary" onClick={() => setCreating(true)}>
           新建账套
@@ -132,7 +119,7 @@ export default function ManagePage() {
                     disabled={b.id === session.bookId}
                     onClick={() => begin('delete', b)}
                   >
-                    删除
+                    删除预览
                   </Button>
                 )}
               </Space>
@@ -141,7 +128,7 @@ export default function ManagePage() {
         ]}
       />
       <Typography.Paragraph type="secondary">
-        当前账套不能删除，请先切换并登录另一个账套。删除保留自动备份和恢复目录文件，不永久清除数据。凭证账册设置与自动备份设置由对应模块提供。
+        删除执行暂不可用：当前无法保证其它窗口或进程已停止写入。仅支持目标身份验证、自动备份与预览，不会移动或删除账套、关闭目标连接或使会话失效。
       </Typography.Paragraph>
       {creating && (
         <Wizard
@@ -155,7 +142,7 @@ export default function ManagePage() {
       )}
       <Modal
         open={!!operation}
-        title={operation?.mode === 'copy' ? '复制账套' : '删除账套：身份验证与自动备份'}
+        title={operation?.mode === 'copy' ? '复制账套' : '删除预览：身份验证与自动备份'}
         onCancel={close}
         maskClosable={false}
         footer={null}
@@ -196,7 +183,7 @@ export default function ManagePage() {
                     });
                   else
                     prepare.mutate(input, {
-                      onSuccess: (p) => setPrepared({ ...p, credentials: v }),
+                      onSuccess: (p) => setPrepared(p),
                     });
                 }}
               >
@@ -253,37 +240,15 @@ export default function ManagePage() {
               <Space orientation="vertical" style={{ marginTop: 16, width: '100%' }}>
                 <Alert
                   type="warning"
-                  title="自动备份成功，请再次确认"
-                  description={`备份编号：${prepared.backupId}。删除将移出活动目录，并使目标账套的全部登录会话失效；恢复文件会保留。`}
-                />
-                <label htmlFor="books-delete-confirm">
-                  逐字输入目标账套名称：{prepared.book.name}
-                </label>
-                <Input
-                  id="books-delete-confirm"
-                  value={confirmName}
-                  onChange={(e) => setConfirmName(e.target.value)}
+                  title="自动备份成功；删除执行暂不可用"
+                  description={`备份编号：${prepared.backupId}。当前账套未删除，其它窗口和会话可继续使用。为保护仍在写入的数据，本版本不能移动或删除账套。`}
                 />
                 <Space>
                   <Button onClick={close} disabled={busy}>
-                    取消删除
+                    关闭预览
                   </Button>
-                  <Button
-                    danger
-                    type="primary"
-                    loading={remove.isPending}
-                    disabled={confirmName !== prepared.book.name}
-                    onClick={() =>
-                      remove.mutate({
-                        targetId: prepared.book.id,
-                        ticket: prepared.ticket,
-                        userCode: prepared.credentials.userCode,
-                        password: prepared.credentials.password ?? '',
-                        confirmName,
-                      })
-                    }
-                  >
-                    确认删除并保留备份
+                  <Button danger disabled>
+                    删除暂不可用
                   </Button>
                 </Space>
               </Space>

@@ -183,7 +183,7 @@ test('w_tzjl_1 / w_xt_tz_find：取消向导零半成品、无结果搜索、双
   await expect(page).toHaveURL(new RegExp(`/login/${b.id}$`));
 });
 
-test('w_tzjl_2 / w_tzjl_kl：管理界面真实复制、目标口令拦截、备份后取消与安全删除', async ({
+test('w_tzjl_2 / w_tzjl_kl：管理界面真实复制、目标口令拦截、备份预览与删除执行阻断', async ({
   page,
   request,
 }) => {
@@ -207,7 +207,7 @@ test('w_tzjl_2 / w_tzjl_kl：管理界面真实复制、目标口令拦截、备
   await expect(
     page
       .getByRole('row', { name: new RegExp(actor.name) })
-      .getByRole('button', { name: '删除', exact: true }),
+      .getByRole('button', { name: '删除预览', exact: true }),
   ).toBeDisabled();
   const sourceRow = page.getByRole('row', { name: new RegExp(source.name) });
   await sourceRow.getByRole('button', { name: '复制', exact: true }).click();
@@ -233,28 +233,31 @@ test('w_tzjl_2 / w_tzjl_kl：管理界面真实复制、目标口令拦截、备
     password: 'target-pass',
   });
   const prepare = async () => {
-    await copyRow.getByRole('button', { name: '删除', exact: true }).click();
-    dialog = page.getByRole('dialog', { name: '删除账套：身份验证与自动备份', exact: true });
+    await copyRow.getByRole('button', { name: '删除预览', exact: true }).click();
+    dialog = page.getByRole('dialog', { name: '删除预览：身份验证与自动备份', exact: true });
     await dialog.getByLabel('目标用户代码').fill('admin');
     await dialog.getByLabel('目标当前密码').fill('target-pass');
     await dialog.getByRole('button', { name: '验证并自动备份' }).click();
-    await expect(dialog.getByText('自动备份成功，请再次确认', { exact: true })).toBeVisible();
+    await expect(dialog.getByText('自动备份成功；删除执行暂不可用', { exact: true })).toBeVisible();
   };
   await prepare();
-  await dialog.getByRole('button', { name: '取消删除', exact: true }).click();
+  await dialog.getByRole('button', { name: '关闭预览', exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(copyRow).toBeVisible();
   await prepare();
-  await dialog.getByLabel(`逐字输入目标账套名称：${copyName}`).fill('错误名称');
-  await expect(dialog.getByRole('button', { name: '确认删除并保留备份' })).toBeDisabled();
-  await dialog.getByLabel(`逐字输入目标账套名称：${copyName}`).fill(copyName);
-  await dialog.getByRole('button', { name: '确认删除并保留备份' }).click();
+  await expect(dialog.getByRole('button', { name: '删除暂不可用', exact: true })).toBeDisabled();
+  await expect(dialog).toContainText('当前账套未删除');
+  await dialog.getByRole('button', { name: '关闭预览', exact: true }).click();
   await expect(dialog).toHaveCount(0);
-  await expect(copyRow).toHaveCount(0);
+  await expect(copyRow).toBeVisible();
   await expect(sourceRow).toBeVisible();
-  await expect(
-    callApi(request, 'core.auth.me', undefined, { token: targetSession.token }),
-  ).rejects.toThrow(/登录/);
+  expect(
+    (
+      await callApi<{ book: { id: string } }>(request, 'core.auth.me', undefined, {
+        token: targetSession.token,
+      })
+    ).book.id,
+  ).toBe(copied.id);
   expect(
     (await callApi<BookSummary[]>(request, 'core.books.list')).some((b) => b.id === source.id),
   ).toBe(true);

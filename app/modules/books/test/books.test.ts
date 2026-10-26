@@ -1,3 +1,4 @@
+import Database from 'better-sqlite3';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -267,7 +268,7 @@ describe('w_tzjl_2 / w_tzjl_kl 复制', () => {
   });
 });
 
-describe('w_tzjl / w_tzjl_kl 安全删除', () => {
+describe('w_tzjl / w_tzjl_kl 删除预览与执行阻断', () => {
   it('不能删除当前正在使用账套，并给切换下一步', async () => {
     await expect(
       app.call(booksServer).prepareDelete(auth(app.book, { password: 'admin' })),
@@ -331,57 +332,121 @@ describe('w_tzjl / w_tzjl_kl 安全删除', () => {
     expect(app.runtime.bookStore.exists(b.id)).toBe(true);
     expect(app.runtime.sessions.get(login.token)).not.toBeNull();
   });
-  it('最终快照失败不删除，移动后故障补偿回原文件，可重试成功且目标全部会话失效', async () => {
+  it('w_tzjl 正确票据、名称与身份仍拒绝执行，重试也不关闭或移动账套', async () => {
     const b = await create();
     const login = await app
       .core(null)
       .auth.login({ bookId: b.id, userCode: 'admin', password: 'target-pass' });
-    let failBackup = false;
-    let failMove = false;
-    const svc = await service({
-      snapshot: async (raw, file) => {
-        if (failBackup) throw new Error('backup');
-        await raw.backup(file);
-      },
-      afterArchive: () => {
-        if (failMove) throw new Error('move');
-      },
-    });
-    const p = await svc.prepareDelete(auth(b));
-    const input = { ...auth(b), ticket: p.ticket, confirmName: b.name };
-    failBackup = true;
-    await expect(svc.remove(input)).rejects.toThrow(/备份失败/);
-    expect(app.runtime.bookStore.exists(b.id)).toBe(true);
-    failBackup = false;
-    failMove = true;
-    await expect(svc.remove(input)).rejects.toThrow(/未完成/);
-    expect(app.runtime.bookStore.exists(b.id)).toBe(true);
-    expect(app.runtime.sessions.get(login.token)).not.toBeNull();
-    failMove = false;
-    const result = await svc.remove(input);
-    expect(result.ok).toBe(true);
-    expect(app.runtime.bookStore.exists(b.id)).toBe(false);
-    expect(app.runtime.sessions.get(login.token)).toBeNull();
-    expect(existsSync(path.join(app.runtime.dataDir, 'books-trash', result.archiveId))).toBe(true);
-    expect(existsSync(path.join(app.runtime.dataDir, 'books-backups', result.backupId))).toBe(true);
-    expect(await svc.remove(input)).toEqual(result);
-    await expect(app.core(login.token).auth.me()).rejects.toThrow(/登录/);
+    const api = app.call(booksServer);
+    const p = await api.prepareDelete(auth(b));
+    const opened = app.runtime.bookStore.open(b.id);
+    const before = files();
+    const backups = readdirSync(path.join(app.runtime.dataDir, 'books-backups'));
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await expect(
+        api.remove({ ...auth(b), ticket: p.ticket, confirmName: b.name }),
+      ).rejects.toMatchObject({ cause: { data: { code: 'BOOKS_DELETE_UNAVAILABLE' } } });
+    }
+    expect(files()).toEqual(before);
+    expect(readdirSync(path.join(app.runtime.dataDir, 'books-backups'))).toEqual(backups);
+    expect(app.runtime.bookStore.open(b.id)).toBe(opened);
+    expect(opened.raw.open).toBe(true);
+    expect((await app.core(login.token).auth.me()).book.id).toBe(b.id);
+    expect(existsSync(path.join(app.runtime.dataDir, 'books-trash'))).toBe(false);
+    expect((await app.svc.log.list()).some((row) => row.action === 'books.delete')).toBe(false);
   });
-  it('w_tzjl 删除审计事务失败时移回原文件，备份保留且可重试', async () => {
+  it('w_tzjl 两个真实WAL连接：备份后另一连接在途写入，拒绝删除后晚提交仍可读', async () => {
     const b = await create();
     const api = app.call(booksServer);
     const p = await api.prepareDelete(auth(b));
-    const raw = app.runtime.bookStore.open(app.book.id).raw;
-    raw.exec(
-      "CREATE TRIGGER books_test_delete_log BEFORE INSERT ON operation_log WHEN NEW.action='books.delete' BEGIN SELECT RAISE(ABORT, 'audit failure'); END;",
-    );
-    await expect(api.remove({ ...auth(b), ticket: p.ticket, confirmName: b.name })).rejects.toThrow(
-      /未完成/,
-    );
-    expect(app.runtime.bookStore.exists(b.id)).toBe(true);
-    expect(existsSync(path.join(app.runtime.dataDir, 'books-backups', p.backupId))).toBe(true);
-    raw.exec('DROP TRIGGER books_test_delete_log');
-    expect((await api.remove({ ...auth(b), ticket: p.ticket, confirmName: b.name })).ok).toBe(true);
+    const opened = app.runtime.bookStore.open(b.id);
+    const writer = new Database(app.runtime.bookStore.pathOf(b.id), { fileMustExist: true });
+    const backup = new Database(path.join(app.runtime.dataDir, 'books-backups', p.backupId), {
+      readonly: true,
+      fileMustExist: true,
+    });
+    try {
+      expect(writer.pragma('journal_mode', { simple: true })).toBe('wal');
+      writer.pragma('wal_autocheckpoint = 0');
+      writer.exec('BEGIN IMMEDIATE');
+      writer
+        .prepare(
+          "INSERT INTO book_setting(scope,key,value,updated_at) VALUES('books','late-wal',?,?)",
+        )
+        .run(JSON.stringify('备份后的晚提交'), new Date().toISOString());
+      expect(writer.inTransaction).toBe(true);
+      expect(opened.raw.inTransaction).toBe(false);
+      await expect(
+        api.remove({ ...auth(b), ticket: p.ticket, confirmName: b.name }),
+      ).rejects.toThrow(/删除执行暂不可用/);
+      expect(app.runtime.bookStore.open(b.id)).toBe(opened);
+      expect(existsSync(opened.file)).toBe(true);
+      expect(existsSync(path.join(app.runtime.dataDir, 'books-trash'))).toBe(false);
+      writer.exec('COMMIT');
+      // 备份不包含快照后的提交，不能据其存在推断可以安全移动活动库。
+      expect(
+        backup
+          .prepare("SELECT value FROM book_setting WHERE scope='books' AND key='late-wal'")
+          .get(),
+      ).toBeUndefined();
+      expect(await (await targetSvc(b)).settings.get('late-wal', '')).toBe('备份后的晚提交');
+      expect(opened.raw.pragma('quick_check', { simple: true })).toBe('ok');
+      const copied = await api.copy(copyInput(b));
+      expect(await (await targetSvc(copied)).settings.get('late-wal', '')).toBe('备份后的晚提交');
+    } finally {
+      if (writer.inTransaction) writer.exec('ROLLBACK');
+      backup.close();
+      writer.close();
+    }
+  });
+  it('w_tzjl 同进程真实在途事务：删除立即被阻止，不等待事务排空或触发close/reopen窗口', async () => {
+    const b = await create();
+    const api = app.call(booksServer);
+    const p = await api.prepareDelete(auth(b));
+    const opened = app.runtime.bookStore.open(b.id);
+    const login = await app
+      .core(null)
+      .auth.login({ bookId: b.id, userCode: 'admin', password: 'target-pass' });
+    const targetService = await targetSvc(b);
+    let started!: () => void;
+    let release!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      started = resolve;
+    });
+    const pause = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const inFlight = targetService.tx(async (tsvc) => {
+      await tsvc.settings.set('in-flight', '在途事务正常提交');
+      started();
+      await pause;
+    });
+    await ready;
+    expect(opened.raw.inTransaction).toBe(true);
+    const response = api.remove({ ...auth(b), ticket: p.ticket, confirmName: b.name });
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await expect(
+        Promise.race([
+          response,
+          new Promise<never>((_, reject) => {
+            timeout = setTimeout(() => reject(new Error('删除接口等待在途事务，未及时阻止')), 2000);
+          }),
+        ]),
+      ).rejects.toThrow(/删除执行暂不可用/);
+      expect(app.runtime.bookStore.open(b.id)).toBe(opened);
+      expect(opened.raw.open).toBe(true);
+      expect(opened.raw.inTransaction).toBe(true);
+      expect(app.runtime.sessions.get(login.token)).not.toBeNull();
+      expect(existsSync(path.join(app.runtime.dataDir, 'books-trash'))).toBe(false);
+    } finally {
+      clearTimeout(timeout);
+      release();
+      await inFlight;
+      await response.catch(() => {});
+    }
+    expect(await targetService.settings.get('in-flight', '')).toBe('在途事务正常提交');
+    expect((await app.core(login.token).auth.me()).book.id).toBe(b.id);
   });
   it('w_tzjl 无法建立备份目录时返回中文业务错误且零破坏', async () => {
     const b = await create();
@@ -389,19 +454,18 @@ describe('w_tzjl / w_tzjl_kl 安全删除', () => {
     await expect(app.call(booksServer).prepareDelete(auth(b))).rejects.toThrow(/备份失败/);
     expect(app.runtime.bookStore.exists(b.id)).toBe(true);
   });
-  it('确认时重新验证密码和目标名称；备份后改密或改名则不删除', async () => {
+  it('w_tzjl 备份后改密或改名仍不能执行删除；重新预览要求当前身份', async () => {
     const b = await create();
     const api = app.call(booksServer);
     const p = await api.prepareDelete(auth(b));
     const svc = await targetSvc(b);
     await svc.users.setPassword(1, 'new-pass');
-    await expect(api.remove({ ...auth(b), ticket: p.ticket, confirmName: b.name })).rejects.toThrow(
-      /密码/,
-    );
     await svc.db.updateTable('book_info').set({ name: '已改名' }).where('id', '=', 1).execute();
-    await expect(
-      api.remove({ ...auth(b, { password: 'new-pass' }), ticket: p.ticket, confirmName: b.name }),
-    ).rejects.toThrow(/名称已变更/);
+    await expect(api.remove({ ...auth(b), ticket: p.ticket, confirmName: b.name })).rejects.toThrow(
+      /删除执行暂不可用/,
+    );
+    await expect(api.prepareDelete(auth(b))).rejects.toThrow(/密码/);
+    expect((await api.prepareDelete(auth(b, { password: 'new-pass' }))).book.name).toBe('已改名');
     expect(app.runtime.bookStore.exists(b.id)).toBe(true);
   });
 });
