@@ -45,13 +45,19 @@ export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
     raw.pragma('synchronous = NORMAL');
   }
   const db = new Kysely<DB>({ dialect: new GuardedSqliteDialect({ database: raw }) });
-  return {
-    raw,
-    db,
-    async close() {
-      await db.destroy();
-    },
+  // raw 在 Kysely 驱动初始化前已经打开；destroy() 此时可能不会释放它。
+  // 两个公开关闭入口共用同一 Promise，调用者必须等待真实原生句柄关闭。
+  const destroy = db.destroy.bind(db);
+  let closing: Promise<void> | undefined;
+  const close = () => {
+    closing ??= (async () => {
+      await destroy();
+      if (raw.open) raw.close();
+    })();
+    return closing;
   };
+  db.destroy = close;
+  return { raw, db, close };
 }
 
 /**
