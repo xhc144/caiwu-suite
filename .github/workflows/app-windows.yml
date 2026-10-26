@@ -15,6 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 全仓失败保持为失败；打包和桌面 QA 独立收集证据，不因网页检查延误而跳过。
   nsis:
     if: github.event.repository.private == true
     runs-on: windows-2022
@@ -48,16 +49,6 @@ jobs:
         run: |
           pnpm exec vitest run apps/desktop/src/test/shutdown.test.ts 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-shutdown-node.log"
           exit $LASTEXITCODE
-      - name: 全仓检查
-        id: check
-        # 保留失败，独立构建/安装回归继续收集结果；末尾显式使 job 失败，不能掩盖 check。
-        continue-on-error: true
-        run: pnpm check
-      - name: 全仓检查失败时仍执行独立网页 E2E
-        id: web-e2e
-        if: steps.check.outcome == 'failure'
-        continue-on-error: true
-        run: pnpm e2e
       - name: 构建网页和桌面
         id: build
         run: pnpm desktop:build
@@ -102,8 +93,6 @@ jobs:
           @(
             'install=${{ steps.install.outcome }}',
             'shutdown-node=${{ steps.shutdown-node.outcome }}',
-            'check=${{ steps.check.outcome }}',
-            'independent-web-e2e=${{ steps.web-e2e.outcome }}',
             'build=${{ steps.build.outcome }}',
             'native=${{ steps.native.outcome }}',
             'nsis=${{ steps.package.outcome }}',
@@ -121,6 +110,61 @@ jobs:
             ${{ runner.temp }}/m21-package.log
             ${{ runner.temp }}/m21-desktop-qa.log
             ${{ runner.temp }}/m21-qa/config/logs/desktop.log*
+          if-no-files-found: ignore
+          retention-days: 3
+
+  checks:
+    if: github.event.repository.private == true
+    runs-on: windows-2022
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+        shell: pwsh
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      # 仅影响本 job 的 Git 检出；保留仓库 LF，避免 Windows autocrlf 使全仓格式检查误报。
+      GIT_CONFIG_COUNT: "1"
+      GIT_CONFIG_KEY_0: core.autocrlf
+      GIT_CONFIG_VALUE_0: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24.19.0"
+      - name: 安装冻结依赖和浏览器
+        id: install
+        run: |
+          corepack enable
+          pnpm --version
+          pnpm install --frozen-lockfile
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm exec playwright install chromium
+      - name: 全仓检查
+        id: check
+        # 保留失败，独立构建/安装回归继续收集结果；末尾显式使 job 失败，不能掩盖 check。
+        continue-on-error: true
+        run: pnpm check
+      - name: 全仓检查失败时仍执行独立网页 E2E
+        id: web-e2e
+        if: steps.check.outcome == 'failure'
+        continue-on-error: true
+        run: pnpm e2e
+      - name: 保存去敏检查步骤状态
+        if: always()
+        run: |
+          @(
+            'install=${{ steps.install.outcome }}',
+            'check=${{ steps.check.outcome }}',
+            'independent-web-e2e=${{ steps.web-e2e.outcome }}'
+          ) | Set-Content -Encoding utf8 "$env:RUNNER_TEMP/m21-check-steps.log"
+      - name: 保存私有检查状态
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caiwu-desktop-check-status
+          path: ${{ runner.temp }}/m21-check-steps.log
           if-no-files-found: ignore
           retention-days: 3
       - name: 保留全仓检查的失败结论
