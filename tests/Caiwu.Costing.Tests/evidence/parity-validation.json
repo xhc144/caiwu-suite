@@ -96,5 +96,5 @@
   "sql_anywhere_original_ledger": "not-tested",
   "core_sqlite_adapter_transaction": "not-tested",
   "original_executable_run": false,
-  "source_revision": "See implementation commit referenced in inventory handoff; working-tree tests were run before that commit."
+  "source_revision": "b5919e4512f2cbbc9a1d04b96776fb072bcc4261"
 }

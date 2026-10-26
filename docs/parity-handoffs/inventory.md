@@ -2,7 +2,8 @@
 
 状态：2026-10-26，单月领域切片及契约 adapter 已验证；真实 Windows/原账套未验；基线 main `3b0c59b02d8941c32ac176309555c03c94bb4213`。
 分支：`codex/parity-inventory-20261026`。独立 checkout：`/workspace/caiwu-inventory`。
-当前 SHA（早期交接前）：`3b0c59b02d8941c32ac176309555c03c94bb4213`；后续以本分支 HEAD 为准。
+早期 HANDOFF 提交：`2b0d24eeff54d5d2689d6bd7c54866111e89ec46`。已验证实现 SHA：`b5919e4512f2cbbc9a1d04b96776fb072bcc4261`；之后仅交接/证据文档更新以分支 HEAD 为准。
+草稿 PR：[xhc144/caiwu-suite#51](https://github.com/xhc144/caiwu-suite/pull/51)。没有合并 main。
 
 ## 所有权与来源
 
