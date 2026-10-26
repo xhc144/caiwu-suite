@@ -5,9 +5,15 @@ import manifest from '../manifest';
 import { FilesSchema, PrepareSchema, TABLES, TABLE_NAMES } from '../shared';
 import { syntheticTables } from '../sample';
 import { importService } from './service';
+import { NativeRequestSchema } from '../native';
+import { nativePreflight } from './native-preflight';
 
 const m = moduleKit(manifest);
 export const importRouter = m.router({
+  nativePreflight: m.procedure
+    .meta({ permission: 'legacy-import.prepare' })
+    .input(NativeRequestSchema)
+    .mutation(({ input }) => nativePreflight(input)),
   template: m.procedure.meta({ permission: 'legacy-import.prepare' }).query(async () => {
     const workbook = new ExcelJS.Workbook();
     const tables = syntheticTables();

@@ -3,7 +3,7 @@ import { defineManifest } from '@caiwu/core';
 export default defineManifest({
   id: 'legacy-import',
   name: '标准化账务导入',
-  description: '向新空账导入经过核对的 Excel、CSV 或 TSV；不支持原版 bak。',
+  description: '标准化新空账导入与原生凭证结构只读预检；不支持原版 bak 迁移。',
   products: 'all',
   permissions: [
     { id: 'legacy-import.view', name: '查看导入与来源' },
@@ -17,6 +17,13 @@ export default defineManifest({
       path: '/',
       permission: 'legacy-import.view',
       keywords: ['原版', '导入', 'Excel', 'CSV'],
+    },
+    {
+      group: 'system',
+      title: '原生凭证结构预检',
+      path: '/native',
+      permission: 'legacy-import.view',
+      keywords: ['原版', '凭证', '结构预检'],
     },
   ],
   sources: [{ type: 'batch', name: '导入来源', path: '/?id={id}' }],
