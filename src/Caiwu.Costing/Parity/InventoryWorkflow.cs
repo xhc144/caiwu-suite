@@ -19,7 +19,13 @@ public static class InventoryWorkflow
         Version(book, expectedRevision); Unlocked(book); ValidateProduct(book, product); Account(product.InventoryAccount, accounts);
         if (!string.IsNullOrEmpty(product.SalesAccount)) Account(product.SalesAccount, accounts);
         var old = book.Products.SingleOrDefault(p => p.Code == product.Code);
-        if (old is not null) product = product with { OriginalRows = Preserve(old.OriginalRows, product.OriginalRows) };
+        if (old is not null)
+        {
+            Require(old.InventoryAccount == product.InventoryAccount ||
+                !ProductHasActivity(book, product.Code),
+                "产品已有期初、单据或盘点记录，不能直接修改库存科目；须经明确的重分类处理。");
+            product = product with { OriginalRows = Preserve(old.OriginalRows, product.OriginalRows) };
+        }
         return Commit(book with { Products = ReadOnly(book.Products.Where(p => p.Code != product.Code).Append(Freeze(product))) }, actor, "product.save", product.Code);
     }
     public static InventoryBook DeleteProduct(InventoryBook book, string productCode, string actor, long expectedRevision)
@@ -48,7 +54,8 @@ public static class InventoryWorkflow
             Editable(old);
             Require(old.Kind == document.Kind, "不能改变已保存单据的业务类别。");
             // Retain removed detail rows too: raw rows are provenance, not a rewrite instruction.
-            document = document with { OriginalRows = Preserve(old.OriginalRows.Concat(old.Lines.SelectMany(l => l.OriginalRows)).ToArray(), document.OriginalRows) };
+            var removedRows = old.Lines.Where(l => !document.Lines.Any(next => next.Sequence == l.Sequence)).SelectMany(l => l.OriginalRows);
+            document = document with { OriginalRows = Preserve(old.OriginalRows.Concat(removedRows), document.OriginalRows) };
             document = document with { Lines = ReadOnly(document.Lines.Select(l => l with
             { OriginalRows = Preserve(old.Lines.SingleOrDefault(x => x.Sequence == l.Sequence)?.OriginalRows ?? [], l.OriginalRows) })) };
         }
@@ -185,6 +192,19 @@ public static class InventoryWorkflow
         Require(d.Reviewer is null, "此单据已经审核，不能修改或删除！");
         Require(d.VoucherLinks.Count == 0, "此单据已经生成凭证，不能修改或删除！");
     }
-    private static IReadOnlyList<OriginalRow> Preserve(IEnumerable<OriginalRow> old, IEnumerable<OriginalRow> incoming) =>
-        Rows(old.Concat(incoming).DistinctBy(r => Fingerprint(r)).ToArray());
+    // Preserve every occurrence in the saved bag and append only unmatched incoming occurrences.
+    // Existing rows keep their order; an unchanged edit must neither deduplicate nor multiply them.
+    private static IReadOnlyList<OriginalRow> Preserve(IEnumerable<OriginalRow> old, IEnumerable<OriginalRow> incoming)
+    {
+        var saved = Rows(old.ToArray());
+        var remaining = saved.GroupBy(r => Fingerprint(r)).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
+        var result = saved.ToList();
+        foreach (var row in Rows(incoming.ToArray()))
+        {
+            var key = Fingerprint(row);
+            if (remaining.TryGetValue(key, out var count) && count > 0) remaining[key] = count - 1;
+            else result.Add(row);
+        }
+        return ReadOnly(result);
+    }
 }

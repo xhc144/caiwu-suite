@@ -243,4 +243,132 @@ public sealed class InventoryParityTests
         Assert.Throws<CostingValidationException>(() => Plan(tampered, InventoryVoucherKind.IssueCost));
     }
 
+    [Theory]
+    [InlineData("product")]
+    [InlineData("opening")]
+    [InlineData("stocktake")]
+    [InlineData("header")]
+    [InlineData("detail")]
+    public void EditingPreservesOriginalDuplicateMultiplicityAndUnknownCells(string target)
+    {
+        var row = new OriginalRow("synthetic_raw", "same-row-identity", "variant-7", new Dictionary<string, OriginalCell>
+        {
+            ["unknown_column"] = new("char(40)", "未知原列  "),
+            ["nullable"] = new("char(10)", null),
+            ["binary"] = new("long binary", null, "AAEC/w==")
+        });
+        var b = New(); var d = Doc(InventoryDocumentKind.Receipt, "R1", 1, 10);
+        b = target switch
+        {
+            "product" => InventoryWorkflow.SaveProduct(b, b.Products[0] with { OriginalRows = [row, row] }, Accounts, "操作员", b.Revision),
+            "opening" => InventoryWorkflow.SaveOpening(b, new("01", "P01", 1, 10, [row, row]), "操作员", b.Revision),
+            "stocktake" => InventoryWorkflow.SaveStocktake(b, new("01", "P01", 0, [row, row]), "操作员", b.Revision),
+            "header" => Save(b, d with { OriginalRows = [row, row] }),
+            _ => Save(b, d with { Lines = [d.Lines[0] with { OriginalRows = [row, row] }] })
+        };
+        for (var i = 0; i < 3; i++)
+        {
+            b = target switch
+            {
+                "product" => InventoryWorkflow.SaveProduct(b, b.Products[0] with { Name = $"修改{i}" }, Accounts, "操作员", b.Revision),
+                "opening" => InventoryWorkflow.SaveOpening(b, b.Openings[0] with { Amount = 11 + i }, "操作员", b.Revision),
+                "stocktake" => InventoryWorkflow.SaveStocktake(b, b.Stocktakes[0] with { ActualQuantity = i }, "操作员", b.Revision),
+                _ => Save(b, b.Documents[0] with { Summary = $"修改摘要{i}" })
+            };
+            var rows = target switch
+            {
+                "product" => b.Products[0].OriginalRows,
+                "opening" => b.Openings[0].OriginalRows,
+                "stocktake" => b.Stocktakes[0].OriginalRows,
+                "header" => b.Documents[0].OriginalRows,
+                _ => b.Documents[0].Lines[0].OriginalRows
+            };
+            Assert.Equal(2, rows.Count);
+            Assert.All(rows, r =>
+            {
+                Assert.Equal("未知原列  ", r.Cells["unknown_column"].Value);
+                Assert.Null(r.Cells["nullable"].Value);
+                Assert.Equal("AAEC/w==", r.Cells["binary"].RawBytesBase64);
+            });
+            if (target == "detail") Assert.Empty(b.Documents[0].OriginalRows);
+        }
+    }
+    [Fact]
+    public void RemovingDetailArchivesDuplicateRawRowsOnceAndKeepsOrder()
+    {
+        var b = New(); var d = Doc(InventoryDocumentKind.Receipt, "R1", 1, 10);
+        var row = new OriginalRow("pjnr2", "same-row", "variant", new Dictionary<string, OriginalCell> { ["unknown"] = new("char(10)", "原值") });
+        var other = row with { Cells = new Dictionary<string, OriginalCell> { ["unknown"] = new("char(10)", "另一原值") } };
+        d = d with { Lines = [d.Lines[0], d.Lines[0] with { Sequence = 2, OriginalRows = [row, other, row] }] };
+        b = Save(b, d);
+        b = Save(b, b.Documents[0] with { Lines = [b.Documents[0].Lines[0]] });
+        for (var i = 0; i < 3; i++)
+        {
+            b = Save(b, b.Documents[0] with { Summary = $"摘要{i}" });
+            Assert.Equal(new[] { "原值", "另一原值", "原值" }, b.Documents[0].OriginalRows.Select(r => r.Cells["unknown"].Value));
+        }
+    }
+
+    [Fact]
+    public void ClaimedReceiptAndIssueKeepSameInventoryAccountAfterRejectedProductEdit()
+    {
+        var accounts = Accounts.Append(new("1406", true, true)).ToArray();
+        var b = Save(New(), Doc(InventoryDocumentKind.Receipt, "R1", 10, 100));
+        var receipt = Plan(b, InventoryVoucherKind.Receipt);
+        var receiptInventoryLine = receipt.Vouchers.Single().Lines.Single(l => l.AccountCode == "1405");
+        b = InventoryWorkflow.ClaimPlan(b, receipt, receipt.Vouchers.Single().SourceKey, Guid.NewGuid(), "制单员", b.Revision);
+        Assert.Throws<CostingValidationException>(() => InventoryWorkflow.SaveProduct(b,
+            b.Products[0] with { InventoryAccount = "1406" }, accounts, "制单员", b.Revision));
+        Assert.Equal("1405", b.Products[0].InventoryAccount);
+        b = Calculate(Save(b, Doc(InventoryDocumentKind.Sale, "S1", 10, 150)));
+        var issue = Plan(b, InventoryVoucherKind.IssueCost);
+        Assert.Equal(0, InventoryWorkflow.CurrentStock(b).Single().Quantity);
+        var issueInventoryLine = issue.Vouchers.Single().Lines.Single(l => l.AccountCode == "1405");
+        Assert.Equal(100, receiptInventoryLine.Debit);
+        Assert.Equal(receiptInventoryLine.Debit, issueInventoryLine.Credit);
+        Assert.DoesNotContain(issue.Vouchers.Single().Lines, l => l.AccountCode == "1406");
+    }
+    [Theory]
+    [InlineData("opening")]
+    [InlineData("document")]
+    [InlineData("stocktake")]
+    public void AnyExistingInventoryOccurrenceBlocksAccountChangeBeforeVoucherGeneration(string occurrence)
+    {
+        var b = New();
+        b = occurrence switch
+        {
+            "opening" => Opening(b, 1, 10),
+            "document" => Save(b, Doc(InventoryDocumentKind.Receipt, "R1", 1, 10)),
+            _ => InventoryWorkflow.SaveStocktake(b, new("01", "P01", 1, []), "盘点员", b.Revision)
+        };
+        Assert.Throws<CostingValidationException>(() => InventoryWorkflow.SaveProduct(b,
+            b.Products[0] with { InventoryAccount = "1406" }, Accounts.Append(new("1406", true, true)).ToArray(), "制单员", b.Revision));
+        Assert.Equal("1405", b.Products[0].InventoryAccount);
+    }
+    [Fact]
+    public void UnusedProductInventoryAccountCanStillBeCorrected()
+    {
+        var b = New();
+        b = InventoryWorkflow.SaveProduct(b, b.Products[0] with { InventoryAccount = "1406" },
+            Accounts.Append(new("1406", true, true)).ToArray(), "制单员", b.Revision);
+        Assert.Equal("1406", b.Products[0].InventoryAccount);
+    }
+
+    [Theory]
+    [InlineData(0, 2)]
+    [InlineData(1, 2)]
+    [InlineData(2, 2)]
+    [InlineData(3, 3)]
+    public void IncomingRawBagCannotReduceSavedMultiplicityOrMultiplyOnRepeatedEdits(int incomingCount, int expectedCount)
+    {
+        var row = new OriginalRow("pjnr1", "duplicate", "variant", new Dictionary<string, OriginalCell> { ["unknown"] = new("char(20)", "重复原行  ") });
+        var b = Save(New(), Doc(InventoryDocumentKind.Receipt, "R1", 1, 10) with { OriginalRows = [row, row] });
+        for (var i = 0; i < 3; i++)
+        {
+            b = Save(b, b.Documents[0] with { Summary = $"摘要{i}", OriginalRows = Enumerable.Repeat(row, incomingCount).ToArray() });
+            Assert.Equal(expectedCount, b.Documents[0].OriginalRows.Count);
+            Assert.All(b.Documents[0].OriginalRows, r => Assert.Equal("重复原行  ", r.Cells["unknown"].Value));
+        }
+    }
+
 }

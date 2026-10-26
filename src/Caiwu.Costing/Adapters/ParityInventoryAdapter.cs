@@ -54,13 +54,14 @@ public sealed class ParityInventoryAdapter : IInventoryBookStore
                 ?? throw new CostingValidationException("库存模块状态为空。");
             CostMath.Require(book.Id == bookId, "库存状态属于其他账套。");
             InventoryRules.Validate(book);
+            PeriodReady(book.Period, writable: false);
             return InventoryRules.Freeze(book);
         }
         catch (JsonException ex) { throw new CostingValidationException($"库存状态结构未知或无效，保留原始文档并停止覆盖：{ex.Message}"); }
     }
     public void Initialize(InventoryBook book)
     {
-        Ready(book.Id); InventoryRules.Validate(book);
+        Ready(book.Id); InventoryRules.Validate(book); PeriodReady(book.Period, writable: true);
         CostMath.Require(!snapshot.Modules.Where(m => m.ModuleId == ModuleId).SelectMany(m => m.Documents).Any(d => d.DocumentId == DocumentId(book.Id)),
             "库存模块已有状态，不能重新初始化。");
         submitted = true;
@@ -73,6 +74,11 @@ public sealed class ParityInventoryAdapter : IInventoryBookStore
         var current = Load(next.Id);
         if (current.Revision != expectedRevision || next.Revision != checked(expectedRevision + 1)) return false;
         InventoryRules.Validate(next);
+        CostMath.Require(next.Period == current.Period, "当前库存文档只承载一个月，不能通过保存替换期间或覆盖历史。");
+        PeriodReady(current.Period, writable: true);
+        CostMath.Require(!current.Products.Any(p => InventoryRules.ProductHasActivity(current, p.Code) &&
+            next.Products.Any(n => n.Code == p.Code && n.InventoryAccount != p.InventoryAccount)),
+            "产品已有库存发生，不能通过保存模块状态直接修改库存科目。");
         submitted = true;
         try
         {
@@ -87,7 +93,7 @@ public sealed class ParityInventoryAdapter : IInventoryBookStore
     public ModuleVoucherReceipt AcceptPlan(InventoryVoucherPlan plan, string sourceKey, Guid proposalId,
         string voucherKind, int? number, int attachmentCount)
     {
-        var book = Load(plan.BookId); InventoryVoucherPlanner.ValidateSource(book, plan);
+        var book = Load(plan.BookId); PeriodReady(book.Period, writable: true); InventoryVoucherPlanner.ValidateSource(book, plan);
         var voucher = plan.Vouchers.SingleOrDefault(v => v.SourceKey == sourceKey)
             ?? throw new CostingValidationException("凭证来源不在计划中。");
         // v1 VoucherLine has no auxiliary/currency/quantity schema. Preserve those rows but do not flatten them into GL.
@@ -113,6 +119,17 @@ public sealed class ParityInventoryAdapter : IInventoryBookStore
     {
         if (submitted) throw new CostingConcurrencyException("此编辑上下文已提交或结果需核实，请显式重新读取同一账套快照后再操作。");
         CostMath.Require(snapshot.Ledger.Book.Id == id, "库存操作与当前账套不一致，禁止跨账套保存。");
+        var ledger = snapshot.Ledger.Book;
+        CostMath.Require(ledger.FiscalYear is >= 1 and <= 9999 && ledger.StartMonth is >= 1 and <= 12 &&
+            ledger.ClosedThroughMonth >= ledger.StartMonth - 1 && ledger.ClosedThroughMonth <= 12,
+            "总账年度、启用月或结账期间无效，不能操作库存模块。");
+    }
+    private void PeriodReady(CostPeriod period, bool writable)
+    {
+        CostMath.Require(period.Year == snapshot.Ledger.Book.FiscalYear && period.Month >= snapshot.Ledger.Book.StartMonth,
+            "库存期间超出总账会计年度或启用月份。");
+        if (writable) CostMath.Require(period.Month > snapshot.Ledger.Book.ClosedThroughMonth,
+            "总账该期间已结账，不能初始化、保存库存或生成凭证。");
     }
     private static ModuleDocumentChange Change(InventoryBook b) => new(DocumentId(b.Id), new(DocumentId(b.Id), SchemaVersion, JsonSerializer.Serialize(b, JsonOptions)));
     private static string DocumentId(Guid id) => $"inventory-book-{id:N}";

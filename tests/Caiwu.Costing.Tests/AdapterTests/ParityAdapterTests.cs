@@ -18,7 +18,7 @@ public sealed class ParityAdapterTests
         public Service(InventoryBook book)
         {
             var accounts = new[] { "1405", "2202", "222101", "222102", "1122", "6001", "6401", "1901" }.Select(c => new Account(c, c, null, BalanceDirection.Debit, true, 0, 0)).ToArray();
-            Snapshot = new(new(41, new(book.Id, "合成账套", AccountingRegime.Enterprise, "synthetic", 2026, 10, 0, DateTimeOffset.UnixEpoch), accounts, [], []),
+            Snapshot = new(new(41, new(book.Id, "合成账套", AccountingRegime.Enterprise, "synthetic", 2026, 10, 9, DateTimeOffset.UnixEpoch), accounts, [], []),
                 [new("inventory", [new($"inventory-book-{book.Id:N}", 1, JsonSerializer.Serialize(book)), new("unrelated-document", 9, "{\"preserved\":true}")]),
                  new("other-module", [new("other", 3, "{\"keep\":1}")])], []);
         }
@@ -154,6 +154,130 @@ public sealed class ParityAdapterTests
         fresh.Initialize(b); Assert.Equal(1, service.Saves);
         Assert.Equal(2, service.Snapshot.Modules.Count);
         Assert.Equal(b.Documents.Single().Number, new ParityInventoryAdapter(service, service.Snapshot, "操作员").Load(b.Id).Documents.Single().Number);
+    }
+
+    [Theory]
+    [InlineData(2025, 10, 9)]
+    [InlineData(2026, 9, 9)]
+    [InlineData(2026, 10, 10)]
+    public void InitializeCannotSaveOtherYearBeforeStartOrClosedInventory(int year, int month, int closedThrough)
+    {
+        var b = InventoryWorkflow.Create(Guid.NewGuid(), new(year, month), new(4, 6), [new("01", "仓库", WarehouseKind.Warehouse)]);
+        var service = new Service(b);
+        service.Snapshot = service.Snapshot with
+        {
+            Ledger = service.Snapshot.Ledger with { Book = service.Snapshot.Ledger.Book with { ClosedThroughMonth = closedThrough } },
+            Modules = []
+        };
+        var adapter = new ParityInventoryAdapter(service, service.Snapshot, "操作员");
+        Assert.Throws<CostingValidationException>(() => adapter.Initialize(b));
+        Assert.Equal(0, service.Saves); Assert.Equal(0, service.Proposals); Assert.Equal(41, service.Snapshot.Ledger.Revision);
+    }
+    [Theory]
+    [InlineData(2025, 10)]
+    [InlineData(2026, 9)]
+    public void LoadRejectsModulePeriodOutsideObservedLedgerYearOrEnabledMonths(int year, int month)
+    {
+        var b = InventoryWorkflow.Create(Guid.NewGuid(), new(year, month), new(4, 6), [new("01", "仓库", WarehouseKind.Warehouse)]);
+        var service = new Service(b);
+        service.Snapshot = service.Snapshot with { Ledger = service.Snapshot.Ledger with { Book = service.Snapshot.Ledger.Book with { ClosedThroughMonth = 9 } } };
+        Assert.Throws<CostingValidationException>(() => new ParityInventoryAdapter(service, service.Snapshot, "操作员").Load(b.Id));
+        Assert.Equal(0, service.Saves);
+    }
+    [Theory]
+    [InlineData(2025, 10)]
+    [InlineData(2026, 9)]
+    [InlineData(2026, 11)]
+    public void TryCommitCannotReplaceExistingMonthWithAnotherPeriod(int year, int month)
+    {
+        var b = InventoryWorkflow.Create(Guid.NewGuid(), new(2026, 10), new(4, 6), [new("01", "仓库", WarehouseKind.Warehouse)]);
+        var service = new Service(b);
+        service.Snapshot = service.Snapshot with { Ledger = service.Snapshot.Ledger with { Book = service.Snapshot.Ledger.Book with { ClosedThroughMonth = 9 } } };
+        var next = b with { Period = new(year, month), Revision = b.Revision + 1 };
+        Assert.Throws<CostingValidationException>(() => new ParityInventoryAdapter(service, service.Snapshot, "操作员").TryCommit(b.Revision, next));
+        Assert.Equal(0, service.Saves); Assert.Equal(41, service.Snapshot.Ledger.Revision);
+    }
+    [Fact]
+    public void ClosedMonthCanBeReadButCannotBeMutatedOrSubmittedAsVoucher()
+    {
+        var b = Book(); var service = new Service(b); var plan = Plan(b, service);
+        service.Snapshot = service.Snapshot with { Ledger = service.Snapshot.Ledger with { Book = service.Snapshot.Ledger.Book with { ClosedThroughMonth = 10 } } };
+        var adapter = new ParityInventoryAdapter(service, service.Snapshot, "操作员");
+        var loaded = adapter.Load(b.Id); Assert.Equal(new(2026, 10), loaded.Period);
+        var next = InventoryWorkflow.SaveOpening(loaded, new("01", "P", 1, 10, []), "操作员", loaded.Revision);
+        Assert.Throws<CostingValidationException>(() => adapter.TryCommit(loaded.Revision, next));
+        Assert.Throws<CostingValidationException>(() => adapter.AcceptPlan(plan, plan.Vouchers[0].SourceKey, Guid.NewGuid(), "记", null, 0));
+        Assert.Equal(0, service.Saves); Assert.Equal(0, service.Proposals);
+    }
+
+    [Theory]
+    [InlineData(0, 10, 9)]
+    [InlineData(2026, 0, 0)]
+    [InlineData(2026, 13, 12)]
+    [InlineData(2026, 10, 8)]
+    [InlineData(2026, 10, 13)]
+    public void ReadyRejectsInvalidObservedLedgerPeriodMetadata(int year, int start, int closed)
+    {
+        var b = Book(); var service = new Service(b);
+        service.Snapshot = service.Snapshot with { Ledger = service.Snapshot.Ledger with { Book = service.Snapshot.Ledger.Book with
+            { FiscalYear = year, StartMonth = start, ClosedThroughMonth = closed } } };
+        Assert.Throws<CostingValidationException>(() => new ParityInventoryAdapter(service, service.Snapshot, "操作员").Load(b.Id));
+        Assert.Equal(0, service.Saves); Assert.Equal(0, service.Proposals);
+    }
+    [Theory]
+    [InlineData(10, 9)]
+    [InlineData(11, 9)]
+    [InlineData(12, 11)]
+    public void InitializeAllowsEnabledUnclosedMonthInObservedLedgerYear(int month, int closed)
+    {
+        var b = InventoryWorkflow.Create(Guid.NewGuid(), new(2026, month), new(4, 6), [new("01", "仓库", WarehouseKind.Warehouse)]);
+        var service = new Service(b);
+        service.Snapshot = service.Snapshot with { Ledger = service.Snapshot.Ledger with { Book = service.Snapshot.Ledger.Book with
+            { ClosedThroughMonth = closed } }, Modules = [] };
+        new ParityInventoryAdapter(service, service.Snapshot, "操作员").Initialize(b);
+        Assert.Equal(1, service.Saves);
+        Assert.Equal(b.Period, new ParityInventoryAdapter(service, service.Snapshot, "操作员").Load(b.Id).Period);
+    }
+    [Fact]
+    public void AcceptedReceiptCannotDriftInventoryAccountBeforeIssueVoucher()
+    {
+        var b = Book(); var service = new Service(b); var receiptPlan = Plan(b, service);
+        var adapter = new ParityInventoryAdapter(service, service.Snapshot, "操作员");
+        adapter.AcceptPlan(receiptPlan, receiptPlan.Vouchers[0].SourceKey, Guid.NewGuid(), "记", null, 0);
+        var receipt = service.LastProposal!;
+        var store = new ParityInventoryAdapter(service, service.Snapshot, "操作员");
+        var loaded = store.Load(b.Id);
+        Assert.Throws<CostingValidationException>(() => store.TryCommit(loaded.Revision,
+            loaded with { Revision = loaded.Revision + 1, Products = [loaded.Products[0] with { InventoryAccount = "1406" }] }));
+        Assert.Equal(0, service.Saves);
+        var accounts = ParityInventoryAdapter.AccountCatalog(service.Snapshot).Append(new("1406", true, true)).ToArray();
+        Assert.Throws<CostingValidationException>(() => InventoryWorkflow.SaveProduct(loaded,
+            loaded.Products[0] with { InventoryAccount = "1406" }, accounts, "操作员", loaded.Revision));
+        var sale = loaded.Documents[0] with { Id = Guid.NewGuid(), Number = "S1", OriginalCategory = "销售",
+            Kind = InventoryDocumentKind.Sale, SettlementAccount = "1122", VoucherLinks = [] };
+        var issued = InventoryWorkflow.SaveDocument(loaded, sale, accounts, "操作员", loaded.Revision);
+        issued = InventoryWorkflow.Calculate(issued, false, "操作员", issued.Revision);
+        var costPlan = InventoryVoucherPlanner.Plan(issued, InventoryVoucherKind.IssueCost, new(2026, 10, 1), new(2026, 10, 31),
+            new("222101", "222102", "6001", "1901"), accounts);
+        Assert.Equal(100, receipt.Lines.Single(l => l.AccountCode == "1405").Debit);
+        Assert.Equal(100, costPlan.Vouchers[0].Lines.Single(l => l.AccountCode == "1405").Credit);
+        Assert.DoesNotContain(costPlan.Vouchers[0].Lines, l => l.AccountCode == "1406");
+    }
+
+    [Fact]
+    public void CancellingUnclaimedCalculationCannotRewriteClosedLedgerMonth()
+    {
+        var b = Book(); b = InventoryWorkflow.Calculate(b, false, "核算员", b.Revision);
+        Assert.Empty(b.VoucherClaims);
+        var service = new Service(b);
+        service.Snapshot = service.Snapshot with { Ledger = service.Snapshot.Ledger with { Book = service.Snapshot.Ledger.Book with { ClosedThroughMonth = 10 } } };
+        var adapter = new ParityInventoryAdapter(service, service.Snapshot, "操作员");
+        var loaded = adapter.Load(b.Id);
+        var cancelled = InventoryWorkflow.CancelCalculation(loaded, "操作员", loaded.Revision);
+        Assert.Throws<CostingValidationException>(() => adapter.TryCommit(loaded.Revision, cancelled));
+        Assert.Equal(0, service.Saves); Assert.Equal(41, service.Snapshot.Ledger.Revision);
+        var reopened = new ParityInventoryAdapter(service, service.Snapshot, "操作员").Load(b.Id);
+        Assert.NotNull(reopened.Calculation); Assert.Equal(b.Revision, reopened.Revision);
     }
 
 }

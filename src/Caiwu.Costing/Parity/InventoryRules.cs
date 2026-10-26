@@ -98,6 +98,9 @@ internal static class InventoryRules
         Require(b.Warehouses.Any(w => w.Code == warehouse), "仓库不存在。");
         Require(b.Products.Any(p => p.Code == product), "此产品不存在！");
     }
+    internal static bool ProductHasActivity(InventoryBook b, string code) =>
+        b.Openings.Any(o => o.ProductCode == code) || b.Documents.Any(d => d.Lines.Any(l => l.ProductCode == code)) ||
+        b.Stocktakes.Any(t => t.ProductCode == code);
     internal static void ValidateProduct(InventoryBook b, Product p)
     {
         Require(p is not null, "产品不能为空。"); Text(p.Code, "产品编号"); Text(p.Name, "产品名称"); Text(p.Unit, "单位");
