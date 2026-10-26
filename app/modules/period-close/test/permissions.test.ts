@@ -26,6 +26,7 @@ it('权限：只读操作员直调每个mutation及组合流程均拒绝且数�
       () => api.generate({ period: 202601, ruleIds: [1], confirmed: true, previewToken: 'token' }),
       () => api.deleteGenerated({ period: 202601, ruleId: 1, confirmed: true }),
       () => api.close({ period: 202601, confirmed: true }),
+      () => api.closeRange({ from: 202601, to: 202603, confirmed: true, previewToken: 'token' }),
       () => api.reopen({ from: 202601, to: 202601, confirmed: true }),
       () =>
         api.renumber({
@@ -55,6 +56,7 @@ it('取消：反过账、结账、反结账、年结及组合流程不改变任�
     for (const action of [
       () => api.unpost({ from: 202601, to: 202601, confirmed: false }),
       () => api.close({ period: 202601, confirmed: false }),
+      () => api.closeRange({ from: 202601, to: 202603, confirmed: false, previewToken: 'token' }),
       () => api.reopen({ from: 202601, to: 202601, confirmed: false }),
       () => api.yearEnd({ year: 2026, confirmed: false }),
       () => api.workflow({ period: 202601, ruleIds: [], confirmed: false }),

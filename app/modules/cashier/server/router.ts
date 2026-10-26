@@ -1,9 +1,12 @@
 import { z } from 'zod';
-import { zId } from '@caiwu/core';
+import { zId, zPeriod, zDate } from '@caiwu/core';
 import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
   CashAccountSchema,
+  AutoMatchSchema,
+  CheckReceiveSchema,
+  CheckIssueSchema,
   DocumentCreateSchema,
   DocumentFilterSchema,
   DocumentSchema,
@@ -14,8 +17,52 @@ import {
   ReconcileFilterSchema,
 } from '../shared';
 import { cashierService } from './service';
+import { periodService } from './periods';
+import { checkService } from './checks';
 const m = moduleKit(manifest);
 export const cashierRouter = m.router({
+  checks: m.procedure
+    .meta({ permission: 'cashier.view' })
+    .input(
+      z
+        .object({
+          accountId: zId.optional(),
+          state: z.enum(['received', 'issued', 'cleared', 'voided']).optional(),
+        })
+        .default({}),
+    )
+    .query(({ ctx, input }) => checkService(ctx.svc).list(input)),
+  receiveCheck: m.procedure
+    .meta({ permission: 'cashier.check.edit' })
+    .input(CheckReceiveSchema)
+    .mutation(({ ctx, input }) => checkService(ctx.svc).receive(input)),
+  issueCheck: m.procedure
+    .meta({ permission: 'cashier.check.edit' })
+    .input(CheckIssueSchema)
+    .mutation(({ ctx, input }) => checkService(ctx.svc).issue(input)),
+  finishCheck: m.procedure
+    .meta({ permission: 'cashier.check.settle' })
+    .input(
+      z.object({
+        id: zId,
+        revision: zId,
+        date: zDate,
+        state: z.enum(['cleared', 'voided']),
+        confirmed: z.literal(true),
+      }),
+    )
+    .mutation(({ ctx, input }) => checkService(ctx.svc).finish(input)),
+  periods: m.procedure
+    .meta({ permission: 'cashier.view' })
+    .query(({ ctx }) => periodService(ctx.svc).preview()),
+  closePeriod: m.procedure
+    .meta({ permission: 'cashier.period.close' })
+    .input(z.object({ period: zPeriod, snapshot: z.string().min(1), confirmed: z.literal(true) }))
+    .mutation(({ ctx, input }) => periodService(ctx.svc).close(input)),
+  reopenPeriod: m.procedure
+    .meta({ permission: 'cashier.period.reopen' })
+    .input(z.object({ period: zPeriod, snapshot: z.string().min(1), confirmed: z.literal(true) }))
+    .mutation(({ ctx, input }) => periodService(ctx.svc).reopen(input)),
   status: m.procedure
     .meta({ permission: 'cashier.view' })
     .query(({ ctx }) => cashierService(ctx.svc).status()),
@@ -73,6 +120,10 @@ export const cashierRouter = m.router({
     .meta({ permission: 'cashier.view' })
     .input(ReconcileFilterSchema)
     .query(({ ctx, input }) => cashierService(ctx.svc).reconcile(input)),
+  autoMatch: m.procedure
+    .meta({ permission: 'cashier.reconcile' })
+    .input(AutoMatchSchema)
+    .mutation(({ ctx, input }) => cashierService(ctx.svc).autoMatch(input)),
   match: m.procedure
     .meta({ permission: 'cashier.reconcile' })
     .input(MatchSchema)

@@ -10,6 +10,8 @@ export type CashDocument = Outputs['documents'][number];
 export const refresh = () =>
   Promise.all(
     [
+      api.checks.queryKey(),
+      api.periods.queryKey(),
       api.status.queryKey(),
       api.accounts.queryKey(),
       api.documents.queryKey(),

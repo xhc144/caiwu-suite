@@ -13,6 +13,9 @@ type Filters = {
   onlyActivity: boolean;
   level: number;
   expanded: string;
+  dimension: string;
+  dimensionFrom: string;
+  dimensionTo: string;
 };
 
 /**
@@ -22,6 +25,7 @@ type Filters = {
  */
 export function useBalanceFilters(
   settings: Settings,
+  auxiliary = false,
 ): [Filters, (patch: Partial<Filters>) => void] {
   const [url, setUrl] = useUrlFilters<Filters>({
     from: '',
@@ -34,6 +38,9 @@ export function useBalanceFilters(
     onlyActivity: settings.display.onlyActivity,
     level: settings.display.level,
     expanded: '',
+    dimension: auxiliary ? 'project' : '',
+    dimensionFrom: '',
+    dimensionTo: '',
   });
   const [filters, setFilters] = useState(url);
   const latest = useRef(filters);

@@ -6,7 +6,7 @@ import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import type { BusinessError, Voucher } from '@caiwu/core';
 import type { TRPCError } from '@trpc/server';
 import type { DocumentInput, GenerateInput } from '../shared';
-import { safeSum, signedAmount } from '../shared';
+import { safeSum, signedAmount, matchSuggestions } from '../shared';
 import type { CashierTables } from '../server/migrations';
 import cashierServer from '../server';
 
@@ -634,5 +634,137 @@ describe('出纳真实闭环', () => {
       'CASHIER_MATCH_ABNORMAL',
     );
     expect((await reconcile()).groups).toHaveLength(1);
+  });
+});
+
+describe('w_cn_dz 自动勾账建议与确认', () => {
+  it('日期顺序的一对一等额候选，逐对真实写入且取消恢复原余额', async () => {
+    await create({ amount: 101 });
+    await create({ amount: 202, direction: 'payment' });
+    await api.generate({ ...(await generation()), requestKey: randomUUID() });
+    await posted();
+    const r = await reconcile();
+    const suggestions = matchSuggestions(r.documents, r.entries);
+    expect(suggestions.every((s) => s.unique)).toBe(true);
+    const result = await api.autoMatch({
+      accountId,
+      cutoff: r.cutoff,
+      snapshot: r.snapshot,
+      pairs: suggestions.map((s) => ({
+        documentId: s.document.id,
+        revision: s.document.revision,
+        lineId: s.candidates[0]!.lineId,
+      })),
+      confirmed: true,
+    });
+    expect(result.ids).toHaveLength(2);
+    const after = await reconcile();
+    expect(after.groups.every((g) => g.valid)).toBe(true);
+    expect(after.adjustment.cashOutstanding).toBe(0);
+    expect(after.adjustment.coreOutstanding).toBe(0);
+    for (const id of result.ids) await api.unmatch({ id, confirmed: true });
+    expect((await reconcile()).adjustment).toEqual(r.adjustment);
+  });
+  it('重复金额保持歧义，不默认抢占同一分录；明确候选后可以确认', async () => {
+    await create({ amount: 101 });
+    await create({ amount: 101, date: '2026-01-11' });
+    await api.generate({ ...(await generation()), requestKey: randomUUID() });
+    await posted();
+    const r = await reconcile();
+    const suggestions = matchSuggestions(r.documents, r.entries);
+    expect(suggestions.map((s) => [s.unique, s.candidates.length])).toEqual([
+      [false, 2],
+      [false, 2],
+    ]);
+    await expect(
+      api.autoMatch({
+        accountId,
+        cutoff: r.cutoff,
+        snapshot: r.snapshot,
+        pairs: r.documents.map((d) => ({
+          documentId: d.id,
+          revision: d.revision,
+          lineId: r.entries[0]!.lineId,
+        })),
+        confirmed: true,
+      }),
+    ).rejects.toThrow();
+    expect((await reconcile()).groups).toEqual([]);
+    await api.autoMatch({
+      accountId,
+      cutoff: r.cutoff,
+      snapshot: r.snapshot,
+      pairs: r.documents.map((d, i) => ({
+        documentId: d.id,
+        revision: d.revision,
+        lineId: r.entries[i]!.lineId,
+      })),
+      confirmed: true,
+    });
+    expect((await reconcile()).groups).toHaveLength(2);
+  });
+  it('无候选、方向不符、过期快照、无权限及未确认都不会写入', async () => {
+    await create({ amount: 101 });
+    await create({ amount: 202, direction: 'payment' });
+    await api.generate({ ...(await generation()), requestKey: randomUUID() });
+    await posted();
+    const r = await reconcile();
+    expect(matchSuggestions(r.documents, [])[0]!.candidates).toEqual([]);
+    const pair = {
+      documentId: r.documents[0]!.id,
+      revision: r.documents[0]!.revision,
+      lineId: r.entries[0]!.lineId,
+    };
+    const input = {
+      accountId,
+      cutoff: r.cutoff,
+      snapshot: r.snapshot,
+      pairs: [pair],
+      confirmed: true as const,
+    };
+    await expect(
+      api.autoMatch({ ...input, pairs: [{ ...pair, lineId: r.entries[1]!.lineId }] }),
+    ).rejects.toThrow('方向');
+    await expect(api.autoMatch({ ...input, confirmed: false as true })).rejects.toThrow();
+    const viewer = call(app, await app.addUser('auto-viewer', { permissions: ['cashier.view'] }));
+    await expect(viewer.autoMatch(input)).rejects.toThrow('权限');
+    await create({ amount: 303 });
+    await expect(api.autoMatch(input)).rejects.toThrow('已变化');
+    expect((await reconcile()).groups).toEqual([]);
+  });
+  it('批次后续写入失败回滚全部勾账组，已关月同样阻止', async () => {
+    await create({ amount: 101 });
+    await create({ amount: 202 });
+    await api.generate({ ...(await generation()), requestKey: randomUUID() });
+    await posted();
+    const r = await reconcile();
+    const input = {
+      accountId,
+      cutoff: r.cutoff,
+      snapshot: r.snapshot,
+      pairs: matchSuggestions(r.documents, r.entries).map((s) => ({
+        documentId: s.document.id,
+        revision: s.document.revision,
+        lineId: s.candidates[0]!.lineId,
+      })),
+      confirmed: true as const,
+    };
+    await sql`CREATE TRIGGER cashier_auto_failure BEFORE INSERT ON cashier_match WHEN NEW.amount = 202 BEGIN SELECT RAISE(FAIL, '合成第二组失败'); END`.execute(
+      app.svc.db,
+    );
+    await expect(api.autoMatch(input)).rejects.toThrow('合成第二组失败');
+    expect((await reconcile()).groups).toEqual([]);
+    expect(
+      await app.svc.db
+        .withTables<CashierTables>()
+        .selectFrom('cashier_match_document')
+        .selectAll()
+        .execute(),
+    ).toEqual([]);
+    await sql`DROP TRIGGER cashier_auto_failure`.execute(app.svc.db);
+    const p = await api.periods();
+    await api.closePeriod({ period: p.current, snapshot: p.snapshot, confirmed: true });
+    await expect(api.autoMatch(input)).rejects.toThrow('已经结账');
+    expect((await reconcile()).groups).toEqual([]);
   });
 });

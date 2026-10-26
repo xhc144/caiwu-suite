@@ -88,3 +88,66 @@ export function safeSum(values: readonly number[]): number {
 }
 export const signedAmount = (row: { direction: string; amount: number }) =>
   row.direction === 'receipt' ? row.amount : -row.amount;
+
+export const CheckReceiveSchema = z.object({
+  accountId: zId,
+  number: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .transform((s) => s.toUpperCase()),
+  receivedDate: zDate,
+  note: z.string().trim().max(500).default(''),
+});
+export const CheckIssueSchema = z.object({
+  id: zId,
+  revision: zId,
+  date: zDate,
+  payee: z.string().trim().min(1).max(120),
+  amount: zCents.refine((n) => n > 0, '签发金额必须大于零'),
+  confirmed: z.literal(true),
+});
+
+export const AutoMatchSchema = ReconcileFilterSchema.extend({
+  snapshot: z.string().min(1),
+  pairs: z
+    .array(z.object({ documentId: zId, revision: zId, lineId: zId }))
+    .min(1)
+    .max(200)
+    .refine(
+      (pairs) =>
+        new Set(pairs.map((p) => p.documentId)).size === pairs.length &&
+        new Set(pairs.map((p) => p.lineId)).size === pairs.length,
+      '一张单据或一条分录只能选择一次',
+    ),
+  confirmed: z.literal(true),
+});
+export function matchSuggestions<
+  D extends { id: number; date: string; signed: number; matchId: number | null },
+  E extends { lineId: number; date: string; signed: number; matchId: number | null },
+>(documents: D[], entries: E[]) {
+  // 同方向的整数金额本身就是键；每个分录只进入一个桶，重复金额共享桶引用。
+  const docs = documents
+    .filter((d) => d.matchId == null)
+    .toSorted((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+  const counts = new Map<number, number>();
+  for (const d of docs) counts.set(d.signed, (counts.get(d.signed) ?? 0) + 1);
+  const buckets = new Map<number, E[]>();
+  for (const e of entries
+    .filter((e) => e.matchId == null)
+    .toSorted((a, b) => a.date.localeCompare(b.date) || a.lineId - b.lineId)) {
+    const bucket = buckets.get(e.signed);
+    if (bucket) bucket.push(e);
+    else buckets.set(e.signed, [e]);
+  }
+  const empty: E[] = [];
+  return docs.map((document) => {
+    const candidates = buckets.get(document.signed) ?? empty;
+    return {
+      document,
+      candidates,
+      unique: candidates.length === 1 && counts.get(document.signed) === 1,
+    };
+  });
+}
