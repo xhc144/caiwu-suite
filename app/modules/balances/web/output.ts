@@ -43,6 +43,17 @@ export function columnsFor(report: Report) {
   );
 }
 
+/** Excel 数值最多保留 15 位有效数字；金额还必须能按两位小数逐分回读。
+ * 超出任一条件时保留精确文本，不把安全整数分静默转成失真的元数值。
+ */
+function excelMoney(cents: number): number | string {
+  const exact = centsToYuan(cents);
+  // 保守按分值计位数，即使某个更大的整元恰好可转也不依赖 Excel 的截位行为。
+  if (Math.abs(cents) > 999_999_999_999_999) return exact;
+  const numeric = Number(exact);
+  return numeric.toFixed(2) === exact ? numeric : exact;
+}
+
 export async function exportReport(report: Report, level: number, expanded: number[]) {
   const { Workbook } = await import('exceljs');
   const wb = new Workbook();
@@ -52,16 +63,14 @@ export async function exportReport(report: Report, level: number, expanded: numb
     ws.addRow([reportTitle(report)]);
     ws.addRow([`${reportCaption(report, group.currency)}；${groupCaption(group)}`]);
     ws.addRow([
-      `显示级次：${level === -1 ? '仅末级' : level || '全部'}；合计余额金额以“借方 / 贷方”分别列示`,
+      `显示级次：${level === -1 ? '仅末级' : level || '全部'}；合计余额金额以“借方 / 贷方”分别列示；超出 Excel 15 位精度或无法逐分回读的金额使用精确两位小数文本`,
     ]);
     ws.addRow(columns.map((c) => c.title)).font = { bold: true };
     for (const row of outputRows(group, level, expanded)) {
       ws.addRow(
         columns.map((c) => {
           const value = row[c.key];
-          return typeof value === 'number' && c.money
-            ? Number(centsToYuan(value))
-            : String(value ?? '');
+          return typeof value === 'number' && c.money ? excelMoney(value) : String(value ?? '');
         }),
       );
     }
