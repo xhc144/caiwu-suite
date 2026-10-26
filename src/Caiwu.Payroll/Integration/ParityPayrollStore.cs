@@ -92,7 +92,7 @@ public sealed class ParityPayrollStore : IPayrollStore
             ?? throw new PayrollValidationException("工资月份不存在。");
         Require(plan.DataVersion == period.DataVersion && plan.ConfigurationVersion == next.ConfigurationVersion
             && period.CalculatedDataVersion == period.DataVersion
-            && period.CalculatedConfigurationVersion == next.ConfigurationVersion, "工资计划已过期，请重新核算；不能自动更新确认内容。");
+            && period.CalculatedConfigurationVersion == next.ConfigurationVersion, "工资计划已过期，请重新计算、生成并确认；不能复用旧计划。");
         // PR52's VoucherLine cannot represent these required dimensions. Provenance
         // always remains in module JSON; actual auxiliary requirements cannot be dropped.
         Require(plan.Lines.All(l => !l.DepartmentIsRequired && !l.EmployeeIsRequired),

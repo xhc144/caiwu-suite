@@ -6,6 +6,37 @@ namespace Caiwu.Payroll.Tests;
 public sealed class AdditionalBehaviorTests
 {
     [Fact]
+    public void VoucherSettingsInvalidationAndExplicitRegenerationSurviveSqliteReopen()
+    {
+        using var f = new SyntheticFixture();
+        f.Service.Calculate(SyntheticFixture.Month);
+        var request = SyntheticFixture.Request();
+        var original = f.Service.CreateVoucherPlan(SyntheticFixture.Month, request, SyntheticFixture.Accounts);
+        var unchangedRevision = f.Service.Revision;
+        f.Service.SaveVoucherSettings(f.Service.Snapshot.VoucherSettings!);
+        Assert.Equal(unchangedRevision + 1, f.Service.Revision);
+        Assert.Equal(original.ConfigurationVersion, f.Service.Snapshot.ConfigurationVersion);
+        Assert.True(f.Service.GetWageTable(SyntheticFixture.Month).IsCalculated);
+        var settings = f.Service.Snapshot.VoucherSettings!;
+        settings.PayableAccount = "2212";
+        f.Service.SaveVoucherSettings(settings);
+        var reopened = f.Reopen();
+        Assert.False(reopened.GetWageTable(SyntheticFixture.Month).IsCalculated);
+        Assert.True(reopened.Snapshot.ConfigurationVersion > original.ConfigurationVersion);
+        var accounts = SyntheticFixture.Accounts.Append(new PayrollAccount("2212")).ToArray();
+        Assert.Throws<PayrollValidationException>(() => reopened.CreateVoucherPlan(SyntheticFixture.Month, request, accounts));
+        reopened.Calculate(SyntheticFixture.Month);
+        var replacement = reopened.CreateVoucherPlan(SyntheticFixture.Month, request, accounts);
+        Assert.NotEqual(original.Id, replacement.Id);
+        Assert.Equal(original.SourceKey, replacement.SourceKey);
+        Assert.DoesNotContain(replacement.Lines, line => line.AccountCode == "2211");
+        Assert.Contains(replacement.Lines, line => line.AccountCode == "2212");
+        var persisted = f.Reopen().Snapshot.VoucherPlans;
+        Assert.Equal(replacement.Id, Assert.Single(persisted).Id);
+        Assert.DoesNotContain(persisted, plan => plan.Id == original.Id);
+    }
+
+    [Fact]
     public void BusinessSourceKeyUsesGregorianInvariantMonthAcrossLocales()
     {
         using var f = new SyntheticFixture(); f.Service.Calculate(SyntheticFixture.Month);

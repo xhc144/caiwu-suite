@@ -11,7 +11,7 @@
 - `SqlitePayrollStore`：独立合成 `.payroll.sqlite` 工作文件，独立 application_id/version/BookId；排他新建，未知格式只读拒绝。整个模块快照事务保存，revision 检查阻止旧窗口覆盖。它没有原账套读取、受管备份、跨数据库原子性或主账套权威地位。
 - `Integration/ParityPayrollStore`：对 PR52 的契约 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85` 实现 `IPayrollStore`。权威状态写入 `payroll/payroll-state` 版本 1 的模块 JSON；使用用户所见 `ModuleLedgerSnapshot` 的同一个全账套 revision，不刷新 token 重试。生成计划和转入总账是不同动作。`AcceptPlan` 将来源认领、模块状态与新草稿放进同一个 `VoucherProposal`；无外部文件投影。当前只用接口替身验证，未与真实公共 Core/SQLite 接通。
 
-来源键固定为 `payroll:{BookId}:{Gregorian yyyy-MM}:{Payment|Distribution}`，不能通过改金额、日期、编号或换随机 ID 再支付一次。计划另存内容哈希；相同内容重复生成返回同一计划，变更后的重复来源明确拒绝。原版刷新/覆盖已生成草稿的完整流程尚未实现，不能覆盖已审核/记账凭证。
+来源键固定为 `payroll:{BookId}:{Gregorian yyyy-MM}:{Payment|Distribution}`，不能通过改金额、日期、编号或换随机 ID 再支付一次。计划另存内容哈希；相同内容重复生成返回同一计划。凭证设置变更推进配置版本，使旧计算和旧计划过期；须重新计算，再按原凭证请求显式重新生成并确认。仅尚未转入、配置过期的同一请求可替换为新计划 ID，来源键不变、旧 ID 作废。已转入的来源不能如此重生成；原版刷新/覆盖已生成草稿的完整流程尚未实现，不能覆盖已审核/记账凭证。设置内容未变也保留全账套 CAS 校验，不绕过旧窗口冲突。
 
 **公共接口限制：** PR52 `VoucherLine` 尚无辅助维度。计划始终保存人员/部门来源；科目要求部门/人员时 `AcceptPlan` 明确拒绝，不丢维度后转入。项目/客户/外币/数量等也未适配；宿主须完整提供科目元数据，不能把未知要求默认为无要求。没有 `transferToLedger` handler 时 Wpf 不提供空的“转到总帐”按钮，未实现项仍在验收清单。
 

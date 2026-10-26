@@ -248,7 +248,14 @@ public sealed partial class PayrollService
     {
         var copy = PayrollJson.Clone(settings);
         VoucherPlanner.ValidateSettings(document, copy);
-        Mutate(book => book.VoucherSettings = copy);
+        var changed = PayrollJson.Serialize(document.VoucherSettings) != PayrollJson.Serialize(copy);
+        Mutate(book =>
+        {
+            book.VoucherSettings = copy;
+            // Account/column choices are part of the decision behind every saved plan.
+            // A fresh whole-book revision must not make an old decision current again.
+            if (changed) book.ConfigurationVersion = checked(book.ConfigurationVersion + 1);
+        });
     }
 
     public PayrollVoucherPlan CreateVoucherPlan(DateOnly month, PayrollVoucherRequest request,
@@ -261,14 +268,25 @@ public sealed partial class PayrollService
         var existing = document.VoucherPlans.SingleOrDefault(p => p.SourceKey == plan.SourceKey);
         if (existing is not null)
         {
-            Guard.Require(existing.ContentHash == plan.ContentHash, "该月份和种类已有不同的凭证计划，不能另换编号重复生成。");
-            return PayrollJson.Clone(existing);
+            if (existing.ContentHash == plan.ContentHash) return PayrollJson.Clone(existing);
+            // Explicit regeneration replaces only an obsolete, untransferred decision
+            // with the identical voucher request. Keep the stable business source,
+            // but retire its old plan ID so old confirmation callbacks cannot submit it.
+            Guard.Require(existing.Status == "planned" && existing.ConfigurationVersion != document.ConfigurationVersion
+                && PayrollJson.Serialize(existing.Request) == PayrollJson.Serialize(request),
+                "该月份和种类已有不同的凭证计划；仅过期且尚未转入的同一凭证请求可重新生成。");
+            Guard.Require(existing.ExtensionData.Count == 0 && existing.Request.ExtensionData.Count == 0
+                && existing.Lines.All(line => line.ExtensionData.Count == 0), "旧计划还有未解释字段，不能省略后重新生成。");
         }
         // Different plans cannot silently refresh or overwrite the same voucher identity.
-        Guard.Require(!document.VoucherPlans.Any(p => p.Request.Date.Year == request.Date.Year
+        Guard.Require(!document.VoucherPlans.Any(p => (existing is null || p.Id != existing.Id) && p.Request.Date.Year == request.Date.Year
             && p.Request.Date.Month == request.Date.Month && p.Request.VoucherType == request.VoucherType
             && p.Request.Number == request.Number), "已有重复凭证计划，请核对编号；本切片不覆盖或刷新总账凭证。");
-        Mutate(book => book.VoucherPlans.Add(plan));
+        Mutate(book =>
+        {
+            if (existing is not null) book.VoucherPlans.RemoveAll(p => p.Id == existing.Id);
+            book.VoucherPlans.Add(plan);
+        });
         return PayrollJson.Clone(plan);
     }
 

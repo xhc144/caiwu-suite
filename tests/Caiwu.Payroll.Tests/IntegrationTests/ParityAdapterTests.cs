@@ -8,6 +8,112 @@ namespace Caiwu.Payroll.Tests;
 public sealed class ParityAdapterTests
 {
     [Fact]
+    public void StaleIdenticalSettingsSaveStillChecksWholeBookRevision()
+    {
+        var ledger = new ContractDouble();
+        var store = new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator");
+        var service = new PayrollService(store);
+        SyntheticFixture.Populate(service);
+        var stale = new PayrollService(new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator"));
+        var changed = service.Snapshot.VoucherSettings!;
+        changed.PayableAccount = "2212";
+        service.SaveVoucherSettings(changed);
+        var payload = ledger.Module("payroll").Documents[0].PayloadJson;
+        Assert.Throws<PayrollConflictException>(() => stale.SaveVoucherSettings(stale.Snapshot.VoucherSettings!));
+        Assert.Equal(payload, ledger.Module("payroll").Documents[0].PayloadJson);
+        Assert.Equal("2212", new PayrollService(new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator"))
+            .Snapshot.VoucherSettings!.PayableAccount);
+    }
+
+    [Theory]
+    [InlineData(PayrollVoucherKind.Payment, true)]
+    [InlineData(PayrollVoucherKind.Payment, false)]
+    [InlineData(PayrollVoucherKind.Distribution, true)]
+    public void SavedVoucherSettingChangesRejectOldPlanWithoutWritingAndRegenerateCorrectAccounts(
+        PayrollVoucherKind kind, bool changePayable)
+    {
+        var ledger = new ContractDouble();
+        var store = new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator");
+        var service = new PayrollService(store);
+        SyntheticFixture.Populate(service);
+        service.Calculate(SyntheticFixture.Month);
+        var accounts = SyntheticFixture.Accounts.Select(a => a with
+            { RequiresDepartment = false, RequiresEmployee = false }).Append(new("2212")).Append(new("1003")).ToArray();
+        var request = SyntheticFixture.Request(kind);
+        var oldPlan = service.CreateVoucherPlan(SyntheticFixture.Month, request, accounts);
+        var oldConfigurationVersion = service.Snapshot.ConfigurationVersion;
+        var settings = service.Snapshot.VoucherSettings!;
+        if (changePayable) settings.PayableAccount = "2212";
+        else settings.Credits[0].AccountCode = "1003";
+        service.SaveVoucherSettings(settings);
+        store = new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator");
+        service = new PayrollService(store);
+
+        // A new whole-book snapshot alone must not re-authorize an obsolete plan.
+        var beforePayload = ledger.Module("payroll").Documents[0].PayloadJson;
+        var beforeRevision = service.Revision;
+        Assert.Throws<PayrollValidationException>(() => store.AcceptPlan(service.Snapshot, oldPlan.Id));
+        Assert.True(service.Snapshot.ConfigurationVersion > oldConfigurationVersion);
+        Assert.Equal(0, ledger.ProposalCalls);
+        Assert.Equal(beforeRevision, service.Revision);
+        Assert.Equal(beforePayload, ledger.Module("payroll").Documents[0].PayloadJson);
+        Assert.Empty(ledger.GetModuleSnapshot().ProposalReceipts);
+
+        service.Calculate(SyntheticFixture.Month);
+        // Recalculation alone also cannot make the old proposal current again.
+        Assert.Throws<PayrollValidationException>(() => store.AcceptPlan(service.Snapshot, oldPlan.Id));
+        Assert.Equal(0, ledger.ProposalCalls);
+        var replacement = service.CreateVoucherPlan(SyntheticFixture.Month, request, accounts);
+        Assert.NotEqual(oldPlan.Id, replacement.Id);
+        Assert.Equal(oldPlan.SourceKey, replacement.SourceKey);
+        Assert.Equal(service.Snapshot.ConfigurationVersion, replacement.ConfigurationVersion);
+        Assert.Single(service.Snapshot.VoucherPlans);
+        var afterRegeneration = ledger.Module("payroll").Documents[0].PayloadJson;
+        Assert.Throws<PayrollValidationException>(() => store.AcceptPlan(service.Snapshot, oldPlan.Id));
+        Assert.Equal(afterRegeneration, ledger.Module("payroll").Documents[0].PayloadJson);
+        Assert.Equal(0, ledger.ProposalCalls);
+
+        var receipt = store.AcceptPlan(service.Snapshot, replacement.Id);
+        Assert.Equal(replacement.Id, receipt.ProposalId);
+        var oldAccount = changePayable ? "2211" : "1002";
+        var newAccount = changePayable ? "2212" : "1003";
+        Assert.DoesNotContain(ledger.LastProposal!.Lines, line => line.AccountCode == oldAccount);
+        Assert.Contains(ledger.LastProposal.Lines, line => line.AccountCode == newAccount);
+        Assert.Equal(1, ledger.ProposalCalls);
+        Assert.Single(ledger.GetModuleSnapshot().ProposalReceipts);
+        var reopened = new PayrollService(new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator"));
+        Assert.Equal(receipt.VoucherId, reopened.Snapshot.VoucherPlans.Single().VoucherId);
+    }
+
+    [Fact]
+    public void SettingChangesCannotRegenerateAnAlreadyAcceptedSource()
+    {
+        var ledger = new ContractDouble();
+        var store = new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator");
+        var service = new PayrollService(store);
+        SyntheticFixture.Populate(service);
+        service.Calculate(SyntheticFixture.Month);
+        var accounts = SyntheticFixture.Accounts.Select(a => a with
+            { RequiresDepartment = false, RequiresEmployee = false }).Append(new("2212")).ToArray();
+        var request = SyntheticFixture.Request();
+        var original = service.CreateVoucherPlan(SyntheticFixture.Month, request, accounts);
+        store.AcceptPlan(service.Snapshot, original.Id);
+        service.Refresh();
+        var settings = service.Snapshot.VoucherSettings!;
+        settings.PayableAccount = "2212";
+        service.SaveVoucherSettings(settings);
+        service.Calculate(SyntheticFixture.Month);
+        var beforeRevision = service.Revision;
+        var beforePayload = ledger.Module("payroll").Documents[0].PayloadJson;
+        Assert.Throws<PayrollValidationException>(() => service.CreateVoucherPlan(SyntheticFixture.Month, request, accounts));
+        Assert.Equal(beforeRevision, service.Revision);
+        Assert.Equal(beforePayload, ledger.Module("payroll").Documents[0].PayloadJson);
+        Assert.Equal(1, ledger.ProposalCalls);
+        Assert.Single(ledger.GetModuleSnapshot().ProposalReceipts);
+        Assert.Equal(original.Id, service.Snapshot.VoucherPlans.Single().Id);
+    }
+
+    [Fact]
     public void UnsavedChangesCannotRemoveRequiredAuxiliaryFlagsBeforeTransfer()
     {
         var ledger = new ContractDouble(); var store = new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator");
