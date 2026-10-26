@@ -88,11 +88,66 @@ test('w_bb_add → w_bb_def/F8 → 保存刷新 → 指定期间生成/重算 �
   expect(wb.worksheets[0]!.getCell('A1').value).toBe(124);
   expect(wb.worksheets[0]!.getCell('B1').value).toBe(124);
   expect(wb.worksheets[0]!.getCell('A1').note).toContain(source);
-  const attached = page.waitForEvent('frameattached');
+  // 原生打印可在 click 返回前清理 iframe；在 beforeprint 中保存真正提交打印的文档。
+  const printed = await page.evaluateHandle(() => {
+    const events: {
+      phase: string;
+      trusted: boolean;
+      html: string;
+      text: string;
+      headings: string[];
+      pageCss: string;
+    }[] = [];
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations)
+        for (const node of mutation.addedNodes) {
+          if (!(node instanceof HTMLIFrameElement)) continue;
+          node.addEventListener(
+            'load',
+            () => {
+              for (const phase of ['beforeprint', 'afterprint'])
+                node.contentWindow!.addEventListener(
+                  phase,
+                  (event) => {
+                    const doc = node.contentDocument!;
+                    events.push({
+                      phase,
+                      trusted: event.isTrusted,
+                      html: doc.documentElement.outerHTML,
+                      text: doc.body.textContent!,
+                      headings: Array.from(doc.querySelectorAll('h1')).map(
+                        (heading) => heading.textContent!,
+                      ),
+                      pageCss: Array.from(doc.styleSheets)
+                        .flatMap((sheet) => Array.from(sheet.cssRules))
+                        .filter((rule) => rule.type === CSSRule.PAGE_RULE)
+                        .map((rule) => rule.cssText)
+                        .join('\n'),
+                    });
+                    if (phase === 'afterprint') observer.disconnect();
+                  },
+                  { once: true },
+                );
+            },
+            { capture: true, once: true },
+          );
+        }
+    });
+    observer.observe(document.body, { childList: true });
+    return events;
+  });
   await page.getByRole('button', { name: '打印', exact: true }).click();
-  const printed = await attached;
-  await expect(printed.locator('h1')).toHaveText('现金报表');
-  await expect(printed.locator('body')).toContainText('124.00');
+  await expect
+    .poll(() => printed.evaluate((events) => events.map((event) => event.phase)))
+    .toEqual(['beforeprint', 'afterprint']);
+  const printEvents = await printed.jsonValue();
+  expect(printEvents.every((event) => event.trusted)).toBe(true);
+  expect(printEvents[0]!.headings).toEqual(['现金报表']);
+  expect(printEvents[0]!.text).toContain('124.00');
+  expect(printEvents[0]!.html).toContain('124.00');
+  expect(printEvents[0]!.pageCss).toContain('@page');
+  await expect(page.locator('iframe')).toHaveCount(0);
+  await printed.dispose();
 });
 
 test('w_bb_def 未保存取消保留编辑；w_bb_proc 未过账取消/继续/显式纳入', async ({
