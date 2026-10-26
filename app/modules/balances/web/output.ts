@@ -1,0 +1,88 @@
+import { centsToYuan, formatMoney } from '@caiwu/core';
+import { escapeHtml } from '@caiwu/print';
+import { downloadBlob } from '@caiwu/ui';
+import { outputRows, reportCaption, type OutputRow, type Report } from '../shared';
+
+export const outputColumns: {
+  key: keyof OutputRow;
+  title: string;
+  money?: boolean;
+  foreign?: boolean;
+}[] = [
+  { key: 'code', title: '科目编码' },
+  { key: 'name', title: '科目名称' },
+  { key: 'openingSide', title: '期初方向' },
+  { key: 'opening', title: '期初金额', money: true },
+  { key: 'debit', title: '本期借方', money: true },
+  { key: 'credit', title: '本期贷方', money: true },
+  { key: 'ytdDebit', title: '本年累计借方', money: true },
+  { key: 'ytdCredit', title: '本年累计贷方', money: true },
+  { key: 'closingSide', title: '期末方向' },
+  { key: 'closing', title: '期末金额', money: true },
+  { key: 'fcOpening', title: '外币期初（借正贷负）', money: true, foreign: true },
+  { key: 'fcDebit', title: '外币本期借方', money: true, foreign: true },
+  { key: 'fcCredit', title: '外币本期贷方', money: true, foreign: true },
+  { key: 'fcClosing', title: '外币期末（借正贷负）', money: true, foreign: true },
+];
+
+export async function exportReport(report: Report, level: number, expanded: number[]) {
+  const { Workbook } = await import('exceljs');
+  const wb = new Workbook();
+  const columns = outputColumns.filter((c) => !c.foreign || report.mode === 'foreign');
+  for (const [index, group] of report.groups.entries()) {
+    const ws = wb.addWorksheet(`${index + 1}-${group.currency || '本位币'}`);
+    ws.addRow([report.mode === 'foreign' ? '外币余额表' : '汇总余额表']);
+    ws.addRow([reportCaption(report, group.currency)]);
+    ws.addRow([
+      `显示级次：${level === -1 ? '仅末级' : level || '全部'}；合计余额金额以“借方 / 贷方”分别列示`,
+    ]);
+    ws.addRow(columns.map((c) => c.title)).font = { bold: true };
+    for (const row of outputRows(group, level, expanded)) {
+      ws.addRow(
+        columns.map((c) => {
+          const value = row[c.key];
+          return typeof value === 'number' && c.money
+            ? Number(centsToYuan(value))
+            : String(value ?? '');
+        }),
+      );
+    }
+    columns.forEach((c, i) => {
+      const col = ws.getColumn(i + 1);
+      col.width = c.key === 'name' ? 48 : 22;
+      if (c.money) col.numFmt = '#,##0.00;[Red]-#,##0.00';
+    });
+    ws.views = [{ state: 'frozen', ySplit: 4 }];
+  }
+  const buffer = await wb.xlsx.writeBuffer();
+  downloadBlob(
+    new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    }),
+    `余额表-${report.periodFrom}-${report.periodTo}.xlsx`,
+  );
+}
+
+export function reportHtml(report: Report, level: number, expanded: number[]) {
+  const cols = outputColumns.filter((c) => !c.foreign || report.mode === 'foreign');
+  return report.groups
+    .map(
+      (g) =>
+        `<h2>${report.mode === 'foreign' ? '外币余额表' : '汇总余额表'}</h2><p>${escapeHtml(reportCaption(report, g.currency))}</p><p>合计余额金额按“借方 / 贷方”分别列示</p><table><thead><tr>${cols.map((c) => `<th>${escapeHtml(c.title)}</th>`).join('')}</tr></thead><tbody>${outputRows(
+          g,
+          level,
+          expanded,
+        )
+          .map(
+            (r) =>
+              `<tr>${cols
+                .map((c) => {
+                  const v = r[c.key];
+                  return `<td>${escapeHtml(typeof v === 'number' && c.money ? formatMoney(v) : v)}</td>`;
+                })
+                .join('')}</tr>`,
+          )
+          .join('')}</tbody></table>`,
+    )
+    .join('<div class="cw-page-break"></div>');
+}
