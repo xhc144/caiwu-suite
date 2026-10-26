@@ -149,7 +149,7 @@ export default function CalculationPage() {
           >
             重新试算
           </Button>
-          {canSave && usablePreview && (
+          {canSave && usablePreview && !!preview.data?.rows.length && (
             <Button
               loading={save.isPending}
               onClick={() =>
@@ -165,7 +165,6 @@ export default function CalculationPage() {
           )}
           {canCalculate &&
             usablePreview &&
-            !!preview.data?.rows.length &&
             context.data?.canCommit &&
             context.data.nextCalculationPeriod === current && (
               <Button
@@ -219,7 +218,11 @@ export default function CalculationPage() {
             scroll={{ x: 1500 }}
             dataSource={result.rows}
             columns={columns}
-            locale={{ emptyText: '没有可试算的库存数据' }}
+            locale={{
+              emptyText: formalView
+                ? '本批次为空月正式核算记录'
+                : '本月没有库存数据，可确认按空月正式核算',
+            }}
           />
         )}
         <FormalBatches
@@ -302,9 +305,18 @@ export default function CalculationPage() {
       >
         {publishIntent && (
           <Space orientation="vertical">
+            {publishIntent.result.rows.length === 0 && (
+              <Alert
+                type="warning"
+                showIcon
+                title="本月没有库存数据，将按空月正式核算"
+                description="确认后将保存空月正式核算记录并锁定本月，下一月可继续核算；不会补造库存期初或结存。"
+              />
+            )}
             <Typography.Paragraph>
               核算范围为本月全部仓库和产品。出库成本{' '}
-              {formatMoney(sumCents(publishIntent.result.rows.map((r) => r.issuedCents)))}； 月末结存{' '}
+              {formatMoney(sumCents(publishIntent.result.rows.map((r) => r.issuedCents)))}；{' '}
+              月末结存{' '}
               {formatMoney(sumCents(publishIntent.result.rows.map((r) => r.closingCents)))}。
             </Typography.Paragraph>
             <Typography.Paragraph>

@@ -63,7 +63,8 @@ export function calculate(
     keys.set(`${warehouseId}:${productId}`, { warehouseId, productId });
   for (const o of snapshot.periodOpening) addKey(o.warehouseId, o.productId);
   for (const l of movements) addKey(documentMap.get(l.documentId)!.warehouseId, l.productId);
-  for (const c of counts) for (const l of c.lines) addKey(c.warehouseId, l.productId);
+  for (const c of counts)
+    for (const l of c.lines) addKey(c.warehouseId, l.productId);
   for (const { warehouseId, productId } of keys.values()) {
     const product = snapshot.products.find((p) => p.id === productId);
     const warehouse = snapshot.warehouses.find((w) => w.id === warehouseId);
@@ -77,8 +78,7 @@ export function calculate(
     const current = movements
       .filter(
         (l) =>
-          l.productId === productId &&
-          documentMap.get(l.documentId)!.warehouseId === warehouseId,
+          l.productId === productId && documentMap.get(l.documentId)!.warehouseId === warehouseId,
       )
       .sort((a, b) => {
         const da = documentMap.get(a.documentId)!;
@@ -107,7 +107,8 @@ export function calculate(
         current.reduce(
           (n, l) =>
             n +
-            (documentMap.get(l.documentId)!.kind === 'receipt' ? 1n : -1n) * integer(e6(l.quantity)),
+            (documentMap.get(l.documentId)!.kind === 'receipt' ? 1n : -1n) *
+              integer(e6(l.quantity)),
           0n,
         );
       if (integer(e6(countLine.bookQuantity)) !== expectedBook)

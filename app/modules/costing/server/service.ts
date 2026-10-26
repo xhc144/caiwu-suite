@@ -35,7 +35,8 @@ export function costingService(svc: CoreServices) {
     async context() {
       svc.permissions.require('costing.view');
       return svc.tx(async (t) => {
-        const currentPeriod = (await t.periods.current())?.period ?? (await t.book.info()).startPeriod;
+        const currentPeriod =
+          (await t.periods.current())?.period ?? (await t.book.info()).startPeriod;
         const snapshot = await readInventory(t, currentPeriod);
         const historyValid = verifiedHistory(snapshot) !== null;
         return {
@@ -167,7 +168,8 @@ export function costingService(svc: CoreServices) {
       });
     },
     commit: (raw: Parameters<typeof commitCalculation>[1]) => commitCalculation(svc, raw),
-    cancelCalculation: (raw: Parameters<typeof cancelCalculation>[1]) => cancelCalculation(svc, raw),
+    cancelCalculation: (raw: Parameters<typeof cancelCalculation>[1]) =>
+      cancelCalculation(svc, raw),
     batches: () => listBatches(svc),
     async profit(raw: z.input<typeof ReportSchema>) {
       svc.permissions.require('costing.view');

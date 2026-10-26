@@ -3,7 +3,11 @@ import { nextPeriod, type CostingCommitInput, type InventorySnapshot } from '@ca
 import type { CoreServices } from '@caiwu/core/server';
 import type { Selectable } from '@caiwu/db';
 import type { z } from 'zod';
-import { CancelCalculationSchema, CommitCalculationSchema, type CalculationResult } from '../shared';
+import {
+  CancelCalculationSchema,
+  CommitCalculationSchema,
+  type CalculationResult,
+} from '../shared';
 import { calculate } from './calculation';
 import { assertHistory } from './inventory-read';
 import { fail } from './math';
@@ -21,6 +25,9 @@ const response = (row: Batch) => ({
 function requireOwner(svc: CoreServices) {
   svc.permissions.require('costing.calculate');
   if (svc.moduleId !== 'costing') fail('OWNER', '正式成本操作必须从成本核算模块发起');
+}
+function inTransaction<T>(svc: CoreServices, run: (t: CoreServices) => Promise<T>): Promise<T> {
+  return svc.db.isTransaction ? run(svc) : svc.tx(run);
 }
 async function assertSnapshotContext(t: CoreServices, snapshot: InventorySnapshot) {
   if (
@@ -42,7 +49,7 @@ export async function commitCalculation(
     fail('CONFIRM', '正式发布需要明确确认', '请核对试算结果，再确认锁定本月库存');
   const hash = digest(input);
   // 外层 with 和内部每个库存操作均被等待，能力对象不离开回调。
-  return svc.tx((t) =>
+  return inTransaction(svc, (t) =>
     t.inventory.with(async (inv) => {
       const db = t.db.withTables<CostingTables>();
       const repeated = await db
@@ -82,14 +89,18 @@ export async function commitCalculation(
         snapshot.control.costPeriod === null
           ? snapshot.startPeriod
           : nextPeriod(snapshot.control.costPeriod);
-      if (input.period !== expectedPeriod || snapshot.previousBatchId !== snapshot.control.costBatch)
+      if (
+        input.period !== expectedPeriod ||
+        snapshot.previousBatchId !== snapshot.control.costBatch
+      )
         fail(
           'SEQUENCE',
           '必须从启用月份逐月连续正式核算，不能跳月或重复发布',
           `请先核算 ${expectedPeriod}`,
         );
       const result = calculate(snapshot, input.period, input.adjustZeroQuantity);
-      if (!result.rows.length) fail('EMPTY', '本月没有可核算的库存数据', '先录入期初或出入库单据');
+      // 启用月可以没有业务；仍保存真实空月批次和月锁，让下一月连续承接。
+      // 空数组原样交给库存桥，不补造期初、结存或来源明细。
       const commit: CostingCommitInput = {
         bookId: snapshot.bookId,
         period: input.period,
@@ -162,7 +173,7 @@ export async function cancelCalculation(
   const input = CancelCalculationSchema.parse(raw);
   if (!input.confirmed)
     fail('CONFIRM', '撤销正式核算需要明确确认', '请核对最后有效批次后确认撤销');
-  return svc.tx((t) =>
+  return inTransaction(svc, (t) =>
     t.inventory.with(async (inv) => {
       const db = t.db.withTables<CostingTables>();
       const row = await db

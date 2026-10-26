@@ -91,19 +91,9 @@ export async function previewVoucher(svc: CoreServices, raw: z.input<typeof Vouc
         'debit',
         '进项税',
       );
-      await append(
-        doc.accountId,
-        sumCents(sourceLines.map((l) => l.grossCents)),
-        'credit',
-        '付款',
-      );
+      await append(doc.accountId, sumCents(sourceLines.map((l) => l.grossCents)), 'credit', '付款');
     } else if (input.purpose === 'revenue') {
-      await append(
-        doc.accountId,
-        sumCents(sourceLines.map((l) => l.grossCents)),
-        'debit',
-        '收款',
-      );
+      await append(doc.accountId, sumCents(sourceLines.map((l) => l.grossCents)), 'debit', '收款');
       for (const l of sourceLines) {
         const p = snapshot.products.find((p) => p.id === l.productId)!;
         await append(

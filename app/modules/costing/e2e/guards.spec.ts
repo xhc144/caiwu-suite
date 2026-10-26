@@ -45,14 +45,16 @@ const test = base.extend<{ guarded: GuardApp }>({
         const withCore = <T>(run: (svc: CoreServices) => Promise<T>) =>
           runtime!.bookStore.withBook(seeded.bookId, async (book) => {
             const user = (await loadServiceUser(book.db, 1))!;
-            return run(createCoreServices({
-              db: book.db,
-              user,
-              moduleId: 'costing',
-              now: runtime!.now,
-              modules: runtime!.modules.lookup,
-              providers: runtime!.modules.providers,
-            }));
+            return run(
+              createCoreServices({
+                db: book.db,
+                user,
+                moduleId: 'costing',
+                now: runtime!.now,
+                modules: runtime!.modules.lookup,
+                providers: runtime!.modules.providers,
+              }),
+            );
           });
         await use({ ...seeded, page, request, withCore });
       } finally {
@@ -71,41 +73,67 @@ const test = base.extend<{ guarded: GuardApp }>({
   },
 });
 
-test('w_cb_fgz 页面：真实已审核来源阻止撤销，成本记录、库存字段及凭证全部保留', async ({ guarded: t }) => {
+test('w_cb_fgz 页面：真实已审核来源阻止撤销，成本记录、库存字段及凭证全部保留', async ({
+  guarded: t,
+}) => {
   await preview(t.page);
   await confirmPublish(t.page);
   await expect(t.page.getByText(/202601 正式成本核算已发布/)).toBeVisible();
-  const voucher = await t.withCore((svc) => svc.tx((tx) => tx.inventory.with(async (inv) => {
-    const snapshot = await inv.snapshot(202601);
-    const document = snapshot.documents.find((d) => d.id === t.issue.id)!;
-    const voucher = await tx.vouchers.create({
-      ...(await voucherInputFromSpec(tx, {
-        date: '2026-01-10',
-        lines: [{ account: '6401', debit: 1000 }, { account: '1405', credit: 1000, quantity: '-5' }],
-      })),
-      source: { type: 'cost', id: String(document.id) },
-    });
-    await inv.lockVoucherSource({ bookId: snapshot.bookId, documentId: document.id, purpose: 'cost', expectedRevision: document.revision, voucherId: voucher.id });
-    await tx.vouchers.changeStatus({ ids: [voucher.id], to: 'audited' });
-    return voucher;
-  })));
+  const voucher = await t.withCore((svc) =>
+    svc.tx((tx) =>
+      tx.inventory.with(async (inv) => {
+        const snapshot = await inv.snapshot(202601);
+        const document = snapshot.documents.find((d) => d.id === t.issue.id)!;
+        const voucher = await tx.vouchers.create({
+          ...(await voucherInputFromSpec(tx, {
+            date: '2026-01-10',
+            lines: [
+              { account: '6401', debit: 1000 },
+              { account: '1405', credit: 1000, quantity: '-5' },
+            ],
+          })),
+          source: { type: 'cost', id: String(document.id) },
+        });
+        await inv.lockVoucherSource({
+          bookId: snapshot.bookId,
+          documentId: document.id,
+          purpose: 'cost',
+          expectedRevision: document.revision,
+          voucherId: voucher.id,
+        });
+        await tx.vouchers.changeStatus({ ids: [voucher.id], to: 'audited' });
+        return voucher;
+      }),
+    ),
+  );
   const before = await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 });
   await t.page.reload();
   await cancelLatest(t.page);
   await expect(t.page.getByText('关联凭证缺失、已审核或过账，不能取消成本核算').first()).toBeVisible();
   expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 })).toEqual(before);
   expect((await t.batches())[0]).toMatchObject({ status: 'calculated', revision: 1 });
-  expect(await t.withCore((svc) => svc.vouchers.get(voucher.id))).toMatchObject({ status: 'audited' });
+  expect(await t.withCore((svc) => svc.vouchers.get(voucher.id))).toMatchObject({
+    status: 'audited',
+  });
 });
 
 test('w_cb_hz 页面：调用方后续抛错全部回滚；同一试算仍可正式发布', async ({ guarded: t }) => {
   await preview(t.page);
   const before = await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 });
-  await expect(t.withCore((svc) => svc.tx(async (tx) => {
-    const r = await costingService(tx).preview({ period: 202601 });
-    await costingService(tx).commit({ period: r.period, fingerprint: r.fingerprint, requestKey: 'page-rollback-fixture', confirmed: true });
-    throw new Error('后续业务失败');
-  }))).rejects.toThrow('后续业务失败');
+  await expect(
+    t.withCore((svc) =>
+      svc.tx(async (tx) => {
+        const r = await costingService(tx).preview({ period: 202601 });
+        await costingService(tx).commit({
+          period: r.period,
+          fingerprint: r.fingerprint,
+          requestKey: 'page-rollback-fixture',
+          confirmed: true,
+        });
+        throw new Error('后续业务失败');
+      }),
+    ),
+  ).rejects.toThrow('后续业务失败');
   expect(await t.batches()).toEqual([]);
   expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202601 })).toEqual(before);
   await confirmPublish(t.page);
@@ -113,7 +141,9 @@ test('w_cb_hz 页面：调用方后续抛错全部回滚；同一试算仍可正
   expect(await t.batches()).toHaveLength(1);
 });
 
-test('w_cb_hzsj_cblr / w_cb_pz 页面：相邻前月ready=true但链断裂时，利润与成本凭证均未知', async ({ guarded: t }) => {
+test('w_cb_hzsj_cblr / w_cb_pz 页面：相邻前月ready=true但链断裂时，利润与成本凭证均未知', async ({
+  guarded: t,
+}) => {
   await preview(t.page);
   await confirmPublish(t.page);
   await expect(t.page.getByText(/202601 正式成本核算已发布/)).toBeVisible();
@@ -122,7 +152,9 @@ test('w_cb_hzsj_cblr / w_cb_pz 页面：相邻前月ready=true但链断裂时，
   await expect(t.page.getByText(/202602 正式成本核算已发布/)).toBeVisible();
   const latest = (await t.batches())[0]!;
   await t.withCore(async (svc) => {
-    await sql`UPDATE inventory_costing_batch SET previous_batch_id=NULL WHERE id=${latest.inventory_batch_id}`.execute(svc.db);
+    await sql`UPDATE inventory_costing_batch SET previous_batch_id=NULL WHERE id=${latest.inventory_batch_id}`.execute(
+      svc.db,
+    );
   });
   const source = await t.get<InventorySnapshot>('costingSnapshot', { period: 202603 });
   expect(source.periodOpeningReady).toBe(true);
@@ -131,7 +163,10 @@ test('w_cb_hzsj_cblr / w_cb_pz 页面：相邻前月ready=true但链断裂时，
   await expect(t.page.getByText('不含税收入 50.00；销售成本 历史成本未知；销售毛利 历史成本未知')).toBeVisible();
   await t.page.goto(`/m/costing/vouchers?id=${t.issue.id}`);
   await t.page.getByRole('combobox', { name: '凭证用途', exact: true }).click();
-  await t.page.locator('.ant-select-item-option-content').getByText('出库成本', { exact: true }).click();
+  await t.page
+    .locator('.ant-select-item-option-content')
+    .getByText('出库成本', { exact: true })
+    .click();
   await t.page.getByRole('button', { name: '预览凭证', exact: true }).click();
   await expect(t.page.getByText('历史成本未知，不能预览成本凭证')).toBeVisible();
   await t.page.goto('/m/costing/calculation');
