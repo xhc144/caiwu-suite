@@ -398,28 +398,27 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         /^Uninstall.*\.exe$/iu.test(name),
       );
       expect(uninstaller).toBeDefined();
-      expect(
-        await run(path.join(path.dirname(executable), uninstaller!), [
-          '/S',
-          '/currentuser',
-          '--delete-app-data',
-        ]),
-      ).not.toBe(0);
+      // 与 electron-builder 的 installUtil.nsh 一样，在安装树外运行真实卸载器。
+      // NSIS 默认会另启临时副本，父进程的 0 不代表卸载结果；_?= 必须放最后。
+      const directUninstaller = path.join(root, 'qa-uninstaller.exe');
+      cpSync(path.join(path.dirname(executable), uninstaller!), directUninstaller, {
+        force: false,
+        errorOnExist: true,
+      });
+      const uninstall = (args: string[] = []) =>
+        run(directUninstaller, ['/S', '/currentuser', ...args, `_?=${path.dirname(executable)}`]);
+      expect(await uninstall(['--delete-app-data']), '拒绝删除用户数据参数').toBe(4);
       expect(existsSync(executable)).toBe(true);
       expect(existsSync(path.join(fixture.configDir, 'desktop-settings.json'))).toBe(true);
       const legacyBook = path.join(path.dirname(executable), 'legacy-uninstall-qa.caiwu');
       cpSync(backup, legacyBook, { force: false, errorOnExist: true });
-      expect(
-        await run(path.join(path.dirname(executable), uninstaller!), ['/S', '/currentuser']),
-      ).not.toBe(0);
+      expect(await uninstall(), '发现安装树内旧账套时停止卸载').toBe(3);
       expect(existsSync(executable)).toBe(true);
       expect(createHash('sha256').update(readFileSync(legacyBook)).digest('hex')).toBe(
         originalBackup,
       );
       rmSync(legacyBook);
-      expect(
-        await run(path.join(path.dirname(executable), uninstaller!), ['/S', '/currentuser']),
-      ).toBe(0);
+      expect(await uninstall(), '正常原生卸载退出码').toBe(0);
       await expect.poll(() => existsSync(executable)).toBe(false);
       expect(hash()).toBe(originalBackup);
       expect(existsSync(path.join(fixture.dataDir, 'books', `${fixture.bookId}.caiwu`))).toBe(true);
