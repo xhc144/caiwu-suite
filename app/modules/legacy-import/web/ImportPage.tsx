@@ -176,11 +176,6 @@ export default function ImportPage() {
         <Alert
           type="warning"
           showIcon
-          title="试用限制：后续凭证编号整理仍可能改变导入原编号，编号来源保护尚待修复。请保留来源文件。"
-        />
-        <Alert
-          type="warning"
-          showIcon
           title="不支持原版 .bak / .db / .acd"
           description="请先在有合法读取条件的环境中导出并核对数据。本页不会运行原程序，也不会修改来源文件。历史审核/过账、作废、制单人、辅助核算、外币、数量、合同、附件内容等未支持字段一律阻止导入。"
         />
