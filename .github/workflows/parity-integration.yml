@@ -1,0 +1,42 @@
+name: Exact-SHA parity integration components
+on:
+  push:
+    branches: [codex/parity-integration-20261026]
+    paths:
+      - '.github/workflows/parity-integration.yml'
+      - 'src/**'
+      - 'tests/ParityAcceptance/**'
+      - 'tests/Caiwu.Core.Tests/**'
+      - 'tests/Caiwu.Persistence.Sqlite.Tests/**'
+      - 'Directory.Build.props'
+      - 'global.json'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: caiwu-parity-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  windows-components:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.402
+      - name: Run exact-source core, SQLite and proposal integration on Windows
+        shell: pwsh
+        run: ./tests/ParityAcceptance/Run-WindowsParity.ps1 -ExpectedCommit '${{ github.sha }}' -OutputDirectory artifacts/parity-windows -CaptureNative
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: parity-components-${{ github.sha }}
+          path: |
+            artifacts/parity-windows/*.json
+            artifacts/parity-windows/*.trx
+            artifacts/parity-windows/native/*.png
+            artifacts/parity-windows/native/*.json
+            artifacts/parity-windows/native/*.log
+            artifacts/parity-windows/native/*failure.txt
+          if-no-files-found: error

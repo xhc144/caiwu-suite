@@ -9,7 +9,7 @@ namespace Caiwu.Core;
 /// exactly one atomic store write, including its audit event. Writes first check the
 /// book/revision of the snapshot the user actually saw. The caller owns the store.
 /// </summary>
-public sealed class LedgerService : ILedgerService
+public sealed partial class LedgerService : ILedgerService, IParityLedgerService
 {
     // Storage contract uses signed Int64 cents. No rounding or floating point conversion.
     private const decimal MaximumAmount = long.MaxValue / 100m;
@@ -112,6 +112,14 @@ public sealed class LedgerService : ILedgerService
         var before = Read();
         RequireMutationContext(before, draft!.ExpectedBookId is { } bookId && draft.ExpectedRevision is { } revision
             ? new LedgerMutationContext(bookId, revision) : null);
+        var voucher = BuildDraft(before, draft!, actor);
+        Commit(before, before with { Vouchers = before.Vouchers.Where(v => v.Id != voucher.Id).Append(voucher).ToArray() },
+            actor, "SaveDraft", voucher.Id, $"保存 {Label(voucher)}");
+        return voucher;
+    }
+
+    private static Voucher BuildDraft(LedgerSnapshot before, VoucherDraft draft, string actor)
+    {
         RequireOpenDate(before, draft!.Date);
         var kind = Text(draft.Kind, "凭证字");
         Require(draft.AttachmentCount >= 0, "附件张数不能为负数。");
@@ -141,8 +149,6 @@ public sealed class LedgerService : ILedgerService
         Require(!peers.Any(v => v.Number == number), "本年度、本月、该凭证字下的编号已存在。");
         var voucher = new Voucher(old?.Id ?? Guid.NewGuid(), draft.Date, kind, number.Value,
             draft.AttachmentCount, actor, null, VoucherStatus.Draft, lines);
-        Commit(before, before with { Vouchers = before.Vouchers.Where(v => v.Id != voucher.Id).Append(voucher).ToArray() },
-            actor, "SaveDraft", voucher.Id, $"保存 {Label(voucher)}");
         return voucher;
     }
 

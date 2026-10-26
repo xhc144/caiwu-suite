@@ -34,7 +34,11 @@
 
 ## 当前状态与未实现验收
 
-初始检查点：契约已写，Core 桥接、事件回放、合成测试与 Windows workflow 尚在实现，**未验证**。父任务可先传播此 API；后续回传实现 SHA 和真实命令结果。
+接口冻结提交：`5bb60d24b9c60c9eecfcc5adc37bced4688adf85`，草稿 [PR52](https://github.com/xhc144/caiwu-suite/pull/52)。实现提交随后提供，Windows 和最终 exact-SHA 本地复验另记，不把初始契约提交称为已运行的实现。
+
+当前工作树已实现 Core 桥接/版本化事件回放；独立真实 SQLite 合成验收包括持久化重开、注入 ABORT 全回滚、旧/外账套决策拒绝、备份恢复和双连接来源竞争，均实际通过。既有 Core165、SQLite117 回归在 Linux 上通过，额外边界回归随后复验。验收项目 Release 构建零警告/零错误；官方 SDK10.0.402 下载 SHA512 与库内固定 metadata 一致。以上是未提交树的开发检查，不是绑定接口冻结 SHA 的验收。
+
+新 `.github/workflows/parity-integration.yml` 和 `tests/ParityAcceptance/Run-WindowsParity.ps1` 固定完整 SHA/clean tree，准备真实 Windows Core/SQLite/提案验收及原生高清截图。截图复用现有新实现测试 host，只证明该新 SHA 的渲染，originalUiParity 和 realBookCompatibility 保持 not-tested；原版对照需要 shell 的后续 SHA/观测。不会把当前旧布局新拍一张就宣称原版保真。
 
 仍待父任务提供各 owner 审核 SHA/HANDOFF；不自行拿浮动 branch HEAD 集成。原账套实际驱动/无损迁移、原流程全部按钮、44 制度模板、辅助/外币/数量业务规则、反过账/反结账持久化、打印及 Windows 实机对照都不以本接口替代。旧 gap-analysis 验收行保留。
 
