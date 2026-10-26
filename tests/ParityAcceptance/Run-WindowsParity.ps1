@@ -96,7 +96,8 @@ try {
                 if ($LASTEXITCODE -ne 0) { throw 'Candidate shell native host build failed.' }
                 $env:CAIWU_SHELL_SOURCE_SHA = $ExpectedCommit
                 $hostDll = Join-Path $root 'src/Caiwu.Desktop/Shell/Tests/Windows/bin/Release/net10.0-windows/Caiwu.Shell.Windows.Tests.dll'
-                $nativeProcess = Start-Process (Get-Command dotnet).Source -ArgumentList @(('"' + $hostDll + '"'), ('"' + $nativeOutput + '"')) -PassThru -RedirectStandardOutput (Join-Path $nativeOutput 'stdout.log') -RedirectStandardError (Join-Path $nativeOutput 'stderr.log')
+                $desktopRunner = Join-Path $root 'tests/ParityAcceptance/run-native-host.py'
+                $nativeProcess = Start-Process (Get-Command python).Source -ArgumentList @(('"' + $desktopRunner + '"'), ('"' + (Get-Command dotnet).Source + '"'), ('"' + $hostDll + '"'), ('"' + $nativeOutput + '"')) -PassThru -RedirectStandardOutput (Join-Path $nativeOutput 'stdout.log') -RedirectStandardError (Join-Path $nativeOutput 'stderr.log')
                 if (-not $nativeProcess.WaitForExit(90000)) { $nativeProcess.Kill($true); throw 'Candidate shell native host timed out; no UI pass inferred.' }
                 if ($nativeProcess.ExitCode -ne 0) { throw 'Candidate shell native host failed.' }
                 $shell = Get-Content -Raw (Join-Path $OutputDirectory 'native/native-shell.json') | ConvertFrom-Json
