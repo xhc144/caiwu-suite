@@ -1,4 +1,4 @@
-import { Button, Result, Spin, Tabs } from 'antd';
+import { Button, Modal, Result, Spin, Tabs } from 'antd';
 import {
   Component,
   Suspense,
@@ -11,9 +11,18 @@ import {
   type ErrorInfo,
   type ReactNode,
 } from 'react';
-import { Route, Routes, useLocation, useNavigate, type Location } from 'react-router';
-import { TabContext, useHotkey, type TabContextValue } from '@caiwu/web-kit';
-import { loadWebModule } from '../modules';
+import {
+  NavigationType,
+  UNSAFE_LocationContext,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  type Location,
+} from 'react-router';
+import { TabContext, useRequiredSession, type TabContextValue } from '@caiwu/web-kit';
+import { loadWebModule, visibleModules } from '../modules';
+import { checkBeforeLeave, routeAccess } from './guards';
 import { EntryPage } from './EntryPage';
 import { HomePage } from './HomePage';
 import type { NavItem } from './NavMenu';
@@ -36,7 +45,7 @@ function isTabPath(pathname: string) {
 
 function defaultTitle(pathname: string, navItems: NavItem[]) {
   if (pathname === HOME) return '首页';
-  const exact = navItems.find((i) => i.to === pathname);
+  const exact = navItems.find((i) => i.to.split('?')[0] === pathname);
   if (exact) return exact.title;
   const prefix = navItems
     .filter((i) => pathname.startsWith(`${i.to}/`))
@@ -51,6 +60,10 @@ function defaultTitle(pathname: string, navItems: NavItem[]) {
 export function TabsHost({ navItems, devMode }: { navItems: NavItem[]; devMode: boolean }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const session = useRequiredSession();
+  const modules = visibleModules(session.book.product, devMode);
+  const [closing, setClosing] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
   // 首页标签始终存在，且不能关闭
   const [tabs, setTabs] = useState<TabState[]>(() => [
     {
@@ -76,32 +89,42 @@ export function TabsHost({ navItems, devMode }: { navItems: NavItem[]; devMode: 
         next[i] = { ...prev[i]!, location };
         return next;
       }
+      if (prev.length >= MAX_TABS) return prev;
       const tab: TabState = {
         key: location.pathname,
         location,
         title: defaultTitle(location.pathname, navItems),
         customTitle: false,
       };
-      const next = [...prev, tab];
-      if (next.length <= MAX_TABS) return next;
-      // 标签太多时关掉最早打开的一个（首页除外）
-      const oldest = next.findIndex((t) => t.key !== HOME);
-      return next.filter((_, idx) => idx !== oldest);
+      return [...prev, tab];
     });
   }, [location, navigate, navItems]);
 
   const activeKey = location.pathname;
+  useEffect(() => {
+    if (tabs.length >= MAX_TABS && !tabs.some((t) => t.key === activeKey)) {
+      setLimitReached(true);
+      const last = tabs.at(-1)!;
+      void navigate(last.location.pathname + last.location.search + last.location.hash, {
+        replace: true,
+      });
+    }
+  }, [activeKey, tabs, navigate]);
 
   const close = useCallback(
     (key: string) => {
-      if (key === HOME) return;
+      if (key === HOME || !checkBeforeLeave()) return;
       const prev = tabsRef.current;
       const idx = prev.findIndex((t) => t.key === key);
       const next = prev.filter((t) => t.key !== key);
       setTabs(next);
       if (key === activeKey) {
         const neighbor = next[Math.max(0, idx - 1)] ?? next[0];
-        void navigate(neighbor ? neighbor.location.pathname + neighbor.location.search : HOME);
+        void navigate(
+          neighbor
+            ? neighbor.location.pathname + neighbor.location.search + neighbor.location.hash
+            : HOME,
+        );
       }
     },
     [activeKey, navigate],
@@ -109,20 +132,39 @@ export function TabsHost({ navItems, devMode }: { navItems: NavItem[]; devMode: 
 
   const setTitle = useCallback((key: string, title: string) => {
     setTabs((prev) =>
-      prev.map((t) =>
-        t.key === key && t.title !== title ? { ...t, title, customTitle: true } : t,
-      ),
+      prev.some((t) => t.key === key && t.title !== title)
+        ? prev.map((t) => (t.key === key ? { ...t, title, customTitle: true } : t))
+        : prev,
     );
   }, []);
 
   const setDefaultTitle = useCallback((key: string, title: string) => {
     setTabs((prev) =>
-      prev.map((t) => (t.key === key && !t.customTitle && t.title !== title ? { ...t, title } : t)),
+      prev.some((t) => t.key === key && !t.customTitle && t.title !== title)
+        ? prev.map((t) => (t.key === key && !t.customTitle ? { ...t, title } : t))
+        : prev,
     );
   }, []);
 
   // 原版快捷键：Ctrl+F4 关闭当前窗口
-  useHotkey('Ctrl+F4', () => close(activeKey), { global: true });
+  useEffect(() => {
+    const listener = (e: KeyboardEvent) => {
+      if (
+        !e.defaultPrevented &&
+        !e.isComposing &&
+        e.keyCode !== 229 &&
+        e.ctrlKey &&
+        !e.altKey &&
+        !e.shiftKey &&
+        e.key === 'F4'
+      ) {
+        e.preventDefault();
+        if (activeKey !== HOME) close(activeKey);
+      }
+    };
+    window.addEventListener('keydown', listener);
+    return () => window.removeEventListener('keydown', listener);
+  }, [activeKey, close]);
 
   const ordered = useMemo(() => {
     const home = tabs.find((t) => t.key === HOME);
@@ -130,35 +172,68 @@ export function TabsHost({ navItems, devMode }: { navItems: NavItem[]; devMode: 
   }, [tabs]);
 
   return (
-    <Tabs
-      className="cw-tabs"
-      type="editable-card"
-      hideAdd
-      size="small"
-      activeKey={activeKey}
-      onChange={(key) => {
-        const t = tabs.find((x) => x.key === key);
-        if (t) void navigate(t.location.pathname + t.location.search);
-      }}
-      onEdit={(key, action) => {
-        if (action === 'remove' && typeof key === 'string') close(key);
-      }}
-      items={ordered.map((t) => ({
-        key: t.key,
-        label: t.title,
-        closable: t.key !== HOME,
-        children: (
-          <TabPane
-            tab={t}
-            active={t.key === activeKey}
-            devMode={devMode}
-            setTitle={setTitle}
-            setDefaultTitle={setDefaultTitle}
-            close={close}
-          />
-        ),
-      }))}
-    />
+    <>
+      <Tabs
+        className="cw-tabs"
+        type="editable-card"
+        hideAdd
+        size="small"
+        activeKey={activeKey}
+        onChange={(key) => {
+          const t = tabs.find((x) => x.key === key);
+          if (t) void navigate(t.location.pathname + t.location.search + t.location.hash);
+        }}
+        onEdit={(key, action) => {
+          if (action === 'remove' && typeof key === 'string') close(key);
+        }}
+        tabBarExtraContent={
+          <Button size="small" onClick={() => setClosing(true)}>
+            关闭所有
+          </Button>
+        }
+        items={ordered.map((t) => ({
+          key: t.key,
+          label: t.title,
+          closable: t.key !== HOME,
+          children: (
+            <TabPane
+              tab={t.key === activeKey ? { ...t, location } : t}
+              active={t.key === activeKey}
+              devMode={devMode}
+              setTitle={setTitle}
+              setDefaultTitle={setDefaultTitle}
+              close={close}
+              access={routeAccess(t.key, modules, navItems, session.user)}
+            />
+          ),
+        }))}
+      />
+      <Modal
+        getContainer={false}
+        title="关闭所有标签"
+        open={closing}
+        onCancel={() => setClosing(false)}
+        okText="已保存内容，关闭"
+        cancelText="取消"
+        onOk={() => {
+          if (!checkBeforeLeave()) return;
+          setTabs((prev) => prev.filter((t) => t.key === HOME));
+          void navigate(HOME);
+          setClosing(false);
+        }}
+      >
+        <p>请先保存表单。已有页面的离开保护会被检查；当前框架尚不能判断所有未保存内容。</p>
+      </Modal>
+      <Modal
+        getContainer={false}
+        title="标签数量已达上限"
+        open={limitReached}
+        footer={<Button onClick={() => setLimitReached(false)}>知道了</Button>}
+        onCancel={() => setLimitReached(false)}
+      >
+        <p>最多同时打开20个标签。请先保存并关闭一些标签后再打开新功能；现有页面已保留。</p>
+      </Modal>
+    </>
   );
 }
 
@@ -169,6 +244,7 @@ function TabPane({
   setTitle,
   setDefaultTitle,
   close,
+  access,
 }: {
   tab: TabState;
   active: boolean;
@@ -176,6 +252,7 @@ function TabPane({
   setTitle: (key: string, title: string) => void;
   setDefaultTitle: (key: string, title: string) => void;
   close: (key: string) => void;
+  access: 'allow' | 'denied' | 'missing';
 }) {
   const ctx = useMemo<TabContextValue>(
     () => ({
@@ -186,21 +263,34 @@ function TabPane({
     }),
     [tab.key, active, setTitle, close],
   );
+  const onTitle = useCallback(
+    (title: string) => setDefaultTitle(tab.key, title),
+    [setDefaultTitle, tab.key],
+  );
   return (
-    <TabContext.Provider value={ctx}>
-      <PageErrorBoundary>
-        <Suspense fallback={<Spin style={{ display: 'block', margin: 48 }} />}>
-          {tab.key === HOME ? (
-            <EntryPage kind="home" devMode={devMode} fallback={<HomePage />} />
-          ) : (
-            <ModuleOutlet
-              location={tab.location}
-              onTitle={(title) => setDefaultTitle(tab.key, title)}
-            />
-          )}
-        </Suspense>
-      </PageErrorBoundary>
-    </TabContext.Provider>
+    <UNSAFE_LocationContext.Provider
+      value={{ location: tab.location, navigationType: NavigationType.Pop }}
+    >
+      <TabContext.Provider value={ctx}>
+        <PageErrorBoundary>
+          <Suspense fallback={<Spin style={{ display: 'block', margin: 48 }} />}>
+            {access === 'missing' ? (
+              <NotFound />
+            ) : access === 'denied' ? (
+              <Result
+                status="403"
+                title="无权访问此页面"
+                subTitle="当前菜单未授权，或嵌套路由尚无明确权限映射。请联系管理员检查权限。"
+              />
+            ) : tab.key === HOME ? (
+              <EntryPage kind="home" devMode={devMode} fallback={<HomePage />} />
+            ) : (
+              <ModuleOutlet location={tab.location} onTitle={onTitle} />
+            )}
+          </Suspense>
+        </PageErrorBoundary>
+      </TabContext.Provider>
+    </UNSAFE_LocationContext.Provider>
   );
 }
 
@@ -216,7 +306,7 @@ function ModuleOutlet({
   if (!mod) return <NotFound />;
   const base = `/m/${moduleId}`;
   return (
-    <Routes location={location}>
+    <Routes>
       {mod.routes.map((r) => {
         const Page = r.component;
         return (
