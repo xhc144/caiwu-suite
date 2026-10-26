@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
+import { callApi, E2E_APP_TOKEN, loginWithNewBook } from '@caiwu/testkit/e2e';
+import Database from 'better-sqlite3';
+import { existsSync, readdirSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 async function login(page: Page, bookId: string, code: string, password: string) {
   await page.goto(`/login/${bookId}`);
@@ -71,12 +75,48 @@ test('w_login → w_xt_users → w_grant → w_pass：真实 UI 授权、直接 
   const clerkToken = await token(ui);
   await expect(ui.getByRole('menuitem', { name: /综合检查/ })).toHaveCount(0);
   await expect(ui.getByRole('menuitem', { name: /用户管理/ })).toHaveCount(0);
-  await expect(
-    callApi(request, 'm.system-admin.checks', undefined, { token: clerkToken, method: 'GET' }),
-  ).rejects.toThrow(/没有.*综合检查/);
-  // 本模块页也不能借直接地址运行无权限操作。
-  await ui.goto('/m/system-admin/check');
-  await expect(ui.getByText(/没有「系统管理·运行综合检查」权限/)).toBeVisible();
+  // 配置会在 worker 重新求值；只在 E2E 临时目录中定位本测试的唯一合成账套。
+  const bookFiles = readdirSync(os.tmpdir(), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && /^caiwu-e2e-\d+-\d+$/.test(entry.name))
+    .map((entry) => path.join(os.tmpdir(), entry.name, 'books', `${bookId}.caiwu`))
+    .filter(existsSync);
+  expect(bookFiles).toHaveLength(1);
+  const db = new Database(bookFiles[0]!, {
+    readonly: true,
+    fileMustExist: true,
+  });
+  try {
+    // 同一只读连接的版本会随其他连接的提交变化，拒绝请求和拒绝页均不得写库。
+    const version = db.pragma('data_version', { simple: true });
+    const denied = await request.get('/trpc/m.system-admin.checks', {
+      headers: { 'x-caiwu-token': E2E_APP_TOKEN, authorization: `Bearer ${clerkToken}` },
+    });
+    expect(denied.status()).toBe(403);
+    const body: unknown = await denied.json();
+    expect(body).toMatchObject({
+      error: {
+        data: {
+          code: 'FORBIDDEN',
+          httpStatus: 403,
+          business: {
+            code: 'FORBIDDEN',
+            message: expect.stringMatching(/没有.*综合检查/),
+            details: { permission: 'system-admin.check' },
+          },
+        },
+      },
+    });
+    expect(body).not.toHaveProperty('result');
+    expect(db.pragma('data_version', { simple: true })).toBe(version);
+    // 壳在加载模块页之前拒绝直达地址，检查界面和操作均不可用。
+    await ui.goto('/m/system-admin/check');
+    await expect(ui.getByText('无权访问此页面', { exact: true })).toBeVisible();
+    await expect(ui.getByRole('heading', { name: '综合检查', exact: true })).toHaveCount(0);
+    await expect(ui.getByRole('button', { name: '重新检查', exact: true })).toHaveCount(0);
+    expect(db.pragma('data_version', { simple: true })).toBe(version);
+  } finally {
+    db.close();
+  }
   await switchUser(ui);
   await login(ui, bookId, 'admin', 'admin');
   await grant(ui, 'm17clerk', ['运行综合检查']);

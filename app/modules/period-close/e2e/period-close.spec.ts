@@ -95,12 +95,35 @@ test('独立账套未过账/断号拦截及取消确认不写库；处理链接�
   await expect(page.getByRole('checkbox', { name: '选择 PNL' })).toBeVisible();
   await page.getByRole('button', { name: '结转预览', exact: true }).click();
   await expect(page.getByText(/本月还有 2 张有效正式凭证未过账/)).toBeVisible();
+  const cancelledState = async () => ({
+    vouchers: await Promise.all(
+      (await app.svc.vouchers.list()).items.map((v) => app.svc.vouchers.get(v.id)),
+    ),
+    opening: await app.svc.opening.list(2026),
+    balances: await app.svc.ledger.balances({ periodFrom: 202601, periodTo: 202601 }),
+    periods: await app.svc.periods.list(),
+    logs: await app.svc.log.list(),
+  });
+  const beforeCancel = await cancelledState();
   await page.getByRole('button', { name: '反过账', exact: true }).click();
-  await page.getByRole('button', { name: '取消', exact: true }).click();
+  const unpostConfirmation = page.locator('.ant-popover').filter({
+    has: page.getByText('确认反过账 202601—202601？', { exact: true }),
+  });
+  await expect(unpostConfirmation).toBeVisible();
+  await unpostConfirmation.getByRole('button', { name: '取消', exact: true }).click();
+  // 等待旧确认层退场，后续取消只能属于本次结账确认。
+  await expect(unpostConfirmation).toBeHidden();
   expect((await app.svc.vouchers.list()).items.every((v) => v.status === 'audited')).toBe(true);
+  expect(await cancelledState()).toEqual(beforeCancel);
   await page.getByRole('button', { name: '结账', exact: true }).click();
-  await page.getByRole('button', { name: '取消', exact: true }).click();
+  const closeConfirmation = page.locator('.ant-popover').filter({
+    has: page.getByText('确认结账 2026年01月？', { exact: true }),
+  });
+  await expect(closeConfirmation).toBeVisible();
+  await closeConfirmation.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(closeConfirmation).toBeHidden();
   expect((await app.svc.periods.require(202601)).status).toBe('open');
+  expect(await cancelledState()).toEqual(beforeCancel);
   await page.getByRole('button', { name: '过账', exact: true }).click();
   await expect(page.getByText('已过账 2 张凭证', { exact: true })).toBeVisible();
   const [extra] = await seedVouchers(app.svc, [
