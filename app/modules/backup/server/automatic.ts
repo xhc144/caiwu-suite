@@ -8,6 +8,7 @@ type Runtime = {
   clock: Clock;
   signal: AbortSignal;
   cancel: AbortController;
+  seen: Set<string>;
   timer?: unknown;
   discovering?: Promise<void>;
   stopping: boolean;
@@ -26,13 +27,21 @@ const systemClock: Clock = {
 const message = (error: unknown) => (error instanceof Error ? error.message : '自动备份失败');
 
 async function attach(app: AppRuntime, runtime: Runtime, id: string, onStart: boolean) {
+  const status = runtime.controller.status(id);
+  if (status.attached) {
+    // 维护期间读取设置可能暂时失败；下一次扫描补回定时，不依赖页面重开。
+    if (!status.nextAt && !status.running) await runtime.controller.reconfigure(id);
+    return;
+  }
+  const first = !runtime.seen.has(id);
+  runtime.seen.add(id);
   await runtime.controller.attach(
     id,
     {
       settings: () => automaticBinding(app, id, runtime.signal).settings(),
       backup: () => automaticBinding(app, id, runtime.signal).backup(),
     },
-    onStart,
+    onStart && first,
   );
 }
 async function discover(app: AppRuntime, runtime: Runtime, onStart: boolean) {
@@ -41,6 +50,7 @@ async function discover(app: AppRuntime, runtime: Runtime, onStart: boolean) {
     try {
       for (const book of await app.bookStore.list()) {
         runtime.signal.throwIfAborted();
+        if (runtime.stopping && onStart) break;
         await attach(app, runtime, book.id, onStart);
       }
       runtime.discoveryFailure = null;
@@ -77,6 +87,7 @@ export async function startAutomaticBackups(
     clock,
     signal: AbortSignal.any([signal, cancel.signal]),
     cancel,
+    seen: new Set(),
     stopping: false,
     discoveryFailure: null,
   };

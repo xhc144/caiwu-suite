@@ -191,6 +191,8 @@ it('w_autobak：真实定时持系统租约，reconnect 等待快照与日志完
           .prepare("SELECT count(*) n FROM operation_log WHERE action='backup.retention'")
           .get(),
       ).toEqual({ n: 1 });
+      // 在独占维护尚未退出时，运行结束后的定时设置读取会被共享层拒绝。
+      await settle(() => automaticStatus(app, f.id).automaticFailure?.includes('维护') === true);
       maintained = true;
     },
   });
@@ -199,6 +201,15 @@ it('w_autobak：真实定时持系统租约，reconnect 等待快照与日志完
   finish();
   await maintenance;
   expect(maintained).toBe(true);
+  f.advance(60_000);
+  await settle(() => automaticStatus(app, f.id).nextAt !== null);
+  f.advance(5 * 60_000);
+  await settle(() => !automaticStatus(app, f.id).automaticRunning);
+  expect(app.bookStore.open(f.id).raw.prepare('SELECT status FROM backup_item').all()).toEqual([
+    { status: 'valid' },
+    { status: 'valid' },
+  ]);
+  expect(automaticStatus(app, f.id).automaticFailure).toBeNull();
   const login = await coreRouter
     .createCaller({ app, token: null })
     .auth.login({ bookId: f.id, userCode: 'admin', password: 'admin' });
@@ -209,7 +220,7 @@ it('w_autobak：真实定时持系统租约，reconnect 等待快照与日志完
   f.advance(10 * 60_000);
   await settle(() => !automaticStatus(app, f.id).automaticRunning);
   const raw = app.bookStore.open(f.id).raw;
-  expect(raw.prepare('SELECT count(*) n FROM backup_item').get()).toEqual({ n: 1 });
+  expect(raw.prepare('SELECT count(*) n FROM backup_item').get()).toEqual({ n: 2 });
   await app.lifecycle.stop();
 });
 it('w_autobak：退出备份遇到磁盘满会保存失败并拒绝退出，账套与租约保留', async () => {
@@ -294,4 +305,17 @@ it('w_autobak：退出超时信号传到扫描中已开始的真实备份；取�
     { status: 'cancelled' },
   ]);
   expect(await readdir(await directory(dataDir, fresh.id, DEFAULT_SETTINGS.directory))).toEqual([]);
+});
+
+it('w_autobak：普通缓存关闭后重新接入不重复执行启动备份，仍恢复后续定时', async () => {
+  const f = await fixture(true);
+  await app.lifecycle.start();
+  expect(f.rows()).toHaveLength(1);
+  await app.bookStore.close(f.id);
+  f.advance(60_000);
+  await settle(() => automaticStatus(app, f.id).nextAt !== null);
+  expect(app.bookStore.open(f.id).raw.prepare('SELECT count(*) n FROM backup_item').get()).toEqual({
+    n: 1,
+  });
+  await app.lifecycle.stop();
 });
