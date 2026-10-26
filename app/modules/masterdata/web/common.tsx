@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { DimensionTypeId } from '@caiwu/core';
 import { downloadBlob, DataTable, type DataColumn } from '@caiwu/ui';
-import { notify, queryClient, usePermission, useTab } from '@caiwu/web-kit';
+import { getBusinessError, notify, queryClient, usePermission, useTab } from '@caiwu/web-kit';
 import type { Confirmation, ExcelInput, ImportPreview, ImportRow, ReferenceKind } from '../shared';
 import { api } from './api';
 
@@ -143,6 +143,9 @@ export function ExcelActions({
     { key: 'error', title: '错误原因', dataIndex: 'error', width: 450 },
   ];
   const readFile = async (file: File) => {
+    apply.reset();
+    setInput(null);
+    setPreview(null);
     if (file.size > 675_000) {
       notify.warning('单次文件不能超过675KB，请分批导入');
       return;
@@ -157,7 +160,7 @@ export function ExcelActions({
       });
       const next = { kind, type, referenceKind, fileName: file.name, content };
       const result = await previewFile.mutateAsync(next);
-      setInput(next);
+      setInput({ ...next, previewToken: result.previewToken });
       setPreview(result);
     } finally {
       setBusy(false);
@@ -234,7 +237,15 @@ export function ExcelActions({
                       ask,
                     );
                     if (!confirmations) return;
-                    await apply.mutateAsync({ ...input, confirmations });
+                    try {
+                      await apply.mutateAsync({ ...input, confirmations });
+                    } catch (error) {
+                      if (getBusinessError(error)?.code === 'MASTERDATA_IMPORT_STALE') {
+                        setPreview(null);
+                        setInput(null);
+                      }
+                      throw error;
+                    }
                     await refresh();
                     notify.success('导入完成');
                     setPreview(null);
@@ -251,6 +262,7 @@ export function ExcelActions({
         <Typography.Paragraph>
           已有编号更新原记录，保留 ID；科目与辅助档案按父级在前排序。
           所有引用和停用限制会在确认时重新检查。预览不保存档案，摘要使用次数保持原值。
+          同账套的其他写入或导入预览也可能使当前预览失效，届时需重新上传确认。
         </Typography.Paragraph>
         {preview && !preview.valid && (
           <Typography.Paragraph type="danger">

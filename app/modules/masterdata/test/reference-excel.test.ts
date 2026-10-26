@@ -1,13 +1,16 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { Workbook } from 'exceljs';
 import { createTestApp, seedVouchers, voucherInputFromSpec, type TestApp } from '@caiwu/testkit';
-import type { ReferenceKind } from '../shared';
+import type { ExcelInput, ReferenceKind } from '../shared';
 import server from '../server';
 import type { MasterdataTables } from '../server/migrations';
 
 let app: TestApp;
 const caller = (a: TestApp, token?: string) => a.call(server, token);
 let api: ReturnType<typeof caller>;
+async function withPreview(input: ExcelInput): Promise<ExcelInput> {
+  return { ...input, previewToken: (await api.excel.preview(input)).previewToken };
+}
 beforeEach(async () => {
   app = await createTestApp({ modules: [server] });
   api = caller(app);
@@ -62,15 +65,15 @@ it.each<ReferenceKind>(['voucherTypes', 'settlementMethods', 'currencies', 'summ
     const snapshot = await api.reference.list({ kind });
     expect((await api.excel.preview(source)).valid).toBe(true);
     expect(await api.reference.list({ kind })).toEqual(snapshot);
-    await expect(api.excel.commit(source)).rejects.toThrow('确认导入');
+    await expect(api.excel.commit(await withPreview(source))).rejects.toThrow('确认导入');
     expect(await api.reference.list({ kind })).toEqual(snapshot);
-    await api.excel.commit({ ...source, confirmations: ['import'] });
+    await api.excel.commit(await withPreview({ ...source, confirmations: ['import'] }));
     const after = await api.reference.list({ kind });
     expect(after.find((r) => r.code === sample.code)).toMatchObject({
       ...saved,
       useCount: kind === 'summaries' ? 37 : saved.useCount,
     });
-    await api.excel.commit({ ...source, confirmations: ['import'] });
+    await api.excel.commit(await withPreview({ ...source, confirmations: ['import'] }));
     expect(await api.reference.list({ kind })).toEqual(after);
   },
 );
@@ -91,7 +94,9 @@ it('w_xt_zy：逐行重复/非法排序和坏后行撤销前行、附加字段�
     { row: 3, code: '04', action: '拒绝', error: expect.stringContaining('整数') },
   ]);
   expect(await api.reference.list({ kind: 'summaries' })).toEqual(before);
-  await expect(api.excel.commit({ ...input, confirmations: ['import'] })).rejects.toThrow();
+  await expect(
+    api.excel.commit(await withPreview({ ...input, confirmations: ['import'] })),
+  ).rejects.toThrow();
   expect(await api.reference.list({ kind: 'summaries' })).toEqual(before);
   expect(
     await app.svc.db
@@ -111,7 +116,9 @@ it('w_xt_fbwh：本位币停用不允许，币种导入坏后行不能留下前�
   ]);
   const preview = await api.excel.preview(input);
   expect(preview.rows.find((r) => r.code === 'CNY')?.error).toContain('本位币');
-  await expect(api.excel.commit({ ...input, confirmations: ['import'] })).rejects.toThrow('本位币');
+  await expect(
+    api.excel.commit(await withPreview({ ...input, confirmations: ['import'] })),
+  ).rejects.toThrow('本位币');
   expect(await api.reference.list({ kind: 'currencies' })).toEqual(before);
 });
 
@@ -119,9 +126,9 @@ it('w_xt_pzlx / w_xt_jslb：Excel不能停用最后类别或变更已用凭证�
   const type = (await api.reference.list({ kind: 'voucherTypes' }))[0]!;
   const last = await file('voucherTypes', [[type.code, type.shortName, type.name, 1, 0]]);
   expect((await api.excel.preview(last)).rows[0]?.error).toContain('至少保留');
-  await expect(api.excel.commit({ ...last, confirmations: ['import'] })).rejects.toThrow(
-    '至少保留',
-  );
+  await expect(
+    api.excel.commit(await withPreview({ ...last, confirmations: ['import'] })),
+  ).rejects.toThrow('至少保留');
   await api.reference.save({ kind: 'voucherTypes', code: '09', shortName: '转', name: '转账凭证' });
   const input = await voucherInputFromSpec(app.svc, {
     date: '2026-01-05',
@@ -136,9 +143,9 @@ it('w_xt_pzlx / w_xt_jslb：Excel不能停用最后类别或变更已用凭证�
   });
   const changed = await file('voucherTypes', [[type.code, '付', type.name, 0, 0]]);
   expect((await api.excel.preview(changed)).rows[0]?.error).toContain('历史凭证字');
-  await expect(api.excel.commit({ ...changed, confirmations: ['import'] })).rejects.toThrow(
-    '历史凭证字',
-  );
+  await expect(
+    api.excel.commit(await withPreview({ ...changed, confirmations: ['import'] })),
+  ).rejects.toThrow('历史凭证字');
   expect(await app.svc.vouchers.get(source.id)).toEqual(source);
   expect(source.debitTotal).toBe(12345);
   expect(source.creditTotal).toBe(12345);
@@ -151,9 +158,9 @@ it('w_xt_pzlx / w_xt_jslb：Excel不能停用最后类别或变更已用凭证�
     await api.reference.save({ ...row, kind: 'settlementMethods', disabled: true });
   const remaining = settlements[0]!;
   const stop = await file('settlementMethods', [[remaining.code, remaining.name, 1, 0]]);
-  await expect(api.excel.commit({ ...stop, confirmations: ['import'] })).rejects.toThrow(
-    '至少保留',
-  );
+  await expect(
+    api.excel.commit(await withPreview({ ...stop, confirmations: ['import'] })),
+  ).rejects.toThrow('至少保留');
   expect(
     (await api.reference.list({ kind: 'settlementMethods' })).find((r) => r.id === remaining.id)
       ?.disabled,
@@ -173,7 +180,7 @@ it('w_xt_pzlx / w_xt_kmwh：Excel停用已用类别与科目后禁止新凭证�
   ]);
   await api.reference.save({ kind: 'voucherTypes', code: '09', shortName: '转', name: '转账凭证' });
   const input = await file('voucherTypes', [[type.code, type.shortName, type.name, 1, type.sort]]);
-  await api.excel.commit({ ...input, confirmations: ['import'] });
+  await api.excel.commit(await withPreview({ ...input, confirmations: ['import'] }));
   const v = await voucherInputFromSpec(app.svc, {
     date: '2026-01-07',
     type: type.shortName,

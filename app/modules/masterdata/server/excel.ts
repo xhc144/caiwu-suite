@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { BusinessError, type DimensionTypeId } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
@@ -14,8 +15,67 @@ import {
 } from '../shared';
 import { fail, masterdataService, confirmRequired } from './service';
 import { referenceService } from './reference';
+import { sql } from '@caiwu/db';
 
 const { Workbook } = ExcelJS;
+// 仅在当前服务进程内持有；重启后旧预览自然失效，不向客户端暴露记录或密钥。
+const previewKey = randomBytes(32);
+
+const bookInstances = new WeakMap<object, string>();
+function bookInstance(db: object) {
+  let instance = bookInstances.get(db);
+  if (!instance) {
+    instance = randomBytes(32).toString('hex');
+    bookInstances.set(db, instance);
+  }
+  return instance;
+}
+async function sqliteVersion(svc: CoreServices) {
+  const local = await sql<{
+    changes: string;
+  }>`SELECT CAST(total_changes() AS TEXT) AS changes`.execute(svc.db);
+  const external = await sql<{ data_version: number }>`PRAGMA data_version`.execute(svc.db);
+  return { changes: local.rows[0]!.changes, external: external.rows[0]!.data_version };
+}
+async function previewState(svc: CoreServices, input: ExcelInput, instance: string) {
+  return {
+    version: 1,
+    instance,
+    sqlite: await sqliteVersion(svc),
+    book: await svc.book.info(),
+    kind: input.kind,
+    type: input.type ?? null,
+    referenceKind: input.referenceKind ?? null,
+    fileName: input.fileName,
+    fileDigest: createHash('sha256').update(Buffer.from(input.content, 'base64')).digest('hex'),
+    records:
+      input.kind === 'accounts'
+        ? await svc.accounts.list()
+        : input.kind === 'dimensions'
+          ? await svc.dimensions.items(input.type)
+          : await referenceService(svc).list(input.referenceKind!),
+  };
+}
+type PreviewState = Awaited<ReturnType<typeof previewState>>;
+function sealPreview(state: PreviewState) {
+  return createHmac('sha256', previewKey).update(JSON.stringify(state)).digest('hex');
+}
+
+function stalePreview(): never {
+  fail(
+    'IMPORT_STALE',
+    '导入预览已失效，请重新预览',
+    '账套、档案或文件已变化，请重新上传文件并确认新预览；本次没有写入数据',
+  );
+}
+function assertPreviewToken(actual: string | undefined, expected: string) {
+  if (
+    !actual ||
+    !/^[a-f0-9]{64}$/.test(actual) ||
+    !timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'))
+  )
+    stalePreview();
+}
 
 const dimTypes = ['project', 'partner', 'department', 'person'] as const;
 const labels = { project: '项目', partner: '客供', department: '部门', person: '个人' };
@@ -76,7 +136,11 @@ function columnsFor(kind: ReferenceKind | undefined) {
 }
 type SheetRow = { row: number; data: Record<string, string> };
 class PreviewRollback extends Error {
-  constructor(readonly result: ImportPreview) {
+  constructor(
+    readonly result: ImportPreview,
+    readonly state: PreviewState,
+    readonly expectedChanges: string,
+  ) {
     super('预览回滚');
   }
 }
@@ -204,11 +268,22 @@ export function excelService(svc: CoreServices) {
       };
     },
     async process(input: ExcelInput, commit: boolean): Promise<ImportPreview> {
+      if (svc.db.isTransaction)
+        fail(
+          'IMPORT_TRANSACTION',
+          '请从导入入口重新预览和确认',
+          '导入需要独立事务，当前没有写入数据',
+        );
       const rows = await read(input);
+      const instance = bookInstance(svc.db);
       try {
         return await svc.tx(async (tsvc) => {
+          // 与后续写入使用同一事务；必须在第一行写入之前比较，不能把旧的新增改成更新。
+          const state = await previewState(tsvc, input, instance);
+          const previewToken = sealPreview(state);
+          if (commit) assertPreviewToken(input.previewToken, previewToken);
           const service = masterdataService(tsvc);
-          const result: ImportPreview = { rows: [], confirmations: [], valid: true };
+          const result: ImportPreview = { rows: [], confirmations: [], valid: true, previewToken };
           const seen = new Set<string>();
           for (const { row, data: r } of rows) {
             const code = r['编码'] ?? '';
@@ -317,7 +392,8 @@ export function excelService(svc: CoreServices) {
             }
           }
           result.confirmations = [...new Map(result.confirmations.map((w) => [w.key, w])).values()];
-          if (!commit) throw new PreviewRollback(result);
+          if (!commit)
+            throw new PreviewRollback(result, state, (await sqliteVersion(tsvc)).changes);
           confirmRequired(
             [{ key: 'import', message: '确认导入预览中的全部档案？' }],
             input.confirmations ?? [],
@@ -329,7 +405,28 @@ export function excelService(svc: CoreServices) {
           return result;
         });
       } catch (error) {
-        if (error instanceof PreviewRollback) return error.result;
+        if (error instanceof PreviewRollback) {
+          // total_changes包含已回滚的模拟写入，必须在回滚后签发，并确认两阶段之间没有其他写入。
+          return svc.tx(async (tsvc) => {
+            const current = await previewState(tsvc, input, instance);
+            const comparable = {
+              ...current,
+              sqlite: { ...current.sqlite, changes: error.state.sqlite.changes },
+            };
+            if (
+              current.sqlite.changes !== error.expectedChanges ||
+              JSON.stringify(comparable) !== JSON.stringify(error.state)
+            )
+              stalePreview();
+            return { ...error.result, previewToken: sealPreview(current) };
+          });
+        }
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          String(error.code).startsWith('SQLITE_BUSY')
+        )
+          stalePreview();
         throw error;
       }
     },

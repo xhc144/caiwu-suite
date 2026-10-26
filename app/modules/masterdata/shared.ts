@@ -113,11 +113,17 @@ export const ExcelInputSchema = z.object({
   referenceKind: ReferenceKindSchema.optional(),
   fileName: z.string().max(200),
   content: z.string().max(900_000, '文件超过单次导入容量，请分批导入'),
+  previewToken: z.string().max(128).optional(),
   confirmations: ConfirmationSchema,
 });
 export type ExcelInput = z.input<typeof ExcelInputSchema>;
 export type ImportRow = { row: number; code: string; name: string; action: string; error: string };
-export type ImportPreview = { rows: ImportRow[]; confirmations: Confirmation[]; valid: boolean };
+export type ImportPreview = {
+  rows: ImportRow[];
+  confirmations: Confirmation[];
+  valid: boolean;
+  previewToken?: string;
+};
 export const SearchSchema = z
   .object({ keyword: z.string().default(''), locate: z.boolean().default(false) })
   .default({ keyword: '', locate: false });
