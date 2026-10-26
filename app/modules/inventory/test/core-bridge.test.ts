@@ -367,6 +367,41 @@ it('共享桥：整个inventory.with遗漏await时，外层tx排空回调后失�
   expect(await app.svc.db.selectFrom('operation_log').selectAll().execute()).toEqual(logs);
 });
 
+it('共享桥：同物理事务嵌套tx两层捕获with失败，最外层仍拒绝并全回滚', async () => {
+  const payload = await input();
+  const before = await svc().inventory.snapshot(202601);
+  const logs = await app.svc.db.selectFrom('operation_log').selectAll().execute();
+  await expect(
+    svc().tx(async (t) => {
+      await t.db
+        .withTables<CallerTables>()
+        .insertInto('costing_bridge_batch')
+        .values({ id: payload.requestKey, inventory_batch_id: null })
+        .execute();
+      await t
+        .tx(async (u) => {
+          await u.inventory
+            .with(async (inv) => {
+              await inv.commitCosting(payload);
+              await u.log.write({ action: 'costing.nested.test', summary: '嵌套调用方日志' });
+              throw new Error('嵌套库存发布后失败');
+            })
+            .catch(() => undefined);
+        })
+        .catch(() => undefined);
+    }),
+  ).rejects.toThrow('嵌套库存发布后失败');
+  expect(await svc().inventory.snapshot(202601)).toEqual(before);
+  expect(
+    await app.svc.db
+      .withTables<CallerTables>()
+      .selectFrom('costing_bridge_batch')
+      .selectAll()
+      .execute(),
+  ).toEqual([]);
+  expect(await app.svc.db.selectFrom('operation_log').selectAll().execute()).toEqual(logs);
+});
+
 it('共享桥：错账套/用户/模块和过期指纹拒绝，失败不遗留调用方批次', async () => {
   const payload = await input();
   const clerk = await app.addUser('cost-clerk', {
