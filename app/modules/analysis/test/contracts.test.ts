@@ -4,11 +4,12 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import ExcelJS from 'exceljs';
 import fc from 'fast-check';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, seedVouchers, voucherInputFromSpec, type TestApp } from '@caiwu/testkit';
 import type { ContractInput } from '../contracts';
 import type { AnalysisTables } from '../server/migrations';
 import analysis from '../server';
+import { contractService } from '../server/contracts';
 
 let app: TestApp;
 const caller = (a: TestApp, token?: string) => a.call(analysis, token).contracts;
@@ -426,6 +427,37 @@ describe('w_ht_httj / w_ht_pz 明确关联、账款口径与来源保护', () =>
 });
 
 describe('合同服务端权限与账套隔离', () => {
+  it('w_ht_pz 来源屏障在敏感 core.get 之前拒绝，不把拒绝变成逐行 reason', async () => {
+    const contract = await approved();
+    const owner = app.svcFor('payroll');
+    const voucher = await owner.vouchers.create({
+      ...(await voucherInputFromSpec(app.svc, {
+        date: '2026-04-01',
+        lines: [
+          { account: '100203', debit: 7654321, summary: '私密工资摘要', dims: { partner: 'C001' } },
+          { account: '6001', credit: 7654321 },
+        ],
+      })),
+      source: { type: 'batch', id: 'private-payroll' },
+    });
+    const scoped = app.svcFor('analysis');
+    const sensitiveGet = vi.spyOn(scoped.vouchers, 'get');
+    try {
+      await expect(
+        contractService(scoped).candidatesInTransaction(contract.id, voucher.id),
+      ).rejects.toMatchObject({ data: { code: 'ANALYSIS_CONTRACT_VOUCHER_READ_DENIED' } });
+      await expect(
+        contractService(scoped).linkInTransaction({
+          ...version(contract),
+          voucherId: voucher.id,
+          lineId: voucher.lines[0]!.id,
+        }),
+      ).rejects.toMatchObject({ data: { code: 'ANALYSIS_CONTRACT_VOUCHER_READ_DENIED' } });
+      expect(sensitiveGet).not.toHaveBeenCalled();
+    } finally {
+      sensitiveGet.mockRestore();
+    }
+  });
   it('无权用户不能读写，只有查看权不能审核/关联/导出', async () => {
     const row = await api.save(input);
     const nobody = caller(app, await app.addUser('nobody'));

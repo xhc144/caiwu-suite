@@ -62,6 +62,34 @@ export function contractService(svc: CoreServices) {
       );
     return account;
   }
+  async function readableManualVoucher(voucherId: number) {
+    // sources 当前只有路由元数据，没有可执行的来源读取授权契约。
+    // 先只读来源标记；不得先 core.get 再将拒绝转换成逐行 reason。
+    const header = await db
+      .selectFrom('voucher')
+      .select(['source_module', 'source_type', 'source_id'])
+      .where('id', '=', voucherId)
+      .executeTakeFirst();
+    if (
+      !header ||
+      header.source_module !== null ||
+      header.source_type !== null ||
+      header.source_id !== null
+    )
+      fail(
+        'VOUCHER_READ_DENIED',
+        '凭证或分录不存在，或属于当前不能读取的来源单据',
+        '本模块目前只处理无来源标记的手工凭证；其他凭证请在已获授权的来源模块查看',
+      );
+    const voucher = await svc.vouchers.get(voucherId);
+    if (!voucher)
+      fail(
+        'VOUCHER_READ_DENIED',
+        '凭证或分录不存在，或属于当前不能读取的来源单据',
+        '本模块目前只处理无来源标记的手工凭证；其他凭证请在已获授权的来源模块查看',
+      );
+    return voucher;
+  }
   async function get(id: number) {
     const row = await requireContract(id);
     const partner = await svc.dimensions.get(row.partner_id);
@@ -83,7 +111,7 @@ export function contractService(svc: CoreServices) {
         .select('voucher_id')
         .where('id', '=', link.line_id)
         .executeTakeFirstOrThrow();
-      const voucher = (await svc.vouchers.get(entry.voucher_id))!;
+      const voucher = await readableManualVoucher(entry.voucher_id);
       const line = voucher.lines.find((l) => l.id === link.line_id)!;
       lines.push({
         ...link,
@@ -265,8 +293,7 @@ export function contractService(svc: CoreServices) {
     async candidatesInTransaction(id: number, voucherId: number) {
       const contract = await requireContract(id);
       await requireSettlementAccount(contract.account_id);
-      const voucher = await svc.vouchers.get(voucherId);
-      if (!voucher) fail('VOUCHER', '凭证不存在');
+      const voucher = await readableManualVoucher(voucherId);
       const linked = new Set(
         (
           await db
@@ -316,7 +343,7 @@ export function contractService(svc: CoreServices) {
       const contract = await requireContract(input.id, input.expectedRevision);
       if (!contract.reviewed_by) fail('REVIEW_REQUIRED', '请先审核合同再关联收付款');
       await requireSettlementAccount(contract.account_id);
-      const voucher = await svc.vouchers.get(input.voucherId);
+      const voucher = await readableManualVoucher(input.voucherId);
       const line = voucher?.lines.find((l) => l.id === input.lineId);
       if (!voucher || !line) fail('LINE', '凭证或分录不存在');
       validateLine(contract, voucher, line);
