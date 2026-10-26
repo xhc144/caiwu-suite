@@ -234,7 +234,7 @@ async function buildReport(svc: CoreServices, input: LedgerQuery): Promise<Ledge
       !group.length &&
       !periods.some((p) => {
         const b = monthly.get(p)?.get(a.id);
-        return b && (b.opening || b.debit || b.credit || b.closing);
+        return b && (b.opening || b.debit || b.credit || b.closing || b.ytdDebit || b.ytdCredit);
       })
     )
       continue;

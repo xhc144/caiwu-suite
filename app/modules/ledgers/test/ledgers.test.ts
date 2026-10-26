@@ -29,6 +29,66 @@ const output = (patch: Partial<LedgerQuery> = {}) => ({
 });
 
 describe('三栏明细账与日记账', () => {
+  it('w_zc_slz_1/w_zc_xjrjz_1/w_zc_yhrjz_1：本期零余额零发生仍保留历史本年累计', async () => {
+    const api = app.call(server);
+    for (const [kind, account] of [
+      ['detail', '1001'],
+      ['cash', '1001'],
+      ['bank', '100201'],
+    ] as const) {
+      // 同一现金科目只造数一次；所有状态均通过 core 推进到已过账。
+      if (kind !== 'cash') {
+        await seedVouchers(app.svc, [
+          {
+            date: '2026-01-05',
+            status: 'posted',
+            lines: [
+              { account, debit: 10_000 },
+              { account: '4001', credit: 10_000 },
+            ],
+          },
+          {
+            date: '2026-01-06',
+            status: 'posted',
+            lines: [
+              { account, credit: 10_000 },
+              { account: '4001', debit: 10_000 },
+            ],
+          },
+        ]);
+      }
+      const core = await app.svc.ledger.balances({
+        periodFrom: 202602,
+        periodTo: 202602,
+        accountCodes: [account],
+        rollup: false,
+      });
+      expect(core).toHaveLength(1);
+      expect(core[0]).toMatchObject({
+        opening: 0,
+        debit: 0,
+        credit: 0,
+        closing: 0,
+        ytdDebit: 10_000,
+        ytdCredit: 10_000,
+      });
+      const report = await api.report(query({ kind, account }));
+      expect(report.entryCount).toBe(0);
+      expect(report.rows.map((row) => row.kind)).toEqual(['opening', 'month', 'ytd', 'closing']);
+      expect(report.rows.find((row) => row.kind === 'ytd')).toMatchObject({
+        debit: 10_000,
+        credit: 10_000,
+        signedBalance: 0,
+        voucherId: null,
+        href: null,
+      });
+      expect(report.rows.find((row) => row.kind === 'month')).toMatchObject({
+        debit: 0,
+        credit: 0,
+      });
+      expect(report.rows.at(-1)!.signedBalance).toBe(core[0]!.closing);
+    }
+  });
   it('w_zc_slz_1：非零期初、前月、同日凭证、同行序、红字和合计独立核对 core', async () => {
     await seedLedgerBook(app.svc);
     const report = await app.call(server).report(query());
