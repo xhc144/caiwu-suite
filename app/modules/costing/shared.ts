@@ -75,5 +75,5 @@ export type ProfitLine = {
   taxCents: number;
   costCents: number | null;
   grossProfitCents: number | null;
-  costStatus: '已核算' | '待成本核算';
+  costStatus: '已核算' | '待成本核算' | '历史成本未知';
 };

@@ -2,7 +2,12 @@ import { sumCents, type VoucherLineInput } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { z } from 'zod';
 import { VoucherPreviewSchema } from '../shared';
-import { inventoryReader, officialCost, readInventory } from './inventory-read';
+import {
+  inventoryReader,
+  isUnverifiedHistory,
+  officialCost,
+  readInventory,
+} from './inventory-read';
 import { fail, integer, quantity, unitCost } from './math';
 import { sharedContractRequired } from './service';
 
@@ -128,6 +133,12 @@ export async function previewVoucher(svc: CoreServices, raw: z.input<typeof Vouc
     } else {
       for (const l of sourceLines) {
         const cost = officialCost(snapshot, doc, l);
+        if (cost == null && isUnverifiedHistory(snapshot, doc))
+          fail(
+            'HISTORY_UNVERIFIED',
+            '历史成本未知，不能预览成本凭证',
+            '该历史月份的核算批次尚不能核验，请先核实历史核算记录',
+          );
         if (cost == null)
           fail(
             'NOT_CALCULATED',

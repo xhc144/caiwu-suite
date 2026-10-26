@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { sql } from '@caiwu/db';
 import { seedVouchers } from '@caiwu/testkit';
 import { costingService } from '../server/service';
-import { readInventory } from '../server/inventory-read';
+import { officialCost, readInventory } from '../server/inventory-read';
 import { caller, setup } from './fixtures';
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -345,7 +345,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
     await sql`UPDATE inventory_control SET cost_period=202601, cost_cutoff_date='2026-01-31', cost_batch='history'`.execute(
       t.app.svc.db,
     );
-    await sql`UPDATE inventory_document SET calculation_status='calculated', calculation_batch='history', calculation_period=202601 WHERE id=${issue.id}`.execute(
+    await sql`UPDATE inventory_document SET calculation_status='calculated', calculation_batch='history', calculation_period=202601, calculation_cutoff_date='2026-01-31' WHERE id=${issue.id}`.execute(
       t.app.svc.db,
     );
     await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch='history', calculation_period=202601 WHERE document_id=${issue.id}`.execute(
@@ -369,4 +369,122 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
       /正式成本核算/,
     );
   });
+  it.each([
+    {
+      name: '同月全局 current-B 与头行 obsolete-A 不一致',
+      controlBatch: 'current-B',
+      documentBatch: 'obsolete-A',
+      controlCutoff: '2026-01-31',
+      documentCutoff: '2026-01-31',
+    },
+    {
+      name: '头截止缺失',
+      controlBatch: 'current-B',
+      documentBatch: 'current-B',
+      controlCutoff: '2026-01-31',
+      documentCutoff: null,
+    },
+    {
+      name: '头截止只到月中',
+      controlBatch: 'current-B',
+      documentBatch: 'current-B',
+      controlCutoff: '2026-01-31',
+      documentCutoff: '2026-01-15',
+    },
+    {
+      name: '全局截止只到 1/15，即使覆盖 1/10 单据也不是完整核算',
+      controlBatch: 'current-B',
+      documentBatch: 'current-B',
+      controlCutoff: '2026-01-15',
+      documentCutoff: '2026-01-31',
+    },
+    {
+      name: '全局截止晚于本月末也不构成同月证据',
+      controlBatch: 'current-B',
+      documentBatch: 'current-B',
+      controlCutoff: '2026-02-28',
+      documentCutoff: '2026-01-31',
+    },
+    {
+      name: '原独审组合：旧头行批次且头截止为空',
+      controlBatch: 'current-B',
+      documentBatch: 'obsolete-A',
+      controlCutoff: '2026-01-31',
+      documentCutoff: null,
+    },
+  ])(
+    'w_cb_hzsj_cblr / w_cb_pz：$name，正式成本未知且不占凭证号',
+    async ({ controlBatch, documentBatch, controlCutoff, documentCutoff }) => {
+      const { issue } = await seed();
+      // 合成不一致证据作为回归前置，不代表发现原账事故，也不是正式核算 writer。
+      await sql`UPDATE inventory_control SET cost_period=202601, cost_cutoff_date=${controlCutoff}, cost_batch=${controlBatch}`.execute(
+        t.app.svc.db,
+      );
+      await sql`UPDATE inventory_document SET calculation_status='calculated', calculation_batch=${documentBatch}, calculation_period=202601, calculation_cutoff_date=${documentCutoff} WHERE id=${issue.id}`.execute(
+        t.app.svc.db,
+      );
+      await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch=${documentBatch}, calculation_period=202601 WHERE document_id=${issue.id}`.execute(
+        t.app.svc.db,
+      );
+      const snapshot = await readInventory(t.app.svc, 202601);
+      const doc = snapshot.documents.find((d) => d.id === issue.id)!;
+      const line = snapshot.lines.find((l) => l.document_id === issue.id)!;
+      expect(officialCost(snapshot, doc, line)).toBeNull();
+      const report = await t.api.profit({ from: '2026-01-01', to: '2026-01-31' });
+      expect(report.rows[0]).toMatchObject({ costCents: null, grossProfitCents: null });
+      expect(report.totals).toMatchObject({
+        costCents: null,
+        grossProfitCents: null,
+        pendingLines: 1,
+      });
+      await expect(
+        t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' }),
+      ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_NOT_CALCULATED' } } });
+      expect((await t.app.svc.vouchers.list()).total).toBe(0);
+      expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(snapshot.fingerprint);
+    },
+  );
+  it.each(['current-B', 'history-A'])(
+    'w_cb_hzsj_cblr / w_cb_pz：跨月全局批次 %s 不能证明历史月份，显式返回历史成本未知',
+    async (latestBatch) => {
+      const { issue } = await seed();
+      await sql`UPDATE inventory_control SET cost_period=202602, cost_cutoff_date='2026-02-28', cost_batch=${latestBatch}`.execute(
+        t.app.svc.db,
+      );
+      await sql`UPDATE inventory_document SET calculation_status='calculated', calculation_batch='history-A', calculation_period=202601, calculation_cutoff_date='2026-01-31' WHERE id=${issue.id}`.execute(
+        t.app.svc.db,
+      );
+      await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch='history-A', calculation_period=202601 WHERE document_id=${issue.id}`.execute(
+        t.app.svc.db,
+      );
+      const snapshot = await readInventory(t.app.svc, 202601);
+      expect(
+        officialCost(
+          snapshot,
+          snapshot.documents.find((d) => d.id === issue.id)!,
+          snapshot.lines.find((l) => l.document_id === issue.id)!,
+        ),
+      ).toBeNull();
+      const report = await t.api.profit({ from: '2026-01-01', to: '2026-01-31' });
+      expect(report.rows[0]).toMatchObject({
+        costCents: null,
+        grossProfitCents: null,
+        costStatus: '历史成本未知',
+      });
+      expect(report.totals).toMatchObject({
+        costCents: null,
+        grossProfitCents: null,
+        unknownHistoryLines: 1,
+      });
+      await expect(
+        t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' }),
+      ).rejects.toMatchObject({
+        cause: {
+          data: { code: 'COSTING_HISTORY_UNVERIFIED', message: '历史成本未知，不能预览成本凭证' },
+        },
+      });
+      expect((await t.app.svc.vouchers.list()).total).toBe(0);
+      expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(snapshot.fingerprint);
+    },
+  );
 });

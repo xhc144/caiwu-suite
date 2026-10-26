@@ -11,7 +11,12 @@ import {
   type ProfitLine,
 } from '../shared';
 import type { CostingTables } from './migrations';
-import { inventoryReader, officialCost, readInventory } from './inventory-read';
+import {
+  inventoryReader,
+  isUnverifiedHistory,
+  officialCost,
+  readInventory,
+} from './inventory-read';
 import { calculate } from './calculation';
 import { fail, integer, quantity } from './math';
 
@@ -198,7 +203,7 @@ export function costingService(svc: CoreServices) {
             (input.productTo && product.code > input.productTo)
           )
             continue;
-          // 只有头、行、全局截止点属于同一正式批次时才使用库存核算金额，试算绝不混入正式利润。
+          // 当月需要完整月末批次证据；历史月份的批次链尚未接入，保持未知。
           const cost = officialCost(snapshot, doc, line);
           rows.push({
             id: line.id,
@@ -213,7 +218,12 @@ export function costingService(svc: CoreServices) {
             taxCents: line.tax_cents,
             costCents: cost,
             grossProfitCents: cost == null ? null : sumCents([line.net_cents, -cost]),
-            costStatus: cost == null ? '待成本核算' : '已核算',
+            costStatus:
+              cost != null
+                ? '已核算'
+                : isUnverifiedHistory(snapshot, doc)
+                  ? '历史成本未知'
+                  : '待成本核算',
           });
         }
         if (!rows.length)
@@ -227,6 +237,7 @@ export function costingService(svc: CoreServices) {
             costCents: missing ? null : sumCents(rows.map((r) => r.costCents)),
             grossProfitCents: missing ? null : sumCents(rows.map((r) => r.grossProfitCents)),
             pendingLines: missing,
+            unknownHistoryLines: rows.filter((r) => r.costStatus === '历史成本未知').length,
           },
           throughPeriod: snapshot.control.cost_period,
           nextCalculationPeriod: snapshot.control.cost_period

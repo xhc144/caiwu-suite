@@ -36,7 +36,7 @@ export default function ProfitPage() {
     ...(['revenueCents', 'taxCents', 'costCents', 'grossProfitCents'] as const).map((key, i) => ({
       title: ['不含税收入', '销项税额', '销售成本', '销售毛利'][i],
       key,
-      render: (_: unknown, r: ProfitLine) => (r[key] == null ? '待成本核算' : formatMoney(r[key])),
+      render: (_: unknown, r: ProfitLine) => (r[key] == null ? r.costStatus : formatMoney(r[key])),
     })),
     { title: '成本状态', dataIndex: 'costStatus' },
     {
@@ -122,7 +122,12 @@ export default function ProfitPage() {
           <>
             <Alert
               type={report.data.totals.pendingLines ? 'warning' : 'info'}
-              title={`不含税收入 ${formatMoney(report.data.totals.revenueCents)}；销售成本 ${report.data.totals.costCents == null ? '待成本核算' : formatMoney(report.data.totals.costCents)}；销售毛利 ${report.data.totals.grossProfitCents == null ? '待成本核算' : formatMoney(report.data.totals.grossProfitCents)}`}
+              title={`不含税收入 ${formatMoney(report.data.totals.revenueCents)}；销售成本 ${report.data.totals.costCents == null ? (report.data.totals.unknownHistoryLines ? '历史成本未知' : '待成本核算') : formatMoney(report.data.totals.costCents)}；销售毛利 ${report.data.totals.grossProfitCents == null ? (report.data.totals.unknownHistoryLines ? '历史成本未知' : '待成本核算') : formatMoney(report.data.totals.grossProfitCents)}`}
+              description={
+                report.data.totals.unknownHistoryLines
+                  ? '历史月份尚无可核验的核算批次，相关成本和毛利暂不提供。'
+                  : undefined
+              }
             />
             <Table<ProfitLine>
               rowKey="id"

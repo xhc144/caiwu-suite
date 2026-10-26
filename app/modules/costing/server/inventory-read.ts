@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import type { CoreServices } from '@caiwu/core/server';
-import { periodEndDate, periodStartDate, periodOfDate } from '@caiwu/core';
+import { isPeriod, isValidDate, periodEndDate, periodStartDate, periodOfDate } from '@caiwu/core';
 import { sql } from '@caiwu/db';
 import { fail, integer } from './math';
 
@@ -46,6 +46,7 @@ export type InventoryReadTables = {
     calculation_status: string;
     calculation_batch: string | null;
     calculation_period: number | null;
+    calculation_cutoff_date: string | null;
   };
   inventory_line: {
     id: number;
@@ -159,23 +160,43 @@ export async function readInventory(svc: CoreServices, through: number) {
 }
 export type InventorySnapshot = Awaited<ReturnType<typeof readInventory>>;
 
-/** 半写入、批次不一致、缺截止点的数据都不能作为正式成本。 */
+export function isUnverifiedHistory(
+  snapshot: InventorySnapshot,
+  doc: InventoryReadTables['inventory_document'],
+): boolean {
+  return (
+    isPeriod(snapshot.control.cost_period) &&
+    isPeriod(doc.period) &&
+    doc.period < snapshot.control.cost_period
+  );
+}
+
+/** 目前只有控制行所指的当月批次可核验；历史月份需要共享 snapshot 提供批次链证明。 */
 export function officialCost(
   snapshot: InventorySnapshot,
   doc: InventoryReadTables['inventory_document'],
   line: InventoryReadTables['inventory_line'],
 ): number | null {
+  const currentPeriod = snapshot.control.cost_period;
+  // 全局最新批次既不能证明历史批次，也不能否定历史批次。没有历史链时保持未知。
+  if (!isPeriod(currentPeriod) || !isPeriod(doc.period) || doc.period !== currentPeriod)
+    return null;
+  const cutoff = periodEndDate(currentPeriod);
   if (
+    doc.kind !== 'issue' ||
+    line.document_id !== doc.id ||
+    !isValidDate(doc.date) ||
+    periodOfDate(doc.date) !== doc.period ||
     doc.calculation_status !== 'calculated' ||
     line.calculation_status !== 'calculated' ||
     !doc.calculation_batch ||
     doc.calculation_batch !== line.calculation_batch ||
     doc.calculation_period !== doc.period ||
     line.calculation_period !== doc.period ||
-    (snapshot.control.cost_period ?? 0) < doc.period ||
-    !snapshot.control.cost_cutoff_date ||
-    snapshot.control.cost_cutoff_date < doc.date ||
     !snapshot.control.cost_batch ||
+    doc.calculation_batch !== snapshot.control.cost_batch ||
+    snapshot.control.cost_cutoff_date !== cutoff ||
+    doc.calculation_cutoff_date !== cutoff ||
     line.outbound_cost_cents == null
   )
     return null;
