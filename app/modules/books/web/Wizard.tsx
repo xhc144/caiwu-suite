@@ -85,7 +85,9 @@ export default function Wizard({
   const [checking, setChecking] = useState(false);
   const create = useMutation(coreApi.books.create.mutationOptions());
   const selected = templates.data?.find((t) => t.id === values?.templateId);
-  const reviewWarning = templateReviewWarning(localTemplates.find((t) => t.id === selected?.id));
+  const selectedLocal = localTemplates.find((t) => t.id === selected?.id);
+  const reviewWarning =
+    selectedLocal?.regime === 'enterprise' ? templateReviewWarning(selectedLocal) : null;
   useEffect(() => {
     const available = templates.data;
     if (available?.length && !form.getFieldValue('templateId')) {
