@@ -185,6 +185,18 @@ describe('w_fp_sz/_2 → w_fp_pz 往来名称匹配与确认新增科目', () =>
     await expect(api.previewVoucher(input)).rejects.toThrow(/末级|外币|数量|必需|多个下级/);
     expect((await app.svc.vouchers.list({})).total).toBe(0);
   });
+  it.each(['business', 'tax'] as const)(
+    '名称匹配结果与 %s 科目重合时拒绝，保持原科目角色隔离',
+    async (role) => {
+      const { api, input, existing } = await setup();
+      const cfg = (await api.settings({ direction: 'input' }))!;
+      cfg[role] = { accountId: existing.id, dimensions: {} };
+      await api.saveSettings(cfg);
+      await expect(api.previewVoucher(input)).rejects.toThrow(/与业务或税额科目重复/);
+      expect(await app.svc.accounts.getByCode('980002')).toBeNull();
+      expect((await app.svc.vouchers.list({})).total).toBe(0);
+    },
+  );
   it('编码满额和层数用尽阻止预览，不能溢出编码', async () => {
     const { api, input } = await setup(),
       scheme = (await app.svc.book.info()).codeScheme;

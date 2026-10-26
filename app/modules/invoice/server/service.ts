@@ -348,6 +348,13 @@ export function invoiceService(svc: CoreServices) {
         };
         newAccounts.push(account);
       }
+      if (account.id === cfg.business.accountId || account.id === cfg.tax.accountId)
+        problem(
+          'ACCOUNT',
+          `往来下级科目 ${account.code} ${account.name} 与业务或税额科目重复，不能生成凭证`,
+          '分别配置业务、税额和往来结算科目后重新预览',
+          '/m/invoice/settings',
+        );
       maps.set(name, await validateMapping(cfg.settlement, account));
     }
     return { maps, newAccounts };
