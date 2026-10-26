@@ -129,6 +129,7 @@ function UserDrawer({
   const [dirty, setDirty] = useState(false);
   const [permissions, setPermissions] = useState<string[] | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [permissionSearch, setPermissionSearch] = useState('');
   const modules = useQuery(coreApi.modules.list.queryOptions());
   const grant = useQuery(
     api.users.permissions.queryOptions(
@@ -153,6 +154,12 @@ function UserDrawer({
     [modules.data],
   );
   const loaded = (modules.data ?? []).flatMap((m) => m.permissions.map((p) => p.id));
+  const keyword = permissionSearch.trim().toLocaleLowerCase();
+  const matches = (modules.data ?? []).flatMap((m) =>
+    m.permissions.filter((p) =>
+      `${m.name} ${p.name} ${p.id}`.toLocaleLowerCase().includes(keyword),
+    ),
+  );
   const busy = create.isPending || update.isPending || setGrant.isPending || reset.isPending;
   const close = async () => {
     if (
@@ -167,6 +174,7 @@ function UserDrawer({
     onClose();
   };
   const submit = async () => {
+    if (busy || (mode === 'permissions' && (grant.isError || modules.isError))) return;
     const v = await form.validateFields();
     if (mode === 'new')
       await create.mutateAsync({
@@ -256,7 +264,10 @@ function UserDrawer({
           <Button
             type="primary"
             loading={busy}
-            disabled={mode === 'permissions' && (!grant.data || !modules.data)}
+            disabled={
+              mode === 'permissions' &&
+              (!grant.data || !modules.data || grant.isError || modules.isError)
+            }
             onClick={() => void submit()}
           >
             保存
@@ -380,6 +391,20 @@ function UserDrawer({
                 清空功能
               </Button>
             </Space>
+            <Input
+              aria-label="查找功能权限"
+              placeholder="输入模块、功能名称或权限编号，高亮匹配项"
+              allowClear
+              value={permissionSearch}
+              onChange={(e) => setPermissionSearch(e.target.value)}
+              style={{ marginBottom: 12 }}
+            />
+            <Typography.Paragraph type="secondary">
+              {`已选 ${selected.length} / ${loaded.length} 项功能${keyword ? `，匹配 ${matches.length} 项；查找不会改变授权` : ''}`}
+            </Typography.Paragraph>
+            {(modules.isError || grant.isError) && (
+              <Alert type="error" title="权限资料读取失败，请关闭后重新打开；本次不能保存。" />
+            )}
             <Tree
               checkable
               defaultExpandAll
@@ -394,6 +419,7 @@ function UserDrawer({
                 setDirty(true);
               }}
               treeData={treeData}
+              filterTreeNode={(node) => !!keyword && matches.some((p) => p.id === node.key)}
             />
           </>
         )}

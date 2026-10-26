@@ -18,6 +18,7 @@ const countNames: Record<string, string> = {
   exchangeRates: '汇率',
   periods: '期间',
   dimensions: '辅助档案',
+  operators: '凭证关联操作员',
 };
 export default function AuditPage() {
   const s = useRequiredSession();
@@ -45,7 +46,7 @@ export default function AuditPage() {
         type="info"
         showIcon
         title="通用 JSON 资料，可使用文本编辑器或审计工具读取"
-        description="现有官方页面因版权不提供标准全文，尚未逐字段核对 GB/T 24589.1-2024；本功能不作标准合规声明。金额为整数分，含所选年度全部状态及作废凭证。"
+        description="现有官方页面因版权不提供标准全文，尚未逐字段核对 GB/T 24589.1-2024；本功能不作标准合规声明。金额为整数分，含所选年度全部状态及作废凭证。凭证资料包含来源单据、冲销关联、修订号、处理时间及关联操作员编号和姓名，不包含密码或权限。"
       />
       <Form layout="vertical" style={{ marginTop: 20 }}>
         <Form.Item label="会计年度">
