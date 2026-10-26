@@ -16,11 +16,18 @@ import {
   prevPeriod,
   qtyFromE6,
   qtyToE6,
+  sumCents,
   toCents,
 } from '../src';
 import demo from '../templates/demo.json' with { type: 'json' };
 
 describe('金额', () => {
+  it('累计超过安全范围后抵销仍保持精确，最终越界则拒绝', () => {
+    const n = Number.MAX_SAFE_INTEGER;
+    expect(sumCents([n, 2, -n])).toBe(2);
+    expect(sumCents([-n, -2, n])).toBe(-2);
+    expect(() => sumCents([n, 2])).toThrow(RangeError);
+  });
   it('元转分四舍五入', () => {
     expect(toCents('123.455')).toBe(12346);
     expect(toCents('0.1')).toBe(10);
