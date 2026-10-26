@@ -22,6 +22,47 @@ afterEach(async () => {
 const options = () => ({ dataDir: t!.dataDir, templates: t!.templates, migrationSets: () => [] });
 
 describe('账套维护的真实连接生命周期', () => {
+  for (const location of ['cached', 'extra'] as const) {
+    it.each(['close', 'maintain', 'closeAll'] as const)(
+      `${location} 连接留有原生事务时 %s 拒绝且保留全部句柄，提交后可重试`,
+      async (operation) => {
+        t = await createTestBook({ seed: false });
+        const { store, info, book } = t;
+        const extra = openDatabase<{ book_info: { name: string } }>(book.file);
+        await extra.db.selectFrom('book_info').selectAll().execute();
+        const pending = location === 'cached' ? book : extra;
+        let prepared = 0;
+        const act = () =>
+          operation === 'close'
+            ? store.close(info.id)
+            : operation === 'closeAll'
+              ? store.closeAll()
+              : store.maintain(info.id, {
+                  kind: 'reconnect',
+                  prepare: async () => {
+                    prepared++;
+                  },
+                });
+        try {
+          pending.raw.exec("BEGIN; UPDATE book_info SET name = '原生事务提交'");
+          await expect(act()).rejects.toThrow(/未登记的原生事务/);
+          expect(prepared).toBe(0);
+          expect(book.raw.open).toBe(true);
+          expect(extra.raw.open).toBe(true);
+          expect(pending.raw.inTransaction).toBe(true);
+          pending.raw.exec('COMMIT');
+          await act();
+          expect(store.open(info.id).raw.prepare('SELECT name FROM book_info').get()).toEqual({
+            name: '原生事务提交',
+          });
+        } finally {
+          if (pending.raw.open && pending.raw.inTransaction) pending.raw.exec('ROLLBACK');
+          if (extra.raw.open) await extra.close();
+        }
+      },
+    );
+  }
+
   it('事务回调内关闭/维护快速拒绝，事务回滚后仍能正常使用', async () => {
     t = await createTestBook({ seed: false });
     await expect(

@@ -15,6 +15,8 @@ import {
   openDatabase,
   databaseFile,
   closeDatabaseFile,
+  assertDatabaseFileQuiescent,
+  UnmanagedSqliteTransactionError,
   isInDatabaseTransaction,
   ResourceGate,
   runMigrations,
@@ -242,6 +244,7 @@ export class BookStore {
           this.#operations.runFresh(async () => {
             const end = this.#lease!.beginMaintenance();
             try {
+              this.#assertConnectionsQuiescent(id);
               await plan.onQuiesced?.();
               signal.throwIfAborted();
               for (const store of this.#directory.stores) store.#opts.maintenanceStarted?.(id);
@@ -275,6 +278,7 @@ export class BookStore {
       this.#gate(id).exclusive(async (signal) => {
         const end = this.#lease!.isAuxiliary ? () => {} : this.#lease!.beginMaintenance();
         try {
+          this.#assertConnectionsQuiescent(id);
           await this.#beforeClose(id, signal, 'close');
           signal.throwIfAborted();
           await this.#closeConnections(id);
@@ -291,8 +295,18 @@ export class BookStore {
     try {
       await pending;
       for (const store of this.#directory.stores) store.#open.delete(id);
+    } catch (error) {
+      throw bookCloseError(error);
     } finally {
       this.#closing.delete(id);
+    }
+  }
+
+  #assertConnectionsQuiescent(id: string): void {
+    try {
+      assertDatabaseFileQuiescent(this.pathOf(id));
+    } catch (error) {
+      throw bookCloseError(error);
     }
   }
 
@@ -330,6 +344,7 @@ export class BookStore {
           ]);
           for (const id of ids) {
             await this.#gate(id).exclusive(async (signal) => {
+              this.#assertConnectionsQuiescent(id);
               await this.#beforeClose(id, signal, this.#disposeAfterClose ? 'shutdown' : 'close');
               signal.throwIfAborted();
               await this.#closeConnections(id);
@@ -564,6 +579,16 @@ export class BookStore {
       ...this.#opts.migrationSets().filter((s) => s.scope !== 'core'),
     ];
   }
+}
+
+function bookCloseError(error: unknown): unknown {
+  if (error instanceof UnmanagedSqliteTransactionError)
+    return new BusinessError({
+      code: 'BOOK_RAW_TRANSACTION_ACTIVE',
+      message: '账套仍有未登记的原生事务，不能关闭或维护',
+      hint: '请由开启事务的代码显式提交或回滚后重试',
+    });
+  return error;
 }
 
 function maintenanceError(reason: 'busy' | 'timeout' | 'revoked'): BusinessError {

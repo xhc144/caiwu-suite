@@ -28,6 +28,19 @@ export {
 
 export type RawDatabase = Database.Database;
 
+/** 未触碰连接的已知拒绝；事务所有者显式提交/回滚后可重新尝试关闭。 */
+export class UnmanagedSqliteTransactionError extends Error {
+  readonly code = 'UNMANAGED_SQLITE_TRANSACTION';
+  constructor() {
+    super('仍有未登记的原生事务，不能关闭数据库；请先显式提交或回滚');
+    this.name = 'UnmanagedSqliteTransactionError';
+  }
+}
+
+function assertNativeTransactionEnded(raw: RawDatabase): void {
+  if (raw.open && raw.inTransaction) throw new UnmanagedSqliteTransactionError();
+}
+
 export interface OpenedDatabase<DB> {
   /** better-sqlite3 原始连接。只在迁移、备份这类底层操作里用。 */
   raw: RawDatabase;
@@ -83,7 +96,11 @@ export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
     raw.close();
     throw error;
   }
-  const db = new Kysely<DB>({ dialect: new GuardedSqliteDialect({ database: raw }, state.gate) });
+  const db = new Kysely<DB>({
+    dialect: new GuardedSqliteDialect({ database: raw }, state.gate, () =>
+      assertNativeTransactionEnded(raw),
+    ),
+  });
   let closing: Promise<void> | undefined;
   const destroy = db.destroy.bind(db);
   const opened: OpenedDatabase<DB> = {
@@ -98,13 +115,14 @@ export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
         .then(() => {
           // Kysely 未初始化 driver 时 destroy 不会关闭构造时已打开的原生连接。
           if (raw.open) {
-            if (raw.inTransaction) throw new Error('仍有未登记的原生事务，不能关闭数据库');
+            assertNativeTransactionEnded(raw);
             raw.close();
           }
           state.connections.delete(opened as OpenedDatabase<unknown>);
         })
         .catch((error: unknown) => {
-          state.gate.block();
+          if (error instanceof UnmanagedSqliteTransactionError) closing = undefined;
+          else state.gate.block();
           throw error;
         })
         .finally(() => {
@@ -118,14 +136,21 @@ export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
   return opened;
 }
 
+/** 必须在文件门已排空后检查；预检全部句柄，避免发现原生事务前先关闭其它连接。 */
+export function assertDatabaseFileQuiescent(file: string): void {
+  for (const connection of databaseFile(file).connections)
+    assertNativeTransactionEnded(connection.raw);
+}
+
 /** 调用者须先关门并排空请求；包括通过本包打开的额外连接，关闭期间禁止重新 open。 */
 export async function closeDatabaseFile(file: string): Promise<void> {
   const state = databaseFile(file);
   state.closing++;
   try {
+    assertDatabaseFileQuiescent(file);
     await Promise.all([...state.connections].map((c) => c.close()));
   } catch (error) {
-    state.gate.block();
+    if (!(error instanceof UnmanagedSqliteTransactionError)) state.gate.block();
     throw error;
   } finally {
     state.closing--;
@@ -152,6 +177,7 @@ class GuardedSqliteDriver extends SqliteDriver {
   constructor(
     config: ConstructorParameters<typeof SqliteDriver>[0],
     readonly gate: ResourceGate,
+    readonly assertCanClose: () => void,
   ) {
     super(config);
   }
@@ -190,7 +216,14 @@ class GuardedSqliteDriver extends SqliteDriver {
   override async destroy(): Promise<void> {
     this.#closing = true;
     while (this.#locked) await this.#locked;
-    await super.destroy();
+    try {
+      // 正规事务已释放连接；此时剩余的原生事务不能交给 raw.close() 静默回滚。
+      this.assertCanClose();
+      await super.destroy();
+    } catch (error) {
+      if (error instanceof UnmanagedSqliteTransactionError) this.#closing = false;
+      throw error;
+    }
   }
 }
 
@@ -206,12 +239,13 @@ class GuardedSqliteDialect extends SqliteDialect {
   constructor(
     config: ConstructorParameters<typeof SqliteDialect>[0],
     readonly gate: ResourceGate,
+    readonly assertCanClose: () => void,
   ) {
     super(config);
     this.#config = config;
   }
   override createDriver(): Driver {
-    return new GuardedSqliteDriver(this.#config, this.gate);
+    return new GuardedSqliteDriver(this.#config, this.gate, this.assertCanClose);
   }
   override createAdapter(): DialectAdapter {
     return new GuardedSqliteAdapter();
