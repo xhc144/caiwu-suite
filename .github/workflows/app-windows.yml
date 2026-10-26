@@ -17,7 +17,6 @@ concurrency:
 jobs:
   # 全仓失败保持为失败；打包和桌面 QA 独立收集证据，不因网页检查延误而跳过。
   nsis:
-    if: github.event.repository.private == true
     runs-on: windows-2022
     timeout-minutes: 45
     defaults:
@@ -47,6 +46,8 @@ jobs:
       - name: 桌面真实 Node 子进程退出回归
         id: shutdown-node
         run: |
+          pnpm exec tsc -p apps/desktop/tsconfig.qa.json --noEmit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm exec vitest run apps/desktop/src/test/shutdown.test.ts 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-shutdown-node.log"
           exit $LASTEXITCODE
       - name: 构建网页和桌面
@@ -64,27 +65,37 @@ jobs:
         run: |
           pnpm -C apps/desktop exec electron-builder --win nsis --x64 --publish never --config.extraMetadata.version=0.0.9 --config.directories.output=release-old 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-package-old.log"
           exit $LASTEXITCODE
-      - name: 生成私有新版 NSIS
+      - name: 生成本分支新版 NSIS（不发布 Release）
         id: package
         run: |
           pnpm -C apps/desktop exec electron-builder --win nsis --x64 --publish never 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-package.log"
           exit $LASTEXITCODE
+      - name: 生成同版本 SHA-256 更新清单
+        run: |
+          node apps/desktop/build/update-manifest.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $version = (Get-Content apps/desktop/package.json | ConvertFrom-Json).version
+          "CAIWU_DESKTOP_EXPECTED_VERSION=$version" >> $env:GITHUB_ENV
+          "CAIWU_DESKTOP_NEW_INSTALLER=${{ github.workspace }}/app/apps/desktop/release/caiwu-desktop-$version-x64-setup.exe" >> $env:GITHUB_ENV
+      - name: 核对安装包 SHA-256 和 Windows 内嵌版本
+        run: pnpm exec tsx apps/desktop/qa/verify-update.ts
       - name: Windows 安装启动、覆盖升级、卸载保留数据回归
         id: desktop-qa
         env:
           CAIWU_DESKTOP_QA_FIXTURE: ${{ runner.temp }}/m21-qa
           CAIWU_DESKTOP_EXECUTABLE: ${{ runner.temp }}/m21-installed/caiwu-desktop/caiwu-desktop.exe
           CAIWU_DESKTOP_OLD_INSTALLER: ${{ github.workspace }}/app/apps/desktop/release-old/caiwu-desktop-0.0.9-x64-setup.exe
-          CAIWU_DESKTOP_NEW_INSTALLER: ${{ github.workspace }}/app/apps/desktop/release/caiwu-desktop-0.1.0-x64-setup.exe
         run: |
           pnpm exec playwright test --config apps/desktop/playwright.config.ts 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-desktop-qa.log"
           exit $LASTEXITCODE
-      - name: 保存私有安装包
+      - name: 保存安装包和更新校验清单
         if: always() && steps.package.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
           name: caiwu-desktop-windows-nsis
-          path: app/apps/desktop/release/*-setup.exe
+          path: |
+            app/apps/desktop/release/*-setup.exe
+            app/apps/desktop/release/*-update.json
           if-no-files-found: error
           retention-days: 3
       - name: 保存去敏步骤状态
@@ -114,7 +125,6 @@ jobs:
           retention-days: 3
 
   checks:
-    if: github.event.repository.private == true
     runs-on: windows-2022
     timeout-minutes: 45
     defaults:
@@ -145,19 +155,15 @@ jobs:
         id: check
         # 保留失败，独立构建/安装回归继续收集结果；末尾显式使 job 失败，不能掩盖 check。
         continue-on-error: true
-        run: pnpm check
-      - name: 全仓检查失败时仍执行独立网页 E2E
-        id: web-e2e
-        if: steps.check.outcome == 'failure'
-        continue-on-error: true
-        run: pnpm e2e
+        run: |
+          $env:CI = '' # 仓库 Playwright 配置在 CI 默认重试一次，本任务要求零 retry。
+          pnpm check
       - name: 保存去敏检查步骤状态
         if: always()
         run: |
           @(
             'install=${{ steps.install.outcome }}',
-            'check=${{ steps.check.outcome }}',
-            'independent-web-e2e=${{ steps.web-e2e.outcome }}'
+            'check=${{ steps.check.outcome }}'
           ) | Set-Content -Encoding utf8 "$env:RUNNER_TEMP/m21-check-steps.log"
       - name: 保存私有检查状态
         if: always()
@@ -168,7 +174,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
       - name: 保留全仓检查的失败结论
-        if: always() && (steps.check.outcome == 'failure' || steps.web-e2e.outcome == 'failure')
+        if: always() && steps.check.outcome == 'failure'
         run: |
-          Write-Error 'pnpm check 或独立网页 E2E 失败；即使已生成安装包，本 workflow 仍为失败。请查看原始检查错误。'
+          Write-Error 'pnpm check 失败；即使已生成安装包，本 workflow 仍为失败，不重试失败检查。请查看原始检查错误。'
           exit 1

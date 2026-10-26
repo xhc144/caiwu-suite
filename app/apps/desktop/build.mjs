@@ -20,7 +20,7 @@ await build({
   ...common,
   entryPoints: [path.join(here, 'src/main.ts')],
   outfile: path.join(here, 'dist/main.cjs'),
-  external: ['electron'],
+  external: ['electron', 'better-sqlite3'],
 });
 await build({
   ...common,

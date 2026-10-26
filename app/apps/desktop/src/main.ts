@@ -24,6 +24,8 @@ import {
 import { createLog } from './log';
 import { assertDataOutsideInstall } from './data-safety';
 import { assertWebFiles } from './web-files';
+import { DesktopUpdates, verifyWindowsInstallerVersion } from './updates';
+import { backupBeforeUpdate, prepareUpdateInstall } from './update-backup';
 import { atomicPdfWrite, exportPdf, targetState, withResource, type TargetState } from './printing';
 import {
   assertSender,
@@ -65,6 +67,9 @@ let choosingDirectory = false;
 let ipcBusy = false;
 let booting = false;
 let stoppingServer: Promise<boolean> | undefined;
+let updates: DesktopUpdates | undefined;
+let pendingUpdate = false;
+let updateDialog = false;
 let log: ReturnType<typeof createLog> = () => {};
 
 // 与版本号、安装目录和开发 checkout 无关；单实例锁及用户设置随升级保持稳定。
@@ -152,7 +157,7 @@ function checkDirectory(dir: string) {
 }
 
 async function selectDirectory(): Promise<string | null> {
-  if (choosingDirectory || quitting || recovering || stoppingServer) return null;
+  if (choosingDirectory || quitting || recovering || stoppingServer || pendingUpdate) return null;
   if (!mainWindow && server) return null; // 服务尚未确认关闭时不能直接提交启动目录。
   if (process.env.CAIWU_DATA_DIR) {
     dialog.showMessageBoxSync({
@@ -235,6 +240,7 @@ async function stopServerOnce(): Promise<boolean> {
       // 超时或拒绝后，原来的目录切换必须重新选择；任何配置都不能提前提交。
       pendingDataDir = null;
       pendingWindowState = undefined;
+      pendingUpdate = false;
       const alive = server?.alive ?? false;
       const reason = error instanceof ServiceStopError ? error.message : '无法确认本地服务正常退出';
       const { response } = await dialog.showMessageBox({
@@ -289,9 +295,52 @@ async function stopServerOnce(): Promise<boolean> {
 async function finishQuit() {
   if (finalized || quitting) return;
   quitting = true;
-  if (!(await stopServer())) {
-    quitting = false;
-    return;
+  if (pendingUpdate) {
+    try {
+      const started = await prepareUpdateInstall({
+        stop: stopServer,
+        backup: () => backupBeforeUpdate(activeDataDir, app.getVersion()),
+        verify: async () => {
+          const { file, update } = await updates!.installer();
+          await verifyWindowsInstallerVersion(file, update.version);
+        },
+        launch: async () => {
+          const { file } = await updates!.installer();
+          if (pendingWindowState) saveSettings({ ...settings, window: pendingWindowState });
+          // 正常交互式 NSIS；不抑制系统安全提示，也不自动发布或运行安装后的版本。
+          await new Promise<void>((resolve, reject) => {
+            const child = spawn(file, [], { detached: true, stdio: 'ignore', windowsHide: false });
+            child.once('error', reject);
+            child.once('spawn', () => {
+              child.unref();
+              resolve();
+            });
+          });
+        },
+      });
+      if (!started) return;
+      finalized = true;
+      app.quit();
+      return;
+    } catch (error) {
+      pendingUpdate = false;
+      pendingWindowState = undefined;
+      quitting = false;
+      dialog.showErrorBox(
+        '更新安装未启动',
+        message(
+          error,
+          '更新前备份、校验或安装器启动失败；账套仍在原目录，请检查磁盘空间和权限后重试',
+        ),
+      );
+      await boot();
+      return;
+    }
+  } else {
+    if (!(await stopServer())) {
+      quitting = false;
+      return;
+    }
   }
   if (pendingDataDir || pendingWindowState) {
     try {
@@ -456,6 +505,7 @@ async function createWindow(current: ServiceSession) {
     );
     if (!discard) {
       pendingDataDir = null;
+      pendingUpdate = false;
       closeAction = 'quit';
       quitting = false;
       win.show();
@@ -595,6 +645,22 @@ function registerIpc() {
     if (args.length) throw new Error('桌面参数不合法');
     return { path: activeDataDir, overridden: !!process.env.CAIWU_DATA_DIR };
   });
+  handle('caiwu:host:updateStatus', async (...args) => {
+    if (args.length || !updates) throw new Error('当前平台不支持 Windows 安装更新');
+    return updates.status();
+  });
+  handle('caiwu:host:checkUpdate', async (...args) => {
+    if (args.length || !updates) throw new Error('当前平台不支持 Windows 安装更新');
+    return updates.check();
+  });
+  handle('caiwu:host:downloadUpdate', async (...args) => {
+    if (args.length || !updates) throw new Error('当前平台不支持 Windows 安装更新');
+    return updates.download();
+  });
+  handle('caiwu:host:installUpdate', async (...args) => {
+    if (args.length) throw new Error('桌面参数不合法');
+    return installUpdate();
+  });
   handle('caiwu:host:chooseDataDir', async (...args) => {
     if (args.length) throw new Error('桌面参数不合法');
     return selectDirectory();
@@ -621,6 +687,79 @@ function registerIpc() {
     });
     return result.canceled ? null : (result.filePaths[0] ?? null);
   });
+}
+
+async function installUpdate(): Promise<boolean> {
+  if (
+    !updates ||
+    !mainWindow ||
+    quitting ||
+    recovering ||
+    choosingDirectory ||
+    pendingDataDir ||
+    pendingUpdate
+  )
+    return false;
+  const { update } = await updates.installer();
+  const { response } = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    title: '保存退出并安装更新',
+    message: `即将安装 ${update.version}，请先保存所有业务页面。`,
+    detail:
+      `来源：${update.page}\nSHA-256：${update.sha256}\n` +
+      '下一步仍会检查未保存内容。正常关闭服务后，将为当前数据目录内全部账套创建并校验独立备份；任何一步失败都不启动安装。' +
+      '安装程序仍会显示 Windows 的安全提示，本软件尚无代码签名。安装后请自行启动并重新登录。',
+    buttons: ['取消', '保存退出并安装'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+  });
+  if (response !== 1 || !mainWindow || quitting || recovering) return false;
+  pendingUpdate = true;
+  mainWindow.close();
+  return true; // 只表示已请求关闭；取消未保存提示仍会撤销更新。
+}
+
+async function checkForUpdates(manual: boolean) {
+  if (!updates || updateDialog || quitting || recovering || !mainWindow) return;
+  updateDialog = true;
+  try {
+    const result = await updates.check();
+    if (!mainWindow || quitting || recovering) return;
+    if (result.state !== 'available' || !result.update) {
+      if (manual)
+        await dialog.showMessageBox(mainWindow, {
+          type: result.state === 'error' ? 'error' : 'info',
+          title: '检查更新',
+          message: result.message,
+          detail: `来源：${result.source}\n当前版本：${result.current}`,
+          buttons: ['知道了'],
+        });
+      return;
+    }
+    const { response } = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: '发现正式更新',
+      message: result.message,
+      detail:
+        `当前版本：${result.current}\n来源：${result.update.page}\n` +
+        `下载大小：${Math.ceil(result.update.size / 1024 / 1024)} MB\nSHA-256：${result.update.sha256}\n` +
+        '确认后下载安装包，校验完成后另行确认安装。此发行渠道尚无代码签名。',
+      buttons: ['暂不更新', '下载并校验'],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+    });
+    if (response !== 1 || quitting || recovering) return;
+    const downloaded = await updates.download();
+    if (downloaded.state === 'error') dialog.showErrorBox('更新下载未完成', downloaded.message);
+    else await installUpdate();
+  } catch {
+    if (manual)
+      dialog.showErrorBox('更新未完成', '请稍后在帮助菜单重新检查更新；当前程序和账套未更改');
+  } finally {
+    updateDialog = false;
+  }
 }
 
 async function savePath(
@@ -699,6 +838,8 @@ async function initialize() {
   settingsFile = path.join(userData, 'desktop-settings.json');
   log = createLog(path.join(userData, 'logs'));
   log('launch');
+  if (app.isPackaged && process.platform === 'win32' && process.arch === 'x64')
+    updates = new DesktopUpdates(app.getVersion(), path.join(userData, 'updates'));
   try {
     settings = readSettings(settingsFile);
   } catch {
@@ -811,6 +952,22 @@ async function initialize() {
         label: '帮助',
         submenu: [
           {
+            label: '检查软件更新…',
+            enabled: !!updates,
+            click: () => {
+              void checkForUpdates(true);
+            },
+          },
+          {
+            label: '安装已下载更新…',
+            enabled: !!updates,
+            click: () => {
+              void installUpdate().catch(() =>
+                dialog.showErrorBox('更新尚未准备好', '请先在帮助菜单检查更新并完成下载校验'),
+              );
+            },
+          },
+          {
             label: '打开本地诊断日志目录',
             click: () => {
               void shell.openPath(path.join(userData, 'logs'));
@@ -837,6 +994,16 @@ async function initialize() {
   screen.on('display-added', correctWindow);
   screen.on('display-metrics-changed', correctWindow);
   await boot();
+  if (updates) {
+    void checkForUpdates(false);
+    const timer = setInterval(
+      () => {
+        void checkForUpdates(false);
+      },
+      6 * 60 * 60 * 1000,
+    );
+    timer.unref();
+  }
 }
 
 if (configFailure) {
