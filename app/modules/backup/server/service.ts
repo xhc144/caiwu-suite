@@ -41,6 +41,35 @@ type Protection = {
   available: boolean;
 };
 type Job = { abort: AbortController; promise: Promise<void>; progress: number };
+
+/** 单次扫描，常量栈空间；重复分组正则会在数 MiB 的合法输入上耗尽 V8 栈。 */
+function decodeUploadBase64(text: string): Buffer {
+  const invalid = () => fail('ENCODING', '上传内容不是有效的完整 base64 文件');
+  if (text.length === 0 || text.length % 4 !== 0) throw invalid();
+  const padding = text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0;
+  const contentEnd = text.length - padding;
+  for (let i = 0; i < contentEnd; i++) {
+    const code = text.charCodeAt(i);
+    if (
+      !(code >= 65 && code <= 90) &&
+      !(code >= 97 && code <= 122) &&
+      !(code >= 48 && code <= 57) &&
+      code !== 43 &&
+      code !== 47
+    )
+      throw invalid();
+  }
+  // Node 的解码器会忽略未使用的低位；明确拒绝非规范填充，避免多种编码表示同一内容。
+  const lastValue = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.indexOf(
+    text.charAt(contentEnd - 1),
+  );
+  if ((padding === 2 && (lastValue & 15) !== 0) || (padding === 1 && (lastValue & 3) !== 0))
+    throw invalid();
+  if ((text.length / 4) * 3 - padding > TRANSFER_LIMIT)
+    throw fail('TRANSFER_SIZE', '文件超过 32 MiB 浏览器传输上限');
+  return Buffer.from(text, 'base64');
+}
+
 const states = new WeakMap<
   AppRuntime,
   {
@@ -474,14 +503,7 @@ export function backupService(ctx: Context) {
     },
     async upload(input: { name: string; base64: string }) {
       const data = UploadSchema.parse(input);
-      if (
-        !data.base64 ||
-        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(data.base64)
-      )
-        throw fail('ENCODING', '上传内容不是有效的完整 base64 文件');
-      const buffer = Buffer.from(data.base64, 'base64');
-      if (buffer.length > TRANSFER_LIMIT)
-        throw fail('TRANSFER_SIZE', '文件超过 32 MiB 浏览器传输上限');
+      const buffer = decodeUploadBase64(data.base64);
       return exclusive(ctx, async () => {
         const dir = await directory(ctx.app.dataDir, ctx.book.id, '上传');
         await probeDirectory(dir, buffer.length * 3);
