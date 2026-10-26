@@ -5,9 +5,11 @@
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <DefineConstants Condition="Exists('../../src/Caiwu.Contracts/ParityModules.cs')">$(DefineConstants);CAIWU_PARITY_MODULES_V1</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="Integration/**/*.cs" />
+    <Compile Remove="WindowsSmoke/**/*.cs" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="[18.11.0]" />
     <PackageReference Include="xunit.v3.mtp-off" Version="[4.0.2]" />
     <PackageReference Include="xunit.runner.visualstudio" Version="[4.0.1]">

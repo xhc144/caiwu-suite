@@ -1,0 +1,159 @@
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
+using System.Windows.Threading;
+using Caiwu.Contracts;
+using Caiwu.Reporting.Books;
+using Caiwu.Reporting.Wpf;
+
+internal static class Program
+{
+    [STAThread]
+    private static int Main(string[] args)
+    {
+        if (!OperatingSystem.IsWindows()) { Console.Error.WriteLine("Requires real Windows WPF; no original program is run."); return 2; }
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        var input = Synthetic();
+        var source = new SingleYearBooksSource(input);
+        if (args.Contains("--interactive"))
+        {
+            var panel = new StackPanel { Margin = new Thickness(20) };
+            var host = new Window { Title = "Books 独立合成验证入口（非产品主框架）", Width = 500, Height = 250, Content = panel };
+            panel.Children.Add(new TextBlock { Text = "合成 ledger；真实账套与原程序未运行", Margin = new Thickness(4) });
+            foreach (var kind in Enum.GetValues<BooksKind>())
+            {
+                var button = new Button { Content = kind.ToString(), Margin = new Thickness(4) };
+                button.Click += (_, _) => BooksWindow.Open(host, source, kind, 2026);
+                panel.Children.Add(button);
+            }
+            host.Closed += (_, _) => app.Shutdown();
+            app.Run(host); return 0;
+        }
+        if (args.Length != 2)
+        { Console.Error.WriteLine("Usage: <repo-root> <new-output-directory> OR --interactive"); return 2; }
+        var repo = Path.GetFullPath(args[0]); var output = Path.GetFullPath(args[1]);
+        if (Directory.Exists(output)) { Console.Error.WriteLine("Output must be a new directory."); return 2; }
+        Directory.CreateDirectory(output);
+        var observations = new List<object>();
+        Exception? failure = null;
+        app.Startup += (_, _) => app.Dispatcher.BeginInvoke(new Action(() =>
+        {
+            try
+            {
+                using var baseline = JsonDocument.Parse(File.ReadAllText(Path.Combine(repo, "docs/original-analysis/json/windows.json")));
+                foreach (var kind in Enum.GetValues<BooksKind>())
+                {
+                    var code = kind == BooksKind.BankJournal ? "1002" : "1001";
+                    var prior = new BooksQuery(kind, code, code, 1, 2, true);
+                    var selection = new BooksQueryWindow(source, kind, 2026, prior);
+                    Exception? dialogFailure = null;
+                    selection.ContentRendered += (_, _) => selection.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        try
+                        {
+                            observations.Add(ObserveAndCompare(selection, selection, baseline.RootElement, output));
+                            Find<Button>(selection, "cb_1").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        }
+                        catch (Exception ex) { dialogFailure = ex; selection.Close(); }
+                    }), DispatcherPriority.ApplicationIdle);
+                    var accepted = selection.ShowDialog();
+                    if (dialogFailure is not null) throw dialogFailure;
+                    Require(accepted == true && selection.Query is not null, "Condition window did not accept an actual query.");
+                    Require(kind != BooksKind.GeneralLedger || !selection.Query!.IncludeUnposted, "General ledger included unposted vouchers.");
+                    var host = new Window { Width = 1200, Height = 700, Title = "Synthetic result" };
+                    BooksVoucherReference? opened = null;
+                    var view = new BooksResultView(source, input, selection.Query!, host.Close, reference => opened = reference);
+                    host.Content = view; host.Show(); Pump(host);
+                    observations.Add(ObserveAndCompare(view, host, baseline.RootElement, output));
+                    var grid = Find<DataGrid>(view, "dw_master");
+                    Require(grid.IsReadOnly && grid.Items.Count > 0, "Result grid is empty/editable.");
+                    var rows = grid.Items.Cast<BooksRow>().ToArray();
+                    Require(rows[0].Kind == BooksRowKind.Opening, "Opening row is missing.");
+                    var expected = kind switch { BooksKind.GeneralLedger => 1100m, BooksKind.CashJournal => 1120m, _ => 2100m };
+                    Require(view.Result.Accounts.Single().ClosingBalance == expected, "Unexpected ledger closing balance.");
+                    FindByContent(view, "末项").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Require(grid.SelectedIndex == grid.Items.Count - 1, "Last-record action did not move.");
+                    FindByContent(view, "首项").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Require(grid.SelectedIndex == 0, "First-record action did not move.");
+                    Require(!Find<Button>(view, "cb_nd1").IsEnabled && !Find<Button>(view, "cb_nd2").IsEnabled,
+                        "Unavailable fiscal years are offered.");
+                    if (kind != BooksKind.GeneralLedger)
+                    {
+                        grid.SelectedItem = rows.First(r => r.VoucherId.HasValue);
+                        FindByContent(view, "查看").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Require(opened?.BookId == input.Book.Id && opened.Revision == input.Revision && opened.VoucherId == ((BooksRow)grid.SelectedItem).VoucherId,
+                            "Voucher drill-through lost book/revision/ID.");
+                    }
+                    FindByContent(view, "返回").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Require(!host.IsVisible, "Return did not close the result host.");
+                }
+            }
+            catch (Exception ex) { failure = ex; }
+            finally { app.Shutdown(); }
+        }));
+        app.Run();
+        File.WriteAllText(Path.Combine(output, "books-new-wpf-smoke.json"), JsonSerializer.Serialize(new {
+            provenance = "synthetic-new-WPF-only", original_runtime_acceptance = "not-run", windows = observations,
+            status = failure is null ? "passed" : "failed", error = failure?.ToString()
+        }, new JsonSerializerOptions { WriteIndented = true }));
+        if (failure is not null) { Console.Error.WriteLine(failure); return 1; }
+        Console.WriteLine("New WPF smoke passed; original program/book acceptance remains untested."); return 0;
+    }
+
+    private static object ObserveAndCompare(FrameworkElement root, Window window, JsonElement baseline, string output)
+    {
+        Pump(window);
+        var controls = Descendants(root).OfType<FrameworkElement>().Where(e => !string.IsNullOrEmpty(e.Name)).ToArray();
+        var observed = controls.Select(e => { var p = e.TranslatePoint(new Point(), root); return new { id = e.Name, x = p.X, y = p.Y, width = e.ActualWidth, height = e.ActualHeight }; }).ToArray();
+        foreach (var product in new[] { "qingsong/main", "minfeiqi/main", "chengben/main" })
+        {
+            var expected = baseline.GetProperty(product).GetProperty(root.Name).GetProperty("controls").EnumerateArray()
+                .ToDictionary(c => c.GetProperty("name").GetString()!);
+            var checkedControls = observed.Where(c => expected.ContainsKey(c.id)).ToArray();
+            Require(checkedControls.Length >= 6, $"Too few source-addressable controls for {root.Name}.");
+            foreach (var a in checkedControls)
+            foreach (var b in checkedControls)
+            foreach (var axis in new[] { "x", "y" })
+            {
+                var pa = expected[a.id].GetProperty("props"); var pb = expected[b.id].GetProperty("props");
+                if (!pa.TryGetProperty(axis, out var va) || !pb.TryGetProperty(axis, out var vb)) continue;
+                var designDelta = double.Parse(va.GetString()!, System.Globalization.CultureInfo.InvariantCulture) -
+                    double.Parse(vb.GetString()!, System.Globalization.CultureInfo.InvariantCulture);
+                if (Math.Abs(designDelta) < 12) continue;
+                var observedDelta = axis == "x" ? a.x - b.x : a.y - b.y;
+                Require(Math.Sign(designDelta) == Math.Sign(observedDelta), $"Relative source position mismatch: {product}/{root.Name}/{a.id}/{b.id}/{axis}.");
+            }
+        }
+        var bitmap = new RenderTargetBitmap((int)Math.Ceiling(window.ActualWidth), (int)Math.Ceiling(window.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(window); var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
+        using (var file = File.Create(Path.Combine(output, root.Name + ".png"))) encoder.Save(file);
+        return new { object_name = root.Name, controls = observed, validation = "new-WPF static-relative-order comparison; no PBU pixel calibration" };
+    }
+    private static void Pump(Window window)
+    {
+        window.UpdateLayout(); var frame = new DispatcherFrame();
+        window.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() => frame.Continue = false));
+        Dispatcher.PushFrame(frame);
+    }
+    private static IEnumerable<DependencyObject> Descendants(DependencyObject root)
+    {
+        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+        { var child = VisualTreeHelper.GetChild(root, i); yield return child; foreach (var node in Descendants(child)) yield return node; }
+    }
+    private static T Find<T>(DependencyObject root, string name) where T : FrameworkElement => Descendants(root).OfType<T>().Single(e => e.Name == name);
+    private static Button FindByContent(DependencyObject root, string content) => Descendants(root).OfType<Button>().Single(b => b.Content as string == content);
+    private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+    private static BooksLedgerInput Synthetic()
+    {
+        var book = new BookInfo(Guid.NewGuid(), "Books Windows 合成验收", AccountingRegime.Enterprise, "synthetic-v1", 2026, 1, 0, DateTimeOffset.UtcNow);
+        return new(book, 7, [new("1001", "现金", null, 1000, 0, JournalAccountKind.Cash), new("1002", "银行", null, 2000, 0, JournalAccountKind.Bank),
+            new("4001", "权益", null, 0, 3000), new("6001", "收入", null, 0, 0)],
+            [new(Guid.NewGuid(), new(2026, 1, 5), "记", 1, VoucherStatus.Posted, [new(1, "1002", "现金存银行", 100, 0), new(2, "1001", "现金存银行", 0, 100)]),
+             new(Guid.NewGuid(), new(2026, 2, 5), "记", 1, VoucherStatus.Posted, [new(1, "1001", "合成收入", 200, 0), new(2, "6001", "合成收入", 0, 200)]),
+             new(Guid.NewGuid(), new(2026, 2, 6), "记", 2, VoucherStatus.Draft, [new(1, "1001", "未过账合成收入", 20, 0), new(2, "6001", "未过账合成收入", 0, 20)])],
+             "人民币", "完全合成的新实现验收数据，不含真实账套或原资源");
+    }
+}
