@@ -165,6 +165,8 @@ public static class SmallBusinessStatements
             }
         }
         ReportAnnotation[] annotations = [new("正式表号", form), new("规则包", SmallBusinessStatement.RulePackageId + "@" + SmallBusinessStatement.RulePackageVersion),
+            new("原模板标识", l.Options.OriginalTemplateId ?? "未提供；不推断为a05或a52"),
+            new("原模板内容核验", "否；本计算采用已有官方规则映射，未声称恢复原科目、报表格式和公式"),
             new("规则提交", SmallBusinessStatement.RuleCommit), new("公式版本", SmallBusinessStatement.FormulaVersion), new("生产核验", "否"), new("完整公式集", "否"),
             new("账套快照版本", l.Revision.ToString(CultureInfo.InvariantCulture)),
             new("期间类型", "月报；不提供年度上年比较"), new("年初/累计基础", "2026年1月启用的完整账套；账簿期初及已记账分录，不含草稿/已审核"),

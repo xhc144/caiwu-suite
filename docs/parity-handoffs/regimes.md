@@ -30,3 +30,28 @@
 
 当前实现未提交，未运行本轮测试；无 Windows 实机验收。
 未实现项持续保留：44完整原模板/科目/报表公式与格式恢复、全部辅助核算账簿、外币重估、数量成本、自动凭证全部规则、年结/跨年反结删除年初的原语义、现金流量表/附注、原 SQL Anywhere 导入、主桌面接线与 Windows 原生完整流程。现存 gap-analysis 所有项目仍有效；没有删除或缩小原验收。
+
+## 可编译实现检查点（2026-10-26 00:06 UTC）
+
+实际新增 `Caiwu.Nonprofit.Writable.NonprofitLedgerService` 与 `INonprofitLedgerStore`、必需的 `INonprofitAuthorizer`。API：Initialize、SaveAccount、SetOpening、SaveDraft/DeleteDraft、Review/CancelReview、PostMonth（返回已过账/跳过未审ID）、ReversePost、GenerateClosingDraft、CloseMonth/ReopenLastMonth、显式确认影响后 RenumberMonth、GetBalances。所有变更使用 `NonprofitMutationContext(BookId, Revision)` CAS；稳定 operator ID 异人审核；没有默认放权实现。
+
+`AtomicNonprofitLedgerStore` 是独立 `.np-ledger.json` 参考/合成持久化适配，**尚未与公共总账原子接通**，绝不是 SQL Anywhere/`.caiwu` 驱动。字段、维度、证据、凭证和审计同文件原子替换；拒绝 `.db/.caiwu`、旧版本、错账套、未知JSON成员/重复键/损坏校验和。JSON不是正式产品第二账簿。
+
+`WritableNonprofitStatementDataSource` 从实际已记账新DTO读取两表，限定分类与稳定行ID不再靠 sidecar 序号补猜；完整 enriched snapshot hash 绑定复核。基础余额不能手填覆盖；受托/到期/减值/年初与完整覆盖须明确复核。结转前后普通活动发生额不变；按两类净资产差额作累计勾稽。未结转、分类净额相抵、缺分析或旧复核都不冒称完成。
+
+模块WPF项目 `src/Caiwu.Nonprofit/Wpf/Caiwu.Nonprofit.Wpf.csproj` 提供真实 `NonprofitPostingWindow`→PostMonth；采用 `w_zw_jz` 已知PBU比例，年份/月份在上、确定在取消左侧，错误留窗与旧token拒绝。未声称 PBU 到像素转换、原关闭行为或 Windows 实机一致性。shell真实入口：`minfeiqi/main` / `w_zw_jz` / `menu:m_frame_zw/m_o/m_o10/m_o10_30`。其他窗口尚仅领域API，没有伪按钮。
+
+已实跑（Linux，SDK10.0.403，`CAIWU_DOTNET_ROOT=/workspace/caiwu-dotnet bash tools/dotnet-local.sh`）：Nonprofit.Tests **90通过**（原77＋新13）；Reporting.Tests **60通过**（原55＋新5）；Nonprofit.Wpf 交叉构建0警告0错误，均启用TreatWarningsAsErrors。合成手算：期初银行/非限定净资产1000；U/R捐赠100/200，费用20/50；记账/结转后银行1230，U/R净资产1080/150，活动净增80/150；两表勾稽通过。测试还覆盖负收入结转、金额溢出原子回滚、原字段高精度维度回读、异人审核、权限/CAS/文件锁、号码断号与明确重排、反向状态链。测试只证明这些有限行为，不替代原账套兼容和全原功能。
+
+### 对 PR52 契约检查点的反馈与接续
+
+已读 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85` 的 ParityModules.cs/integration.md。下一检查点将在独占 Parity 子项目中以 `ModuleLedgerSnapshot`、`SaveModuleDocuments`、`AcceptVoucherProposal` 接受新草稿，把完整分录维度、原字段和分类作为同事务权威模块文档；不能把上面的外部JSON适配称为总账一致。基线Contracts没有新API，因此在独立临时契约checkout编译验证，不改本分支共享Contracts。
+
+公共缺口：
+
+- 原期初按限定类别/限制/辅助维度拆分，需要与 Account.OpeningDebit/Credit 同次保存；现 SaveModuleDocuments 不更改期初。科目flags/原值与公共科目编辑亦需同revision原子更新。
+- 主凭证编辑保存既有草稿时，必须同事务更新/保留稳定line ID、维度、分类和原字段；AcceptVoucherProposal仅新建，旧 ILedgerService.SaveDraft不能安全更新完整内容。建议新增 `SaveEnrichedVoucherDraft` 或接受已有voucher ID的模块事务，不允许4字段编辑后分类静默失效。
+- Review/Post/CancelReview/ReversePost/Close/Reopen 应保留模块文档，禁止生成新行ID或丢原值；权限按真实会话与原菜单授权，不将actor显示名当稳定ID。
+- 模块报表需要同次读取账簿与民非文档；能否把全部不含基础金额的分类/到期分析与复核作为模块文档统一备份，避免外置JSON成为权威。
+
+仍未实现：受限复币/数量损益的自动结转（有据拒绝，不猜方向）；所得税自动结转/转类/3201前期调整的独立审批；跨年、SQL Anywhere原账套无损导入、完整44模板内容、主桌面可写接线及Windows实机。普通手工合成凭证可保留复币/数量全部精度与辅助信息，但这不代表全部原外币/数量业务规则已经实现。

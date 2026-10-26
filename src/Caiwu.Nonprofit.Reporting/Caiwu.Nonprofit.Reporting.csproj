@@ -5,4 +5,5 @@
   </PropertyGroup>
   <ItemGroup><Compile Remove="Wpf/**/*.cs" /></ItemGroup>
   <ItemGroup><ProjectReference Include="../Caiwu.Contracts/Caiwu.Contracts.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../Caiwu.Nonprofit/Caiwu.Nonprofit.csproj" /></ItemGroup>
 </Project>

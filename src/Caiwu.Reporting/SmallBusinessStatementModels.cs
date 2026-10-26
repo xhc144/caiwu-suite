@@ -21,11 +21,13 @@ public sealed class SmallBusinessStatementOptions
     public IReadOnlyList<ReportSource> AdditionalSources { get; }
     public bool SettlementLeavesAreCounterpartySeparated { get; }
     public IReadOnlyList<SettlementTermMapping> SettlementTerms { get; }
+    public string? OriginalTemplateId { get; }
 
     public SmallBusinessStatementOptions(IEnumerable<Guid>? profitClosingVoucherIds = null,
         IEnumerable<StatementAccountMapping>? accountMappings = null,
         IEnumerable<IncomeDetailMapping>? incomeDetails = null, IEnumerable<ReportSource>? additionalSources = null,
-        bool settlementLeavesAreCounterpartySeparated = false, IEnumerable<SettlementTermMapping>? settlementTerms = null)
+        bool settlementLeavesAreCounterpartySeparated = false, IEnumerable<SettlementTermMapping>? settlementTerms = null,
+        string? originalTemplateId = null)
     {
         ProfitClosingVoucherIds = Array.AsReadOnly((profitClosingVoucherIds ?? []).ToArray());
         AccountMappings = Array.AsReadOnly((accountMappings ?? []).ToArray());
@@ -33,6 +35,9 @@ public sealed class SmallBusinessStatementOptions
         AdditionalSources = Array.AsReadOnly((additionalSources ?? []).ToArray());
         SettlementLeavesAreCounterpartySeparated = settlementLeavesAreCounterpartySeparated;
         SettlementTerms = Array.AsReadOnly((settlementTerms ?? []).ToArray());
+        if (originalTemplateId is not null and not "a05" and not "a52")
+            throw new ArgumentException("小企业原模板标识只能为a05/a52；不得把企业或民非账套套用小企业公式。", nameof(originalTemplateId));
+        OriginalTemplateId = originalTemplateId;
         if (ProfitClosingVoucherIds.Distinct().Count() != ProfitClosingVoucherIds.Count)
             throw new ArgumentException("损益结转凭证 ID 不能重复。", nameof(profitClosingVoucherIds));
         if (AccountMappings.Any(x => x is null) || IncomeDetails.Any(x => x is null) ||

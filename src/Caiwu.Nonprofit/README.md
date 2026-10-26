@@ -1,3 +1,9 @@
+# 民非2026领域与可写账务适配
+
+本轮新增可写适配、真实状态操作与参考持久化；API、精确验证和公共总账接线缺口见 [regimes交接](../../docs/parity-handoffs/regimes.md)。`Writable/` 不只是规划建议：草稿、异人审核、过账、结转和月结均落盘；独立 JSON 适配尚未与共享总账接通，不能把它作为正式第二套账簿或原格式驱动。
+
+以下保留原规划模块的说明与范围。
+
 # 民非2026独立领域规划服务
 
 分支 `codex/nonprofit-core` 从规则v2提交 `9956ec2d023a44ad13ac8af5424420beef2f612d` 创建。本项目只依赖.NET10 BCL，嵌入已核的 `rules/packages/nonprofit.json`；不引用Contracts、Core、Desktop或SQLite，不修改根solution。

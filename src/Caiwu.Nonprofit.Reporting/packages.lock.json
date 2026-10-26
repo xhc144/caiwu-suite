@@ -4,6 +4,9 @@
     "net10.0": {
       "caiwu.contracts": {
         "type": "Project"
+      },
+      "caiwu.nonprofit": {
+        "type": "Project"
       }
     }
   }

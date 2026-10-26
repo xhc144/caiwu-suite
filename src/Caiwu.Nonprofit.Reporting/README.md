@@ -2,9 +2,13 @@
 
 本模块提供财会〔2024〕25号自2026年起施行的资产负债表、业务活动表计算预览、明确缺失原因、两表净资产勾稽及安全CSV/本地HTML打印导出。只接收显式分类、期间和覆盖声明，不记账、不修改账套；所有结果始终 `CanIssueAsFormal=false`。完整数值表示本模块约定内的计算完成，不表示整套财务报告或软件整体合规。
 
+## 已记账完整DTO入口
+
+新增 `WritableNonprofitStatementDataSource` 从 `Caiwu.Nonprofit.Writable.NonprofitLedgerSnapshot` 读取稳定行ID、已保存分类、完整维度和原值。`WritableStatementReview` 绑定完整快照hash；草稿/仅审核不进入报表，已记账结转不冲销普通活动发生额。到期/减值/受托等分析仍须明确复核。独立参考存储与公共总账事务的边界见 [regimes交接](../../docs/parity-handoffs/regimes.md)。
+
 ## 入口与集成
 
-生产项目 `Caiwu.Nonprofit.Reporting.csproj` 为 `net10.0`，只引用既有 `Caiwu.Contracts`；无新生产NuGet依赖，不引用WPF、SQLite、Core或规划服务。根集成方可把此项目加入solution并给Desktop增加项目引用；此分支没有修改这些公共文件。
+生产项目 `Caiwu.Nonprofit.Reporting.csproj` 为 `net10.0`，引用既有 `Caiwu.Contracts` 与 `Caiwu.Nonprofit` 的完整可写账务DTO；无新生产NuGet依赖，不引用WPF、SQLite、Core或规划服务。根集成方可把此项目加入solution并给Desktop增加项目引用；此分支没有修改这些公共文件。
 
 ```csharp
 using Caiwu.Nonprofit.Reporting;

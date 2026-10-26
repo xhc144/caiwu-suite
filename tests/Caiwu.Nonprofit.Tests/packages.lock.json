@@ -116,8 +116,18 @@
           "xunit.v3.runner.common": "[4.0.2]"
         }
       },
+      "caiwu.contracts": {
+        "type": "Project"
+      },
       "caiwu.nonprofit": {
         "type": "Project"
+      },
+      "caiwu.nonprofit.reporting": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )",
+          "Caiwu.Nonprofit": "[1.0.0, )"
+        }
       }
     }
   }

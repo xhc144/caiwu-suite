@@ -6,6 +6,22 @@ namespace Caiwu.Reporting.Tests;
 
 public sealed class SmallBusinessStatementTests
 {
+    [Theory]
+    [InlineData("a05")]
+    [InlineData("a52")]
+    public void OriginalTemplateVariantRemainsVisibleWithoutClaimingRecoveredContents(string originalId)
+    {
+        var report = SmallBusinessStatements.IncomeStatement(SampleA(), 1, At, new(originalTemplateId: originalId));
+        Assert.Contains(report.Document.Annotations, a => a.Label == "原模板标识" && a.Value == originalId);
+        Assert.Contains(report.Document.Annotations, a => a.Label == "原模板内容核验" && a.Value.StartsWith("否", StringComparison.Ordinal));
+        Assert.Equal(18800, N(report, 32));
+    }
+    [Theory]
+    [InlineData("a01")]
+    [InlineData("a02")]
+    [InlineData("a54")]
+    public void AnotherRegimeCannotBeLabeledAsASmallBusinessOriginalTemplate(string originalId) =>
+        Assert.Throws<ArgumentException>(() => new SmallBusinessStatementOptions(originalTemplateId: originalId));
     private static readonly DateOnly January = new(2026, 1, 31), February = new(2026, 2, 28), December = new(2026, 12, 31);
     private static readonly DateTimeOffset At = new(2026, 10, 25, 12, 0, 0, TimeSpan.Zero);
     private static Account A(string code, decimal debit = 0, decimal credit = 0, string? parent = null) =>

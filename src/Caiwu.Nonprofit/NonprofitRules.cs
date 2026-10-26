@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Caiwu.Nonprofit;
 
@@ -40,7 +41,7 @@ public sealed class NonprofitRules
         return new(memory.ToArray());
     }
 
-    internal static void Check(bool valid, string code, string message)
+    internal static void Check([DoesNotReturnIf(false)] bool valid, string code, string message)
     {
         if (!valid) throw new NonprofitValidationException(code, message);
     }

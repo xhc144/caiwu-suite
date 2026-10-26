@@ -14,6 +14,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <ProjectReference Include="../../src/Caiwu.Nonprofit/Caiwu.Nonprofit.csproj" />
+    <ProjectReference Include="../../src/Caiwu.Nonprofit.Reporting/Caiwu.Nonprofit.Reporting.csproj" />
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
