@@ -709,11 +709,17 @@ describe('w_bf / w_hf 竞争与安全补充', () => {
     const row = await create();
     const plan = await api.preview({ id: row.id, purpose: 'copy' });
     const source = app.runtime.bookStore.pathOf(app.book.id);
-    await symlink(source, app.runtime.bookStore.pathOf(plan.target_id));
-    expect(
-      await code(api.restore({ planId: plan.id, text: plan.confirmation, password: 'admin' })),
-    ).toBe('BACKUP_COLLISION');
-    expect((await app.svc.book.info()).id).toBe(app.book.id);
+    const target = app.runtime.bookStore.pathOf(plan.target_id);
+    await symlink(source, target);
+    try {
+      expect(
+        await code(api.restore({ planId: plan.id, text: plan.confirmation, password: 'admin' })),
+      ).toBe('BACKUP_COLLISION');
+      expect((await app.svc.book.info()).id).toBe(app.book.id);
+    } finally {
+      // 仅移除测试创建的链接；共享关闭保护会拒绝残留链接，不能靠放宽保护清理夹具。
+      await rm(target);
+    }
   });
   it('w_hf：过期后重新预览可续期，目标新 ID 保持一致', async () => {
     const row = await create();
