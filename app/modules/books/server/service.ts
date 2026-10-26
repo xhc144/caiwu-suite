@@ -222,9 +222,24 @@ export function booksService(
         try {
           await snapshot(book.raw, tmp, info.id);
           const copy = openDatabase<CoreDB>(tmp);
+          let copiedInfo: BookInfo;
           try {
-            const copySvc = createCoreServices({ ...targetSvc.ctx, db: copy.db });
-            await copySvc.tx(async (tsvc) => {
+            // 在线备份可能跨过改密/停用/撤权的提交；以实际复制快照重新验权。
+            const snapshotUser = await authenticateUser(copy.db, input.userCode, input.password);
+            if (!snapshotUser)
+              throw problem(
+                'BOOKS_COPY_AUTH_CHANGED',
+                '来源账套用户在复制快照中已失效或密码已改变，未生成副本',
+                '请核对来源账套的当前用户与密码后重新复制',
+              );
+            const copySvc = createCoreServices({
+              ...targetSvc.ctx,
+              db: copy.db,
+              user: snapshotUser,
+            });
+            copySvc.permissions.require('books.copy');
+            copiedInfo = await copySvc.tx(async (tsvc) => {
+              const snapshotInfo = await tsvc.book.info();
               await tsvc.db
                 .updateTable('book_info')
                 .set({
@@ -243,9 +258,10 @@ export function booksService(
               await tsvc.settings.set('copyReceipt', JSON.parse(receipt));
               await tsvc.log.write({
                 action: 'books.copy',
-                summary: `从「${info.name}」复制为「${input.name}」`,
+                summary: `从「${snapshotInfo.name}」复制为「${input.name}」`,
                 detail: { sourceId: info.id, requestId: input.requestId },
               });
+              return tsvc.book.info();
             });
           } finally {
             await copy.close();
@@ -254,7 +270,7 @@ export function booksService(
           hooks.beforePublish?.();
           linkSync(tmp, store.pathOf(id));
           published = true;
-          return { ...info, id, name: input.name, createdAt: app.now().toISOString() };
+          return copiedInfo;
         } catch (e) {
           if (e instanceof BusinessError) throw e;
           throw problem('BOOKS_COPY_FAILED', '复制失败，未覆盖源账套或已有账套');
