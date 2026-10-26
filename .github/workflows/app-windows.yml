@@ -43,6 +43,11 @@ jobs:
           pnpm install --frozen-lockfile
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm exec playwright install chromium
+      - name: 桌面真实 Node 子进程退出回归
+        id: shutdown-node
+        run: |
+          pnpm exec vitest run apps/desktop/src/test/shutdown.test.ts 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-shutdown-node.log"
+          exit $LASTEXITCODE
       - name: 全仓检查
         id: check
         # 保留失败，独立构建/安装回归继续收集结果；末尾显式使 job 失败，不能掩盖 check。
@@ -96,6 +101,7 @@ jobs:
         run: |
           @(
             'install=${{ steps.install.outcome }}',
+            'shutdown-node=${{ steps.shutdown-node.outcome }}',
             'check=${{ steps.check.outcome }}',
             'independent-web-e2e=${{ steps.web-e2e.outcome }}',
             'build=${{ steps.build.outcome }}',
@@ -110,6 +116,7 @@ jobs:
           name: caiwu-desktop-build-logs
           path: |
             ${{ runner.temp }}/m21-steps.log
+            ${{ runner.temp }}/m21-shutdown-node.log
             ${{ runner.temp }}/m21-package-old.log
             ${{ runner.temp }}/m21-package.log
             ${{ runner.temp }}/m21-desktop-qa.log

@@ -9,6 +9,32 @@ export type ServiceChild = {
   forceStop: () => void;
 };
 
+export type StopOutcome = 'refused' | 'terminated' | 'timeout' | 'forced' | 'unexpected';
+
+export class ServiceStopError extends Error {
+  constructor(
+    readonly outcome: StopOutcome,
+    readonly exitCode: number | null = null,
+    readonly signal: string | null = null,
+  ) {
+    const messages: Record<StopOutcome, string> = {
+      refused: `本地服务退出失败（退出码 ${exitCode}），备份或关账可能未完成`,
+      terminated: '本地服务被信号终止，无法确认备份和关账完成',
+      timeout: '等待本地服务正常退出超时，任务可能仍在完成，尚未强制终止',
+      forced: '本地服务已被强制终止，不能视为保存或关账成功',
+      unexpected: '本地服务意外退出，未确认正常保存和关账',
+    };
+    super(messages[outcome]);
+  }
+}
+
+type ServiceExit = {
+  code: number | null;
+  signal: string | null;
+  requested: boolean;
+  forced: boolean;
+};
+
 /** 不依赖 Electron；计时器、流和退出监听的所有权集中在一次服务会话内。 */
 export class ServiceSession {
   #child: ServiceChild | null = null;
@@ -18,6 +44,9 @@ export class ServiceSession {
   #detach: (() => void) | undefined;
   #cancelStart: (() => void) | undefined;
   #stopPromise: Promise<void> | undefined;
+  #stopRequested = false;
+  #forced = false;
+  #exit: ServiceExit | undefined;
 
   constructor(
     private readonly log: (event: LogEvent, error?: unknown) => void,
@@ -26,6 +55,10 @@ export class ServiceSession {
 
   get running(): boolean {
     return this.#alive && !this.#stopping;
+  }
+
+  get alive(): boolean {
+    return this.#alive;
   }
 
   start(spawn: () => ServiceChild, token: string, timeout = 30_000): Promise<number> {
@@ -94,9 +127,15 @@ export class ServiceSession {
         if (!stderrSeen) this.log('service-stderr');
         stderrSeen = true;
       };
-      const exit = () => {
+      const exit = (code: number | null, signal?: string | null) => {
         if (!this.#alive) return;
         this.#alive = false;
+        this.#exit = {
+          code: typeof code === 'number' ? code : null,
+          signal: signal ?? null,
+          requested: this.#stopRequested,
+          forced: this.#forced,
+        };
         this.log('service-exit');
         this.#detach?.();
         if (!settled) settle(new Error('本地服务在准备完成前退出，请检查数据目录权限或重新安装'));
@@ -129,7 +168,23 @@ export class ServiceSession {
     });
   }
 
-  stop(graceMs = 5000, forceMs = 3000): Promise<void> {
+  #checkExit(): void {
+    const result = this.#exit;
+    if (!result) return; // spawn 尚未发生或失败，没有子进程需要关闭。
+    let failure: ServiceStopError | undefined;
+    if (result.forced) failure = new ServiceStopError('forced', result.code, result.signal);
+    else if (result.signal)
+      failure = new ServiceStopError('terminated', result.code, result.signal);
+    else if (!result.requested) failure = new ServiceStopError('unexpected', result.code);
+    else if (result.code !== 0) failure = new ServiceStopError('refused', result.code);
+    if (failure) {
+      this.log(`service-stop-${failure.outcome}`);
+      throw failure;
+    }
+  }
+
+  /** 共享 lifecycle 默认 30 秒；宿主允许其返回真实结果。超时只停止等待，不杀任务。 */
+  stop(timeout = 35_000): Promise<void> {
     if (this.#stopPromise) return this.#stopPromise;
     this.#stopping = true;
     this.#cancelStart?.();
@@ -138,45 +193,61 @@ export class ServiceSession {
     const child = this.#child;
     if (!child || !this.#alive) {
       this.#detach?.();
-      return Promise.resolve();
+      return Promise.resolve().then(() => this.#checkExit());
     }
     this.log('service-stop');
-    this.#stopPromise = new Promise<void>((resolve, reject) => {
-      let forceTimer: ReturnType<typeof setTimeout> | undefined;
-      let finished = false;
-      const finish = (error?: Error) => {
-        if (finished) return;
-        finished = true;
-        clearTimeout(graceTimer);
-        clearTimeout(forceTimer);
-        child.events.off('exit', exited);
-        child.events.off('close', exited);
-        this.#detach?.();
-        if (error) reject(error);
-        else resolve();
-      };
-      const exited = () => finish();
-      child.events.once('exit', exited);
-      child.events.once('close', exited);
-      const graceTimer = setTimeout(() => {
-        this.log('service-force-stop');
-        forceTimer = setTimeout(
-          () => finish(new Error('本地服务尚未退出，请关闭占用进程后重试')),
-          forceMs,
-        );
-        try {
-          child.forceStop();
-        } catch {
-          finish(new Error('无法终止本地服务，请关闭占用进程后重试'));
-        }
-      }, graceMs);
+    this.#stopPromise = this.#waitForExit(child, timeout)
+      .then(() => {
+        this.#checkExit();
+        this.log('service-stop-completed');
+      })
+      .finally(() => {
+        this.#stopPromise = undefined;
+      });
+    if (!this.#stopRequested) {
+      this.#stopRequested = true;
       try {
         child.requestStop();
       } catch {
-        // 仍等待退出或强制终止的计时器，不把发送失败当作退出完成。
+        // 消息发送失败不能算退出；继续等待真实退出或报告超时。
       }
-    });
+    }
     return this.#stopPromise;
+  }
+
+  /** 只供用户明确选择的异常退出/测试清理；后续 stop 仍拒绝，绝不转换成成功。 */
+  terminate(timeout = 3000): Promise<void> {
+    if (!this.#child || !this.#alive) return Promise.resolve();
+    this.#stopping = true;
+    this.#forced = true;
+    this.#cancelStart?.();
+    this.log('service-force-stop');
+    const waiting = this.#waitForExit(this.#child, timeout);
+    try {
+      this.#child.forceStop();
+    } catch {
+      // 仍等待退出证据；未退出会超时，不能声称已经终止。
+    }
+    return waiting;
+  }
+
+  #waitForExit(child: ServiceChild, timeout: number): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const finish = () => {
+        clearTimeout(timer);
+        child.events.off('exit', finish);
+        child.events.off('close', finish);
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        child.events.off('exit', finish);
+        child.events.off('close', finish);
+        this.log('service-stop-timeout');
+        reject(new ServiceStopError('timeout'));
+      }, timeout);
+      child.events.once('exit', finish);
+      child.events.once('close', finish);
+    });
   }
 }
 

@@ -152,7 +152,7 @@ describe('服务生命周期与关闭', () => {
     const ready = session.start(() => child, 't');
     child.events.emit('exit', 1);
     await expect(ready).rejects.toThrow(/准备完成前退出/);
-    await session.stop();
+    await expect(session.stop()).rejects.toMatchObject({ outcome: 'unexpected' });
     expect(unexpected).not.toHaveBeenCalled();
     const next = fakeChild();
     const running = new ServiceSession(vi.fn(), unexpected);
@@ -163,7 +163,7 @@ describe('服务生命周期与关闭', () => {
     next.events.emit('close', 1);
     expect(unexpected).toHaveBeenCalledOnce();
   });
-  it('30 秒超时请求停止，宽限后强制停止，所有计时器都清理', async () => {
+  it('启动 30 秒超时请求停止，退出等待超时也不自动强杀', async () => {
     vi.useFakeTimers();
     const child = fakeChild();
     child.requestStop = vi.fn();
@@ -173,9 +173,13 @@ describe('服务生命周期与关闭', () => {
     await vi.advanceTimersByTimeAsync(30_000);
     await rejection;
     expect(child.requestStop).toHaveBeenCalledOnce();
-    await vi.advanceTimersByTimeAsync(5000);
-    await session.stop();
-    expect(child.forceStop).toHaveBeenCalledOnce();
+    const stopping = session.stop();
+    const timeout = expect(stopping).rejects.toMatchObject({ outcome: 'timeout' });
+    await vi.advanceTimersByTimeAsync(35_000);
+    await timeout;
+    expect(child.forceStop).not.toHaveBeenCalled();
+    await session.terminate();
+    await expect(session.stop()).rejects.toMatchObject({ outcome: 'forced' });
     expect(vi.getTimerCount()).toBe(0);
     expect(child.events.eventNames()).toEqual([]);
   });
@@ -202,7 +206,7 @@ describe('服务生命周期与关闭', () => {
       }, 't'),
     ).rejects.toThrow(/无法启动/);
   });
-  it('关闭消息同步报错时不会重入停止流程，仍强制退出并清理监听', async () => {
+  it('关闭消息同步报错时不会重入停止流程，超时与显式强制终止分开', async () => {
     vi.useFakeTimers();
     const child = fakeChild();
     child.requestStop = vi.fn(() => {
@@ -213,10 +217,13 @@ describe('服务生命周期与关闭', () => {
     child.stdout!.emit('data', Buffer.from('CAIWU_READY {"port":4317,"token":"t"}\n'));
     await started;
     const stopping = session.stop();
-    await vi.advanceTimersByTimeAsync(5000);
-    await stopping;
+    const timeout = expect(stopping).rejects.toMatchObject({ outcome: 'timeout' });
+    await vi.advanceTimersByTimeAsync(35_000);
+    await timeout;
     expect(child.requestStop).toHaveBeenCalledOnce();
-    expect(child.forceStop).toHaveBeenCalledOnce();
+    expect(child.forceStop).not.toHaveBeenCalled();
+    await session.terminate();
+    await expect(session.stop()).rejects.toMatchObject({ outcome: 'forced' });
     expect(child.events.eventNames()).toEqual([]);
     expect(vi.getTimerCount()).toBe(0);
   });

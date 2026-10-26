@@ -14,7 +14,13 @@ import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { copyFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { ServiceSession, allowUnload, wakeWindow, type ServiceChild } from './lifecycle';
+import {
+  ServiceSession,
+  ServiceStopError,
+  allowUnload,
+  wakeWindow,
+  type ServiceChild,
+} from './lifecycle';
 import { createLog } from './log';
 import { assertDataOutsideInstall } from './data-safety';
 import { assertWebFiles } from './web-files';
@@ -50,6 +56,7 @@ let settings: Settings = { version: 1 };
 let settingsFile = '';
 let activeDataDir = '';
 let pendingDataDir: string | null = null;
+let pendingWindowState: WindowState | undefined;
 let closeAction: 'quit' | 'recover' = 'quit';
 let finalized = false;
 let quitting = false;
@@ -57,6 +64,7 @@ let recovering = false;
 let choosingDirectory = false;
 let ipcBusy = false;
 let booting = false;
+let stoppingServer: Promise<boolean> | undefined;
 let log: ReturnType<typeof createLog> = () => {};
 
 // 与版本号、安装目录和开发 checkout 无关；单实例锁及用户设置随升级保持稳定。
@@ -207,18 +215,72 @@ async function selectDirectory(): Promise<string | null> {
   }
 }
 
-async function stopServer(): Promise<boolean> {
-  try {
-    await server?.stop();
-    server = null;
-    return true;
-  } catch (error) {
-    log('service-stop-failed', error);
-    dialog.showErrorBox(
-      '本地服务尚未退出',
-      '无法确认本地服务已退出。请在任务管理器关闭财务软件后重新启动；软件不会继续重启或切换数据目录。',
-    );
-    return false;
+function stopServer(): Promise<boolean> {
+  stoppingServer ??= stopServerOnce().finally(() => {
+    stoppingServer = undefined;
+  });
+  return stoppingServer;
+}
+
+async function stopServerOnce(): Promise<boolean> {
+  for (;;) {
+    try {
+      await server?.stop();
+      server = null;
+      return true;
+    } catch (error) {
+      log('service-stop-failed', error);
+      // 超时或拒绝后，原来的目录切换必须重新选择；任何配置都不能提前提交。
+      pendingDataDir = null;
+      pendingWindowState = undefined;
+      const alive = server?.alive ?? false;
+      const reason = error instanceof ServiceStopError ? error.message : '无法确认本地服务正常退出';
+      const { response } = await dialog.showMessageBox({
+        type: 'error',
+        title: '正常退出未完成',
+        message: reason,
+        detail:
+          '数据目录未更改，软件不会重启。当前业务会话不可继续使用；原账套和备份仍在原目录。' +
+          '失败的服务即使已经退出，也可能留下数据目录锁；本软件不会删除锁或绕过备份拒绝。请保留日志并联系维护人员处理。' +
+          (alive ? '继续等待只等待当前任务，不会再次启动服务。' : '服务已退出，不能在此恢复业务。'),
+        buttons: alive
+          ? ['继续等待', '查看诊断日志', '强制退出（未确认保存）']
+          : ['查看诊断日志', '异常退出（未确认保存）'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (alive && response === 0) continue;
+      if (response === (alive ? 1 : 0)) {
+        await shell.openPath(path.join(userData, 'logs'));
+        continue;
+      }
+      if (alive) {
+        const confirm = await dialog.showMessageBox({
+          type: 'warning',
+          title: '确认强制退出',
+          message: '强制结束可能中断备份、关账或日志写入，不能视为保存成功。',
+          detail: '不会切换目录或重新启动，也不会清除数据目录锁。请优先继续等待。',
+          buttons: ['继续等待', '仍然强制退出'],
+          defaultId: 0,
+          cancelId: 0,
+          noLink: true,
+        });
+        if (confirm.response !== 1) continue;
+        try {
+          await server?.terminate();
+        } catch {
+          dialog.showErrorBox(
+            '强制终止未确认',
+            '本地服务仍未确认退出，请保留诊断日志并联系维护人员。',
+          );
+          continue;
+        }
+      }
+      finalized = true;
+      app.exit(1); // 明确异常结束；没有配置提交或 relaunch。
+      return false;
+    }
   }
 }
 
@@ -229,13 +291,18 @@ async function finishQuit() {
     quitting = false;
     return;
   }
-  if (pendingDataDir) {
+  if (pendingDataDir || pendingWindowState) {
     try {
-      checkDirectory(pendingDataDir);
-      saveSettings({ ...settings, dataDir: pendingDataDir });
-      app.relaunch();
+      if (pendingDataDir) checkDirectory(pendingDataDir);
+      saveSettings({
+        ...settings,
+        ...(pendingWindowState ? { window: pendingWindowState } : {}),
+        ...(pendingDataDir ? { dataDir: pendingDataDir } : {}),
+      });
+      if (pendingDataDir) app.relaunch();
     } catch (error) {
       pendingDataDir = null;
+      pendingWindowState = undefined;
       quitting = false;
       dialog.showErrorBox(
         '数据目录未更改',
@@ -252,24 +319,26 @@ async function finishQuit() {
 async function recover(reason: string) {
   if (recovering || quitting || finalized || booting) return;
   recovering = true;
+  const canRetry = server?.alive ?? true;
   const { response } = await dialog.showMessageBox({
     type: 'error',
     title: '本地服务不可用',
     message: reason,
-    detail:
-      '重试会重新启动本地服务并回到账套选择页；尚未保存的内容无法自动恢复。原账套文件不会被移动或删除。',
-    buttons: ['重试', '退出'],
+    detail: canRetry
+      ? '重试会先等待本地服务正常退出，再重新打开账套选择页；尚未保存的内容无法自动恢复。原账套文件不会被移动或删除。'
+      : '本地服务已经退出，当前业务会话不可继续。下一步会检查退出结果并提供诊断日志入口，不会自动重启或清除数据目录锁。',
+    buttons: canRetry ? ['重试', '退出'] : ['查看退出结果'],
     defaultId: 0,
-    cancelId: 1,
+    cancelId: canRetry ? 1 : 0,
     noLink: true,
   });
   recovering = false;
   if (quitting || finalized) return;
   const win = mainWindow;
   if (win && !win.isDestroyed()) {
-    closeAction = response === 0 ? 'recover' : 'quit';
+    closeAction = canRetry && response === 0 ? 'recover' : 'quit';
     win.close();
-  } else if (response === 0) {
+  } else if (canRetry && response === 0) {
     if (await stopServer()) await boot();
   } else await finishQuit();
 }
@@ -298,7 +367,7 @@ async function boot() {
     }
     const token = randomBytes(24).toString('hex');
     const current = new ServiceSession(log, () => {
-      void recover('本地服务意外退出，请重试；如反复发生，请检查数据目录和安装文件');
+      void recover('本地服务意外退出，无法确认备份和关账完成；当前业务会话不可继续');
     });
     server = current;
     const port = await current.start(() => spawnServer(token), token);
@@ -426,16 +495,7 @@ async function createWindow(current: ServiceSession) {
   });
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null;
-    if (closingState) {
-      try {
-        saveSettings({ ...settings, window: closingState });
-      } catch (error) {
-        dialog.showErrorBox(
-          '窗口设置未保存',
-          message(error, '无法保存窗口位置，请检查用户配置目录'),
-        );
-      }
-    }
+    pendingWindowState = closingState;
     if (closeAction === 'recover') {
       closeAction = 'quit';
       void stopServer().then((stopped) => {
