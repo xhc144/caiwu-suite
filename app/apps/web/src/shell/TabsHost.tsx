@@ -57,7 +57,15 @@ function defaultTitle(pathname: string, navItems: NavItem[]) {
  * 多标签页工作区。每个标签页里的页面保持状态（切走再切回不丢输入），
  * 页面拿到的 location 是自己标签页的（useSearchParams 等照常用）。
  */
-export function TabsHost({ navItems, devMode }: { navItems: NavItem[]; devMode: boolean }) {
+export function TabsHost({
+  navItems,
+  devMode,
+  onWorkspaceChange,
+}: {
+  navItems: NavItem[];
+  devMode: boolean;
+  onWorkspaceChange?: (paths: string[]) => void;
+}) {
   const location = useLocation();
   const navigate = useNavigate();
   const session = useRequiredSession();
@@ -75,6 +83,9 @@ export function TabsHost({ navItems, devMode }: { navItems: NavItem[]; devMode: 
   ]);
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
+  useEffect(() => {
+    onWorkspaceChange?.(tabs.map((tab) => tab.key));
+  }, [tabs, onWorkspaceChange]);
 
   useEffect(() => {
     if (!isTabPath(location.pathname)) {

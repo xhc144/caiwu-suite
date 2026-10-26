@@ -4,6 +4,8 @@ import { test, expect } from './fixture';
 test('独立临时账套：真实待办→路由穿透→实体搜索与键盘→产品持久化', async ({ page, seeded }) => {
   await seeded.login(page);
   await expect(page.getByRole('heading', { name: '工作台', exact: true })).toBeVisible();
+  await expect(page.locator('.ant-descriptions')).toContainText('4-2-2');
+  await expect(page.locator('.ant-descriptions')).toContainText('CNY');
   await expect(page.getByText('待审核凭证', { exact: true })).toBeVisible();
   const pendingCard = page
     .locator('.ant-card')
@@ -194,4 +196,41 @@ test('改密后旧会话经工作台检查失效，回登录且不保留财务�
   await page.getByRole('button', { name: '刷新', exact: true }).click();
   await expect(page).toHaveURL((url) => url.pathname === '/' || url.pathname.startsWith('/login/'));
   await expect(page.getByText('待审核凭证', { exact: true })).toHaveCount(0);
+});
+
+test('首页无业务标签时直接切账套，隐藏业务标签仍需确认并尊重离开保护', async ({ page, seeded }) => {
+  await seeded.login(page);
+  const userMenu = page
+    .getByRole('menu')
+    .filter({ has: page.getByRole('menuitem', { name: /退出登录$/ }) });
+  await expect(page.getByRole('heading', { name: '工作台', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: /系统管理员/ }).hover();
+  await userMenu.getByRole('menuitem', { name: '切换账套', exact: true }).click();
+  await expect(page).toHaveURL(`${seeded.origin}/`);
+  expect(await page.evaluate(() => sessionStorage.getItem('caiwu.session'))).toBeNull();
+  await seeded.login(page);
+  await page.goto(`${seeded.origin}/m/example/memos`);
+  await page.getByLabel('摘要', { exact: true }).fill('保留隐藏标签输入');
+  await page.getByRole('tab', { name: '首页', exact: true }).click();
+  await page.getByRole('button', { name: /系统管理员/ }).hover();
+  await userMenu.getByRole('menuitem', { name: '切换账套', exact: true }).click();
+  const confirm = page.getByRole('dialog', { name: '切换账套', exact: true });
+  await expect(confirm).toBeVisible();
+  await confirm.getByRole('button', { name: '取消', exact: true }).click();
+  await page.getByRole('tab', { name: '示范记账单', exact: true }).click();
+  await expect(page.getByLabel('摘要', { exact: true })).toHaveValue('保留隐藏标签输入');
+  await page.getByRole('tab', { name: '首页', exact: true }).click();
+  await page.evaluate(() => {
+    window.onbeforeunload = (e) => e.preventDefault();
+  });
+  await page.getByRole('button', { name: /系统管理员/ }).hover();
+  await userMenu.getByRole('menuitem', { name: '切换账套', exact: true }).click();
+  await confirm.getByRole('button', { name: '已保存内容，继续', exact: true }).click();
+  await expect(page).toHaveURL(`${seeded.origin}/home`);
+  await expect(confirm).toBeVisible();
+  await page.evaluate(() => {
+    window.onbeforeunload = null;
+  });
+  await confirm.getByRole('button', { name: '已保存内容，继续', exact: true }).click();
+  await expect(page).toHaveURL(`${seeded.origin}/`);
 });

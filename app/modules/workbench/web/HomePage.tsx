@@ -15,7 +15,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import { MENU_GROUPS, formatPeriod, productName } from '@caiwu/core';
+import { MENU_GROUPS, formatCodeScheme, formatPeriod, productName } from '@caiwu/core';
 import { usePermission } from '@caiwu/web-kit';
 import { PageContainer } from '@caiwu/ui';
 import { api } from './api';
@@ -72,6 +72,13 @@ export default function HomePage() {
           <Descriptions.Item label="账套">{session.book.name}</Descriptions.Item>
           <Descriptions.Item label="单位">{session.book.orgName}</Descriptions.Item>
           <Descriptions.Item label="会计制度">{session.book.templateName}</Descriptions.Item>
+          <Descriptions.Item label="科目级次">
+            {formatCodeScheme(session.book.codeScheme)}
+          </Descriptions.Item>
+          <Descriptions.Item label="启用期间">
+            {formatPeriod(session.book.startPeriod)}
+          </Descriptions.Item>
+          <Descriptions.Item label="本位币">{session.book.baseCurrency}</Descriptions.Item>
           <Descriptions.Item label="产品形态">
             {productName(session.book.product)}
           </Descriptions.Item>

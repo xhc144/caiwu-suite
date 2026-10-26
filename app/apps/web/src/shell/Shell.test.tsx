@@ -25,6 +25,7 @@ vi.mock('@caiwu/web-kit', async (importOriginal) => {
   const actual = await importOriginal<typeof WebKit>();
   return {
     ...actual,
+    useBootstrap: () => ({ devMode: true }),
     coreApi: {
       auth: {
         me: {

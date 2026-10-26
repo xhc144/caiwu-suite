@@ -23,6 +23,7 @@ import {
   queryClient,
   sessionStore,
   useRequiredSession,
+  useBootstrap,
 } from '@caiwu/web-kit';
 import { visibleModules } from '../modules';
 import { GlobalHotkeys } from './GlobalHotkeys';
@@ -75,8 +76,10 @@ export function Shell({ devMode }: { devMode: boolean }) {
   );
 }
 
-function ShellContent({ devMode }: { devMode: boolean }) {
+function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
   const session = useRequiredSession();
+  const bootstrap = useBootstrap();
+  const devMode = bootstrap?.devMode ?? initialDevMode;
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
@@ -84,6 +87,7 @@ function ShellContent({ devMode }: { devMode: boolean }) {
   const [shortcuts, setShortcuts] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [exitTarget, setExitTarget] = useState<'user' | 'book' | null>(null);
+  const [openPaths, setOpenPaths] = useState<string[]>(['/home']);
   const prefKey = `${session.bookId}.${session.user.id}`;
   const [appearance, setAppearance] = useState(() => loadAppearance(prefKey));
   const [systemDark, setSystemDark] = useState(
@@ -150,9 +154,9 @@ function ShellContent({ devMode }: { devMode: boolean }) {
   const onHelp = useCallback(() => {
     void navigate('/m/workbench/help');
   }, [navigate]);
-  const exit = async () => {
+  const exit = async (kind: 'user' | 'book') => {
     if (!checkBeforeLeave()) return;
-    const target = exitTarget === 'user' ? `/login/${encodeURIComponent(session.bookId)}` : '/';
+    const target = kind === 'user' ? `/login/${encodeURIComponent(session.bookId)}` : '/';
     // 先撤销并卸载旧页面；即使注销请求失败也不会恢复旧财务缓存。
     await queryClient.cancelQueries();
     try {
@@ -163,6 +167,14 @@ function ShellContent({ devMode }: { devMode: boolean }) {
     if (sessionStore.get()?.token === session.token) sessionStore.set(null);
     queryClient.clear();
     void navigate(target, { replace: true });
+  };
+  const requestExit = (kind: 'user' | 'book') => {
+    // 工作台首页没有待保存业务表单；打开过的其他标签可能仍保留输入。
+    const homeOnly = [location.pathname, ...openPaths].every(
+      (path) => path === '/home' || path === '/m/workbench',
+    );
+    if (homeOnly) void exit(kind);
+    else setExitTarget(kind);
   };
   return (
     <ConfigProvider
@@ -214,7 +226,11 @@ function ShellContent({ devMode }: { devMode: boolean }) {
               {collapsed ? '财' : productName(session.book.product)}
             </div>
             <div style={{ height: 'calc(100% - 96px)', overflow: 'auto' }}>
-              <NavMenu items={navItems} collapsed={collapsed} />
+              <NavMenu
+                key={devMode ? 'development' : 'production'}
+                items={navItems}
+                collapsed={collapsed}
+              />
               {!collapsed && recent.length > 0 && (
                 <div style={{ padding: 12 }}>
                   <Typography.Text type="secondary">最近功能</Typography.Text>
@@ -263,7 +279,7 @@ function ShellContent({ devMode }: { devMode: boolean }) {
                       { key: 'user', label: '切换用户 / 退出登录' },
                       { key: 'book', label: '切换账套' },
                     ],
-                    onClick: ({ key }) => setExitTarget(key === 'user' ? 'user' : 'book'),
+                    onClick: ({ key }) => requestExit(key === 'user' ? 'user' : 'book'),
                   }}
                 >
                   <Button type="text">
@@ -276,7 +292,7 @@ function ShellContent({ devMode }: { devMode: boolean }) {
               </div>
             </Layout.Header>
             <Layout.Content style={{ minHeight: 0, minWidth: 0 }}>
-              <TabsHost navItems={navItems} devMode={devMode} />
+              <TabsHost navItems={navItems} devMode={devMode} onWorkspaceChange={setOpenPaths} />
             </Layout.Content>
           </Layout>
         </Layout>
@@ -330,7 +346,9 @@ function ShellContent({ devMode }: { devMode: boolean }) {
           title={exitTarget === 'book' ? '切换账套' : '切换用户 / 退出登录'}
           open={exitTarget !== null}
           onCancel={() => !logout.isPending && setExitTarget(null)}
-          onOk={() => void exit()}
+          onOk={() => {
+            if (exitTarget) void exit(exitTarget);
+          }}
           confirmLoading={logout.isPending}
           okText="已保存内容，继续"
           cancelText="取消"
