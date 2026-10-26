@@ -8,9 +8,11 @@ import {
   ImportSchema,
   RemoveSchema,
   CleanupSchema,
+  PrintSchema,
 } from '../shared';
 import { openingService, trial } from './service';
 import { exportExcel, previewExcel, importExcel } from './excel';
+import { openingPrint } from './print';
 const m = moduleKit(manifest);
 export const openingRouter = m.router({
   list: m.procedure
@@ -51,6 +53,10 @@ export const openingRouter = m.router({
     .meta({ permission: 'opening.view' })
     .input(YearSchema)
     .query(({ ctx, input }) => exportExcel(ctx.svc, input.year)),
+  print: m.procedure
+    .meta({ permission: 'opening.view' })
+    .input(PrintSchema)
+    .query(({ ctx, input }) => openingPrint(ctx.svc, input)),
   preview: m.procedure
     .meta({ permission: 'opening.import' })
     .input(FileSchema)
