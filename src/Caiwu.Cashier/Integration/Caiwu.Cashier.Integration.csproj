@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <!-- Optional checkout override permits testing the frozen PR52 API without modifying shared files. -->
+    <ParityContractsProject Condition="'$(ParityContractsProject)' == ''">../../Caiwu.Contracts/Caiwu.Contracts.csproj</ParityContractsProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Caiwu.Cashier.csproj" />
+    <ProjectReference Include="$(ParityContractsProject)" />
+  </ItemGroup>
+</Project>
