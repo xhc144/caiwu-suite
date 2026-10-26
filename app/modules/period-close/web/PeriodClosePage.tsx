@@ -530,6 +530,17 @@ export default function PeriodClosePage() {
             title={`${item.order}. ${item.code} ${item.name}`}
             style={{ marginBottom: 8 }}
           >
+            {item.cashflowChecks.length > 0 && (
+              <div>
+                现金流方向：
+                {item.cashflowChecks
+                  .map(
+                    (c) =>
+                      `第${c.line}行项目 ${c.itemId}（${{ inflow: '流入', outflow: '流出', internal: '内部转移' }[c.direction]}）`,
+                  )
+                  .join('；')}
+              </div>
+            )}
             {item.existingVoucherId ? (
               <span>已有凭证 ID {item.existingVoucherId}，本次不重复生成</span>
             ) : item.zero ? (

@@ -1,11 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import periodCloseServer from '../server';
-import { call, errorData, generateAll, rule, snapshot, zeroOpening } from './helpers';
+import {
+  call,
+  errorData,
+  generateAll,
+  rule,
+  snapshot,
+  zeroOpening,
+  seedCashflowDirections,
+} from './helpers';
 let app: TestApp;
 beforeEach(async () => {
   app = await createTestApp({ modules: [periodCloseServer] });
   await zeroOpening(app);
+  await seedCashflowDirections(app);
 });
 afterEach(async () => app.close());
 const id = async (code: string) => (await app.svc.accounts.require(code)).id;

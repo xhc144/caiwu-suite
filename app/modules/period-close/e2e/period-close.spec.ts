@@ -13,8 +13,11 @@ test('独立账套真实主流程：过账 → 浏览器结转预览生成 → �
   await expect(page.getByRole('heading', { name: '过账与结账' })).toBeVisible();
   await page.getByRole('button', { name: '新增结转类型', exact: true }).click();
   const drawer = page.getByRole('dialog', { name: '新增结转类型' });
-  await drawer.getByLabel('凭证类型', { exact: true }).click();
-  await page.getByText('记 记账凭证', { exact: true }).last().click();
+  const voucherType = drawer.getByLabel('凭证类型', { exact: true });
+  await voucherType.click();
+  await voucherType.press('ArrowDown');
+  await voucherType.press('Enter');
+  await expect(drawer.getByTitle('记 记账凭证', { exact: true })).toBeVisible();
   await drawer.getByLabel('唯一转入末级科目').fill('4103');
   await page.keyboard.press('Enter');
   await drawer.getByRole('button', { name: '保存设置' }).click();
@@ -195,13 +198,19 @@ test('独立现金流标志：自定义现金转出/银行转入可分别录项�
     type: 'cashflow',
     code: 'CT_IN',
     name: '测试调拨流入',
-    attrs: { direction: 'in' },
+    attrs: { cashflowDirection: 'inflow' },
   });
   const outgoing = await app.svc.dimensions.create({
     type: 'cashflow',
     code: 'CT_OUT',
     name: '测试调拨流出',
-    attrs: { direction: 'out' },
+    attrs: { cashflowDirection: 'outflow' },
+  });
+  const historical = await app.svc.dimensions.create({
+    type: 'cashflow',
+    code: 'CT_OLD',
+    name: '历史未设方向',
+    attrs: { direction: 'in' },
   });
   await seedVouchers(app.svc, [
     {
@@ -225,17 +234,60 @@ test('独立现金流标志：自定义现金转出/银行转入可分别录项�
   await drawer.getByLabel('代码', { exact: true }).fill('CASH_MOVE');
   await drawer.getByLabel('结转内容', { exact: true }).click();
   await page.getByText('自定义科目余额比例', { exact: true }).last().click();
-  await drawer.getByLabel('凭证类型', { exact: true }).click();
-  await page.getByText('记 记账凭证', { exact: true }).last().click();
+  const voucherType = drawer.getByLabel('凭证类型', { exact: true });
+  await voucherType.click();
+  await voucherType.press('ArrowDown');
+  await voucherType.press('Enter');
+  await expect(drawer.getByTitle('记 记账凭证', { exact: true })).toBeVisible();
   await drawer.getByLabel('唯一转入末级科目').fill('100201');
   await page.keyboard.press('Enter');
   await expect(drawer.getByLabel('转入流入现金流量项目', { exact: true })).toBeVisible();
-  await drawer.getByLabel('转入流入现金流量项目', { exact: true }).fill('CT_IN');
+  await drawer.getByLabel('转入流入现金流量项目', { exact: true }).fill('CT_OUT');
   await page.keyboard.press('Enter');
   await drawer.getByRole('button', { name: '增加转出科目' }).click();
   await drawer.getByLabel('转出科目', { exact: true }).fill('1001');
   await page.keyboard.press('Enter');
   await expect(drawer.getByLabel('转出流出现金流量项目', { exact: true })).toBeVisible();
+  await drawer.getByLabel('转出流出现金流量项目', { exact: true }).fill('CT_OUT');
+  await page.keyboard.press('Enter');
+  await expect(drawer.getByTitle('记 记账凭证', { exact: true })).toBeVisible();
+  await drawer.getByRole('button', { name: '保存设置' }).click();
+  await expect(
+    page.getByText('现金流量项目 CT_OUT 已声明流出，不能用于流入', { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('alert')
+    .filter({ hasText: '现金流量项目 CT_OUT 已声明流出，不能用于流入' })
+    .getByRole('button', { name: '关闭', exact: true })
+    .click();
+  expect(await app.call(periodCloseServer).rules()).toEqual([]);
+  await drawer.getByLabel('转入流入现金流量项目', { exact: true }).fill('CT_OLD');
+  await page.keyboard.press('Enter');
+  await drawer.getByRole('button', { name: '保存设置' }).click();
+  await expect(
+    page.getByText('现金流量项目 CT_OLD 方向未配置或无法识别，不能生成结转凭证', { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('alert')
+    .filter({ hasText: '现金流量项目 CT_OLD 方向未配置或无法识别，不能生成结转凭证' })
+    .getByRole('button', { name: '关闭', exact: true })
+    .click();
+  expect((await app.svc.dimensions.get(historical.id))!.attrs).toEqual({ direction: 'in' });
+  expect(await app.call(periodCloseServer).rules()).toEqual([]);
+  await drawer.getByLabel('转入流入现金流量项目', { exact: true }).fill('CT_IN');
+  await page.keyboard.press('Enter');
+  await drawer.getByLabel('转出流出现金流量项目', { exact: true }).fill('CT_IN');
+  await page.keyboard.press('Enter');
+  await drawer.getByRole('button', { name: '保存设置' }).click();
+  await expect(
+    page.getByText('现金流量项目 CT_IN 已声明流入，不能用于流出', { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole('alert')
+    .filter({ hasText: '现金流量项目 CT_IN 已声明流入，不能用于流出' })
+    .getByRole('button', { name: '关闭', exact: true })
+    .click();
+  expect(await app.call(periodCloseServer).rules()).toEqual([]);
   await drawer.getByLabel('转出流出现金流量项目', { exact: true }).fill('CT_OUT');
   await page.keyboard.press('Enter');
   await drawer.getByRole('button', { name: '保存设置' }).click();
@@ -263,4 +315,92 @@ test('独立现金流标志：自定义现金转出/银行转入可分别录项�
     credit: 0,
     dimensions: { cashflow: incoming.id },
   });
+});
+
+test('M03内部转移真实UI：单边内部流出阻止，现金转银行同张配平后生成待审核凭证', async ({
+  page,
+  local,
+}) => {
+  const { app, url } = local;
+  const internal = await app.svc.dimensions.create({
+    type: 'cashflow',
+    code: 'CT_INTERNAL',
+    name: '测试内部转移',
+    attrs: { cashflowDirection: 'internal' },
+  });
+  await seedVouchers(app.svc, [
+    {
+      date: '2026-01-05',
+      status: 'posted',
+      lines: [
+        { account: '1001', debit: 10000 },
+        { account: '4001', credit: 10000 },
+      ],
+    },
+  ]);
+  const cash = await app.svc.accounts.require('1001');
+  const bank = await app.svc.accounts.require('100201');
+  await app.call(periodCloseServer).saveRule({
+    data: {
+      code: 'INTERNAL',
+      name: '内部转移',
+      kind: 'custom',
+      voucherTypeId: (await app.svc.reference.voucherTypes())[0]!.id,
+      summary: '测试内部现金转移',
+      order: 1,
+      enabled: true,
+      targetAccountId: (await app.svc.accounts.require('4103')).id,
+      sources: [
+        { accountId: cash.id, mode: 'balance', ratio: '100', cashflows: { out: internal.id } },
+      ],
+    },
+  });
+  await local.login(page);
+  await page.goto(`${url}/m/period-close?period=202601`);
+  const original = await app.svc.vouchers.list();
+  await page.getByRole('button', { name: '结转预览', exact: true }).click();
+  await expect(
+    page.getByText('内部现金流入流出未配平，差额 -10000 分；每张结转凭证必须单独配平', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole('alert')
+    .filter({ hasText: '内部现金流入流出未配平' })
+    .getByRole('button', { name: '关闭', exact: true })
+    .click();
+  expect(await app.svc.vouchers.list()).toEqual(original);
+  await expect(page.getByRole('dialog', { name: '月度结转预览' })).not.toBeVisible();
+  await page.getByRole('button', { name: '编辑 / 启停', exact: true }).click();
+  const drawer = page.getByRole('dialog', { name: '编辑结转类型' });
+  await drawer.getByLabel('唯一转入末级科目').fill('100201');
+  await page.keyboard.press('Enter');
+  await drawer.getByLabel('转入流入现金流量项目', { exact: true }).fill('CT_INTERNAL');
+  await page.keyboard.press('Enter');
+  await expect(
+    drawer.getByTitle('CT_INTERNAL 测试内部转移（内部转移）', { exact: true }).first(),
+  ).toBeVisible();
+  await drawer.getByRole('button', { name: '保存设置' }).click();
+  await expect(drawer).not.toBeVisible();
+  await page.getByRole('button', { name: '结转预览', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: '月度结转预览' });
+  await expect(preview).toContainText('借方 100.00 / 贷方 100.00');
+  await expect(preview).toContainText(`第1行项目 ${internal.id}（内部转移）`);
+  await expect(preview).toContainText(`第2行项目 ${internal.id}（内部转移）`);
+  await preview.getByRole('checkbox').check();
+  await preview.getByRole('button', { name: '确认生成待审核凭证' }).click();
+  await expect(preview).not.toBeVisible();
+  const headers = (await app.svc.vouchers.list({ sourceModule: 'period-close' })).items;
+  expect(headers).toHaveLength(1);
+  const generated = (await app.svc.vouchers.get(headers[0]!.id))!;
+  expect(generated.status).toBe('pending');
+  expect(generated.lines).toHaveLength(2);
+  expect(generated.lines.every((line) => line.dimensions.cashflow === internal.id)).toBe(true);
+  expect(generated.lines.find((line) => line.accountId === cash.id)).toMatchObject({
+    credit: 10000,
+  });
+  expect(generated.lines.find((line) => line.accountId === bank.id)).toMatchObject({
+    debit: 10000,
+  });
+  expect(generated.lines.reduce((sum, line) => sum + line.debit - line.credit, 0)).toBe(0);
 });

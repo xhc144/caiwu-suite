@@ -1,12 +1,21 @@
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import periodCloseServer from '../server';
-import { call, errorData, generateAll, rule, snapshot, zeroOpening } from './helpers';
+import {
+  call,
+  errorData,
+  generateAll,
+  rule,
+  snapshot,
+  zeroOpening,
+  seedCashflowDirections,
+} from './helpers';
 import type { Cashflows } from '../shared';
 let app: TestApp;
 beforeEach(async () => {
   app = await createTestApp({ modules: [periodCloseServer] });
   await zeroOpening(app);
+  await seedCashflowDirections(app);
 });
 afterEach(async () => app.close());
 const account = async (code: string) => await app.svc.accounts.require(code);
@@ -101,7 +110,7 @@ it('w_xt_jzwh：现金流项目必须有效末级；已声明方向或未知方�
     type: 'cashflow',
     code: 'X_OUT',
     name: '明确流出',
-    attrs: { direction: 'out' },
+    attrs: { cashflowDirection: 'outflow' },
   });
   expect(
     (await errorData(api.saveRule({ data: await targetRule('1001', { in: declared.id }) }))).code,
@@ -110,7 +119,7 @@ it('w_xt_jzwh：现金流项目必须有效末级；已声明方向或未知方�
     type: 'cashflow',
     code: 'X_UNKNOWN',
     name: '方向未识别',
-    attrs: { direction: 'legacy-unknown' },
+    attrs: { cashflowDirection: 'legacy-unknown' },
   });
   expect(
     (await errorData(api.saveRule({ data: await targetRule('1001', { out: unknown.id }) }))).code,
@@ -223,4 +232,243 @@ it('w_zw_ydjz：生成前重查旧定义及现金流方向，失败整库不变�
     ).code,
   ).toBe('PERIOD_CLOSE_CASHFLOW_REQUIRED');
   expect(snapshot(app)).toBe(before);
+});
+
+it.each([
+  ['outflow', 'in'],
+  ['inflow', 'out'],
+] as const)(
+  'w_xt_jzwh：M03约定 cashflowDirection:%s 不能用于 %s，旧direction字段不覆盖真实方向',
+  async (declared, position) => {
+    const api = call(app);
+    const item = await app.svc.dimensions.create({
+      type: 'cashflow',
+      code: 'M03_DIRECTION',
+      name: '按M03约定写入',
+      attrs: { cashflowDirection: declared, direction: position },
+    });
+    const before = snapshot(app);
+    expect(
+      (await errorData(api.saveRule({ data: await targetRule('1001', { [position]: item.id }) })))
+        .code,
+    ).toBe('PERIOD_CLOSE_CASHFLOW_DIRECTION');
+    expect(snapshot(app)).toBe(before);
+  },
+);
+it.each([
+  {},
+  { direction: 'in' },
+  { cashflowDirection: 'legacy-unknown' },
+  { cashflowDirection: null },
+  { cashflowDirection: 'in' },
+])('w_xt_jzwh：M03历史缺失或未知方向 %j 不按规则位置/旧字段猜测', async (attrs) => {
+  const api = call(app);
+  const item = await app.svc.dimensions.create({
+    type: 'cashflow',
+    code: 'M03_UNKNOWN',
+    name: '历史方向未核实',
+    attrs,
+  });
+  const before = snapshot(app);
+  expect(
+    (await errorData(api.saveRule({ data: await targetRule('1001', { in: item.id }) }))).code,
+  ).toBe('PERIOD_CLOSE_CASHFLOW_UNKNOWN_DIRECTION');
+  expect(snapshot(app)).toBe(before);
+});
+it.each([100, -100])(
+  'w_zw_ydjz：M03 internal：每张凭证内部现金转移净额为零可生成，金额%s',
+  async (amount) => {
+    const api = call(app);
+    const internal = await app.svc.dimensions.create({
+      type: 'cashflow',
+      code: 'M03_INTERNAL',
+      name: '内部转移',
+      attrs: { cashflowDirection: 'internal' },
+    });
+    await seedVouchers(app.svc, [
+      {
+        date: '2026-01-05',
+        status: 'posted',
+        lines: [
+          { account: '1001', debit: amount },
+          { account: '4001', credit: amount },
+        ],
+      },
+    ]);
+    const both = { in: internal.id, out: internal.id };
+    await api.saveRule({
+      data: await rule(app, {
+        kind: 'custom',
+        targetAccountId: (await account('100201')).id,
+        targetCashflows: both,
+        sources: [
+          { accountId: (await account('1001')).id, mode: 'balance', ratio: '100', cashflows: both },
+        ],
+      }),
+    });
+    const { result } = await generateAll(app);
+    const voucher = (await app.svc.vouchers.get(result.generated[0]!.id))!;
+    expect(voucher.lines).toHaveLength(2);
+    expect(voucher.lines.every((l) => l.dimensions.cashflow === internal.id)).toBe(true);
+    expect(voucher.lines.reduce((n, l) => n + l.debit - l.credit, 0)).toBe(0);
+    expect(voucher.status).toBe('pending');
+  },
+);
+it.each(['4103', '100201'])(
+  'w_zw_ydjz：M03 internal：单边内部流出不能靠 %s 的非内部行配平，失败不写库',
+  async (code) => {
+    const api = call(app);
+    const internal = await app.svc.dimensions.create({
+      type: 'cashflow',
+      code: 'M03_INTERNAL',
+      name: '内部转移',
+      attrs: { cashflowDirection: 'internal' },
+    });
+    await seedVouchers(app.svc, [
+      {
+        date: '2026-01-05',
+        status: 'posted',
+        lines: [
+          { account: '1001', debit: 100 },
+          { account: '4001', credit: 100 },
+        ],
+      },
+    ]);
+    await api.saveRule({
+      data: await rule(app, {
+        kind: 'custom',
+        targetAccountId: (await account(code)).id,
+        targetCashflows: code === '100201' ? { in: (await choices()).in } : undefined,
+        sources: [
+          {
+            accountId: (await account('1001')).id,
+            mode: 'balance',
+            ratio: '100',
+            cashflows: { out: internal.id },
+          },
+        ],
+      }),
+    });
+    const before = snapshot(app);
+    const err = await errorData(
+      api.generate({ period: 202601, ruleIds: [1], previewToken: 'not-used', confirmed: true }),
+    );
+    expect(err.code).toBe('PERIOD_CLOSE_CASHFLOW_INTERNAL_UNBALANCED');
+    expect(err.message).toContain('差额 -100 分');
+    expect(snapshot(app)).toBe(before);
+  },
+);
+it('w_zw_ydjz：M03历史未知项目：已有合法预览后方向变未知，当前生成重新核验并整体不变', async () => {
+  const api = call(app);
+  await seedVouchers(app.svc, [
+    {
+      date: '2026-01-05',
+      status: 'posted',
+      lines: [
+        { account: '6603', debit: 100 },
+        { account: '4001', credit: 100 },
+      ],
+    },
+  ]);
+  const flows = await choices();
+  await api.saveRule({ data: await targetRule('1001', { in: flows.in }) });
+  const preview = await api.preview({ period: 202601, ruleIds: [1] });
+  await app.svc.db
+    .updateTable('dimension_item')
+    .set({ attrs: JSON.stringify({ direction: 'in' }) })
+    .where('id', '=', flows.in)
+    .execute();
+  const before = snapshot(app);
+  expect(
+    (
+      await errorData(
+        api.generate({
+          period: 202601,
+          ruleIds: [1],
+          previewToken: preview.previewToken,
+          confirmed: true,
+        }),
+      )
+    ).code,
+  ).toBe('PERIOD_CLOSE_CASHFLOW_UNKNOWN_DIRECTION');
+  expect(snapshot(app)).toBe(before);
+  expect((await app.svc.vouchers.list({ sourceModule: 'period-close' })).total).toBe(0);
+});
+
+it('M03档案合法方向变化也须重新预览，不能沿用旧预览确认新的internal语义', async () => {
+  const api = call(app);
+  const incoming = await app.svc.dimensions.create({
+    type: 'cashflow',
+    code: 'NEW_IN',
+    name: '新流入项目',
+    attrs: { cashflowDirection: 'inflow' },
+  });
+  const outgoing = await app.svc.dimensions.create({
+    type: 'cashflow',
+    code: 'NEW_OUT',
+    name: '新流出项目',
+    attrs: { cashflowDirection: 'outflow' },
+  });
+  await seedVouchers(app.svc, [
+    {
+      date: '2026-01-05',
+      status: 'posted',
+      lines: [
+        { account: '1001', debit: 100 },
+        { account: '4001', credit: 100 },
+      ],
+    },
+  ]);
+  await api.saveRule({
+    data: await rule(app, {
+      kind: 'custom',
+      targetAccountId: (await account('100201')).id,
+      targetCashflows: { in: incoming.id },
+      sources: [
+        {
+          accountId: (await account('1001')).id,
+          mode: 'balance',
+          ratio: '100',
+          cashflows: { out: outgoing.id },
+        },
+      ],
+    }),
+  });
+  const old = await api.preview({ period: 202601, ruleIds: [1] });
+  expect(old.items[0]!.cashflowChecks.map((c) => c.direction)).toEqual(['outflow', 'inflow']);
+  // 尚未生成凭证，模拟基础档案把这两个未引用项目明确设为内部转移。
+  await app.svc.db
+    .updateTable('dimension_item')
+    .set({ attrs: JSON.stringify({ cashflowDirection: 'internal' }) })
+    .where('id', 'in', [incoming.id, outgoing.id])
+    .execute();
+  const before = snapshot(app);
+  expect(
+    (
+      await errorData(
+        api.generate({
+          period: 202601,
+          ruleIds: [1],
+          previewToken: old.previewToken,
+          confirmed: true,
+        }),
+      )
+    ).code,
+  ).toBe('PERIOD_CLOSE_PREVIEW_CHANGED');
+  expect(snapshot(app)).toBe(before);
+  const current = await api.preview({ period: 202601, ruleIds: [1] });
+  expect(current.items[0]!.cashflowChecks.map((c) => c.direction)).toEqual([
+    'internal',
+    'internal',
+  ]);
+  expect(
+    (
+      await api.generate({
+        period: 202601,
+        ruleIds: [1],
+        previewToken: current.previewToken,
+        confirmed: true,
+      })
+    ).generated,
+  ).toHaveLength(1);
 });

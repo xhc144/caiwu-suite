@@ -21,7 +21,7 @@ import {
   type RuleInput,
   type Cashflows,
 } from '../shared';
-import { validateCashflows, cashflowForLine } from './cashflows';
+import { validateCashflows, cashflowForLine, validateGeneratedCashflows } from './cashflows';
 import type { PeriodCloseTables } from './migrations';
 import { applyLines, canonicalBuckets, closingBuckets, digest, type Bucket } from './buckets';
 
@@ -363,7 +363,6 @@ export async function transferPreview(
     (r) => selected.some((s) => s.id === r.id) || existing.some((e) => e.rule_id === r.id),
   )) {
     const validated = await validateRule(svc, rule);
-    const basis = digest([canonicalBuckets(buckets), RuleSchema.parse(rule), [...rates].sort()]);
     const lines = makeLines(
       buckets,
       rule,
@@ -374,6 +373,14 @@ export async function transferPreview(
       rates,
       validated.sourceCashflows,
     );
+    const cashflowChecks = await validateGeneratedCashflows(svc, lines, validated.accounts);
+    const basisData: unknown[] = [
+      canonicalBuckets(buckets),
+      RuleSchema.parse(rule),
+      [...rates].sort(),
+    ];
+    if (cashflowChecks.length) basisData.push(cashflowChecks);
+    const basis = digest(basisData);
     const prior = existing.find((r) => r.rule_id === rule.id);
     if (
       prior &&
@@ -393,6 +400,7 @@ export async function transferPreview(
         order: rule.order,
         basis,
         lines,
+        cashflowChecks,
         existingVoucherId: prior?.voucher_id ?? null,
         zero: !lines.length,
         debit: sumCents(lines.map((l) => l.debit)),

@@ -86,3 +86,18 @@ export async function generateAll(app: TestApp, period = 202601) {
   const input = { period, ruleIds, previewToken: preview.previewToken, confirmed: true };
   return { result: await api.generate(input), input, preview };
 }
+
+/** 测试夹具按 M03 的真实持久化字段设置已知方向；生产不补写历史项目。 */
+export async function seedCashflowDirections(app: TestApp) {
+  for (const [code, direction] of [
+    ['CF01', 'inflow'],
+    ['CF02', 'outflow'],
+  ] as const) {
+    const item = (await app.svc.dimensions.getByCode('cashflow', code))!;
+    await app.svc.db
+      .updateTable('dimension_item')
+      .set({ attrs: JSON.stringify({ ...item.attrs, cashflowDirection: direction }) })
+      .where('id', '=', item.id)
+      .execute();
+  }
+}

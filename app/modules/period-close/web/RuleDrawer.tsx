@@ -11,9 +11,14 @@ import {
 } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { DIMENSION_TYPES } from '@caiwu/core';
-import { coreApi, useAccounts, useVoucherTypes } from '@caiwu/web-kit';
+import { coreApi, useAccounts, useVoucherTypes, useDimensionItems } from '@caiwu/web-kit';
 import { AccountSelect, DimensionSelect } from '@caiwu/ui';
-import { requiresCashflow, type RuleInput, type TransferRule } from '../shared';
+import {
+  CashflowDirectionSchema,
+  requiresCashflow,
+  type RuleInput,
+  type TransferRule,
+} from '../shared';
 import { api } from './api';
 
 export default function RuleDrawer({
@@ -142,13 +147,13 @@ export default function RuleDrawer({
           (requiresCashflow(target) || target.dimensions.some((d) => d.type === 'cashflow')) && (
             <>
               <p>
-                此转入科目启用现金流量核算。请明确选择流入或流出项目；预览会按实际现金增减检查对应方向，未填会阻止生成。
+                此转入科目启用现金流量核算。项目方向以基础档案为准，缺失或未知方向会阻止生成；内部转移项目须在同一张凭证内配平。
               </p>
               <Form.Item name={['targetCashflows', 'in']} label="转入流入现金流量项目">
-                <DimensionSelect type="cashflow" />
+                <CashflowSelect />
               </Form.Item>
               <Form.Item name={['targetCashflows', 'out']} label="转入流出现金流量项目">
-                <DimensionSelect type="cashflow" />
+                <CashflowSelect />
               </Form.Item>
             </>
           )}
@@ -231,16 +236,48 @@ function SourceCashflowFields({ index }: { index: number }) {
   return (
     <>
       <p>
-        此转出范围含现金流量科目。请选择生成分录的项目和方向；未设置实际流入/流出对应项时会阻止生成。
+        此转出范围含现金流量科目。请选择方向明确的项目；手选流入/流出位置不能覆盖档案方向，内部转移须在同一张凭证内配平。
       </p>
       <Space align="start">
         <Form.Item name={[index, 'cashflows', 'in']} label="转出流入现金流量项目">
-          <DimensionSelect type="cashflow" />
+          <CashflowSelect />
         </Form.Item>
         <Form.Item name={[index, 'cashflows', 'out']} label="转出流出现金流量项目">
-          <DimensionSelect type="cashflow" />
+          <CashflowSelect />
         </Form.Item>
       </Space>
     </>
+  );
+}
+
+function CashflowSelect(props: {
+  value?: number | null;
+  onChange?: (value: number | undefined) => void;
+  id?: string;
+}) {
+  const { items, loading } = useDimensionItems('cashflow');
+  const labels = { inflow: '流入', outflow: '流出', internal: '内部转移' };
+  const options = items
+    .filter((item) => item.isLeaf && !item.disabled)
+    .map((item) => {
+      const direction = CashflowDirectionSchema.safeParse(item.attrs.cashflowDirection);
+      return {
+        value: item.id,
+        label: `${item.code} ${item.name}（${direction.success ? labels[direction.data] : '方向未配置/未知'}）`,
+        search: `${item.code} ${item.name} ${item.pinyin}`.toLowerCase(),
+      };
+    });
+  return (
+    <Select<number>
+      {...props}
+      allowClear
+      loading={loading}
+      placeholder="选择方向明确的现金流量项目"
+      options={options}
+      style={{ minWidth: 240 }}
+      showSearch={{
+        filterOption: (value, option) => !!option?.search.includes(value.toLowerCase()),
+      }}
+    />
   );
 }

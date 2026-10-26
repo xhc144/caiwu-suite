@@ -3,6 +3,8 @@ import { zId, zPeriod, zDecimal, type Account } from '@caiwu/core';
 
 export const RangeSchema = z.object({ from: zPeriod, to: zPeriod });
 export const PeriodSchema = z.object({ period: zPeriod });
+// 与 M03 持久化约定一致；模块之间不互相 import。
+export const CashflowDirectionSchema = z.enum(['inflow', 'outflow', 'internal']);
 export const CashflowsSchema = z.object({
   in: zId.nullable().optional(),
   out: zId.nullable().optional(),
