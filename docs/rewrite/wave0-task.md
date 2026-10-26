@@ -1,5 +1,7 @@
 # 任务 W0：新版地基（caiwu-suite 重做 · Wave 0）
 
+> **已完成**：地基已由 Claude 直接实现，见 `app/` 和仓库根目录的 `AGENTS.md`。本文件保留作参考，不需要再开这个任务。实际实现在几处细节上和下文不同，以代码和 AGENTS.md 为准：迁移写在 TS 文件里而不是 .sql 文件；模块的服务端和前端分别在 `server/index.ts`、`web/index.tsx`，清单单独放在 `manifest.ts`；模块目录没有 package.json；会计制度模板在 `defineServerModule({ templates })` 里声明。
+
 ## 你在做什么
 
 这个仓库要把一套老财务软件用现代技术重做。原版是 PowerBuilder 9 写的润衡财务软件，有三个产品：轻松会计、民非企会计、成本会计。原版已经被静态反编译成结构化文档，放在 `docs/original-analysis/`，里面有菜单、窗口（控件、数据列、按钮动作）、业务规则（约 6000 条提示语和触发条件）、220 张表的结构。新版要覆盖原版的全部功能，同时把难用的地方改好。

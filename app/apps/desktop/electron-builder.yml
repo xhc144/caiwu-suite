@@ -1,0 +1,23 @@
+# 安装包配置（初版，由桌面壳任务 M21 完善：图标、签名、自动更新、卸载保留数据等）。
+appId: com.caiwu.desktop
+productName: 财务软件
+directories:
+  output: release
+files:
+  - dist/**
+  - package.json
+extraResources:
+  - from: ../web/dist
+    to: web
+asarUnpack:
+  - '**/node_modules/better-sqlite3/**'
+npmRebuild: true
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false

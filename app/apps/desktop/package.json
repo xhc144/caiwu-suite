@@ -1,0 +1,20 @@
+{
+  "name": "@caiwu/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.cjs",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2"
+  },
+  "description": "财务软件桌面版（Electron 壳）",
+  "dependencies": {
+    "better-sqlite3": "13.0.3"
+  }
+}

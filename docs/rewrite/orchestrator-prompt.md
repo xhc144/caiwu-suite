@@ -36,7 +36,19 @@
   - 轻松 = 账务 + 出纳 + 发票
   - 民非企 = 账务 + 工资 + 固定资产 + 出纳。民非和企业的账务流程相同，区别只在会计制度模板和报表
   - 成本 = 全部模块
-- 地基（Wave 0）由一个单独的任务完成。合并后，仓库根目录有 `AGENTS.md`，里面写了全局规则、命令、模块样板和 core API。**一切以 main 上的 AGENTS.md 和 app/ 的实际代码为准**；下面的描述和实际代码有出入时，按实际代码写提示词。
+- 地基（Wave 0）已经完成。仓库根目录的 `AGENTS.md` 写了全局规则、命令、模块写法、core 服务速查、测试写法和常见坑；`app/modules/example` 是完整的示范模块。**一切以 main 上的 AGENTS.md 和 app/ 的实际代码为准**；下面的描述和实际代码有出入时，按实际代码写提示词。
+- 地基里已经有的东西，模块任务直接用，不要重做：
+  - 凭证：保存校验、编号、乐观锁、来源单据保护、状态变更入口 `svc.vouchers.changeStatus`
+  - 账表查询：余额（含辅助核算、外币、数量、本年累计、跨年）、分录明细、试算平衡
+  - 期初余额读写：`svc.opening`
+  - 期间：`svc.periods.setStatus`、`ensureYear`
+  - 新增科目、辅助项：`svc.accounts.create`、`svc.dimensions.create`
+  - 操作员与权限检查：`svc.users`、`.meta({ permission })`
+  - 账套存储、会计制度模板机制、登录会话
+  - 壳：导航、多标签页、入口页面替换（`entryPages`）、快捷键
+  - 通用组件：金额输入、科目选择、数据表格、筛选栏
+  - 测试夹具：`createTestApp`、`seedVouchers`、`loginWithNewBook`
+- 模块目录的固定写法：`manifest.ts`、`shared.ts`、`server/{index,router,service,migrations}.ts`、`web/{index.tsx,api.ts,页面}`、`test/`、`e2e/`、`README.md`。模块是普通目录，没有 package.json。
 - 并行规则：
   - 每个任务只改自己拥有的目录
   - 共享层（`app/apps/*`、`app/packages/*`）在模块任务里冻结
@@ -65,7 +77,7 @@
 
 # 你的工作流程
 
-**第 1 步（现在）**：读 main 上的这些内容：AGENTS.md、app/ 的目录结构、core 服务 API、modules/example，再读 `docs/original-analysis/README.md` 和 `gap-analysis.md`。读完不用汇报，直接进入第 2 步。如果 main 上还没有 app/ 和 AGENTS.md，说明地基还没合并，这时只回复"地基未合并"，然后停下。
+**第 1 步（现在）**：读 main 上的这些内容：AGENTS.md、`app/packages/core/src/server/services/index.ts`（core 服务一览）、`app/modules/example` 全部文件，再读 `docs/original-analysis/README.md` 和 `gap-analysis.md`。读完不用汇报，直接进入第 2 步。如果 main 上还没有 app/ 和 AGENTS.md，说明地基还没合并，这时只回复"地基未合并"，然后停下。
 
 **第 2 步**：按下面的「Wave 1 模块表」，每一行写一个 Codex 任务提示词。写之前，先打开这一行列出的原版参考文件，把**具体的窗口名（连同中文名）、菜单项、规则**抄进「必须实现」清单。每一条都要写成能检验的行为。例如要写成"批量审核：跳过制单人与审核人相同的凭证，结束时列出跳过了哪些凭证、为什么跳过"，不能写成"实现审核相关功能"。不许写"参考文档实现相关功能"这种空话。
 
@@ -85,7 +97,7 @@
 先读仓库根目录的 AGENTS.md，严格遵守。你和另外约 20 个任务同时开发，互相看不到对方的改动，所以只改下面「你拥有的目录」。
 
 ## 你拥有的目录
-app/modules/{id}/**（其它路径一律不改）
+app/modules/{id}/**（其它路径一律不改；照 app/modules/example 的结构写）
 
 ## 原版参考（先读）
 - {文件路径}：{窗口名 + 中文名，逐个列出}
@@ -128,12 +140,17 @@ app/modules/{id}/**（其它路径一律不改）
 除非另有说明，参考文件路径都在 `docs/original-analysis/products/qingsong/main/` 下。括号里是建议的 attempts 数，也就是同一个任务并行跑几个版本，最后挑最好的一个。
 
 **M01 books 账套与会计制度（2）**
-- 范围：账套选择、新建、删除、复制、查找；新建账套向导（单位信息、会计制度、启用年月、科目级次、本位币）；套账信息维护；切换套账；会计制度模板的加载机制；内置企业会计准则和小企业会计准则两套完整科目表（依据 `rules/sources/official/enterprise-2019-appendix2.pdf`、`small-appendix.pdf`，可以参考 `rules/packages/*.json`）
+- 范围：
+  - 账套选择、新建、删除、复制、查找。在 manifest 写 `entryPages: ['bookPicker']`，替换壳自带的简易账套选择页
+  - 新建账套向导：单位信息、会计制度、启用年月、科目级次、本位币。用 core 的 `bookStore.create`；文件操作基于 `bookStore.pathOf` / `close`
+  - 套账信息维护；切换套账
+  - 内置企业会计准则和小企业会计准则两套完整科目表：放在 `modules/books/templates/*.json`，并在 `server/index.ts` 的 `templates` 里声明。依据 `rules/sources/official/enterprise-2019-appendix2.pdf`、`small-appendix.pdf`，可以参考 `rules/packages/*.json`
+  - 模板加载机制 core 已经有了，不要重做
 - 参考：windows/tzjl.md（w_tzjl 等）；windows/xt.md（w_xt_kgzb_0 向导系列、w_xt_tz、w_xt_tz_zc）；windows/login.md；navigation.md「启动流程」；data/tables.md「账套模板」
 - E2E：新建小企业账套 → 科目表正确加载 → 切换到另一个账套 → 再切回来
 
 **M02 templates 其余会计制度的科目数据（2）**
-- 只写数据和数据校验测试，放在 `app/modules/templates/templates/*.json`。包括：民间非营利组织会计准则(2026)（依据 nonprofit-2026.pdf）、农民专业合作社会计制度(2023)、农村集体经济组织会计制度(2024)、工会会计制度(2022)、基层工会会计制度(2022)
+- 只写数据和数据校验测试，放在 `app/modules/templates/templates/*.json`，在 `server/index.ts` 里用 `defineServerModule(manifest, { router: m.router({}), templates: [...] })` 声明。包括：民间非营利组织会计准则(2026)（依据 nonprofit-2026.pdf）、农民专业合作社会计制度(2023)、农村集体经济组织会计制度(2024)、工会会计制度(2022)、基层工会会计制度(2022)
 - 每个科目注明来源（文件名和条款）。仓库里没有原文的制度，可以按你的知识写，但每个科目都要标"待核"。README 里列出原版 44 个模板中还没做的那些
 - 单测：schema 校验、编码符合级次规则、上级科目存在、类别和余额方向正确、没有重复编码
 
@@ -146,6 +163,7 @@ app/modules/{id}/**（其它路径一律不改）
 - E2E：建一个启用"部门 + 项目"辅助核算的科目 → 在辅助档案里加部门 → 科目选择器能按拼音首字母找到它
 
 **M04 opening 期初余额（2）**
+- 读写期初数据用 core 的 `svc.opening`，试算平衡用 `svc.ledger.trialBalance`
 - 范围：
   - 期初余额录入：按科目树展示，只在末级录入，上级自动汇总
   - 辅助期初（项目、客供、部门、个人）、外币期初、数量期初
@@ -270,8 +288,8 @@ app/modules/{id}/**（其它路径一律不改）
 
 **M17 system-admin 系统管理（2）**
 - 范围：
-  - 登录与用户：登录、切换用户、用户管理、自改密码
-  - 按功能点授权：读取各模块 module.ts 里声明的权限点，自动生成授权树，并在服务端强制检查
+  - 登录与用户：在 manifest 写 `entryPages: ['login']`，替换壳自带的简易登录页；切换用户、用户管理、自改密码（基于 `svc.users`；改密或停用后调用会话失效）
+  - 按功能点授权：读取各模块 manifest 里声明的权限点（`core.modules.list` 接口）生成授权树。服务端检查已经由框架按 `.meta({ permission })` 完成
   - 操作日志查询
   - 审计接口导出（参考 `rules/sources/official/interface-standard-2024-*.html`）
   - 综合检查：检查借贷平衡、余额与凭证是否一致、断号、未审核凭证等，并给出修复建议
@@ -296,7 +314,7 @@ app/modules/{id}/**（其它路径一律不改）
 - 参考：windows/print.md、windows/preview.md、xt.md 中的打印格式窗口、menus.md 中打印相关的菜单项
 - E2E：打印预览一张凭证和一页明细账，在 Linux 上生成的 PDF 页数正确
 
-**M20 shell-ux 工作台与全局体验（2）。拥有 `app/apps/web/src/shell/**` 和 `app/modules/workbench/**`**
+**M20 shell-ux 工作台与全局体验（2）。拥有 `app/apps/web/src/shell/**` 和 `app/modules/workbench/**`。工作台首页用 `entryPages: ['home']` 提供**
 - 范围：
   - 工作台首页：待办（未审核、未过账凭证数）、本期状态、结账进度、常用功能入口，替代原版用图片图标拼成的工作台
   - 全局搜索 Ctrl+K：功能、凭证号、科目、摘要、往来单位
@@ -305,7 +323,7 @@ app/modules/{id}/**（其它路径一律不改）
 - 参考：windows/misc.md 中的 w_main1「主窗口」；navigation.md「工作台」；各 menus.md 中的快捷键
 - E2E：工作台显示的待办数与实际一致 → 点进去跳到 `/m/voucher-book?status=...`，筛选参数正确
 
-**M21 desktop 桌面壳与安装包（2）。拥有 `app/apps/desktop/**` 和 `.github/workflows/app-windows.yml`**
+**M21 desktop 桌面壳与安装包（2）。拥有 `app/apps/desktop/**` 和 `.github/workflows/app-windows.yml`。主进程、preload、打包脚本、electron-builder 初版配置已经有了，在此基础上完善**
 - 范围：
   - 数据目录：账套默认存放位置，可以修改
   - 单实例、记住窗口状态、原生文件对话框、打印到 PDF 和系统打印机、崩溃日志、关闭前提示未保存的内容
