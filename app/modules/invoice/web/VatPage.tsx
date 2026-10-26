@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { Alert, Button, Checkbox, Drawer, Form, InputNumber, Select, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
+import { useTab } from '@caiwu/web-kit';
 import { DataTable, FilterBar, MoneyText, PageContainer } from '@caiwu/ui';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { InvoiceRouter } from '../server/router';
@@ -11,6 +12,7 @@ import { api } from './api';
 import { Nav, QueryError } from './common';
 type Row = inferRouterOutputs<InvoiceRouter>['vat'][number];
 export default function VatPage() {
+  const { active } = useTab();
   const [filters, setFilters] = useInvoiceFilters({
     year: Number(today().slice(0, 4)),
     groupBy: 'month',
@@ -21,8 +23,9 @@ export default function VatPage() {
     groupBy: filters.groupBy === 'quarter' ? ('quarter' as const) : ('month' as const),
     includeUnposted: filters.includeUnposted,
   };
-  const query = useQuery(api.vat.queryOptions(input));
-  const [detail, setDetail] = useState<Row | null>(null);
+  const query = useQuery({ ...api.vat.queryOptions(input), enabled: active, staleTime: 0 });
+  const [detailKey, setDetailKey] = useState<Row['key'] | null>(null);
+  const detail = query.data?.find((r) => r.key === detailKey);
   return (
     <PageContainer
       title="增值税比对"
@@ -31,8 +34,20 @@ export default function VatPage() {
       <Nav />
       <FilterBar
         initialValues={filters}
-        onSearch={setFilters}
-        extra={<Button onClick={() => void query.refetch()}>刷新比对</Button>}
+        onSearch={(values) => {
+          setFilters(values);
+          if (
+            values.year === input.year &&
+            values.groupBy === input.groupBy &&
+            values.includeUnposted === input.includeUnposted
+          )
+            void query.refetch();
+        }}
+        extra={
+          <Button aria-busy={query.isFetching} onClick={() => void query.refetch()}>
+            刷新比对
+          </Button>
+        }
       >
         <Form.Item name="year" label="年度">
           <InputNumber min={2000} max={2100} />
@@ -50,6 +65,15 @@ export default function VatPage() {
           <Checkbox>含未过账</Checkbox>
         </Form.Item>
       </FilterBar>
+      <p role="status" aria-live="polite">
+        {query.isFetching
+          ? '正在读取最新比对数据…'
+          : query.isError
+            ? '刷新失败，请重试；当前显示的数据可能不是最新。'
+            : query.isSuccess
+              ? `最近读取时间：${new Date(query.dataUpdatedAt).toLocaleTimeString('zh-CN')}`
+              : '等待读取比对数据。'}
+      </p>
       <Alert
         type="info"
         title={
@@ -70,7 +94,7 @@ export default function VatPage() {
         tableId="invoice-vat"
         rowKey="key"
         dataSource={query.data ?? []}
-        loading={query.isPending}
+        loading={query.isFetching}
         columns={[
           {
             key: 'direction',
@@ -127,7 +151,7 @@ export default function VatPage() {
             width: 180,
             render: (_, r) => (
               <Space>
-                <Button size="small" disabled={!r.active} onClick={() => setDetail(r)}>
+                <Button size="small" disabled={!r.active} onClick={() => setDetailKey(r.key)}>
                   查看票与分录
                 </Button>
                 {r.active && r.accountCode && (
@@ -143,7 +167,7 @@ export default function VatPage() {
         ]}
       />
       {detail && (
-        <Drawer open title="账票差异明细" width="90%" onClose={() => setDetail(null)}>
+        <Drawer open title="账票差异明细" width="90%" onClose={() => setDetailKey(null)}>
           <p>
             本期可比范围：{detail.effectiveFrom}–{detail.to}，账套启用月份 {detail.startPeriod}。
           </p>

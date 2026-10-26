@@ -57,11 +57,15 @@ export async function createInvoiceAccounts(svc: CoreServices): Promise<Settings
 }
 
 /** Independent real HTTP setup for focused source/export tests; no shared book or mocked API. */
-export async function bookWithInvoices(page: Page, isolated: Isolated, posted = false) {
+export async function bookWithInvoices(
+  page: Page,
+  isolated: Isolated,
+  voucherStatus?: 'pending' | 'posted',
+) {
   const { bookId, token } = await loginWithNewBook(page, isolated.request, { product: 'chengben' });
   const file = await sampleFile();
   await callApi(isolated.request, 'm.invoice.commitImport', file, { token });
-  if (posted) {
+  if (voucherStatus) {
     const mapping = await isolated.inBook(bookId, createInvoiceAccounts);
     await callApi(isolated.request, 'm.invoice.saveSettings', mapping, { token });
     let rows = await callApi<Invoice[]>(
@@ -100,10 +104,11 @@ export async function bookWithInvoices(page: Page, isolated: Isolated, posted = 
       { ...input, fingerprint: preview.fingerprint, requestId: randomUUID() },
       { token },
     );
-    await isolated.inBook(bookId, async (svc) => {
-      await svc.vouchers.changeStatus({ ids: groups.map((g) => g.voucher_id), to: 'audited' });
-      await svc.vouchers.changeStatus({ ids: groups.map((g) => g.voucher_id), to: 'posted' });
-    });
+    if (voucherStatus === 'posted')
+      await isolated.inBook(bookId, async (svc) => {
+        await svc.vouchers.changeStatus({ ids: groups.map((g) => g.voucher_id), to: 'audited' });
+        await svc.vouchers.changeStatus({ ids: groups.map((g) => g.voucher_id), to: 'posted' });
+      });
   }
   const docs = await callApi<Invoice[]>(
     isolated.request,

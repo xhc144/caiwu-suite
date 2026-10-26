@@ -122,7 +122,7 @@ test('w_fp_lr_2 → w_fp_sz_2 → w_fp_pz → w_fp_zzs_hz：5票真实导入、�
 
 test('w_fp_lr_2：已过账来源锁定、重复导入预览与Excel导出', async ({ page, isolated }) => {
   const { origin, request, inBook } = isolated;
-  const { bookId, token, file, docs } = await bookWithInvoices(page, isolated, true);
+  const { bookId, token, file, docs } = await bookWithInvoices(page, isolated, 'posted');
   const dialog = page.getByRole('dialog', { name: 'Excel 发票导入预览' });
   await page.goto(`${origin}/m/invoice/input`);
   const first = page.getByRole('row', { name: /00000000000000000001/ });
