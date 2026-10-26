@@ -291,3 +291,80 @@ test('w_pz_zhcx / w_pz_kmhz / w_pz_ttsee 条件前后退、非法日期阻止、
     await t.close();
   }
 });
+
+test('w_pz_pzxsb 未预览的插入稿在前后退后保留，其他标签页未提交条件不丢失且不写库', async ({
+  page,
+}) => {
+  const t = await browserRuntime();
+  try {
+    const originals = await seedVouchers(
+      t.app.svc,
+      [1, 2].map((amount) => ({
+        date: '2026-01-05',
+        summary: `导航原件${amount}`,
+        lines: [
+          { account: '6603', debit: amount },
+          { account: '1001', credit: amount },
+        ],
+      })),
+    );
+    await t.login(page, 'admin', 'admin');
+    await expect(page.getByRole('heading', { name: '凭证序时簿', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '科目汇总', exact: true }).click();
+    await page
+      .getByRole('tabpanel', { name: '凭证科目汇总', exact: true })
+      .getByLabel('摘要', { exact: true })
+      .fill('其他标签页未提交条件');
+    await page.getByRole('tab', { name: '凭证序时簿', exact: true }).click();
+    const book = page.getByRole('tabpanel', { name: '凭证序时簿', exact: true });
+    await book.getByLabel('摘要', { exact: true }).fill('导航原件');
+    await book.getByRole('button', { name: '查询', exact: true }).click();
+    await expect(page).toHaveURL((url) => url.searchParams.get('summary') === '导航原件');
+    await expect(book.getByRole('row').filter({ hasText: '导航原件1' })).toBeVisible();
+    await book.getByLabel('摘要', { exact: true }).fill('导航原件2');
+    await book.getByRole('button', { name: '查询', exact: true }).click();
+    await expect(page).toHaveURL((url) => url.searchParams.get('summary') === '导航原件2');
+    await expect(book.getByRole('row').filter({ hasText: '导航原件1' })).toHaveCount(0);
+    await book.getByRole('row').filter({ hasText: '导航原件2' }).getByRole('checkbox').check();
+    await book.getByRole('button', { name: '插入', exact: true }).click();
+    const drawer = page.getByRole('dialog', { name: '插入设置', exact: true });
+    await drawer.getByLabel('第1行摘要', { exact: true }).fill('尚未预览的插入摘要');
+    await drawer.getByLabel('第2行摘要', { exact: true }).fill('尚未预览的贷方摘要');
+    await drawer.getByLabel('借方', { exact: true }).nth(0).fill('12.34');
+    await drawer.getByLabel('贷方', { exact: true }).nth(1).fill('12.34');
+    await drawer.getByLabel('目标日期', { exact: true }).click();
+    const documentIdentity = await page.evaluateHandle(() => document);
+    const expectDraft = async () => {
+      expect(await page.evaluate((previous) => previous === document, documentIdentity)).toBe(true);
+      await expect(drawer).toBeVisible();
+      await expect(drawer.getByLabel('第1行摘要', { exact: true })).toHaveValue(
+        '尚未预览的插入摘要',
+      );
+      await expect(drawer.getByLabel('第2行摘要', { exact: true })).toHaveValue(
+        '尚未预览的贷方摘要',
+      );
+      await expect(drawer.getByLabel('借方', { exact: true }).nth(0)).toHaveValue('12.34');
+      await expect(drawer.getByLabel('贷方', { exact: true }).nth(1)).toHaveValue('12.34');
+      expect((await t.app.svc.vouchers.list({ includeVoided: true })).total).toBe(2);
+      for (const original of originals)
+        expect(await t.app.svc.vouchers.get(original.id)).toEqual(original);
+    };
+    await page.goBack();
+    await expect(page).toHaveURL((url) => url.searchParams.get('summary') === '导航原件');
+    await expectDraft();
+    await page.goForward();
+    await expect(page).toHaveURL((url) => url.searchParams.get('summary') === '导航原件2');
+    await expectDraft();
+    await drawer.getByRole('button', { name: '取消', exact: true }).click();
+    await page.getByRole('tab', { name: '凭证科目汇总', exact: true }).click();
+    await expect(
+      page
+        .getByRole('tabpanel', { name: '凭证科目汇总', exact: true })
+        .getByLabel('摘要', { exact: true }),
+    ).toHaveValue('其他标签页未提交条件');
+    expect(await page.evaluate((previous) => previous === document, documentIdentity)).toBe(true);
+    await documentIdentity.dispose();
+  } finally {
+    await t.close();
+  }
+});

@@ -1,7 +1,7 @@
-import { useId, useRef, useSyncExternalStore } from 'react';
+import { useId } from 'react';
 import { useSearchParams } from 'react-router';
 import { Alert, Button, Checkbox, Form, Input, Select, Space } from 'antd';
-import { useTab, useVoucherTypes } from '@caiwu/web-kit';
+import { useVoucherTypes } from '@caiwu/web-kit';
 import { VOUCHER_STATUS_LABELS } from '@caiwu/core';
 import { BookFilterSchema } from '../shared';
 
@@ -30,62 +30,20 @@ const defaults = {
 };
 export type UrlFilters = typeof defaults;
 export function useBookFilters() {
-  const [scopedParams, setParams] = useSearchParams();
-  const tab = useTab();
-  const lastSearch = useRef(scopedParams.toString());
-  // W0 壳的同路径导航会更新地址，但 useUrlFilters 得到的标签页 location 滞后。
-  // 模块内观察原生当前历史条目；不修改全局 history，也不修改共享层。
-  const subscribe = (changed: () => void) => {
-    const navigation = (window as Window & { navigation?: EventTarget }).navigation;
-    const ownsPath = () =>
-      window.location.pathname === '/m/voucher-book' ||
-      window.location.pathname.startsWith('/m/voucher-book/');
-    const onPop = (event: PopStateEvent) => {
-      if (ownsPath()) {
-        // W0 TitleOnMount 在同路径 POP 时反复更新父标签标题。完整重载保留 URL
-        // 与 sessionStorage，并让浏览器原生后退/前进可用；不改共享壳或 history。
-        event.stopImmediatePropagation();
-        window.location.reload();
-      } else changed();
-    };
-    window.addEventListener('popstate', onPop, true);
-    window.addEventListener('voucher-book-search', changed);
-    const onEntry = (event: Event) => {
-      if (
-        (event as Event & { navigationType?: string }).navigationType === 'traverse' &&
-        ownsPath()
-      ) {
-        event.stopImmediatePropagation();
-        window.location.reload();
-      } else changed();
-    };
-    navigation?.addEventListener('currententrychange', onEntry);
-    return () => {
-      window.removeEventListener('popstate', onPop, true);
-      window.removeEventListener('voucher-book-search', changed);
-      navigation?.removeEventListener('currententrychange', onEntry);
-    };
-  };
-  const search = useSyncExternalStore(subscribe, () =>
-    tab.active && window.location.pathname.replace(/\/$/, '') === tab.key.replace(/\/$/, '')
-      ? window.location.search.slice(1)
-      : lastSearch.current,
-  );
-  lastSearch.current = search;
-  const params = new URLSearchParams(search);
+  // 查询条件跟随壳提供的标签页路由上下文；历史导航保持组件和未提交表单。
+  const [params, setParams] = useSearchParams();
   const values = { ...defaults };
   for (const [key, value] of params) {
     if (key === 'voided') values.voided = value === '1' || value === 'true';
     else if (key in values) (values as Record<string, string | boolean>)[key] = value;
   }
   const set = (next: Partial<UrlFilters>) => {
-    const p = new URLSearchParams(search);
+    const p = new URLSearchParams(params);
     for (const [k, v] of Object.entries(next)) {
       if (v === '' || v === undefined || v === false) p.delete(k);
       else p.set(k, v === true ? '1' : String(v));
     }
     setParams(p);
-    window.dispatchEvent(new Event('voucher-book-search'));
   };
   const num = (v: string) => (v === '' ? undefined : Number(v));
   let conditionData: unknown = [];
