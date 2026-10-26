@@ -1,13 +1,21 @@
 import { centsToYuan, formatMoney } from '@caiwu/core';
 import { escapeHtml } from '@caiwu/print';
 import { downloadBlob } from '@caiwu/ui';
-import { outputRows, reportCaption, type OutputRow, type Report } from '../shared';
+import {
+  outputRows,
+  reportCaption,
+  reportTitle,
+  groupCaption,
+  type OutputRow,
+  type Report,
+} from '../shared';
 
 export const outputColumns: {
   key: keyof OutputRow;
   title: string;
   money?: boolean;
   foreign?: boolean;
+  quantity?: boolean;
 }[] = [
   { key: 'code', title: '科目编码' },
   { key: 'name', title: '科目名称' },
@@ -23,16 +31,26 @@ export const outputColumns: {
   { key: 'fcDebit', title: '外币本期借方', money: true, foreign: true },
   { key: 'fcCredit', title: '外币本期贷方', money: true, foreign: true },
   { key: 'fcClosing', title: '外币期末（借正贷负）', money: true, foreign: true },
+  { key: 'qtyOpening', title: '期初数量（借正贷负）', quantity: true },
+  { key: 'qtyDebit', title: '本期借方数量', quantity: true },
+  { key: 'qtyCredit', title: '本期贷方数量', quantity: true },
+  { key: 'qtyClosing', title: '期末数量（借正贷负）', quantity: true },
 ];
+
+export function columnsFor(report: Report) {
+  return outputColumns.filter(
+    (c) => (!c.foreign || report.mode === 'foreign') && (!c.quantity || report.mode === 'quantity'),
+  );
+}
 
 export async function exportReport(report: Report, level: number, expanded: number[]) {
   const { Workbook } = await import('exceljs');
   const wb = new Workbook();
-  const columns = outputColumns.filter((c) => !c.foreign || report.mode === 'foreign');
+  const columns = columnsFor(report);
   for (const [index, group] of report.groups.entries()) {
     const ws = wb.addWorksheet(`${index + 1}-${group.currency || '本位币'}`);
-    ws.addRow([report.mode === 'foreign' ? '外币余额表' : '汇总余额表']);
-    ws.addRow([reportCaption(report, group.currency)]);
+    ws.addRow([reportTitle(report)]);
+    ws.addRow([`${reportCaption(report, group.currency)}；${groupCaption(group)}`]);
     ws.addRow([
       `显示级次：${level === -1 ? '仅末级' : level || '全部'}；合计余额金额以“借方 / 贷方”分别列示`,
     ]);
@@ -64,11 +82,11 @@ export async function exportReport(report: Report, level: number, expanded: numb
 }
 
 export function reportHtml(report: Report, level: number, expanded: number[]) {
-  const cols = outputColumns.filter((c) => !c.foreign || report.mode === 'foreign');
+  const cols = columnsFor(report);
   return report.groups
     .map(
       (g) =>
-        `<h2>${report.mode === 'foreign' ? '外币余额表' : '汇总余额表'}</h2><p>${escapeHtml(reportCaption(report, g.currency))}</p><p>合计余额金额按“借方 / 贷方”分别列示</p><table><thead><tr>${cols.map((c) => `<th>${escapeHtml(c.title)}</th>`).join('')}</tr></thead><tbody>${outputRows(
+        `<h2>${escapeHtml(reportTitle(report))}</h2><p>${escapeHtml(reportCaption(report, g.currency))}；${escapeHtml(groupCaption(g))}</p><p>合计余额金额按“借方 / 贷方”分别列示</p><table><thead><tr>${cols.map((c) => `<th>${escapeHtml(c.title)}</th>`).join('')}</tr></thead><tbody>${outputRows(
           g,
           level,
           expanded,

@@ -42,13 +42,15 @@ import {
   detailUrl,
   outputRows,
   reportCaption,
+  reportTitle,
+  groupCaption,
   type OutputRow,
   type Report,
   type ReportGroup,
   type Settings,
 } from '../shared';
 import { api } from './api';
-import { exportReport, outputColumns, reportHtml } from './output';
+import { exportReport, columnsFor, reportHtml } from './output';
 import { useBalanceFilters } from './use-balance-filters';
 
 export default function BalancesPage() {
@@ -67,8 +69,13 @@ type Meta = inferRouterOutputs<BalancesRouter>['metadata'];
 
 function BalanceContent({ metadata }: { metadata: Meta }) {
   const location = useLocation();
-  const mode = location.pathname.endsWith('/foreign') ? ('foreign' as const) : ('summary' as const);
-  const [filters, setFilters] = useBalanceFilters(metadata.settings);
+  const mode = location.pathname.endsWith('/foreign')
+    ? ('foreign' as const)
+    : location.pathname.endsWith('/quantity')
+      ? ('quantity' as const)
+      : ('summary' as const);
+  const auxiliary = location.pathname.includes('/auxiliary');
+  const [filters, setFilters] = useBalanceFilters(metadata.settings, auxiliary);
   const input = {
     mode,
     periodFrom: filters.from ? Number(filters.from) : undefined,
@@ -79,11 +86,16 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
     dims: filters.dims,
     includeUnposted: filters.includeUnposted,
     onlyActivity: filters.onlyActivity,
+    dimension: filters.dimension as '' | 'project' | 'partner' | 'department' | 'person',
+    dimensionFrom: filters.dimensionFrom,
+    dimensionTo: filters.dimensionTo,
   };
   const report = useQuery(api.query.queryOptions(input, { meta: { silent: true } }));
   const canExport = usePermission('balances.export');
   const canSettings = usePermission('balances.settings.edit');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSnapshot, setSettingsSnapshot] = useState(metadata.settings);
+  const [openingSettings, setOpeningSettings] = useState(false);
   const [busy, setBusy] = useState(false);
   const expanded = filters.expanded
     .split(',')
@@ -93,7 +105,24 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
     Number.isInteger(filters.level) && filters.level >= -1 && filters.level <= 20
       ? filters.level
       : 1;
-  const title = mode === 'foreign' ? '外币余额表' : '汇总余额表';
+  const title = reportTitle({ mode, auxiliary: auxiliary || !!filters.dimension });
+  const items = metadata.dimensions[input.dimension || 'project'] ?? [];
+  const openSettings = async () => {
+    setOpeningSettings(true);
+    try {
+      // 关闭冲突草稿后重新打开必须取得最新版本，不能再次拿页面缓存的旧 revision。
+      const fresh = await queryClient.fetchQuery({
+        ...api.metadata.queryOptions(undefined, { meta: { silent: true } }),
+        staleTime: 0,
+      });
+      setSettingsSnapshot(fresh.settings);
+      setSettingsOpen(true);
+    } catch (error) {
+      showError(error);
+    } finally {
+      setOpeningSettings(false);
+    }
+  };
   const runOutput = async (kind: 'excel' | 'print') => {
     setBusy(true);
     try {
@@ -127,7 +156,21 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
           >
             {mode === 'summary' ? '外币余额表' : '汇总余额表'}
           </Button>
-          {canSettings && <Button onClick={() => setSettingsOpen(true)}>展示设置</Button>}
+          <Button
+            href={`/m/balances${auxiliary ? '/auxiliary' : ''}/quantity${window.location.search}`}
+          >
+            数量余额表
+          </Button>
+          <Button
+            href={`/m/balances/auxiliary${mode === 'summary' ? '' : `/${mode}`}${window.location.search}`}
+          >
+            辅助查询
+          </Button>
+          {canSettings && (
+            <Button loading={openingSettings} onClick={() => void openSettings()}>
+              展示设置
+            </Button>
+          )}
           {canExport && (
             <>
               <Button
@@ -186,6 +229,49 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
           <AccountRangeSelect accounts={metadata.accounts} label="结束科目" />
         </Form.Item>
       </FilterBar>
+      <Space wrap style={{ marginBottom: 12 }}>
+        <label>
+          核算类型{' '}
+          <select
+            aria-label="核算类型"
+            value={filters.dimension}
+            onChange={(e) =>
+              setFilters({ dimension: e.target.value, dimensionFrom: '', dimensionTo: '' })
+            }
+          >
+            <option value="">不按辅助项展开</option>
+            <option value="project">项目</option>
+            <option value="partner">客户/供应商</option>
+            <option value="department">部门</option>
+            <option value="person">个人</option>
+          </select>
+        </label>
+        {filters.dimension && (
+          <>
+            {(['dimensionFrom', 'dimensionTo'] as const).map((key) => (
+              <label key={key}>
+                {key === 'dimensionFrom' ? '开始辅助项' : '结束辅助项'}{' '}
+                <Select
+                  aria-label={key === 'dimensionFrom' ? '开始辅助项' : '结束辅助项'}
+                  style={{ width: 220 }}
+                  allowClear
+                  showSearch={{ optionFilterProp: 'label' }}
+                  value={filters[key] || undefined}
+                  placeholder="全部"
+                  options={items.map((item) => ({
+                    value: item.code,
+                    label: `${item.code} ${item.name}${item.disabled ? '（停用）' : ''}`,
+                  }))}
+                  onChange={(code) => setFilters({ [key]: code ?? '' })}
+                />
+              </label>
+            ))}
+            <Typography.Text type="secondary">
+              范围为空取全部，按编码含两端；每个辅助项分别列示。
+            </Typography.Text>
+          </>
+        )}
+      </Space>
       <Space wrap style={{ marginBottom: 12 }}>
         <Checkbox
           checked={filters.includeUnposted}
@@ -266,11 +352,17 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
       ) : (
         <>
           {report.data.groups.length === 0 && (
-            <Empty description="账套没有外币，请先维护外币档案" />
+            <Empty
+              description={
+                mode === 'foreign' && !metadata.currencies.some((c) => !c.isBase)
+                  ? '账套没有外币，请先维护外币档案'
+                  : '当前范围没有可显示的余额，请调整科目或辅助项条件'
+              }
+            />
           )}
           {report.data.groups.map((group) => (
             <BalanceTable
-              key={group.currency}
+              key={JSON.stringify([group.currency, group.unit, group.dimension?.id])}
               group={group}
               report={report.data}
               level={level}
@@ -290,7 +382,7 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
       )}
       {settingsOpen && (
         <SettingsDrawer
-          settings={metadata.settings}
+          settings={settingsSnapshot}
           onClose={() => setSettingsOpen(false)}
           onSaved={(s) => {
             setFilters({ level: s.display.level, onlyActivity: s.display.onlyActivity });
@@ -343,55 +435,57 @@ function BalanceTable({
   loading: boolean;
   onToggle: (id: number) => void;
 }) {
-  const columns: DataColumn<OutputRow>[] = outputColumns
-    .filter((c) => !c.foreign || report.mode === 'foreign')
-    .map((c) => ({
-      key: c.key,
-      title: c.title,
-      dataIndex: c.key,
-      width: c.key === 'name' ? 260 : 140,
-      align: c.money ? 'right' : 'left',
-      render: (value: string | number, r) => {
-        if (c.key === 'code' && r.source) {
-          const source = r.source;
-          const hasChildren =
-            level !== -1 &&
-            (level === 0 || source.level < level) &&
-            group.rows.some((v) => v.parentId === source.accountId);
-          return (
-            <Space style={{ paddingLeft: (source.level - 1) * 12 }}>
-              {hasChildren && (
-                <Button
-                  size="small"
-                  aria-label={`${expanded.includes(source.accountId) ? '折叠' : '展开'} ${source.accountCode}`}
-                  aria-expanded={expanded.includes(source.accountId)}
-                  onClick={() => onToggle(source.accountId)}
-                >
-                  {expanded.includes(source.accountId) ? '−' : '+'}
-                </Button>
-              )}
-              <span>{r.code}</span>
-            </Space>
-          );
-        }
-        const reverse =
-          r.source &&
-          (c.key === 'opening' || c.key === 'closing') &&
-          balanceDisplay(r.source[c.key], r.source).reverse;
+  const canDrill = (row: OutputRow) =>
+    row.source &&
+    (!group.dimension || group.dimension.id != null) &&
+    (report.mode !== 'quantity' || row.source.isLeaf);
+  const columns: DataColumn<OutputRow>[] = columnsFor(report).map((c) => ({
+    key: c.key,
+    title: c.title,
+    dataIndex: c.key,
+    width: c.key === 'name' ? 260 : 140,
+    align: c.money ? 'right' : 'left',
+    render: (value: string | number, r) => {
+      if (c.key === 'code' && r.source) {
+        const source = r.source;
+        const hasChildren =
+          level !== -1 &&
+          (level === 0 || source.level < level) &&
+          group.rows.some((v) => v.parentId === source.accountId);
         return (
-          <span style={reverse ? { color: '#cf1322' } : undefined}>
-            {c.money && typeof value === 'number' ? <MoneyText value={value} /> : value}
-            {reverse && '（逆向）'}
-          </span>
+          <Space style={{ paddingLeft: (source.level - 1) * 12 }}>
+            {hasChildren && (
+              <Button
+                size="small"
+                aria-label={`${expanded.includes(source.accountId) ? '折叠' : '展开'} ${source.accountCode}`}
+                aria-expanded={expanded.includes(source.accountId)}
+                onClick={() => onToggle(source.accountId)}
+              >
+                {expanded.includes(source.accountId) ? '−' : '+'}
+              </Button>
+            )}
+            <span>{r.code}</span>
+          </Space>
         );
-      },
-    }));
+      }
+      const reverse =
+        r.source &&
+        (c.key === 'opening' || c.key === 'closing') &&
+        balanceDisplay(r.source[c.key], r.source).reverse;
+      return (
+        <span style={reverse ? { color: '#cf1322' } : undefined}>
+          {c.money && typeof value === 'number' ? <MoneyText value={value} /> : value}
+          {reverse && '（逆向）'}
+        </span>
+      );
+    },
+  }));
   columns.push({
     key: 'detail',
     title: '操作',
     width: 100,
     render: (_, r) =>
-      r.source && (
+      canDrill(r) && (
         <Button
           type="link"
           aria-label={`明细 ${r.code}`}
@@ -402,8 +496,21 @@ function BalanceTable({
       ),
   });
   return (
-    <section aria-label={group.currency ? `${group.currency}余额` : '本位币余额'}>
+    <section
+      aria-label={`${group.currency ? `${group.currency}余额` : '本位币余额'}${group.unit != null ? ` ${group.unit}` : ''}${group.dimension ? ` ${group.dimension.code} ${group.dimension.name}` : ''}`}
+    >
       <Typography.Paragraph>{reportCaption(report, group.currency)}</Typography.Paragraph>
+      {groupCaption(group) && <Typography.Paragraph>{groupCaption(group)}</Typography.Paragraph>}
+      {group.dimension?.id === null && (
+        <Typography.Paragraph type="secondary">
+          未指定辅助项的余额单独列示；当前明细账接口不能精确过滤空辅助项，暂不提供该组钻取。
+        </Typography.Paragraph>
+      )}
+      {report.mode === 'quantity' && (
+        <Typography.Paragraph type="secondary">
+          数量按借正贷负、十进制原值列示；父科目仅汇总本表单位，明细入口位于末级科目。
+        </Typography.Paragraph>
+      )}
       {report.mode === 'foreign' && (
         <Typography.Paragraph type="secondary">
           外币金额按借正贷负列示；不同币种分别合计。本位币列仅包含本币种对应的账务金额。
@@ -420,7 +527,7 @@ function BalanceTable({
         loading={loading}
         onRow={(row) => ({
           onDoubleClick: () =>
-            row.source && window.location.assign(detailUrl(report, row.source, group.currency)),
+            canDrill(row) && window.location.assign(detailUrl(report, row.source!, group.currency)),
         })}
       />
     </section>
