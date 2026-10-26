@@ -1,3 +1,5 @@
+> 2026-10-26 原版保真工作：新增二维单元格切片见 [Cells/README.md](Cells/README.md)，公共契约与未实现验收见 [reports handoff](../../docs/parity-handoffs/reports.md)。下文是仍保留的旧列公式设计器接口，不作为原版报表完成依据。
+
 # 自定义账表模板编辑器
 
 独立 .NET 10 库与真实 WPF 控件。输入直接使用既有 `Caiwu.Reporting.ReportDocument` 的不可变账表结果，不打开、修改或重新计算账套，不提供任意代码执行。只支持当前 Reporting 的凭证清单、科目余额表、科目明细账；这是一段可集成的有限设计器，不是原商业产品设计器的复刻，也不是法定财务报表映射。

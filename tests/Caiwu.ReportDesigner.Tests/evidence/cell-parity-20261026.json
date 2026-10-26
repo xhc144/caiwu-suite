@@ -1,0 +1,84 @@
+{
+  "baseline": "3b0c59b02d8941c32ac176309555c03c94bb4213",
+  "kind": "synthetic-only",
+  "windows_runtime": "not-run",
+  "original_program": "not-run",
+  "real_book": "not-tested",
+  "sdk": "10.0.403",
+  "contract_checkpoint": "5bb60d24b9c60c9eecfcc5adc37bced4688adf85",
+  "runs": [
+    {
+      "file": "cell-parity.trx",
+      "sha256": "32e12a6cf6479599d6d9014dbe55217620e8c7d7998271206bdc1ef1660209d8",
+      "times": {
+        "creation": "2026-10-26T00:07:45.4360514+00:00",
+        "queuing": "2026-10-26T00:07:45.4360514+00:00",
+        "start": "2026-10-26T00:07:43.7545630+00:00",
+        "finish": "2026-10-26T00:07:45.5993777+00:00"
+      },
+      "counters": {
+        "total": "82",
+        "executed": "82",
+        "passed": "82",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      }
+    },
+    {
+      "file": "parity-contract.trx",
+      "sha256": "707fdb5fcd78df1f7c1faf67a713e20b86d7a126b74ca1cb5eada6a50debee1a",
+      "times": {
+        "creation": "2026-10-26T00:07:45.5294426+00:00",
+        "queuing": "2026-10-26T00:07:45.5294426+00:00",
+        "start": "2026-10-26T00:07:43.8066262+00:00",
+        "finish": "2026-10-26T00:07:45.5353487+00:00"
+      },
+      "counters": {
+        "total": "4",
+        "executed": "4",
+        "passed": "4",
+        "failed": "0",
+        "error": "0",
+        "timeout": "0",
+        "aborted": "0",
+        "inconclusive": "0",
+        "passedButRunAborted": "0",
+        "notRunnable": "0",
+        "notExecuted": "0",
+        "disconnected": "0",
+        "warning": "0",
+        "completed": "0",
+        "inProgress": "0",
+        "pending": "0"
+      }
+    }
+  ],
+  "source_sha256": {
+    "src/Caiwu.ReportDesigner/Cells/CellReportEngine.cs": "905352f9f0e2cf33acd9783f532ef61421599087da5e079a3674c87e33b75226",
+    "src/Caiwu.ReportDesigner/Cells/CellReportExport.cs": "ac6a32638c2056da0a77dfda98ebd001d2dadc0127fea669ae4ccea844e87675",
+    "src/Caiwu.ReportDesigner/Cells/CellModels.cs": "e6a8f676ae7b944e132fe614d7574282c5545ca6d373e26324f4f4a288dd6f36",
+    "src/Caiwu.ReportDesigner/Cells/LedgerReportSource.cs": "f7ec9fa5b154c59742d12f5011e62d9dbb0c654754352754ce23e295880dcfc1",
+    "src/Caiwu.ReportDesigner/Cells/CellFormula.cs": "5069e98a0b1d4ab17c59b6591c5d4380e7244af0207f14fbde618377e6fe3972",
+    "src/Caiwu.ReportDesigner/Cells/CellReportStore.cs": "d360c0111d1b8f70722083a9a4cf7dcfc67dae456560b667a5222d473f2707ba",
+    "src/Caiwu.ReportDesigner/Wpf/Cells/CellReportControl.cs": "bce5029e7f407b8de5b60d0399913ab263efcd2786c0e31f87b53a3d5ce598cb",
+    "src/Caiwu.ReportDesigner/Wpf/Cells/CellFormatDialogs.cs": "a595b103a57e4bf48c54ef17faf6b34e9cc5195d0c3467d5d3f2441b0c7d2656",
+    "src/Caiwu.ReportDesigner/Integration/ParityReportAdapter.cs": "de356b36e02d300e84bc5ef70ab51545684f284a17d34771e8ef63e5f94283fb",
+    "src/Caiwu.ReportDesigner/Integration/Caiwu.ReportDesigner.Parity.csproj": "f5d1ad4c70e93a489bd3d2a524c13f4733ec9baa09d50551edc2e4c47b03f838",
+    "tests/Caiwu.ReportDesigner.Tests/CellWindowsSmoke/Program.cs": "414676110733b6b998df6a237e8f40f37a5203baccf3e924c36dba9945b8202a",
+    "tests/Caiwu.ReportDesigner.Tests/CellWindowsSmoke/Caiwu.ReportDesigner.CellWindowsSmoke.csproj": "87fd4f90d3f12f2737f25e9da96c971697ea12a8e350cb4d362045ae0fa64471",
+    "tests/Caiwu.ReportDesigner.Tests/ParityIntegration/ParityReportAdapterTests.cs": "4a727e6903541a91daf715aa326c7bded5ca580e744060b0e55c16860fc81a5f",
+    "tests/Caiwu.ReportDesigner.Tests/ParityIntegration/Caiwu.ReportDesigner.Parity.Tests.csproj": "3a6186f85f6f1e914552a640676242a32599f638862eb944d68650e6e4662977",
+    "tests/Caiwu.ReportDesigner.Tests/CellSheetTests.cs": "4a7747136012a66a33a53461d10aa77656a2496458fecf9d5708304e839c9f72"
+  }
+}

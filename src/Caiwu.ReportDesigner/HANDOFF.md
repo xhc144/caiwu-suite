@@ -1,3 +1,5 @@
+> 当前保真切片（2026-10-26）：请先读 [reports handoff](../../docs/parity-handoffs/reports.md) 和 [二维单元格 API](Cells/README.md)。下文是旧模块的历史交接，其测试与完成声明不替代本轮二维报表或原账套验收。
+
 # 可交接成果
 
 2026-10-25，`codex/report-designer`。可集成模块已实现：现有账表结果→列/公式/页眉/方向/小计编辑→重新预览→原子保存JSON→读回校验→安全HTML/CSV；真实WPF数据及A4页面预览、Windows打印入口和可运行Windows smoke宿主均已交付。精确提交SHA见本交付的私有草稿PR及最终回报。基线为 `b3b85eb3ab7fa859a3c44cca5bb6d25d48d7b434`。

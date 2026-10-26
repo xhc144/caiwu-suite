@@ -23,10 +23,37 @@ main 的 original-analysis README/gap-analysis、三个产品 windows.json 中�
 3. 提供 bbfun 的经过核验的函数名/编号、参数顺序、币种/项目/部门/客户/个人过滤、未过账处理/舍入与跨账套规则。适配器可调用本模块查询接口，但未知函数必须报错，不按名字猜。
 4. 接入原 `w_bb_main` 的定义入口，不替换成旧 ReportCenter；MDI、账套权限、原版菜单完整性、保存退出拦截、Windows 实机观察由集成者协调。
 
-## Current status
+## Early checkpoint status (historical)
 
 early-handoff：实现/测试尚未完成，未有新功能通过证据。最终提交会补齐命令、SHA、结果与未实现清单；该早期提交本身不是产品完成。
 
 ## Acceptance retained (not removed)
 
 原报表管理/增加/删除/复制/引入/转出；原账套与 VTS/DB 报表读写；全部 bbfun/跨报表/辅助维度/外币/数量/多账套函数；插删行列及引用重写、边框字体/合并跨列/绘线、分页/打印标题/真实打印、报税接口、完整函数向导；三产品差异；所有原窗口/菜单与权限、Windows 原生交互与视觉回归。首片外全部待实现/待验，不能用编译或合成测试数量替代。
+
+## First slice delivered / public integration checkpoint
+
+早期交接提交 `1cf81228b2ded561dd022384200f7904605516ee`；草稿 PR #44。第一实现提交及验证提交见本分支提交记录（本文后续证据段固定具体SHA）。
+
+新增API：`Cells/CellModels.cs` 的 `CellReport`、`CellDefinition`、`CellFormat`、`ReportQueryContext`、`IReportDataSource`/`IReportDataSnapshot`、`ReportSourceStamp`、`ReportDataRequest`；`CellReportEngine.Validate/Generate`；`CellReportStore.Load/Save`；`CellReportExport.Html/Csv/WriteHtml/WriteCsv/Audit`；`LedgerReportSource` 完整只读本位币DTO适配；`ReportFunctionCatalog` 明确函数别名。所有路径均相对 src/Caiwu.ReportDesigner。
+
+运行链路：二维表文字/数值/公式→一次快照取数与依赖计算→行列/单元格格式显示→JSON原子保存并重开→重新计算→HTML/CSV实际新文件导出。原999行/250列上限保留；复杂度预算会明确拒绝而非截断。默认函数属于新切片语法，原bbfun别名、99/*参数、辅助/外币/数量/跨报表语义仍未实现。
+
+WPF：`Wpf/Cells/CellReportControl` 为模块所有；使用真实DataGrid，实际打开/存盘/另存、生成、现场取数、格式与显示操作。行高/列宽/排列保留已有PBU证据的相对比例，未知ole_1.x未补造。数字格式用自适应对话框，不声称原OLE布局已还原。完整生成参数窗口/函数向导、原报表目录全部按钮和原菜单尚未完成，未删除验收。`tests/Caiwu.ReportDesigner.Tests/CellWindowsSmoke` 是可运行合成宿主；当前仅交叉编译，未实际运行Windows。
+
+### PR52契约反馈
+
+已读取固定 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85` 的 integration handoff 与 ParityModules.cs。新增可选 `Integration/Caiwu.ReportDesigner.Parity.csproj`，未在基线产品/解决方案激活；本checkout仍保持旧Contracts。它已在该固定树的临时副本中编译/合成测试。
+
+- `ParityReportAdapter.Open/New` 捕获同一 `ModuleLedgerSnapshot.Ledger` 的book/revision；Save只传该context到 `SaveModuleDocuments`，不刷新、不重试、不生成凭证；报表没有凭证建议业务，因此不调用 `AcceptVoucherProposal`。
+- `reports` 模块文档为权威状态的拟接入点；外部JSON仅独立切片/投影。包络保存 `OriginalPayloadJson` 原字符串及未知envelope字段（JsonElement，不经double），拒绝未知schema，避免悄悄丢字段。
+- 简化Ledger DTO适配必须显式提供 `ReportLedgerCompleteness`，证明覆盖区间及没有辅助/外币/数量/未知列；默认缺证明即拒绝。真实完整账套须另实现 `IReportDataSource`，不能默认把缺维度当零。原 `bbml.bz1/bz2` 与未知列应由compat传入原字符串，不由本模块猜含义。
+- 集成者需确定文档/附件大小预算与拆分协议（本设计本体文件上限8MiB，原字段字符串4MiB），避免存储层上限使大表无法无损保存；应拒绝并保留编辑，不能截断。
+- 权限至少区分报表定义/生成读取/文档保存/导出；shell须用真实会话授权并在切账/恢复时关闭旧控件。当前控件用宿主给定source/context/目录，没有真实OperatorSession，不能冒称已授权接入。适配器调用成功后的模块状态、审计与账套原子一致性仍需Core/SQLite集成测试，四项fake服务测试不能证明。
+- 注册 `OriginalWindowReference` 为描述性，shell只有实际绑定handler后开放对应入口；本模块未改Desktop/MainWindow或菜单总表。
+
+### Current verification
+
+Linux合成模块测试82/82通过（其中旧列设计器57、新二维切片25），可选PR52契约适配测试4/4通过；WPF+CellWindowsSmoke严格Release交叉编译0警告/0错误。具体命令、手算、合成I/O和未验Windows项见 `tests/Caiwu.ReportDesigner.Tests/CELL-VALIDATION.md`。编译和数量不表示原版全功能完成。
+
+没有权限拒绝、待批准或不确定远端写入：独占分支与草稿PR已创建。默认沙箱的.NET缓存/命名迁移锁失败后，仅对构建/合成测试申请沙箱外执行，自动审批通过。没有运行原程序、操作真实账套、上传原资源/完整新派生材料、改main或权限。
