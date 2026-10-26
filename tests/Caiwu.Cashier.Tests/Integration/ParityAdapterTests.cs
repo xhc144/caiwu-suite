@@ -124,6 +124,8 @@ public sealed class ParityAdapterTests
         var tampered = plan with { Vouchers = [plan.Vouchers[0] with { Lines = [plan.Vouchers[0].Lines[0] with { Debit = 99 }, plan.Vouchers[0].Lines[1]] }] };
         var adapter = new CashierVoucherProposalAdapter(ledger, Definition());
         Assert.Equal("voucher.plan.changed", Assert.Throws<CashierRuleException>(() => adapter.CreateProposal(observed, tampered, 0, Guid.NewGuid(), "记")).Code);
+        var movedDate = plan with { Vouchers = [plan.Vouchers[0] with { Date = new(2026, 2, 10) }] };
+        Assert.Equal("voucher.plan.changed", Assert.Throws<CashierRuleException>(() => adapter.CreateProposal(observed, movedDate, 0, Guid.NewGuid(), "记")).Code);
         Assert.Throws<CashierConcurrencyException>(() => adapter.CreateProposal(observed, plan with { SourceRevision = 7 }, 0, Guid.NewGuid(), "记"));
         Assert.Equal(0, ledger.AcceptCount);
     }

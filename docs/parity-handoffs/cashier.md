@@ -2,7 +2,7 @@
 
 - 日期：2026-10-26（UTC 起始 2026-10-25 23:55）；负责人：cashier 委派任务。
 - 独立 checkout：`/workspace/caiwu-cashier`；独占分支 `codex/parity-cashier-20261026`。
-- 固定基线：`3b0c59b02d8941c32ac176309555c03c94bb4213`；早期 HANDOFF 提交 `ea74fa0fac652a9a8027e6c54189df3e243250e9`；草稿 PR [#42](https://github.com/xhc144/caiwu-suite/pull/42)。后续实现 SHA 以本 PR 提交记录和最终回传为准。
+- 固定基线：`3b0c59b02d8941c32ac176309555c03c94bb4213`；早期 HANDOFF 提交 `ea74fa0fac652a9a8027e6c54189df3e243250e9`；主实现检查点 `975b0123945c9f0aca5d71539e42be93e298a2b4`；草稿 PR [#42](https://github.com/xhc144/caiwu-suite/pull/42)。最终修订 SHA 以本 PR 提交记录和最终回传为准。
 - 文件所有权：仅 `src/Caiwu.Cashier/**`、`tests/Caiwu.Cashier.Tests/**`、本文件。不修改共享 Contracts/Core/Persistence.Sqlite/Desktop、解决方案、公共 props、工作流。
 
 ## 本切片 API 与所属原窗口
@@ -55,6 +55,7 @@
 - 编译：独立模块、WPF、Windows 合成工具、对 PR52 冻结契约的 Integration 项目均成功（0 警告/0 错误）。
 - 合成行为：独立 SQLite 工作流 32 项通过；公共契约适配 12 项通过（替身，非 Core 实机）。包括闭环夹具、实际磁盘重开、整屏期初回滚、SQLite 写入失败回滚、两连接并发 CAS、单号不复用、结账改删限制、已生成/已勾账/外来记录保护、金额精度、月范围、前期未勾账、勾账与整组取消、原差额阈值、稳定来源键、字段降级拒绝。
 - 首轮发现/修复：外币乘积的测试预期手算错误；对账本身不套用单据改删的结账限制；视图携带真实读取 revision，避免显示明细和提交 token 来自不同读取。初次 SDK 命名互斥量初始化失败经允许的 SDK 初始化后消除，无审批拒绝。测试通过仅支持列出的合成行为。
+- 最终定向复核：已生成/已勾账/已结账/外来记录在打开编辑器或删除确认前即检查；建议日期也与原计划核对，禁止只改日期后转凭证。Linux SDK `10.0.403`，锁文件模式下 32+12 合成测试全部通过、无跳过；WPF 与 Windows 合成工具编译 0 警告/0 错误。TRX 本地证据：`tests/Caiwu.Cashier.Tests/TestResults/cashier-domain.trx`、`tests/Caiwu.Cashier.Tests/Integration/TestResults/cashier-adapter.trx`（忽略的构建产物，未入库）。所有 Git 差异均在分配目录内，固定公共契约 worktree 源文件状态干净。
 - Windows UI/键盘/DPI/原版逐窗口对照：未执行。
 - 原程序/安装器/真实账套：未运行/未接触；禁止上传原始资源和完整派生资料。
 
