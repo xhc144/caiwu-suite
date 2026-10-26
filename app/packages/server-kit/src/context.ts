@@ -1,6 +1,7 @@
 import type { BookStore, TemplateRegistry } from '@caiwu/core/server';
 import type { ModuleRegistry } from './registry';
 import type { SessionStore } from './sessions';
+import type { RuntimeLifecycle } from './lifecycle';
 
 /** 进程级运行环境：所有请求共享。 */
 export interface AppRuntime {
@@ -8,6 +9,7 @@ export interface AppRuntime {
   version: string;
   dataDir: string;
   bookStore: BookStore;
+  lifecycle: RuntimeLifecycle;
   templates: TemplateRegistry;
   modules: ModuleRegistry;
   sessions: SessionStore;

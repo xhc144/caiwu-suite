@@ -1,9 +1,22 @@
 import Database from 'better-sqlite3';
+import { DataDirectoryLease } from './data-directory-lease';
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from 'node:fs';
 import path from 'node:path';
 import {
   openDatabase,
+  databaseFile,
+  closeDatabaseFile,
+  isInDatabaseTransaction,
+  ResourceGate,
   runMigrations,
   withTransaction,
   type Kysely,
@@ -51,28 +64,69 @@ export interface OpenBook {
 export interface BookStoreOptions {
   /** 数据目录；账套文件放在 <dataDir>/books/<账套id>.caiwu */
   dataDir: string;
+  /** 只允许一个 server；辅助 runtime 与它共享进程占用，但不能释放 server 的占用。 */
+  exclusiveServer?: boolean;
   /** 打开账套时要执行的迁移（core 在前）。用函数是为了让模块列表晚于 BookStore 创建也能生效。 */
   migrationSets: () => readonly MigrationSet[];
   templates: TemplateRegistry;
   modules?: ModuleLookup;
   now?: () => Date;
+  maintenanceStarted?: (bookId: string) => void;
+  beforeClose?: (
+    book: OpenBook,
+    signal: AbortSignal,
+    reason: 'close' | 'maintenance' | 'shutdown',
+  ) => Promise<void>;
+}
+
+/** 破坏性计划仅冻结接口，当前总是拒绝；回调只支持备份、检查和重连，不得改动账套文件。 */
+export interface BookMaintenancePlan<T = void> {
+  kind: 'reconnect' | 'delete' | 'replace';
+  timeoutMs?: number;
+  prepare?: (book: OpenBook, signal: AbortSignal) => Promise<T>;
+  validate?: (book: OpenBook, signal: AbortSignal) => Promise<void>;
+  onQuiesced?: () => Promise<void>;
 }
 
 const BOOK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+type DirectoryState = { operations: ResourceGate; stores: Set<BookStore> };
+const directories = new Map<string, DirectoryState>();
 
 /**
  * 账套文件的管理：列出、新建、打开（缓存连接并执行迁移）、关闭。
- * 一个账套 = 一个 SQLite 文件。复制、删除、备份恢复等文件操作由对应模块基于 pathOf()/close() 实现。
+ * 一个账套 = 一个 SQLite 文件。close/pathOf 不授权移动文件；删除、覆盖当前仍不支持。
  */
 export class BookStore {
   readonly booksDir: string;
   readonly #opts: BookStoreOptions;
   readonly #open = new Map<string, OpenBook>();
+  readonly #operations: ResourceGate;
+  readonly #directory: DirectoryState;
+  readonly #closing = new Map<string, Promise<void>>();
+  #lease: DataDirectoryLease | null;
+  #closingAll: Promise<void> | null = null;
+  #disposed = false;
+  #disposeAfterClose = false;
+  readonly #known = new Set<string>();
 
   constructor(opts: BookStoreOptions) {
     this.#opts = opts;
-    this.booksDir = path.join(opts.dataDir, 'books');
-    mkdirSync(this.booksDir, { recursive: true });
+    this.#lease = new DataDirectoryLease(opts.dataDir, { server: opts.exclusiveServer });
+    this.#directory = directories.get(this.#lease.directory) ?? {
+      operations: new ResourceGate(maintenanceError),
+      stores: new Set(),
+    };
+    directories.set(this.#lease.directory, this.#directory);
+    this.#operations = this.#directory.operations;
+    this.booksDir = path.join(this.#lease.directory, 'books');
+    try {
+      mkdirSync(this.booksDir, { recursive: true });
+      if (lstatSync(this.booksDir).isSymbolicLink()) throw new Error('账套目录不支持符号链接');
+    } catch (error) {
+      this.#lease.release();
+      throw error;
+    }
+    this.#directory.stores.add(this);
   }
 
   static isValidId(id: string): boolean {
@@ -91,6 +145,11 @@ export class BookStore {
 
   /** 全部账套（按名称排序）。打不开的文件跳过。 */
   async list(): Promise<BookSummary[]> {
+    this.#ensureLease();
+    return this.#operations.run(() => this.#list());
+  }
+
+  async #list(): Promise<BookSummary[]> {
     const out: BookSummary[] = [];
     for (const name of readdirSync(this.booksDir)) {
       const m = /^(.+)\.caiwu$/.exec(name);
@@ -98,6 +157,8 @@ export class BookStore {
       const id = m[1]!;
       const file = path.join(this.booksDir, name);
       try {
+        if (lstatSync(file).isSymbolicLink()) continue;
+        this.#gate(id).assertAvailable();
         const raw =
           this.#open.get(id)?.raw ?? new Database(file, { readonly: true, fileMustExist: true });
         try {
@@ -125,16 +186,29 @@ export class BookStore {
 
   /** 打开账套（已打开则复用），并执行尚未执行的迁移。 */
   open(id: string): OpenBook {
+    this.#ensureLease();
+    this.#operations.assertAvailable();
+    this.#gate(id).retainForRequest();
+    this.#gate(id).assertAvailable();
+    if (this.#closing.has(id) || databaseFile(this.pathOf(id)).closing)
+      throw maintenanceError('busy');
     const cached = this.#open.get(id);
-    if (cached) return cached;
+    if (cached?.raw.open) return cached;
+    this.#open.delete(id);
     const file = this.pathOf(id);
     if (!existsSync(file))
       throw new BusinessError({ code: 'BOOK_NOT_FOUND', message: '账套不存在，可能已被删除' });
-    const { raw, db } = openDatabase<CoreDB>(file);
+    if (lstatSync(file).isSymbolicLink() || lstatSync(file).nlink !== 1)
+      throw new BusinessError({
+        code: 'BOOK_LINK_UNSUPPORTED',
+        message: '账套文件不支持符号链接或硬链接',
+      });
+    const connection = openDatabase<CoreDB>(file);
+    const { raw, db } = connection;
     try {
       runMigrations(raw, this.#allMigrations());
     } catch (e) {
-      raw.close();
+      void connection.close().catch(() => this.#gate(id).block());
       throw e;
     }
     const book = { id, file, raw, db };
@@ -142,19 +216,177 @@ export class BookStore {
     return book;
   }
 
-  async close(id: string): Promise<void> {
-    const b = this.#open.get(id);
-    if (!b) return;
-    this.#open.delete(id);
-    await b.db.destroy();
+  /** 请求/后台任务的租约。取得连接和所有 await 必须在回调内。 */
+  async withBook<T>(id: string, fn: (book: OpenBook) => Promise<T>): Promise<T> {
+    return this.#operations.runFresh(() => {
+      this.#ensureLease();
+      return this.#gate(id).runFresh(() => fn(this.open(id)));
+    });
   }
 
-  async closeAll(): Promise<void> {
-    await Promise.all([...this.#open.keys()].map((id) => this.close(id)));
+  /** 仅重连已支持；delete/replace 在任何 callback 和会话变更前拒绝。 */
+  maintain<T>(id: string, plan: BookMaintenancePlan<T>): Promise<T | undefined> {
+    if (isInDatabaseTransaction()) return Promise.reject(new Error('事务回调内不能启动账套维护'));
+    if (plan.kind !== 'reconnect')
+      return Promise.reject(
+        new BusinessError({
+          code: 'DESTRUCTIVE_MAINTENANCE_UNAVAILABLE',
+          message: '暂不支持删除或覆盖账套，无法排除未知外部 SQLite 连接',
+          hint: '请保留原账套，恢复时使用新副本',
+        }),
+      );
+    this.#ensureLease();
+    return this.#operations.run(() =>
+      this.#gate(id).exclusive(
+        (signal) =>
+          this.#operations.runFresh(async () => {
+            const end = this.#lease!.beginMaintenance();
+            try {
+              await plan.onQuiesced?.();
+              signal.throwIfAborted();
+              for (const store of this.#directory.stores) store.#opts.maintenanceStarted?.(id);
+              let book = this.open(id);
+              await this.#beforeClose(id, signal, 'maintenance');
+              signal.throwIfAborted();
+              const result = await plan.prepare?.(book, signal);
+              signal.throwIfAborted();
+              await this.#closeConnections(id);
+              // 即使此时超时也先恢复原连接；从未移动主文件或 WAL。
+              book = this.open(id);
+              signal.throwIfAborted();
+              await plan.validate?.(book, signal);
+              signal.throwIfAborted();
+              return result;
+            } finally {
+              end();
+            }
+          }),
+        plan.timeoutMs,
+      ),
+    );
+  }
+
+  close(id: string): Promise<void> {
+    if (isInDatabaseTransaction()) return Promise.reject(new Error('事务回调内不能关闭账套'));
+    const pending = this.#closing.get(id);
+    if (pending) return pending;
+    this.#ensureLease();
+    return this.#operations.run(() =>
+      this.#gate(id).exclusive(async (signal) => {
+        const end = this.#lease!.isAuxiliary ? () => {} : this.#lease!.beginMaintenance();
+        try {
+          await this.#beforeClose(id, signal, 'close');
+          signal.throwIfAborted();
+          await this.#closeConnections(id);
+        } finally {
+          end();
+        }
+      }),
+    );
+  }
+
+  async #closeConnections(id: string): Promise<void> {
+    const pending = closeDatabaseFile(this.pathOf(id));
+    this.#closing.set(id, pending);
+    try {
+      await pending;
+      for (const store of this.#directory.stores) store.#open.delete(id);
+    } finally {
+      this.#closing.delete(id);
+    }
+  }
+
+  async #beforeClose(
+    id: string,
+    signal: AbortSignal,
+    reason: 'close' | 'maintenance' | 'shutdown',
+  ): Promise<void> {
+    for (const store of this.#directory.stores) {
+      const book = store.#open.get(id);
+      if (book) await store.#opts.beforeClose?.(book, signal, reason);
+      signal.throwIfAborted();
+    }
+  }
+
+  /** 缓存清理保持兼容；server 的目录占用直到 dispose 才释放。 */
+  closeAll(): Promise<void> {
+    if (isInDatabaseTransaction()) return Promise.reject(new Error('事务回调内不能关闭账套'));
+    if (this.#closingAll) return this.#closingAll;
+    if (!this.#lease) return Promise.resolve();
+    this.#lease.assertOwned();
+    this.#closingAll = this.#operations
+      .exclusive(async () => {
+        const end = this.#lease!.isAuxiliary ? () => {} : this.#lease!.beginMaintenance();
+        try {
+          const ids = new Set([
+            ...[...this.#directory.stores].flatMap((store) => [
+              ...store.#known,
+              ...store.#open.keys(),
+            ]),
+            ...readdirSync(this.booksDir)
+              .filter((name) => name.endsWith('.caiwu'))
+              .map((name) => name.slice(0, -6))
+              .filter(BookStore.isValidId),
+          ]);
+          for (const id of ids) {
+            await this.#gate(id).exclusive(async (signal) => {
+              await this.#beforeClose(id, signal, this.#disposeAfterClose ? 'shutdown' : 'close');
+              signal.throwIfAborted();
+              await this.#closeConnections(id);
+            });
+          }
+        } finally {
+          end();
+        }
+        if (!this.#opts.exclusiveServer || this.#disposeAfterClose) {
+          this.#lease?.release();
+          this.#lease = null;
+          this.#directory.stores.delete(this);
+        }
+        if (this.#disposeAfterClose) this.#disposed = true;
+      })
+      .finally(() => {
+        this.#closingAll = null;
+      });
+    return this.#closingAll;
+  }
+
+  /** 宿主退出后禁止这个实例再重新取得目录租约。 */
+  async dispose(): Promise<void> {
+    this.#disposeAfterClose = true;
+    await this.closeAll();
+  }
+
+  #ensureLease(): void {
+    this.#operations.assertAvailable();
+    if (this.#disposed) throw maintenanceError('revoked');
+    this.#lease ??= new DataDirectoryLease(this.#opts.dataDir, {
+      server: this.#opts.exclusiveServer,
+    });
+    this.#lease.assertOwned();
+    this.#directory.stores.add(this);
+  }
+
+  #gate(id: string): ResourceGate {
+    const file = this.pathOf(id);
+    if (existsSync(file) && (lstatSync(file).isSymbolicLink() || lstatSync(file).nlink !== 1))
+      throw new BusinessError({
+        code: 'BOOK_LINK_UNSUPPORTED',
+        message: '账套文件不支持符号链接或硬链接',
+      });
+    const state = databaseFile(file);
+    this.#known.add(id);
+    state.gate.error = maintenanceError;
+    return state.gate;
   }
 
   /** 新建账套：先写到临时文件，全部成功后再改名，避免留下半成品。 */
   async create(raw: CreateBookInput): Promise<BookInfo> {
+    this.#ensureLease();
+    return this.#operations.run(() => this.#create(raw));
+  }
+
+  async #create(raw: CreateBookInput): Promise<BookInfo> {
     const input = CreateBookInputSchema.parse(raw);
     const template = this.#opts.templates.get(input.templateId);
     const scheme = parseCodeScheme(input.codeScheme ?? template.codeScheme);
@@ -169,7 +401,8 @@ export class BookStore {
     }
     const id = randomUUID();
     const tmp = path.join(this.booksDir, `.${id}.creating`);
-    const { raw: rawDb, db } = openDatabase<CoreDB>(tmp);
+    const creating = openDatabase<CoreDB>(tmp);
+    const { raw: rawDb, db } = creating;
     try {
       runMigrations(rawDb, this.#allMigrations());
       const now = (this.#opts.now ?? (() => new Date()))();
@@ -308,10 +541,10 @@ export class BookStore {
           summary: `新建账套「${input.name}」（${template.name}，科目级次 ${formatCodeScheme(scheme)}）`,
         });
       });
-      await db.destroy();
+      await creating.close();
       renameSync(tmp, this.pathOf(id));
     } catch (e) {
-      await db.destroy().catch(() => {});
+      await creating.close().catch(() => {});
       for (const suffix of ['', '-wal', '-shm']) rmSync(tmp + suffix, { force: true });
       throw e;
     }
@@ -331,6 +564,23 @@ export class BookStore {
       ...this.#opts.migrationSets().filter((s) => s.scope !== 'core'),
     ];
   }
+}
+
+function maintenanceError(reason: 'busy' | 'timeout' | 'revoked'): BusinessError {
+  return new BusinessError({
+    code:
+      reason === 'timeout'
+        ? 'MAINTENANCE_TIMEOUT'
+        : reason === 'revoked'
+          ? 'BOOK_LEASE_EXPIRED'
+          : 'BOOK_MAINTENANCE',
+    message:
+      reason === 'timeout'
+        ? '等待账套维护超时，未结束任务仍保留占用'
+        : reason === 'revoked'
+          ? '账套租约已结束，请重新取得连接'
+          : '账套正在维护或关闭，请稍后重试',
+  });
 }
 
 function toBookInfo(row: CoreDB['book_info']): BookInfo {

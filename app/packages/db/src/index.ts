@@ -1,6 +1,10 @@
 import Database from 'better-sqlite3';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { createHash } from 'node:crypto';
+import { existsSync, realpathSync } from 'node:fs';
+import path from 'node:path';
+import { ResourceGate } from './lifecycle';
+export { ResourceGate, withRequestLeases, type GateError } from './lifecycle';
 import {
   Kysely,
   SqliteAdapter,
@@ -36,28 +40,96 @@ export interface OpenedDatabase<DB> {
  * 打开一个 SQLite 文件（或 `:memory:`）。
  * 统一设置：外键开启、WAL、忙等待 5 秒。
  */
-export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
-  const raw = new Database(file);
-  raw.pragma('foreign_keys = ON');
-  raw.pragma('busy_timeout = 5000');
-  if (file !== ':memory:') {
-    raw.pragma('journal_mode = WAL');
-    raw.pragma('synchronous = NORMAL');
-  }
-  const db = new Kysely<DB>({ dialect: new GuardedSqliteDialect({ database: raw }) });
-  // raw 在 Kysely 驱动初始化前已经打开；destroy() 此时可能不会释放它。
-  // 两个公开关闭入口共用同一 Promise，调用者必须等待真实原生句柄关闭。
-  const destroy = db.destroy.bind(db);
-  let closing: Promise<void> | undefined;
-  const close = () => {
-    closing ??= (async () => {
-      await destroy();
-      if (raw.open) raw.close();
-    })();
-    return closing;
+const files = new Map<string, DatabaseFile>();
+
+export interface DatabaseFile {
+  gate: ResourceGate;
+  connections: Set<OpenedDatabase<unknown>>;
+  closing: number;
+}
+
+/** 同一进程通过本包打开的同一真实路径共用门和连接登记；直接 new Database 不在协议内。 */
+export function databaseFile(file: string): DatabaseFile {
+  const key =
+    file === ':memory:'
+      ? null
+      : existsSync(file)
+        ? realpathSync(file)
+        : path.join(realpathSync(path.dirname(file)), path.basename(file));
+  if (key && files.has(key)) return files.get(key)!;
+  const state = {
+    gate: new ResourceGate(),
+    connections: new Set<OpenedDatabase<unknown>>(),
+    closing: 0,
   };
-  db.destroy = close;
-  return { raw, db, close };
+  if (key) files.set(key, state);
+  return state;
+}
+
+export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
+  const state = databaseFile(file);
+  state.gate.retainForRequest();
+  state.gate.assertAvailable();
+  if (state.closing) throw state.gate.error('busy');
+  const raw = new Database(file);
+  try {
+    raw.pragma('foreign_keys = ON');
+    raw.pragma('busy_timeout = 5000');
+    if (file !== ':memory:') {
+      raw.pragma('journal_mode = WAL');
+      raw.pragma('synchronous = NORMAL');
+    }
+  } catch (error) {
+    raw.close();
+    throw error;
+  }
+  const db = new Kysely<DB>({ dialect: new GuardedSqliteDialect({ database: raw }, state.gate) });
+  let closing: Promise<void> | undefined;
+  const destroy = db.destroy.bind(db);
+  const opened: OpenedDatabase<DB> = {
+    raw,
+    db,
+    close() {
+      if (transactionScope.getStore()?.active)
+        return Promise.reject(new Error('事务回调内不能关闭数据库连接'));
+      if (closing) return closing;
+      state.closing++;
+      closing = destroy()
+        .then(() => {
+          // Kysely 未初始化 driver 时 destroy 不会关闭构造时已打开的原生连接。
+          if (raw.open) {
+            if (raw.inTransaction) throw new Error('仍有未登记的原生事务，不能关闭数据库');
+            raw.close();
+          }
+          state.connections.delete(opened as OpenedDatabase<unknown>);
+        })
+        .catch((error: unknown) => {
+          state.gate.block();
+          throw error;
+        })
+        .finally(() => {
+          state.closing--;
+        });
+      return closing;
+    },
+  };
+  db.destroy = opened.close;
+  state.connections.add(opened as OpenedDatabase<unknown>);
+  return opened;
+}
+
+/** 调用者须先关门并排空请求；包括通过本包打开的额外连接，关闭期间禁止重新 open。 */
+export async function closeDatabaseFile(file: string): Promise<void> {
+  const state = databaseFile(file);
+  state.closing++;
+  try {
+    await Promise.all([...state.connections].map((c) => c.close()));
+  } catch (error) {
+    state.gate.block();
+    throw error;
+  } finally {
+    state.closing--;
+  }
 }
 
 /**
@@ -70,7 +142,19 @@ export function openDatabase<DB>(file: string): OpenedDatabase<DB> {
  */
 const transactionScope = new AsyncLocalStorage<{ active: boolean }>();
 
+export function isInDatabaseTransaction(): boolean {
+  return transactionScope.getStore()?.active ?? false;
+}
+
 class GuardedSqliteDriver extends SqliteDriver {
+  #closing = false;
+  #gateRelease: (() => void) | null = null;
+  constructor(
+    config: ConstructorParameters<typeof SqliteDriver>[0],
+    readonly gate: ResourceGate,
+  ) {
+    super(config);
+  }
   #locked: Promise<void> | null = null;
   #release: (() => void) | null = null;
 
@@ -80,9 +164,17 @@ class GuardedSqliteDriver extends SqliteDriver {
         '在事务里用了事务外的数据库连接，会卡死。事务回调里只能用回调传进来的 trx（或 svc.tx 回调传进来的 svc）。',
       );
     }
-    while (this.#locked) await this.#locked;
-    this.#locked = new Promise((resolve) => (this.#release = resolve));
-    return super.acquireConnection();
+    const release = this.gate.enter();
+    try {
+      while (this.#locked) await this.#locked;
+      if (this.#closing) throw new Error('数据库连接正在关闭');
+      this.#locked = new Promise((resolve) => (this.#release = resolve));
+      this.#gateRelease = release;
+      return await super.acquireConnection();
+    } catch (error) {
+      release();
+      throw error;
+    }
   }
 
   override async releaseConnection(): Promise<void> {
@@ -91,6 +183,14 @@ class GuardedSqliteDriver extends SqliteDriver {
     this.#locked = null;
     this.#release = null;
     release?.();
+    this.#gateRelease?.();
+    this.#gateRelease = null;
+  }
+
+  override async destroy(): Promise<void> {
+    this.#closing = true;
+    while (this.#locked) await this.#locked;
+    await super.destroy();
   }
 }
 
@@ -103,12 +203,15 @@ class GuardedSqliteAdapter extends SqliteAdapter {
 
 class GuardedSqliteDialect extends SqliteDialect {
   readonly #config: ConstructorParameters<typeof SqliteDialect>[0];
-  constructor(config: ConstructorParameters<typeof SqliteDialect>[0]) {
+  constructor(
+    config: ConstructorParameters<typeof SqliteDialect>[0],
+    readonly gate: ResourceGate,
+  ) {
     super(config);
     this.#config = config;
   }
   override createDriver(): Driver {
-    return new GuardedSqliteDriver(this.#config);
+    return new GuardedSqliteDriver(this.#config, this.gate);
   }
   override createAdapter(): DialectAdapter {
     return new GuardedSqliteAdapter();
@@ -124,7 +227,16 @@ export async function withTransaction<DB, T>(
   fn: (trx: Kysely<DB>) => Promise<T>,
 ): Promise<T> {
   if (db.isTransaction) return fn(db);
-  return db.transaction().execute((trx) => transactionScope.run({ active: true }, () => fn(trx)));
+  return db.transaction().execute((trx) => {
+    const scope = { active: true };
+    return transactionScope.run(scope, async () => {
+      try {
+        return await fn(trx);
+      } finally {
+        scope.active = false;
+      }
+    });
+  });
 }
 
 // ---------------------------------------------------------------- 迁移
