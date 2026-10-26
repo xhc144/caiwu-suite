@@ -18,6 +18,7 @@ import {
 import {
   isEntryDate,
   balanceCell,
+  changeEntryDate,
   blankLine,
   monthDistance,
   type Entry,
@@ -27,6 +28,7 @@ import { api } from './api';
 import { confirm } from './dialogs';
 import LineGrid, { LineDetails } from './LineGrid';
 import PasteDialog from './PasteDialog';
+import CalculatorDialog from './CalculatorDialog';
 
 type Bootstrap = inferRouterOutputs<EntryRouter>['bootstrap'];
 const inputOf = (v: Voucher): Entry => ({
@@ -135,6 +137,10 @@ function Editor({
   const [active, setActive] = useState(0);
   const [details, setDetails] = useState(false);
   const [paste, setPaste] = useState(false);
+  const [calculator, setCalculator] = useState<{
+    line: number;
+    side: 'debit' | 'credit' | null;
+  } | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const templateEpoch = useRef(0);
   useEffect(
@@ -487,6 +493,7 @@ function Editor({
         e.keyCode === 229 ||
         details ||
         paste ||
+        calculator ||
         templateOpen ||
         templateName ||
         leave
@@ -526,6 +533,11 @@ function Editor({
         h.requestLeave(() => {
           void navigate(`/m/print-settings?voucherId=${live.current.header?.id ?? ''}`);
         });
+        return;
+      }
+      if (matchHotkey(e, 'F9')) {
+        stop();
+        setCalculator({ line: active, side: moneyFocused.current ? amountSide.current : null });
         return;
       }
       if (readonly) return;
@@ -578,7 +590,18 @@ function Editor({
     };
     document.addEventListener('keydown', listener, true);
     return () => document.removeEventListener('keydown', listener, true);
-  }, [tab.active, tab, readonly, active, details, paste, templateOpen, templateName, leave]);
+  }, [
+    tab.active,
+    tab,
+    readonly,
+    active,
+    details,
+    paste,
+    calculator,
+    templateOpen,
+    templateName,
+    leave,
+  ]);
 
   const reset = async () => {
     if (
@@ -718,6 +741,16 @@ function Editor({
           </Button>
           <Button disabled={readonly} onClick={() => setPaste(true)}>
             Excel 粘贴
+          </Button>
+          <Button
+            onClick={() =>
+              setCalculator({
+                line: active,
+                side: moneyFocused.current ? amountSide.current : null,
+              })
+            }
+          >
+            计算器（F9）
           </Button>
           {header && (
             <Button
@@ -882,23 +915,7 @@ function Editor({
               disabled={readonly}
               value={data.date}
               placeholder="YYYY-MM-DD"
-              onChange={(e) =>
-                change({
-                  ...data,
-                  date: e.target.value,
-                  number:
-                    header?.period !==
-                    (isEntryDate(e.target.value) ? periodOfDate(e.target.value) : 0)
-                      ? null
-                      : data.number,
-                  lines:
-                    isEntryDate(e.target.value) &&
-                    isEntryDate(data.date) &&
-                    periodOfDate(e.target.value) !== periodOfDate(data.date)
-                      ? data.lines.map((l) => (l.currency ? { ...l, exchangeRate: null } : l))
-                      : data.lines,
-                })
-              }
+              onChange={(e) => change(changeEntryDate(live.current.data, e.target.value))}
             />
           </label>
           <label>
@@ -1027,6 +1044,31 @@ function Editor({
               setPaste(false);
               focus(0, 'summary');
             }}
+          />
+        )}
+        {calculator && (
+          <CalculatorDialog
+            onClose={() => setCalculator(null)}
+            target={
+              calculator.side
+                ? `第${calculator.line + 1}行${calculator.side === 'debit' ? '借方' : '贷方'}`
+                : undefined
+            }
+            onApply={
+              !readonly && calculator.side
+                ? (cents) => {
+                    const { line, side } = calculator;
+                    change({
+                      ...live.current.data,
+                      lines: live.current.data.lines.map((value, index) =>
+                        index === line ? { ...value, [side!]: cents } : value,
+                      ),
+                    });
+                    setCalculator(null);
+                    focus(line, side!);
+                  }
+                : undefined
+            }
           />
         )}
         <Modal
