@@ -17,6 +17,7 @@ import {
   printInput,
   printWasCancelled,
   safeExternalUrl,
+  desktopMessage,
 } from '../security';
 import {
   checkDataDir,
@@ -308,6 +309,14 @@ describe('IPC、导航及打印安全', () => {
     expect(printWasCancelled('Invalid printer settings')).toBe(false);
   });
   it('PDF 取消不创建打印窗、不写文件；渲染/写入失败有中文下一步', async () => {
+    const pdfError = new Error(
+      'PDF 未保存成功，请检查目标文件是否被占用、目录写入权限和磁盘空间后重试',
+      { cause: new Error('token=secret and book contents') },
+    );
+    expect(desktopMessage(pdfError, '桌面操作未完成')).toBe(pdfError.message);
+    expect(desktopMessage(new Error('file path and password=secret'), '桌面操作未完成')).toBe(
+      '桌面操作未完成',
+    );
     const render = vi.fn(async () => new Uint8Array([1]));
     const write = vi.fn(async () => {});
     const failed = vi.fn();

@@ -17,6 +17,7 @@ import path from 'node:path';
 import { ServiceSession, allowUnload, wakeWindow, type ServiceChild } from './lifecycle';
 import { createLog } from './log';
 import { assertDataOutsideInstall } from './data-safety';
+import { assertWebFiles } from './web-files';
 import { atomicPdfWrite, exportPdf, targetState, withResource, type TargetState } from './printing';
 import {
   assertSender,
@@ -28,6 +29,7 @@ import {
   printInput,
   printWasCancelled,
   safeExternalUrl,
+  desktopMessage as message,
 } from './security';
 import {
   checkDataDir,
@@ -121,12 +123,6 @@ function spawnServer(token: string): ServiceChild {
       child.kill('SIGKILL');
     },
   };
-}
-
-function message(error: unknown, fallback: string): string {
-  return error instanceof Error && /^[\u4e00-\u9fff]/u.test(error.message)
-    ? error.message
-    : fallback;
 }
 
 function saveSettings(next: Settings) {
@@ -283,6 +279,16 @@ async function boot() {
   booting = true;
   let failure: string | null = null;
   try {
+    try {
+      assertWebFiles(
+        app.isPackaged
+          ? path.join(process.resourcesPath, 'web')
+          : path.resolve(__dirname, '../../web/dist'),
+      );
+    } catch (error) {
+      log('window-load-failed', error);
+      throw error;
+    }
     activeDataDir = resolveDataDir(process.env.CAIWU_DATA_DIR, settings, app.getPath('documents'));
     try {
       checkDirectory(activeDataDir);
@@ -516,6 +522,7 @@ function registerIpc() {
           win.webContents.printToPDF({
             landscape: input.enabled,
             printBackground: true,
+            preferCSSPageSize: true,
           }),
         ),
       write: (file, data) => atomicPdfWrite(file, data, target!.state),

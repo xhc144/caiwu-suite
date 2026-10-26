@@ -105,3 +105,10 @@ export function printDocument(html: string): string {
 export function printWasCancelled(reason: string): boolean {
   return /^(cancelled|canceled|print job cancel(?:led|ed))\.?$/iu.test(reason.trim());
 }
+
+export function desktopMessage(error: unknown, fallback: string): string {
+  return error instanceof Error &&
+    (/^[\u4e00-\u9fff]/u.test(error.message) || error.message.startsWith('PDF 未保存成功，'))
+    ? error.message
+    : fallback;
+}

@@ -241,7 +241,7 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     await desktop.evaluate(({ dialog }, file) => {
       dialog.showSaveDialog = async () => ({ canceled: false, filePath: file });
     }, pdf);
-    const hostile = `<!doctype html><p>中文横向账簿</p><script>fetch('http://127.0.0.1:${address.port}/script')</script><img src="http://127.0.0.1:${address.port}/image"><iframe src="http://127.0.0.1:${address.port}/frame"></iframe>`;
+    const hostile = `<!doctype html><style>@page { size: A5 landscape; margin: 10mm; } .page { break-after: page; } .page:last-child { break-after: auto; }</style><div class="page"><p>中文横向账簿第一页</p><script>fetch('http://127.0.0.1:${address.port}/script')</script><img src="http://127.0.0.1:${address.port}/image"><iframe src="http://127.0.0.1:${address.port}/frame"></iframe></div><div class="page">中文账簿第二页</div>`;
     expect(
       await page.evaluate(
         ({ html }) =>
@@ -258,6 +258,12 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     );
     expect(box, 'PDF 应包含页面尺寸').not.toBeNull();
     expect(Number(box![1]), '横向 PDF 的宽应大于高').toBeGreaterThan(Number(box![2]));
+    expect(Math.abs(Number(box![1]) - 595.28), '@page A5 横向宽度（pt）').toBeLessThan(2);
+    expect(Math.abs(Number(box![2]) - 419.53), '@page A5 横向高度（pt）').toBeLessThan(2);
+    expect(
+      (readFileSync(pdf, 'latin1').match(/\/Type\s*\/Page\b/gu) ?? []).length,
+      'CSS 强制两页应与实际原生 PDF 分页一致',
+    ).toBe(2);
     expect(networkRequests).toBe(0);
     expect(
       await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
