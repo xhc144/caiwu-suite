@@ -193,7 +193,7 @@ test('w_bb_def 勾稽语法反例、负阈值与实际通过/不通过/错误分
   t.checks = [
     { name: '总额核对', left: 'B1', right: 'SUM(A1:A2)', tolerance: '0' },
     { name: '差额核对', left: 'B1', right: 'A1', tolerance: '0' },
-    { name: '单位核对', left: 'B1', right: '0', tolerance: '0' },
+    { name: '单位核对', left: 'B1', right: '1', tolerance: '0' },
   ];
   const r = await callApi<Report>(isolated.request, 'm.report-engine.importTemplate', t, {
     token,

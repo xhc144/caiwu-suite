@@ -529,7 +529,7 @@ function Editor({ initial }: { initial: Report }) {
         />
         <span style={{ color: '#666' }}>
           方向键/Enter 选择相邻单元格。当前列 {columnName(point.col)}
-          ；列宽和行高随定义保存。公式支持 + − × ÷、SUM、REF、BALANCE，金额单元格按四舍五入落到分。
+          ；列宽和行高随定义保存。公式支持四则、比较、SUM、REF、BALANCE、IF、MAX；金额按四舍五入落到分。
         </span>
         {wizard && (
           <FunctionWizard

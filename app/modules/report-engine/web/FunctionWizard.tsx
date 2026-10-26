@@ -1,4 +1,4 @@
-import { Alert, Button, Drawer, Form, Input, Select, Space } from 'antd';
+import { Alert, Button, Checkbox, Drawer, Form, Input, Select, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import type { TextAreaRef } from 'antd/es/input/TextArea';
@@ -15,6 +15,7 @@ import {
   type ReportTemplate,
   type Unit,
   type BalanceFunction,
+  type BalanceOptions,
 } from '../shared';
 import { api } from './api';
 
@@ -40,6 +41,14 @@ export function FunctionWizard({
   const currency = useQuery(coreApi.reference.currencies.queryOptions());
   const [message, setMessage] = useState<{ text: string; valid: boolean } | null>(null);
   const [source, setSource] = useState('');
+  const [advanced, setAdvanced] = useState(false);
+  const [options, setOptions] = useState<BalanceOptions>({
+    from: 'current',
+    to: 'current',
+    closing: 'include',
+    side: 'net',
+    groupBy: [],
+  });
   const [kind, setKind] = useState<'balance' | 'sum' | 'ref' | 'expression'>(
     cell?.kind === 'formula' ? 'expression' : 'balance',
   );
@@ -71,13 +80,16 @@ export function FunctionWizard({
     setMessage(null);
     setSource('');
   };
-  const makeBalance = async () => {
-    const v = await form.validateFields();
+  const makeBalance = () => {
+    // 取同一事件的完整参数快照；异步 Form 校验会被控件禁用/选择提交标记为过期。
+    // 参数合法性始终由共享 schema 与真实服务端语法校验决定。
+    const v = form.getFieldsValue(true);
     const candidate = {
       ...v,
       account: accounts.byId.get(accountId ?? 0)?.code ?? '',
       dimension,
       item: dimension === 'none' ? '' : (items.byId.get(itemId ?? 0)?.code ?? ''),
+      ...(advanced ? { options } : {}),
     };
     const parsed = BalanceFunctionSchema.safeParse(candidate);
     if (!parsed.success) {
@@ -182,9 +194,9 @@ export function FunctionWizard({
     >
       <Alert
         type="info"
-        title="BALANCE(科目,指标,单位,币种,方向,辅助类型,辅助编码)"
+        title="BALANCE(科目,指标,单位,币种,方向,辅助类型,辅助编码[,options])"
         description={
-          '参数均为字符串；使用当前生成期间。科目含下级且不重复累计。金额返回分，显示元；数量为精确十进制。SUM(A1:A3) 为表内求和，REF("101","A1") 为同期间表间引用。'
+          '前七参数为字符串；默认使用当前生成期间。第八参数为共享合同的 JSON 字符串，由扩展选项生成。科目含下级且不重复累计；金额返回分，显示元。SUM 为表内求和，REF 为同期间表间引用；组合公式支持比较、惰性 IF 和 MAX。'
         }
       />
       <Form
@@ -267,6 +279,112 @@ export function FunctionWizard({
               />
             </Form.Item>
           )}
+          <Form.Item>
+            <Checkbox
+              checked={advanced}
+              onChange={(e) => {
+                setAdvanced(e.target.checked);
+                changed();
+              }}
+            >
+              使用扩展取数口径（第八参数）
+            </Checkbox>
+          </Form.Item>
+          {advanced && (
+            <>
+              {(['from', 'to'] as const).map((key) => {
+                const presets = [
+                  { value: 'current', label: '当前生成月份' },
+                  { value: 'yearStart', label: '生成年度一月' },
+                  { value: 'previousMonth', label: '上一个月（自动跨年）' },
+                  { value: 'previousYearEnd', label: '上年十二月' },
+                  { value: 'previousYearSameMonth', label: '上年同月' },
+                  { value: 'previousYear', label: '上年同月（兼容别名）' },
+                  { value: 'previousYearStart', label: '上年一月' },
+                ];
+                const value = options[key] ?? 'current';
+                const preset = presets.some((p) => p.value === value);
+                const label = key === 'from' ? '取数开始期间' : '取数结束期间';
+                return (
+                  <Form.Item key={key} label={label}>
+                    <Select
+                      aria-label={label}
+                      value={preset ? value : 'custom'}
+                      options={[...presets, { value: 'custom', label: '指定期间 YYYYMM' }]}
+                      onChange={(value) => {
+                        setOptions((o) => ({ ...o, [key]: value === 'custom' ? '' : value }));
+                        changed();
+                      }}
+                    />
+                    {!preset && (
+                      <Input
+                        aria-label={`${label}YYYYMM`}
+                        placeholder="例如202601，须已建立且不早于启用"
+                        value={value}
+                        maxLength={6}
+                        onChange={(e) => {
+                          setOptions((o) => ({ ...o, [key]: e.target.value }));
+                          changed();
+                        }}
+                      />
+                    )}
+                  </Form.Item>
+                );
+              })}
+              <Form.Item label="结转口径">
+                <Select
+                  aria-label="结转口径"
+                  value={options.closing}
+                  options={[
+                    { value: 'include', label: '包含全部结转（真实账面）' },
+                    { value: 'excludePnl', label: '仅发生额：排除损益结转 pnl' },
+                    { value: 'exclude', label: '仅发生额：排除全部有结转标记凭证' },
+                  ]}
+                  onChange={(closing) => {
+                    setOptions((o) => ({ ...o, closing }));
+                    changed();
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="余额分向">
+                <Select
+                  aria-label="余额分向"
+                  value={options.side}
+                  options={[
+                    { value: 'net', label: '净额（不重分类）' },
+                    { value: 'debit', label: '逐末级及辅助分组取正借方余额' },
+                    { value: 'credit', label: '逐末级及辅助分组取正贷方余额' },
+                  ]}
+                  onChange={(side) => {
+                    setOptions((o) => ({ ...o, side }));
+                    changed();
+                  }}
+                />
+              </Form.Item>
+              <Form.Item label="辅助分组">
+                <Select
+                  aria-label="辅助分组"
+                  mode="multiple"
+                  value={options.groupBy}
+                  options={[
+                    { value: 'project', label: '项目' },
+                    { value: 'partner', label: '客户/供应商' },
+                    { value: 'department', label: '部门' },
+                    { value: 'person', label: '个人' },
+                  ]}
+                  onChange={(groupBy: BalanceOptions['groupBy']) => {
+                    setOptions((o) => ({ ...o, groupBy }));
+                    changed();
+                  }}
+                />
+              </Form.Item>
+              <Alert
+                type="info"
+                title="期初取开始期间之前，期末取结束期间；发生额取闭区间，累计按结束期间年度"
+                description="比较期/上月等以生成月份为锚点；previousYear 等同上年同月。缺期、启用前或未知累计不能按零计算。排除结转只用于发生额；借贷重分类仅限本币期初/期末、signed方向，先分末级及所选辅助组再汇总。"
+              />
+            </>
+          )}
         </div>
         <Form.Item label="函数类型">
           <Select
@@ -276,7 +394,7 @@ export function FunctionWizard({
               { value: 'balance', label: '总账取数 BALANCE' },
               { value: 'sum', label: '表内求和 SUM' },
               { value: 'ref', label: '表间引用 REF' },
-              { value: 'expression', label: '组合公式/四则运算' },
+              { value: 'expression', label: '组合公式/比较/IF/MAX' },
             ]}
             onChange={(value) => {
               setKind(value);
@@ -341,7 +459,7 @@ export function FunctionWizard({
               />
             </Form.Item>
             <Space wrap>
-              {['+', '-', '*', '/', '(', ')', ','].map((token) => (
+              {['+', '-', '*', '/', '(', ')', ',', '=', '<>', '<', '>', '<=', '>='].map((token) => (
                 <Button
                   key={token}
                   aria-label={`插入运算符 ${token}`}
@@ -350,7 +468,12 @@ export function FunctionWizard({
                   {token}
                 </Button>
               ))}
+              <Button onClick={() => insertToken('IF(A1>0,A1,0)')}>插入 IF 示例</Button>
+              <Button onClick={() => insertToken('MAX(A1,0)')}>插入 MAX 示例</Button>
             </Space>
+            <p>
+              比较返回普通数值0/1；IF只计算选中的分支。MAX接受数值或单元格，不接受区域；金额可与普通数值零比较或加减，其余单位/币种仍须一致。
+            </p>
           </>
         )}
         {kind !== 'balance' && kind !== 'ref' && (

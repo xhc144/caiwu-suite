@@ -4,13 +4,20 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { formatPeriod } from '@caiwu/core';
 import { printHtml } from '@caiwu/print';
-import { queryClient, useCurrentPeriod, usePeriods, usePermission } from '@caiwu/web-kit';
+import {
+  queryClient,
+  useCurrentPeriod,
+  usePeriods,
+  usePermission,
+  useRequiredSession,
+} from '@caiwu/web-kit';
 import { FilterBar, PageContainer, downloadBlob, useUrlFilters } from '@caiwu/ui';
 import type { GenerateSchema } from '../shared';
 import type { z } from 'zod';
 import { api } from './api';
 import { ReportGrid } from './Grid';
 import { reportHtml } from './print';
+import { balanceDrilldown } from './drilldown';
 
 type Pending = {
   input: z.input<typeof GenerateSchema>;
@@ -18,6 +25,7 @@ type Pending = {
   links: { label: string; to: string }[];
 };
 export default function ViewPage() {
+  const session = useRequiredSession();
   const current = useCurrentPeriod();
   const [filters, setFilters] = useUrlFilters<{
     id: number;
@@ -203,16 +211,30 @@ export default function ViewPage() {
             {s.template.cells
               .filter((c) => c.kind === 'formula')
               .map((c) => {
-                const m = /BALANCE\("(\d+)"/.exec(c.source);
-                return (
-                  m && (
-                    <Link
+                const target = balanceDrilldown(
+                  c.source,
+                  s.period,
+                  session.book.startPeriod,
+                  s.includeUnposted,
+                );
+                if (target.kind === 'none') return null;
+                if (target.kind === 'blocked')
+                  return (
+                    <Alert
                       key={c.address}
-                      to={`/m/ledgers/detail?account=${m[1]}&from=${s.period}&to=${s.period}`}
-                    >
-                      {c.address} 查看科目 {m[1]} 明细
-                    </Link>
-                  )
+                      type="info"
+                      title={`${c.address} 明细穿透已暂停`}
+                      description={target.reason}
+                    />
+                  );
+                return (
+                  <Link
+                    key={c.address}
+                    to={target.href}
+                    title={`${formatPeriod(target.from)}至${formatPeriod(target.to)}；${target.includeUnposted ? '含待审核和已审核' : '仅已过账'}`}
+                  >
+                    {c.address} 查看科目 {target.account} 明细
+                  </Link>
                 );
               })}
           </Space>
@@ -230,11 +252,12 @@ export default function ViewPage() {
         onOk={() => pending && generate.mutate({ ...pending.input, confirmUnposted: true })}
       >
         <p>
-          截至所选期间有 {pending?.count ?? 0} 张未过账凭证（含草稿）。
+          本次生成检查发现 {pending?.count ?? 0} 张未过账凭证（含草稿）。
           {pending?.input.includeUnposted
             ? '继续将纳入待审核和已审核凭证，草稿仍不计入。'
             : '继续仅统计已过账凭证，这些未过账凭证不计入。'}
         </p>
+        <p>扩展取数可能覆盖报表月份之外的期间，请按下方实际处理入口核对。</p>
         <Space>
           {pending?.links.map((link) => (
             <Link key={link.to} to={link.to}>
