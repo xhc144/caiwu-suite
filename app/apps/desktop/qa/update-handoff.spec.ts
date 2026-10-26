@@ -71,6 +71,18 @@ test('健康合成账套：应用真实备份/排空退出 → Windows Shell 实
     });
     const page = await desktop.firstWindow();
     await expect(page.getByText('测试账套', { exact: true })).toBeVisible();
+    const opened = await page.evaluate(async (bookId) => {
+      const boot = (window as unknown as { __CAIWU_BOOT__: { token: string } }).__CAIWU_BOOT__;
+      const response = await fetch('/trpc/core.auth.login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-caiwu-token': boot.token },
+        body: JSON.stringify({ bookId, userCode: 'admin', password: 'admin' }),
+      });
+      const result = (await response.json()) as { result?: { data?: { token?: string } } };
+      return response.ok && typeof result.result?.data?.token === 'string';
+    }, fixture.bookId);
+    expect(opened).toBe(true);
+    record('healthy-book-opened-in-real-service');
     const { sha256 } = await mockAvailableUpdate(desktop, page, installer, version);
     expect((await page.evaluate(() => window.caiwuDesktopHost!.updates.check())).state).toBe(
       'available',
