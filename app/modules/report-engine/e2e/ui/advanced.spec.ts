@@ -2,7 +2,7 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { seedVouchers, voucherInputFromSpec } from '@caiwu/testkit';
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import { balanceFormula, emptyTemplate, type Report, type ReportSnapshot } from '../../shared';
-import { test } from '../../test/shared/e2e-fixture';
+import { test } from '../shared/e2e-fixture';
 
 const base = {
   account: '1001',

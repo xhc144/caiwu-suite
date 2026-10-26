@@ -2,7 +2,7 @@ import { expect } from '@playwright/test';
 import { seedVouchers } from '@caiwu/testkit';
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import { balanceFormula, emptyTemplate, type Report } from '../../shared';
-import { test } from '../../test/shared/e2e-fixture';
+import { test } from '../shared/e2e-fixture';
 
 test('w_bb_def_help 可选父科目1002并按末级分向，不能悄悄选择首个下级100201', async ({
   page,
