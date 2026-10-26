@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zId, zPeriod } from '@caiwu/core';
+import { isPeriod, zId, zPeriod } from '@caiwu/core';
 
 export const CodeSchema = z
   .string()
@@ -45,7 +45,45 @@ export const UNIT_LABELS: Record<z.infer<typeof UnitSchema>, string> = {
   foreignCents: '外币金额（分，显示外币元）',
   quantity: '数量',
 };
-/** 唯一取数签名；向导与服务端使用同一输入约束。没有未核实的原版别名。 */
+const ReportPeriodSchema = z.union([
+  z.enum([
+    'current',
+    'yearStart',
+    'previousYear',
+    'previousYearStart',
+    'previousMonth',
+    'previousYearEnd',
+    'previousYearSameMonth',
+  ]),
+  z
+    .string()
+    .regex(/^\d{6}$/)
+    .refine((v) => isPeriod(Number(v)), '期间须为有效的YYYYMM'),
+]);
+/**
+ * 第八参数是本对象的 JSON 字符串；省略时 from/to 各自默认 current。
+ * 旧七参数仅保证语法及序列化不变；同样检查真实覆盖期间，未建期间不当作零。
+ */
+export const BalanceOptionsSchema = z
+  .object({
+    from: ReportPeriodSchema.optional(),
+    to: ReportPeriodSchema.optional(),
+    /** 仅用于发生额：excludePnl 只排除真实 pnl；exclude 排除全部非 NULL 标记。 */
+    closing: z.enum(['include', 'exclude', 'excludePnl']).optional(),
+    /** 逐末级科目及 groupBy 分组取正借方/正贷方余额，再汇总；不先抵销。 */
+    side: z.enum(['net', 'debit', 'credit']).optional(),
+    groupBy: z
+      .array(DimensionSchema.exclude(['none', 'cashflow']))
+      .max(4)
+      .optional(),
+  })
+  .strict()
+  .superRefine((v, ctx) => {
+    if (v.groupBy && new Set(v.groupBy).size !== v.groupBy.length)
+      ctx.addIssue({ code: 'custom', message: '明细分组不能重复' });
+  });
+export type BalanceOptions = z.infer<typeof BalanceOptionsSchema>;
+/** 唯一取数签名；旧七参数与增量选项共用约束。没有未核实的原版别名。 */
 export const BalanceFunctionSchema = z
   .object({
     account: z.string().regex(/^\d{1,20}$/, '请选择科目编码'),
@@ -55,6 +93,7 @@ export const BalanceFunctionSchema = z
     direction: z.enum(['signed', 'normal']),
     dimension: DimensionSchema,
     item: z.string().max(40),
+    options: BalanceOptionsSchema.optional(),
   })
   .strict()
   .superRefine((v, ctx) => {
@@ -71,6 +110,21 @@ export const BalanceFunctionSchema = z
       !['debit', 'credit', 'ytdDebit', 'ytdCredit'].includes(v.metric)
     )
       ctx.addIssue({ code: 'custom', message: '现金流量项目仅支持发生额，不臆造期初项目分配' });
+    if (
+      v.options?.closing &&
+      v.options.closing !== 'include' &&
+      ['opening', 'closing'].includes(v.metric)
+    )
+      ctx.addIssue({ code: 'custom', message: '排除结转仅支持发生额，余额必须保留真实账面结转' });
+    if (v.options?.side && v.options.side !== 'net') {
+      if (!['opening', 'closing'].includes(v.metric) || v.unit !== 'cents')
+        ctx.addIssue({ code: 'custom', message: '明细借贷重分类仅支持本币期初或期末余额' });
+      if (v.direction !== 'signed')
+        ctx.addIssue({
+          code: 'custom',
+          message: '明细借贷重分类须使用signed方向；结果为所选方向的正数',
+        });
+    }
   });
 export type BalanceFunction = z.infer<typeof BalanceFunctionSchema>;
 export const BALANCE_ARGUMENTS = [
@@ -84,7 +138,9 @@ export const BALANCE_ARGUMENTS = [
 ] as const;
 export function balanceFormula(raw: BalanceFunction) {
   const v = BalanceFunctionSchema.parse(raw);
-  return `BALANCE(${BALANCE_ARGUMENTS.map((key) => JSON.stringify(v[key])).join(',')})`;
+  const args = BALANCE_ARGUMENTS.map((key) => JSON.stringify(v[key]));
+  if (v.options) args.push(JSON.stringify(JSON.stringify(v.options)));
+  return `BALANCE(${args.join(',')})`;
 }
 export function columnName(col: number): string {
   let out = '';
