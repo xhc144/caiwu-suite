@@ -379,12 +379,62 @@ test('M15 B/C：Excel模板与逐行导入→重导幂等→九项报表/导出/
       expect(check.worksheets[0]!.rowCount).toBe(2);
     }
     if (kind === 'labels') {
+      // 捕获 load 先于打印驱动的 onload，记录原生事件中的内容，兼容立即清理的驱动。
+      const printed = await page.evaluateHandle(() => {
+        const events: {
+          phase: string;
+          trusted: boolean;
+          html: string;
+          text: string;
+          pageCss: string;
+        }[] = [];
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations)
+            for (const node of mutation.addedNodes) {
+              if (!(node instanceof HTMLIFrameElement)) continue;
+              node.addEventListener(
+                'load',
+                () => {
+                  for (const phase of ['beforeprint', 'afterprint'])
+                    node.contentWindow!.addEventListener(
+                      phase,
+                      (event) => {
+                        const doc = node.contentDocument!;
+                        events.push({
+                          phase,
+                          trusted: event.isTrusted,
+                          html: doc.documentElement.outerHTML,
+                          text: doc.body.textContent!,
+                          pageCss: Array.from(doc.styleSheets)
+                            .flatMap((sheet) => Array.from(sheet.cssRules))
+                            .filter((rule) => rule.type === CSSRule.PAGE_RULE)
+                            .map((rule) => rule.cssText)
+                            .join('\n'),
+                        });
+                        if (phase === 'afterprint') observer.disconnect();
+                      },
+                      { once: true },
+                    );
+                },
+                { capture: true, once: true },
+              );
+            }
+        });
+        observer.observe(document.body, { childList: true });
+        return events;
+      });
       await page.getByRole('button', { name: '打印当前报表' }).click();
-      const frame = page.locator('iframe');
-      await frame.waitFor({ state: 'attached' });
-      const html = await frame.getAttribute('srcdoc');
-      expect(html).toContain('88mm 51mm');
-      expect(html).toContain('期初设备一');
+      await expect
+        .poll(() => printed.evaluate((events) => events.map((event) => event.phase)))
+        .toEqual(['beforeprint', 'afterprint']);
+      const printEvents = await printed.jsonValue();
+      expect(printEvents.every((event) => event.trusted)).toBe(true);
+      expect(printEvents[0]!.html).toContain('88mm 51mm');
+      expect(printEvents[0]!.html).toContain('期初设备一');
+      expect(printEvents[0]!.text).toContain('期初设备一');
+      expect(printEvents[0]!.pageCss).toContain('88mm 51mm');
+      await expect(page.locator('iframe')).toHaveCount(0);
+      await printed.dispose();
     }
   }
   await page.goto('/m/fixed-assets/batch');
