@@ -15,7 +15,8 @@
 | ClosedThroughMonth | 原样保留，不解锁历史 | StartMonth - 1 |
 | 原审计事件 | 原顺序保留，包括已删除凭证的历史引用 | 不复制 |
 | 复制来源审计 | 追加 `BookCopiedAsNew` | 唯一初始事件为 `BookCopiedAsNew` |
-| Revision | 新库 Create=0，一次 Write 后为 1 | 同左 |
+| Revision | 无模块事件时为 1；含模块事件时为源 revision+1，使旧 receipt.Revision 严格低于新版本 | 1；不复制模块事件 |
+| 权威模块事件/来源收据 | 逐字保留，来源占用仍生效；内嵌源 BookId 仅为历史 | 不复制，不能声称模块完整保留 |
 
 复制来源事件含源 BookId、名称、revision、完整有序 DTO 的 SHA256、范围及新 BookId，不含文件内容或 SQL。原 revision 不是新库的并发版本。凭证 ID 和旧审计 ID 的语义在当前单文件账套契约内，不重映射；若将来引入跨账套全局引用，需要新增经过审核的契约。
 
@@ -28,7 +29,7 @@
 1. `Preview(persistedSnapshot, request)` 深冻结全部列表及分录，返回可核对计划：新身份、名称、路径、范围、源版本、目标版本、数量、字段规则和限制。它只检查路径并读取传入的已保存快照，不创建文件、不打开 SQLite、不调用宿主策略。
 2. 宿主明确确认该计划。`BookCopyWorkflow` 在任何输入变动后撤销确认；没有预览/勾选确认不能执行，忙时拒绝重复提交和改输入，成功后不能再执行同一工作流。
 3. `Execute` 复用 Storage 的只读源 `RestoreBackup`，在目标目录下的独占随机临时子目录取得一致快照，包含已提交 WAL，排除未提交数据。只打开这个临时副本。按完整有序 DTO 指纹与预览比较，源变化（即使 revision 被错误地保持不变）也拒绝执行。
-4. 用 Storage.Create 创建另一份规范新库，通过公开 Write 一次保存目标快照。完整性检查、逐字段指纹回读后，再用已有 BackupTo 得到独立 DELETE-journal 文件，关闭并重新打开核对全部字段。没有写源库、重写 Core 约束或复用旧数据库 schema。
+4. 用 Storage.CreateFromSnapshot 将确认的完整目标快照原子创建为另一份规范新库；含模块事件的全量复制从源 revision+1 开始，历史收据版本不充当新账套 token。完整性检查、逐字段指纹回读后，再用已有 BackupTo 得到独立 DELETE-journal 文件，关闭并重新打开核对全部字段。没有写源库、重写 Core 约束或复用旧数据库 schema。
 5. 最后重新检查目标及 `-wal/-shm/-journal` 和宿主策略，再通过 `NewBookPublication` 发布。Unix 用 `link(2)` 将已完整核对的同文件系统暂存 inode 发布到新名称，目标存在时原子失败；不支持硬链接的文件系统安全失败，不回退 rename/copy。Windows 使用不带 `MOVEFILE_REPLACE_EXISTING` 的 `File.Move(stage,destination,false)`，依据[固定 runtime 源码](https://github.com/dotnet/runtime/blob/v10.0.13/src/libraries/Common/src/Interop/Windows/Kernel32/Interop.MoveFileEx.cs)，不声称本轮已做 Windows 实测。取消在同步 Storage 操作之间及发布前处理；Storage 自身锁等待可达 10 秒。发布后才到达的取消按成功处理。
 6. 清理只触及本次临时子目录内预留的 captured/candidate/ready 及其日志，不删源文件、备份或已有目标；Unix 成功后删除自己的 ready 硬链接不会删除已发布的目标，失败方也只清自身暂存。Windows 成功移动后 ready 名称已不存在。不递归删除未知文件。清理失败不掩盖原异常，错误的 `Data["BookCopyCleanupWarnings"]` 带提示；成功时在结果 `CleanupWarnings` 带提示。
 

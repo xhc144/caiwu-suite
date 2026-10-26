@@ -27,7 +27,9 @@ public sealed class BookCopyPlan
         Rules = Array.AsReadOnly(new[]
         {
             new BookCopyFieldRule("Book.Id / Name / CreatedAt", "使用预览中列明的新身份、新名称和新建时间。"),
-            new BookCopyFieldRule("Revision", "目标由 Storage.Create 的 0 经一次原子 Write 变为 1；源版本仅记入复制来源审计。"),
+            new BookCopyFieldRule("Revision", target.Revision == 1
+                ? "新账套从版本 1 开始，源 token 不适用于新 BookId。"
+                : "完整复制包含模块历史：新版本为源版本加一，所有历史收据版本均小于新版本；旧收据和内嵌旧 BookId 不是新账套 token。"),
             new BookCopyFieldRule("Regime / TemplateVersion / FiscalYear / StartMonth", "原样保留；不迁移制度、不滚年、不把期末转为期初。"),
             new BookCopyFieldRule("Accounts", "保留顺序、编码、名称、父级、方向、启停及原始期初金额。"),
             new BookCopyFieldRule("Vouchers", request.Scope == BookCopyScope.FullLedger
@@ -37,7 +39,10 @@ public sealed class BookCopyPlan
                 ? "保留原已结账期间，不解锁历史。" : "重置为 StartMonth - 1，新账套尚未结账。"),
             new BookCopyFieldRule("AuditEvents", request.Scope == BookCopyScope.FullLedger
                 ? "完整保留原事件及已删除凭证的历史引用，追加一条 BookCopiedAsNew 来源事件。"
-                : "不复制旧事件，仅写入一条 BookCopiedAsNew 来源事件。")
+                : "不复制旧事件、模块文档或来源收据，仅写入一条 BookCopiedAsNew 来源事件。"),
+            new BookCopyFieldRule("Module journal", request.Scope == BookCopyScope.FullLedger
+                ? "逐字保留模块事件/未知 JSON/来源占用；内嵌源 BookId 仅作历史，不自动重写或授予新账套写入权。模块需显式核对身份。"
+                : "本范围不包含模块文档、模块凭证和来源占用；不得称作模块完整备份。")
         });
         Notices = Array.AsReadOnly(new[]
         {

@@ -36,7 +36,8 @@ function Invoke-EvidenceStep([string]$Name, [scriptblock]$Action) {
 try {
     foreach ($item in @(
         @{ name='core'; path='tests/Caiwu.Core.Tests/Caiwu.Core.Tests.csproj' },
-        @{ name='sqlite'; path='tests/Caiwu.Persistence.Sqlite.Tests/Caiwu.Persistence.Sqlite.Tests.csproj' }
+        @{ name='sqlite'; path='tests/Caiwu.Persistence.Sqlite.Tests/Caiwu.Persistence.Sqlite.Tests.csproj' },
+        @{ name='book-copy'; path='tests/Caiwu.BookTools.Tests/Caiwu.BookTools.Tests.csproj' }
     )) {
         $project = $item.path; $name = $item.name
         Invoke-EvidenceStep $name {

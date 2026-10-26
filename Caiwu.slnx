@@ -35,6 +35,7 @@
     <Project Path="src/Caiwu.Summaries/Wpf/Caiwu.Summaries.Wpf.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Caiwu.BookTools.Tests/Caiwu.BookTools.Tests.csproj" />
     <Project Path="tests/ParityAcceptance/Caiwu.ParityAcceptance.csproj" />
     <Project Path="tests/Caiwu.Nonprofit.Tests/Caiwu.Nonprofit.Tests.csproj" />
   </Folder>

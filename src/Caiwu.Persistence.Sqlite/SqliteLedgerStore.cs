@@ -25,7 +25,19 @@ public sealed class SqliteLedgerStore : ILedgerStore
     {
         ArgumentNullException.ThrowIfNull(book);
         ArgumentNullException.ThrowIfNull(accounts);
-        var initial = CopySnapshot(new(0, book, accounts, [], []));
+        return CreateFromSnapshot(path, new(0, book, accounts, [], []));
+    }
+
+    /// <summary>
+    /// Publishes a complete snapshot into a new file only. Used by explicit identity-changing
+    /// copies whose historical module receipts must remain below the new book revision.
+    /// It never changes an existing file or skips revision CAS on an existing ledger.
+    /// </summary>
+    public static SqliteLedgerStore CreateFromSnapshot(string path, LedgerSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        if (snapshot.Revision < 0) throw new LedgerValidationException("初始账套版本不能为负数。");
+        var initial = CopySnapshot(snapshot);
         var destination = NewDestination(path);
         PublishNew(destination, stage =>
         {
@@ -36,9 +48,9 @@ public sealed class SqliteLedgerStore : ILedgerStore
                 Execute(db, transaction, """
                     INSERT INTO ledger (singleton,revision,book_id,name,regime,template_version,
                         fiscal_year,start_month,closed_through_month,created_at)
-                    VALUES (1, 0, $id, $name, $regime, $template,
+                    VALUES (1, $revision, $id, $name, $regime, $template,
                         $year, $start, $closed, $created)
-                    """, BookParameters(initial.Book));
+                    """, BookParameters(initial.Book).Append(("$revision", (object?)initial.Revision)).ToArray());
                 InsertContents(db, transaction, initial);
                 AssertReadback(initial, ReadContents(db, transaction));
                 transaction.Commit();
@@ -119,16 +131,21 @@ public sealed class SqliteLedgerStore : ILedgerStore
                 """, ("$next", next.Revision), ("$expected", expectedRevision));
             if (changed != 1)
                 throw new StoreConcurrencyException("账套已被其他操作修改，请刷新后重试。");
+            // Check CAS first: a concurrent winner's newly appended module journal must
+            // produce a concurrency conflict, not be mistaken for an attempted truncation.
+            var retainedAuditIds = AssertModuleJournalRetained(ReadContents(connection, transaction), next);
+            if (next.AuditEvents.Any(IsModuleJournal))
+                Execute(connection, transaction, Schema.ModuleJournalProtection);
             Execute(connection, transaction, """
                 UPDATE ledger SET book_id=$id, name=$name, regime=$regime, template_version=$template,
                     fiscal_year=$year, start_month=$start, closed_through_month=$closed, created_at=$created
                 WHERE singleton=1;
                 DELETE FROM voucher_lines;
                 DELETE FROM vouchers;
-                DELETE FROM audit_events;
+                DELETE FROM audit_events WHERE action NOT GLOB 'ParityModuleCommit.*';
                 DELETE FROM accounts;
                 """, BookParameters(next.Book));
-            InsertContents(connection, transaction, next);
+            InsertContents(connection, transaction, next, retainedAuditIds);
             // Constraints/triggers can silently ignore, replace or alter rows. Verify every
             // DTO field using this transaction's uncommitted view, before committing anything.
             AssertReadback(next, ReadContents(connection, transaction));
@@ -384,7 +401,25 @@ public sealed class SqliteLedgerStore : ILedgerStore
             Equal(expected.AuditEvents[i].At.EqualsExact(actual.AuditEvents[i].At), "审计时间及偏移");
     }
 
-    private static void InsertContents(SqliteConnection db, SqliteTransaction transaction, LedgerSnapshot snapshot)
+    private static bool IsModuleJournal(AuditEvent audit) => audit.Action.StartsWith("ParityModuleCommit.", StringComparison.Ordinal);
+
+    private static HashSet<Guid> AssertModuleJournalRetained(LedgerSnapshot before, LedgerSnapshot next)
+    {
+        var retained = new HashSet<Guid>();
+        for (var i = 0; i < before.AuditEvents.Count; i++)
+        {
+            var old = before.AuditEvents[i];
+            if (!IsModuleJournal(old)) continue;
+            if (i >= next.AuditEvents.Count || next.AuditEvents[i] != old ||
+                !next.AuditEvents[i].At.EqualsExact(old.At))
+                throw new LedgerValidationException("模块事件包含权威业务数据，不能裁剪、重排或改写；请使用保留完整模块日志的客户端。");
+            retained.Add(old.Id);
+        }
+        return retained;
+    }
+
+    private static void InsertContents(SqliteConnection db, SqliteTransaction transaction, LedgerSnapshot snapshot,
+        IReadOnlySet<Guid>? retainedAuditIds = null)
     {
         for (var i = 0; i < snapshot.Accounts.Count; i++)
         {
@@ -422,6 +457,7 @@ public sealed class SqliteLedgerStore : ILedgerStore
         for (var i = 0; i < snapshot.AuditEvents.Count; i++)
         {
             var a = snapshot.AuditEvents[i];
+            if (retainedAuditIds?.Contains(a.Id) == true) continue;
             Execute(db, transaction, """
                 INSERT INTO audit_events (id,ordinal,at,operator_name,action,voucher_id,detail)
                 VALUES ($id,$ordinal,$at,$operator,$action,$voucher,$detail)

@@ -17,6 +17,7 @@ internal static class ParityModuleJournal
     private static readonly JsonSerializerOptions Options = new()
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        RespectRequiredConstructorParameters = true,
         MaxDepth = 64
     };
 

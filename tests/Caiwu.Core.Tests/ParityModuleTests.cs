@@ -247,4 +247,20 @@ public sealed class ParityModuleTests
         Assert.Equal(2, state.Ledger.Vouchers[0].Lines.Count);
         Assert.Equal("{\"keep\":true}", state.Modules[0].Documents[0].PayloadJson);
     }
+
+    [Theory]
+    [InlineData("{\"Version\":1,\"ModuleId\":\"cashier\",\"Changes\":[{\"DocumentId\":\"x\"}],\"Receipt\":null}")]
+    [InlineData("{\"Version\":1,\"ModuleId\":\"cashier\",\"Changes\":[]}")]
+    [InlineData("{\"Version\":1,\"ModuleId\":\"cashier\",\"Changes\":[{\"DocumentId\":\"x\",\"Document\":{\"DocumentId\":\"x\",\"SchemaVersion\":1}}],\"Receipt\":null}")]
+    public void MissingJournalFieldsCannotBecomeImplicitDeletionOrNullReceipt(string damaged)
+    {
+        using var store = new MemoryLedgerStore(Initial());
+        var service = new LedgerService(store);
+        service.SaveModuleDocuments(new("cashier", Context(service), [Change("x", "{\"keep\":true}")]), "甲");
+        var before = store.Read();
+        store.Write(before with { Revision = 2, AuditEvents = before.AuditEvents.Append(
+            new(Guid.NewGuid(), DateTimeOffset.UtcNow, "甲", "ParityModuleCommit.v1", null, damaged)).ToArray() }, 1);
+        Assert.Throws<LedgerValidationException>(() => service.GetModuleSnapshot());
+        Assert.Equal(2, store.SuccessfulWrites);
+    }
 }

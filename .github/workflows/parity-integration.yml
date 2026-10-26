@@ -8,6 +8,7 @@ on:
       - 'tests/ParityAcceptance/**'
       - 'tests/Caiwu.Core.Tests/**'
       - 'tests/Caiwu.Persistence.Sqlite.Tests/**'
+      - 'tests/Caiwu.BookTools.Tests/**'
       - 'Directory.Build.props'
       - 'global.json'
   workflow_dispatch:

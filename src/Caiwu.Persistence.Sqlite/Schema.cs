@@ -60,6 +60,17 @@ internal static class Schema
             voucher_id TEXT,
             detail TEXT NOT NULL
         ) STRICT;
-        """;
+        """ + ModuleJournalProtection;
     // Audit references intentionally survive deletion of a draft voucher.
+
+    // Authoritative module data is not disposable presentation audit. An older writer that
+    // deletes/reinserts every audit row must fail atomically instead of erasing module state.
+    internal const string ModuleJournalProtection = """
+        CREATE TRIGGER IF NOT EXISTS preserve_parity_module_delete
+        BEFORE DELETE ON audit_events WHEN OLD.action GLOB 'ParityModuleCommit.*'
+        BEGIN SELECT RAISE(ABORT, 'Module journal is authoritative; a parity-aware writer is required.'); END;
+        CREATE TRIGGER IF NOT EXISTS preserve_parity_module_update
+        BEFORE UPDATE ON audit_events WHEN OLD.action GLOB 'ParityModuleCommit.*'
+        BEGIN SELECT RAISE(ABORT, 'Module journal events are immutable.'); END;
+        """;
 }

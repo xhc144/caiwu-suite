@@ -1,5 +1,11 @@
 # BookTools 交接
 
+## 2026-10-26 parity integration 增量
+
+父任务将本模块本轮接口兼容修正独占授予 integration。全量复制遇到权威 ParityModuleCommit 历史时保留全部事件原文、来源占用和未知字段，新身份初始 revision=source.Revision+1，旧 receipt.Revision 和 payload 内旧 BookId 均不是新 token。通过 Storage.CreateFromSnapshot 原子创建完整候选，不松动既有库 CAS。科目及期初范围不包含模块文档/来源收据/凭证，预览规则明确显示排除。无模块事件的普通复制仍从1开始。
+
+本轮新增 `tests/Caiwu.BookTools.Tests`，主基线未包含旧交接所述41项测试，不能把旧结果冒作本轮。当前5项实际合成测试覆盖 receipt=2 的真实复制路径/旧 token 拒绝/来源防重/未知 JSON、部分范围排除、普通复制不覆盖、完整非零 revision 新快照发布，以及保持旧错误形状的完整性拒绝。最新 source SHA 与真实 Windows 结果见 docs/parity-handoffs/integration.md；以下为历史材料。
+
 ## 当前结果：并发发布 P1 已按统一规则修复
 
 2026-10-25 09:34 UTC：两个独立 BookCopyService、不同合成源、相同全新目标，在最终 `NewDestination` 检查之后经宿主 `validateDestination` 第二次调用 Barrier 同步放行。30 轮中 10 轮两方都返回成功；两结果包含不同 BookId，最终 SQLite 只保留其中一个。两源文件 SHA256 均未变，双方临时目录均清理。`File.Move(overwrite:false)` 的并发保证不成立；旧测试结果不足以证明此项。

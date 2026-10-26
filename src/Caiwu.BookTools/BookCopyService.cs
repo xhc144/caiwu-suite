@@ -40,6 +40,12 @@ public sealed class BookCopyService
         var destination = CopyPaths.NewDestination(sourcePath, request.DestinationPath);
         request = request with { SourcePath = sourcePath, DestinationPath = destination, NewBookName = name, OperatorName = actor };
         var full = request.Scope == BookCopyScope.FullLedger;
+        var hasModuleJournal = source.AuditEvents.Any(a => a.Action.StartsWith("ParityModuleCommit.", StringComparison.Ordinal));
+        if (full && hasModuleJournal && source.Revision == long.MaxValue)
+            throw new LedgerValidationException("源版本已达上限，不能安全建立含历史模块收据的新账套版本。");
+        // Keep historical receipt revisions strictly below the new book's initial revision.
+        // Their embedded old identities remain provenance, never a new mutation context.
+        var targetRevision = full && hasModuleJournal ? source.Revision + 1 : 1;
         var at = clock.GetUtcNow();
         var book = source.Book with
         {
@@ -51,9 +57,11 @@ public sealed class BookCopyService
             {
                 SourceBookId = source.Book.Id, SourceName = source.Book.Name,
                 SourceRevision = source.Revision, SourceFingerprint = SnapshotData.Fingerprint(source),
-                Scope = request.Scope.ToString(), NewBookId = book.Id
+                Scope = request.Scope.ToString(), NewBookId = book.Id, NewRevision = targetRevision,
+                ModuleJournalIncluded = full && hasModuleJournal,
+                ModulePayloadBookIdsRebound = false
             }));
-        var target = SnapshotData.Freeze(new LedgerSnapshot(1, book, source.Accounts,
+        var target = SnapshotData.Freeze(new LedgerSnapshot(targetRevision, book, source.Accounts,
             full ? source.Vouchers : [], full ? source.AuditEvents.Append(provenance).ToArray() : [provenance]));
         return new BookCopyPlan(request, source, target);
     }
@@ -84,9 +92,8 @@ public sealed class BookCopyService
                 SnapshotData.RequireMatch(confirmedPlan.Source, captured.Read(), "源账套已变化，必须重新预览并确认后再复制。");
             progress?.Report(BookCopyStage.SnapshotCaptured);
             cancellationToken.ThrowIfCancellationRequested();
-            using (var target = SqliteLedgerStore.Create(work.Candidate, confirmedPlan.NewBook, confirmedPlan.Target.Accounts))
+            using (var target = SqliteLedgerStore.CreateFromSnapshot(work.Candidate, confirmedPlan.Target))
             {
-                target.Write(confirmedPlan.Target, 0);
                 target.CheckIntegrity();
                 SnapshotData.RequireMatch(confirmedPlan.Target, target.Read(), "新账套保存回读不一致，复制未发布。");
                 progress?.Report(BookCopyStage.TargetSaved);
@@ -109,7 +116,7 @@ public sealed class BookCopyService
             NewBookPublication.Publish(work.Ready, destination);
             // Publication is the last fallible functional step; cancellation after it means success.
             var warnings = work.Cleanup();
-            return new(confirmedPlan.PlanId, destination, confirmedPlan.NewBook, 1,
+            return new(confirmedPlan.PlanId, destination, confirmedPlan.NewBook, confirmedPlan.Target.Revision,
                 confirmedPlan.TargetCounts, confirmedPlan.SourceFingerprint, savedFingerprint, warnings);
         }
         catch (Exception error)
