@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { formatPeriod, productName, type BookSummary } from '@caiwu/core';
 import { coreApi, queryClient, useSession } from '@caiwu/web-kit';
-import { filterBooks } from '../shared';
+import { filterBooks, moveBookSelection, selectedBook } from '../shared';
 import Wizard from './Wizard';
 import { switchBook } from './session';
 
@@ -41,10 +41,15 @@ function PickerContent() {
   const navigate = useNavigate();
   const books = useQuery(coreApi.books.list.queryOptions());
   const [keyword, setKeyword] = useState('');
-  const [selected, setSelected] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [missing, setMissing] = useState('');
   const rows = filterBooks(books.data ?? [], keyword);
+  const selected = selectedBook(rows, selectedId);
+  const firstId = rows[0]?.id;
+  useEffect(() => {
+    if (selectedId === null && firstId) setSelectedId(firstId);
+  }, [firstId, selectedId]);
   const enter = async (b: BookSummary) => {
     const latest = await books.refetch();
     if (latest.isError) {
@@ -72,17 +77,21 @@ function PickerContent() {
         <Space style={{ width: '100%', marginBottom: 16 }}>
           <Input
             aria-label="搜索账套"
-            placeholder="搜索名称、单位或会计制度；↑↓选择，Enter进入"
+            placeholder="搜索编号、名称、单位或会计制度；↑↓选择，Enter进入"
             value={keyword}
             onChange={(e) => {
               setKeyword(e.target.value);
-              setSelected(0);
+              setSelectedId(null);
+              setMissing('');
             }}
             onKeyDown={(e) => {
               if (['ArrowDown', 'ArrowUp', 'Enter'].includes(e.key)) e.preventDefault();
-              if (e.key === 'ArrowDown') setSelected(Math.min(selected + 1, rows.length - 1));
-              if (e.key === 'ArrowUp') setSelected(Math.max(selected - 1, 0));
-              if (e.key === 'Enter' && rows[selected]) void enter(rows[selected]);
+              if (e.key === 'ArrowDown') setSelectedId(moveBookSelection(rows, selectedId, 1));
+              if (e.key === 'ArrowUp') setSelectedId(moveBookSelection(rows, selectedId, -1));
+              if (e.key === 'Enter') {
+                if (selected) void enter(selected);
+                else if (selectedId) setMissing('原选账套已不在当前结果中，请重新选择账套后进入');
+              }
             }}
             style={{ width: 560, maxWidth: '70vw' }}
           />
@@ -95,9 +104,10 @@ function PickerContent() {
           loading={books.isLoading}
           dataSource={rows}
           pagination={false}
-          rowClassName={(_, i) => (i === selected ? 'ant-table-row-selected' : '')}
-          onRow={(b, i) => ({
-            onClick: () => setSelected(i ?? 0),
+          rowClassName={(b) => (b.id === selected?.id ? 'ant-table-row-selected' : '')}
+          onRow={(b) => ({
+            'aria-selected': b.id === selected?.id,
+            onClick: () => setSelectedId(b.id),
             onDoubleClick: () => void enter(b),
           })}
           locale={{
@@ -110,7 +120,20 @@ function PickerContent() {
             ),
           }}
           columns={[
-            { title: '账套名称', dataIndex: 'name' },
+            {
+              title: '账套名称 / 编号',
+              render: (_, b) => (
+                <>
+                  <div>{b.name}</div>
+                  <Typography.Text
+                    type="secondary"
+                    copyable={{ tooltips: ['复制账套编号', '编号已复制'] }}
+                  >
+                    {b.id}
+                  </Typography.Text>
+                </>
+              ),
+            },
             { title: '单位', dataIndex: 'orgName' },
             { title: '会计制度', dataIndex: 'templateName' },
             { title: '产品', render: (_, b) => productName(b.product) },

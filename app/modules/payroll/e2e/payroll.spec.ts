@@ -336,11 +336,51 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       expect((await withServices(runtime, bookId, (svc) => svc.periods.get(202601)))!.status).toBe(
         'open',
       );
+      const lockedBatch = await callApi<Batch>(
+        request,
+        'm.payroll.batch',
+        { id },
+        { token, method: 'GET' },
+      );
+      const lockedVoucher = await withServices(runtime, bookId, (svc) =>
+        svc.vouchers.get(voucher.id),
+      );
+      const balanceBefore = await withServices(runtime, bookId, (svc) =>
+        svc.ledger.trialBalance(202601, 202601),
+      );
+      let reopenRequests = 0;
+      page.on('request', (r) => {
+        if (r.url().includes('m.payroll.reopen')) reopenRequests++;
+      });
       await page.getByRole('button', { name: '工资反结账', exact: true }).click();
-      await page.getByRole('button', { name: '确定', exact: true }).click();
+      const confirmation = page
+        .locator('.ant-popconfirm')
+        .filter({ hasText: '确认仅回退最近已结月份及未修改的下月传递数据？' });
+      await expect(confirmation).toBeVisible();
+      // rc-motion 的 appear 阶段仍有 transform；等真实动画完成后使用普通指针点击。
+      await confirmation.evaluate(async (element) => {
+        await Promise.all(
+          element.getAnimations({ subtree: true }).map((animation) => animation.finished),
+        );
+      });
+      await expect(confirmation).not.toHaveClass(/ant-zoom[^\s]*(?:appear|enter|leave)/);
+      await confirmation.getByRole('button', { name: '确定', exact: true }).click();
       await expect(
         page.getByText('该工资来源凭证已审核或过账，不能反结账', { exact: true }),
       ).toBeVisible();
+      expect(reopenRequests).toBe(1);
+      expect(
+        await callApi<Batch>(request, 'm.payroll.batch', { id }, { token, method: 'GET' }),
+      ).toEqual(lockedBatch);
+      expect(
+        await callApi<Batch>(request, 'm.payroll.batch', { id: feb.id }, { token, method: 'GET' }),
+      ).toEqual(feb);
+      expect(await withServices(runtime, bookId, (svc) => svc.vouchers.get(voucher.id))).toEqual(
+        lockedVoucher,
+      );
+      expect(
+        await withServices(runtime, bookId, (svc) => svc.ledger.trialBalance(202601, 202601)),
+      ).toEqual(balanceBefore);
       await page.getByRole('link', { name: /发放凭证/ }).click();
       await expect(page).toHaveURL(new RegExp(`/m/voucher-entry/edit\\?id=${voucher.id}$`));
     } finally {
