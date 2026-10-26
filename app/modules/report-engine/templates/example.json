@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "code": "901",
+  "name": "现金与发生额示例（非法定报表）",
+  "rows": 4,
+  "cols": 2,
+  "readOnly": true,
+  "cells": [
+    {
+      "address": "A1",
+      "kind": "text",
+      "source": "库存现金期末余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B1",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A2",
+      "kind": "text",
+      "source": "本期借方发生额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B2",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "unit": "cents",
+      "currency": "CNY"
+    }
+  ],
+  "merges": [],
+  "styles": [],
+  "rowHeights": [],
+  "colWidths": [{ "col": 1, "width": 240 }],
+  "checks": [],
+  "accounting": {
+    "defaultScope": "posted",
+    "sign": "debit-positive",
+    "moneyUnit": "cents",
+    "rounding": "half-up"
+  }
+}
