@@ -431,6 +431,74 @@ describe('五类共享辅助档案', () => {
     await api.dimensions.remove({ id: child.id, confirmed: true });
     expect((await app.svc.dimensions.get(root.id))!.isLeaf).toBe(true);
   });
+  it.each([false, true])(
+    'w_xt_bmwh / w_xt_dwwh_fj：分级规则不能将根档案移到第二级，已有下级=%s；拒绝无变化且可恢复维护',
+    async (withChildren) => {
+      const type = 'department' as const;
+      const originalScheme = [2, 2, 2];
+      const incompatibleScheme = [1, 1, 2, 2, 2];
+      await api.dimensions.setScheme({ type, scheme: originalScheme });
+      const root = (await app.svc.dimensions.getByCode(type, '01'))!;
+      const otherRoot = (await app.svc.dimensions.getByCode(type, '02'))!;
+      if (withChildren) {
+        const child = await api.dimensions.save({
+          type,
+          code: '0101',
+          name: '行政一部',
+          parentId: root.id,
+        });
+        await api.dimensions.save({
+          type,
+          code: '010101',
+          name: '行政一组',
+          parentId: child.id,
+        });
+      }
+      const itemsBefore = await app.svc.dimensions.items(type);
+      const settingsBefore = await app.svc.db
+        .selectFrom('book_setting')
+        .selectAll()
+        .where('scope', '=', 'masterdata')
+        .orderBy('key')
+        .execute();
+      await code(
+        api.dimensions.setScheme({ type, scheme: incompatibleScheme }),
+        'DIMENSION_SCHEME',
+      );
+      expect(await api.dimensions.scheme({ type })).toEqual(originalScheme);
+      expect(await app.svc.dimensions.items(type)).toEqual(itemsBefore);
+      expect(
+        await app.svc.db
+          .selectFrom('book_setting')
+          .selectAll()
+          .where('scope', '=', 'masterdata')
+          .orderBy('key')
+          .execute(),
+      ).toEqual(settingsBefore);
+
+      // 模拟修复前已保存的不兼容配置；恢复只检查目标规则，不改动已有档案。
+      await app.svcFor('masterdata').settings.set('scheme:department', incompatibleScheme);
+      await code(
+        api.dimensions.save({ ...otherRoot, type, name: '待恢复部门' }),
+        'DIMENSION_PARENT',
+      );
+      await api.dimensions.setScheme({ type, scheme: originalScheme });
+      expect(await app.svc.dimensions.items(type)).toEqual(itemsBefore);
+      const renamed = await api.dimensions.save({ ...root, type, name: '行政管理部' });
+      expect(renamed).toMatchObject({ id: root.id, parentId: null, name: '行政管理部' });
+      const disabled = await api.dimensions.save({ ...otherRoot, type, disabled: true });
+      expect(disabled).toMatchObject({ id: otherRoot.id, parentId: null, disabled: true });
+      await api.dimensions.save({ ...disabled, type, disabled: false });
+
+      const beforeImport = await app.svc.dimensions.items(type);
+      const exported = await api.excel.export({ kind: 'dimensions', type });
+      const input = { ...exported, kind: 'dimensions' as const, type };
+      expect((await api.excel.preview(input)).valid).toBe(true);
+      await api.excel.commit({ ...input, confirmations: ['import'] });
+      expect(await app.svc.dimensions.items(type)).toEqual(beforeImport);
+      expect(await api.dimensions.scheme({ type })).toEqual(originalScheme);
+    },
+  );
   it.each(['project', 'partner', 'department', 'person', 'cashflow'] as const)(
     'w_xt_xmwh / w_xt_bmwh / w_xt_grwh / w_xt_dwwh / w_xt_xjwh：%s 被凭证引用时余额为零也不能删除',
     async (type) => {

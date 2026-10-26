@@ -543,18 +543,21 @@ export function masterdataService(svc: CoreServices) {
         const items = await tsvc.dimensions.items(type);
         const lengths = scheme.map((_, i) => scheme.slice(0, i + 1).reduce((a, b) => a + b, 0));
         for (const a of items) {
-          if (!lengths.includes(a.code.length))
+          const level = lengths.indexOf(a.code.length);
+          if (level < 0)
             fail(
               'DIMENSION_SCHEME',
               `新规则与现有编码 ${a.code} 不一致`,
               '请选兼容现有数据的规则，或先调整未使用档案编号',
             );
+          if (a.parentId == null && level !== 0)
+            fail(
+              'DIMENSION_SCHEME',
+              `新规则会将根档案 ${a.code} 变为第 ${level + 1} 级`,
+              '无上级的档案必须属于第一级，请选择兼容现有根档案编码长度的规则',
+            );
           const p = items.find((p) => p.id === a.parentId);
-          if (
-            p &&
-            (lengths.indexOf(a.code.length) !== lengths.indexOf(p.code.length) + 1 ||
-              !a.code.startsWith(p.code))
-          )
+          if (p && (level !== lengths.indexOf(p.code.length) + 1 || !a.code.startsWith(p.code)))
             fail('DIMENSION_SCHEME', `现有分类 ${a.code} 与新规则不一致`);
         }
         await tsvc.settings.set(`scheme:${type}`, scheme);
