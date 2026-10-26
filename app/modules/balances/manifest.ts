@@ -12,5 +12,19 @@ export default defineManifest({
   menu: [
     { group: 'ledger', title: '汇总余额表', path: '/', permission: 'balances.view' },
     { group: 'ledger', title: '外币余额表', path: '/foreign', permission: 'balances.view' },
+    { group: 'ledger', title: '数量余额表', path: '/quantity', permission: 'balances.view' },
+    { group: 'ledger', title: '辅助余额表', path: '/auxiliary', permission: 'balances.view' },
+    {
+      group: 'ledger',
+      title: '辅助外币余额表',
+      path: '/auxiliary/foreign',
+      permission: 'balances.view',
+    },
+    {
+      group: 'ledger',
+      title: '辅助数量余额表',
+      path: '/auxiliary/quantity',
+      permission: 'balances.view',
+    },
   ],
 });
