@@ -23,7 +23,7 @@ export async function checkInstalledUpdates(
   const size = readFileSync(installer).length;
   await desktop.evaluate(
     async (_electron, input) => {
-      const fs = await import('node:fs');
+      const fs = process.getBuiltinModule('fs');
       const scope = globalThis as typeof globalThis & { __w2Truncate?: boolean };
       const original = globalThis.fetch;
       const base = 'https://github.com/xhc144/caiwu-suite';
