@@ -31,6 +31,32 @@ async function expectBusiness(p: Promise<unknown>, code: string, message?: RegEx
 }
 
 describe('新增凭证', () => {
+  it('同侧红字抵销前的累计超过安全范围也不丢分，最终越界拒绝写入', async () => {
+    const n = Number.MAX_SAFE_INTEGER;
+    const input = await voucherInputFromSpec(t.svc, {
+      date: '2026-01-05',
+      lines: [
+        { account: '1001', debit: n },
+        { account: '1001', debit: 2 },
+        { account: '1001', debit: -n },
+        { account: '4001', credit: 2 },
+      ],
+    });
+    const v = await t.svc.vouchers.create(input);
+    expect(v.debitTotal).toBe(2);
+    const unsafe = { ...input, lines: input.lines.filter((_, i) => i !== 2) };
+    await expectBusiness(t.svc.vouchers.create(unsafe), 'VOUCHER_INVALID', /安全整数范围/);
+    const wideDifference = {
+      ...input,
+      lines: [input.lines[0]!, { ...input.lines[3]!, credit: -n }],
+    };
+    await expectBusiness(
+      t.svc.vouchers.create(wideDifference),
+      'VOUCHER_INVALID',
+      /差额 超出安全整数范围/,
+    );
+    expect((await t.svc.vouchers.list()).total).toBe(1);
+  });
   it('分配编号、状态为待审核、写操作日志', async () => {
     const [a] = await seedVouchers(t.svc, [cashSale]);
     const [b] = await seedVouchers(t.svc, [cashSale]);
