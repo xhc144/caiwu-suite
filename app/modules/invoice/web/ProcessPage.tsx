@@ -147,7 +147,13 @@ export default function ProcessPage() {
               ]}
             />
           </Form.Item>
-          <Button htmlType="submit" loading={loading} disabled={!selection.length}>
+          <Button
+            htmlType="submit"
+            aria-label="预览分录"
+            aria-busy={loading}
+            loading={loading}
+            disabled={loading || !selection.length}
+          >
             预览分录
           </Button>
         </Form>

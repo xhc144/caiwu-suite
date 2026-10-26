@@ -88,8 +88,36 @@ for (const [product, direction] of [
       expect(await svc.accounts.getByCode('980002')).toBeNull();
       expect((await svc.vouchers.list({ sourceModule: 'invoice' })).total).toBe(0);
     });
-    await page.getByRole('button', { name: '预览分录', exact: true }).click();
+    let release!: () => void;
+    let received!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const responseReady = new Promise<void>((resolve) => {
+      received = resolve;
+    });
+    // 暂停真实 HTTP 响应，验证加载图标不改变操作名称，忙碌中不能重复提交。
+    await page.route('**/trpc/m.invoice.previewVoucher?*', async (route) => {
+      const response = await route.fetch();
+      received();
+      await gate;
+      await route.fulfill({ response });
+    });
+    try {
+      await page.getByRole('button', { name: '预览分录', exact: true }).click();
+      await responseReady;
+      const previewButton = page.getByRole('button', { name: '预览分录', exact: true });
+      await expect(previewButton).toHaveAttribute('aria-busy', 'true');
+      await expect(previewButton).toBeDisabled();
+    } finally {
+      release();
+    }
     await expect(page.getByLabel('已核对并同意新增以上科目', { exact: true })).not.toBeChecked();
+    await expect(page.getByRole('button', { name: '预览分录', exact: true })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    );
+    await page.unroute('**/trpc/m.invoice.previewVoucher?*');
     await page.getByLabel('已核对并同意新增以上科目', { exact: true }).check();
     await page.getByRole('button', { name: '确认生成凭证', exact: true }).click();
     await page.getByRole('button', { name: '确定', exact: true }).click();
