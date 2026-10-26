@@ -55,11 +55,23 @@ async function fixture(hooks?: RuntimeHooks, timeoutMs?: number) {
     release = deferred();
   const targetEntered = deferred(),
     targetRelease = deferred();
+  const backgroundRelease = deferred();
+  let backgroundTask!: Promise<void>;
   let count = 0,
     callbacks = 0;
   const mod = defineServerModule(mf, {
     lifecycle: hooks,
     router: kit.router({
+      background: kit.procedure
+        .meta({ permission: 'maintenance-probe.write' })
+        .mutation(({ ctx }) => {
+          // 与后台备份相同：响应先返回，整个作业须在请求结束前取得独立租约。
+          backgroundTask = ctx.app.bookStore.withBook(ctx.book.id, async () => {
+            await backgroundRelease.promise;
+            await ctx.svc.settings.set('background', 'done');
+          });
+          return { ok: true };
+        }),
       target: kit.procedure
         .meta({ permission: 'maintenance-probe.write' })
         .input(z.object({ bookId: z.string() }))
@@ -159,11 +171,41 @@ async function fixture(hooks?: RuntimeHooks, timeoutMs?: number) {
     release,
     targetEntered,
     targetRelease,
+    backgroundRelease,
+    background: () => backgroundTask,
     callbacks: () => callbacks,
   };
 }
 
 describe('真实 HTTP 请求维护门', () => {
+  it('后台作业显式持有 withBook 租约，HTTP 返回后仍可完成；维护等待作业最终写入', async () => {
+    const f = await fixture();
+    expect((await f.post('m.maintenance-probe.background', {}, f.token)).statusCode).toBe(200);
+    let prepared = false;
+    const maintaining = f.s.runtime.bookStore.maintain(f.bookId, {
+      kind: 'reconnect',
+      prepare: async () => {
+        prepared = true;
+      },
+    });
+    try {
+      expect(prepared).toBe(false);
+      expect((await f.me()).json().error.data.business.code).toBe('BOOK_MAINTENANCE');
+    } finally {
+      f.backgroundRelease.resolve();
+      await Promise.all([f.background(), maintaining]);
+    }
+    expect(prepared).toBe(true);
+    const book = f.s.runtime.bookStore.open(f.bookId);
+    expect(
+      book.raw
+        .prepare(
+          "SELECT value FROM book_setting WHERE scope='maintenance-probe' AND key='background'",
+        )
+        .get(),
+    ).toEqual({ value: '"done"' });
+  });
+
   it('请求额外 open 的另一账套也排空，包含 await 后的原生写入', async () => {
     const f = await fixture();
     const other = (await f.post('core.books.create', { ...input, name: '另一账套' })).json().result
