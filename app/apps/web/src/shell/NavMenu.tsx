@@ -1,6 +1,7 @@
 import { Menu, Typography, type MenuProps } from 'antd';
 import { useLocation, useNavigate } from 'react-router';
 import { MENU_GROUPS, moduleRoute, type CurrentUser, type ModuleManifest } from '@caiwu/core';
+import { isAdminEntry } from './guards';
 
 export interface NavItem {
   key: string;
@@ -19,7 +20,9 @@ export function buildNavItems(modules: ModuleManifest[], user: CurrentUser): Nav
   const can = (perm?: string) => !perm || user.isAdmin || user.permissions.includes(perm);
   return modules.flatMap((m) =>
     m.menu
-      .filter((item) => can(item.permission))
+      .filter(
+        (item) => can(item.permission) && (!isAdminEntry(item.title, item.path) || user.isAdmin),
+      )
       .map((item) => {
         const to = moduleRoute(m.id, item.path);
         return {
@@ -66,9 +69,7 @@ export function NavMenu({ items, collapsed }: { items: NavItem[]; collapsed: boo
       })),
     })),
   ];
-  const selected =
-    items.find((i) => location.pathname === i.to || location.pathname.startsWith(`${i.to}/`))
-      ?.key ?? location.pathname;
+  const selected = selectedNavKey(items, location.pathname);
   return (
     <Menu
       mode="inline"
@@ -78,5 +79,15 @@ export function NavMenu({ items, collapsed }: { items: NavItem[]; collapsed: boo
       onClick={(e) => void navigate(e.key)}
       style={{ borderInlineEnd: 'none' }}
     />
+  );
+}
+
+export function selectedNavKey(items: NavItem[], pathname: string) {
+  const exact = items.find((i) => i.to.split('?')[0] === pathname);
+  if (exact) return exact.key;
+  return (
+    [...items]
+      .sort((a, b) => b.to.split('?')[0]!.length - a.to.split('?')[0]!.length)
+      .find((i) => pathname.startsWith(`${i.to.split('?')[0]}/`))?.key ?? pathname
   );
 }
