@@ -80,7 +80,10 @@ test('w_fp_zzs_hz：缓存口径切回后显式刷新真实读取最新过账', 
   await expect(row(page).getByRole('cell', { name: '100.00', exact: true })).toHaveCount(2);
   await postAndRead(isolated, bookId, token, docs[0]!.voucherId!);
   await page.getByLabel('含未过账').uncheck();
+  const changed = page.waitForResponse(vatResponse(false), { timeout: 5_000 });
   await page.getByRole('button', { name: /^(?:search )?查询$/ }).click();
+  await expectResponse(await changed, token, 10000);
+  await expect(row(page).getByRole('cell', { name: '100.00', exact: true })).toHaveCount(2);
   const refreshed = page.waitForResponse(vatResponse(false));
   await page.getByRole('button', { name: '刷新比对', exact: true }).click();
   await expectResponse(await refreshed, token, 10000);
