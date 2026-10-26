@@ -5,8 +5,8 @@ import path from 'node:path';
 import { once } from 'node:events';
 import { test, expect, type Locator } from '@playwright/test';
 import ExcelJS from 'exceljs';
-import { createRuntime } from '@caiwu/server-kit';
-import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import { createRuntime, moduleKit } from '@caiwu/server-kit';
+import type { CoreServices } from '@caiwu/core/server';
 import { loginWithNewBook, callApi } from '@caiwu/testkit/e2e';
 import type { Batch } from '../shared';
 import payroll from '../server';
@@ -14,6 +14,26 @@ import payroll from '../server';
 async function select(control: Locator, text: string) {
   await control.fill(text);
   await control.press('Enter');
+}
+
+// 仅本进程调用的真实过程，让整条异步操作持有请求/账套租约；不挂载到 HTTP。
+async function withServices<T>(
+  runtime: ReturnType<typeof createRuntime>,
+  bookId: string,
+  run: (svc: CoreServices) => Promise<T>,
+) {
+  const m = moduleKit(payroll.manifest);
+  const router = m.router({
+    run: m.procedure
+      .meta({ permission: 'payroll.salary.edit' })
+      .mutation(({ ctx }) => run(ctx.svc)),
+  });
+  const session = runtime.sessions.create(bookId, 1);
+  try {
+    return await router.createCaller({ app: runtime, token: session.token }).run();
+  } finally {
+    runtime.sessions.delete(session.token);
+  }
 }
 
 test('工资：独立账套建结构与三人 → 手算税额 → 工资条Excel → 来源凭证 → 审核后来源锁定', async ({
@@ -35,7 +55,7 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  const runtime = createRuntime({ dataDir, modules: [payroll], devMode: true });
+  let runtime: ReturnType<typeof createRuntime> | undefined;
   let output = '';
   child.stderr.on('data', (data) => {
     output += String(data);
@@ -56,6 +76,8 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
         }
       });
     });
+    // server 取得目录占用并 READY 后，辅助 runtime 才能合法加入同一 dataDir。
+    runtime = createRuntime({ dataDir, modules: [payroll], devMode: true });
     const baseURL = `http://127.0.0.1:${port}`;
     const request = await playwright.request.newContext({ baseURL });
     const context = await browser.newContext({ baseURL });
@@ -63,22 +85,15 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
     const page = await context.newPage();
     try {
       const { bookId, token } = await loginWithNewBook(page, request, { product: 'minfei' });
-      const book = runtime.bookStore.open(bookId);
-      const user = (await loadServiceUser(book.db, 1))!;
-      const svc = createCoreServices({
-        db: book.db,
-        user,
-        moduleId: null,
-        now: runtime.now,
-        modules: runtime.modules.lookup,
+      await withServices(runtime, bookId, async (svc) => {
+        const scheme = (await svc.book.info()).codeScheme;
+        await svc.accounts.create(
+          { code: '2241', name: '合成个人扣款', categoryId: 'liability' },
+          scheme,
+        );
+        await svc.accounts.create({ code: '222102', name: '合成个人所得税' }, scheme);
+        await svc.dimensions.create({ type: 'department', code: 'PAY', name: '合成工资部' });
       });
-      const scheme = (await svc.book.info()).codeScheme;
-      await svc.accounts.create(
-        { code: '2241', name: '合成个人扣款', categoryId: 'liability' },
-        scheme,
-      );
-      await svc.accounts.create({ code: '222102', name: '合成个人所得税' }, scheme);
-      await svc.dimensions.create({ type: 'department', code: 'PAY', name: '合成工资部' });
       await page.goto('/m/payroll/structure');
       await page.getByRole('button', { name: '新增工资类别' }).click();
       let drawer = page.getByRole('dialog', { name: '工资栏目与公式定义' });
@@ -293,7 +308,9 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       );
       expect(saved.snapshots.map((r) => r.taxAmount)).toEqual([15000, 78000, 248000]);
       expect(saved.vouchers).toHaveLength(1);
-      const voucher = (await svc.vouchers.get(saved.vouchers[0]!.id))!;
+      const voucher = (await withServices(runtime, bookId, (svc) =>
+        svc.vouchers.get(saved.vouchers[0]!.id),
+      ))!;
       expect(voucher.status).toBe('pending');
       expect(voucher.debitTotal).toBe(9900000);
       expect(voucher.creditTotal).toBe(voucher.debitTotal);
@@ -304,8 +321,12 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       drawer = page.getByRole('dialog', { name: '工资凭证设置与生成' });
       await drawer.getByRole('button', { name: '预览凭证' }).click();
       await expect(page.getByText('该批次该种类已生成凭证', { exact: true })).toBeVisible();
-      expect((await svc.vouchers.list({})).items).toHaveLength(1);
-      await svc.vouchers.changeStatus({ ids: [voucher.id], to: 'audited' });
+      expect(
+        (await withServices(runtime, bookId, (svc) => svc.vouchers.list({}))).items,
+      ).toHaveLength(1);
+      await withServices(runtime, bookId, (svc) =>
+        svc.vouchers.changeStatus({ ids: [voucher.id], to: 'audited' }),
+      );
       await drawer.getByRole('button', { name: '关闭', exact: true }).click();
       await page.reload();
       await expect(page.getByRole('button', { name: '编辑工资', exact: true })).toHaveCount(0);
@@ -330,7 +351,9 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       );
       expect(feb.rows[0]!.values).toEqual({ base: 1000000 });
       expect(feb.rows[0]!.tax.confirmed).toBe(false);
-      expect((await svc.periods.get(202601))!.status).toBe('open');
+      expect((await withServices(runtime, bookId, (svc) => svc.periods.get(202601)))!.status).toBe(
+        'open',
+      );
       await page.getByRole('button', { name: '工资反结账', exact: true }).click();
       await page.getByRole('button', { name: '确定', exact: true }).click();
       await expect(
@@ -343,12 +366,15 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       await request.dispose();
     }
   } finally {
-    await runtime.bookStore.closeAll();
-    if (child.exitCode == null) {
-      child.kill('SIGTERM');
-      await once(child, 'exit');
+    try {
+      await runtime?.bookStore.closeAll();
+    } finally {
+      if (child.exitCode == null && child.signalCode == null) {
+        child.kill('SIGTERM');
+        await once(child, 'exit');
+      }
+      rmSync(dataDir, { recursive: true, force: true });
     }
-    rmSync(dataDir, { recursive: true, force: true });
   }
 });
 
