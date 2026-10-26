@@ -2,7 +2,7 @@
 
 在 Codex 的环境设置里：
 
-- **Node 版本**：22.12 及以上（推荐 24 LTS）
+- **Node 版本**：24（必须）。Node 22 下 Playwright 加载用到 exceljs 的 E2E 文件时会报 `ERR_VM_MODULE_LINK_FAILURE`
 - **Setup script**（有网络时执行一次，之后任务执行阶段通常没有网络）：
 
 ```bash
@@ -24,5 +24,7 @@ pnpm install --frozen-lockfile
 
 - **验收命令**：`cd app && pnpm check`
 
-如果环境里已经有 Chromium、但版本和 Playwright 不匹配，可以设置环境变量
-`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chrome`，跳过 `playwright install`。
+浏览器优先用 `playwright install` 装的版本。环境里已有 Chromium 时也可以设置
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chrome` 跳过安装，但版本差太多时，打印事件相关的 E2E 可能失败。
+
+系统没设 UTF-8 locale 时，`playwright.config.ts` 会自动给浏览器加 `LANG=C.UTF-8`，否则中文下载文件名会变成 "download"。

@@ -184,6 +184,9 @@ const t = await createTestBook();      // t.svc、t.forModule('cashier')、t.add
 - antd 的 Select 下拉选项在 E2E 里不要用 `getByRole('option')` 点（它会选中给读屏用的隐藏节点），改成输入后按 `Enter` 选第一个。
 - 按钮文字不会自动插空格（已全局关闭），所以 `getByRole('button', { name: '保存' })` 可以直接用。
 - 示范模块 `example` 只在开发模式显示（`devOnly`），正式产品里看不到。
+- Node 必须用 24。Node 22 下，用到 exceljs 的 E2E 文件会加载失败（`ERR_VM_MODULE_LINK_FAILURE`）。
+- 标签页标题回调导致反复重渲染的问题已经在 M20 修好，模块里不需要再用整页跳转来绕开它。
+- GitHub Actions 目前因为账单问题不运行。本地完整的 `pnpm check` 是唯一的合并依据，交付前一定要完整跑一遍。
 
 ## 原版资料怎么查
 

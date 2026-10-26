@@ -4,6 +4,9 @@
 |---|---|
 | [orchestrator-prompt.md](orchestrator-prompt.md) | 原样贴给 **GPT 总控**，由它输出后续几十个 Codex 任务的提示词 |
 | [wave0-task.md](wave0-task.md) | 地基任务的原始需求。**已完成**，仅作参考 |
+| [wave2-tasks.md](wave2-tasks.md) | **Wave 2 的 24 个任务提示词**，按实际代码状态写好，直接贴进 Codex，不用经过总控 |
+
+进度：Wave 0、Wave 1（21 个模块）已合并到 main。
 | [../../AGENTS.md](../../AGENTS.md) | 所有 Codex 任务自动读取的开发指南（规则、写法、core 服务、测试、常见坑） |
 
 ## 之前为什么跑偏
