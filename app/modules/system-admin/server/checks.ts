@@ -1,6 +1,7 @@
-import { levelOfCode, parentCodeOf, periodOfDate } from '@caiwu/core';
+import { BusinessError, levelOfCode, parentCodeOf, periodOfDate } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { CheckItem } from '../shared';
+import { checkedCents, exactCents, sumCents } from './amounts';
 
 type CheckLine = {
   period: number;
@@ -16,20 +17,25 @@ export function voucherIssues(
   lines: readonly CheckLine[],
   accountIds: ReadonlySet<number>,
 ): string[] {
-  const debit = lines.reduce((sum, line) => sum + line.debit, 0);
-  const credit = lines.reduce((sum, line) => sum + line.credit, 0);
-  const validAmounts = [
-    header.debit_total,
-    header.credit_total,
-    debit,
-    credit,
-    ...lines.flatMap((line) => [line.debit, line.credit]),
-  ].every(Number.isSafeInteger);
+  let amountIssues: string[];
+  try {
+    exactCents(header.debit_total);
+    exactCents(header.credit_total);
+    const debit = sumCents(lines.map((line) => line.debit));
+    const credit = sumCents(lines.map((line) => line.credit));
+    amountIssues = [
+      debit !== credit ? `借贷不平，差额 ${exactCents(debit) - exactCents(credit)} 分` : '',
+      debit !== header.debit_total || credit !== header.credit_total
+        ? '凭证头合计与分录不一致'
+        : '',
+    ].filter(Boolean);
+  } catch (error) {
+    if (!(error instanceof BusinessError)) throw error;
+    amountIssues = ['金额不是安全整数分或合计溢出'];
+  }
   return [
     lines.length < 2 ? '少于两行分录' : '',
-    !validAmounts ? '金额不是安全整数分或合计溢出' : '',
-    debit !== credit ? `借贷不平，差额 ${debit - credit} 分` : '',
-    debit !== header.debit_total || credit !== header.credit_total ? '凭证头合计与分录不一致' : '',
+    ...amountIssues,
     lines.some((line) => line.period !== header.period) ? '凭证头与分录期间不一致' : '',
     lines.some((line) => !accountIds.has(line.account_id)) ? '分录科目不存在' : '',
     new Set(lines.map((line) => line.line_no)).size !== lines.length ? '分录行号重复' : '',
@@ -79,7 +85,21 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
     .execute();
   for (const year of new Set(periods.map((p) => p.year))) {
     const os = openings.filter((o) => o.year === year);
-    const diff = os.reduce((s, o) => s + o.balance, 0);
+    let diff: number;
+    try {
+      diff = sumCents(os.map((o) => o.balance));
+    } catch (error) {
+      if (!(error instanceof BusinessError)) throw error;
+      add(
+        '期初试算',
+        '无法检查',
+        `${year} 年`,
+        error.data.message,
+        '请分范围核对期初科目及辅助余额',
+        `/m/opening?year=${year}`,
+      );
+      continue;
+    }
     add(
       '期初试算',
       !os.length ? '无数据' : diff === 0 ? '通过' : '不通过',
@@ -211,17 +231,23 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
       `/m/voucher-book?period=${key.split('/')[0]}&type=${key.split('/')[1]}`,
     );
   }
-  const movements = new Map<string, { debit: number; credit: number }>();
+  const movements = new Map<string, { debit: bigint; credit: bigint }>();
   const postedPeriods = new Set<number>();
+  const invalidMovements = new Set<string>();
   for (const line of lines) {
     const header = vm.get(line.voucher_id);
     if (header?.status !== 'posted' || header.voided) continue;
     postedPeriods.add(line.period);
     const key = `${line.period}/${line.account_id}`;
-    const sum = movements.get(key) ?? { debit: 0, credit: 0 };
-    sum.debit += line.debit;
-    sum.credit += line.credit;
-    movements.set(key, sum);
+    const sum = movements.get(key) ?? { debit: 0n, credit: 0n };
+    try {
+      sum.debit += exactCents(line.debit);
+      sum.credit += exactCents(line.credit);
+      movements.set(key, sum);
+    } catch (error) {
+      if (!(error instanceof BusinessError)) throw error;
+      invalidMovements.add(key);
+    }
   }
   for (const p of periods) {
     if (
@@ -245,11 +271,18 @@ export async function runChecks(svc: CoreServices): Promise<CheckItem[]> {
         includeZero: true,
       });
       const mismatch = balances.filter((b) => {
-        const { debit: d, credit: c } = movements.get(`${p.period}/${b.accountId}`) ?? {
-          debit: 0,
-          credit: 0,
-        };
-        return b.debit !== d || b.credit !== c || b.closing !== b.opening + d - c;
+        const key = `${p.period}/${b.accountId}`;
+        if (invalidMovements.has(key)) return true;
+        const sum = movements.get(key) ?? { debit: 0n, credit: 0n };
+        try {
+          const debit = checkedCents(sum.debit);
+          const credit = checkedCents(sum.credit);
+          const closing = checkedCents(exactCents(b.opening) + sum.debit - sum.credit);
+          return b.debit !== debit || b.credit !== credit || b.closing !== closing;
+        } catch (error) {
+          if (!(error instanceof BusinessError)) throw error;
+          return true;
+        }
       });
       for (const b of mismatch)
         add(

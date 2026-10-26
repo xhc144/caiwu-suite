@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { BusinessError } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { AuditSchema, type AuditInput } from '../shared';
+import { sumCents } from './amounts';
 
 /** 即使再导入表格软件，外部文字也不能成为公式。数值金额始终保留整数分。 */
 export function safeText(value: string): string {
@@ -203,9 +204,9 @@ export async function collectAudit(svc: CoreServices, raw: AuditInput) {
     scopes: [...scopes].sort(),
     counts,
     totals: {
-      debit: lines.reduce((s, l) => s + l.debit, 0),
-      credit: lines.reduce((s, l) => s + l.credit, 0),
-      openingBalance: opening.reduce((s, l) => s + l.balance, 0),
+      debit: sumCents(lines.map((l) => l.debit)),
+      credit: sumCents(lines.map((l) => l.credit)),
+      openingBalance: sumCents(opening.map((l) => l.balance)),
     },
     accounts,
     opening,
@@ -217,11 +218,5 @@ export async function collectAudit(svc: CoreServices, raw: AuditInput) {
     periods,
     dimensions,
   };
-  if (Object.values(data.totals).some((n) => !Number.isSafeInteger(n)))
-    throw new BusinessError({
-      code: 'AMOUNT_OVERFLOW',
-      message: '金额合计超出安全整数范围',
-      hint: '请分范围导出',
-    });
   return { data, digest: createHash('sha256').update(JSON.stringify(data)).digest('hex'), total };
 }
