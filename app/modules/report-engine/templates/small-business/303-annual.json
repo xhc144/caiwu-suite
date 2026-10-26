@@ -1,0 +1,3040 @@
+{
+  "code": "303",
+  "name": "小企业现金流量表（年报12月取数试算，未完成）",
+  "rows": 52,
+  "cols": 6,
+  "schemaVersion": 1,
+  "readOnly": true,
+  "cells": [
+    {
+      "address": "A1",
+      "kind": "text",
+      "source": "小企业现金流量表（年报12月取数试算，未完成）",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A2",
+      "kind": "text",
+      "source": "取数切片：尚未完成完整法定报表；请阅读同目录README的未完成项。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A3",
+      "kind": "text",
+      "source": "金额以整数分取数、以元显示；生成期间及仅已过账口径见导出“口径与审核”。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A4",
+      "kind": "text",
+      "source": "会小企03表；small-appendix.pdf第78—82页；现金范围：1001、1002、1012。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A5",
+      "kind": "text",
+      "source": "项目",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B5",
+      "kind": "text",
+      "source": "行次",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C5",
+      "kind": "text",
+      "source": "本年累计金额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D5",
+      "kind": "text",
+      "source": "上年金额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A29",
+      "kind": "text",
+      "source": "取数检查区：SBxx为本模板现金流量分类；内部转存SB_INTERNAL；检查不通过须停止使用。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A30",
+      "kind": "text",
+      "source": "现金流量项目",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B30",
+      "kind": "text",
+      "source": "制度行次",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C30",
+      "kind": "text",
+      "source": "本年借方",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "D30",
+      "kind": "text",
+      "source": "本年贷方",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "E30",
+      "kind": "text",
+      "source": "上年借方",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "F30",
+      "kind": "text",
+      "source": "上年贷方",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A50",
+      "kind": "text",
+      "source": "未完成：审核失败阻止生成/导出、逐分录漏分阻止、受限资金与现金范围配置。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A51",
+      "kind": "text",
+      "source": "年报仅选12月；上年列固定上年初至上年末。逐分录分类阻止、单位日期及附注仍未完成。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A52",
+      "kind": "text",
+      "source": "购建资产借款利息列行17；工程人员工资列行4；处置资产现金净额列行10。",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A6",
+      "kind": "text",
+      "source": "销售产成品、商品、提供劳务收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B6",
+      "kind": "text",
+      "source": "1",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A7",
+      "kind": "text",
+      "source": "收到其他与经营活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B7",
+      "kind": "text",
+      "source": "2",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A8",
+      "kind": "text",
+      "source": "购买原材料、商品、接受劳务支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B8",
+      "kind": "text",
+      "source": "3",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A9",
+      "kind": "text",
+      "source": "支付的职工薪酬",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B9",
+      "kind": "text",
+      "source": "4",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A10",
+      "kind": "text",
+      "source": "支付的税费",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B10",
+      "kind": "text",
+      "source": "5",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A11",
+      "kind": "text",
+      "source": "支付其他与经营活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B11",
+      "kind": "text",
+      "source": "6",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A12",
+      "kind": "text",
+      "source": "经营活动产生的现金流量净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B12",
+      "kind": "text",
+      "source": "7",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A13",
+      "kind": "text",
+      "source": "收回短期投资、长期债券投资和长期股权投资收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B13",
+      "kind": "text",
+      "source": "8",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A14",
+      "kind": "text",
+      "source": "取得投资收益收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B14",
+      "kind": "text",
+      "source": "9",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A15",
+      "kind": "text",
+      "source": "处置固定资产、无形资产和其他非流动资产收回的现金净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B15",
+      "kind": "text",
+      "source": "10",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A16",
+      "kind": "text",
+      "source": "短期投资、长期债券投资和长期股权投资支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B16",
+      "kind": "text",
+      "source": "11",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A17",
+      "kind": "text",
+      "source": "购建固定资产、无形资产和其他非流动资产支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B17",
+      "kind": "text",
+      "source": "12",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A18",
+      "kind": "text",
+      "source": "投资活动产生的现金流量净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B18",
+      "kind": "text",
+      "source": "13",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A19",
+      "kind": "text",
+      "source": "取得借款收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B19",
+      "kind": "text",
+      "source": "14",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A20",
+      "kind": "text",
+      "source": "吸收投资者投资收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B20",
+      "kind": "text",
+      "source": "15",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A21",
+      "kind": "text",
+      "source": "偿还借款本金支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B21",
+      "kind": "text",
+      "source": "16",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A22",
+      "kind": "text",
+      "source": "偿还借款利息支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B22",
+      "kind": "text",
+      "source": "17",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A23",
+      "kind": "text",
+      "source": "分配利润支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B23",
+      "kind": "text",
+      "source": "18",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A24",
+      "kind": "text",
+      "source": "筹资活动产生的现金流量净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B24",
+      "kind": "text",
+      "source": "19",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A25",
+      "kind": "text",
+      "source": "四、现金净增加额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B25",
+      "kind": "text",
+      "source": "20",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A26",
+      "kind": "text",
+      "source": "加：期初现金余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B26",
+      "kind": "text",
+      "source": "21",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A27",
+      "kind": "text",
+      "source": "五、期末现金余额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B27",
+      "kind": "text",
+      "source": "22",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "A31",
+      "kind": "text",
+      "source": "SB01 销售产成品、商品、提供劳务收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B31",
+      "kind": "text",
+      "source": "1",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C31",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D31",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E31",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F31",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB01\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C6",
+      "kind": "formula",
+      "source": "C31-D31",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A32",
+      "kind": "text",
+      "source": "SB02 收到其他与经营活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B32",
+      "kind": "text",
+      "source": "2",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C32",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D32",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E32",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F32",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB02\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C7",
+      "kind": "formula",
+      "source": "C32-D32",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A33",
+      "kind": "text",
+      "source": "SB03 购买原材料、商品、接受劳务支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B33",
+      "kind": "text",
+      "source": "3",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C33",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D33",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E33",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F33",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB03\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C8",
+      "kind": "formula",
+      "source": "D33-C33",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A34",
+      "kind": "text",
+      "source": "SB04 支付的职工薪酬",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B34",
+      "kind": "text",
+      "source": "4",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C34",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D34",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E34",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F34",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB04\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C9",
+      "kind": "formula",
+      "source": "D34-C34",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A35",
+      "kind": "text",
+      "source": "SB05 支付的税费",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B35",
+      "kind": "text",
+      "source": "5",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C35",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D35",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E35",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F35",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB05\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C10",
+      "kind": "formula",
+      "source": "D35-C35",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A36",
+      "kind": "text",
+      "source": "SB06 支付其他与经营活动有关的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B36",
+      "kind": "text",
+      "source": "6",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C36",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D36",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E36",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F36",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB06\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C11",
+      "kind": "formula",
+      "source": "D36-C36",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A37",
+      "kind": "text",
+      "source": "SB08 收回短期投资、长期债券投资和长期股权投资收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B37",
+      "kind": "text",
+      "source": "8",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C37",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D37",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E37",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F37",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB08\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C13",
+      "kind": "formula",
+      "source": "C37-D37",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A38",
+      "kind": "text",
+      "source": "SB09 取得投资收益收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B38",
+      "kind": "text",
+      "source": "9",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C38",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D38",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E38",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F38",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB09\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C14",
+      "kind": "formula",
+      "source": "C38-D38",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A39",
+      "kind": "text",
+      "source": "SB10 处置固定资产、无形资产和其他非流动资产收回的现金净额",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B39",
+      "kind": "text",
+      "source": "10",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C39",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D39",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E39",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F39",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB10\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C15",
+      "kind": "formula",
+      "source": "C39-D39",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A40",
+      "kind": "text",
+      "source": "SB11 短期投资、长期债券投资和长期股权投资支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B40",
+      "kind": "text",
+      "source": "11",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C40",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D40",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E40",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F40",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB11\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C16",
+      "kind": "formula",
+      "source": "D40-C40",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A41",
+      "kind": "text",
+      "source": "SB12 购建固定资产、无形资产和其他非流动资产支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B41",
+      "kind": "text",
+      "source": "12",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C41",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D41",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E41",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F41",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB12\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C17",
+      "kind": "formula",
+      "source": "D41-C41",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A42",
+      "kind": "text",
+      "source": "SB14 取得借款收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B42",
+      "kind": "text",
+      "source": "14",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C42",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D42",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E42",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F42",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB14\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C19",
+      "kind": "formula",
+      "source": "C42-D42",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A43",
+      "kind": "text",
+      "source": "SB15 吸收投资者投资收到的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B43",
+      "kind": "text",
+      "source": "15",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C43",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D43",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E43",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F43",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB15\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C20",
+      "kind": "formula",
+      "source": "C43-D43",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A44",
+      "kind": "text",
+      "source": "SB16 偿还借款本金支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B44",
+      "kind": "text",
+      "source": "16",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C44",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D44",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E44",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F44",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB16\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C21",
+      "kind": "formula",
+      "source": "D44-C44",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A45",
+      "kind": "text",
+      "source": "SB17 偿还借款利息支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B45",
+      "kind": "text",
+      "source": "17",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C45",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D45",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E45",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F45",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB17\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C22",
+      "kind": "formula",
+      "source": "D45-C45",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A46",
+      "kind": "text",
+      "source": "SB18 分配利润支付的现金",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B46",
+      "kind": "text",
+      "source": "18",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C46",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D46",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E46",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F46",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB18\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C23",
+      "kind": "formula",
+      "source": "D46-C46",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "A47",
+      "kind": "text",
+      "source": "SB_INTERNAL 现金内部转存（不计入三类活动）",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "B47",
+      "kind": "text",
+      "source": "内部",
+      "unit": "number",
+      "currency": "CNY"
+    },
+    {
+      "address": "C47",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D47",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "E47",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "F47",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"cashflow\",\"SB_INTERNAL\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C12",
+      "kind": "formula",
+      "source": "C6+C7-C8-C9-C10-C11",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C18",
+      "kind": "formula",
+      "source": "C13+C14+C15-C16-C17",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C24",
+      "kind": "formula",
+      "source": "C19+C20-C21-C22-C23",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C25",
+      "kind": "formula",
+      "source": "C12+C18+C24",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C26",
+      "kind": "formula",
+      "source": "(BALANCE(\"1001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))+(BALANCE(\"1002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))+(BALANCE(\"1012\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")-BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\"))",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "C27",
+      "kind": "formula",
+      "source": "C25+C26",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D6",
+      "kind": "formula",
+      "source": "E31-F31",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D7",
+      "kind": "formula",
+      "source": "E32-F32",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D8",
+      "kind": "formula",
+      "source": "F33-E33",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D9",
+      "kind": "formula",
+      "source": "F34-E34",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D10",
+      "kind": "formula",
+      "source": "F35-E35",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D11",
+      "kind": "formula",
+      "source": "F36-E36",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D12",
+      "kind": "formula",
+      "source": "D6+D7-D8-D9-D10-D11",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D13",
+      "kind": "formula",
+      "source": "E37-F37",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D14",
+      "kind": "formula",
+      "source": "E38-F38",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D15",
+      "kind": "formula",
+      "source": "E39-F39",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D16",
+      "kind": "formula",
+      "source": "F40-E40",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D17",
+      "kind": "formula",
+      "source": "F41-E41",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D18",
+      "kind": "formula",
+      "source": "D13+D14+D15-D16-D17",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D19",
+      "kind": "formula",
+      "source": "E42-F42",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D20",
+      "kind": "formula",
+      "source": "E43-F43",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D21",
+      "kind": "formula",
+      "source": "F44-E44",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D22",
+      "kind": "formula",
+      "source": "F45-E45",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D23",
+      "kind": "formula",
+      "source": "F46-E46",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D24",
+      "kind": "formula",
+      "source": "D19+D20-D21-D22-D23",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D25",
+      "kind": "formula",
+      "source": "D12+D18+D24",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D26",
+      "kind": "formula",
+      "source": "BALANCE(\"1001\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearStart\\\"}\")+BALANCE(\"1002\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearStart\\\"}\")+BALANCE(\"1012\",\"opening\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearStart\\\"}\")",
+      "unit": "cents",
+      "currency": "CNY"
+    },
+    {
+      "address": "D27",
+      "kind": "formula",
+      "source": "D25+D26",
+      "unit": "cents",
+      "currency": "CNY"
+    }
+  ],
+  "merges": [
+    {
+      "row": 1,
+      "col": 1,
+      "rows": 1,
+      "cols": 6
+    },
+    {
+      "row": 2,
+      "col": 1,
+      "rows": 1,
+      "cols": 6
+    },
+    {
+      "row": 3,
+      "col": 1,
+      "rows": 1,
+      "cols": 6
+    }
+  ],
+  "styles": [
+    {
+      "address": "A1",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A2",
+      "align": "left",
+      "wrap": true,
+      "bold": true,
+      "format": "general"
+    },
+    {
+      "address": "A3",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A4",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D5",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A29",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "D30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "E30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "F30",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A50",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A51",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A52",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A6",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B6",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A7",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B7",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B8",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B9",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B10",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A11",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B11",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A12",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B12",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A13",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B13",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B14",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B15",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B16",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B17",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B18",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B19",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B20",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B21",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B22",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B23",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A24",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B24",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A25",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B25",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B26",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B27",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "A31",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B31",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C31",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D31",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E31",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F31",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C6",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A32",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B32",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C32",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D32",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E32",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F32",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C7",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A33",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B33",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C33",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D33",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E33",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F33",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C8",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A34",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B34",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C34",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D34",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E34",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F34",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C9",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A35",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B35",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C35",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D35",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E35",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F35",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C10",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A36",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B36",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C36",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D36",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E36",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F36",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C11",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A37",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B37",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C37",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D37",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E37",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F37",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C13",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A38",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B38",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C38",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D38",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E38",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F38",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C14",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A39",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B39",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C39",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D39",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E39",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F39",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C15",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A40",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B40",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C40",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D40",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E40",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F40",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C16",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A41",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B41",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C41",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D41",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E41",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F41",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C17",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A42",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B42",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C42",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D42",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E42",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F42",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C19",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A43",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B43",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C43",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D43",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E43",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F43",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C20",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A44",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B44",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C44",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D44",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E44",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F44",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C21",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A45",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B45",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C45",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D45",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E45",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F45",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C22",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A46",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B46",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C46",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D46",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E46",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F46",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C23",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "A47",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "B47",
+      "align": "left",
+      "wrap": true,
+      "bold": false,
+      "format": "general"
+    },
+    {
+      "address": "C47",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D47",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "E47",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "F47",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C12",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C18",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C24",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C25",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C26",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "C27",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D6",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D7",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D8",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D9",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D10",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D11",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D12",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D13",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D14",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D15",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D16",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D17",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D18",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D19",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D20",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D21",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D22",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D23",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D24",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D25",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D26",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    },
+    {
+      "address": "D27",
+      "align": "right",
+      "wrap": false,
+      "bold": false,
+      "format": "decimal2"
+    }
+  ],
+  "rowHeights": [
+    {
+      "row": 1,
+      "height": 44
+    },
+    {
+      "row": 2,
+      "height": 44
+    },
+    {
+      "row": 3,
+      "height": 44
+    }
+  ],
+  "colWidths": [
+    {
+      "col": 1,
+      "width": 420
+    },
+    {
+      "col": 2,
+      "width": 60
+    },
+    {
+      "col": 3,
+      "width": 200
+    },
+    {
+      "col": 4,
+      "width": 200
+    },
+    {
+      "col": 5,
+      "width": 420
+    },
+    {
+      "col": 6,
+      "width": 60
+    }
+  ],
+  "checks": [
+    {
+      "name": "本年累计金额期末现金与总账一致",
+      "left": "C27",
+      "right": "BALANCE(\"1001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "tolerance": "0"
+    },
+    {
+      "name": "本年借方分类完整",
+      "left": "BALANCE(\"1001\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"ytdDebit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "right": "SUM(C31:C47)",
+      "tolerance": "0"
+    },
+    {
+      "name": "本年贷方分类完整",
+      "left": "BALANCE(\"1001\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1002\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")+BALANCE(\"1012\",\"ytdCredit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\")",
+      "right": "SUM(D31:D47)",
+      "tolerance": "0"
+    },
+    {
+      "name": "上年借方分类金额核对",
+      "left": "BALANCE(\"1001\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"debit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "right": "SUM(E31:E47)",
+      "tolerance": "0"
+    },
+    {
+      "name": "上年贷方分类金额核对",
+      "left": "BALANCE(\"1001\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"credit\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "right": "SUM(F31:F47)",
+      "tolerance": "0"
+    },
+    {
+      "name": "本年现金内部转存净额为零",
+      "left": "C47",
+      "right": "D47",
+      "tolerance": "0"
+    },
+    {
+      "name": "上年现金内部转存净额为零",
+      "left": "E47",
+      "right": "F47",
+      "tolerance": "0"
+    },
+    {
+      "name": "上年期末现金与总账一致",
+      "left": "D27",
+      "right": "BALANCE(\"1001\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1002\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")+BALANCE(\"1012\",\"closing\",\"cents\",\"CNY\",\"signed\",\"none\",\"\",\"{\\\"from\\\":\\\"previousYearStart\\\",\\\"to\\\":\\\"previousYearEnd\\\"}\")",
+      "tolerance": "0"
+    }
+  ],
+  "accounting": {
+    "defaultScope": "posted",
+    "sign": "debit-positive",
+    "moneyUnit": "cents",
+    "rounding": "half-up"
+  }
+}
