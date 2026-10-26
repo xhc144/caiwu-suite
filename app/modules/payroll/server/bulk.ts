@@ -32,6 +32,7 @@ export async function previewBulk(svc: CoreServices, input: BulkInput) {
     .filter((r) => ids.has(r.employeeId))
     .map((r) => ({
       employeeId: r.employeeId,
+      employeeRevision: people.find((e) => e.id === r.employeeId)!.revision,
       code: people.find((e) => e.id === r.employeeId)!.code,
       name: people.find((e) => e.id === r.employeeId)!.name,
       before: r.values[input.field] ?? null,
@@ -40,7 +41,7 @@ export async function previewBulk(svc: CoreServices, input: BulkInput) {
           ? r.values[input.field]!
           : input.value,
     }));
-  return { hash: hash({ input, rows: b.rows }), preview };
+  return { hash: hash({ input, rows: b.rows, preview }), preview };
 }
 export async function applyBulk(
   svc: CoreServices,
@@ -81,6 +82,8 @@ export async function previewPaste(svc: CoreServices, input: PasteInput) {
   const nextRows: RowInput[] = b.rows.map((r) => ({ ...r, values: { ...r.values } }));
   const seen = new Set<string>();
   const preview: {
+    employeeId: number;
+    employeeRevision: number;
     code: string;
     name: string;
     field: string;
@@ -97,6 +100,8 @@ export async function previewPaste(svc: CoreServices, input: PasteInput) {
     for (const [key, value] of Object.entries(p.values)) {
       if (!keys.has(key)) fail('PASTE_FIELD', `栏目 ${key} 不是启用的金额录入项`);
       preview.push({
+        employeeId: person.id,
+        employeeRevision: person.revision,
         code: p.code,
         name: person.name,
         field: key,
@@ -108,7 +113,8 @@ export async function previewPaste(svc: CoreServices, input: PasteInput) {
   }
   if (!preview.length)
     fail('PASTE_EMPTY', '没有可粘贴的金额单元格', '首行为编号及稳定变量，空单元格保留原值');
-  return { hash: hash({ input, rows: b.rows }), preview, rows: nextRows };
+  // 编号可被 HR 修改，确认计划必须绑定解析后的稳定身份及实际待写结果。
+  return { hash: hash({ input, rows: b.rows, preview, nextRows }), preview, rows: nextRows };
 }
 export async function applyPaste(
   svc: CoreServices,

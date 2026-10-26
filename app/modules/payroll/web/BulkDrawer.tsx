@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
   Alert,
@@ -12,7 +12,7 @@ import {
   Typography,
 } from 'antd';
 import { parseMoney } from '@caiwu/core';
-import { queryClient, notify } from '@caiwu/web-kit';
+import { queryClient } from '@caiwu/web-kit';
 import { DataTable, MoneyInput } from '@caiwu/ui';
 import type { Batch } from '../shared';
 import { api } from './api';
@@ -44,24 +44,61 @@ export default function BulkDrawer({
         after: number;
       }[];
     } | null>(null),
-    [working, setWorking] = useState(false),
     [error, setError] = useState('');
-  const bulk = useMutation(
-    api.applyBulk.mutationOptions({
-      onSuccess: () => {
-        onSaved();
-        onClose();
-      },
-    }),
-  );
-  const paste = useMutation(
-    api.applyPaste.mutationOptions({
-      onSuccess: () => {
-        onSaved();
-        onClose();
-      },
-    }),
-  );
+  const inFlight = useRef(false),
+    mounted = useRef(true);
+  const [phase, setPhase] = useState<'preview' | 'apply' | null>(null);
+  const locked = phase !== null;
+  useEffect(() => {
+    mounted.current = true;
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (inFlight.current) event.preventDefault();
+    };
+    const closeKey = (event: KeyboardEvent) => {
+      if (
+        inFlight.current &&
+        ((event.ctrlKey && event.key === 'F4') || (event.altKey && event.key === 'ArrowLeft'))
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    const navigate = (event: MouseEvent) => {
+      if (
+        inFlight.current &&
+        event.target instanceof Element &&
+        event.target.closest('a[href], [role=menuitem], [role=tab], .ant-tabs-tab-remove')
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    window.addEventListener('keydown', closeKey, true);
+    document.addEventListener('click', navigate, true);
+    return () => {
+      mounted.current = false;
+      window.removeEventListener('beforeunload', beforeUnload);
+      window.removeEventListener('keydown', closeKey, true);
+      document.removeEventListener('click', navigate, true);
+    };
+  }, []);
+  const begin = (next: 'preview' | 'apply') => {
+    if (inFlight.current) return false;
+    inFlight.current = true;
+    setPhase(next);
+    return true;
+  };
+  const finish = () => {
+    inFlight.current = false;
+    if (mounted.current) setPhase(null);
+  };
+  const message = (error: unknown) =>
+    error instanceof Error && /[\u3400-\u9fff]/.test(error.message)
+      ? error.message
+      : '本地服务请求失败，请检查连接后重试';
+  const bulk = useMutation(api.applyBulk.mutationOptions());
+  const paste = useMutation(api.applyPaste.mutationOptions());
   const bulkInput = {
     id: batch.id,
     revision: batch.revision,
@@ -99,9 +136,9 @@ export default function BulkDrawer({
     };
   };
   const preview = async () => {
+    if (!begin('preview')) return;
     setPlan(null);
     setError('');
-    setWorking(true);
     try {
       const p =
         mode === 'bulk'
@@ -113,29 +150,48 @@ export default function BulkDrawer({
               ...api.previewPaste.queryOptions(parsePaste()),
               staleTime: 0,
             });
-      setPlan(p);
+      if (mounted.current) setPlan(p);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '预览失败，检查范围和数据');
+      if (mounted.current) setError(message(e));
     } finally {
-      setWorking(false);
+      finish();
     }
   };
-  const apply = () => {
-    if (!plan) return;
-    if (mode === 'bulk') bulk.mutate({ ...bulkInput, hash: plan.hash, confirmed: true });
-    else
-      try {
-        paste.mutate({ ...parsePaste(), hash: plan.hash, confirmed: true });
-      } catch (e) {
-        notify.warning(e instanceof Error ? e.message : '粘贴数据无效');
+  const apply = async () => {
+    if (!plan || !begin('apply')) return;
+    setError('');
+    try {
+      if (mode === 'bulk')
+        await bulk.mutateAsync({ ...bulkInput, hash: plan.hash, confirmed: true });
+      else await paste.mutateAsync({ ...parsePaste(), hash: plan.hash, confirmed: true });
+      void queryClient.invalidateQueries({ queryKey: api.pathKey() });
+      if (mounted.current) {
+        onSaved();
+        onClose();
       }
+    } catch (e) {
+      if (mounted.current) setError(`批量修改未完成，草稿已保留：${message(e)}`);
+    } finally {
+      finish();
+    }
   };
   return (
-    <Drawer open size="large" title="统一置数 / Excel 粘贴" onClose={onClose}>
+    <Drawer
+      open
+      size="large"
+      title="统一置数 / Excel 粘贴"
+      closable={!locked}
+      keyboard={!locked}
+      onClose={() => {
+        if (!inFlight.current) onClose();
+      }}
+    >
       <Select
         aria-label="批量操作"
+        disabled={locked}
         value={mode}
         onChange={(m) => {
+          if (inFlight.current) return;
           setMode(m);
           setPlan(null);
         }}
@@ -150,26 +206,32 @@ export default function BulkDrawer({
           <Space wrap>
             <Select
               aria-label="置数栏目"
+              disabled={locked}
               value={field}
               options={batch.category.fields
                 .filter((f) => f.kind === 'money' && !f.disabled)
                 .map((f) => ({ value: f.key, label: f.name }))}
               onChange={(v) => {
+                if (inFlight.current) return;
                 setField(v);
                 setPlan(null);
               }}
             />
             <MoneyInput
               aria-label="统一金额"
+              disabled={locked}
               value={value}
               onChange={(v) => {
+                if (inFlight.current) return;
                 setValue(v ?? 0);
                 setPlan(null);
               }}
             />
             <Checkbox
+              disabled={locked}
               checked={onlyEmpty}
               onChange={(e) => {
+                if (inFlight.current) return;
                 setOnlyEmpty(e.target.checked);
                 setValue(0);
                 setPlan(null);
@@ -187,9 +249,11 @@ export default function BulkDrawer({
           </Typography.Paragraph>
           <Input.TextArea
             aria-label="Excel 粘贴内容"
+            disabled={locked}
             rows={8}
             value={text}
             onChange={(e) => {
+              if (inFlight.current) return;
               setText(e.target.value);
               setPlan(null);
             }}
@@ -198,7 +262,7 @@ export default function BulkDrawer({
         </>
       )}
       <p>
-        <Button loading={working} onClick={() => void preview()}>
+        <Button disabled={locked} loading={phase === 'preview'} onClick={() => void preview()}>
           预览修改范围
         </Button>
       </p>
@@ -220,8 +284,11 @@ export default function BulkDrawer({
           <Popconfirm
             title="确认仅修改预览所列人员和单元格？原计算结果将清除，需要重新计算。"
             onConfirm={apply}
+            disabled={locked}
+            okButtonProps={{ disabled: locked }}
+            cancelButtonProps={{ disabled: locked }}
           >
-            <Button type="primary" loading={bulk.isPending || paste.isPending}>
+            <Button type="primary" disabled={locked} loading={phase === 'apply'}>
               确认批量修改
             </Button>
           </Popconfirm>

@@ -410,3 +410,72 @@ it('w_gz_gzgl 重算前后保留上次计算快照，导出只取当前有效计
   expect(b.snapshots).toEqual(after);
   expect(b.previous).toEqual(previous);
 });
+
+it('w_gz_edit_set/w_gz_rsgl_xg 同名两人并发交换编号后旧粘贴预览失效，重新预览只写稳定员工ID', async () => {
+  const first = employees[0]!;
+  const second = await api.saveEmployee({ ...employees[1]!, name: first.name });
+  let b = await api.saveBatch({
+    period: 202601,
+    categoryId: category.id,
+    categoryRevision: category.revision,
+    rows: [salary(first.id, 1000000), salary(second.id, 1000000)],
+  });
+  b = await api.calculate({ id: b.id, revision: b.revision });
+  const input = {
+    id: b.id,
+    revision: b.revision,
+    rows: [{ code: first.code, values: { base: 10000 } }],
+  };
+  const preview = await api.previewPaste(input);
+  expect(preview.preview[0]!.employeeId).toBe(first.id);
+  const hr = app.call(
+    payroll,
+    await app.addUser('renumber-hr', { permissions: ['payroll.hr.view', 'payroll.hr.edit'] }),
+  );
+  await hr.saveEmployee({ ...first, code: 'TEMP' });
+  await hr.saveEmployee({ ...second, code: first.code });
+  expect((await api.batch({ id: b.id })).revision).toBe(b.revision);
+  await expect(api.applyPaste({ ...input, hash: preview.hash, confirmed: true })).rejects.toThrow(
+    '预览已失效',
+  );
+  expect(await api.batch({ id: b.id })).toEqual(b);
+  const fresh = await api.previewPaste(input);
+  expect(fresh.preview[0]!.employeeId).toBe(second.id);
+  expect(fresh.hash).not.toBe(preview.hash);
+  const saved = await api.applyPaste({ ...input, hash: fresh.hash, confirmed: true });
+  expect(saved.rows.map((r) => [r.employeeId, r.values.base])).toEqual([
+    [first.id, 1000000],
+    [second.id, 10000],
+  ]);
+});
+it('w_gz_edit_set 置数预览绑定选定员工版本，HR改姓名或编号后保留原工资并要求重新预览', async () => {
+  const b = await calc(),
+    person = employees[0]!;
+  const input = {
+    id: b.id,
+    revision: b.revision,
+    employeeIds: [person.id],
+    field: 'base',
+    value: 10000,
+    onlyEmpty: false,
+  };
+  const preview = await api.previewBulk(input);
+  const hr = app.call(
+    payroll,
+    await app.addUser('bulk-hr', { permissions: ['payroll.hr.view', 'payroll.hr.edit'] }),
+  );
+  await hr.saveEmployee({ ...person, code: 'RENAMED', name: '合成改名人员' });
+  await expect(api.applyBulk({ ...input, hash: preview.hash, confirmed: true })).rejects.toThrow(
+    '预览已失效',
+  );
+  expect(await api.batch({ id: b.id })).toEqual(b);
+  const fresh = await api.previewBulk(input);
+  expect(fresh.preview[0]).toMatchObject({
+    employeeId: person.id,
+    code: 'RENAMED',
+    name: '合成改名人员',
+  });
+  expect(
+    (await api.applyBulk({ ...input, hash: fresh.hash, confirmed: true })).rows[0]!.values.base,
+  ).toBe(10000);
+});
