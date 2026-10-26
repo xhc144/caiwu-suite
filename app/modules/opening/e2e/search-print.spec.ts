@@ -3,6 +3,57 @@ import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import type { Account, DimensionItem } from '@caiwu/core';
 import type { SavedRow } from '../shared';
 
+test('w_xt_ye_nf/w_xt_xmnc：尾斜杠菜单切换同步真实辅助视图并清除原档案条件', async ({
+  page,
+  request,
+}) => {
+  const { token } = await loginWithNewBook(page, request);
+  const data = await callApi<{ accounts: Account[]; items: DimensionItem[] }>(
+    request,
+    'm.opening.list',
+    { year: 2026 },
+    { token, method: 'GET' },
+  );
+  const department = data.items.find((i) => i.typeId === 'department' && i.code === '01')!.id;
+  const project = data.items.find((i) => i.typeId === 'project' && i.code === 'XM01')!.id;
+  await callApi(
+    request,
+    'm.opening.save',
+    {
+      year: 2026,
+      changes: [
+        {
+          data: {
+            year: 2026,
+            accountId: data.accounts.find((a) => a.code === '6602')!.id,
+            dimensions: { department },
+            balance: 101,
+          },
+        },
+        {
+          data: {
+            year: 2026,
+            accountId: data.accounts.find((a) => a.code === '5001')!.id,
+            dimensions: { project },
+            balance: 202,
+          },
+        },
+      ],
+    },
+    { token },
+  );
+  await page.goto(`/m/opening/?year=2026&dimension=department&item=${department}`);
+  const details = page.locator('.cw-data-table:visible').nth(1);
+  await expect(details).toContainText('部门：01');
+  await page.getByRole('menuitem', { name: '项目期初录入', exact: true }).click();
+  await expect(page).toHaveURL(/dimension=project/);
+  await expect(page.getByLabel('项目筛选', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('部门筛选', { exact: true })).not.toBeVisible();
+  await expect(details).toContainText('项目：XM01');
+  await expect(details).not.toContainText('部门：01');
+  expect(new URL(page.url()).searchParams.get('item')).toBeNull();
+});
+
 test('w_xt_bmnc/w_xt_bm_sc：编码/拼音查部门、重载保持范围、新增带入所选部门，切换辅助类型清除原条件', async ({
   page,
   request,
