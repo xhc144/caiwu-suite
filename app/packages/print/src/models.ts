@@ -28,7 +28,14 @@ export type LedgerPrintModel = {
   ytdCredit: number;
   rows: LedgerPrintRow[];
 };
-export type PrintPage = { html: string; labels: string[]; entityIds: number[] };
+export type PrintPage = {
+  html: string;
+  labels: string[];
+  entityIds: number[];
+  /** 账册的科目分组及实际印刷页码；旧调用方可不提供。 */
+  account?: string;
+  pageNumber?: number;
+};
 export type PrintView = { title: string; pages: PrintPage[]; layout: PrintLayout };
 
 /** 保守字宽预算，按字素分片；tab 固定为四个空格，避免设备 tab stop 改变行宽。
@@ -95,7 +102,8 @@ function checkAmounts(rows: { debit: number; credit: number }[]) {
 export function buildVoucherView(model: VoucherPrintModel, layout: PrintLayout): PrintView {
   const g = layoutGeometry(layout);
   if (!model.vouchers.length) throw new Error('无记录，无法预览/打印');
-  const slotHeight = g.contentHeight / layout.perPage;
+  const slotHeight =
+    (g.contentHeight - (layout.voucherGapMm ?? 0) * (layout.perPage - 1)) / layout.perPage;
   const slots: { html: string; label: string; id: number }[] = [];
   for (const v of model.vouchers) {
     if (!v.lines.length) throw new Error(`${v.displayNo} 没有分录，无法打印`);
@@ -265,6 +273,8 @@ export function buildLedgerView(
     pages.push({
       labels: [`${model.account} 第 ${s.startPage + pages.length} 页`],
       entityIds: [],
+      account: model.account,
+      pageNumber: s.startPage + pages.length,
       html: `<section class="scaled">${title.map((t) => `<h2 class="single-line">${escapeHtml(t)}</h2>`).join('')}${metadata.map((t) => `<p class="single-line">${escapeHtml(t)}</p>`).join('')}<table><colgroup><col style="width:11%"><col style="width:11%"><col style="width:25%"><col style="width:15%"><col style="width:12%"><col style="width:12%"><col style="width:4%"><col style="width:10%"></colgroup><thead><tr>${['日期', '凭证字号', '摘要', extra, '借方', '贷方', '方向', '余额'].map((x) => `<th${x === '方向' ? ' class="ledger-direction"' : ''}>${x}</th>`).join('')}</tr></thead><tbody>${start}${chunk.map((r) => r.html).join('')}${end}</tbody></table><footer>第 ${s.startPage + pages.length} 页&emsp;打印时间：${escapeHtml(at)}</footer></section>`,
     });
   }
@@ -310,6 +320,6 @@ export function viewToPrintJob(
           `<article class="print-sheet" data-page="${p}"><div class="page-content">${view.pages[p - 1]!.html}</div></article>`,
       )
       .join(''),
-    css: `*{box-sizing:border-box} body{font-family:${s.font};font-size:${s.fontSize}pt;color:${s.color ? '#173f69' : '#000'}} .print-sheet{width:${g.width}mm;height:${g.height - 0.2}mm;padding:${s.margins.top}mm ${s.margins.right}mm ${s.margins.bottom}mm ${s.margins.left}mm;break-after:page;break-inside:avoid}.print-sheet:last-child{break-after:auto}.page-content{position:relative;left:${s.offsetX}mm;top:${s.offsetY}mm;width:${g.contentWidth}mm}.scaled{zoom:${s.scale / 100};width:100%}.voucher{box-sizing:border-box;break-inside:avoid} h2{font-size:1.25em;text-align:center;margin:0 0 2mm}p{margin:.5mm 0;font-size:.9em;line-height:1.45}.single-line{white-space:pre}th,td{padding:.5mm 1mm;height:${g.lineMm}mm;line-height:1.45;white-space:pre-wrap;vertical-align:top}th{white-space:nowrap}td.num{white-space:nowrap}.ledger-id{font-size:.65em}.ledger-direction{font-size:.7em}footer{margin-top:3mm;text-align:right;font-size:.85em}`,
+    css: `*{box-sizing:border-box} body{font-family:${s.font};font-size:${s.fontSize}pt;color:${s.color ? '#173f69' : '#000'}} .print-sheet{width:${g.width}mm;height:${g.height - 0.2}mm;padding:${s.margins.top}mm ${s.margins.right}mm ${s.margins.bottom}mm ${s.margins.left}mm;break-after:page;break-inside:avoid}.print-sheet:last-child{break-after:auto}.page-content{position:relative;left:${s.offsetX}mm;top:${s.offsetY}mm;width:${g.contentWidth}mm}.scaled{zoom:${s.scale / 100};width:100%}.voucher{box-sizing:border-box;break-inside:avoid}.voucher:not(:last-child){margin-bottom:${s.voucherGapMm ?? 0}mm} h2{font-size:1.25em;text-align:center;margin:0 0 2mm}p{margin:.5mm 0;font-size:.9em;line-height:1.45}.single-line{white-space:pre}th,td{padding:.5mm 1mm;height:${g.lineMm}mm;line-height:1.45;white-space:pre-wrap;vertical-align:top}th{white-space:nowrap}td.num{white-space:nowrap}.ledger-id{font-size:.65em}.ledger-direction{font-size:.7em}footer{margin-top:3mm;text-align:right;font-size:.85em}`,
   };
 }

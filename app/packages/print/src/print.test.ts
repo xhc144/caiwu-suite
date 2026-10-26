@@ -233,7 +233,12 @@ describe('账册与批次', () => {
       send,
     });
     expect(send).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({ sent: [1, 3], cancelled: true });
+    expect(result).toEqual({
+      sent: [1, 3],
+      cancelled: true,
+      blankPages: 0,
+      resume: { key: expect.any(String), nextStep: 1 },
+    });
     expect(confirm.mock.calls[0]![0]).toContain('奇页');
     expect(confirm.mock.calls[1]![0]).toContain('翻面');
   });
@@ -453,4 +458,98 @@ it('w_pz_prn_1 23 个 W/M 必须预分行，保留混合字、完整 emoji 和 t
   const flattened = lines.flatMap((line) => [...graphemes.segment(line)].map((x) => x.segment));
   expect(flattened).toContain('👨‍👩‍👧‍👦');
   expect(flattened).toContain('🇨🇳');
+});
+
+it('w_print_2_zw 每科目提示包含所有续页，取消后不发送下一科目', async () => {
+  const { buildLedgerBookView } = await import('./index');
+  const view = buildLedgerBookView([ledgerModel, { ...ledgerModel, account: '6603 财务费用' }], {
+    ...defaultLayout,
+    rows: 3,
+  });
+  const send = vi.fn(async () => {});
+  const confirm = vi.fn().mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+  const result = await runPrintBatch(view, {
+    pages: view.pages.map((_, i) => i + 1),
+    copies: 1,
+    pause: 'account',
+    send,
+    confirm,
+  });
+  expect(send).toHaveBeenCalledTimes(1);
+  expect(result).toEqual({ sent: [1, 2, 3, 4], cancelled: true });
+  expect(confirm.mock.calls[0]![0]).toContain('1001 现金');
+  expect(confirm.mock.calls[1]![0]).toContain('6603 财务费用');
+});
+
+it('w_preview_zc 重置科目页码时按印刷页码分奇偶，单页科目背面仍保留空白纸槽', async () => {
+  const { buildLedgerBookView } = await import('./index');
+  const view = buildLedgerBookView([ledgerModel, { ...ledgerModel, account: '6603 财务费用' }], {
+    ...defaultLayout,
+    rows: 100,
+    startPage: 5,
+    continuousPage: false,
+  });
+  const send = vi.fn(async () => {});
+  const confirm = vi.fn(async () => true);
+  const result = await runPrintBatch(view, {
+    pages: [1, 2],
+    copies: 1,
+    pause: 'none',
+    duplex: true,
+    send,
+    confirm,
+  });
+  expect(view.pages.map((p) => p.pageNumber)).toEqual([5, 5]);
+  expect(send).toHaveBeenCalledTimes(4);
+  expect(confirm).toHaveBeenCalledTimes(4);
+  expect(result.sent).toEqual([1, 2]);
+  expect(result.blankPages).toBe(2);
+});
+
+it('w_print_zc 承前过次跨长摘要仍按分录首次分片累计，红字金额不重复', () => {
+  const rows = ledgerModel.rows.map((r, i) => ({
+    ...r,
+    summary: '跨页摘要'.repeat(12),
+    debit: i % 2 ? -100 : 100,
+    balance: i % 2 ? 100 : 200,
+  }));
+  const view = buildLedgerView(
+    { ...ledgerModel, debit: 0, ytdDebit: 0, rows },
+    { ...defaultLayout, rows: 2 },
+  );
+  const html = view.pages.map((p) => p.html).join('');
+  expect([...html.matchAll(/data-ledger-line="[^"]+" data-fragment="0"/g)]).toHaveLength(
+    rows.length,
+  );
+  for (let i = 1; i < view.pages.length; i++) {
+    const previous = /<tr>(?:(?!<tr>)[\s\S])*?<td>过次页<\/td>[\s\S]*?<\/tr>/.exec(
+      view.pages[i - 1]!.html,
+    )?.[0];
+    const current = /<tr>(?:(?!<tr>)[\s\S])*?<td>承前页<\/td>[\s\S]*?<\/tr>/.exec(
+      view.pages[i]!.html,
+    )?.[0];
+    expect(previous).toBeDefined();
+    expect(current).toBe(previous!.replace('过次页', '承前页'));
+  }
+  expect(html).toContain('-1.00');
+});
+
+it.each([
+  ['A5', 148, 210],
+  ['B5', 176, 250],
+] as const)('w_print %s 标准纸张与横向尺寸一致', async (paper, width, height) => {
+  const view = buildVoucherView(await model(), { ...defaultLayout, paper, landscape: true });
+  expect(layoutGeometry(view.layout)).toMatchObject({ width: height, height: width });
+  expect(renderPrintDocument(viewToPrintJob(view))).toContain(`size:${height}mm ${width}mm`);
+});
+
+it('w_pz_prn_3 合并间距挤占槽高，过大时阻止，不静默截断', async () => {
+  const m = await model();
+  m.vouchers.push({ ...m.vouchers[0]!, id: 2 });
+  const view = buildVoucherView(m, { ...defaultLayout, perPage: 2, voucherGapMm: 8 });
+  expect(view.pages).toHaveLength(1);
+  expect(viewToPrintJob(view).css).toContain('margin-bottom:8mm');
+  expect(() =>
+    layoutGeometry({ ...defaultLayout, paper: 'A5', perPage: 3, voucherGapMm: 50 }),
+  ).toThrow('可打印区域');
 });

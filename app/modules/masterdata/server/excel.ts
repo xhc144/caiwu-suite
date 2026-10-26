@@ -1,17 +1,81 @@
 import ExcelJS from 'exceljs';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { BusinessError, type DimensionTypeId } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
   AccountInputSchema,
   DimensionInputSchema,
+  ReferenceInputSchema,
+  type ReferenceKind,
+  type ReferenceRow,
   type ExcelInput,
   type ImportPreview,
   type Confirmation,
   type AccountInput,
 } from '../shared';
 import { fail, masterdataService, confirmRequired } from './service';
+import { referenceService } from './reference';
+import { sql } from '@caiwu/db';
 
 const { Workbook } = ExcelJS;
+// 仅在当前服务进程内持有；重启后旧预览自然失效，不向客户端暴露记录或密钥。
+const previewKey = randomBytes(32);
+
+const bookInstances = new WeakMap<object, string>();
+function bookInstance(db: object) {
+  let instance = bookInstances.get(db);
+  if (!instance) {
+    instance = randomBytes(32).toString('hex');
+    bookInstances.set(db, instance);
+  }
+  return instance;
+}
+async function sqliteVersion(svc: CoreServices) {
+  const local = await sql<{
+    changes: string;
+  }>`SELECT CAST(total_changes() AS TEXT) AS changes`.execute(svc.db);
+  const external = await sql<{ data_version: number }>`PRAGMA data_version`.execute(svc.db);
+  return { changes: local.rows[0]!.changes, external: external.rows[0]!.data_version };
+}
+async function previewState(svc: CoreServices, input: ExcelInput, instance: string) {
+  return {
+    version: 1,
+    instance,
+    sqlite: await sqliteVersion(svc),
+    book: await svc.book.info(),
+    kind: input.kind,
+    type: input.type ?? null,
+    referenceKind: input.referenceKind ?? null,
+    fileName: input.fileName,
+    fileDigest: createHash('sha256').update(Buffer.from(input.content, 'base64')).digest('hex'),
+    records:
+      input.kind === 'accounts'
+        ? await svc.accounts.list()
+        : input.kind === 'dimensions'
+          ? await svc.dimensions.items(input.type)
+          : await referenceService(svc).list(input.referenceKind!),
+  };
+}
+type PreviewState = Awaited<ReturnType<typeof previewState>>;
+function sealPreview(state: PreviewState) {
+  return createHmac('sha256', previewKey).update(JSON.stringify(state)).digest('hex');
+}
+
+function stalePreview(): never {
+  fail(
+    'IMPORT_STALE',
+    '导入预览已失效，请重新预览',
+    '账套、档案或文件已变化，请重新上传文件并确认新预览；本次没有写入数据',
+  );
+}
+function assertPreviewToken(actual: string | undefined, expected: string) {
+  if (
+    !actual ||
+    !/^[a-f0-9]{64}$/.test(actual) ||
+    !timingSafeEqual(Buffer.from(actual, 'hex'), Buffer.from(expected, 'hex'))
+  )
+    stalePreview();
+}
 
 const dimTypes = ['project', 'partner', 'department', 'person'] as const;
 const labels = { project: '项目', partner: '客供', department: '部门', person: '个人' };
@@ -31,9 +95,52 @@ const accountHeaders = [
   ...dimTypes.flatMap((d) => [`${labels[d]}启用`, `${labels[d]}必填`, `${labels[d]}默认编码`]),
 ];
 const dimensionHeaders = ['编码', '名称', '上级编码', '停用', '属性JSON'];
+const referenceColumns: Record<ReferenceKind, { key: keyof ReferenceRow; title: string }[]> = {
+  voucherTypes: [
+    { key: 'code', title: '编码' },
+    { key: 'shortName', title: '简称' },
+    { key: 'name', title: '全称' },
+    { key: 'disabled', title: '停用' },
+    { key: 'sort', title: '排序' },
+  ],
+  settlementMethods: [
+    { key: 'code', title: '编码' },
+    { key: 'name', title: '名称' },
+    { key: 'disabled', title: '停用' },
+    { key: 'sort', title: '排序' },
+  ],
+  currencies: [
+    { key: 'code', title: '编码' },
+    { key: 'name', title: '名称' },
+    { key: 'symbol', title: '符号' },
+    { key: 'disabled', title: '停用' },
+    { key: 'sort', title: '排序' },
+  ],
+  summaries: [
+    { key: 'code', title: '编码' },
+    { key: 'name', title: '摘要短语' },
+    { key: 'category', title: '类别' },
+    { key: 'shortcut', title: '快捷检索词' },
+    { key: 'sort', title: '排序' },
+  ],
+};
+const referenceNames: Record<ReferenceKind, string> = {
+  voucherTypes: '凭证类型',
+  settlementMethods: '结算类别',
+  currencies: '币种',
+  summaries: '摘要',
+};
+function columnsFor(kind: ReferenceKind | undefined) {
+  if (!kind) fail('REFERENCE_KIND', '请选择参考档案类型');
+  return referenceColumns[kind];
+}
 type SheetRow = { row: number; data: Record<string, string> };
 class PreviewRollback extends Error {
-  constructor(readonly result: ImportPreview) {
+  constructor(
+    readonly result: ImportPreview,
+    readonly state: PreviewState,
+    readonly expectedChanges: string,
+  ) {
     super('预览回滚');
   }
 }
@@ -58,7 +165,14 @@ async function read(input: ExcelInput): Promise<SheetRow[]> {
   if (!ws || ws.rowCount < 2) fail('FILE_EMPTY', '文件没有档案数据', '表头下面至少填写一行');
   if (ws.rowCount > 5001) fail('FILE_LARGE', '单次最多导入5000条档案', '请分批导入');
   const headers = (ws.getRow(1).values as unknown[]).slice(1).map(String);
-  const required = input.kind === 'accounts' ? accountHeaders : dimensionHeaders;
+  const required =
+    input.kind === 'accounts'
+      ? accountHeaders
+      : input.kind === 'dimensions'
+        ? dimensionHeaders
+        : columnsFor(input.referenceKind).map((c) => c.title);
+  if (new Set(headers).size !== headers.length)
+    fail('FILE_HEADERS', '文件含重复表头', '请保留每个表头一次，避免覆盖同名列');
   if (required.some((h) => !headers.includes(h)))
     fail(
       'FILE_HEADERS',
@@ -87,10 +201,16 @@ async function read(input: ExcelInput): Promise<SheetRow[]> {
 
 export function excelService(svc: CoreServices) {
   const self = {
-    async export(kind: 'accounts' | 'dimensions', type?: DimensionTypeId) {
+    async export(kind: ExcelInput['kind'], type?: DimensionTypeId, referenceKind?: ReferenceKind) {
       const wb = new Workbook();
       const ws = wb.addWorksheet('基础档案');
-      const headers = kind === 'accounts' ? accountHeaders : dimensionHeaders;
+      const columns = kind === 'reference' ? columnsFor(referenceKind) : [];
+      const headers =
+        kind === 'accounts'
+          ? accountHeaders
+          : kind === 'dimensions'
+            ? dimensionHeaders
+            : columns.map((c) => c.title);
       ws.addRow(headers);
       if (kind === 'accounts') {
         for (const a of await svc.accounts.list()) {
@@ -119,7 +239,7 @@ export function excelService(svc: CoreServices) {
             ...dims,
           ]);
         }
-      } else {
+      } else if (kind === 'dimensions') {
         if (!type) fail('DIMENSION_TYPE', '请指定辅助档案类型');
         const items = await svc.dimensions.items(type);
         for (const a of items)
@@ -130,26 +250,44 @@ export function excelService(svc: CoreServices) {
             +a.disabled,
             JSON.stringify(a.attrs),
           ]);
+      } else {
+        for (const row of await referenceService(svc).list(referenceKind!))
+          ws.addRow(
+            columns.map(({ key }) =>
+              typeof row[key] === 'boolean' ? +row[key] : (row[key] ?? ''),
+            ),
+          );
       }
       ws.columns.forEach((c) => {
         c.width = 22;
         c.numFmt = '@';
       });
       return {
-        fileName: `${kind === 'accounts' ? '科目' : '辅助档案'}.xlsx`,
+        fileName: `${kind === 'accounts' ? '科目' : kind === 'dimensions' ? '辅助档案' : referenceNames[referenceKind!]}.xlsx`,
         content: Buffer.from(await wb.xlsx.writeBuffer()).toString('base64'),
       };
     },
     async process(input: ExcelInput, commit: boolean): Promise<ImportPreview> {
+      if (svc.db.isTransaction)
+        fail(
+          'IMPORT_TRANSACTION',
+          '请从导入入口重新预览和确认',
+          '导入需要独立事务，当前没有写入数据',
+        );
       const rows = await read(input);
+      const instance = bookInstance(svc.db);
       try {
         return await svc.tx(async (tsvc) => {
+          // 与后续写入使用同一事务；必须在第一行写入之前比较，不能把旧的新增改成更新。
+          const state = await previewState(tsvc, input, instance);
+          const previewToken = sealPreview(state);
+          if (commit) assertPreviewToken(input.previewToken, previewToken);
           const service = masterdataService(tsvc);
-          const result: ImportPreview = { rows: [], confirmations: [], valid: true };
+          const result: ImportPreview = { rows: [], confirmations: [], valid: true, previewToken };
           const seen = new Set<string>();
           for (const { row, data: r } of rows) {
             const code = r['编码'] ?? '';
-            const name = r['名称'] ?? '';
+            const name = r['名称'] ?? r['全称'] ?? r['摘要短语'] ?? '';
             try {
               if (seen.has(code)) fail('EXCEL_DUPLICATE', `文件内编号 ${code} 重复`);
               seen.add(code);
@@ -195,7 +333,7 @@ export function excelService(svc: CoreServices) {
                   ...data,
                   confirmations: commit ? input.confirmations : warnings.map((w) => w.key),
                 });
-              } else {
+              } else if (input.kind === 'dimensions') {
                 if (!input.type) fail('DIMENSION_TYPE', '请指定辅助档案类型');
                 const existing = await tsvc.dimensions.getByCode(input.type, code);
                 action = existing ? '更新/保持' : '新增';
@@ -215,6 +353,29 @@ export function excelService(svc: CoreServices) {
                   attrs,
                 });
                 await service.writeDimension(data);
+              } else {
+                if (!input.referenceKind) fail('REFERENCE_KIND', '请选择参考档案类型');
+                const refs = referenceService(tsvc);
+                const existing = (await refs.list(input.referenceKind)).find(
+                  (r) => r.code === code,
+                );
+                action = existing ? '更新/保持' : '新增';
+                const sort = r['排序'] ?? '';
+                if (!/^\d+$/.test(sort)) fail('REFERENCE_SORT', '排序须为0至100000的整数');
+                const data = ReferenceInputSchema.parse({
+                  ...existing,
+                  kind: input.referenceKind,
+                  id: existing?.id,
+                  code,
+                  name,
+                  shortName: r['简称'] ?? '',
+                  disabled: flag(r['停用']),
+                  sort: Number(sort),
+                  symbol: r['符号'] || null,
+                  category: r['类别'] ?? '',
+                  shortcut: r['快捷检索词'] ?? '',
+                });
+                await refs.save(data);
               }
               result.rows.push({ row, code, name, action, error: '' });
               result.confirmations.push(...warnings);
@@ -231,19 +392,41 @@ export function excelService(svc: CoreServices) {
             }
           }
           result.confirmations = [...new Map(result.confirmations.map((w) => [w.key, w])).values()];
-          if (!commit) throw new PreviewRollback(result);
+          if (!commit)
+            throw new PreviewRollback(result, state, (await sqliteVersion(tsvc)).changes);
           confirmRequired(
             [{ key: 'import', message: '确认导入预览中的全部档案？' }],
             input.confirmations ?? [],
           );
           await tsvc.log.write({
             action: 'masterdata.import',
-            summary: `导入${rows.length}条${input.kind === 'accounts' ? '科目' : '辅助档案'}`,
+            summary: `导入${rows.length}条${input.kind === 'accounts' ? '科目' : input.kind === 'dimensions' ? '辅助档案' : referenceNames[input.referenceKind!]}`,
           });
           return result;
         });
       } catch (error) {
-        if (error instanceof PreviewRollback) return error.result;
+        if (error instanceof PreviewRollback) {
+          // total_changes包含已回滚的模拟写入，必须在回滚后签发，并确认两阶段之间没有其他写入。
+          return svc.tx(async (tsvc) => {
+            const current = await previewState(tsvc, input, instance);
+            const comparable = {
+              ...current,
+              sqlite: { ...current.sqlite, changes: error.state.sqlite.changes },
+            };
+            if (
+              current.sqlite.changes !== error.expectedChanges ||
+              JSON.stringify(comparable) !== JSON.stringify(error.state)
+            )
+              stalePreview();
+            return { ...error.result, previewToken: sealPreview(current) };
+          });
+        }
+        if (
+          error instanceof Error &&
+          'code' in error &&
+          String(error.code).startsWith('SQLITE_BUSY')
+        )
+          stalePreview();
         throw error;
       }
     },
