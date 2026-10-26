@@ -397,7 +397,10 @@ export default function BookPage() {
             <Button
               type="primary"
               danger={plan?.action === 'delete'}
+              aria-label="确认执行"
+              aria-busy={mutation.isPending}
               disabled={
+                mutation.isPending ||
                 !plan?.eligibleCount ||
                 !!plan.reversalCashflow?.some(
                   (r) => r.direction !== 'internal' && !cashflowMappings[r.lineNo],
@@ -632,6 +635,9 @@ function OperationDrawer({
           <Button onClick={onClose}>取消</Button>
           <Button
             type="primary"
+            aria-label="生成预览"
+            aria-busy={busy}
+            disabled={busy}
             loading={busy}
             onClick={() =>
               void form.validateFields().then((v) => {

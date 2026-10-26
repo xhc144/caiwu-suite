@@ -97,8 +97,11 @@ export function ImportDrawer({
           {plan ? (
             <Button
               type="primary"
+              aria-label="确认导入"
+              aria-busy={commit.isPending}
               loading={commit.isPending}
               disabled={
+                commit.isPending ||
                 plan.stopped ||
                 !plan.validCount ||
                 (!!plan.errorCount && !plan.onlyValid) ||
@@ -111,7 +114,14 @@ export function ImportDrawer({
               确认导入
             </Button>
           ) : (
-            <Button type="primary" loading={preview.isPending} onClick={() => void startPreview()}>
+            <Button
+              type="primary"
+              aria-label="逐凭证预览"
+              aria-busy={preview.isPending}
+              disabled={preview.isPending}
+              loading={preview.isPending}
+              onClick={() => void startPreview()}
+            >
               逐凭证预览
             </Button>
           )}

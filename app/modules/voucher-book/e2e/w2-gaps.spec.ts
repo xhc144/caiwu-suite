@@ -63,6 +63,7 @@ test('w_pz_tjsh 混合批次真实入口保留逐项状态、跳过原因并导�
 
 test('w_pz_get Excel歧义表头经真实入口阻止且不写库，修正映射后有目标结果清单', async ({ page }) => {
   const t = await browserRuntime();
+  let releasePreview = () => {};
   try {
     await seedVouchers(t.app.svc, [spec('Excel映射原件')]);
     const file = await t.app.call(server).export({ filter: {}, format: 'xlsx' });
@@ -80,13 +81,30 @@ test('w_pz_get Excel歧义表头经真实入口阻止且不写库，修正映射
       mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       buffer: Buffer.from(await wb.xlsx.writeBuffer()),
     });
-    await dialog.getByRole('button', { name: '逐凭证预览', exact: true }).click();
+    let previewRequests = 0;
+    const responseGate = new Promise<void>((resolve) => {
+      releasePreview = resolve;
+    });
+    await page.route('**/trpc/m.voucher-book.importPreview*', async (route) => {
+      previewRequests++;
+      if (previewRequests === 1) await responseGate;
+      await route.continue();
+    });
+    const previewButton = dialog.getByRole('button', { name: '逐凭证预览', exact: true });
+    await previewButton.click();
+    await expect(previewButton).toHaveAccessibleName('逐凭证预览');
+    await expect(previewButton).toHaveAttribute('aria-busy', 'true');
+    await expect(previewButton).toBeDisabled();
+    releasePreview();
     await expect(page.getByText(/匹配到多个表头/)).toBeVisible();
+    await expect(previewButton).toHaveAttribute('aria-busy', 'false');
+    await expect(previewButton).toBeEnabled();
     expect((await t.app.svc.vouchers.list({})).total).toBe(1);
     await dialog.getByText('查看或修正字段对应关系', { exact: true }).click();
     await dialog.getByLabel('映射科目编码', { exact: true }).fill('科目编码');
     await dialog.getByRole('button', { name: '逐凭证预览', exact: true }).click();
     await expect(dialog).toContainText('合法 1 张；错误 0 项');
+    expect(previewRequests).toBe(2);
     await dialog.getByRole('button', { name: '确认导入', exact: true }).click();
     await page.getByRole('button', { name: '查看处理清单', exact: true }).click();
     dialog = page.getByRole('dialog', { name: '凭证处理清单', exact: true });
@@ -94,6 +112,7 @@ test('w_pz_get Excel歧义表头经真实入口阻止且不写库，修正映射
     await expect(dialog).toContainText('待审核');
     expect((await t.app.svc.vouchers.list({})).total).toBe(2);
   } finally {
+    releasePreview();
     await t.close();
   }
 });
