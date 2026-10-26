@@ -3,7 +3,7 @@ import { zId, zPeriod } from '@caiwu/core';
 const positive = (max: number) => z.number().int().min(1).max(max);
 export const LayoutSchema = z
   .object({
-    paper: z.enum(['A4', 'custom']).default('A4'),
+    paper: z.enum(['A4', 'A5', 'B5', 'custom']).default('A4'),
     widthMm: z.number().min(80).max(600).default(210),
     heightMm: z.number().min(80).max(600).default(297),
     landscape: z.boolean().default(false),
@@ -33,15 +33,18 @@ export const LayoutSchema = z
     continuousPage: z.boolean().default(true),
     quantityDecimals: z.number().int().min(0).max(6).default(2),
     color: z.boolean().default(false),
+    voucherGapMm: z.number().min(0).max(50).default(0),
   })
   .superRefine((s, ctx) => {
-    const w = s.paper === 'A4' ? 210 : s.widthMm,
-      h = s.paper === 'A4' ? 297 : s.heightMm;
+    const w = s.paper === 'A4' ? 210 : s.paper === 'A5' ? 148 : s.paper === 'B5' ? 176 : s.widthMm,
+      h = s.paper === 'A4' ? 297 : s.paper === 'A5' ? 210 : s.paper === 'B5' ? 250 : s.heightMm;
     const width = s.landscape ? h : w,
       height = s.landscape ? w : h;
     if (
       width - s.margins.left - s.margins.right < 60 ||
-      (height - s.margins.top - s.margins.bottom - 1) / s.perPage < 45
+      (height - s.margins.top - s.margins.bottom - 1 - s.voucherGapMm * (s.perPage - 1)) /
+        s.perPage <
+        45
     )
       ctx.addIssue({ code: 'custom', message: '可打印区域过小，请减少边距或每页张数' });
     if (
@@ -82,13 +85,18 @@ export const LedgerSelectionSchema = z
   .object({
     from: zPeriod,
     to: zPeriod,
-    account: z.string().trim().min(1).max(400),
+    account: z.string().trim().max(400),
+    accountScope: z.enum(['selected', 'all', 'first', 'leaf']).default('selected'),
     kind: z.enum(['general', 'detail', 'cash', 'bank']),
     includeUnposted: z.boolean().default(false),
     printEmpty: z.boolean().default(false),
     printNoActivity: z.boolean().default(false),
   })
-  .refine((v) => v.from <= v.to, '开始期间不能晚于结束期间');
+  .superRefine((v, ctx) => {
+    if (v.from > v.to) ctx.addIssue({ code: 'custom', message: '开始期间不能晚于结束期间' });
+    if (v.accountScope === 'selected' && !v.account)
+      ctx.addIssue({ code: 'custom', path: ['account'], message: '请填写要打印的科目编码' });
+  });
 export type LedgerSelection = z.input<typeof LedgerSelectionSchema>;
 export const TEMPLATE_FIELDS = [
   'unit',
