@@ -1049,7 +1049,10 @@ export default function OpeningPage() {
           <Select
             aria-label="导入模式"
             style={{ width: 280, maxWidth: '100%' }}
-            getPopupContainer={(trigger) => trigger.parentElement!}
+            // 不从入场 transform 的 rect.width 伸缩 popup；数字宽度同时启用横向避让。
+            popupMatchSelectWidth={280}
+            getPopupContainer={() => document.body}
+            styles={{ popup: { root: { maxWidth: 'calc(100vw - 32px)' } } }}
             value={mode}
             onChange={(v) => {
               setMode(v);
