@@ -6,6 +6,7 @@ import { expect, test, type APIRequestContext } from '@playwright/test';
 import { callApi, E2E_APP_TOKEN, loginWithNewBook } from '@caiwu/testkit/e2e';
 import { TRANSFER_LIMIT, type BackupMetadata } from '../shared';
 import { largePortableFixture } from '../test/transfer-fixture';
+import { probeBodyLimit } from '../test/http-body-limit';
 
 const MIB = 1024 * 1024;
 const HTTP_BODY_LIMIT = 50 * MIB; // W0 实际配置；本测试不覆盖或修改服务端配置。
@@ -133,6 +134,10 @@ test('w_tzjl_get：32 MiB 加一字节由页面和 API 拒绝，真实 50 MiB HT
     ).toContainText('文件超过 32 MiB');
     expect(uploads).toBe(0);
     const headers = { 'x-caiwu-token': E2E_APP_TOKEN, authorization: `Bearer ${session.token}` };
+    const before = await callApi<unknown[]>(request, 'm.backup.list', undefined, {
+      token: session.token,
+      method: 'GET',
+    });
     const tooLarge = await request.post('/trpc/m.backup.upload', {
       headers,
       data: { name: '超出文件上限', base64: fixture.bytes.toString('base64') },
@@ -140,15 +145,31 @@ test('w_tzjl_get：32 MiB 加一字节由页面和 API 拒绝，真实 50 MiB HT
     expect(tooLarge.status()).toBe(400);
     const error = (await tooLarge.json()) as { error: { data: { business: { code: string } } } };
     expect(error.error.data.business.code).toBe('BACKUP_TRANSFER_SIZE');
-    const bodyLimit = await request.post('/trpc/m.backup.upload', {
-      headers,
-      data: { name: 'HTTP上限', base64: 'A'.repeat(HTTP_BODY_LIMIT) },
-    });
-    expect(bodyLimit.status()).toBe(413);
+    // 原整块 request.post 会与 Fastify 的提前 413 / Connection: close 竞争，
+    // EPIPE 不等同于拒绝成功：必须分别读到声明长度及真实分块超限的完整 HTTP 响应。
+    const bodyBytes =
+      HTTP_BODY_LIMIT + Buffer.byteLength(JSON.stringify({ name: 'HTTP上限', base64: '' }));
+    for (const mode of ['declared', 'chunked'] as const) {
+      const response = await probeBodyLimit(
+        new URL('/trpc/m.backup.upload', page.url()).href,
+        headers,
+        { mode, bodyBytes },
+      );
+      expect(response.complete).toBe(true);
+      expect(response.status).toBe(413);
+      expect(response.headers.connection).toBe('close');
+      expect(JSON.parse(response.body)).toMatchObject({
+        statusCode: 413,
+        code: 'FST_ERR_CTP_BODY_TOO_LARGE',
+      });
+      if (mode === 'declared') expect(response.sentBodyBytes).toBe(0);
+      else expect(response.sentBodyBytes).toBeGreaterThan(HTTP_BODY_LIMIT);
+    }
     const rows = await callApi<{ name: string }[]>(request, 'm.backup.list', undefined, {
       token: session.token,
       method: 'GET',
     });
+    expect(rows).toEqual(before);
     expect(rows.map((r) => r.name)).toEqual(['大包测试种子']);
   } finally {
     await rm(dir, { recursive: true, force: true });
