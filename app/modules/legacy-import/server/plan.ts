@@ -33,7 +33,7 @@ const integer = (text: string, max: number, label: string, min = 1) => {
   return Number(text);
 };
 const flag = (text: string | undefined) => {
-  if (text === undefined || text === '否') return false;
+  if (text === '否') return false;
   if (text === '是') return true;
   return fail('标志字段必须为「是」或「否」');
 };

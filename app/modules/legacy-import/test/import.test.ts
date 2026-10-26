@@ -430,11 +430,16 @@ describe('w_pz_get / w_xt_kmbm_get / w_xt_ye 标准化导入', () => {
   test('明确选择 GB18030 后可读取中文方向；错误选择 UTF-8 拒绝乱码', async () => {
     const { api } = await setup();
     const input = syntheticInput();
+    const noFlags = Buffer.concat(Array.from({ length: 5 }, () => Buffer.from([0x2c, 0xb7, 0xf1])));
     const bytes = Buffer.concat([
-      Buffer.from('code,name,category,direction\n9998,DemoDebit,asset,'),
+      Buffer.from(
+        'code,name,category,direction,cash,bank,cashflow,partner,disabled\n9998,DemoDebit,asset,',
+      ),
       Buffer.from([0xbd, 0xe8]),
+      noFlags,
       Buffer.from('\n9999,DemoCredit,equity,'),
       Buffer.from([0xb4, 0xfb]),
+      noFlags,
     ]);
     input.files[0] = {
       name: '科目.csv',
@@ -447,10 +452,31 @@ describe('w_pz_get / w_xt_kmbm_get / w_xt_ye 标准化导入', () => {
       name: 'name',
       category: 'category',
       direction: 'direction',
+      cash: 'cash',
+      bank: 'bank',
+      cashflow: 'cashflow',
+      partner: 'partner',
+      disabled: 'disabled',
     };
     expect((await api.prepare(input)).counts).toEqual(input.expected);
     input.files[0].encoding = 'utf-8';
     await expect(api.prepare(input)).rejects.toThrow('字符编码');
+  });
+
+  test('科目标志缺列或空白必须待核，不能默认成否后导入', async () => {
+    const { api } = await setup();
+    const missing = edit(syntheticInput(), 'accounts', (rows) =>
+      rows.forEach((r) => r.splice(4, 1)),
+    );
+    delete missing.mappings.accounts.cash;
+    await expect(api.prepare(missing)).rejects.toThrow('缺少「现金」映射');
+    await expect(
+      api.prepare(
+        edit(syntheticInput(), 'accounts', (rows) => {
+          rows[1]![4] = '';
+        }),
+      ),
+    ).rejects.toThrow('必须为「是」或「否」');
   });
 
   test('记账不变量：随机正数/红字分录导入，借贷及逐科目余额与整数来源严格相同', async () => {

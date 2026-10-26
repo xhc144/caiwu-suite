@@ -50,7 +50,7 @@ export const FIELDS: Record<TableKind, Record<string, string>> = {
   },
 };
 export const REQUIRED_FIELDS: Record<TableKind, string[]> = {
-  accounts: ['code', 'name', 'category', 'direction'],
+  accounts: Object.keys(FIELDS.accounts),
   opening: Object.keys(FIELDS.opening),
   vouchers: Object.keys(FIELDS.vouchers),
   balances: Object.keys(FIELDS.balances),
