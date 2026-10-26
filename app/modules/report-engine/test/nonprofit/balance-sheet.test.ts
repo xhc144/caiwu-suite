@@ -6,6 +6,7 @@ import {
   balance401ClosingTemplate,
   balance401AnnualTemplate,
   checkBalance401Sources,
+  validateBalance401AnnualGeneration,
 } from '../../templates/nonprofit/balance-sheet';
 import {
   activityMovement,
@@ -150,6 +151,38 @@ describe('401期末真实取数切片与共享契约接线准备', () => {
       api.generate({ id: r.id, expectedRevision: 1, period: 202607, requestId: randomUUID() }),
     ).rejects.toThrow('B6：2026年01月早于账套启用期间2026年07月');
     expect(await api.snapshot({ id: r.id, period: 202607 })).toBeNull();
+  });
+
+  it('401年度事务预检明确拒绝含未过账、错误年初时点及范围缺月，公共注册仍待owner', async () => {
+    await seedBalance401Book(app.svc);
+    const sources = { closing: balanceFixtureMapping(), opening: balanceFixtureMapping(202601) };
+    await app.svc.tx((s) =>
+      validateBalance401AnnualGeneration(s, { period: 202602, includeUnposted: false }, sources),
+    );
+    await expect(
+      app.svc.tx((s) =>
+        validateBalance401AnnualGeneration(s, { period: 202602, includeUnposted: true }, sources),
+      ),
+    ).rejects.toThrow('民非资产负债表取数只允许已过账');
+    await expect(
+      app.svc.tx((s) =>
+        validateBalance401AnnualGeneration(
+          s,
+          { period: 202602, includeUnposted: false },
+          { ...sources, opening: balanceFixtureMapping(202602) },
+        ),
+      ),
+    ).rejects.toThrow('年初来源不是本次生成年度1月');
+    await app.svc.db.deleteFrom('period').where('period', '=', 202602).execute();
+    await expect(
+      app.svc.tx((s) =>
+        validateBalance401AnnualGeneration(
+          s,
+          { period: 202603, includeUnposted: false },
+          { ...sources, closing: balanceFixtureMapping(202603) },
+        ),
+      ),
+    ).rejects.toThrow(/未建立期间/);
   });
 
   it('年度取数范围内部缺少期间时，真实生成拒绝并保持无快照', async () => {

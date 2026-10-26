@@ -124,4 +124,19 @@ describe('403本年/比较期统一取数接线', () => {
       ),
     ).rejects.toThrow(/已过账/);
   });
+
+  it('现金流预检自身拒绝范围内部缺月，不依赖后续公式恰好查到缺月', async () => {
+    await seedCashflowBook(app.svc);
+    await app.svc.periods.ensureYear(2027);
+    await app.svc.db.deleteFrom('period').where('period', '=', 202702).execute();
+    await expect(
+      app.svc.tx((s) =>
+        validateComparativeCashflow403Generation(
+          s,
+          { period: 202703, includeUnposted: false },
+          mapping(),
+        ),
+      ),
+    ).rejects.toThrow('现金流量取数范围内存在未建立期间，不能补零');
+  });
 });

@@ -219,8 +219,10 @@ export async function checkBalance401Sources(
   svc: CoreServices,
   period: number,
   raw: Balance401Mapping,
+  generation: { includeUnposted: boolean } = { includeUnposted: false },
 ): Promise<void> {
   const mapping = Balance401MappingSchema.parse(raw);
+  if (generation.includeUnposted) throw new Error('民非资产负债表取数只允许已过账');
   if (period !== mapping.period)
     throw new Error('分类依据期间与生成期间不一致，请重新复核到期和受托明细');
   await svc.periods.require(period);
@@ -240,4 +242,28 @@ export async function checkBalance401Sources(
     if (!mapped.has(account.code))
       throw new Error(`存在未分类的资产负债或净资产余额：${account.code}`);
   }
+}
+
+/** 公共generate待注册的年度门禁：两时点来源和实际取数范围须与本次生成绑定。 */
+export async function validateBalance401AnnualGeneration(
+  svc: CoreServices,
+  input: { period: number; includeUnposted: boolean },
+  sources: { closing: Balance401Mapping; opening: Balance401Mapping },
+): Promise<void> {
+  const closing = Balance401MappingSchema.parse(sources.closing);
+  const opening = Balance401MappingSchema.parse(sources.opening);
+  const first = Math.floor(input.period / 100) * 100 + 1;
+  if (opening.period !== first) throw new Error('年初来源不是本次生成年度1月');
+  await svc.periods.require(first);
+  await svc.periods.require(input.period);
+  const periods = await svc.periods.list();
+  if (
+    periods.filter((p) => p.period >= first && p.period <= input.period).length !==
+    input.period % 100
+  )
+    throw new Error('资产负债表年度范围内存在未建立期间');
+  await checkBalance401Sources(svc, input.period, closing, input);
+  for (const code of new Set(Object.values(opening.groups).flatMap((g) => g.accounts)))
+    if (!(await svc.accounts.require(code)).isLeaf)
+      throw new Error(`年初来源必须是末级科目：${code}`);
 }

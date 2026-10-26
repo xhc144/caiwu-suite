@@ -149,6 +149,12 @@ export async function checkCashflowSourceRange(
   if (info.startPeriod > periodFrom) throw new Error('启用前现金流量分类来源未知，不能补零');
   await svc.periods.require(periodFrom);
   await svc.periods.require(period);
+  if (
+    (await svc.periods.list()).filter((p) => p.period >= periodFrom && p.period <= period)
+      .length !==
+    period % 100
+  )
+    throw new Error('现金流量取数范围内存在未建立期间，不能补零');
   const allAccounts = await svc.accounts.list();
   const cashRoots = allAccounts.filter((a) => a.isCash || a.isBank);
   const isCashAccount = (code: string) => cashRoots.some((root) => code.startsWith(root.code));
