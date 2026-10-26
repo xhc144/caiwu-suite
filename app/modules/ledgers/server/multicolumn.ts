@@ -2,6 +2,7 @@ import {
   balanceSide,
   BusinessError,
   centsToYuan,
+  DIMENSION_TYPES,
   formatPeriod,
   nextPeriod,
   VOUCHER_STATUS_LABELS,
@@ -17,6 +18,7 @@ import {
   type MultiRow,
 } from '../multicolumn';
 import { assertComplete, ENTRY_LIMIT } from './service';
+import { resolveMultiColumns } from './multicolumn-format';
 
 /** 先使用 bigint 完整相加/相减，再检查能否以安全整数分返回。 */
 function exact(values: number[]): number {
@@ -90,6 +92,20 @@ export function multiService(svc: CoreServices) {
             message: '所选上级科目没有可分栏的下级科目',
             hint: '请选择另一个上级科目，或检查科目档案。',
           });
+        const configured = q.columns ? resolveMultiColumns(accounts, root, q.columns) : null;
+        const dimensionLabels: string[] = [];
+        for (const dt of DIMENSION_TYPES) {
+          const id = q.dimensions?.[dt.id];
+          if (id == null) continue;
+          const item = (await t.dimensions.items(dt.id)).find((d) => d.id === id);
+          if (!item)
+            throw new BusinessError({
+              code: 'LEDGERS_DIMENSION',
+              message: `${dt.name}中不存在 ID 为 ${id} 的项目`,
+              hint: '请重新选择辅助核算项。',
+            });
+          dimensionLabels.push(`${dt.name}：${item.code} ${item.name}`);
+        }
         const book = await t.book.info();
         const periods: number[] = [];
         for (let p = q.periodFrom; p <= q.periodTo; p = nextPeriod(p)) {
@@ -108,6 +124,7 @@ export function multiService(svc: CoreServices) {
                 periodFrom: Math.max(q.periodFrom, book.startPeriod),
                 periodTo: q.periodTo,
                 accountIds: [...branchOf.keys()],
+                dimensions: q.dimensions,
                 includeUnposted: q.includeUnposted,
                 limit: ENTRY_LIMIT,
               });
@@ -119,6 +136,7 @@ export function multiService(svc: CoreServices) {
             periodFrom: p,
             periodTo: p,
             accountCodes: [root.code],
+            dimensions: q.dimensions,
             rollup: true,
             includeZero: true,
             includeUnposted: q.includeUnposted,
@@ -136,9 +154,18 @@ export function multiService(svc: CoreServices) {
               active.add(child.id);
           }
         }
-        const columns = children
-          .filter((a) => q.includeEmpty || q.periodFrom < book.startPeriod || active.has(a.id))
-          .map((a) => ({ id: a.id, code: a.code, name: a.fullName }));
+        const columns =
+          configured?.map(({ leaves: _leaves, ...column }) => column) ??
+          children
+            .filter((a) => q.includeEmpty || q.periodFrom < book.startPeriod || active.has(a.id))
+            .map((a) => ({
+              id: a.id,
+              code: a.code,
+              name: a.fullName,
+              mode: q.mode,
+              accountCodes: [a.code],
+            }));
+        const columnLeaves = new Map(configured?.map((c) => [c.id, c.leaves]));
         const report: MultiReport = {
           query: q,
           columns,
@@ -147,9 +174,10 @@ export function multiService(svc: CoreServices) {
           accountName: `${root.code} ${root.fullName}`,
           orgName: book.orgName,
           startPeriod: book.startPeriod,
-          scope: `${q.includeUnposted ? '包含未过账（待审核、已审核、已过账）' : '仅已过账'}；草稿和作废始终排除；全部币种折合本位币；直属下级各占一栏并汇总其完整下级，父子不重计；分栏为${MULTI_MODES[q.mode]}；启用期间${formatPeriod(book.startPeriod)}，启用前月额和余额未知，本年累计含账前累计一次；分栏只表示发生额，期初及期末分栏留空`,
+          scope: `${q.includeUnposted ? '包含未过账（待审核、已审核、已过账）' : '仅已过账'}；草稿和作废始终排除；全部币种折合本位币；${configured ? '自定义科目集合展开到末级，同栏父子不重计' : '直属下级各占一栏并汇总其完整下级，父子不重计'}；${configured ? '自定义栏目独立取数，不同栏目可能重叠，不能相加作为主账合计' : `分栏为${MULTI_MODES[q.mode]}`}；${dimensionLabels.length ? dimensionLabels.join('；') : '全部辅助项'}；启用期间${formatPeriod(book.startPeriod)}，启用前月额和余额未知，本年累计含账前累计一次；分栏只表示发生额，期初及期末分栏留空`,
         };
-        if (!active.size && !q.includeEmpty && q.periodFrom >= book.startPeriod) return report;
+        if (!active.size && !q.includeEmpty && !configured && q.periodFrom >= book.startPeriod)
+          return report;
         const byPeriod = new Map<number, EntryRow[]>();
         for (const e of entries) {
           const group = byPeriod.get(e.period) ?? [];
@@ -232,7 +260,9 @@ export function multiService(svc: CoreServices) {
               Object.fromEntries(
                 columns.map((c) => [
                   c.id,
-                  c.id === childId ? valueOf(e.debit, e.credit, q.mode) : 0,
+                  (configured ? columnLeaves.get(c.id)?.has(e.accountId) : c.id === childId)
+                    ? valueOf(e.debit, e.credit, c.mode ?? q.mode)
+                    : 0,
                 ]),
               ),
               e,
@@ -257,13 +287,15 @@ export function multiService(svc: CoreServices) {
           const subValues = (ytd: boolean) =>
             Object.fromEntries(
               columns.map((c) => {
-                const s = map.get(c.id);
+                const sources = configured
+                  ? [...(columnLeaves.get(c.id) ?? [])].map((id) => map.get(id))
+                  : [map.get(c.id)];
                 return [
                   c.id,
                   valueOf(
-                    s?.[ytd ? 'ytdDebit' : 'debit'] ?? 0,
-                    s?.[ytd ? 'ytdCredit' : 'credit'] ?? 0,
-                    q.mode,
+                    exact(sources.map((s) => s?.[ytd ? 'ytdDebit' : 'debit'] ?? 0)),
+                    exact(sources.map((s) => s?.[ytd ? 'ytdCredit' : 'credit'] ?? 0)),
+                    c.mode ?? q.mode,
                   ),
                 ];
               }),
@@ -304,7 +336,7 @@ export async function exportMulti(svc: CoreServices, input: MultiQuery) {
     '贷方',
     '方向',
     '余额',
-    ...report.columns.map((c) => `${c.code} ${c.name}（${MULTI_MODES[input.mode]}）`),
+    ...report.columns.map((c) => `${c.code} ${c.name}（${MULTI_MODES[c.mode ?? input.mode]}）`),
   ]).font = { bold: true };
   const money = (n: number | null) => (n == null ? '' : centsToYuan(n));
   for (const r of report.rows) {

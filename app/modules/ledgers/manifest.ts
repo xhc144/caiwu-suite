@@ -11,6 +11,12 @@ export default defineManifest({
     { id: 'ledgers.config.edit', name: '保存账簿格式' },
   ],
   menu: [
+    {
+      group: 'ledger',
+      title: '辅助多栏明细账',
+      path: '/aux-multicolumn',
+      permission: 'ledgers.view',
+    },
     { group: 'ledger', title: '多栏账', path: '/multicolumn', permission: 'ledgers.view' },
     { group: 'ledger', title: '总分类账', path: '/general', permission: 'ledgers.view' },
     { group: 'ledger', title: '三栏明细账', path: '/detail', permission: 'ledgers.view' },

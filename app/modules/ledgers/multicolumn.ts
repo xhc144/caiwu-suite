@@ -1,11 +1,34 @@
 import { z } from 'zod';
 import { zPeriod } from '@caiwu/core';
+import { DimensionsSchema } from './shared';
 
 export const MULTI_MODES = {
   debit: '借方发生额',
   credit: '贷方发生额',
   net: '借减贷净额',
 } as const;
+export const MultiColumnDefinitionSchema = z.strictObject({
+  name: z.string().trim().min(1, '请填写栏目名称').max(60),
+  accountCodes: z.array(z.string().trim().min(1).max(40)).min(1, '每栏至少选择一个科目').max(500),
+  mode: z.enum(['debit', 'credit', 'net']),
+});
+export type MultiColumnDefinition = z.infer<typeof MultiColumnDefinitionSchema>;
+export const MultiColumnsSchema = z
+  .array(MultiColumnDefinitionSchema)
+  .min(1)
+  .max(500)
+  .refine((v) => new Set(v.map((c) => c.name)).size === v.length, '栏目名称不能重复');
+export const MultiFormatSchema = z.object({
+  columns: MultiColumnsSchema.nullable(),
+  revision: z.number().int().nonnegative(),
+});
+export type MultiFormat = z.infer<typeof MultiFormatSchema>;
+export const MultiFormatChangeSchema = z.strictObject({
+  account: z.string().trim().min(1).max(40),
+  columns: MultiColumnsSchema.nullable(),
+  expectedRevision: z.number().int().nonnegative(),
+  confirmed: z.boolean(),
+});
 export const MultiQuerySchema = z
   .strictObject({
     account: z.string().trim().min(1, '请选择一个上级科目').max(40),
@@ -14,10 +37,18 @@ export const MultiQuerySchema = z
     includeUnposted: z.boolean().default(false),
     includeEmpty: z.boolean().default(false),
     mode: z.enum(['debit', 'credit', 'net']).default('debit'),
+    columns: MultiColumnsSchema.optional(),
+    dimensions: DimensionsSchema.optional(),
   })
   .refine((q) => q.periodFrom <= q.periodTo, '开始期间不能晚于结束期间');
 export type MultiQuery = z.infer<typeof MultiQuerySchema>;
-export type MultiColumn = { id: number; code: string; name: string };
+export type MultiColumn = {
+  id: number;
+  code: string;
+  name: string;
+  mode?: MultiQuery['mode'];
+  accountCodes?: string[];
+};
 export type MultiRow = {
   id: string;
   kind: 'opening' | 'entry' | 'month' | 'ytd' | 'closing' | 'unknown';
@@ -64,6 +95,8 @@ export function parseMultiUrl(raw: Record<string, string | undefined>, current: 
       mode: raw.mode || 'debit',
       includeEmpty: flag(raw.includeEmpty),
       includeUnposted: flag(raw.includeUnposted),
+      columns: raw.columns ? JSON.parse(raw.columns) : undefined,
+      dimensions: raw.aux ? JSON.parse(raw.aux) : undefined,
     });
     return result.success
       ? { query: result.data, error: null }

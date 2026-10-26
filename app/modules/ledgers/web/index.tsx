@@ -5,6 +5,11 @@ import manifest from '../manifest';
 const component = lazy(() => import('./LedgerPage'));
 export default defineWebModule(manifest, {
   routes: [
+    {
+      path: '/aux-multicolumn',
+      title: '辅助多栏明细账',
+      component: lazy(() => import('./MultiColumnPage')),
+    },
     { path: '/multicolumn', title: '多栏账', component: lazy(() => import('./MultiColumnPage')) },
     { path: '/general', title: '总分类账', component },
     { path: '/detail', title: '三栏明细账', component },
