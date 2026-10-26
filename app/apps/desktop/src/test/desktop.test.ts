@@ -200,6 +200,24 @@ describe('服务生命周期与关闭', () => {
       }, 't'),
     ).rejects.toThrow(/无法启动/);
   });
+  it('关闭消息同步报错时不会重入停止流程，仍强制退出并清理监听', async () => {
+    vi.useFakeTimers();
+    const child = fakeChild();
+    child.requestStop = vi.fn(() => {
+      child.events.emit('error', new Error('IPC closed'));
+    });
+    const session = new ServiceSession(vi.fn(), vi.fn());
+    const started = session.start(() => child, 't');
+    child.stdout!.emit('data', Buffer.from('CAIWU_READY {"port":4317,"token":"t"}\n'));
+    await started;
+    const stopping = session.stop();
+    await vi.advanceTimersByTimeAsync(5000);
+    await stopping;
+    expect(child.requestStop).toHaveBeenCalledOnce();
+    expect(child.forceStop).toHaveBeenCalledOnce();
+    expect(child.events.eventNames()).toEqual([]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it('第二实例只还原并唤醒已有窗口；空窗口不创建第二个服务', () => {
     const win = { isMinimized: () => true, restore: vi.fn(), show: vi.fn(), focus: vi.fn() };
     wakeWindow(win);

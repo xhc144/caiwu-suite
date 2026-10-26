@@ -102,7 +102,11 @@ export class ServiceSession {
         if (!settled) settle(new Error('本地服务在准备完成前退出，请检查数据目录权限或重新安装'));
         else if (ready && !this.#stopping) this.unexpectedExit();
       };
-      const error = () => fail('本地服务进程启动失败，请检查安装文件和数据目录权限后重试');
+      const error = () => {
+        // 发送关闭消息自身也可能触发 error；停止期间不能重入 stop 的 Promise 初始化。
+        if (this.#stopping) return;
+        fail('本地服务进程启动失败，请检查安装文件和数据目录权限后重试');
+      };
       this.#detach = () => {
         child.stdout?.off('data', stdout);
         child.stderr?.off('data', stderr);

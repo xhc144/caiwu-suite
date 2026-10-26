@@ -1,4 +1,92 @@
 ; 仅检查，不强杀财务进程。用户保存/退出后重试；静默安装遇到运行实例会失败退出。
+!ifdef BUILD_UNINSTALLER
+  !define CAIWU_FUNCTION_PREFIX "un."
+!else
+  !define CAIWU_FUNCTION_PREFIX ""
+!endif
+Var /GLOBAL CaiwuDataFound
+Var /GLOBAL CaiwuScanDepth
+
+; 在 electron-builder 默认递归移除安装树之前拦截旧账套、备份、配置或目录链接。
+; 安装与卸载都做检查；正常安装文件仍由原生 NSIS 模板卸载。
+!macro customHeader
+  Function ${CAIWU_FUNCTION_PREFIX}CaiwuFindData
+    Exch $R0
+    Push $R1
+    Push $R2
+    Push $R3
+    IntOp $CaiwuScanDepth $CaiwuScanDepth + 1
+    ${If} $CaiwuScanDepth > 64
+      StrCpy $CaiwuDataFound 1
+      Goto caiwu_scan_done
+    ${EndIf}
+    FindFirst $R1 $R2 "$R0\*.caiwu*"
+    ${If} $R2 != ""
+      StrCpy $CaiwuDataFound 1
+    ${EndIf}
+    FindClose $R1
+    FindFirst $R1 $R2 "$R0\desktop-settings.json*"
+    ${If} $R2 != ""
+      StrCpy $CaiwuDataFound 1
+    ${EndIf}
+    FindClose $R1
+    FindFirst $R1 $R2 "$R0\*.*"
+    ${DoWhile} $R2 != ""
+      ${If} $CaiwuDataFound == 1
+        ${Break}
+      ${EndIf}
+      ${If} $R2 != "."
+      ${AndIf} $R2 != ".."
+        System::Call 'kernel32::GetFileAttributesW(w "$R0\$R2") i.s'
+        Pop $R3
+        IntOp $R3 $R3 & 0x400
+        ${If} $R3 != 0
+          ; 不跟随 junction/symlink，也不冒险对其执行递归删除。
+          StrCpy $CaiwuDataFound 1
+        ${Else}
+          System::Call 'kernel32::GetFileAttributesW(w "$R0\$R2") i.s'
+          Pop $R3
+          IntOp $R3 $R3 & 0x10
+          ${If} $R3 != 0
+            ${If} $R2 == "books"
+            ${OrIf} $R2 == "backups"
+            ${OrIf} $R2 == "backup"
+            ${OrIf} $R2 == "logs"
+              StrCpy $CaiwuDataFound 1
+            ${Else}
+              Push "$R0\$R2"
+              Call ${CAIWU_FUNCTION_PREFIX}CaiwuFindData
+            ${EndIf}
+          ${EndIf}
+        ${EndIf}
+      ${EndIf}
+      FindNext $R1 $R2
+    ${Loop}
+    FindClose $R1
+    caiwu_scan_done:
+    IntOp $CaiwuScanDepth $CaiwuScanDepth - 1
+    Pop $R3
+    Pop $R2
+    Pop $R1
+    Pop $R0
+  FunctionEnd
+
+  Function ${CAIWU_FUNCTION_PREFIX}CaiwuGuardInstallTree
+    StrCpy $CaiwuDataFound 0
+    StrCpy $CaiwuScanDepth 0
+    Push "$INSTDIR"
+    Call ${CAIWU_FUNCTION_PREFIX}CaiwuFindData
+    ${If} $CaiwuDataFound == 1
+      ${IfNot} ${Silent}
+        MessageBox MB_OK|MB_ICONSTOP "安装目录中发现账套、备份、用户配置或目录链接。为保留数据，本次安装/卸载已停止。请先完整备份并将数据放到安装目录之外的独立文件夹，再重试。"
+      ${EndIf}
+      SetErrorLevel 3
+      Quit
+    ${EndIf}
+    ClearErrors
+  FunctionEnd
+!macroend
+
 !macro customCheckAppRunning
   caiwu_wait_closed:
     nsProcess::_FindProcess "${APP_EXECUTABLE_FILENAME}"
@@ -15,6 +103,7 @@
       SetErrorLevel 2
       Quit
     ${EndIf}
+    Call ${CAIWU_FUNCTION_PREFIX}CaiwuGuardInstallTree
 !macroend
 
 !macro customWelcomePage

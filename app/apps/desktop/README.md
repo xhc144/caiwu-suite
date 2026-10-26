@@ -6,7 +6,7 @@
 - 单实例唤醒、窗口位置/大小/最大化状态保存和多屏可见区域校正。
 - 随机令牌/端口的本地服务；启动超时、提前退出及关闭清理；中文恢复提示、限大小轮换的本地去敏事件日志。
 - 兼容 `caiwuDesktop.print` / `printToPdf`；隔离打印窗禁脚本及远程加载，PDF 先选保存位置。新增可选 `caiwuDesktopHost` 提供目录设置及文件选择，类型见 `src/bridge.ts`。
-- 中文 NSIS、可选安装目录、快捷方式、自制图标；安装/卸载要求先保存退出，保留外部账套、备份及配置。打包检查 web、server、preload、SQLite 文件完整性。
+- 中文 NSIS、可选安装目录、快捷方式、自制图标；数据目录与安装树双向隔离并解析 books/备份 junction。安装/卸载先保存退出，安装树中发现旧账套、备份、配置或链接时停止；正常卸载保留外部用户数据。打包检查 web、server、preload、SQLite 文件完整性。
 - 私有 Windows workflow：冻结安装、全仓检查、Electron SQLite 重编译、NSIS 构建及独立安装/覆盖/卸载回归；回归中的 0.0.9 是同一代码构建的测试旧版本。
 
 配置和日志默认在用户应用数据目录 `caiwu-desktop/`。独立测试可设置绝对路径 `CAIWU_DESKTOP_USER_DATA_DIR`，不得指向日常使用的配置目录。

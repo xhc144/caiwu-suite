@@ -1,7 +1,16 @@
 import { _electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmdirSync,
+  rmSync,
+  symlinkSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createServer } from 'node:http';
@@ -11,7 +20,7 @@ import type { DesktopHost } from '../src/bridge';
 type PrintApi = {
   printToPdf(html: string, options: { title: string; landscape?: boolean }): Promise<string | null>;
 };
-type PrintWindow = Window & { caiwuDesktop: PrintApi };
+type PrintWindow = { caiwuDesktop: PrintApi };
 
 type Fixture = { bookId: string; dataDir: string; configDir: string };
 const root = process.env.CAIWU_DESKTOP_QA_FIXTURE;
@@ -110,14 +119,67 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
       await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
     ).toBe(1);
 
+    if (installed) {
+      const installDir = path.dirname(executable);
+      const candidates = [
+        installDir,
+        path.join(installDir, 'data'),
+        path.dirname(installDir),
+        installDir.toUpperCase(),
+      ];
+      for (const name of ['books', 'backups', 'backup']) {
+        const data = path.join(root, `junction-${name}`);
+        mkdirSync(data);
+        symlinkSync(installDir, path.join(data, name), 'junction');
+        candidates.push(data);
+      }
+      const originalConfig = readFileSync(
+        path.join(fixture.configDir, 'desktop-settings.json'),
+        'utf8',
+      );
+      for (const candidate of candidates) {
+        await desktop.evaluate(({ dialog }, dir) => {
+          dialog.showOpenDialog = async () => ({ canceled: false, filePaths: [dir] });
+          dialog.showErrorBox = () => {};
+        }, candidate);
+        expect(
+          await page.evaluate(() =>
+            (window.caiwuDesktopHost as DesktopHost).dataDirectory.choose(),
+          ),
+        ).toBeNull();
+        expect(readFileSync(path.join(fixture.configDir, 'desktop-settings.json'), 'utf8')).toBe(
+          originalConfig,
+        );
+        expect(await page.evaluate(async () => (await fetch('/healthz')).ok)).toBe(true);
+      }
+    }
+    await desktop.evaluate(({ dialog }) => {
+      dialog.showOpenDialog = async () => ({ canceled: true, filePaths: [] });
+    });
+    expect(
+      await page.evaluate(async () => {
+        const host = window.caiwuDesktopHost as DesktopHost;
+        return [
+          await host.files.open(),
+          await host.files.directory(),
+          await host.dataDirectory.choose(),
+        ];
+      }),
+    ).toEqual([null, null, null]);
+
     // 对话框响应由测试适配器提供；PDF 渲染、文件写入和打印窗安全在真实 Electron 运行。
     await desktop.evaluate(({ dialog }) => {
       dialog.showSaveDialog = async () => ({ canceled: true, filePath: '' });
     });
     expect(
       await page.evaluate(() =>
-        (window as PrintWindow).caiwuDesktop.printToPdf('<p>取消</p>', { title: '取消' }),
+        (window as unknown as PrintWindow).caiwuDesktop.printToPdf('<p>取消</p>', {
+          title: '取消',
+        }),
       ),
+    ).toBeNull();
+    expect(
+      await page.evaluate(() => (window.caiwuDesktopHost as DesktopHost).files.save('测试.txt')),
     ).toBeNull();
     expect(
       await desktop.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length),
@@ -130,7 +192,7 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     expect(
       await page.evaluate(
         ({ html }) =>
-          (window as PrintWindow).caiwuDesktop.printToPdf(html, {
+          (window as unknown as PrintWindow).caiwuDesktop.printToPdf(html, {
             title: '中文账簿',
             landscape: true,
           }),
@@ -155,7 +217,9 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     );
     const failed = await page.evaluate(async () => {
       try {
-        await (window as PrintWindow).caiwuDesktop.printToPdf('<p>失败</p>', { title: '失败' });
+        await (window as unknown as PrintWindow).caiwuDesktop.printToPdf('<p>失败</p>', {
+          title: '失败',
+        });
         return false;
       } catch (error) {
         return String(error).includes('PDF 未保存成功');
@@ -202,7 +266,22 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
       .catch(() => {});
     await expect.poll(() => desktop!.process().exitCode).not.toBeNull();
     desktop = undefined;
-    if (newInstaller) await install(newInstaller);
+    if (newInstaller) {
+      // 模拟旧用户误把账套放进安装树；覆盖安装必须停止，不能递归删除这些数据。
+      const legacyDir = path.join(path.dirname(executable), 'books');
+      mkdirSync(legacyDir);
+      const legacyBook = path.join(legacyDir, 'legacy-qa.caiwu');
+      cpSync(backup, legacyBook, { force: false, errorOnExist: true });
+      expect(
+        await run(newInstaller, ['/S', '/currentuser', `/D=${path.dirname(executable)}`]),
+      ).not.toBe(0);
+      expect(createHash('sha256').update(readFileSync(legacyBook)).digest('hex')).toBe(
+        originalBackup,
+      );
+      rmSync(legacyBook);
+      rmdirSync(legacyDir);
+      await install(newInstaller);
+    }
     desktop = await launch();
     page = await desktop.firstWindow();
     await expect(page.getByText('测试账套', { exact: true })).toBeVisible();
@@ -230,6 +309,16 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         /^Uninstall.*\.exe$/iu.test(name),
       );
       expect(uninstaller).toBeDefined();
+      const legacyBook = path.join(path.dirname(executable), 'legacy-uninstall-qa.caiwu');
+      cpSync(backup, legacyBook, { force: false, errorOnExist: true });
+      expect(
+        await run(path.join(path.dirname(executable), uninstaller!), ['/S', '/currentuser']),
+      ).not.toBe(0);
+      expect(existsSync(executable)).toBe(true);
+      expect(createHash('sha256').update(readFileSync(legacyBook)).digest('hex')).toBe(
+        originalBackup,
+      );
+      rmSync(legacyBook);
       expect(
         await run(path.join(path.dirname(executable), uninstaller!), ['/S', '/currentuser']),
       ).toBe(0);

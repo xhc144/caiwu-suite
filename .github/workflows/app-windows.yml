@@ -45,7 +45,14 @@ jobs:
           pnpm exec playwright install chromium
       - name: 全仓检查
         id: check
+        # 保留失败，独立构建/安装回归继续收集结果；末尾显式使 job 失败，不能掩盖 check。
+        continue-on-error: true
         run: pnpm check
+      - name: 全仓检查失败时仍执行独立网页 E2E
+        id: web-e2e
+        if: steps.check.outcome == 'failure'
+        continue-on-error: true
+        run: pnpm e2e
       - name: 构建网页和桌面
         id: build
         run: pnpm desktop:build
@@ -87,6 +94,7 @@ jobs:
           @(
             'install=${{ steps.install.outcome }}',
             'check=${{ steps.check.outcome }}',
+            'independent-web-e2e=${{ steps.web-e2e.outcome }}',
             'build=${{ steps.build.outcome }}',
             'native=${{ steps.native.outcome }}',
             'nsis=${{ steps.package.outcome }}',
@@ -104,3 +112,8 @@ jobs:
             ${{ runner.temp }}/m21-desktop-qa.log
           if-no-files-found: ignore
           retention-days: 3
+      - name: 保留全仓检查的失败结论
+        if: always() && (steps.check.outcome == 'failure' || steps.web-e2e.outcome == 'failure')
+        run: |
+          Write-Error 'pnpm check 或独立网页 E2E 失败；即使已生成安装包，本 workflow 仍为失败。请查看原始检查错误。'
+          exit 1

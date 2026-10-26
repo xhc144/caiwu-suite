@@ -12,10 +12,11 @@ import {
 } from 'electron';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { copyFileSync, mkdirSync, realpathSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { ServiceSession, allowUnload, wakeWindow, type ServiceChild } from './lifecycle';
 import { createLog } from './log';
+import { assertDataOutsideInstall } from './data-safety';
 import { atomicPdfWrite, exportPdf, targetState, withResource, type TargetState } from './printing';
 import {
   assertSender,
@@ -131,17 +132,10 @@ function saveSettings(next: Settings) {
 }
 
 function checkDirectory(dir: string) {
-  checkDataDir(dir);
   if (app.isPackaged) {
-    const install = realpathSync(path.dirname(process.execPath));
-    const relative = path.relative(install, realpathSync(dir));
-    if (
-      !relative ||
-      (!relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative))
-    ) {
-      throw new Error('数据目录不能放在软件安装目录中，请在文档或其他数据磁盘选择文件夹');
-    }
+    assertDataOutsideInstall(dir, path.dirname(process.execPath), userData);
   }
+  checkDataDir(dir);
 }
 
 async function selectDirectory(): Promise<string | null> {
