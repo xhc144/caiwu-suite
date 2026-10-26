@@ -1,10 +1,10 @@
-import { test as base, request as requestFactory, type APIRequestContext } from '@playwright/test';
-import { spawn } from 'node:child_process';
+import { test as base, type APIRequestContext } from '@playwright/test';
+import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { createRuntime } from '@caiwu/server-kit';
-import { createCoreServices, loadServiceUser, type CoreServices } from '@caiwu/core/server';
+import { createRuntime, moduleKit } from '@caiwu/server-kit';
+import type { CoreServices } from '@caiwu/core/server';
 import { E2E_APP_TOKEN } from '@caiwu/testkit/e2e';
 import server from '../server';
 
@@ -13,8 +13,33 @@ export type Isolated = {
   request: APIRequestContext;
   inBook<T>(bookId: string, fn: (svc: CoreServices) => Promise<T>): Promise<T>;
 };
+type ServerExit = { code: number | null; signal: string | null; error?: Error };
+
+async function closeServer(child: ChildProcess, exited: Promise<ServerExit>, dataDir: string) {
+  if (child.exitCode == null && child.signalCode == null) child.kill('SIGTERM');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      exited,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(`发票服务未正常退出，保留临时目录：${dataDir}`)),
+          5_000,
+        );
+      }),
+    ]);
+    if (result.error || result.code !== 0)
+      throw new Error(
+        `发票服务异常退出（${result.code ?? result.signal ?? result.error?.message}），保留临时目录：${dataDir}`,
+      );
+    await rm(dataDir, { recursive: true, force: true });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const test = base.extend<{ isolated: Isolated }>({
-  isolated: async ({ playwright: _playwright }, use) => {
+  isolated: async ({ playwright }, use) => {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), 'caiwu-invoice-e2e-'));
     const child = spawn(process.execPath, ['--import', 'tsx', 'apps/server/src/main.ts'], {
       cwd: process.cwd(),
@@ -28,8 +53,11 @@ export const test = base.extend<{ isolated: Isolated }>({
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    const exited = new Promise<ServerExit>((resolve) => {
+      child.once('exit', (code, signal) => resolve({ code, signal }));
+      child.once('error', (error) => resolve({ code: null, signal: null, error }));
+    });
     let request: APIRequestContext | undefined;
-    const runtime = createRuntime({ dataDir, modules: [server], devMode: true });
     try {
       const port = await new Promise<number>((resolve, reject) => {
         let output = '';
@@ -55,38 +83,39 @@ export const test = base.extend<{ isolated: Isolated }>({
         });
       });
       const origin = `http://127.0.0.1:${port}`;
-      request = await requestFactory.newContext({ baseURL: origin });
+      request = await playwright.request.newContext({ baseURL: origin });
       await use({
         origin,
         request,
         async inBook(bookId, fn) {
-          const book = runtime.bookStore.open(bookId);
-          const user = await loadServiceUser(book.db, 1);
-          if (!user) throw new Error('测试管理员不存在');
+          // 子服务 READY 后才加入数据目录。真实过程取得请求及账套租约，
+          // 此种子过程只在本进程调用，不挂载 HTTP；兼容新旧共享层。
+          const m = moduleKit(server.manifest);
+          const router = m.router({
+            seed: m.procedure
+              .meta({ permission: 'invoice.voucher' })
+              .mutation(({ ctx }) => fn(ctx.svc)),
+          });
+          const runtime = createRuntime({
+            dataDir,
+            modules: [{ ...server, router }],
+            devMode: true,
+          });
+          const session = runtime.sessions.create(bookId, 1);
           try {
-            return await fn(
-              createCoreServices({
-                db: book.db,
-                user,
-                moduleId: null,
-                now: runtime.now,
-                modules: runtime.modules.lookup,
-              }),
-            );
+            return await router.createCaller({ app: runtime, token: session.token }).seed();
           } finally {
+            runtime.sessions.delete(session.token);
             await runtime.bookStore.closeAll();
           }
         },
       });
     } finally {
-      await runtime.bookStore.closeAll();
-      await request?.dispose();
-      if (child.exitCode == null) {
-        const exited = new Promise<void>((resolve) => child.once('exit', () => resolve()));
-        child.kill('SIGTERM');
-        await exited;
+      try {
+        await request?.dispose();
+      } finally {
+        await closeServer(child, exited, dataDir);
       }
-      await rm(dataDir, { recursive: true, force: true });
     }
   },
 });
