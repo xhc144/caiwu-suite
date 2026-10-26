@@ -282,7 +282,7 @@ export class DesktopUpdates {
   constructor(
     readonly current: string,
     readonly directory: string,
-    private readonly request: typeof fetch = fetch,
+    private readonly request: typeof fetch = (input, init) => globalThis.fetch(input, init),
   ) {
     versionParts(current);
     this.#status = {

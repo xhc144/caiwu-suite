@@ -46,6 +46,8 @@ jobs:
       - name: 桌面真实 Node 子进程退出回归
         id: shutdown-node
         run: |
+          pnpm gen
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm exec tsc -p apps/desktop/tsconfig.qa.json --noEmit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm exec vitest run apps/desktop/src/test/shutdown.test.ts 2>&1 | Tee-Object -FilePath "$env:RUNNER_TEMP/m21-shutdown-node.log"

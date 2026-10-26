@@ -12,6 +12,13 @@ export async function checkInstalledUpdates(
   version: string,
   dataDir: string,
 ): Promise<Page> {
+  // 等待启动时那一次检查完成；之后本用例的更新传输全部使用下面的适配器。
+  await expect
+    .poll(
+      async () => (await page.evaluate(() => window.caiwuDesktopHost!.updates.status())).state,
+      { timeout: 40_000 },
+    )
+    .not.toBe('checking');
   const sha256 = createHash('sha256').update(readFileSync(installer)).digest('hex');
   const size = readFileSync(installer).length;
   await desktop.evaluate(
