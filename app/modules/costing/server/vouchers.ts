@@ -2,27 +2,17 @@ import { sumCents, type VoucherLineInput } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { z } from 'zod';
 import { VoucherPreviewSchema } from '../shared';
-import {
-  inventoryReader,
-  isUnverifiedHistory,
-  officialCost,
-  readInventory,
-} from './inventory-read';
-import { fail, integer, quantity, unitCost } from './math';
-import { sharedContractRequired } from './service';
+import { isUnverifiedHistory, officialCost, readInventory } from './inventory-read';
+import { e6, fail, integer, quantity, unitCost } from './math';
+import { voucherGenerationUnavailable } from './service';
 
 export async function previewVoucher(svc: CoreServices, raw: z.input<typeof VoucherPreviewSchema>) {
   svc.permissions.require('costing.voucher');
   const input = VoucherPreviewSchema.parse(raw);
   return svc.tx(async (t) => {
-    const inventory = await inventoryReader(t);
-    const target = await inventory
-      .selectFrom('inventory_document')
-      .select('period')
-      .where('id', '=', input.documentId)
-      .executeTakeFirst();
-    if (!target) fail('DOCUMENT', '当前账套中没有这张出入库单据', '请刷新单据列表');
-    const snapshot = await readInventory(t, target.period);
+    const periods = await t.periods.list();
+    const through = Math.max(...periods.map((p) => p.period));
+    const snapshot = await readInventory(t, through);
     const doc = snapshot.documents.find((d) => d.id === input.documentId);
     if (!doc) fail('DOCUMENT', '当前账套中没有这张出入库单据', '请刷新单据列表');
     await t.periods.assertOpen(doc.period, '预览出入库凭证');
@@ -36,7 +26,7 @@ export async function previewVoucher(svc: CoreServices, raw: z.input<typeof Vouc
         '只有销售类别出库单才有销售收入凭证',
         '领用出库请在本月成本核算后生成成本凭证',
       );
-    const sourceLines = snapshot.lines.filter((l) => l.document_id === doc.id);
+    const sourceLines = snapshot.movements.filter((l) => l.documentId === doc.id);
     if (!sourceLines.length) fail('EMPTY', '单据没有明细，不能生成凭证');
     const lines: VoucherLineInput[] = [];
     const summary = `${input.purpose === 'receipt' ? '入库' : input.purpose === 'revenue' ? '销售收入' : '出库成本'} ${doc.number}`;
@@ -92,41 +82,41 @@ export async function previewVoucher(svc: CoreServices, raw: z.input<typeof Vouc
     };
     if (input.purpose === 'receipt') {
       for (const l of sourceLines) {
-        const p = snapshot.products.find((p) => p.id === l.product_id)!;
-        await append(p.inventory_account_id, l.net_cents, 'debit', '产品存货', l.quantity_e6);
+        const p = snapshot.products.find((p) => p.id === l.productId)!;
+        await append(p.inventoryAccountId, l.netCents, 'debit', '产品存货', e6(l.quantity));
       }
       await append(
         input.taxAccountId,
-        sumCents(sourceLines.map((l) => l.tax_cents)),
+        sumCents(sourceLines.map((l) => l.taxCents)),
         'debit',
         '进项税',
       );
       await append(
-        doc.account_id,
-        sumCents(sourceLines.map((l) => l.gross_cents)),
+        doc.accountId,
+        sumCents(sourceLines.map((l) => l.grossCents)),
         'credit',
         '付款',
       );
     } else if (input.purpose === 'revenue') {
       await append(
-        doc.account_id,
-        sumCents(sourceLines.map((l) => l.gross_cents)),
+        doc.accountId,
+        sumCents(sourceLines.map((l) => l.grossCents)),
         'debit',
         '收款',
       );
       for (const l of sourceLines) {
-        const p = snapshot.products.find((p) => p.id === l.product_id)!;
+        const p = snapshot.products.find((p) => p.id === l.productId)!;
         await append(
-          p.sales_account_id ?? input.revenueAccountId,
-          l.net_cents,
+          p.salesAccountId ?? input.revenueAccountId,
+          l.netCents,
           'credit',
           '销售收入',
-          l.quantity_e6,
+          e6(l.quantity),
         );
       }
       await append(
         input.taxAccountId,
-        sumCents(sourceLines.map((l) => l.tax_cents)),
+        sumCents(sourceLines.map((l) => l.taxCents)),
         'credit',
         '销项税',
       );
@@ -137,7 +127,7 @@ export async function previewVoucher(svc: CoreServices, raw: z.input<typeof Vouc
           fail(
             'HISTORY_UNVERIFIED',
             '历史成本未知，不能预览成本凭证',
-            '该历史月份的核算批次尚不能核验，请先核实历史核算记录',
+            '请核对控制锚点至启用月的有效批次链及来源头行状态',
           );
         if (cost == null)
           fail(
@@ -145,9 +135,9 @@ export async function previewVoucher(svc: CoreServices, raw: z.input<typeof Vouc
             '本月尚未完成正式成本核算，不能生成成本凭证',
             '先完成库存成本核算；保存试算不能替代正式核算',
           );
-        const p = snapshot.products.find((p) => p.id === l.product_id)!;
-        await append(doc.cost_account_id, cost, 'debit', '出库成本', l.quantity_e6);
-        await append(p.inventory_account_id, cost, 'credit', '产品存货', l.quantity_e6);
+        const p = snapshot.products.find((p) => p.id === l.productId)!;
+        await append(doc.costAccountId, cost, 'debit', '出库成本', e6(l.quantity));
+        await append(p.inventoryAccountId, cost, 'credit', '产品存货', e6(l.quantity));
       }
     }
     if (lines.length < 2) fail('EMPTY', '没有足够的非零金额分录，不能生成凭证');
@@ -174,5 +164,5 @@ export async function generateVoucher(
 ) {
   svc.permissions.require('costing.voucher');
   await previewVoucher(svc, input);
-  return sharedContractRequired();
+  return voucherGenerationUnavailable();
 }

@@ -7,13 +7,16 @@ import server from '../server';
 export const inventoryModule = serverModules.find((m) => m.manifest.id === 'inventory')!;
 type Document = { id: number; revision: number; number: string; lines: { id: number }[] };
 type InventoryFixtures = {
+  stock(input: { warehouseId: number }): Promise<{ balance: string; issueCostCents: number | null; balanceCents: number | null }[]>;
+  count(input: { warehouseId: number; period: number }): Promise<{ revision: number; rows: { bookCents: number | null; actualCents: number | null; differenceCents: number | null }[] }>;
+
   saveWarehouse(input: { code: string; name: string }): Promise<number>;
   saveProduct(input: {
     code: string;
     name: string;
     inventoryAccountId: number;
     salesAccountId: number;
-  }): Promise<number>;
+  }): Promise<{ id: number }>;
   saveOpening(input: {
     warehouseId: number;
     revision: number;

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { sql } from '@caiwu/db';
 import { seedVouchers } from '@caiwu/testkit';
@@ -21,9 +22,9 @@ async function seed() {
 }
 
 describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
-  it('按真实库存加权、跨月结转、盘点调整，并且不写库存', async () => {
+  it('试算不写库存；跨月只承接已正式发布的结存，盘点调整进入下月', async () => {
     const { issue } = await seed();
-    const before = await readInventory(t.app.svc, 202601);
+    const before = await readInventory(t.app.svcFor('costing'), 202601);
     const r = await t.api.preview(january);
     expect(r.rows[0]).toMatchObject({
       openingCents: 1000,
@@ -40,7 +41,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
         unitCost: '2.000000000000',
       },
     ]);
-    expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(before.fingerprint);
+    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(before.fingerprint);
     const count = await t.inventory.generateCount({
       warehouseId: t.warehouseId,
       period: 202601,
@@ -59,6 +60,8 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
       closingCents: 2400,
     });
     await t.document('issue', '2', '20', { date: '2026-02-10' });
+    await expect(t.api.preview({ period: 202602 })).rejects.toThrow(/期初尚未就绪/);
+    await t.api.commit({ ...january, fingerprint: (await t.api.preview(january)).fingerprint, requestKey: randomUUID(), confirmed: true });
     expect((await t.api.preview({ period: 202602 })).rows[0]).toMatchObject({
       openingQuantity: '12',
       openingCents: 2400,
@@ -69,7 +72,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
   it('保存/取消试算、重复保存、来源锁版本与确认保护；库存未被假核算', async () => {
     await seed();
     const preview = await t.api.preview(january);
-    const before = await readInventory(t.app.svc, 202601);
+    const before = await readInventory(t.app.svcFor('costing'), 202601);
     const saved = await t.api.saveWorksheet({ ...january, fingerprint: preview.fingerprint });
     expect((await t.api.worksheet(saved)).stale).toBe(false);
     await expect(
@@ -84,7 +87,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
     await expect(t.api.cancelWorksheet({ ...saved, revision: 2, confirmed: true })).rejects.toThrow(
       /已经取消/,
     );
-    expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(before.fingerprint);
+    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(before.fingerprint);
     await t.document('receipt', '1', '2');
     expect((await t.api.worksheet(saved)).stale).toBe(true);
     await expect(
@@ -131,7 +134,8 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
   it('期间、初始开账、空数据、过期盘点与非法期间均拒绝', async () => {
     await expect(t.api.preview({ period: 202600 })).rejects.toThrow();
     await expect(t.api.preview({ period: 202512 })).rejects.toThrow(/启用/);
-    await expect(t.api.cancelCalculation()).rejects.toThrow(/初始开账日期/);
+    expect((await t.api.context()).latestBatchId).toBeNull();
+    await expect(t.api.cancelCalculation({ id: 999, revision: 1, confirmed: true })).rejects.toThrow(/不存在/);
     const empty = await t.api.preview(january);
     expect(empty.rows).toEqual([]);
     await expect(
@@ -153,15 +157,14 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
     await t.document('receipt', '1', '3');
     await expect(t.api.preview(january)).rejects.toThrow(/盘点账面数量已变化/);
     await t.app.svc.periods.setStatus(202601, 'closed');
-    await expect(t.api.commit(january)).rejects.toThrow(/已经结账/);
+    await expect(t.api.commit({ ...january, fingerprint: (await readInventory(t.app.svcFor('costing'), 202601)).fingerprint, requestKey: randomUUID(), confirmed: true })).rejects.toThrow(/已经结账/);
   });
-  it('缺共享契约时正式核算拒绝，来源和余额不变；权限逐接口检查', async () => {
+  it('正式发布必须确认，拒绝时来源与余额不变；权限逐接口检查', async () => {
     await seed();
-    const before = await readInventory(t.app.svc, 202601);
-    await expect(t.api.commit(january)).rejects.toMatchObject({
-      cause: { data: { code: 'COSTING_SHARED_CONTRACT_REQUIRED' } },
-    });
-    expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(before.fingerprint);
+    const before = await readInventory(t.app.svcFor('costing'), 202601);
+    const input = { ...january, fingerprint: before.fingerprint, requestKey: randomUUID(), confirmed: false };
+    await expect(t.api.commit(input)).rejects.toThrow(/明确确认/);
+    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(before.fingerprint);
     const viewer = caller(t.app, await t.app.addUser('viewer', { permissions: ['costing.view'] }));
     const r = await viewer.preview(january);
     await expect(viewer.saveWorksheet({ ...january, fingerprint: r.fingerprint })).rejects.toThrow(
@@ -170,8 +173,8 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
     await expect(viewer.cancelWorksheet({ id: 1, revision: 1, confirmed: true })).rejects.toThrow(
       /权限/,
     );
-    await expect(viewer.commit(january)).rejects.toThrow(/权限/);
-    await expect(viewer.cancelCalculation()).rejects.toThrow(/权限/);
+    await expect(viewer.commit({ ...input, confirmed: true })).rejects.toThrow(/权限/);
+    await expect(viewer.cancelCalculation({ id: 1, revision: 1, confirmed: true })).rejects.toThrow(/权限/);
     await expect(viewer.previewVoucher({ documentId: 1, purpose: 'receipt' })).rejects.toThrow(
       /权限/,
     );
@@ -188,7 +191,7 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
 });
 
 describe('w_cb_pz / w_ck_ck1 / w_ck_rk1：实际单据凭证接口', () => {
-  it('来源凭证锁与已审核反操作：缺契约时不删除、不覆盖已有凭证', async () => {
+  it('来源凭证锁与已审核反操作：凭证生成功能未实现时不删除、不覆盖已有凭证', async () => {
     const { receipt } = await seed();
     const r = await t.api.preview(january);
     const worksheet = await t.api.saveWorksheet({ ...january, fingerprint: r.fingerprint });
@@ -205,13 +208,13 @@ describe('w_cb_pz / w_ck_ck1 / w_ck_rk1：实际单据凭证接口', () => {
       t.app.svc.db,
     );
     await t.app.svc.vouchers.changeStatus({ ids: [voucher.id], to: 'audited' });
-    const before = await readInventory(t.app.svc, 202601);
+    const before = await readInventory(t.app.svcFor('costing'), 202601);
     await expect(t.app.svc.vouchers.delete(voucher.id)).rejects.toThrow(/成本核算/);
     await expect(t.app.svcFor('costing').vouchers.delete(voucher.id)).rejects.toThrow(/审核/);
     await expect(
       t.api.generateVoucher({ documentId: receipt.id, purpose: 'receipt' }),
-    ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_SHARED_CONTRACT_REQUIRED' } } });
-    expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(before.fingerprint);
+    ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_VOUCHER_NOT_IMPLEMENTED' } } });
+    expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(before.fingerprint);
     expect(await t.app.svc.vouchers.get(voucher.id)).toMatchObject({
       status: 'audited',
       source: { module: 'costing', type: 'worksheet', id: String(worksheet.id) },
@@ -253,7 +256,7 @@ describe('w_cb_pz / w_ck_ck1 / w_ck_rk1：实际单据凭证接口', () => {
         purpose: 'receipt',
         taxAccountId: t.ids.inputTax,
       }),
-    ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_SHARED_CONTRACT_REQUIRED' } } });
+    ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_VOUCHER_NOT_IMPLEMENTED' } } });
     expect((await t.app.svc.vouchers.list()).total).toBe(0);
     const seeded = await seedVouchers(t.app.svc, [
       {
@@ -341,16 +344,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
   });
   it('正式核算成本必须头/行批次和截止一致，部分缺失不显示合计毛利', async () => {
     const { issue } = await seed();
-    // 只用于造历史核算前置，生产模块没有任何库存写入。
-    await sql`UPDATE inventory_control SET cost_period=202601, cost_cutoff_date='2026-01-31', cost_batch='history'`.execute(
-      t.app.svc.db,
-    );
-    await sql`UPDATE inventory_document SET calculation_status='calculated', calculation_batch='history', calculation_period=202601, calculation_cutoff_date='2026-01-31' WHERE id=${issue.id}`.execute(
-      t.app.svc.db,
-    );
-    await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch='history', calculation_period=202601 WHERE document_id=${issue.id}`.execute(
-      t.app.svc.db,
-    );
+    await t.api.commit({ ...january, fingerprint: (await t.api.preview(january)).fingerprint, requestKey: randomUUID(), confirmed: true });
     let report = await t.api.profit({ from: '2026-01-01', to: '2026-01-31' });
     expect(report.totals).toMatchObject({
       revenueCents: 5000,
@@ -366,7 +360,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
     report = await t.api.profit({ from: '2026-01-01', to: '2026-01-31' });
     expect(report.totals.costCents).toBeNull();
     await expect(t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' })).rejects.toThrow(
-      /正式成本核算/,
+      /历史成本未知/,
     );
   });
   it.each([
@@ -426,9 +420,9 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
       await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch=${documentBatch}, calculation_period=202601 WHERE document_id=${issue.id}`.execute(
         t.app.svc.db,
       );
-      const snapshot = await readInventory(t.app.svc, 202601);
+      const snapshot = await readInventory(t.app.svcFor('costing'), 202601);
       const doc = snapshot.documents.find((d) => d.id === issue.id)!;
-      const line = snapshot.lines.find((l) => l.document_id === issue.id)!;
+      const line = snapshot.movements.find((l) => l.documentId === issue.id)!;
       expect(officialCost(snapshot, doc, line)).toBeNull();
       const report = await t.api.profit({ from: '2026-01-01', to: '2026-01-31' });
       expect(report.rows[0]).toMatchObject({ costCents: null, grossProfitCents: null });
@@ -439,9 +433,9 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
       });
       await expect(
         t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' }),
-      ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_NOT_CALCULATED' } } });
+      ).rejects.toMatchObject({ cause: { data: { code: 'COSTING_HISTORY_UNVERIFIED' } } });
       expect((await t.app.svc.vouchers.list()).total).toBe(0);
-      expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(snapshot.fingerprint);
+      expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(snapshot.fingerprint);
     },
   );
   it.each(['current-B', 'history-A'])(
@@ -457,12 +451,12 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
       await sql`UPDATE inventory_line SET outbound_cost_cents=1000, calculation_status='calculated', calculation_batch='history-A', calculation_period=202601 WHERE document_id=${issue.id}`.execute(
         t.app.svc.db,
       );
-      const snapshot = await readInventory(t.app.svc, 202601);
+      const snapshot = await readInventory(t.app.svcFor('costing'), 202601);
       expect(
         officialCost(
           snapshot,
           snapshot.documents.find((d) => d.id === issue.id)!,
-          snapshot.lines.find((l) => l.document_id === issue.id)!,
+          snapshot.movements.find((l) => l.documentId === issue.id)!,
         ),
       ).toBeNull();
       const report = await t.api.profit({ from: '2026-01-01', to: '2026-01-31' });
@@ -484,7 +478,7 @@ describe('w_cb_hzsj_cblr / w_ck_xsmxz：销售利润切片', () => {
         },
       });
       expect((await t.app.svc.vouchers.list()).total).toBe(0);
-      expect((await readInventory(t.app.svc, 202601)).fingerprint).toBe(snapshot.fingerprint);
+      expect((await readInventory(t.app.svcFor('costing'), 202601)).fingerprint).toBe(snapshot.fingerprint);
     },
   );
 });

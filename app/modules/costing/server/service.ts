@@ -1,4 +1,4 @@
-import { BusinessError, nextPeriod, periodOfDate, sumCents } from '@caiwu/core';
+import { BusinessError, isPeriod, nextPeriod, periodOfDate, sumCents } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { z } from 'zod';
 import {
@@ -12,28 +12,20 @@ import {
 } from '../shared';
 import type { CostingTables } from './migrations';
 import {
-  inventoryReader,
+  verifiedHistory,
   isUnverifiedHistory,
   officialCost,
   readInventory,
 } from './inventory-read';
 import { calculate } from './calculation';
-import { fail, integer, quantity } from './math';
+import { fail } from './math';
+import { commitCalculation, cancelCalculation, listBatches } from './formal';
 
-export function sharedContractRequired(): never {
+export function voucherGenerationUnavailable(): never {
   throw new BusinessError({
-    code: 'COSTING_SHARED_CONTRACT_REQUIRED',
-    message: '正式成本核算和出入库凭证尚未开放，不能提交',
-    hint: '当前可保存成本试算和查看凭证预览，正式功能开放后再核算入账',
-    details: {
-      required: [
-        'inventory.snapshot',
-        'inventory.commitCosting',
-        'inventory.cancelCosting',
-        'inventory.lockVoucherSource',
-        'inventory.releaseVoucherSource',
-      ],
-    },
+    code: 'COSTING_VOUCHER_NOT_IMPLEMENTED',
+    message: '出入库凭证真实生成尚未实现，不能转入总账',
+    hint: '当前可正式发布成本核算并预览凭证；凭证生成、删除和重生成将在后续切片提供',
   });
 }
 
@@ -42,17 +34,23 @@ export function costingService(svc: CoreServices) {
   const self = {
     async context() {
       svc.permissions.require('costing.view');
-      const inventory = await inventoryReader(svc);
-      return {
-        currentPeriod: (await svc.periods.current())?.period ?? (await svc.book.info()).startPeriod,
-        warehouses: await inventory
-          .selectFrom('inventory_warehouse')
-          .select(['id', 'code', 'name'])
-          .orderBy('code')
-          .execute(),
-        canCommit: false as const,
-        reason: '正式成本核算尚未开放',
-      };
+      return svc.tx(async (t) => {
+        const currentPeriod = (await t.periods.current())?.period ?? (await t.book.info()).startPeriod;
+        const snapshot = await readInventory(t, currentPeriod);
+        const historyValid = verifiedHistory(snapshot) !== null;
+        return {
+          currentPeriod,
+          nextCalculationPeriod:
+            historyValid && isPeriod(snapshot.control.costPeriod)
+              ? nextPeriod(snapshot.control.costPeriod)
+              : snapshot.startPeriod,
+          latestBatchId: snapshot.control.costBatch,
+          historyValid,
+          warehouses: snapshot.warehouses.map(({ id, code, name }) => ({ id, code, name })),
+          canCommit: historyValid && t.permissions.has('costing.calculate'),
+          reason: historyValid ? null : '正式批次链与控制锚点不一致，请核对历史核算记录',
+        };
+      });
     },
     async preview(raw: CalculationInput): Promise<CalculationResult> {
       svc.permissions.require('costing.view');
@@ -168,21 +166,9 @@ export function costingService(svc: CoreServices) {
         return { id: row.id, revision: row.revision + 1 };
       });
     },
-    async commit(raw: CalculationInput) {
-      svc.permissions.require('costing.calculate');
-      const input = CalculationSchema.parse(raw);
-      await svc.periods.assertOpen(input.period, '成本核算');
-      return sharedContractRequired();
-    },
-    async cancelCalculation() {
-      svc.permissions.require('costing.calculate');
-      const start = (await svc.book.info()).startPeriod;
-      const snapshot = await svc.tx((t) => readInventory(t, start));
-      if (!snapshot.control.cost_period || snapshot.control.cost_period < start)
-        fail('INITIAL_PERIOD', '已到初始开账日期，没有可以取消的成本核算');
-      await svc.periods.assertOpen(snapshot.control.cost_period, '取消成本核算');
-      return sharedContractRequired();
-    },
+    commit: (raw: Parameters<typeof commitCalculation>[1]) => commitCalculation(svc, raw),
+    cancelCalculation: (raw: Parameters<typeof cancelCalculation>[1]) => cancelCalculation(svc, raw),
+    batches: () => listBatches(svc),
     async profit(raw: z.input<typeof ReportSchema>) {
       svc.permissions.require('costing.view');
       const input = ReportSchema.parse(raw);
@@ -190,34 +176,34 @@ export function costingService(svc: CoreServices) {
         const snapshot = await readInventory(t, periodOfDate(input.to));
         const docs = new Map(snapshot.documents.map((d) => [d.id, d]));
         const rows: ProfitLine[] = [];
-        for (const line of snapshot.lines) {
-          const doc = docs.get(line.document_id)!;
-          const product = snapshot.products.find((p) => p.id === line.product_id)!;
+        for (const line of snapshot.movements) {
+          const doc = docs.get(line.documentId)!;
+          const product = snapshot.products.find((p) => p.id === line.productId)!;
           if (
             doc.kind !== 'issue' ||
             doc.category !== '销售' ||
             doc.date < input.from ||
             doc.date > input.to ||
-            (input.warehouseId && doc.warehouse_id !== input.warehouseId) ||
+            (input.warehouseId && doc.warehouseId !== input.warehouseId) ||
             (input.productFrom && product.code < input.productFrom) ||
             (input.productTo && product.code > input.productTo)
           )
             continue;
-          // 当月需要完整月末批次证据；历史月份的批次链尚未接入，保持未知。
+          // 只有控制锚点至启用月的完整有效链和一致的头行证据，才能提供正式成本。
           const cost = officialCost(snapshot, doc, line);
           rows.push({
             id: line.id,
             documentId: doc.id,
             date: doc.date,
             number: doc.number,
-            warehouseId: doc.warehouse_id,
+            warehouseId: doc.warehouseId,
             productCode: product.code,
             productName: product.name,
-            quantity: quantity(integer(line.quantity_e6)),
-            revenueCents: line.net_cents,
-            taxCents: line.tax_cents,
+            quantity: line.quantity,
+            revenueCents: line.netCents,
+            taxCents: line.taxCents,
             costCents: cost,
-            grossProfitCents: cost == null ? null : sumCents([line.net_cents, -cost]),
+            grossProfitCents: cost == null ? null : sumCents([line.netCents, -cost]),
             costStatus:
               cost != null
                 ? '已核算'
@@ -239,9 +225,9 @@ export function costingService(svc: CoreServices) {
             pendingLines: missing,
             unknownHistoryLines: rows.filter((r) => r.costStatus === '历史成本未知').length,
           },
-          throughPeriod: snapshot.control.cost_period,
-          nextCalculationPeriod: snapshot.control.cost_period
-            ? nextPeriod(snapshot.control.cost_period)
+          throughPeriod: snapshot.control.costPeriod,
+          nextCalculationPeriod: isPeriod(snapshot.control.costPeriod)
+            ? nextPeriod(snapshot.control.costPeriod)
             : snapshot.startPeriod,
         };
       });
