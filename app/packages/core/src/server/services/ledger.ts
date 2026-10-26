@@ -23,42 +23,67 @@ import { formatVoucherNo } from '../../voucher';
 import type { Account } from '../../account';
 import type { ServiceContext } from '../context';
 import { accountService } from './accounts';
+import { bookService } from './basic';
 
 interface Accum {
   accountId: number;
   dims: DimensionValues;
-  opening: number;
-  debit: number;
-  credit: number;
-  ytdDebit: number;
-  ytdCredit: number;
-  fcOpening: number;
-  fcDebit: number;
-  fcCredit: number;
-  qtyOpening: number;
-  qtyDebit: number;
-  qtyCredit: number;
+  opening: bigint;
+  debit: bigint;
+  credit: bigint;
+  ytdDebit: bigint;
+  ytdCredit: bigint;
+  fcOpening: bigint;
+  fcDebit: bigint;
+  fcCredit: bigint;
+  qtyOpening: bigint;
+  qtyDebit: bigint;
+  qtyCredit: bigint;
 }
 
 function emptyAccum(accountId: number, dims: DimensionValues): Accum {
   return {
     accountId,
     dims,
-    opening: 0,
-    debit: 0,
-    credit: 0,
-    ytdDebit: 0,
-    ytdCredit: 0,
-    fcOpening: 0,
-    fcDebit: 0,
-    fcCredit: 0,
-    qtyOpening: 0,
-    qtyDebit: 0,
-    qtyCredit: 0,
+    opening: 0n,
+    debit: 0n,
+    credit: 0n,
+    ytdDebit: 0n,
+    ytdCredit: 0n,
+    fcOpening: 0n,
+    fcDebit: 0n,
+    fcCredit: 0n,
+    qtyOpening: 0n,
+    qtyDebit: 0n,
+    qtyCredit: 0n,
   };
 }
 
-const n = (v: unknown) => Number(v ?? 0);
+const n = (v: unknown) => BigInt((v ?? '0') as string | number);
+
+function aggregateRangeError(label = '账簿累计金额或数量'): BusinessError {
+  return new BusinessError({
+    code: 'LEDGER_AGGREGATE_OUT_OF_RANGE',
+    message: `${label}超出安全整数范围，无法返回精确结果`,
+    hint: '请缩小查询范围或按科目、辅助项分别查询',
+  });
+}
+
+function safeNumber(value: bigint, label: string): number {
+  const result = Number(value);
+  if (!Number.isSafeInteger(result)) throw aggregateRangeError(label);
+  return result;
+}
+
+async function aggregateRows<T>(query: { execute(): Promise<T[]> }): Promise<T[]> {
+  try {
+    return await query.execute();
+  } catch (error) {
+    // SQLite 的 SUM 本身也可能超过 64 位；拒绝返回，不能改用浮点 TOTAL。
+    if (error instanceof Error && error.message === 'integer overflow') throw aggregateRangeError();
+    throw error;
+  }
+}
 
 /** 科目是否落在查询的科目范围内。 */
 function accountMatches(
@@ -132,7 +157,14 @@ export function ledgerService(ctx: ServiceContext) {
           : q.where('a.code', '=', f.accountCode);
       }
       if (f.accountIds?.length) q = q.where('l.account_id', 'in', f.accountIds);
-      if (f.currency) q = q.where('l.currency_code', '=', f.currency);
+      if (f.currency) {
+        const baseCurrency = (await bookService(ctx).info()).baseCurrency;
+        q = q.where((eb) =>
+          f.currency === baseCurrency
+            ? eb.or([eb('l.currency_code', '=', f.currency!), eb('l.currency_code', 'is', null)])
+            : eb('l.currency_code', '=', f.currency!),
+        );
+      }
       for (const dt of DIMENSION_TYPES) {
         const v = f.dimensions[dt.id];
         if (v != null) q = q.where(sql.ref(`l.${dt.column}`), '=', v);
@@ -195,6 +227,7 @@ export function ledgerService(ctx: ServiceContext) {
       const statuses = q.includeUnposted ? UNPOSTED_COUNTED_STATUSES : DEFAULT_COUNTED_STATUSES;
       const base = await baseOf(q.periodFrom);
       const targetYear = periodYear(q.periodTo);
+      const baseCurrency = q.currency ? (await bookService(ctx).info()).baseCurrency : null;
       const groupDims = DIMENSION_TYPES.filter((d) => q.groupBy.includes(d.id));
       const groupCols = groupDims.map((d) => d.column);
 
@@ -213,17 +246,18 @@ export function ledgerService(ctx: ServiceContext) {
         return d;
       };
 
+      // SUM 先转文本，再用 bigint 抵销、汇总，输出时才检查 Number 安全范围。
       // 1. 起算年度的期初余额
       {
         let oq = ctx.db
           .selectFrom('opening_balance as o')
           .select('o.account_id')
           .select([
-            sql<number>`sum(o.balance)`.as('balance'),
-            sql<number>`sum(o.fc_balance)`.as('fc_balance'),
-            sql<number>`sum(o.quantity_e6)`.as('qty'),
-            sql<number>`sum(o.ytd_debit)`.as('ytd_debit'),
-            sql<number>`sum(o.ytd_credit)`.as('ytd_credit'),
+            sql<string>`cast(sum(o.balance) as text)`.as('balance'),
+            sql<string>`cast(sum(o.fc_balance) as text)`.as('fc_balance'),
+            sql<string>`cast(sum(o.quantity_e6) as text)`.as('qty'),
+            sql<string>`cast(sum(o.ytd_debit) as text)`.as('ytd_debit'),
+            sql<string>`cast(sum(o.ytd_credit) as text)`.as('ytd_credit'),
           ])
           .where('o.year', '=', base.year)
           .groupBy('o.account_id');
@@ -234,14 +268,19 @@ export function ledgerService(ctx: ServiceContext) {
             oq = oq.select(sql.ref(`o.${col}`).as(col)).groupBy(sql.ref(`o.${col}`));
           }
         }
-        if (q.currency) oq = oq.where('o.currency_code', '=', q.currency);
+        if (q.currency)
+          oq = oq.where((eb) =>
+            q.currency === baseCurrency
+              ? eb.or([eb('o.currency_code', '=', q.currency!), eb('o.currency_code', 'is', null)])
+              : eb('o.currency_code', '=', q.currency!),
+          );
         for (const dt of DIMENSION_TYPES) {
           const v = q.dimensions[dt.id];
           if (v == null) continue;
           if (dt.id === 'cashflow') oq = oq.where(sql<boolean>`1 = 0`);
           else oq = oq.where(sql.ref(`o.${dt.column}`), '=', v);
         }
-        for (const r of (await oq.execute()) as Record<string, unknown>[]) {
+        for (const r of (await aggregateRows(oq)) as Record<string, unknown>[]) {
           const a = get(r.account_id as number, dimsOf(r));
           a.opening += n(r.balance);
           a.fcOpening += n(r.fc_balance);
@@ -261,18 +300,18 @@ export function ledgerService(ctx: ServiceContext) {
           .innerJoin('voucher as v', 'v.id', 'l.voucher_id')
           .select('l.account_id')
           .select([
-            sql<number>`sum(l.debit)`.as('debit'),
-            sql<number>`sum(l.credit)`.as('credit'),
-            sql<number>`sum(case when l.debit <> 0 then coalesce(l.fc_amount, 0) else 0 end)`.as(
+            sql<string>`cast(sum(l.debit) as text)`.as('debit'),
+            sql<string>`cast(sum(l.credit) as text)`.as('credit'),
+            sql<string>`cast(sum(case when l.debit <> 0 then coalesce(l.fc_amount, 0) else 0 end) as text)`.as(
               'fc_debit',
             ),
-            sql<number>`sum(case when l.credit <> 0 then coalesce(l.fc_amount, 0) else 0 end)`.as(
+            sql<string>`cast(sum(case when l.credit <> 0 then coalesce(l.fc_amount, 0) else 0 end) as text)`.as(
               'fc_credit',
             ),
-            sql<number>`sum(case when l.debit <> 0 then coalesce(l.quantity_e6, 0) else 0 end)`.as(
+            sql<string>`cast(sum(case when l.debit <> 0 then coalesce(l.quantity_e6, 0) else 0 end) as text)`.as(
               'qty_debit',
             ),
-            sql<number>`sum(case when l.credit <> 0 then coalesce(l.quantity_e6, 0) else 0 end)`.as(
+            sql<string>`cast(sum(case when l.credit <> 0 then coalesce(l.quantity_e6, 0) else 0 end) as text)`.as(
               'qty_credit',
             ),
           ])
@@ -283,12 +322,17 @@ export function ledgerService(ctx: ServiceContext) {
           .groupBy('l.account_id');
         for (const col of groupCols)
           lq = lq.select(sql.ref(`l.${col}`).as(col)).groupBy(sql.ref(`l.${col}`));
-        if (q.currency) lq = lq.where('l.currency_code', '=', q.currency);
+        if (q.currency)
+          lq = lq.where((eb) =>
+            q.currency === baseCurrency
+              ? eb.or([eb('l.currency_code', '=', q.currency!), eb('l.currency_code', 'is', null)])
+              : eb('l.currency_code', '=', q.currency!),
+          );
         for (const dt of DIMENSION_TYPES) {
           const v = q.dimensions[dt.id];
           if (v != null) lq = lq.where(sql.ref(`l.${dt.column}`), '=', v);
         }
-        return (await lq.execute()) as Record<string, unknown>[];
+        return (await aggregateRows(lq)) as Record<string, unknown>[];
       };
 
       // 起算期间到 periodFrom 前一期：并入期初
@@ -358,11 +402,15 @@ export function ledgerService(ctx: ServiceContext) {
         if (!account || !accountMatches(account, q)) continue;
         const closing = t.opening + t.debit - t.credit;
         const isZero =
-          t.opening === 0 &&
-          t.debit === 0 &&
-          t.credit === 0 &&
-          t.ytdDebit === 0 &&
-          t.ytdCredit === 0;
+          t.opening === 0n &&
+          t.debit === 0n &&
+          t.credit === 0n &&
+          t.ytdDebit === 0n &&
+          t.ytdCredit === 0n &&
+          (!q.currency || (t.fcOpening === 0n && t.fcDebit === 0n && t.fcCredit === 0n)) &&
+          t.qtyOpening === 0n &&
+          t.qtyDebit === 0n &&
+          t.qtyCredit === 0n;
         if (isZero && !q.includeZero) continue;
         rows.push({
           accountId: account.id,
@@ -372,20 +420,20 @@ export function ledgerService(ctx: ServiceContext) {
           isLeaf: account.isLeaf,
           direction: account.direction,
           dimensions: t.dims,
-          opening: t.opening,
-          debit: t.debit,
-          credit: t.credit,
-          closing,
-          ytdDebit: t.ytdDebit,
-          ytdCredit: t.ytdCredit,
-          fcOpening: q.currency ? t.fcOpening : 0,
-          fcDebit: q.currency ? t.fcDebit : 0,
-          fcCredit: q.currency ? t.fcCredit : 0,
-          fcClosing: q.currency ? t.fcOpening + t.fcDebit - t.fcCredit : 0,
-          qtyOpening: qtyFromE6(t.qtyOpening),
-          qtyDebit: qtyFromE6(t.qtyDebit),
-          qtyCredit: qtyFromE6(t.qtyCredit),
-          qtyClosing: qtyFromE6(t.qtyOpening + t.qtyDebit - t.qtyCredit),
+          opening: safeNumber(t.opening, '期初金额'),
+          debit: safeNumber(t.debit, '借方发生额'),
+          credit: safeNumber(t.credit, '贷方发生额'),
+          closing: safeNumber(closing, '期末金额'),
+          ytdDebit: safeNumber(t.ytdDebit, '本年累计借方'),
+          ytdCredit: safeNumber(t.ytdCredit, '本年累计贷方'),
+          fcOpening: q.currency ? safeNumber(t.fcOpening, '外币期初') : 0,
+          fcDebit: q.currency ? safeNumber(t.fcDebit, '外币借方') : 0,
+          fcCredit: q.currency ? safeNumber(t.fcCredit, '外币贷方') : 0,
+          fcClosing: q.currency ? safeNumber(t.fcOpening + t.fcDebit - t.fcCredit, '外币期末') : 0,
+          qtyOpening: qtyFromE6(safeNumber(t.qtyOpening, '累计数量')),
+          qtyDebit: qtyFromE6(safeNumber(t.qtyDebit, '累计数量')),
+          qtyCredit: qtyFromE6(safeNumber(t.qtyCredit, '累计数量')),
+          qtyClosing: qtyFromE6(safeNumber(t.qtyOpening + t.qtyDebit - t.qtyCredit, '期末数量')),
         });
       }
       rows.sort((a, b) =>
@@ -409,7 +457,11 @@ export function ledgerService(ctx: ServiceContext) {
           includeUnposted: opts.includeUnposted ?? false,
         })
       ).filter((r) => r.level === 1);
-      const sum = (f: (r: BalanceRow) => number) => rows.reduce((s, r) => s + f(r), 0);
+      const sum = (f: (r: BalanceRow) => number) =>
+        safeNumber(
+          rows.reduce((s, r) => s + BigInt(f(r)), 0n),
+          '试算合计',
+        );
       const result = {
         openingDebit: sum((r) => Math.max(r.opening, 0)),
         openingCredit: sum((r) => Math.max(-r.opening, 0)),
