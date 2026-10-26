@@ -2,7 +2,7 @@
 
 2026-10-26 UTC；私有 [PR50](https://github.com/xhc144/caiwu-suite/pull/50)，独占分支 `codex/parity-payroll-20261026`，独立 checkout `/workspace/caiwu-payroll`。基线 `main@3b0c59b02d8941c32ac176309555c03c94bb4213`。
 
-**可供集成的业务源码 SHA：`dbf6bd271f7d8a1dba4917463e3a70882fe3b98f`。** 后续只补本 handoff 和测试证据文档。早期 handoff `f3385e4dd295c1a6b0023b68cbb98047ed747d16` 已先推送；业务首片 `1418484`、UI/adapter `08cba22`，确认绑定修复 `dbf6bd2`。按父任务最新要求只收尾此切片，不追加功能、派工或改技术栈。
+**当前可供集成的业务源码 SHA：`a4ddcf9361c8b10871b4ec948b5f875144aba2e9`。** 这是对原交付 `396b304` 的P1返修，后续只补本 handoff 和测试证据文档。初片源码为 `dbf6bd271f7d8a1dba4917463e3a70882fe3b98f`；早期 handoff `f3385e4dd295c1a6b0023b68cbb98047ed747d16` 已先推送。只返修现有PR50，不追加功能、派工或改技术栈。
 
 这是有限切片，不能把构建、测试数量或旧 0.1.0.4 当作原版全功能完成。
 
@@ -33,7 +33,7 @@
 1. 构造传 IParityLedgerService、用户所见同一 ModuleLedgerSnapshot、宿主认证操作者。首次使用该快照，仅显式 Refresh 才取新 revision；不保存前刷新或冲突重试。
 2. 权威状态为 ModuleId=payroll、DocumentId=payroll-state、SchemaVersion=1 的完整 JSON，经 SaveModuleDocuments 入账套事务，无外部文件投影。ExtensionData 保留未知属性/高精度数值原文；高 schema 拒绝降级。
 3. 宿主显示/确认已存计划后调用 `AcceptPlan(service.Snapshot,planId)`；内容必须与该 store 最近读回/提交的文档一致，不能在克隆上删维度标志。期间数据/配置版本也须匹配。
-4. 来源键固定 `payroll:{BookId}:{Gregorian yyyy-MM}:{Payment|Distribution}`，内容哈希另存；改金额/日期/编号/随机ID不能重复支付。相同内容返回同一计划，变更重复来源拒绝，原版刷新草稿流程仍未实现。
+4. 来源键固定 `payroll:{BookId}:{Gregorian yyyy-MM}:{Payment|Distribution}`，内容哈希另存；改金额/日期/编号/随机ID不能重复支付。相同内容返回同一计划。设置变更推进配置版本，旧计划须重新计算、按原凭证请求显式重新生成并确认；仅尚未转入且配置过期的同一请求可换新ID，来源不变，旧ID作废。已转草稿不能替换，原版刷新草稿流程仍未实现。
 5. AcceptPlan 把模块状态、来源和新草稿放进一次 VoucherProposal；依据 ModuleVoucherReceipt 重开恢复 draft ID。当前只用**冻结接口替身**验证，未称真实公共 Core/SQLite 原子提交已接通。辅助维度或未解释计划字段不支持时拒绝转入。
 
 Wpf [PayrollWindowFactory](../../src/Caiwu.Payroll/Wpf/PayrollWindowFactory.cs) 提供真实入口。PersonnelManagementView/WageManagementView 是 MDI UserControl，不新造首页。closeSheet 必须关闭当前 sheet，宿主关闭须调用 CanClose。月份、完整科目元数据、凭证类型、权限、真实转总账回调由宿主传入；切账重建 store/service/factory。无真实 transfer handler 时不画空转总账按钮。
@@ -86,7 +86,15 @@ DIP大小为候选可缩放实现，不猜 PBU→像素倍率；未伪造未知�
 
 ## 验证、阻断、下一步
 
-源码冻结版 Release、`-warnaserror -p:RestoreLockedMode=true`：模块合成测试35通过、冻结契约替身7通过，0失败/跳过；Wpf/WindowsSmoke交叉编译0警告/错误。两个独立进程实际落盘/重开：revision=9，实发3350.25，第80栏6700.50，计划1条，NULL/尾空格保留。见 [VALIDATION](../../tests/Caiwu.Payroll.Tests/VALIDATION.md)。
+返修版 Release、`-warnaserror -p:RestoreLockedMode=true`：模块合成测试36通过、冻结契约替身12通过，0失败/跳过；Wpf/WindowsSmoke交叉编译0警告/错误。初片源码dbf6bd2上的两个独立进程实际落盘/重开记录仍保留：revision=9，实发3350.25，第80栏6700.50，计划1条，NULL/尾空格保留；不冒充返修版重跑。返修增加了独立SQLite实际落盘重开、设置失效和新计划科目检查。见 [VALIDATION](../../tests/Caiwu.Payroll.Tests/VALIDATION.md)。
+
+### P1：凭证设置变更未失效旧计划（已复现并返修）
+
+在396b304代码上先新增回归后实跑：Payment改应付科目、Payment改贷方科目、Distribution改应付科目，3例均在“应抛异常”处失败，确认旧计划会进入接口替身。旧35+7没有此覆盖，不抵消该问题。
+
+a4ddcf9中SaveVoucherSettings对真实变更推进ConfigurationVersion，旧月份计算及旧计划因此失效；相同设置保存仍走全账套CAS，不以无变化绕过旧revision。新快照/重开或仅重新计算均不能接受旧ID。只有原请求、旧计划未转入且配置确已过期，才在显式生成时替换为新ID，保留固定来源键；旧ID找不到且不得写入。已消费来源不能重生成。
+
+新增回归验证三条原复现路径在拒绝时ProposalCalls=0、JSON/revision不变、无收据；重新生成后新科目正确、旧科目不存在、新ID可确认提交/重开，另覆盖已转入来源拒绝、旧窗口同设置保存CAS、独立SQLite重开。仍是接口替身与独立模块存储验证，不是公共真实Core/SQLite或Windows验收；其余审查项待审，不宣称PR全审通过。
 
 WindowsSmoke仅**已编译未执行**，会通过新实现真实handler生成144DPI PNG/source SHA JSON；当前无Windows成功结果或原版比较结果。最初NuGet runtime目录缺失已用工作区目录解决，未改系统权限/凭据。
 
