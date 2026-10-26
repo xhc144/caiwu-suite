@@ -1,5 +1,42 @@
 import { z } from 'zod';
-import { VoucherInputSchema, VoucherFilterSchema, zCents, zDate, zId, zPeriod } from '@caiwu/core';
+import {
+  BusinessError,
+  sumCents,
+  centsToYuan,
+  toCents,
+  VoucherInputSchema,
+  VoucherFilterSchema,
+  zCents,
+  zDate,
+  zId,
+  zPeriod,
+} from '@caiwu/core';
+
+/** 通用 Excel money 列会转成元数值；无损往返不了的金额改存精确文本。 */
+export function reportExcelAmount(cents: number): number | string {
+  const text = centsToYuan(cents);
+  try {
+    if (toCents(Number(text)) === cents) return cents;
+  } catch {
+    // 例如向上取整后超过安全整数分；同样保留文本，不能静默舍入。
+  }
+  return text;
+}
+
+export function reportTotals(rows: readonly { debit: number; credit: number }[]) {
+  try {
+    return {
+      debit: sumCents(rows.map((r) => r.debit)),
+      credit: sumCents(rows.map((r) => r.credit)),
+    };
+  } catch {
+    throw new BusinessError({
+      code: 'VOUCHER_BOOK_AMOUNT_RANGE',
+      message: '丁字账合计超过安全整数分范围，无法准确显示或输出',
+      hint: '请缩小期间、编号或金额范围后重新查询',
+    });
+  }
+}
 
 export const ConditionSchema = z
   .object({
@@ -118,6 +155,17 @@ export type ActionResult = {
   skippedCount: number;
   createdIds: number[];
   message: string;
+  /** 旧版已提交预览可能只有汇总；新提交保存执行时的逐凭证结果。 */
+  rows?: ActionResultRow[];
+};
+export type ActionResultRow = {
+  key: string;
+  label: string;
+  outcome: 'success' | 'skipped';
+  reasons: string[];
+  voucherId: number | null;
+  voucherLabel: string | null;
+  status: string;
 };
 export const SummarySchema = z.object({
   filter: BookFilterSchema,
@@ -149,11 +197,24 @@ export const TransferVoucherSchema = z.object({
   note: z.string().nullable().optional(),
   lines: z.array(TransferLineSchema).max(999),
 });
-export const TransferSchema = z.object({
-  format: z.literal('caiwu-voucher-book'),
-  version: z.literal(1),
-  vouchers: z.array(TransferVoucherSchema).min(1).max(10000),
-});
+export const TransferSchema = z
+  .object({
+    format: z.literal('caiwu-voucher-book'),
+    version: z.literal(1),
+    vouchers: z.array(TransferVoucherSchema).min(1).max(10000),
+  })
+  .superRefine((data, ctx) => {
+    const seen = new Set<string>();
+    for (const [i, v] of data.vouchers.entries()) {
+      if (seen.has(v.key))
+        ctx.addIssue({
+          code: 'custom',
+          path: ['vouchers', i, 'key'],
+          message: `凭证分组 ${v.key} 重复，请为每张凭证使用唯一分组`,
+        });
+      seen.add(v.key);
+    }
+  });
 export type Transfer = z.infer<typeof TransferSchema>;
 export const ImportSchema = z.object({
   file: z.string().min(1, '请选择文件').max(20_000_000),

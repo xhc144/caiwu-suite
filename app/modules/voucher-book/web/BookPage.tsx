@@ -24,10 +24,17 @@ import {
   AccountSelect,
   MoneyInput,
 } from '@caiwu/ui';
-import { type Action, type Preview, type PreviewInput, type Selection } from '../shared';
+import {
+  type Action,
+  type ActionResult,
+  type Preview,
+  type PreviewInput,
+  type Selection,
+} from '../shared';
 import { api } from './api';
 import { Filters, useBookFilters } from './filters';
 import { ImportDrawer } from './ImportDrawer';
+import { ResultDrawer } from './ResultDrawer';
 
 const labels: Record<Action, string> = {
   audit: '审核',
@@ -58,7 +65,8 @@ export default function BookPage() {
   } | null>(null);
   const [view, setView] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState('');
+  const [result, setResult] = useState<ActionResult | null>(null);
+  const [resultOpen, setResultOpen] = useState(false);
   const list = useQuery(api.list.queryOptions(filters.filter ?? {}, { enabled: !!filters.filter }));
   const canAudit = usePermission('voucher-book.audit'),
     canUnaudit = usePermission('voucher-book.unaudit'),
@@ -99,7 +107,7 @@ export default function BookPage() {
   const mutation = useMutation(
     api.commit.mutationOptions({
       onSuccess: (r) => {
-        setResult(r.message);
+        setResult(r);
         setPlan(null);
         refresh();
       },
@@ -243,7 +251,15 @@ export default function BookPage() {
           }}
         />
       </div>
-      {result && <Alert title={result} type="success" closable onClose={() => setResult('')} />}
+      {result && (
+        <Alert
+          title={result.message}
+          type={result.skippedCount ? 'warning' : 'success'}
+          closable
+          onClose={() => setResult(null)}
+          action={result.rows && <Button onClick={() => setResultOpen(true)}>查看处理清单</Button>}
+        />
+      )}
       <Space wrap style={{ margin: '12px 0' }}>
         <Checkbox checked={scope} onChange={(e) => setScope(e.target.checked)}>
           当前查询全部结果（共 {filters.filter ? (list.data?.total ?? 0) : 0} 张）
@@ -488,6 +504,15 @@ export default function BookPage() {
         type={filters.values.type}
       />
       <ViewDrawer id={view} onClose={() => setView(null)} />
+      <ResultDrawer
+        result={result}
+        open={resultOpen}
+        onClose={() => setResultOpen(false)}
+        onInspect={(id) => {
+          setResultOpen(false);
+          setView(id);
+        }}
+      />
       <ImportDrawer
         open={importing}
         onClose={() => setImporting(false)}

@@ -17,6 +17,7 @@ import type { CoreServices } from '@caiwu/core/server';
 import {
   BookFilterSchema,
   PreviewSchema,
+  reportTotals,
   type BookFilter,
   type Selection,
   type PreviewInput,
@@ -465,6 +466,15 @@ export async function finishPlan(svc: CoreServices, token: string, result: Actio
     .where('token', '=', token)
     .execute();
 }
+/** 只在业务写入成功后的同一事务内生成，重放确认返回保存的原结果。 */
+export async function resultVoucher(svc: CoreServices, id: number) {
+  const v = await svc.vouchers.get(id);
+  return {
+    voucherId: v?.id ?? null,
+    voucherLabel: v ? `${v.date} ${v.displayNo}` : null,
+    status: v ? (v.voided ? '已作废' : VOUCHER_STATUS_LABELS[v.status]) : '不存在或已删除',
+  };
+}
 export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Preview> {
   const input = PreviewSchema.parse(raw);
   await svc.permissions.require(permissionFor(input.action));
@@ -727,11 +737,20 @@ export async function commit(svc: CoreServices, input: CommitInput): Promise<Act
           : plan.generated;
       createdIds.push((await t.vouchers.create(checkedInput(generated))).id);
     }
-    const result = {
+    const result: ActionResult = {
       successCount: createdIds.length || ids.length,
       skippedCount: plan.preview.skippedCount,
       createdIds,
       message: `成功 ${createdIds.length || ids.length} 张，跳过 ${plan.preview.skippedCount} 张`,
+      rows: await Promise.all(
+        plan.preview.rows.map(async (r) => ({
+          key: String(r.id),
+          label: r.label,
+          outcome: r.eligible ? ('success' as const) : ('skipped' as const),
+          reasons: r.eligible ? [] : r.reasons,
+          ...(await resultVoucher(t, r.eligible && createdIds.length ? createdIds[0]! : r.id)),
+        })),
+      ),
     };
     await finishPlan(t, input.token, result);
     await t.log.write({
@@ -816,9 +835,23 @@ export async function tAccount(svc: CoreServices, filter: BookFilter) {
     const v = await requireVoucher(svc, id);
     if (v.status === 'draft') continue;
     for (const l of v.lines.filter((l) => l.accountCode.startsWith(filter.accountCode!)))
-      rows.push({ ...l, voucherId: id, displayNo: v.displayNo, date: v.date });
+      rows.push({
+        ...l,
+        voucherId: id,
+        displayNo: v.displayNo,
+        date: v.date,
+        voucherTypeCode: v.voucherTypeCode,
+      });
   }
-  return rows;
+  reportTotals(rows);
+  return rows.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      a.voucherTypeCode.localeCompare(b.voucherTypeCode) ||
+      a.displayNo.localeCompare(b.displayNo) ||
+      a.voucherId - b.voucherId ||
+      a.lineNo - b.lineNo,
+  );
 }
 
 /** core 嵌套 tx 复用事务；预览试写用显式保存点回滚。 */
