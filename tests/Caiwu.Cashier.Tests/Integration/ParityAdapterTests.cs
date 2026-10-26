@@ -41,9 +41,43 @@ public sealed class ParityAdapterTests
         Assert.Throws<CashierConcurrencyException>(() => service.SaveOpening(6, Cash, 2026, 1, Actor));
         Assert.Equal(0, ledger.SaveCount);
         ledger.FailWrites = true;
-        Assert.Throws<StoreConcurrencyException>(() => service.SaveOpening(7, Cash, 2026, 1, Actor));
+        var conflict = Assert.Throws<CashierConcurrencyException>(() => service.SaveOpening(7, Cash, 2026, 1, Actor));
+        Assert.IsType<StoreConcurrencyException>(conflict.InnerException);
+        Assert.Equal(7, conflict.Expected); Assert.Null(conflict.Actual);
         Assert.Equal(1, ledger.SaveCount); Assert.Equal(7, ledger.State.Ledger.Revision);
         Assert.DoesNotContain(ledger.State.Modules, x => x.ModuleId == "cashier");
+    }
+
+    [Fact]
+    public void Public_CAS_failure_reaches_the_WPF_operation_boundary_without_retry_refresh_or_input_loss()
+    {
+        var (ledger, _, service) = Setup(); ledger.FailWrites = true;
+        var input = new[] { new Caiwu.Cashier.OpeningBalance(Cash, 2026, 123.123456789m) };
+        long revision = 7; bool closeEditor = false; var messages = new List<string>();
+        bool succeeded = CashierOperationBoundary.Run(() =>
+        {
+            revision = service.SaveOpenings(revision, input, Actor).Revision;
+            closeEditor = true;
+        }, messages.Add);
+        Assert.False(succeeded); Assert.False(closeEditor); Assert.Equal(7, revision);
+        Assert.Equal(123.123456789m, input[0].Balance);
+        Assert.Contains("显式重载", Assert.Single(messages));
+        Assert.Equal(1, ledger.ReadCount); Assert.Equal(1, ledger.SaveCount);
+        Assert.Equal(7, ledger.LastBatch!.Context.ExpectedRevision);
+        Assert.Equal(7, ledger.State.Ledger.Revision);
+    }
+
+    [Fact]
+    public void Proposal_CAS_failure_is_also_normalized_without_refresh_or_retry()
+    {
+        var (ledger, _, service) = Setup(); service.AddDocument(7, Input());
+        var observed = ledger.GetModuleSnapshot(); var adapter = new CashierVoucherProposalAdapter(ledger, Definition());
+        var proposal = adapter.CreateProposal(observed, service.CreateVoucherPlan(2026, 1, VoucherGrouping.PerDocument), 0, Guid.NewGuid(), "记");
+        int reads = ledger.ReadCount; ledger.FailAccepts = true;
+        var conflict = Assert.Throws<CashierConcurrencyException>(() => adapter.AcceptConfirmed(proposal, Actor));
+        Assert.IsType<StoreConcurrencyException>(conflict.InnerException); Assert.Null(conflict.Actual);
+        Assert.Equal(proposal.Context.ExpectedRevision, conflict.Expected);
+        Assert.Equal(reads, ledger.ReadCount); Assert.Equal(1, ledger.AcceptCount);
     }
 
     [Fact]
@@ -160,7 +194,7 @@ public sealed class ParityAdapterTests
                 [new("1001", "合成收款", 100, 0), new("6001", "合成收款", 0, 100)])], []),
             [new("other", [new("unrelated", 9, "unrelated-verbatim-json")])], []);
         public int ReadCount, SaveCount, AcceptCount;
-        public bool FailWrites;
+        public bool FailWrites, FailAccepts;
         public ModuleDocumentBatch? LastBatch;
         public VoucherProposal? LastProposal;
         public string? LastActor;
@@ -176,6 +210,7 @@ public sealed class ParityAdapterTests
         public ModuleVoucherReceipt AcceptVoucherProposal(VoucherProposal proposal, string actor)
         {
             AcceptCount++; LastProposal = proposal; LastActor = actor;
+            if (FailAccepts) throw new StoreConcurrencyException("synthetic proposal conflict");
             return new(proposal.ProposalId, proposal.ModuleId, proposal.SourceKeys, Guid.NewGuid(), State.Ledger.Revision + 1);
         }
         public void PutCashierDocument(LedgerModuleDocument document) => State = State with

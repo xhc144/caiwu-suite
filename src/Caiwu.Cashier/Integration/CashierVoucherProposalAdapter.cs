@@ -43,8 +43,12 @@ public sealed class CashierVoucherProposalAdapter(IParityLedgerService ledger, B
             [ParityCashierStore.Change(next)]);
     }
 
-    public ModuleVoucherReceipt AcceptConfirmed(VoucherProposal reviewedProposal, string actor) =>
-        ledger.AcceptVoucherProposal(reviewedProposal, actor);
+    public ModuleVoucherReceipt AcceptConfirmed(VoucherProposal reviewedProposal, string actor)
+    {
+        try { return ledger.AcceptVoucherProposal(reviewedProposal, actor); }
+        catch (StoreConcurrencyException e)
+        { throw new CashierConcurrencyException(reviewedProposal.Context.ExpectedRevision, e); }
+    }
 
     private sealed class SnapshotOnlyStore(CashierSnapshot state) : ICashierStore
     {

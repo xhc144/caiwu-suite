@@ -65,9 +65,17 @@ public sealed class CashierRuleException(string code, string message) : InvalidO
 {
     public string Code { get; } = code;
 }
-public sealed class CashierConcurrencyException(long expected, long actual)
-    : InvalidOperationException($"数据已由其他窗口更新，请刷新后重试（预期版本 {expected}，当前 {actual}）。")
+public sealed class CashierConcurrencyException : InvalidOperationException
 {
-    public long Expected { get; } = expected;
-    public long Actual { get; } = actual;
+    public CashierConcurrencyException(long expected, long actual)
+        : base($"数据已由其他窗口更新，本次输入未提交。请保留输入并显式重载数据后再决定是否保存（预期版本 {expected}，当前 {actual}）。")
+    { Expected = expected; Actual = actual; }
+
+    /// <summary>The public CAS error does not disclose its winning revision. Do not read a new token to invent one.</summary>
+    public CashierConcurrencyException(long expected, Exception innerException)
+        : base($"保存时账套已由其他窗口更新，本次输入未提交。请保留输入并显式重载数据后再决定是否保存（预期版本 {expected}）。", innerException)
+    { Expected = expected; }
+
+    public long Expected { get; }
+    public long? Actual { get; }
 }

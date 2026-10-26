@@ -53,7 +53,7 @@
 
 - 当前状态：独立模块、事务持久化、窗口外壳/事件、测试用 Windows 工具、公共适配器已实现。
 - 编译：独立模块、WPF、Windows 合成工具、对 PR52 冻结契约的 Integration 项目均成功（0 警告/0 错误）。
-- 合成行为：独立 SQLite 工作流 32 项通过；公共契约适配 12 项通过（替身，非 Core 实机）。包括闭环夹具、实际磁盘重开、整屏期初回滚、SQLite 写入失败回滚、两连接并发 CAS、单号不复用、结账改删限制、已生成/已勾账/外来记录保护、金额精度、月范围、前期未勾账、勾账与整组取消、原差额阈值、稳定来源键、字段降级拒绝。
+- 合成行为：独立 SQLite 工作流 32 项通过；公共契约适配 14 项通过（替身，非 Core 实机）。包括闭环夹具、实际磁盘重开、整屏期初回滚、SQLite 写入失败回滚、两连接并发 CAS、单号不复用、结账改删限制、已生成/已勾账/外来记录保护、金额精度、月范围、前期未勾账、勾账与整组取消、原差额阈值、稳定来源键、字段降级拒绝，以及下述审核修复回归。
 - 首轮发现/修复：外币乘积的测试预期手算错误；对账本身不套用单据改删的结账限制；视图携带真实读取 revision，避免显示明细和提交 token 来自不同读取。初次 SDK 命名互斥量初始化失败经允许的 SDK 初始化后消除，无审批拒绝。测试通过仅支持列出的合成行为。
 - 最终定向复核：已生成/已勾账/已结账/外来记录在打开编辑器或删除确认前即检查；建议日期也与原计划核对，禁止只改日期后转凭证。Linux SDK `10.0.403`，锁文件模式下 32+12 合成测试全部通过、无跳过；WPF 与 Windows 合成工具编译 0 警告/0 错误。TRX 本地证据：`tests/Caiwu.Cashier.Tests/TestResults/cashier-domain.trx`、`tests/Caiwu.Cashier.Tests/Integration/TestResults/cashier-adapter.trx`（忽略的构建产物，未入库）。所有 Git 差异均在分配目录内，固定公共契约 worktree 源文件状态干净。
 - Windows UI/键盘/DPI/原版逐窗口对照：未执行。
@@ -77,3 +77,13 @@ dotnet test tests/Caiwu.Cashier.Tests/Integration/Caiwu.Cashier.Integration.Test
 源文件用途（均已直接检查）：`Models.cs` 模块完整 DTO；`CashierService.cs` 业务校验与闭环；`ICashierStore.cs` 原子 CAS 适配边界；`SqliteCashierStore.cs` 磁盘合成存储及格式保护；`Integration/` 公共事务/建议适配；`Wpf/` 原窗口外层相对布局与可执行事件；测试目录的 fixtures 是明确的合成数据，WpfProbe 只运行新实现。业务存储/适配用途置信度 high（对应合成验证）；WPF 运行效果 medium（仅编译，未在 Windows 运行）。
 
 本轮没有权限拒绝、待决写入或结果不明的数据库操作。公共接口落地和 Windows/原账套证据是未完成工程项，不是用户拒绝授权。
+
+## 独立审核修复：公共 CAS 竞争的窗口边界
+
+2026-10-26 00:11 UTC 收到审核：`346b3ec` 的适配器在读取成功后发生公共 CAS 竞争时直接透传 `StoreConcurrencyException`，真实 WPF `Run` 没有处理此类型，可能成为未处理异常。该项确认为缺陷，原测试验证透传的预期已撤回。
+
+- `ParityCashierStore.Transact` 及凭证 `AcceptConfirmed` 只在公共写入边界捕获 `StoreConcurrencyException`，规范为 `CashierConcurrencyException`，保留原异常作为 `InnerException`。未知竞争胜方 revision 使用 `Actual=null`，不为了构造异常再读快照，不刷新 token、不自动重试。
+- 真实 WPF `Run` 使用共享的 `CashierOperationBoundary`，失败只提示冲突；后续成功分支不会执行，窗口/对话框、原 revision 与用户输入保持。反馈可注入，以便验证真实 routed menu handler，默认仍显示产品 MessageBox。
+- Linux 已实跑：适配测试 14 项通过（新增公共异常→真实窗口共用操作边界、不重试/不刷新/不清输入/不执行关闭，以及凭证建议同类竞争）；既有 SQLite 32 项通过。
+- `tests/Caiwu.Cashier.Tests/WindowsRegression` 是实际 WPF 菜单事件回归：两窗口读取后在公共 writer 注入 CAS 失败，触发真实期初窗口“存盘”菜单，断言提示、输入/窗口留存、原 Context、无额外 read/write/commit；第二次存盘仍拒绝旧 token。项目编译 0 警告/0 错误，但当前 Linux 未执行 Windows 程序，保持 `not-tested`，不可据此宣告实机通过。
+- Windows 集成者可运行 `dotnet run --project tests/Caiwu.Cashier.Tests/WindowsRegression/Caiwu.Cashier.WindowsRegression.csproj -p:ParityContractsProject=/path/to/fixed-pr52/src/Caiwu.Contracts/Caiwu.Contracts.csproj`。真实公共 Core 竞争、Windows 运行与后续独立审核仍待完成。
