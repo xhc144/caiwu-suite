@@ -1,5 +1,5 @@
-import { constants, createReadStream, createWriteStream, openSync } from 'node:fs';
-import { lstat, mkdir, open, realpath, rm, statfs } from 'node:fs/promises';
+import { constants, createWriteStream, type BigIntStats } from 'node:fs';
+import { lstat, mkdir, open, realpath, rm, statfs, type FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { createHash, randomUUID } from 'node:crypto';
@@ -7,7 +7,13 @@ import Database from 'better-sqlite3';
 import { BusinessError } from '@caiwu/core';
 import { coreMigrations } from '@caiwu/core/server';
 import type { AppRuntime } from '@caiwu/server-kit';
-import { DirectorySchema, IdSchema, MetadataSchema, type BackupMetadata } from '../shared';
+import {
+  DirectorySchema,
+  IdSchema,
+  MetadataSchema,
+  TRANSFER_LIMIT,
+  type BackupMetadata,
+} from '../shared';
 
 export const MAGIC = Buffer.from('CAIWUBK1');
 export const MAX_LOCAL = 1024 * 1024 * 1024;
@@ -54,25 +60,65 @@ export async function probeDirectory(dir: string, required = 0) {
 export function packagePath(dir: string, id: string) {
   return path.join(dir, `${IdSchema.parse(id)}.caiwubak`);
 }
-export async function regularFile(file: string) {
-  const h = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+function requireRegular(s: BigIntStats) {
+  if (s.isSymbolicLink()) throw fail('FILE', '受管备份文件不能是符号链接');
+  if (!s.isFile() || s.size > BigInt(MAX_LOCAL + 1024 * 1024) || s.nlink !== 1n || s.ino <= 0n)
+    throw fail('FILE', '备份不是可核对身份的受管普通文件或文件过大');
+}
+function sameFile(expected: BigIntStats, actual: BigIntStats) {
+  requireRegular(actual);
+  if (
+    expected.dev !== actual.dev ||
+    expected.ino !== actual.ino ||
+    expected.size !== actual.size ||
+    expected.mtimeNs !== actual.mtimeNs ||
+    expected.ctimeNs !== actual.ctimeNs
+  )
+    throw fail('CHANGED', '受管备份文件在读取期间被替换或修改');
+}
+/**
+ * lstat 在打开前拒绝链接；没有 O_NOFOLLOW 的平台也必须核对路径和句柄身份。
+ * 回调只读同一句柄，完成后再次核对。此检查不能隔离拥有目录写权限的本地进程，
+ * 也不声称消除目录替换、同 inode 写入等所有本地竞态。
+ */
+export async function withRegularFile<T>(
+  file: string,
+  read: (handle: FileHandle, info: BigIntStats) => Promise<T>,
+) {
+  const before = await lstat(file, { bigint: true });
+  requireRegular(before);
+  const h = await open(file, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
-    const s = await h.stat();
-    if (!s.isFile() || s.size > MAX_LOCAL + 1024 * 1024 || s.nlink !== 1)
-      throw fail('FILE', '备份不是合格的受管普通文件或文件过大');
-    return s;
+    const unchanged = async () => {
+      sameFile(before, await h.stat({ bigint: true }));
+      sameFile(before, await lstat(file, { bigint: true }));
+    };
+    await unchanged();
+    const result = await read(h, before);
+    await unchanged();
+    return result;
   } finally {
     await h.close();
   }
 }
+export async function regularFile(file: string) {
+  return withRegularFile(file, async (_h, info) => info);
+}
+async function* chunks(h: FileHandle, start: number, end: number) {
+  for (let position = start; position < end;) {
+    const buffer = Buffer.allocUnsafe(Math.min(64 * 1024, end - position));
+    const { bytesRead } = await h.read(buffer, 0, buffer.length, position);
+    if (!bytesRead) throw fail('CHANGED', '受管备份文件在读取期间被截短');
+    position += bytesRead;
+    yield buffer.subarray(0, bytesRead);
+  }
+}
 export async function hashFile(file: string, start = 0) {
-  const hash = createHash('sha256');
-  for await (const part of createReadStream(file, {
-    start,
-    fd: openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW),
-  }))
-    hash.update(part);
-  return hash.digest('hex');
+  return withRegularFile(file, async (h, info) => {
+    const hash = createHash('sha256');
+    for await (const part of chunks(h, start, Number(info.size))) hash.update(part);
+    return hash.digest('hex');
+  });
 }
 export function migrationList(app: AppRuntime) {
   return [{ scope: 'core', migrations: coreMigrations }, ...app.modules.migrationSets()]
@@ -181,86 +227,89 @@ export async function writePackage(
   const header = Buffer.alloc(12);
   MAGIC.copy(header);
   header.writeUInt32BE(json.length, 8);
-  const h = await open(destination, 'wx', 0o600);
+  const out = await open(destination, 'wx', 0o600);
   try {
-    await h.writeFile(Buffer.concat([header, json]));
-  } finally {
-    await h.close();
-  }
-  await pipeline(
-    createReadStream(snapshot),
-    createWriteStream(destination, { flags: 'a', mode: 0o600 }),
-  );
-  const out = await open(destination, 'r+');
-  try {
+    await out.writeFile(Buffer.concat([header, json]));
+    await withRegularFile(snapshot, async (h, info) => {
+      for await (const part of chunks(h, 0, Number(info.size))) await out.writeFile(part);
+    });
     await out.sync();
   } finally {
     await out.close();
   }
 }
-export async function validatePackage(file: string, app: AppRuntime) {
-  const size = (await regularFile(file)).size;
-  const h = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
-  let metadata: BackupMetadata;
-  let offset: number;
-  try {
-    const head = Buffer.alloc(12);
-    if ((await h.read(head, 0, 12, 0)).bytesRead !== 12 || !head.subarray(0, 8).equals(MAGIC))
-      throw fail('FORMAT', '不是新版可携带备份包；原版 SQL Anywhere .bak 暂不支持');
-    const length = head.readUInt32BE(8);
-    offset = 12 + length;
-    if (length < 2 || length > 1024 * 1024 || offset >= size)
-      throw fail('MANIFEST', '备份元数据缺失、过大或文件未完成');
-    const json = Buffer.alloc(length);
-    await h.read(json, 0, length, 12);
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(json.toString('utf8'));
-    } catch {
-      throw fail('MANIFEST', '备份元数据不是有效 JSON');
-    }
-    const result = MetadataSchema.safeParse(parsed);
-    if (!result.success) throw fail('VERSION', '备份格式版本不兼容或缺少必要元数据');
-    metadata = result.data;
-    const version = (v: string) =>
-      /^(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/.exec(v)?.slice(1).map(Number);
-    const sourceVersion = version(metadata.appVersion);
-    const currentVersion = version(app.version);
-    if (
-      !sourceVersion ||
-      !currentVersion ||
-      sourceVersion.some(
-        (n, i) =>
-          n > currentVersion[i]! &&
-          sourceVersion.slice(0, i).every((p, j) => p === currentVersion[j]),
-      )
-    )
-      throw fail(
-        'APP_VERSION',
-        '备份来自更新或无法识别的应用版本',
-        '请在相同或更新且迁移版本兼容的应用中恢复',
-      );
-    if (size - offset !== metadata.length) throw fail('LENGTH', '备份长度不符，文件可能未完成');
-    const sqliteHeader = Buffer.alloc(16);
-    await h.read(sqliteHeader, 0, 16, offset);
-    if (!sqliteHeader.equals(Buffer.from('SQLite format 3\0')))
-      throw fail('HEADER', '备份内容不是 SQLite 数据库');
-  } finally {
-    await h.close();
-  }
-  if ((await hashFile(file, offset)) !== metadata.sha256)
-    throw fail('DIGEST', '备份 SHA-256 摘要不符，文件已损坏或被修改');
+export async function validatePackage(file: string, app: AppRuntime, includeContent = false) {
   const snapshot = path.join(path.dirname(file), `.${randomUUID()}.checking`);
   try {
-    await pipeline(
-      createReadStream(file, {
-        start: offset,
-        fd: openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW),
-      }),
-      createWriteStream(snapshot, { flags: 'wx', mode: 0o600 }),
-    );
-    inspectSqlite(snapshot, app, metadata);
-    return { metadata, snapshot, digest: await hashFile(file), bytes: size };
+    return await withRegularFile(file, async (h, info) => {
+      const size = Number(info.size);
+      if (includeContent && size > TRANSFER_LIMIT)
+        throw fail('TRANSFER_SIZE', '备份超过浏览器传输上限 32 MiB');
+      const head = Buffer.alloc(12);
+      if ((await h.read(head, 0, 12, 0)).bytesRead !== 12 || !head.subarray(0, 8).equals(MAGIC))
+        throw fail('FORMAT', '不是新版可携带备份包；原版 SQL Anywhere .bak 暂不支持');
+      const length = head.readUInt32BE(8);
+      const offset = 12 + length;
+      if (length < 2 || length > 1024 * 1024 || offset >= size)
+        throw fail('MANIFEST', '备份元数据缺失、过大或文件未完成');
+      const json = Buffer.alloc(length);
+      await h.read(json, 0, length, 12);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(json.toString('utf8'));
+      } catch {
+        throw fail('MANIFEST', '备份元数据不是有效 JSON');
+      }
+      const result = MetadataSchema.safeParse(parsed);
+      if (!result.success) throw fail('VERSION', '备份格式版本不兼容或缺少必要元数据');
+      const metadata = result.data;
+      const version = (v: string) =>
+        /^(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/.exec(v)?.slice(1).map(Number);
+      const sourceVersion = version(metadata.appVersion);
+      const currentVersion = version(app.version);
+      if (
+        !sourceVersion ||
+        !currentVersion ||
+        sourceVersion.some(
+          (n, i) =>
+            n > currentVersion[i]! &&
+            sourceVersion.slice(0, i).every((p, j) => p === currentVersion[j]),
+        )
+      )
+        throw fail(
+          'APP_VERSION',
+          '备份来自更新或无法识别的应用版本',
+          '请在相同或更新且迁移版本兼容的应用中恢复',
+        );
+      if (size - offset !== metadata.length) throw fail('LENGTH', '备份长度不符，文件可能未完成');
+      const sqliteHeader = Buffer.alloc(16);
+      await h.read(sqliteHeader, 0, 16, offset);
+      if (!sqliteHeader.equals(Buffer.from('SQLite format 3\0')))
+        throw fail('HEADER', '备份内容不是 SQLite 数据库');
+      const digest = createHash('sha256');
+      const payloadDigest = createHash('sha256');
+      const content = includeContent ? Buffer.alloc(size) : undefined;
+      await pipeline(
+        (async function* () {
+          let position = 0;
+          for await (const part of chunks(h, 0, size)) {
+            digest.update(part);
+            content?.set(part, position);
+            const payload = part.subarray(Math.max(0, offset - position));
+            position += part.length;
+            if (payload.length) {
+              payloadDigest.update(payload);
+              yield payload;
+            }
+          }
+        })(),
+        createWriteStream(snapshot, { flags: 'wx', mode: 0o600 }),
+      );
+      if (payloadDigest.digest('hex') !== metadata.sha256)
+        throw fail('DIGEST', '备份 SHA-256 摘要不符，文件已损坏或被修改');
+      inspectSqlite(snapshot, app, metadata);
+      return { metadata, snapshot, digest: digest.digest('hex'), bytes: size, content };
+    });
   } catch (e) {
     await rm(snapshot, { force: true });
     throw e;

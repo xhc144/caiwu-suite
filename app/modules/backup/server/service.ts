@@ -143,12 +143,12 @@ function backupOperations(ctx: Context) {
   };
   const fileOf = async (row: Awaited<ReturnType<typeof load>>) =>
     packagePath(await directory(ctx.app.dataDir, ctx.book.id, row.directory), row.id);
-  const verify = async (id: string) => {
+  const verify = async (id: string, includeContent = false) => {
     const row = await load(id);
     if (!['valid', 'invalid'].includes(row.status))
       throw fail('STATE', '这份备份尚未完成或已删除', '请选择已完成的备份');
     try {
-      const checked = await validatePackage(await fileOf(row), ctx.app);
+      const checked = await validatePackage(await fileOf(row), ctx.app, includeContent);
       if (row.digest !== checked.digest) {
         await rm(checked.snapshot);
         throw fail('CHANGED', '受管备份与登记摘要不符');
@@ -269,8 +269,9 @@ function backupOperations(ctx: Context) {
     }
     const removed: string[] = [];
     for (const row of valid.slice(Math.max(1, keep))) {
-      await regularFile(await fileOf(row));
-      await rm(await fileOf(row));
+      const file = await fileOf(row);
+      await regularFile(file);
+      await rm(file);
       await db
         .updateTable('backup_item')
         .set({ status: 'pruned', reason: '超过自动备份保留份数' })
@@ -536,18 +537,11 @@ export function backupService(ctx: Context) {
           '备份超过浏览器传输上限 32 MiB',
           '需要共享层提供受管流式上传下载接口；请保留本机受管包',
         );
-      const checked = await verify(id);
+      const checked = await verify(id, true);
       await rm(checked.snapshot);
       return {
         name: `${row.name}-${row.id}.caiwubak`,
-        base64: await (async () => {
-          const h = await open(await fileOf(row), constants.O_RDONLY | constants.O_NOFOLLOW);
-          try {
-            return (await h.readFile()).toString('base64');
-          } finally {
-            await h.close();
-          }
-        })(),
+        base64: checked.content!.toString('base64'),
       };
     },
     async upload(input: { name: string; base64: string }) {
@@ -639,14 +633,14 @@ export function backupService(ctx: Context) {
           throw fail('CONFIRM', '删除确认文字不匹配，请核对备份 ID');
         if (row.kind === 'pre-restore') throw fail('PROTECTED', '恢复前保护备份不能在本页面删除');
         if (state(ctx.app).jobs.has(id)) throw fail('BUSY', '请先取消并等待备份结束');
-        await regularFile(await fileOf(row));
-        if ((await hashFile(await fileOf(row))) !== row.digest)
+        const file = await fileOf(row);
+        if ((await hashFile(file)) !== row.digest)
           throw fail(
             'CHANGED',
             '备份文件已被替换，不能把未知文件作为受管备份删除',
             '请核对文件来源；本操作未删除文件',
           );
-        await rm(await fileOf(row));
+        await rm(file);
         await db
           .updateTable('backup_item')
           .set({ status: 'pruned', reason: '用户明确删除' })
