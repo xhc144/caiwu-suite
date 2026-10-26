@@ -244,20 +244,6 @@ export function reportService(svc: CoreServices) {
         if (report.revision !== input.expectedRevision)
           fail('CONFLICT', '报表定义已更改，请刷新后再生成');
         await tsvc.periods.require(input.period);
-        let unposted = await tsvc.vouchers.list({
-          periodTo: input.period,
-          statuses: ['draft', 'pending', 'audited'],
-          limit: 1,
-        });
-        if (unposted.total > 0 && !input.confirmUnposted)
-          return {
-            kind: 'confirmation' as const,
-            count: unposted.total,
-            links: [
-              { label: '待审核凭证', to: `/m/voucher-book?period=${input.period}&status=pending` },
-              { label: '已审核凭证', to: `/m/voucher-book?period=${input.period}&status=audited` },
-            ],
-          };
         if (!report.template.cells.some((c) => c.source.trim() !== ''))
           fail('EMPTY', '报表没有可生成的内容', '请先定义文本或取数公式并保存。');
         const engine = await createEngine(tsvc, input.period, input.includeUnposted);
@@ -305,25 +291,28 @@ export function reportService(svc: CoreServices) {
             });
           }
         }
-        // 扩展期间可以晚于表头期间；仍须对实际覆盖的未过账凭证明确确认。
-        if (engine.lastPeriod() > input.period) {
-          unposted = await tsvc.vouchers.list({
-            periodTo: engine.lastPeriod(),
-            statuses: ['draft', 'pending', 'audited'],
-            limit: 1,
-          });
-          if (unposted.total > 0 && !input.confirmUnposted)
-            return {
-              kind: 'confirmation' as const,
-              count: unposted.total,
-              links: [
-                {
-                  label: '待审核凭证',
-                  to: `/m/voucher-book?period=${engine.lastPeriod()}&status=pending`,
-                },
-              ],
-            };
-        }
+        // 先解析实际用到的取数/依赖/审核范围，再做唯一一次确认计数。
+        // 否则表头已有未过账时会提前返回较小数量，确认后才发现未来期间。
+        const unposted = await tsvc.vouchers.list({
+          periodTo: engine.lastPeriod(),
+          statuses: ['draft', 'pending', 'audited'],
+          limit: 1,
+        });
+        if (unposted.total > 0 && !input.confirmUnposted)
+          return {
+            kind: 'confirmation' as const,
+            count: unposted.total,
+            links: [
+              {
+                label: '待审核凭证',
+                to: `/m/voucher-book?period=${engine.lastPeriod()}&status=pending`,
+              },
+              {
+                label: '已审核凭证',
+                to: `/m/voucher-book?period=${engine.lastPeriod()}&status=audited`,
+              },
+            ],
+          };
         const snapshot: ReportSnapshot = {
           id: 0,
           reportId: report.id,

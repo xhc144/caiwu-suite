@@ -60,7 +60,10 @@ const ReportPeriodSchema = z.union([
     .regex(/^\d{6}$/)
     .refine((v) => isPeriod(Number(v)), '期间须为有效的YYYYMM'),
 ]);
-/** 第八参数是本对象的 JSON 字符串；省略时保持原七参数的本月取数口径。 */
+/**
+ * 第八参数是本对象的 JSON 字符串；省略时 from/to 各自默认 current。
+ * 旧七参数仅保证语法及序列化不变；同样检查真实覆盖期间，未建期间不当作零。
+ */
 export const BalanceOptionsSchema = z
   .object({
     from: ReportPeriodSchema.optional(),
