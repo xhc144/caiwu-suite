@@ -23,6 +23,7 @@ export const EntryFilterSchema = z.object({
   includeChildren: z.boolean().default(true),
   accountIds: z.array(zId).optional(),
   dimensions: zDimFilter,
+  /** 指定账套本位币时同时包含未标币种（NULL）的本位币行。 */
   currency: z.string().optional(),
   /** false（默认）只看已过账；true 包含待审核、已审核 */
   includeUnposted: z.boolean().default(false),
@@ -68,7 +69,7 @@ export const BalanceQuerySchema = z.object({
   groupBy: z.array(z.enum(DIMENSION_TYPE_IDS)).default([]),
   /** 维度过滤 */
   dimensions: zDimFilter,
-  /** 只统计该币种的分录（外币余额表）；不填统计全部 */
+  /** 指定本位币时包含 NULL 行；不填时汇总全部本位币金额，原币金额不混加。 */
   currency: z.string().optional(),
   includeUnposted: z.boolean().default(false),
   /** true 时同时返回各级上级科目的汇总行 */

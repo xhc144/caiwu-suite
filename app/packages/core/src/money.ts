@@ -85,12 +85,12 @@ export function parseMoney(text: string): Cents | null {
 }
 
 export function sumCents(values: Iterable<Cents | null | undefined>): Cents {
-  let total = 0;
+  let total = 0n;
   for (const v of values) {
     if (v == null) continue;
-    total += assertCents(v);
+    total += BigInt(assertCents(v));
   }
-  return assertCents(total);
+  return assertCents(Number(total));
 }
 
 /**
