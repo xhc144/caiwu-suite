@@ -1,10 +1,10 @@
 import ExcelJS from 'exceljs';
 import { readFile } from 'node:fs/promises';
-import { loginWithNewBook } from '@caiwu/testkit/e2e';
+import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import { seedVouchers } from '@caiwu/testkit';
 import { test, expect } from './fixture';
 
-test('w_ht_htda→审核→w_ht_pz明确关联→w_ht_httj金额与Excel→取消关联→删除保护', async ({
+test('w_ht_htda→审核→w_ht_pz明确关联→w_ht_httj金额、Excel与原生打印', async ({
   page,
   isolated,
 }) => {
@@ -77,11 +77,6 @@ test('w_ht_htda→审核→w_ht_pz明确关联→w_ht_httj金额与Excel→取�
   await expect(detail.getByText('明确收款250元', { exact: true })).toBeVisible();
   await detail.getByRole('button', { name: '关联此分录' }).click();
   await expect(detail.getByRole('button', { name: '取消关联', exact: true })).toBeVisible();
-  await detail.getByRole('button', { name: '删除合同', exact: true }).click();
-  await page.getByRole('button', { name: '确认删除', exact: true }).click();
-  await expect(page.getByText('此合同已经使用，不能删除', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '取消', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: '删除合同 HT-UI？', exact: true })).toHaveCount(0);
   await detail.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(detail).toHaveCount(0);
   await page.getByRole('link', { name: '合同账款查询', exact: true }).click();
@@ -128,7 +123,7 @@ test('w_ht_htda→审核→w_ht_pz明确关联→w_ht_httj金额与Excel→取�
                   { once: true },
                 );
             },
-            { once: true },
+            { capture: true, once: true },
           );
         }
     });
@@ -151,6 +146,80 @@ test('w_ht_htda→审核→w_ht_pz明确关联→w_ht_httj金额与Excel→取�
     'href',
     `/m/voucher-entry/edit?id=${voucherId}`,
   );
+});
+
+test('w_ht_htda：已用禁删、取消删除保留、取消关联确认、本人反审核与真实删除', async ({
+  page,
+  isolated,
+}) => {
+  const { bookId, token } = await loginWithNewBook(page, isolated.request);
+  let accountId = 0;
+  let partnerId = 0;
+  let voucherId = 0;
+  let lineId = 0;
+  await isolated.seed(bookId, async (svc) => {
+    const account = await svc.accounts.create(
+      {
+        code: '100203',
+        name: '合同银行',
+        isBank: true,
+        dimensions: [{ type: 'partner', required: true }],
+      },
+      [4, 2, 2],
+    );
+    accountId = account.id;
+    partnerId = (await svc.dimensions.getByCode('partner', 'C001'))!.id;
+    const [voucher] = await seedVouchers(svc, [
+      {
+        date: '2026-01-15',
+        status: 'posted',
+        lines: [
+          { account: '100203', debit: 25000, dims: { partner: 'C001' } },
+          { account: '6001', credit: 25000 },
+        ],
+      },
+    ]);
+    voucherId = voucher!.id;
+    lineId = voucher!.lines[0]!.id;
+  });
+  const row = await callApi<{ id: number; revision: number }>(
+    isolated.request,
+    'm.analysis.contracts.save',
+    {
+      expectedRevision: 0,
+      code: 'HT-UI',
+      name: '浏览器合成合同',
+      partnerId,
+      accountId,
+      signedDate: '2026-01-01',
+      kind: 'receipt',
+      amount: 100000,
+      opening: 10000,
+      description: '交付说明；到期日未提供',
+      remark: '',
+    },
+    { token, method: 'POST' },
+  );
+  const reviewed = await callApi<{ id: number; revision: number }>(
+    isolated.request,
+    'm.analysis.contracts.review',
+    { id: row.id, expectedRevision: row.revision, reviewed: true },
+    { token, method: 'POST' },
+  );
+  await callApi(
+    isolated.request,
+    'm.analysis.contracts.link',
+    { id: row.id, expectedRevision: reviewed.revision, voucherId, lineId },
+    { token, method: 'POST' },
+  );
+  await page.goto(`${isolated.origin}/m/analysis/contracts?id=${row.id}`);
+  const detail = page.getByRole('dialog', { name: '合同 HT-UI', exact: true });
+  await expect(detail.getByRole('button', { name: '取消关联', exact: true })).toBeVisible();
+  await detail.getByRole('button', { name: '删除合同', exact: true }).click();
+  await page.getByRole('button', { name: '确认删除', exact: true }).click();
+  await expect(page.getByText('此合同已经使用，不能删除', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '删除合同 HT-UI？', exact: true })).toHaveCount(0);
   await detail.getByRole('button', { name: '取消关联', exact: true }).click();
   await page.getByRole('button', { name: '保留关联' }).click();
   await expect(detail.getByRole('button', { name: '取消关联', exact: true })).toBeVisible();
