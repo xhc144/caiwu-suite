@@ -162,6 +162,79 @@ describe('科目维护与历史保护', () => {
     });
     expect(bank.isBank).toBe(true);
   });
+  it('w_xt_kmwh_1 / w_xt_kmbm_get：M03默认部门和项目回导后由core补入凭证，停用后拒绝写入且历史不变', async () => {
+    const department = await api.dimensions.save({
+      type: 'department',
+      code: '03',
+      name: '研发中心',
+    });
+    const project = await api.dimensions.save({
+      type: 'project',
+      code: 'XM02',
+      name: '研发项目',
+    });
+    const account = await save({
+      ...base,
+      dimensions: [
+        { type: 'department', required: true, defaultItemId: department.id },
+        { type: 'project', required: true, defaultItemId: project.id },
+      ],
+    });
+    const exported = await api.excel.export({ kind: 'accounts' });
+    const imported = { ...exported, kind: 'accounts' as const };
+    expect((await api.excel.preview(imported)).valid).toBe(true);
+    await api.excel.commit({ ...imported, confirmations: ['import'] });
+    expect((await app.svc.accounts.require(account.id)).dimensions).toEqual(account.dimensions);
+
+    const input = {
+      voucherTypeId: (await app.svc.reference.voucherTypes())[0]!.id,
+      date: '2026-01-10',
+      lines: [
+        { accountId: account.id, summary: '默认辅助核算', debit: 100 },
+        {
+          accountId: (await app.svc.accounts.require('1001')).id,
+          summary: '默认辅助核算',
+          credit: 100,
+        },
+      ],
+    };
+    const expected = { department: department.id, project: project.id };
+    const created = await app.svc.vouchers.create(input);
+    expect(created.lines[0]!.dimensions).toMatchObject(expected);
+    expect((await app.svc.vouchers.get(created.id))!.lines[0]!.dimensions).toMatchObject(expected);
+    const otherDepartment = (await app.svc.dimensions.getByCode('department', '01'))!;
+    const overridden = await app.svc.vouchers.update(
+      created.id,
+      {
+        ...input,
+        lines: [
+          { ...input.lines[0]!, dimensions: { department: otherDepartment.id } },
+          input.lines[1]!,
+        ],
+      },
+      { expectedRevision: created.revision },
+    );
+    expect(overridden.lines[0]!.dimensions).toMatchObject({
+      department: otherDepartment.id,
+      project: project.id,
+    });
+    const restored = await app.svc.vouchers.update(created.id, input, {
+      expectedRevision: overridden.revision,
+    });
+    expect(restored.lines[0]!.dimensions).toMatchObject(expected);
+
+    await api.dimensions.save({ ...department, type: 'department', disabled: true });
+    await expect(app.svc.vouchers.create(input)).rejects.toThrow(/研发中心.*已停用/);
+    await expect(
+      app.svc.vouchers.update(created.id, input, {
+        expectedRevision: restored.revision,
+      }),
+    ).rejects.toThrow(/研发中心.*已停用/);
+    expect((await app.svc.vouchers.list()).total).toBe(1);
+    expect(await app.svc.vouchers.get(created.id)).toEqual(restored);
+    await api.dimensions.save({ ...department, type: 'department', disabled: false });
+    expect((await app.svc.vouchers.create(input)).lines[0]!.dimensions).toMatchObject(expected);
+  });
   it('w_xt_kmwh_1：非资产负债外币需独立确认，正负外币数量发生抵销仍禁止移除/换币种/改单位', async () => {
     const p = await api.accounts.preview({
       ...base,
