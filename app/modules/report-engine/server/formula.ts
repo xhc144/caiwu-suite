@@ -1,6 +1,7 @@
 import Decimal from 'decimal.js';
 import {
   BALANCE_ARGUMENTS,
+  BalanceOptionsSchema,
   BalanceFunctionSchema,
   coordinates,
   type BalanceFunction,
@@ -21,7 +22,7 @@ export type Ast =
   | { type: 'range'; from: string; to: string }
   | { type: 'unary'; child: Ast }
   | { type: 'binary'; op: string; left: Ast; right: Ast }
-  | { type: 'call'; name: 'SUM' | 'REF' | 'BALANCE'; args: Ast[] };
+  | { type: 'call'; name: 'SUM' | 'REF' | 'BALANCE' | 'IF' | 'MAX'; args: Ast[] };
 type Token = { text: string; type: 'number' | 'string' | 'word' | 'symbol' | 'end'; pos: number };
 export class FormulaError extends Error {
   constructor(
@@ -54,10 +55,13 @@ function tokenize(raw: string): Token[] {
       if (!string) throw new FormulaError('字符串未结束或含不支持的转义', pos);
       tokens.push({ text: JSON.parse(string) as string, type: 'string', pos });
       pos += string.length;
-    } else if ('+-*/(),:'.includes(source[pos]!)) {
+    } else if (/^(<=|>=|<>|!=)/.test(rest)) {
+      tokens.push({ text: rest.slice(0, 2), type: 'symbol', pos });
+      pos += 2;
+    } else if ('+-*/(),:<>='.includes(source[pos]!)) {
       tokens.push({ text: source[pos]!, type: 'symbol', pos });
       pos++;
-    } else throw new FormulaError('不允许的字符；只支持白名单函数、单元格与四则运算', pos);
+    } else throw new FormulaError('不允许的字符；只支持白名单函数、单元格、比较与四则运算', pos);
     if (tokens.length > 512) throw new FormulaError('公式计算项过多，最多512个');
   }
   tokens.push({ text: '', type: 'end', pos: source.length });
@@ -96,7 +100,7 @@ export function parseFormula(source: string): Ast {
     if (t.type === 'string') return node({ type: 'string', source: t.text });
     if (t.type === 'word') {
       if (take('(')) {
-        if (!['SUM', 'REF', 'BALANCE'].includes(t.text))
+        if (!['SUM', 'REF', 'BALANCE', 'IF', 'MAX'].includes(t.text))
           throw new FormulaError(`未知函数 ${t.text}`, t.pos);
         const args: Ast[] = [];
         if (!take(')')) {
@@ -110,7 +114,21 @@ export function parseFormula(source: string): Ast {
         if (t.text === 'BALANCE') balanceArguments(args);
         if (t.text === 'SUM' && (args.length === 0 || args.some((a) => a.type === 'string')))
           throw new FormulaError('SUM 至少需要一个数值、单元格或区域', t.pos);
-        return node({ type: 'call', name: t.text as 'SUM' | 'REF' | 'BALANCE', args });
+        if (
+          t.text === 'IF' &&
+          (args.length !== 3 || args.some((a) => ['string', 'range'].includes(a.type)))
+        )
+          throw new FormulaError('IF 需要三个参数：数值条件、成立结果、不成立结果', t.pos);
+        if (
+          t.text === 'MAX' &&
+          (args.length === 0 || args.some((a) => ['string', 'range'].includes(a.type)))
+        )
+          throw new FormulaError('MAX 至少需要一个数值或单元格参数', t.pos);
+        return node({
+          type: 'call',
+          name: t.text as 'SUM' | 'REF' | 'BALANCE' | 'IF' | 'MAX',
+          args,
+        });
       }
       if (coordinates(t.text).row === 0) throw new FormulaError(`未知名称 ${t.text}`, t.pos);
       if (take(':')) {
@@ -124,7 +142,14 @@ export function parseFormula(source: string): Ast {
     }
     throw new FormulaError('缺少计算项', t.pos);
   };
-  const precedence = (s: string) => (s === '+' || s === '-' ? 1 : s === '*' || s === '/' ? 2 : -1);
+  const precedence = (s: string) =>
+    ['=', '<>', '!=', '<', '>', '<=', '>='].includes(s)
+      ? 0
+      : s === '+' || s === '-'
+        ? 1
+        : s === '*' || s === '/'
+          ? 2
+          : -1;
   const expression = (min: number, depth: number): Ast => {
     let left = primary(depth);
     while (peek().type === 'symbol' && precedence(peek().text) >= min) {
@@ -139,15 +164,26 @@ export function parseFormula(source: string): Ast {
   return ast;
 }
 export function balanceArguments(args: Ast[]): BalanceFunction {
-  if (args.length !== BALANCE_ARGUMENTS.length || args.some((a) => a.type !== 'string'))
+  if (![7, 8].includes(args.length) || args.some((a) => a.type !== 'string'))
     throw new FormulaError(
-      'BALANCE 需要7个字符串参数：科目、指标、单位、币种、方向、辅助类型、辅助编码',
+      'BALANCE 需要7个字符串参数：科目、指标、单位、币种、方向、辅助类型、辅助编码；可附第8个JSON选项字符串',
     );
-  const parsed = BalanceFunctionSchema.safeParse(
-    Object.fromEntries(
+  let options;
+  if (args[7]) {
+    try {
+      options = BalanceOptionsSchema.parse(JSON.parse((args[7] as { source: string }).source));
+    } catch {
+      throw new FormulaError(
+        'BALANCE 第8参数不是有效选项：仅支持from、to、closing、side、groupBy及已定义口径',
+      );
+    }
+  }
+  const parsed = BalanceFunctionSchema.safeParse({
+    ...Object.fromEntries(
       BALANCE_ARGUMENTS.map((key, index) => [key, (args[index] as { source: string }).source]),
     ),
-  );
+    ...(options ? { options } : {}),
+  });
   if (!parsed.success) throw new FormulaError(parsed.error.issues.map((e) => e.message).join('；'));
   return parsed.data;
 }
@@ -155,11 +191,39 @@ function same(a: Value, b: Value) {
   if (a.unit !== b.unit || (a.unit === 'foreignCents' && a.currency !== b.currency))
     throw new FormulaError('运算两侧单位或币种不一致；金额为分，比例为普通数值');
 }
+/** 普通数值零可参与金额大小比较；非零数值和不同币种仍拒绝混算。 */
+function comparable(a: Value, b: Value): [Value, Value] {
+  if (a.empty && !b.empty) a = { ...a, unit: b.unit, currency: b.currency };
+  if (b.empty && !a.empty) b = { ...b, unit: a.unit, currency: a.currency };
+  if (a.unit === 'number' && a.amount.isZero() && b.unit !== 'number')
+    a = { ...a, unit: b.unit, currency: b.currency };
+  if (b.unit === 'number' && b.amount.isZero() && a.unit !== 'number')
+    b = { ...b, unit: a.unit, currency: a.currency };
+  same(a, b);
+  return [a, b];
+}
 export function calculate(op: string, a: Value, b: Value): Value {
+  if (['=', '<>', '!=', '<', '>', '<=', '>='].includes(op)) {
+    [a, b] = comparable(a, b);
+    const compared = a.amount.comparedTo(b.amount);
+    return value(
+      Number(
+        op === '='
+          ? compared === 0
+          : op === '<>' || op === '!='
+            ? compared !== 0
+            : op === '<'
+              ? compared < 0
+              : op === '>'
+                ? compared > 0
+                : op === '<='
+                  ? compared <= 0
+                  : compared >= 0,
+      ),
+    );
+  }
   if (op === '+' || op === '-') {
-    if (a.empty && !b.empty) a = { ...a, unit: b.unit, currency: b.currency };
-    if (b.empty && !a.empty) b = { ...b, unit: a.unit, currency: a.currency };
-    same(a, b);
+    [a, b] = comparable(a, b);
     return {
       ...a,
       empty: !!a.empty && !!b.empty,
@@ -218,6 +282,20 @@ export async function evaluate(ast: Ast, ctx: FormulaContext, depth = 0): Promis
           (ast.args[0] as { source: string }).source,
           (ast.args[1] as { source: string }).source,
         );
+      if (ast.name === 'IF') {
+        const condition = await ev(ast.args[0]!);
+        if (condition.unit !== 'number') throw new FormulaError('IF 条件须为比较结果或普通数值');
+        // 只计算所选分支；未选择的引用与除零不会执行。
+        return ev(ast.args[condition.amount.isZero() ? 2 : 1]!);
+      }
+      if (ast.name === 'MAX') {
+        let result = await ev(ast.args[0]!);
+        for (const arg of ast.args.slice(1)) {
+          const [a, b] = comparable(result, await ev(arg));
+          result = a.amount.greaterThanOrEqualTo(b.amount) ? a : b;
+        }
+        return result;
+      }
       let result: Value | undefined;
       const add = (v: Value) => {
         if (!v.empty) result = result ? calculate('+', result, v) : v;
