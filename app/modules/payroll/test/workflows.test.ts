@@ -230,6 +230,86 @@ it('w_gz_prt_pm 票面数量×面额+余款=实发，逐人分解汇总；负实
     code: 'BAD_REQUEST',
   });
 });
+it('w_gz_prt_pm 所选工资栏目和面额逐人逐期分解，累计保留余款，查询/导出一致且不改工资', async () => {
+  for (const period of [202601, 202602]) {
+    const b = await api.saveBatch({
+      period,
+      categoryId: category.id,
+      categoryRevision: category.revision,
+      rows: employees.map((e, i) => ({
+        ...salary(e.id, 6001),
+        values: { base: 6001, bonus: 100 + i },
+      })),
+    });
+    await api.calculate({ id: b.id, revision: b.revision });
+  }
+  const before = await api.batches({});
+  const input = {
+    categoryId: category.id,
+    from: 202601,
+    to: 202602,
+    employeeIds: [employees[0]!.id, employees[1]!.id],
+    columns: ['base', 'net'],
+    kind: 'cash' as const,
+    cashField: 'base',
+    denominations: [10000],
+  };
+  const report = await api.report(input);
+  expect(report.cashColumn).toEqual({ key: 'base', name: '基本工资' });
+  expect(report.rows).toHaveLength(2);
+  for (const r of report.rows) {
+    expect(r.notes).toEqual([{ unit: 10000, count: 0 }]);
+    expect(r.remainder).toBe(12002);
+    expect(r.values.base).toBe(12002);
+    expect(r.notes.reduce((total, n) => total + n.unit * n.count, r.remainder)).toBe(r.values.base);
+  }
+  expect(report.totals.base).toBe(24004);
+  expect(await api.exportReport(input)).toEqual(report);
+  const bonus = await api.report({
+    ...input,
+    columns: ['bonus'],
+    cashField: 'bonus',
+    denominations: [100, 1],
+  });
+  expect(bonus.rows[1]!.notes).toEqual([
+    { unit: 100, count: 2 },
+    { unit: 1, count: 2 },
+  ]);
+  expect(bonus.rows[1]!.values.bonus).toBe(202);
+  await expect(api.report({ ...input, cashField: 'unknown' })).rejects.toThrow('未知票面工资栏目');
+  await expect(api.report({ ...input, cashField: 'bonus' })).rejects.toThrow('必须选择奖金');
+  for (const denominations of [[], [100, 100], [3], [0], [1.5]])
+    await expect(api.report({ ...input, denominations })).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+    });
+  const viewer = app.call(
+    payroll,
+    await app.addUser('cash-viewer', { permissions: ['payroll.salary.view'] }),
+  );
+  expect(await viewer.report(input)).toEqual(report);
+  await expect(viewer.exportReport(input)).rejects.toThrow('权限');
+  expect(await api.batches({})).toEqual(before);
+});
+it('w_gz_prt_pm 按所选栏目检查负数，不能以其他正数栏目掩盖；拒绝后快照不变', async () => {
+  const b = await api.saveBatch({
+    period: 202601,
+    categoryId: category.id,
+    categoryRevision: category.revision,
+    rows: [{ ...salary(employees[0]!.id, 10000), values: { base: 10000, bonus: -1 } }],
+  });
+  const calculated = await api.calculate({ id: b.id, revision: b.revision });
+  const input = {
+    categoryId: category.id,
+    from: 202601,
+    to: 202601,
+    employeeIds: [employees[0]!.id],
+    columns: ['net', 'bonus'],
+    kind: 'cash' as const,
+  };
+  expect((await api.report(input)).rows[0]!.values.net).toBe(9999);
+  await expect(api.report({ ...input, cashField: 'bonus' })).rejects.toThrow('负奖金');
+  expect(await api.batch({ id: b.id })).toEqual(calculated);
+});
 it('w_gz_zhcx 字段/操作符/金额/日期白名单校验，错误不忽略条件；含有和金额条件真实筛选', async () => {
   await calc();
   const input = { categoryId: category.id, from: 202601, to: 202601 };
