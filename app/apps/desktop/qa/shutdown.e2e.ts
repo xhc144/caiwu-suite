@@ -27,7 +27,7 @@ const events = (
 
 // 保留 desktop.e2e.ts 原有全部安装、SQLite、PDF、升级和 4/3/0 卸载断言。
 for (const host of ['node', 'utility']) {
-  for (const mode of ['delay', 'refuse', 'signal', 'hang']) {
+  for (const mode of ['delay', 'refuse', 'signal', 'hang', 'late']) {
     test(`真实 Electron ${host}：目录切换 ${mode}，正常完成才保存/请求重启`, async () => {
       const root = mkdtempSync(path.join(os.tmpdir(), 'm21-electron-stop-'));
       const config = path.join(root, 'config');
@@ -59,7 +59,7 @@ for (const host of ['node', 'utility']) {
             CAIWU_DESKTOP_USER_DATA_DIR: config,
             M21_QA_HOST: host,
             M21_QA_STOP_MODE: mode,
-            M21_QA_STOP_DELAY: '6500',
+            M21_QA_STOP_DELAY: mode === 'late' ? '40000' : '6500',
             M21_QA_MARKER: marker,
             M21_QA_HOST_EVENTS: hostEvents,
             M21_QA_LOCK: lock,
@@ -127,7 +127,18 @@ for (const host of ['node', 'utility']) {
           expect(events(hostEvents).some((e) => e.event === 'relaunch-requested')).toBe(false);
           expect(readFileSync(lock, 'utf8')).toBe('synthetic-owned-lock');
           const failure = events(hostEvents).find((e) => e.title === '正常退出未完成')!;
-          if (mode === 'hang') {
+          if (mode === 'late') {
+            expect(failure.message).toContain('超时');
+            await desktop.evaluate(() =>
+              (globalThis as unknown as { __m21Respond: (n: number) => void }).__m21Respond(0),
+            );
+            await expect.poll(() => processHandle.exitCode, { timeout: 15_000 }).toBe(0);
+            expect(readFileSync(settings, 'utf8')).toBe(initial);
+            expect(events(hostEvents).some((e) => e.event === 'relaunch-requested')).toBe(false);
+            expect(readFileSync(marker, 'utf8')).toContain(
+              'job-complete\nterminal-written\nlog-written',
+            );
+          } else if (mode === 'hang') {
             expect(failure.message).toContain('超时');
             expect(failure.detail).toContain('继续等待只等待当前任务');
             // 取消强制退出会继续等当前任务；再超时后显式确认强制退出。
@@ -164,7 +175,7 @@ for (const host of ['node', 'utility']) {
               )
               .catch(() => {});
           }
-          await expect.poll(() => processHandle.exitCode).toBe(1);
+          await expect.poll(() => processHandle.exitCode).toBe(mode === 'late' ? 0 : 1);
           expect(readFileSync(settings, 'utf8')).toBe(initial);
           expect(events(hostEvents).some((e) => e.event === 'relaunch-requested')).toBe(false);
           expect(readFileSync(lock, 'utf8')).toBe('synthetic-owned-lock');
@@ -172,6 +183,8 @@ for (const host of ['node', 'utility']) {
         desktop = undefined;
         console.log(`退出结果回归 ${host}/${mode}：真实 Electron 进程与子进程断言通过`);
       } finally {
+        // 仅清理本测试的合成宿主；失败时不让正常退出提示阻塞余下回归。
+        await desktop?.evaluate(({ app }) => app.exit(1)).catch(() => {});
         await desktop?.close().catch(() => {});
         rmSync(root, { recursive: true, force: true });
       }
