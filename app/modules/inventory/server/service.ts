@@ -47,6 +47,39 @@ function safe(n: number) {
   if (!Number.isSafeInteger(n)) fail('OVERFLOW', '数量或金额合计超出允许范围');
   return n;
 }
+type CostedMovement = {
+  calculation_status: string;
+  line_calculation_status: string;
+  outbound_cost_cents: number | null;
+  calculation_batch: string | null;
+  line_calculation_batch: string | null;
+  calculation_period: number | null;
+  line_calculation_period: number | null;
+};
+function issueCost(line: CostedMovement): number | null {
+  return line.calculation_status === 'calculated' &&
+    line.line_calculation_status === 'calculated' &&
+    line.calculation_batch === line.line_calculation_batch &&
+    line.calculation_period === line.line_calculation_period &&
+    line.outbound_cost_cents != null
+    ? safe(line.outbound_cost_cents)
+    : null;
+}
+function totalIssueCost(lines: CostedMovement[]): number | null {
+  const costs = lines.map(issueCost);
+  return costs.some((c) => c == null) ? null : sumCents(costs);
+}
+function countAmount(bookCents: number | null, bookE6: number, actualE6: number): number | null {
+  if (bookCents == null) return null;
+  if (!bookE6) return !actualE6 && bookCents === 0 ? 0 : null;
+  return safe(
+    new Decimal(bookCents)
+      .mul(actualE6)
+      .div(bookE6)
+      .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+      .toNumber(),
+  );
+}
 export { priceLine } from '../math';
 export function inventoryService(svc: CoreServices) {
   const db = svc.db.withTables<InventoryTables>();
@@ -214,6 +247,8 @@ export function inventoryService(svc: CoreServices) {
         'l.outbound_cost_cents',
         'l.unit_cost',
         'l.calculation_status as line_calculation_status',
+        'l.calculation_batch as line_calculation_batch',
+        'l.calculation_period as line_calculation_period',
         'l.note',
         'd.id as document_id',
         'd.warehouse_id',
@@ -225,6 +260,8 @@ export function inventoryService(svc: CoreServices) {
         'd.account_id',
         'd.cost_account_id',
         'd.calculation_status',
+        'd.calculation_batch',
+        'd.calculation_period',
         'p.code',
         'p.name',
         'p.unit',
@@ -572,6 +609,7 @@ export function inventoryService(svc: CoreServices) {
           ).id;
         }
         await t.log.write({ action: 'inventory.warehouse.save', summary: `维护仓库 ${v.code}` });
+        await inventoryService(t).bump();
         return id;
       });
     },
@@ -875,6 +913,7 @@ export function inventoryService(svc: CoreServices) {
           summary: `${v.to ? '审核' : '取消审核'}单据 ${r.number}`,
           targetId: r.id,
         });
+        await s.bump();
         return s.getDocument(r.id);
       });
     },
@@ -964,14 +1003,23 @@ export function inventoryService(svc: CoreServices) {
           const end = safe(start + received - issued);
           if (f.hideZero && !start && !received && !issued) continue;
           const issues = during.filter((l) => l.kind === 'issue');
-          const cost = issues.every(
-            (l) =>
-              l.calculation_status === 'calculated' &&
-              l.line_calculation_status === 'calculated' &&
-              l.outbound_cost_cents != null,
-          )
-            ? sumCents(issues.map((l) => l.outbound_cost_cents))
-            : null;
+          const cost = totalIssueCost(issues);
+          const beforeCost = totalIssueCost(before.filter((l) => l.kind === 'issue'));
+          const openingCents =
+            beforeCost == null
+              ? null
+              : sumCents([
+                  opening?.amount_cents,
+                  ...before.filter((l) => l.kind === 'receipt').map((l) => l.net_cents),
+                  -beforeCost,
+                ]);
+          const receiptCents = sumCents(
+            during.filter((l) => l.kind === 'receipt').map((l) => l.net_cents),
+          );
+          const balanceCents =
+            openingCents == null || cost == null
+              ? null
+              : sumCents([openingCents, receiptCents, -cost]);
           rows.push({
             key: `${w.id}-${p.id}`,
             warehouseId: w.id,
@@ -984,17 +1032,11 @@ export function inventoryService(svc: CoreServices) {
             received: quantity(received),
             issued: quantity(issued),
             balance: quantity(end),
-            openingCents: before.some((l) => l.kind === 'issue')
-              ? null
-              : sumCents([
-                  opening?.amount_cents,
-                  ...before.filter((l) => l.kind === 'receipt').map((l) => l.net_cents),
-                ]),
-            receiptCents: sumCents(
-              during.filter((l) => l.kind === 'receipt').map((l) => l.net_cents),
-            ),
-            issueCostCents: issues.length ? cost : null,
-            costStatus: '未核算/估算',
+            openingCents,
+            receiptCents,
+            issueCostCents: cost,
+            balanceCents,
+            costStatus: balanceCents == null ? '待成本核算' : '账面金额完整',
             estimatedReceiptCents: multiplyToCents(quantity(end), p.receiptPrice),
             estimatedIssueCents: multiplyToCents(quantity(end), p.issuePrice),
           });
@@ -1010,6 +1052,7 @@ export function inventoryService(svc: CoreServices) {
       if (!stock || (f.to && f.to < periodStartDate((await svc.book.info()).startPeriod)))
         return [];
       let balance = e6(stock.opening);
+      let balanceCents = stock.openingCents;
       const rows = [
         {
           key: 'opening',
@@ -1021,12 +1064,18 @@ export function inventoryService(svc: CoreServices) {
           issued: '0',
           balance: stock.opening,
           amountCents: stock.openingCents,
-          costStatus: '未核算',
+          balanceCents,
+          costStatus: balanceCents == null ? '待成本核算' : '账面金额完整',
         },
       ];
       for (const l of await movements(f)) {
         if (f.from && l.date < f.from) continue;
         balance = safe(balance + (l.kind === 'receipt' ? l.quantity_e6 : -l.quantity_e6));
+        const amountCents = l.kind === 'receipt' ? l.net_cents : issueCost(l);
+        balanceCents =
+          balanceCents == null || amountCents == null
+            ? null
+            : sumCents([balanceCents, l.kind === 'receipt' ? amountCents : -amountCents]);
         rows.push({
           key: String(l.id),
           date: l.date,
@@ -1036,16 +1085,10 @@ export function inventoryService(svc: CoreServices) {
           received: l.kind === 'receipt' ? quantity(l.quantity_e6) : '0',
           issued: l.kind === 'issue' ? quantity(l.quantity_e6) : '0',
           balance: quantity(balance),
-          amountCents:
-            l.kind === 'receipt'
-              ? l.net_cents
-              : l.calculation_status === 'calculated' && l.line_calculation_status === 'calculated'
-                ? l.outbound_cost_cents
-                : null,
+          amountCents,
+          balanceCents,
           costStatus:
-            l.calculation_status === 'calculated' && l.line_calculation_status === 'calculated'
-              ? '已核算'
-              : '未核算',
+            l.kind === 'receipt' ? '入库原单金额' : amountCents == null ? '待成本核算' : '已核算',
         });
       }
       return rows;
@@ -1071,16 +1114,9 @@ export function inventoryService(svc: CoreServices) {
           quantity: quantity(l.quantity_e6),
           unitPrice: l.unit_price,
           revenueCents: l.net_cents,
-          costCents:
-            l.calculation_status === 'calculated' && l.line_calculation_status === 'calculated'
-              ? l.outbound_cost_cents
-              : null,
-          costStatus:
-            l.calculation_status === 'calculated' &&
-            l.line_calculation_status === 'calculated' &&
-            l.outbound_cost_cents != null
-              ? '已核算'
-              : '待成本核算',
+          unitCost: issueCost(l) == null ? null : l.unit_cost,
+          costCents: issueCost(l),
+          costStatus: issueCost(l) != null ? '已核算' : '待成本核算',
         }));
     },
     async summary(v: {
@@ -1139,11 +1175,7 @@ export function inventoryService(svc: CoreServices) {
         r.amounts.push(l.net_cents);
         r.taxes.push(l.tax_cents);
         r.gross.push(l.gross_cents);
-        r.costs.push(
-          l.calculation_status === 'calculated' && l.line_calculation_status === 'calculated'
-            ? l.outbound_cost_cents
-            : null,
-        );
+        r.costs.push(l.kind === 'receipt' ? l.net_cents : issueCost(l));
       }
       return [...rows.values()].map((r) => ({
         key: r.key,
@@ -1186,12 +1218,27 @@ export function inventoryService(svc: CoreServices) {
       return {
         id: c.id,
         revision: c.revision,
-        rows: rows.map((r) => ({
-          ...r,
-          book: quantity(r.book_e6),
-          actual: quantity(r.actual_e6),
-          difference: quantity(r.actual_e6 - r.book_e6),
-        })),
+        rows: rows.map((r) => {
+          const actualCents = countAmount(r.book_cents, r.book_e6, r.actual_e6);
+          return {
+            ...r,
+            book: quantity(r.book_e6),
+            actual: quantity(r.actual_e6),
+            difference: quantity(r.actual_e6 - r.book_e6),
+            bookCents: r.book_cents,
+            actualCents,
+            differenceCents:
+              r.book_cents == null || actualCents == null
+                ? null
+                : sumCents([actualCents, -r.book_cents]),
+            amountStatus:
+              r.book_cents == null
+                ? '金额快照缺失或待成本核算'
+                : r.book_e6 === 0 && (r.actual_e6 !== 0 || r.book_cents !== 0)
+                  ? '零账面数量，无法确定单价'
+                  : '按账面快照折算',
+          };
+        }),
       };
     },
     async countPeriod(period: number) {
@@ -1263,6 +1310,7 @@ export function inventoryService(svc: CoreServices) {
                 count_id: id,
                 product_id: r.productId,
                 book_e6: e6(r.balance),
+                book_cents: r.balanceCents,
                 actual_e6: e6(r.balance),
                 note: '',
               })),
@@ -1273,6 +1321,7 @@ export function inventoryService(svc: CoreServices) {
           summary: `生成盘点 ${v.period}`,
           detail: v,
         });
+        await s.bump();
         return s.count(v);
       });
     },
@@ -1315,6 +1364,7 @@ export function inventoryService(svc: CoreServices) {
           .where('id', '=', old.id)
           .execute();
         await t.log.write({ action: 'inventory.count.save', summary: `录入实盘 ${v.period}` });
+        await s.bump();
         return s.count(v);
       });
     },
@@ -1358,6 +1408,7 @@ export function inventoryService(svc: CoreServices) {
           fail('CALCULATED', '盘点表已核算');
         await tdb.deleteFrom('inventory_count').where('id', '=', old.id).execute();
         await t.log.write({ action: 'inventory.count.delete', summary: `删除盘点 ${v.period}` });
+        await s.bump();
       });
     },
     async contracts(filter: Filter = {}) {

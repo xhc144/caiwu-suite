@@ -67,6 +67,10 @@ CREATE TABLE inventory_contract_line (
 );
 `,
   },
+  {
+    id: '0002_count_amount_snapshot',
+    sql: `ALTER TABLE inventory_count_line ADD COLUMN book_cents INTEGER;`,
+  },
 ]);
 type Id = { id: Generated<number> };
 export type InventoryTables = {
@@ -164,6 +168,7 @@ export type InventoryTables = {
     count_id: number;
     product_id: number;
     book_e6: number;
+    book_cents: number | null;
     actual_e6: number;
     note: string;
   };

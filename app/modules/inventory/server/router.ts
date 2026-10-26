@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BusinessError, zDate, zId } from '@caiwu/core';
+import { BusinessError, zDate, zId, zPeriod } from '@caiwu/core';
 import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
@@ -14,6 +14,7 @@ import {
   WarehouseSchema,
 } from '../shared';
 import { inventoryService } from './service';
+import { readCostingSnapshot } from './costing-snapshot';
 import { ImportSchema, importInventory } from './imports';
 const m = moduleKit(manifest);
 const base = m.procedure.use(async ({ next }) => {
@@ -67,6 +68,9 @@ const confirmedCount = countKey.extend({
   confirmed: z.boolean(),
 });
 export const inventoryRouter = m.router({
+  costingSnapshot: view
+    .input(z.object({ period: zPeriod }))
+    .query(({ ctx, input }) => readCostingSnapshot(ctx.svc, input.period)),
   context: view.query(({ ctx }) => inventoryService(ctx.svc).context()),
   products: view
     .input(z.object({ keyword: z.string().default('') }).default({ keyword: '' }))
@@ -121,11 +125,15 @@ export const inventoryRouter = m.router({
   copyDocument: view
     .input(z.object({ id: zId }))
     .query(({ ctx, input }) => inventoryService(ctx.svc).copyDocument(input.id)),
-  stock: view.input(FilterSchema).query(({ ctx, input }) => inventoryService(ctx.svc).stock(input)),
+  stock: view
+    .input(FilterSchema)
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).stock(input))),
   ledger: view
     .input(FilterSchema)
-    .query(({ ctx, input }) => inventoryService(ctx.svc).ledger(input)),
-  sales: view.input(FilterSchema).query(({ ctx, input }) => inventoryService(ctx.svc).sales(input)),
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).ledger(input))),
+  sales: view
+    .input(FilterSchema)
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).sales(input))),
   summary: view
     .input(
       z.object({
@@ -135,8 +143,10 @@ export const inventoryRouter = m.router({
         valuation: z.enum(['document', 'cost']),
       }),
     )
-    .query(({ ctx, input }) => inventoryService(ctx.svc).summary(input)),
-  count: view.input(countKey).query(({ ctx, input }) => inventoryService(ctx.svc).count(input)),
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).summary(input))),
+  count: view
+    .input(countKey)
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).count(input))),
   generateCount: edit
     .input(confirmedCount)
     .mutation(({ ctx, input }) => inventoryService(ctx.svc).generateCount(input)),
