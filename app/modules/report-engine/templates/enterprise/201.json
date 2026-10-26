@@ -16,7 +16,7 @@
     {
       "address": "A2",
       "kind": "text",
-      "source": "未完成：仅已配置项目可取数；待配置项目不是零。比较期间、重分类、结转前利润、完整现金流分配尚待接入，不可用作完整法定报表。",
+      "source": "未完成：尚未配置账户和项目。比较期间、重分类及结转前利润仅在对应映射切片取数；未配置金额不是零，完整三表仍有缺项，不可用作完整法定报表。",
       "unit": "number",
       "currency": "CNY"
     },
@@ -93,7 +93,7 @@
     {
       "address": "C6",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -114,7 +114,7 @@
     {
       "address": "C7",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -135,7 +135,7 @@
     {
       "address": "C8",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -156,7 +156,7 @@
     {
       "address": "C9",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -177,7 +177,7 @@
     {
       "address": "C10",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -198,7 +198,7 @@
     {
       "address": "C11",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -219,7 +219,7 @@
     {
       "address": "C12",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -240,7 +240,7 @@
     {
       "address": "C13",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -261,7 +261,7 @@
     {
       "address": "C14",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -282,7 +282,7 @@
     {
       "address": "C15",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -303,7 +303,7 @@
     {
       "address": "C16",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -324,7 +324,7 @@
     {
       "address": "C17",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -345,7 +345,7 @@
     {
       "address": "C18",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -366,7 +366,7 @@
     {
       "address": "C19",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -394,7 +394,7 @@
     {
       "address": "C21",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -415,7 +415,7 @@
     {
       "address": "C22",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -436,7 +436,7 @@
     {
       "address": "C23",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -457,7 +457,7 @@
     {
       "address": "C24",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -478,7 +478,7 @@
     {
       "address": "C25",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -499,7 +499,7 @@
     {
       "address": "C26",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -520,7 +520,7 @@
     {
       "address": "C27",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -541,7 +541,7 @@
     {
       "address": "C28",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -562,7 +562,7 @@
     {
       "address": "C29",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -583,7 +583,7 @@
     {
       "address": "C30",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -604,7 +604,7 @@
     {
       "address": "C31",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -625,7 +625,7 @@
     {
       "address": "C32",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -646,7 +646,7 @@
     {
       "address": "C33",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -667,7 +667,7 @@
     {
       "address": "C34",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -688,7 +688,7 @@
     {
       "address": "C35",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -709,7 +709,7 @@
     {
       "address": "C36",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -730,7 +730,7 @@
     {
       "address": "C37",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -751,7 +751,7 @@
     {
       "address": "C38",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -772,7 +772,7 @@
     {
       "address": "C39",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -793,7 +793,7 @@
     {
       "address": "C40",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -821,7 +821,7 @@
     {
       "address": "F6",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -842,7 +842,7 @@
     {
       "address": "F7",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -863,7 +863,7 @@
     {
       "address": "F8",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -884,7 +884,7 @@
     {
       "address": "F9",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -905,7 +905,7 @@
     {
       "address": "F10",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -926,7 +926,7 @@
     {
       "address": "F11",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -947,7 +947,7 @@
     {
       "address": "F12",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -968,7 +968,7 @@
     {
       "address": "F13",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -989,7 +989,7 @@
     {
       "address": "F14",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1010,7 +1010,7 @@
     {
       "address": "F15",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1031,7 +1031,7 @@
     {
       "address": "F16",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1052,7 +1052,7 @@
     {
       "address": "F17",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1073,7 +1073,7 @@
     {
       "address": "F18",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1094,7 +1094,7 @@
     {
       "address": "F19",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1122,7 +1122,7 @@
     {
       "address": "F21",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1143,7 +1143,7 @@
     {
       "address": "F22",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1164,7 +1164,7 @@
     {
       "address": "F23",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1185,7 +1185,7 @@
     {
       "address": "F24",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1206,7 +1206,7 @@
     {
       "address": "F25",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1227,7 +1227,7 @@
     {
       "address": "F26",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1248,7 +1248,7 @@
     {
       "address": "F27",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1269,7 +1269,7 @@
     {
       "address": "F28",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1290,7 +1290,7 @@
     {
       "address": "F29",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1311,7 +1311,7 @@
     {
       "address": "F30",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1332,7 +1332,7 @@
     {
       "address": "F31",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1353,7 +1353,7 @@
     {
       "address": "F32",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1381,7 +1381,7 @@
     {
       "address": "F34",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1402,7 +1402,7 @@
     {
       "address": "F35",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1423,7 +1423,7 @@
     {
       "address": "F36",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1444,7 +1444,7 @@
     {
       "address": "F37",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1465,7 +1465,7 @@
     {
       "address": "F38",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1486,7 +1486,7 @@
     {
       "address": "F39",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1507,7 +1507,7 @@
     {
       "address": "F40",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1528,7 +1528,7 @@
     {
       "address": "F41",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1549,7 +1549,7 @@
     {
       "address": "F42",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1570,7 +1570,7 @@
     {
       "address": "F43",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1591,7 +1591,7 @@
     {
       "address": "F44",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     },
@@ -1612,7 +1612,7 @@
     {
       "address": "F45",
       "kind": "text",
-      "source": "待共享接口：比较期间",
+      "source": "待配置：比较期间与账户/项目口径",
       "unit": "number",
       "currency": "CNY"
     }

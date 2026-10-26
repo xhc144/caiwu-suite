@@ -4,12 +4,13 @@ import {
   balanceFormula,
   emptyTemplate,
   ReportTemplateSchema,
+  type BalanceOptions,
   type ReportTemplate,
 } from '../../shared';
 import { ASSETS, CASHFLOW, LIABILITIES_EQUITY, PROFIT, type Line } from './lines';
 
 const STATUS =
-  '未完成：仅已配置项目可取数；待配置项目不是零。比较期间、重分类、结转前利润、完整现金流分配尚待接入，不可用作完整法定报表。';
+  '未完成：尚未配置账户和项目。比较期间、重分类及结转前利润仅在对应映射切片取数；未配置金额不是零，完整三表仍有缺项，不可用作完整法定报表。';
 export type Slots = Record<string, { current: string; comparative: string }>;
 export const balanceSheetSlots = slots(ASSETS, 'B', 'C', LIABILITIES_EQUITY);
 export const profitSlots = slots(PROFIT, 'B', 'C');
@@ -87,7 +88,7 @@ function addLines(
     });
     if (!l.section) {
       text(t, `${current}${row}`, '待配置：本期取数口径');
-      text(t, `${comparative}${row}`, '待共享接口：比较期间');
+      text(t, `${comparative}${row}`, '待配置：比较期间与账户/项目口径');
     }
   }
 }
@@ -173,7 +174,7 @@ const roots = z
   .array(z.string().regex(/^\d{1,20}$/))
   .min(1)
   .max(6);
-const RoleBindingSchema = z.discriminatedUnion('state', [
+export const RoleBindingSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('mapped'), accounts: roots }).strict(),
   z
     .object({
@@ -253,7 +254,12 @@ function noOverlap(codes: string[], label: string) {
     if (codes.slice(i + 1).some((b) => a.startsWith(b) || b.startsWith(a)))
       throw new Error(`${label}含重复或重叠的上级/下级科目，无法保证不重复取数`);
 }
-function balance(account: string, metric: 'closing' | 'debit' | 'credit', item = '') {
+function balance(
+  account: string,
+  metric: 'closing' | 'debit' | 'credit',
+  item = '',
+  options?: BalanceOptions,
+) {
   return balanceFormula({
     account,
     metric,
@@ -262,12 +268,14 @@ function balance(account: string, metric: 'closing' | 'debit' | 'credit', item =
     direction: 'signed',
     dimension: item ? 'cashflow' : 'none',
     item,
+    ...(options ? { options } : {}),
   });
 }
 /** 此处只启用实际已配置项目，所有比较数及未覆盖项目继续显示文本。 */
 export function buildBalanceSheetSlice(
   raw: BalanceBindings,
   accounts: readonly Account[],
+  options?: BalanceOptions,
 ): ReportTemplate {
   const bindings = BalanceBindingsSchema.parse(raw);
   const codes = Object.values(bindings).flatMap((roles) =>
@@ -296,7 +304,9 @@ export function buildBalanceSheetSlice(
       let note = `${label} / ${ROLE_LABELS[role]}：`;
       if (binding.state === 'notApplicable') note += `已声明不适用；${binding.reason}`;
       else {
-        const expression = binding.accounts.map((a) => balance(a, 'closing')).join('+');
+        const expression = binding.accounts
+          .map((a) => balance(a, 'closing', '', options))
+          .join('+');
         terms.push(expression);
         note += `取真实科目 ${binding.accounts.join('、')}`;
         if (binding.state === 'zero') {
@@ -375,6 +385,7 @@ export type CashBindings = z.input<typeof CashBindingsSchema>;
 export function buildCashflowSlice(
   raw: CashBindings,
   accounts: readonly Account[],
+  options?: BalanceOptions,
 ): ReportTemplate {
   const bindings = CashBindingsSchema.parse(raw);
   noOverlap(bindings.cashAccounts, '现金账户映射');
@@ -391,7 +402,7 @@ export function buildCashflowSlice(
   for (const [key, item] of Object.entries(bindings.items)) {
     const terms = bindings.cashAccounts.map(
       (a) =>
-        `(${balance(a, paymentKeys.has(key) ? 'credit' : 'debit', item)}-${balance(a, paymentKeys.has(key) ? 'debit' : 'credit', item)})`,
+        `(${balance(a, paymentKeys.has(key) ? 'credit' : 'debit', item, options)}-${balance(a, paymentKeys.has(key) ? 'debit' : 'credit', item, options)})`,
     );
     formula(t, cashflowSlots[key]!.current, terms.join('+'));
   }

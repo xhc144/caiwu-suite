@@ -8,13 +8,22 @@ import { createRuntime, moduleKit } from '@caiwu/server-kit';
 import type { ReportTemplate } from '../../shared';
 import reportServer from '../../server';
 import { balanceSlice, cashSlice, setupEnterpriseFixture } from '../../test/enterprise/fixture';
+import { balanceBindings, cashBindings } from '../../test/enterprise/fixture';
+import { periodProfit, setupPeriodFixture } from '../../test/enterprise/period-fixture';
+import {
+  buildBalanceSheetComparatives,
+  buildCashflowComparatives,
+} from '../../templates/enterprise/period-slice';
 
 /** 独立进程、独立账套目录；造数只经本地testkit/core，不安装测试HTTP后门。 */
 export const test = base.extend<{
   enterprise: {
     baseURL: string;
     request: APIRequestContext;
-    seed(bookId: string): Promise<{ balance: ReportTemplate; cashflow: ReportTemplate }>;
+    seed(
+      bookId: string,
+      mode?: 'current' | 'comparative',
+    ): Promise<{ balance: ReportTemplate; cashflow: ReportTemplate; profit?: ReportTemplate }>;
   };
 }>({
   enterprise: async ({ playwright }, use) => {
@@ -40,12 +49,29 @@ export const test = base.extend<{
       await use({
         baseURL,
         request,
-        async seed(bookId) {
+        async seed(bookId, mode = 'current') {
           const m = moduleKit(reportServer.manifest);
           const router = m.router({
             seed: m.procedure
               .meta({ permission: 'report-engine.generate' })
               .mutation(async ({ ctx }) => {
+                if (mode === 'comparative') {
+                  await setupPeriodFixture(ctx.svc);
+                  const accounts = await ctx.svc.accounts.list();
+                  const flows = {
+                    ...cashBindings,
+                    items: { ...cashBindings.items, taxRefunds: 'CF07' },
+                  };
+                  return {
+                    balance: buildBalanceSheetComparatives(
+                      balanceBindings,
+                      balanceBindings,
+                      accounts,
+                    ),
+                    cashflow: buildCashflowComparatives(flows, flows, accounts),
+                    profit: await periodProfit(ctx.svc),
+                  };
+                }
                 await setupEnterpriseFixture(ctx.svc);
                 return { balance: await balanceSlice(ctx.svc), cashflow: await cashSlice(ctx.svc) };
               }),
