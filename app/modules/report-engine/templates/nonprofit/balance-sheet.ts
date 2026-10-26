@@ -183,8 +183,8 @@ export function balance401ClosingTemplate(raw: Balance401Mapping): ReportTemplat
   return ReportTemplateSchema.parse(t);
 }
 
-/** 按已确认契约准备；共享SHA取得且真实生成核验前，不作为已接入入口。 */
-export function preparedBalance401AnnualTemplate(
+/** 年初与期末分别保存来源；制度/期间/来源门禁尚待共享事务注册，仍是取数切片。 */
+export function balance401AnnualTemplate(
   closingRaw: Balance401Mapping,
   openingRaw: Balance401Mapping,
 ): ReportTemplate {
@@ -197,9 +197,18 @@ export function preparedBalance401AnnualTemplate(
     t,
     formulas((g) => `SUM(${opening.groups[g].accounts.map(yearOpening).join(',')})`, 'B', 'E'),
   );
-  t.name = '民非资产负债表（共享第8参数待验证）';
+  fill(
+    t,
+    formulas(
+      (g) =>
+        `SUM(${closing.groups[g].accounts.map((account) => balanceFormula({ account, metric: 'closing', unit: 'cents', currency: 'CNY', direction: 'signed', dimension: 'none', item: '', options: { from: 'yearStart', to: 'current', closing: 'include', side: 'net' } })).join(',')})`,
+      'C',
+      'F',
+    ),
+  );
+  t.name = '民非资产负债表（年初期末取数切片）';
   t.cells.find((c) => c.address === 'A1')!.source =
-    '资产负债表（共享第8参数待验证，未完成制度接入）';
+    '资产负债表（年初期末取数切片，制度门禁未接入）';
   t.checks.push({ name: '年初资产等于负债和净资产', left: 'B37', right: 'E28', tolerance: '0' });
   appendSources(t, opening, '年初来源');
   return ReportTemplateSchema.parse(t);

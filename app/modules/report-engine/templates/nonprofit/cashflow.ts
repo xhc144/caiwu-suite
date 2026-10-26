@@ -6,9 +6,9 @@ import { cashflowDetails, cashflowRows, nonprofitFormDraft, textCell } from './f
 
 const evidence = z.string().trim().min(1, '必须提供分类依据').max(500);
 const item = z.object({ code: z.string().min(1).max(40), basis: evidence }).strict();
-export const Cashflow403MappingSchema = z
+export const CashflowYearSourceSchema = z
   .object({
-    year: z.literal(2026),
+    year: z.number().int().min(2026).max(9999),
     policyBasis: evidence,
     // 只支持明确选择的末级账户，避免父子科目重复计数；限制数量以遵守引擎公式预算。
     accounts: z
@@ -36,7 +36,12 @@ export const Cashflow403MappingSchema = z
     if (new Set(accounts).size !== accounts.length)
       ctx.addIssue({ code: 'custom', message: '现金账户不能重复或同时列入排除清单' });
   });
+export const Cashflow403MappingSchema = CashflowYearSourceSchema.refine(
+  (v) => v.year === 2026,
+  '首次执行取数切片仅支持2026；其他年度须提供比较来源',
+);
 export type Cashflow403Mapping = z.infer<typeof Cashflow403MappingSchema>;
+export type CashflowYearSource = z.infer<typeof CashflowYearSourceSchema>;
 
 function movement(account: string, cashflow?: string) {
   const term = (metric: 'ytdDebit' | 'ytdCredit') =>
@@ -126,6 +131,24 @@ export async function checkCashflow403Sources(
   if (info.product !== 'minfei') throw new Error('请选择民非企账套');
   if (info.startPeriod !== 202601)
     throw new Error('本切片要求2026年1月启用；现金流量缺少启用前分类时不能补零');
+  await checkCashflowSourceRange(svc, 202601, period, mapping);
+}
+
+/** 比较栏和本年栏各自调用，逐期使用各自映射；仍须由公共生成事务挂载。 */
+export async function checkCashflowSourceRange(
+  svc: CoreServices,
+  periodFrom: number,
+  period: number,
+  raw: CashflowYearSource,
+): Promise<void> {
+  const mapping = CashflowYearSourceSchema.parse(raw);
+  const info = await svc.book.info();
+  if (info.product !== 'minfei') throw new Error('请选择民非企账套');
+  if (periodFrom !== mapping.year * 100 + 1 || Math.floor(period / 100) !== mapping.year)
+    throw new Error('现金流量来源年度与取数范围不一致');
+  if (info.startPeriod > periodFrom) throw new Error('启用前现金流量分类来源未知，不能补零');
+  await svc.periods.require(periodFrom);
+  await svc.periods.require(period);
   const allAccounts = await svc.accounts.list();
   const cashRoots = allAccounts.filter((a) => a.isCash || a.isBank);
   const isCashAccount = (code: string) => cashRoots.some((root) => code.startsWith(root.code));
@@ -152,7 +175,7 @@ export async function checkCashflow403Sources(
   const entries: EntryRow[] = [];
   for (const accountCode of selected) {
     const rows = await svc.ledger.entries({
-      periodFrom: 202601,
+      periodFrom,
       periodTo: period,
       accountCode,
       includeChildren: false,

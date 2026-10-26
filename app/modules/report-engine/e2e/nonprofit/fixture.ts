@@ -11,12 +11,21 @@ import { fixtureMapping } from '../../test/nonprofit/fixture';
 import { balanceFixtureChart, seedBalance401Book } from '../../test/nonprofit/balance-fixture';
 import { balanceFixtureMapping } from '../../test/nonprofit/balance-fixture';
 import { checkBalance401Sources } from '../../templates/nonprofit/balance-sheet';
+import {
+  activityFixtureChart,
+  activityFixtureMapping,
+  seedActivity402Book,
+  closeActivity402Pnl,
+} from '../../test/nonprofit/activity-fixture';
+import { checkActivityTotalsSources } from '../../templates/nonprofit/activity-totals';
+import { seedVouchers } from '@caiwu/testkit';
+import { validateComparativeCashflow403Generation } from '../../templates/nonprofit/cashflow-comparative';
 
 export const test = base.extend<{
   nonprofit: {
     baseURL: string;
     request: APIRequestContext;
-    createBook(kind?: 'cashflow' | 'balance'): Promise<string>;
+    createBook(kind?: 'cashflow' | 'balance' | 'activity' | 'comparative'): Promise<string>;
   };
 }>({
   nonprofit: async ({ playwright }, use) => {
@@ -49,12 +58,45 @@ export const test = base.extend<{
             seed: m.procedure
               .meta({ permission: 'report-engine.generate' })
               .mutation(async ({ ctx }) => {
-                if (kind === 'balance') {
+                if (kind === 'activity') {
+                  await seedActivity402Book(ctx.svc);
+                  await closeActivity402Pnl(ctx.svc);
+                  await checkActivityTotalsSources(ctx.svc, 202602, activityFixtureMapping());
+                } else if (kind === 'balance') {
                   await seedBalance401Book(ctx.svc);
                   await checkBalance401Sources(ctx.svc, 202602, balanceFixtureMapping());
                 } else {
                   await seedCashflowBook(ctx.svc);
-                  await checkCashflow403Sources(ctx.svc, 202602, fixtureMapping());
+                  if (kind === 'comparative') {
+                    await ctx.svc.periods.ensureYear(2027);
+                    await seedVouchers(ctx.svc, [
+                      {
+                        date: '2027-01-06',
+                        status: 'posted',
+                        lines: [
+                          { account: '100201', debit: 33_000, dims: { cashflow: 'NF_donations' } },
+                          { account: '410101', credit: 33_000 },
+                        ],
+                      },
+                      {
+                        date: '2027-02-06',
+                        status: 'posted',
+                        lines: [
+                          { account: '510101', debit: 3_000 },
+                          {
+                            account: '100201',
+                            credit: 3_000,
+                            dims: { cashflow: 'NF_goodsServicesPaid' },
+                          },
+                        ],
+                      },
+                    ]);
+                    await validateComparativeCashflow403Generation(
+                      ctx.svc,
+                      { period: 202702, includeUnposted: false },
+                      { current: { ...fixtureMapping(), year: 2027 }, previous: fixtureMapping() },
+                    );
+                  } else await checkCashflow403Sources(ctx.svc, 202602, fixtureMapping());
                 }
               }),
           });
@@ -64,7 +106,12 @@ export const test = base.extend<{
               {
                 ...nonprofitTestServer,
                 router,
-                templates: kind === 'balance' ? [balanceFixtureChart] : [fixtureChart],
+                templates:
+                  kind === 'balance'
+                    ? [balanceFixtureChart]
+                    : kind === 'activity'
+                      ? [activityFixtureChart]
+                      : [fixtureChart],
               },
             ],
             devMode: true,

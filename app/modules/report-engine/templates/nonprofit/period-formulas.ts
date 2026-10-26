@@ -1,33 +1,11 @@
-import { balanceFormula, type BalanceFunction } from '../../shared';
+import { balanceFormula, type BalanceFunction, type BalanceOptions } from '../../shared';
 
 /** 共享owner已确认的第8参数契约；只负责模板序列化，不实现求值或扩展共享schema。 */
-export type StatementOptions = {
-  from?: 'current' | 'yearStart' | 'previousYear' | 'previousYearStart' | `${number}`;
-  to?: 'current' | 'yearStart' | 'previousYear' | 'previousYearStart' | `${number}`;
-  closing?: 'include' | 'exclude' | 'excludePnl';
-  side?: 'net' | 'debit' | 'credit';
-  groupBy?: ('project' | 'partner' | 'department' | 'person')[];
-};
+export type StatementOptions = BalanceOptions;
 
-/** 等待共享SHA后进行真实router验证；旧七参数引擎不能执行本函数产物。 */
+/** 使用共享f9b591d6的唯一schema/helper；不维护第二套参数校验或求值。 */
 export function statementBalance(input: BalanceFunction, options: StatementOptions): string {
-  const relative = ['current', 'yearStart', 'previousYear', 'previousYearStart'];
-  for (const period of [options.from, options.to])
-    if (
-      period !== undefined &&
-      !relative.includes(period) &&
-      !/^\d{4}(?:0[1-9]|1[0-2])$/.test(period)
-    )
-      throw new Error('取数期间只允许统一契约的相对期间或YYYYMM');
-  if (
-    options.side &&
-    (input.unit !== 'cents' ||
-      input.direction !== 'signed' ||
-      !['opening', 'closing'].includes(input.metric))
-  )
-    throw new Error('side只用于本币期初或期末signed取数');
-  const seven = balanceFormula(input);
-  return `${seven.slice(0, -1)},${JSON.stringify(JSON.stringify(options))})`;
+  return balanceFormula({ ...input, options });
 }
 
 export function yearOpening(account: string): string {
