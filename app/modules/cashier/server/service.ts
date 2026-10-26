@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import type { z } from 'zod';
 import {
   BusinessError,
   DIMENSION_TYPES,
@@ -14,6 +15,7 @@ import {
 import type { CoreServices } from '@caiwu/core/server';
 import {
   CashAccountSchema,
+  AutoMatchSchema,
   DocumentSchema,
   GenerateSchema,
   safeSum,
@@ -24,6 +26,7 @@ import {
   type MatchInput,
 } from '../shared';
 import type { CashierTables } from './migrations';
+import { cashierPeriods } from './periods';
 
 type Selection = { id: number; revision: number }[];
 const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -47,7 +50,7 @@ async function config(svc: CoreServices) {
     fail('NOT_ENABLED', '尚未启用出纳', '先选择出纳启用期间并保存账户期初', '/m/cashier/accounts');
   return { period };
 }
-async function assertOpen(svc: CoreServices, period: number) {
+export async function assertOpen(svc: CoreServices, period: number) {
   const enabled = await config(svc);
   if (period < enabled.period)
     fail(
@@ -65,9 +68,19 @@ async function assertOpen(svc: CoreServices, period: number) {
     fail(
       'PERIOD_CLOSED',
       '该出纳月份已经结账，不能修改业务',
-      '请保留该月份历史；当前检查点尚未提供出纳反结账，可先核对账户及启用期间',
-      '/m/cashier/accounts',
+      '需要修改时，请在出纳期间页逐月反结账，并核对总账期间状态',
+      '/m/cashier/periods',
     );
+  if (periodYear(period) > periodYear(enabled.period)) {
+    const state = await cashierPeriods(svc);
+    if (periodYear(period) > periodYear(state.current))
+      fail(
+        'OPENING_YEAR',
+        '该年度出纳期初尚未建立，不能录入后续年度业务',
+        '请先在出纳期间页逐月结账至上一年十二月',
+        '/m/cashier/periods',
+      );
+  }
   await svc.periods.assertOpen(period, '修改出纳业务');
 }
 async function account(svc: CoreServices, id: number) {
@@ -301,11 +314,13 @@ export function cashierService(svc: CoreServices) {
           '请选择启用年份或已建立的年度',
           '/m/cashier/accounts',
         );
-      if (year != null && year > periodYear(enabled))
+      const targetPeriod = year == null || year === periodYear(enabled) ? enabled : year * 100 + 1;
+      const state = await cashierPeriods(svc);
+      if (year != null && year > periodYear(state.current))
         fail(
           'OPENING_YEAR',
           '该年度出纳年初数尚未通过年结建立',
-          '当前检查点尚未实现出纳年结，请先查询启用年度',
+          '请先在出纳期间页逐月结账至上一年十二月',
           '/m/cashier/accounts',
         );
       const rows = await db
@@ -324,11 +339,12 @@ export function cashierService(svc: CoreServices) {
           'o.balance',
           'o.period',
         ])
+        .where('o.period', '=', targetPeriod)
         .orderBy('cashier_account.id')
         .execute();
       const balances = await svc.ledger.balances({
-        periodFrom: enabled,
-        periodTo: enabled,
+        periodFrom: targetPeriod,
+        periodTo: targetPeriod,
         includeZero: true,
         rollup: false,
       });
@@ -874,6 +890,66 @@ export function cashierService(svc: CoreServices) {
           detail: raw,
         });
         return row;
+      });
+    },
+    async autoMatch(raw: z.input<typeof AutoMatchSchema>) {
+      const input = AutoMatchSchema.parse(raw);
+      return svc.tx(async (t) => {
+        const current = await reconciliation(t, input);
+        if (current.snapshot !== input.snapshot)
+          fail(
+            'STALE',
+            '自动勾账候选或凭证状态已变化',
+            '请刷新两侧数据并重新预览匹配建议',
+            '/m/cashier/reconcile',
+          );
+        const ids: number[] = [];
+        for (const pair of input.pairs) {
+          const d = current.documents.find(
+            (d) => d.id === pair.documentId && d.revision === pair.revision && d.matchId == null,
+          );
+          const e = current.entries.find((e) => e.lineId === pair.lineId && e.matchId == null);
+          if (!d || !e)
+            fail(
+              'MATCH_DUPLICATE',
+              '候选不属于当前账户、截止范围，或已勾账',
+              '请重新预览',
+              '/m/cashier/reconcile',
+            );
+          if (d.signed !== e.signed)
+            fail(
+              'MATCH_AMOUNT',
+              '自动勾账要求每对单据和分录的方向、整数分金额完全相等',
+              '请改用手动多对多等额勾账',
+              '/m/cashier/reconcile',
+            );
+          await assertOpen(t, d.period);
+          await assertOpen(t, e.period);
+          const row = await tables(t)
+            .insertInto('cashier_match')
+            .values({
+              account_id: input.accountId,
+              amount: d.signed,
+              created_at: t.ctx.now().toISOString(),
+            })
+            .returning('id')
+            .executeTakeFirstOrThrow();
+          await tables(t)
+            .insertInto('cashier_match_document')
+            .values({ match_id: row.id, document_id: d.id })
+            .execute();
+          await tables(t)
+            .insertInto('cashier_match_line')
+            .values({ match_id: row.id, line_id: e.lineId, voucher_revision: e.revision })
+            .execute();
+          ids.push(row.id);
+        }
+        await t.log.write({
+          action: 'cashier.reconcile.autoMatch',
+          summary: `确认自动勾账 ${ids.length} 对`,
+          detail: input,
+        });
+        return { ids };
       });
     },
     async unmatch(id: number) {

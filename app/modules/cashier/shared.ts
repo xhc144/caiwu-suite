@@ -88,3 +88,55 @@ export function safeSum(values: readonly number[]): number {
 }
 export const signedAmount = (row: { direction: string; amount: number }) =>
   row.direction === 'receipt' ? row.amount : -row.amount;
+
+export const CheckReceiveSchema = z.object({
+  accountId: zId,
+  number: z
+    .string()
+    .trim()
+    .min(1)
+    .max(40)
+    .transform((s) => s.toUpperCase()),
+  receivedDate: zDate,
+  note: z.string().trim().max(500).default(''),
+});
+export const CheckIssueSchema = z.object({
+  id: zId,
+  revision: zId,
+  date: zDate,
+  payee: z.string().trim().min(1).max(120),
+  amount: zCents.refine((n) => n > 0, '签发金额必须大于零'),
+  confirmed: z.literal(true),
+});
+
+export const AutoMatchSchema = ReconcileFilterSchema.extend({
+  snapshot: z.string().min(1),
+  pairs: z
+    .array(z.object({ documentId: zId, revision: zId, lineId: zId }))
+    .min(1)
+    .max(200)
+    .refine(
+      (pairs) =>
+        new Set(pairs.map((p) => p.documentId)).size === pairs.length &&
+        new Set(pairs.map((p) => p.lineId)).size === pairs.length,
+      '一张单据或一条分录只能选择一次',
+    ),
+  confirmed: z.literal(true),
+});
+export function matchSuggestions<
+  D extends { id: number; date: string; signed: number; matchId: number | null },
+  E extends { lineId: number; date: string; signed: number; matchId: number | null },
+>(documents: D[], entries: E[]) {
+  const docs = documents.filter((d) => d.matchId == null);
+  const lines = entries.filter((e) => e.matchId == null);
+  return docs
+    .toSorted((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
+    .map((document) => {
+      const candidates = lines
+        .filter((e) => e.signed === document.signed)
+        .toSorted((a, b) => a.date.localeCompare(b.date) || a.lineId - b.lineId);
+      const unique =
+        candidates.length === 1 && docs.filter((d) => d.signed === document.signed).length === 1;
+      return { document, candidates, unique };
+    });
+}
