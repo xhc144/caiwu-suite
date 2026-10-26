@@ -67,3 +67,28 @@
 独立临时契约checkout `/tmp/caiwu-regimes-contracts` 固定 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85`。Parity Release/最终TRX另记；当前Debug对冻结契约0警告0错误，7个适配器合成宿主测试通过，验证同次投影/文档、原字段精度、旧token/提交失败、已删来源认领、增强草稿失配、高版本/重复键拒绝、权限、真实审计来源缺失。**没有把合成ContractHost当作真实Core/SQLite实现。**
 
 给integration下一步：注册这两个独占项目（Nonprofit.Wpf、Nonprofit.Parity）与已有Nonprofit.Reporting；正式读写使用Parity而不是AtomicNonprofitLedgerStore。普通Core Review/Post必须保留全部模块文档和收据，动作审计沿既有 `Review`/`Post` 与稳定VoucherId。新开民非账套需由books/integration在科目/期初写入的同事务初始化book-definition/opening-classification；已有草稿增强编辑、月度批量/反向操作的公共API仍待ledger/integration统一，不在本模块绕过公共权限或直接写SQLite。
+
+
+## 最终可交接源码与剩余动作
+
+本轮验证的完整实现SHA：`983be15d1d4375c4e5b742ff70c06a84ac5da81f`；草稿PR48，分支 `codex/parity-regimes-20261026`。后续文档提交仅记录该源，不改变已测产品代码。Release结果与TRX校验和见 `tests/Caiwu.Nonprofit.Tests/VALIDATION.md`：91/60/7均通过且0失败0跳过，WPF交叉构建0警告0错误。35个变更文件的所有权检查无越界；本地main仍为固定基线，未改默认book-project。
+
+| 文件/组 | 作用与已验证依据 | 置信度/限制 |
+|---|---|---|
+| Nonprofit/Writable/LedgerModels.cs + NonprofitLedgerValidation.cs | 完整模块DTO、稳定身份、金额/分类/维度与原值校验；业务/边界回归 | high，有限a54规则映射，非原库schema认证 |
+| Nonprofit/Writable/NonprofitLedgerService.cs + NonprofitClosing.cs | 真实写状态链、按类结转、逆操作/断号/来源认领；新store回读与手算闭环 | high，外部参考适配尚非公共总账 |
+| Nonprofit/Writable/AtomicNonprofitLedgerStore.cs | 自有格式原子替换、CAS、锁、校验和/未知字段拒绝；文件级合成回归 | high，未运行Windows文件系统路径 |
+| Nonprofit.Reporting/Writable/* | 从完整已记账来源计算两表、完整hash绑定复核与缺项保留；手算勾稽 | high，非正式财报签发或原格式恢复 |
+| Nonprofit/Parity/* | PR52同账套事务桥接、审核/记账调用与真实审计还原；冻结契约构建+7合成宿主回归 | high就契约适配；真实Core/SQLite组合仍unverified |
+| Nonprofit/Wpf/NonprofitPostingWindow.cs | w_zw_jz已知比例与真实PostMonth处理；WPF Release交叉编译 | medium，Windows可见交互未测 |
+| Nonprofit/Writable/OriginalRegimeTemplates.cs + TEMPLATE_COMPARISON.md | 五个原身份/顺序、四种已知级长与未知a54级长；对照原JSON回归 | high仅元数据，44完整模板内容未恢复 |
+| Reporting/SmallBusinessStatement* | 原a05/a52身份随计算导出；跨制度ID拒绝；60回归 | high，既有官方计算不是原报表二进制恢复 |
+
+未完成动作的精确状态：
+
+1. **pending集成**：把本SHA与PR52后续真实Core/SQLite实现组合，在同账套host注册Nonprofit.Parity和Nonprofit.Wpf。现在只有冻结契约回归，未声称接通；没有权限拒绝或不确定写入。
+2. **pending公共API**：a54新账/科目flags/期初金额与分类同事务初始化、既有增强凭证编辑、月度批量/反过账/反结账接入公共账簿。当前公共API只有新提案接纳，不能靠外置文件或四字段编辑降级。独立模块全链条已实现测试；正式host的这些操作由ledger/integration统一。
+3. **not-run Windows**：目标为新增NonprofitPostingWindow与公共host完整流程；当前环境Linux，只有交叉构建，没有运行WPF或原程序，也没有尝试绕过安全警告。父任务Windows合成账套验收仍需执行。
+4. **pending证据/兼容**：原a01/a02/a05/a52/a54全部科目/报表内容及剩余39模板、原SQL Anywhere无损读写、完整外币/数量规则、跨年和特殊民非审批仍见原验收。现有代表变体不足以证明完整a54 schema，不新增解析完整派生资料，不触碰真实账套。
+
+本轮没有denied或uncertain外部写入；只推独占私有分支和草稿PR，未改/合main、公开、改权限、购买额度或发布制品。

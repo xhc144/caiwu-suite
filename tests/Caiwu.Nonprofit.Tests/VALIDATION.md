@@ -1,3 +1,32 @@
+# regimes：本轮可写切片验证（2026-10-26）
+
+实际验证源码提交 `983be15d1d4375c4e5b742ff70c06a84ac5da81f`，基线 `3b0c59b02d8941c32ac176309555c03c94bb4213`。独立checkout `/workspace/caiwu-regimes`；Linux / .NET SDK10.0.403（global.json允许latestPatch）。下列为本轮Release、锁文件恢复、TreatWarningsAsErrors=true的实际结果；后面的旧77项证据仅保留历史，不能覆盖新能力或新边界。
+
+| 项目 | total / passed / failed | TRX SHA256 |
+|---|---|---|
+| nonprofit | 91 / 91 / 0 | `54f72331d9c6809c132911c7764f590efb71c687101ec2222bdf917d86264840` |
+| parity | 7 / 7 / 0 | `3fd4728420c4fb0c432218fb90ff3d020bc3357e01dc891eef09e3daca98fa43` |
+| reporting | 60 / 60 / 0 | `07c68d130d98f414b23ba71bc986740bf2bce68aef422505022cc15006261502` |
+
+三个TRX均0跳过，路径位于 `/tmp/caiwu-regimes-validation/{nonprofit,reporting,parity}/`。Nonprofit从旧77项增加到91项；Reporting原55项加5项原模板变体回归；Parity7项是冻结契约的合成宿主适配测试。数量仅描述有限回归范围，不能作为原软件全功能完成或原账套兼容证据。
+
+实际命令（本地使用仓库现有wrapper，未改默认book-project）：
+
+```bash
+CAIWU_DOTNET_ROOT=/workspace/caiwu-dotnet bash tools/dotnet-local.sh test tests/Caiwu.Nonprofit.Tests/Caiwu.Nonprofit.Tests.csproj -c Release -p:RestoreLockedMode=true -p:TreatWarningsAsErrors=true --logger 'trx;LogFileName=nonprofit.trx' --results-directory /tmp/caiwu-regimes-validation/nonprofit
+CAIWU_DOTNET_ROOT=/workspace/caiwu-dotnet bash tools/dotnet-local.sh test tests/Caiwu.Reporting.Tests/Caiwu.Reporting.Tests.csproj -c Release -p:RestoreLockedMode=true -p:TreatWarningsAsErrors=true --logger 'trx;LogFileName=reporting.trx' --results-directory /tmp/caiwu-regimes-validation/reporting
+CAIWU_DOTNET_ROOT=/workspace/caiwu-dotnet bash tools/dotnet-local.sh test tests/Caiwu.Nonprofit.Tests/Parity/Caiwu.Nonprofit.Parity.Tests.csproj -c Release -p:ParityContractsProject=/tmp/caiwu-regimes-contracts/src/Caiwu.Contracts/Caiwu.Contracts.csproj -p:RestoreLockedMode=true -p:TreatWarningsAsErrors=true --logger 'trx;LogFileName=parity-adapter.trx' --results-directory /tmp/caiwu-regimes-validation/parity
+CAIWU_DOTNET_ROOT=/workspace/caiwu-dotnet bash tools/dotnet-local.sh build src/Caiwu.Nonprofit/Wpf/Caiwu.Nonprofit.Wpf.csproj -c Release -p:RestoreLockedMode=true -p:TreatWarningsAsErrors=true
+```
+
+最后WPF命令实际0警告0错误；仅交叉编译，未运行Windows。临时契约checkout固定PR52 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85`，没有改本分支共享Contracts。直接使用系统默认CLI目录会触及只读用户目录，已改用现有tools/dotnet-local.sh隔离缓存解决；不存在未解决权限拒绝。
+
+业务证据：`WritableLedgerTests.SavedReviewedPostedClosedReopenedAndReversedRoundTripIsReal` 实际写参考文件并新建store回读，不把ProjectedState当已记账。期初1000，U/R收入100/200、费用20/50，经真实保存/异人审核/过账/结转/月结，银行1230、U/R净资产1080/150，累计变动80/150，原计算器两表完整勾稽；反结/反过/反审核/删除结转后回读有效。其他测试覆盖错误账套/旧版本/授权、并发CAS和文件锁、精度/溢出原子回滚、原始未知列/高精度外币数量辅助维度回读、断号明确重排、删除后来源认领保留、负收入与分类相抵不假称已结转。
+
+`NonprofitParityAdapterTests` 的ContractHost仅是合成契约宿主，验证一次AcceptVoucherProposal包含基础投影与完整文档、来源与身份防重、状态授权调用保留同一确认token，以及凭证被改/期初变动/缺审计时明确失败。**尚未实际运行PR52后续Core/SQLite实现**，不冒称主总账已经接通。原始安装资源、原程序、真实账套均未读写或运行。公共增强编辑、模板原内容、原SQL Anywhere兼容与Windows实机仍待集成；见 [模块交接](../../docs/parity-handoffs/regimes.md)。
+
+---
+
 # 民非建议服务实际测试
 
 2026-10-25，在 Linux、.NET SDK **10.0.402** 上实际执行 Release 测试，警告视为错误：**77 通过，0 失败，0 跳过**。原65项均保留并通过，新增12项金额边界回归。项目仅引用 `Caiwu.Nonprofit`，不引用 Core、Contracts、SQLite 或桌面项目；不修改根 solution。
