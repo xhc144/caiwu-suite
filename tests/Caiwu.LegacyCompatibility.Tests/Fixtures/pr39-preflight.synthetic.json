@@ -1,0 +1,149 @@
+{
+  "schema_version": "original-compat-preflight-1",
+  "tool_version": "0.1.1",
+  "generated_at_utc": "2026-10-26T00:01:47.886707+00:00",
+  "inventory_status": "complete",
+  "compatibility_status": "not_assessed",
+  "original_ledger_usability": "not_assessed",
+  "scope": {
+    "selection": "explicit_files_only_no_directory_scan",
+    "sources_opened_readonly": true,
+    "engines_started": false,
+    "database_connections_created": false,
+    "uploads": false,
+    "configuration_values_collected": false,
+    "absolute_paths_included": false
+  },
+  "files": [
+    {
+      "input_id": "F001",
+      "name": "fixture.log",
+      "kind": "log_candidate",
+      "status": "recorded",
+      "bytes": 18,
+      "sha256": "2503e191b4c9a65a333bff760bf8917e6c857b3910511c6d2a977bb7bff914ad",
+      "issues": [],
+      "hints": {
+        "database_file_format_version": null,
+        "database_engine_version": null,
+        "application_schema_version": null,
+        "file_signature": "not_identified_by_this_tool",
+        "metadata_bytes_read": 16,
+        "metadata_byte_limit": 1048576
+      }
+    },
+    {
+      "input_id": "F002",
+      "name": "Rhzw8.ini",
+      "kind": "configuration_candidate",
+      "status": "recorded",
+      "bytes": 40,
+      "sha256": "be77c8aabf52f7b5f12152baf4a83ece54bbfe4c1ab9d05894f1f78dec48e15f",
+      "issues": [],
+      "hints": {
+        "database_file_format_version": null,
+        "database_engine_version": null,
+        "application_schema_version": null,
+        "file_signature": "not_identified_by_this_tool",
+        "metadata_bytes_read": 16,
+        "metadata_byte_limit": 1048576
+      }
+    },
+    {
+      "input_id": "F003",
+      "name": "Bb000.vts",
+      "kind": "report_candidate",
+      "status": "recorded",
+      "bytes": 21,
+      "sha256": "bc7980a151631f72047743e35e942952a7e7c301c0ea7b4f20721305edf44970",
+      "issues": [],
+      "hints": {
+        "database_file_format_version": null,
+        "database_engine_version": null,
+        "application_schema_version": null,
+        "file_signature": "not_identified_by_this_tool",
+        "metadata_bytes_read": 16,
+        "metadata_byte_limit": 1048576
+      }
+    },
+    {
+      "input_id": "F004",
+      "name": "fixture.db",
+      "kind": "database_candidate",
+      "status": "recorded",
+      "bytes": 31,
+      "sha256": "cab4b40f1e24f2512f73a6def6b8e880ac3ce38d0f7c112568384f807766ae60",
+      "issues": [],
+      "hints": {
+        "database_file_format_version": null,
+        "database_engine_version": null,
+        "application_schema_version": null,
+        "file_signature": "not_identified_by_this_tool",
+        "metadata_bytes_read": 16,
+        "metadata_byte_limit": 1048576
+      }
+    }
+  ],
+  "operator_declared_associations": [
+    {
+      "kind": "log",
+      "database_input_id": "F004",
+      "related_input_id": "F001",
+      "basis": "operator_declared_not_engine_verified",
+      "selected_files_recorded": true,
+      "content_association_verified": false
+    },
+    {
+      "kind": "config",
+      "database_input_id": "F004",
+      "related_input_id": "F002",
+      "basis": "operator_declared_not_engine_verified",
+      "selected_files_recorded": true,
+      "content_association_verified": false
+    },
+    {
+      "kind": "report",
+      "database_input_id": "F004",
+      "related_input_id": "F003",
+      "basis": "operator_declared_not_engine_verified",
+      "selected_files_recorded": true,
+      "content_association_verified": false
+    }
+  ],
+  "database_coverage": [
+    {
+      "database_input_id": "F004",
+      "gaps": [
+        "database_format_and_engine_version_unverified",
+        "schema_and_ledger_mapping_unverified",
+        "backup_consistency_and_restore_unverified",
+        "external_dependency_completeness_unknown",
+        "log_association_not_engine_verified",
+        "config_association_not_engine_verified",
+        "report_association_not_engine_verified"
+      ],
+      "selected_name_candidates": [
+        {
+          "input_id": "F001",
+          "basis": "same_stem_selected_log_only",
+          "association_verified": false
+        },
+        {
+          "input_id": "F002",
+          "basis": "known_configuration_filename_only",
+          "association_verified": false
+        },
+        {
+          "input_id": "F003",
+          "basis": "selected_report_filename_only",
+          "association_verified": false
+        }
+      ]
+    }
+  ],
+  "unresolved": [
+    "No database was opened; schema, log ownership, encryption, permissions and business compatibility remain unknown.",
+    "Only explicitly selected files were checked; absent selections do not prove files are absent on disk.",
+    "A complete inventory is not a validated backup, original-ledger open result or migration approval."
+  ]
+}

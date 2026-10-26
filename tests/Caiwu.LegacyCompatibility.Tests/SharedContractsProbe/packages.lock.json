@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "caiwu.contracts": {
+        "type": "Project"
+      },
+      "caiwu.legacycompatibility": {
+        "type": "Project"
+      },
+      "caiwu.legacycompatibility.contractsbridge": {
+        "type": "Project",
+        "dependencies": {
+          "Caiwu.Contracts": "[1.0.0, )",
+          "Caiwu.LegacyCompatibility": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

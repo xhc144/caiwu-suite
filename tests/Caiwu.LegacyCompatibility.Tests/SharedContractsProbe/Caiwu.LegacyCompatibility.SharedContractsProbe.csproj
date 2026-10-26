@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Caiwu.LegacyCompatibility/ContractsBridge/Caiwu.LegacyCompatibility.ContractsBridge.csproj" />
+    <None Include="../Fixtures/pr39-preflight.synthetic.json" Link="pr39-preflight.synthetic.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>
