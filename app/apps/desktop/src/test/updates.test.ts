@@ -197,6 +197,14 @@ it('关闭未确认、备份失败、安装前篡改均阻止启动；正常流�
   ops.stop.mockResolvedValueOnce(false);
   expect(await prepareUpdateInstall(ops)).toBe(false);
   expect(ops.backup).not.toHaveBeenCalled();
+  let requested = true;
+  ops.stop.mockImplementationOnce(async () => {
+    // 对应服务第一次等待超时后撤销安装，用户继续等同一服务，最终正常退出。
+    requested = false;
+    return true;
+  });
+  expect(await prepareUpdateInstall({ ...ops, requested: () => requested })).toBe(false);
+  expect(ops.backup).not.toHaveBeenCalled();
   ops.backup.mockRejectedValueOnce(new Error('磁盘空间不足'));
   await expect(prepareUpdateInstall(ops)).rejects.toThrow('磁盘空间不足');
   ops.verify.mockRejectedValueOnce(new Error('摘要不符'));

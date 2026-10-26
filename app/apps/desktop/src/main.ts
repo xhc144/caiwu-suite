@@ -298,7 +298,9 @@ async function finishQuit() {
   if (pendingUpdate) {
     try {
       const started = await prepareUpdateInstall({
+        // 超时/拒绝会撤销待安装标记；之后即使“继续等待”终于正常退出，也只正常退出。
         stop: stopServer,
+        requested: () => pendingUpdate,
         backup: () => backupBeforeUpdate(activeDataDir, app.getVersion()),
         verify: async () => {
           const { file, update } = await updates!.installer();
@@ -312,7 +314,13 @@ async function finishQuit() {
           if (error) throw new Error('Windows 未能打开更新安装器，请保留备份并检查系统安全提示');
         },
       });
-      if (!started) return;
+      if (!started) {
+        if (!finalized) {
+          finalized = true;
+          app.quit();
+        }
+        return;
+      }
       finalized = true;
       app.quit();
       return;

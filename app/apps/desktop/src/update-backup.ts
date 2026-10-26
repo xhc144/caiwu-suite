@@ -72,11 +72,12 @@ export async function backupBeforeUpdate(dataDir: string, version: string): Prom
 
 export async function prepareUpdateInstall(ops: {
   stop: () => Promise<boolean>;
+  requested?: () => boolean;
   backup: () => Promise<void>;
   verify: () => Promise<void>;
   launch: () => Promise<void>;
 }): Promise<boolean> {
-  if (!(await ops.stop())) return false;
+  if (!(await ops.stop()) || ops.requested?.() === false) return false;
   await ops.backup();
   await ops.verify();
   await ops.launch();
