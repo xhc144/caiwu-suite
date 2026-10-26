@@ -7,10 +7,19 @@
 
 ```bash
 cd app
-corepack enable
-export ELECTRON_SKIP_BINARY_DOWNLOAD=1   # 云端不运行桌面窗口，不用下载 Electron 本体
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+corepack enable || npm install -g pnpm@10.28.0   # Node 25 起不再自带 corepack
+export ELECTRON_SKIP_BINARY_DOWNLOAD=1           # 云端不运行桌面窗口，不用下载 Electron 本体
 pnpm install --frozen-lockfile
 pnpm exec playwright install --with-deps chromium
+```
+
+- **Maintenance script**（环境有这一项时填；复用缓存容器时执行，锁文件变了也能装上新依赖）：
+
+```bash
+cd app
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0 ELECTRON_SKIP_BINARY_DOWNLOAD=1
+pnpm install --frozen-lockfile
 ```
 
 - **验收命令**：`cd app && pnpm check`
