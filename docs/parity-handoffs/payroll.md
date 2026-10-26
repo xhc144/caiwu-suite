@@ -2,6 +2,12 @@
 
 状态：2026-10-26 开工检查点；实现和测试尚未完成。独占分支 `codex/parity-payroll-20261026`，基线/current SHA `3b0c59b02d8941c32ac176309555c03c94bb4213`。仅拥有 `src/Caiwu.Payroll/**`、`tests/Caiwu.Payroll.Tests/**` 和本文件；不改 Contracts/Core/Persistence.Sqlite/Desktop/解决方案/公共构建及工作流。独立 checkout `/workspace/caiwu-payroll`。
 
+### 00:04 UTC 业务检查点
+
+早期文档 SHA `f3385e4dd295c1a6b0023b68cbb98047ed747d16`，草稿 [PR50](https://github.com/xhc144/caiwu-suite/pull/50)。现有独立模块核心及合成测试已落地：部门/人员/90 个原字段槽位、栏目/公式/税参数、月工资输入/置数、依赖计算、工资表、发放/分配凭证计划、事务保存/重开及 revision 冲突。`dotnet test tests/Caiwu.Payroll.Tests/Caiwu.Payroll.Tests.csproj` 29 通过、0 失败/跳过；不是完整功能或 Windows 验收。Wpf 和公共 adapter 正在实现。
+
+已读 PR52 接口检查点 `5bb60d24b9c60c9eecfcc5adc37bced4688adf85` 的 integration.md 与 ParityModules.cs。模块会采用同一 ModuleLedgerSnapshot revision 的版本化 JSON 权威状态；独立 SQLite 仅为可重开的合成切片，不声称与总账跨库原子。**精确缺口：VoucherProposal.Lines 仍用旧 VoucherLine，不能表达部门/人员、项目/客户、外币/数量/原行号。工资计划必须保留部门/人员来源；对要求这些维度的科目，adapter 必须明确拒绝转总账，不能把辅助项静默丢入简单分录。** 需要集成者扩展分录契约及验证。模块 adapter 将只在无未支持必填维度时提供提案，现阶段绝不声称接通。
+
 ## 已核证据
 
 已读 original-analysis 的 README、gap-analysis、民非/成本工资窗口、工资菜单、相关 xt/pz 窗口、data/tables、windows/datawindows/tables JSON；已读取 PR38/39/40 的既有工程、兼容及 UI 契约。PR38“暂不切换底层”的旧前提已被用户明确授权替换底层所取代。静态定点比较：两产品以下窗口的 props/controls/events 相同；不代表原版实机行为全部相同。
