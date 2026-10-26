@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useState } from 'react';
+import { flushSync } from 'react-dom';
 import { defineManifest } from '@caiwu/core';
 import { sessionStore, useHotkey, useTab } from '@caiwu/web-kit';
 import { useUrlFilters } from '@caiwu/ui';
@@ -18,6 +19,10 @@ const manifest = defineManifest({
   ],
 });
 const saves: Record<string, number> = {};
+function FilterDraft({ initial }: { initial: string }) {
+  const [draft, setDraft] = useState(initial);
+  return <input aria-label="未提交查询" value={draft} onChange={(e) => setDraft(e.target.value)} />;
+}
 function FixturePage() {
   const tab = useTab();
   const [filters, setFilters] = useUrlFilters({ period: 202601, keyword: '' });
@@ -29,6 +34,7 @@ function FixturePage() {
     <section data-testid={tab.key}>
       <output>{`${filters.period}:${filters.keyword}`}</output>
       <input aria-label="未保存表单" value={draft} onChange={(e) => setDraft(e.target.value)} />
+      <FilterDraft key={filters.period} initial={filters.keyword} />
       <button onClick={() => setFilters({ period: 202602, keyword: '改变' })}>更新URL筛选</button>
     </section>
   );
@@ -124,6 +130,21 @@ async function click(element: Element) {
   });
 }
 describe('TabsHost URL与状态', () => {
+  it('URL筛选在路由transition前生效，迟到提交不覆盖随后输入', async () => {
+    await setup();
+    await click(screen.getByText('打开甲'));
+    await screen.findByTestId('/m/fixture/a');
+    await act(async () => {
+      pageA().getByText('更新URL筛选').click();
+      // 仅提交同步更新，保留Router尚未完成的transition。
+      flushSync(() => {});
+      fireEvent.change(pageA().getByLabelText('未提交查询'), {
+        target: { value: '随后输入的条件' },
+      });
+    });
+    expect(pageA().getByText('202602:改变')).toBeInTheDocument();
+    expect(pageA().getByLabelText('未提交查询')).toHaveValue('随后输入的条件');
+  });
   it('同标签useUrlFilters更新即时可见，返回前进和多标签参数/表单不串页', async () => {
     await setup();
     await click(screen.getByText('打开甲'));

@@ -15,11 +15,13 @@ import {
 import {
   NavigationType,
   UNSAFE_LocationContext,
+  UNSAFE_NavigationContext,
   Route,
   Routes,
   useLocation,
   useNavigate,
   type Location,
+  type Navigator,
 } from 'react-router';
 import { TabContext, useRequiredSession, type TabContextValue } from '@caiwu/web-kit';
 import { loadWebModule, visibleModules } from '../modules';
@@ -43,6 +45,11 @@ const MAX_TABS = 20;
 
 function isTabPath(pathname: string) {
   return pathname === HOME || pathname.startsWith('/m/');
+}
+
+// BrowserRouter/MemoryRouter使用的history都提供当前location；不修改全局history。
+function navigationLocation(navigator: Navigator) {
+  return (navigator as Navigator & { readonly location?: Location }).location;
 }
 
 function defaultTitle(pathname: string, navItems: NavItem[]) {
@@ -70,12 +77,17 @@ export function TabsHost({
 }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const navigation = use(UNSAFE_NavigationContext);
   const session = useRequiredSession();
   const activeKeyRef = useRef(tabPath(location.pathname));
   const locationRef = useRef(location);
   // 点击/关闭先显示所选标签；路由的transition提交后由真实location接管。
   const [selection, setSelection] = useState<{ from: Location; to: Location } | null>(null);
-  const activeLocation = selection?.from === location ? selection.to : location;
+  const historyLocation = navigationLocation(navigation.navigator);
+  const pendingCommit =
+    !!selection &&
+    (historyLocation ? location.key !== historyLocation.key : selection.from === location);
+  const activeLocation = selection && pendingCommit ? selection.to : location;
   const activeKey = tabPath(activeLocation.pathname);
   const modules = visibleModules(session.book.product, devMode);
   const [closing, setClosing] = useState(false);
@@ -115,6 +127,40 @@ export function TabsHost({
     locationRef.current = location;
     activeKeyRef.current = activeKey;
   });
+  useLayoutEffect(() => {
+    if (selection && !pendingCommit) {
+      setSelection((latest) => (latest === selection ? null : latest));
+    }
+  }, [selection, pendingCommit]);
+  const syncNavigation = useCallback(
+    (fallback?: Location) => {
+      const target = navigationLocation(navigation.navigator) ?? fallback;
+      if (target && isTabPath(tabPath(target.pathname))) {
+        activeKeyRef.current = tabPath(target.pathname);
+        setSelection({ from: locationRef.current, to: target });
+      }
+    },
+    [navigation.navigator],
+  );
+  // 模块的筛选/跳转也记录同一导航意图。地址先变、Router transition晚提交时，
+  // 活动页立即取得最新query；更早的commit不能重建表单并覆盖后续输入。
+  const moduleNavigation = useMemo(
+    () => ({
+      ...navigation,
+      navigator: {
+        ...navigation.navigator,
+        push: (...args: Parameters<Navigator['push']>) => {
+          navigation.navigator.push(...args);
+          syncNavigation();
+        },
+        replace: (...args: Parameters<Navigator['replace']>) => {
+          navigation.navigator.replace(...args);
+          syncNavigation();
+        },
+      },
+    }),
+    [navigation, syncNavigation],
+  );
   useEffect(() => {
     onWorkspaceChange?.(tabs.map((tab) => tab.key));
   }, [tabs, onWorkspaceChange]);
@@ -122,8 +168,9 @@ export function TabsHost({
   useLayoutEffect(() => {
     if (!isTabPath(tabPath(location.pathname))) {
       void navigate(HOME, { replace: true });
+      syncNavigation();
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, syncNavigation]);
 
   useEffect(() => {
     if (tabs.length >= MAX_TABS && !tabs.some((t) => t.key === activeKey)) {
@@ -132,8 +179,9 @@ export function TabsHost({
       void navigate(last.location.pathname + last.location.search + last.location.hash, {
         replace: true,
       });
+      syncNavigation(last.location);
     }
-  }, [activeKey, tabs, navigate]);
+  }, [activeKey, tabs, navigate, syncNavigation]);
 
   const close = useCallback(
     (key: string) => {
@@ -146,15 +194,15 @@ export function TabsHost({
       if (key === activeKeyRef.current) {
         const neighbor = next[Math.max(0, idx - 1)] ?? next[0];
         activeKeyRef.current = neighbor?.key ?? HOME;
-        if (neighbor) setSelection({ from: locationRef.current, to: neighbor.location });
         void navigate(
           neighbor
             ? neighbor.location.pathname + neighbor.location.search + neighbor.location.hash
             : HOME,
         );
+        syncNavigation(neighbor?.location);
       }
     },
-    [navigate],
+    [navigate, syncNavigation],
   );
 
   const setTitle = useCallback((key: string, title: string) => {
@@ -212,7 +260,7 @@ export function TabsHost({
   }, [tabs]);
 
   return (
-    <>
+    <UNSAFE_NavigationContext.Provider value={moduleNavigation}>
       <Tabs
         className="cw-tabs"
         type="editable-card"
@@ -223,8 +271,8 @@ export function TabsHost({
           const t = tabsRef.current.find((x) => x.key === key);
           if (t) {
             activeKeyRef.current = key;
-            setSelection({ from: locationRef.current, to: t.location });
             void navigate(t.location.pathname + t.location.search + t.location.hash);
+            syncNavigation(t.location);
           }
         }}
         onEdit={(key, action) => {
@@ -263,9 +311,9 @@ export function TabsHost({
           if (!checkBeforeLeave()) return;
           activeKeyRef.current = HOME;
           const home = tabsRef.current.find((t) => t.key === HOME)!;
-          setSelection({ from: locationRef.current, to: home.location });
           setTabs((prev) => prev.filter((t) => t.key === HOME));
           void navigate(HOME);
+          syncNavigation(home.location);
           setClosing(false);
         }}
       >
@@ -280,7 +328,7 @@ export function TabsHost({
       >
         <p>最多同时打开20个标签。请先保存并关闭一些标签后再打开新功能；现有页面已保留。</p>
       </Modal>
-    </>
+    </UNSAFE_NavigationContext.Provider>
   );
 }
 
