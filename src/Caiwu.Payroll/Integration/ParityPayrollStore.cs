@@ -14,6 +14,7 @@ public sealed class ParityPayrollStore : IPayrollStore
     private readonly string actor;
     private ModuleLedgerSnapshot? initialSnapshot;
     private long expectedRevision;
+    private PayrollDocument? lastDocument;
     public Guid BookId { get; }
     private static readonly JsonSerializerOptions Options = new() { MaxDepth = 64 };
 
@@ -59,6 +60,7 @@ public sealed class ParityPayrollStore : IPayrollStore
         }
         // Whole-book revision may advance due to another module without changing JSON.
         result.Revision = expectedRevision = snapshot.Ledger.Revision;
+        lastDocument = Clone(result);
         return Clone(result);
     }
 
@@ -69,6 +71,7 @@ public sealed class ParityPayrollStore : IPayrollStore
         next.Revision = checked(expectedRevision + 1);
         ledger.SaveModuleDocuments(new(ModuleId, new(BookId, expectedRevision), [Change(next)]), actor);
         this.expectedRevision = next.Revision;
+        lastDocument = Clone(next);
         return next;
     }
 
@@ -77,6 +80,8 @@ public sealed class ParityPayrollStore : IPayrollStore
     public ModuleVoucherReceipt AcceptPlan(PayrollDocument confirmedDocument, Guid planId)
     {
         CheckContext(confirmedDocument, confirmedDocument.Revision);
+        Require(lastDocument is not null && JsonSerializer.Serialize(confirmedDocument, Options) == JsonSerializer.Serialize(lastDocument, Options),
+            "确认内容已被修改且尚未存盘；请使用同一修订的已保存工资计划。");
         var next = Clone(confirmedDocument);
         var plan = next.VoucherPlans.SingleOrDefault(p => p.Id == planId)
             ?? throw new PayrollValidationException("工资凭证计划不存在。");
@@ -92,6 +97,8 @@ public sealed class ParityPayrollStore : IPayrollStore
         // always remains in module JSON; actual auxiliary requirements cannot be dropped.
         Require(plan.Lines.All(l => !l.DepartmentIsRequired && !l.EmployeeIsRequired),
             "总账分录接口尚不支持工资所需部门/人员辅助核算，不能转入；计划和全部维度已保留。");
+        Require(plan.ExtensionData.Count == 0 && plan.Request.ExtensionData.Count == 0
+            && plan.Lines.All(l => l.ExtensionData.Count == 0), "计划或分录还有未解释的业务字段，不能省略后转入总账。");
         plan.Status = "accepted-draft";
         next.Revision = checked(confirmedDocument.Revision + 1);
         var proposal = new VoucherProposal(plan.Id, ModuleId, [plan.SourceKey], new(BookId, confirmedDocument.Revision),
@@ -103,6 +110,9 @@ public sealed class ParityPayrollStore : IPayrollStore
         Require(receipt.ModuleId == ModuleId && receipt.ProposalId == plan.Id
             && receipt.SourceKeys.Contains(plan.SourceKey, StringComparer.Ordinal), "总账返回的工资凭证收据不一致，请核查保存结果。");
         expectedRevision = receipt.Revision;
+        next.Revision = receipt.Revision;
+        plan.VoucherId = receipt.VoucherId;
+        lastDocument = Clone(next);
         return receipt;
     }
 

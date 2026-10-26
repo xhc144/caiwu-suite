@@ -140,7 +140,15 @@ public sealed partial class PayrollService
                 foreach (var column in book.Columns.Where(c => c.Enabled && c.Kind == PayrollValueKind.Number && !targets.Contains(c.FieldName)))
                 {
                     decimal? value = null;
-                    if (column.CarryForward && old is not null) value = Value(old, column.FieldName);
+                    if (column.CarryForward && old is not null)
+                    {
+                        if (old.Inputs.TryGetValue(column.FieldName, out var carried)) value = carried;
+                        else if (old.Results.TryGetValue(column.FieldName, out carried))
+                        {
+                            Guard.Require(IsCalculated(book, source!), "传递来源月份的计算结果已过期，请先重新计算。");
+                            value = carried;
+                        }
+                    }
                     else if (employee.Attributes.TryGetValue(column.FieldName, out var raw) && raw is not null)
                     {
                         Guard.Require(decimal.TryParse(raw, NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,

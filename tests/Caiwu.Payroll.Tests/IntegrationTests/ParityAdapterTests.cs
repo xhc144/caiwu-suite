@@ -8,6 +8,19 @@ namespace Caiwu.Payroll.Tests;
 public sealed class ParityAdapterTests
 {
     [Fact]
+    public void UnsavedChangesCannotRemoveRequiredAuxiliaryFlagsBeforeTransfer()
+    {
+        var ledger = new ContractDouble(); var store = new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator");
+        var service = new PayrollService(store); SyntheticFixture.Populate(service); service.Calculate(SyntheticFixture.Month);
+        var plan = service.CreateVoucherPlan(SyntheticFixture.Month, SyntheticFixture.Request(), SyntheticFixture.Accounts);
+        var edited = service.Snapshot;
+        edited.VoucherPlans[0].Lines = edited.VoucherPlans[0].Lines.Select(l => l with
+            { DepartmentIsRequired = false, EmployeeIsRequired = false }).ToList();
+        Assert.Throws<PayrollValidationException>(() => store.AcceptPlan(edited, plan.Id));
+        Assert.Equal(0, ledger.ProposalCalls);
+    }
+
+    [Fact]
     public void UsesObservedSnapshotAndDoesNotRefreshAwayAConflict()
     {
         var ledger = new ContractDouble(); var observed = ledger.GetModuleSnapshot();
@@ -57,8 +70,9 @@ public sealed class ParityAdapterTests
         Assert.Equal("accepted-draft", reopened.Snapshot.VoucherPlans[0].Status);
         Assert.Equal(receipt.VoucherId, reopened.Snapshot.VoucherPlans[0].VoucherId);
         Assert.Equal(3350.25m, reopened.GetWageTable(SyntheticFixture.Month).Totals["g_l05"]);
-        Assert.Throws<PayrollValidationException>(() => new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator")
-            .AcceptPlan(reopened.Snapshot, plan.Id));
+        var secondStore = new ParityPayrollStore(ledger, ledger.GetModuleSnapshot(), "operator");
+        var secondSession = new PayrollService(secondStore);
+        Assert.Throws<PayrollValidationException>(() => secondStore.AcceptPlan(secondSession.Snapshot, plan.Id));
         Assert.Single(ledger.GetModuleSnapshot().ProposalReceipts);
     }
 
