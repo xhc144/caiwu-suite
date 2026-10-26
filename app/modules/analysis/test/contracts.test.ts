@@ -367,7 +367,7 @@ describe('w_ht_httj / w_ht_pz 明确关联、账款口径与来源保护', () =>
     await approved({ code: 'HT002', amount: 1, opening: 0 });
     await expect(api.report(filter)).rejects.toThrow('安全整数范围');
   });
-  it('在线备份包含真实合同、关联和外键；查询与导出不改原账套，恢复目标独立', async () => {
+  it('在线备份包含真实合同、关联和外键；查询与导出不改原账套，备份副本独立', async () => {
     const row = await link(await approved(), await settlement());
     const before = await app.svc.db.selectFrom('operation_log').selectAll().execute();
     await api.report(filter);
@@ -447,11 +447,57 @@ describe('合同服务端权限与账套隔离', () => {
     await expect(exporter.printAllowed('contracts')).rejects.toThrow('权限');
   });
   it('另一账套相同合同ID和分录ID不跨库查询或关联', async () => {
-    await api.save(input);
+    const original = await api.save(input);
+    const originalVoucher = await settlement(1234);
     const other = await createTestApp({ modules: [analysis] });
     try {
       expect(await caller(other).list()).toEqual([]);
       await expect(caller(other).get({ id: 1 })).rejects.toThrow('不存在');
+      const account = await other.svc.accounts.create(
+        {
+          code: '100203',
+          name: '另一账套银行',
+          isBank: true,
+          dimensions: [{ type: 'partner', required: true }],
+        },
+        [4, 2, 2],
+      );
+      const otherApi = caller(other);
+      const saved = await otherApi.save({
+        ...input,
+        accountId: account.id,
+        partnerId: (await other.svc.dimensions.getByCode('partner', 'C001'))!.id,
+        opening: 0,
+      });
+      const reviewed = await otherApi.review({ ...version(saved), reviewed: true });
+      expect(reviewed.id).toBe(original.id);
+      await expect(
+        otherApi.link({
+          ...version(reviewed),
+          voucherId: originalVoucher.id,
+          lineId: originalVoucher.lines[0]!.id,
+        }),
+      ).rejects.toThrow('凭证或分录不存在');
+      const [otherVoucher] = await seedVouchers(other.svc, [
+        {
+          date: '2026-04-01',
+          status: 'posted',
+          lines: [
+            { account: '100203', debit: 5678, dims: { partner: 'C001' } },
+            { account: '6001', credit: 5678 },
+          ],
+        },
+      ]);
+      expect(otherVoucher!.id).toBe(originalVoucher.id);
+      expect(otherVoucher!.lines[0]!.id).toBe(originalVoucher.lines[0]!.id);
+      await otherApi.link({
+        ...version(reviewed),
+        voucherId: originalVoucher.id,
+        lineId: originalVoucher.lines[0]!.id,
+      });
+      expect((await otherApi.report(filter)).totals.current).toBe(5678);
+      expect((await api.get({ id: original.id })).lines).toEqual([]);
+      expect((await api.report(filter)).totals.current).toBe(0);
     } finally {
       await other.close();
     }
