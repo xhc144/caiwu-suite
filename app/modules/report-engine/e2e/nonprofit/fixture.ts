@@ -8,9 +8,16 @@ import { createRuntime, moduleKit } from '@caiwu/server-kit';
 import { seedCashflowBook, nonprofitTestServer, fixtureChart } from '../../test/nonprofit/fixture';
 import { checkCashflow403Sources } from '../../templates/nonprofit/cashflow';
 import { fixtureMapping } from '../../test/nonprofit/fixture';
+import { balanceFixtureChart, seedBalance401Book } from '../../test/nonprofit/balance-fixture';
+import { balanceFixtureMapping } from '../../test/nonprofit/balance-fixture';
+import { checkBalance401Sources } from '../../templates/nonprofit/balance-sheet';
 
 export const test = base.extend<{
-  nonprofit: { baseURL: string; request: APIRequestContext; createBook(): Promise<string> };
+  nonprofit: {
+    baseURL: string;
+    request: APIRequestContext;
+    createBook(kind?: 'cashflow' | 'balance'): Promise<string>;
+  };
 }>({
   nonprofit: async ({ playwright }, use) => {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), 'caiwu-nonprofit-e2e-'));
@@ -35,25 +42,36 @@ export const test = base.extend<{
       await use({
         baseURL,
         request,
-        async createBook() {
+        async createBook(kind = 'cashflow') {
           // 本测试独占数据目录；临时runtime只负责core/testkit造数，不挂HTTP造数后门。
           const m = moduleKit(nonprofitTestServer.manifest);
           const router = m.router({
             seed: m.procedure
               .meta({ permission: 'report-engine.generate' })
               .mutation(async ({ ctx }) => {
-                await seedCashflowBook(ctx.svc);
-                await checkCashflow403Sources(ctx.svc, 202602, fixtureMapping());
+                if (kind === 'balance') {
+                  await seedBalance401Book(ctx.svc);
+                  await checkBalance401Sources(ctx.svc, 202602, balanceFixtureMapping());
+                } else {
+                  await seedCashflowBook(ctx.svc);
+                  await checkCashflow403Sources(ctx.svc, 202602, fixtureMapping());
+                }
               }),
           });
           const runtime = createRuntime({
             dataDir,
-            modules: [{ ...nonprofitTestServer, router }],
+            modules: [
+              {
+                ...nonprofitTestServer,
+                router,
+                templates: kind === 'balance' ? [balanceFixtureChart] : [fixtureChart],
+              },
+            ],
             devMode: true,
           });
           try {
             const book = await runtime.bookStore.create({
-              name: '民非403独立E2E',
+              name: `民非${kind === 'balance' ? '401' : '403'}独立E2E`,
               orgName: '虚构民非单位',
               product: 'minfei',
               templateId: fixtureChart.id,

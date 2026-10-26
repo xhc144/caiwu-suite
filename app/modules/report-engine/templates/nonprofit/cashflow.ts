@@ -114,8 +114,11 @@ export async function checkCashflow403Sources(
   svc: CoreServices,
   period: number,
   raw: Cashflow403Mapping,
+  generation: { includeUnposted: boolean } = { includeUnposted: false },
 ): Promise<void> {
   const mapping = Cashflow403MappingSchema.parse(raw);
+  if (generation.includeUnposted)
+    throw new Error('民非现金流量取数只允许已过账；不能用确认按钮绕过口径');
   if (!Number.isInteger(period) || Math.floor(period / 100) !== 2026)
     throw new Error('本切片仅支持2026；2027起必须接入上年比较数');
   await svc.periods.require(period);
@@ -177,4 +180,29 @@ export async function checkCashflow403Sources(
     )
       throw new Error(`内部划转必须完全发生在选定现金账户之间且全部标为内部划转：${id}`);
   }
+}
+
+/** 供唯一共享owner挂入generate的同一svc.tx回调。当前公共router尚未调用此门禁。 */
+export type Cashflow403GenerateGuard = {
+  kind: 'nonprofit-cashflow403';
+  year: 2026;
+  scope: 'posted';
+  mapping: Cashflow403Mapping;
+};
+export function cashflow403GenerateGuard(raw: Cashflow403Mapping): Cashflow403GenerateGuard {
+  return {
+    kind: 'nonprofit-cashflow403',
+    year: 2026,
+    scope: 'posted',
+    mapping: Cashflow403MappingSchema.parse(raw),
+  };
+}
+export async function validateCashflow403Generation(
+  transactionalSvc: CoreServices,
+  input: { period: number; includeUnposted: boolean },
+  guard: Cashflow403GenerateGuard,
+): Promise<void> {
+  if (guard.kind !== 'nonprofit-cashflow403' || guard.year !== 2026 || guard.scope !== 'posted')
+    throw new Error('民非现金流量生成门禁定义无效');
+  await checkCashflow403Sources(transactionalSvc, input.period, guard.mapping, input);
 }

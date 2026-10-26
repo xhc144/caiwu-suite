@@ -8,6 +8,8 @@ import {
   type VoucherSpec,
 } from '@caiwu/testkit';
 import { fixtureChart, nonprofitTestServer, seedCashflowDimensions } from './fixture';
+import { releaseEvidence, imposeEvidence } from './evidence-fixture';
+import { checkRestrictionTransferEvidence } from '../../templates/nonprofit/restriction-evidence';
 
 let app: TestApp;
 beforeEach(async () => {
@@ -159,7 +161,9 @@ describe('401/402独立手算黄金账套（尚未接入报表引擎）', () => 
     ).toBe(50_000);
   });
 
-  it('402：限定来源是捐赠约定对应明细科目；本月/累计、双向转限制、以前年度调整及结转前后均需区分', async () => {
+  it('402：虚构外部提供者材料对应明细的算术黄金；不证明真实限定资格，本月/累计和结转前后仍需区分', async () => {
+    checkRestrictionTransferEvidence('release', releaseEvidence);
+    checkRestrictionTransferEvidence('impose', imposeEvidence);
     await seedCashflowDimensions(app.svc);
     const specs: VoucherSpec[] = [
       {
@@ -196,11 +200,13 @@ describe('401/402独立手算黄金账套（尚未接入报表引擎）', () => 
           { account: '100201', credit: 2_000, dims: { cashflow: 'NF_goodsServicesPaid' } },
         ],
       },
-      // 解除限制审批R-01：限定借6000，非限定贷6000；指定用途审批R-02为反向2000。
+      // R1-C：外部提供者甲撤销6000分批次全部用途限制（无时间限制）。
+      // U1-A：外部提供者乙的双方书面补充约定对2000分批次设定具体学费用途。
+      // 这些虚构材料只构成测试前置；不是理事会内部用途决议，也不认定真实法律效力。
       {
         date: '2026-02-03',
         status: 'posted',
-        summary: '解除限制审批R-01',
+        summary: '虚构外部提供者甲撤销限制函R1-C',
         lines: [
           { account: '3102', debit: 6_000 },
           { account: '3101', credit: 6_000 },
@@ -209,7 +215,7 @@ describe('401/402独立手算黄金账套（尚未接入报表引擎）', () => 
       {
         date: '2026-02-04',
         status: 'posted',
-        summary: '新设限制审批R-02',
+        summary: '虚构外部提供者乙补充协议U1-A',
         lines: [
           { account: '3101', debit: 2_000 },
           { account: '3102', credit: 2_000 },
