@@ -1,10 +1,11 @@
-import { expect, test as base } from '@playwright/test';
+import { expect, test as base, type Page } from '@playwright/test';
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import { createTestBook, voucherInputFromSpec } from '@caiwu/testkit';
 import { callApi } from '@caiwu/testkit/e2e';
 import { spawnLocalServer } from '@caiwu/testkit/local-server';
 import type { Voucher, VoucherInput } from '@caiwu/core';
-import type { Preview, ActionResult } from '../shared';
+import type { Preview, ActionResult, CommitInput } from '../shared';
 
 const test = base.extend<{
   joint: {
@@ -14,7 +15,13 @@ const test = base.extend<{
       who?: 'maker' | 'auditor',
       action?: 'audit' | 'delete',
     ) => Promise<Preview>;
-    commit: (token: string, who?: 'maker' | 'auditor') => Promise<ActionResult>;
+    commit: (
+      token: string,
+      who?: 'maker' | 'auditor',
+      mappings?: CommitInput['cashflowMappings'],
+    ) => Promise<ActionResult>;
+    open: (page: Page, who: 'maker' | 'auditor') => Promise<void>;
+    reverse: (id: number, type: number) => Promise<Preview>;
     get: (id: number) => Promise<Voucher>;
     count: () => Promise<number>;
     input: (
@@ -97,7 +104,12 @@ const test = base.extend<{
     const server = spawnLocalServer({
       dataDir: book.dataDir,
       shutdownProtocol: 'native',
-      env: { CAIWU_PORT: '0', CAIWU_TOKEN: 'e2e-token', CAIWU_DEV: '1' },
+      env: {
+        CAIWU_PORT: '0',
+        CAIWU_TOKEN: 'e2e-token',
+        CAIWU_DEV: '1',
+        CAIWU_WEB_DIST: path.resolve('apps/web/dist'),
+      },
     });
     const port = await server.ready();
     const http = await playwright.request.newContext({ baseURL: `http://127.0.0.1:${port}` });
@@ -156,11 +168,40 @@ const test = base.extend<{
             { action, selection: { ids: [id] } },
             { token: actor(who) },
           ),
-        commit: (token, who = 'auditor') =>
+        reverse: (id, type) =>
+          callApi<Preview>(
+            http,
+            'm.voucher-book.preview.reverse',
+            {
+              action: 'reverse',
+              selection: { ids: [id] },
+              date: '2026-02-01',
+              voucherTypeId: type,
+            },
+            { token: maker },
+          ),
+        open: async (page, who) => {
+          const session = await callApi<{ token: string; user: unknown; book: unknown }>(
+            http,
+            'core.auth.login',
+            {
+              bookId: book.info.id,
+              userCode: who === 'maker' ? 'admin' : 'auditor',
+              password: who === 'maker' ? 'admin' : 'review',
+            },
+          );
+          await page.goto(`http://127.0.0.1:${port}`);
+          await page.evaluate(
+            (data) => sessionStorage.setItem('caiwu.session', JSON.stringify(data)),
+            { ...session, bookId: book.info.id },
+          );
+          await page.goto(`http://127.0.0.1:${port}/m/voucher-book`);
+        },
+        commit: (token, who = 'auditor', mappings = []) =>
           callApi<ActionResult>(
             http,
             'm.voucher-book.commit',
-            { token, confirmed: true },
+            { token, confirmed: true, cashflowMappings: mappings },
             { token: actor(who) },
           ),
         get: (id) =>
@@ -333,4 +374,156 @@ test('w_pz_tjsh 红字流入审核允许来源凭证，但entry修改与book删�
     source: source.source,
     lines: source.lines,
   });
+});
+
+test('w_pzedit_fc 贷方正数流出红冲后可经真实 HTTP 异人审核，无来源改表', async ({ joint }) => {
+  const original = await joint.save(
+    await joint.input([{ credit: 12345, flow: 'CF02' }], { debit: 12345 }),
+  );
+  const plan = await joint.reverse(original.id, original.voucherTypeId);
+  expect(plan.reversalCashflow![0]!.direction).toBe('inflow');
+  await expect(joint.commit(plan.token, 'maker')).rejects.toThrow(/尚未选择/);
+  const result = await joint.commit(plan.token, 'maker', [
+    { lineNo: 1, itemId: plan.reversalCashflow![0]!.options[0]!.id },
+  ]);
+  const audit = await joint.preview(result.createdIds[0]!);
+  expect(audit.rows[0]!.reasons).toEqual([]);
+  expect(audit.eligibleCount).toBe(1);
+  await joint.commit(audit.token);
+  expect((await joint.get(result.createdIds[0]!)).status).toBe('audited');
+  expect(await joint.get(original.id)).toEqual(original);
+});
+
+for (const c of cases) {
+  test(`w_pzedit_fc HTTP逐行映射：${c.name}反向后异人审核及来源版本重校验`, async ({ joint }) => {
+    const original = await joint.save(
+      await joint.input([{ debit: c.debit, credit: c.credit, flow: c.flow }], c.opposite),
+    );
+    const plan = await joint.reverse(original.id, original.voucherTypeId);
+    const row = plan.reversalCashflow![0]!;
+    expect(row.direction).toBe(c.flow === 'CF01' ? 'outflow' : 'inflow');
+    const count = await joint.count();
+    await expect(
+      joint.commit(plan.token, 'maker', [
+        { lineNo: 1, itemId: original.lines[0]!.dimensions.cashflow! },
+      ]),
+    ).rejects.toThrow(/方向冲突/);
+    expect(await joint.count()).toBe(count);
+    const result = await joint.commit(plan.token, 'maker', [
+      { lineNo: 1, itemId: row.options[0]!.id },
+    ]);
+    expect(
+      await joint.commit(plan.token, 'maker', [{ lineNo: 1, itemId: row.options[0]!.id }]),
+    ).toEqual(result);
+    const audit = await joint.preview(result.createdIds[0]!);
+    expect(audit.rows[0]!.warnings).toEqual([]);
+    expect(audit.eligibleCount).toBe(1);
+    await joint.commit(audit.token);
+    expect((await joint.get(result.createdIds[0]!)).status).toBe('audited');
+    expect(await joint.get(original.id)).toEqual(original);
+    expect(await joint.count()).toBe(count + 1);
+    const stale = await joint.reverse(original.id, original.voucherTypeId);
+    const changed = structuredClone(
+      await joint.input([{ debit: c.debit, credit: c.credit, flow: c.flow }], c.opposite),
+    );
+    changed.note = '来源并发修改';
+    await joint.save(changed, { id: original.id, expectedRevision: original.revision });
+    await expect(
+      joint.commit(stale.token, 'maker', [{ lineNo: 1, itemId: row.options[0]!.id }]),
+    ).rejects.toThrow(/已变更/);
+    expect(await joint.count()).toBe(count + 1);
+  });
+}
+
+test('w_pzedit_fc 普通按钮红冲→取消不写→逐行选项目→本人拒绝→异人审核完整闭环', async ({
+  joint,
+  page,
+}) => {
+  const original = await joint.save(
+    await joint.input([{ credit: 12345, flow: 'CF02' }], { debit: 12345 }),
+  );
+  const count = await joint.count();
+  await joint.open(page, 'maker');
+  const sourceRow = page
+    .getByRole('row')
+    .filter({ hasText: original.displayNo })
+    .filter({ hasText: original.summary });
+  await sourceRow.getByRole('checkbox').check();
+  const start = async () => {
+    await page.getByRole('button', { name: '红字冲销', exact: true }).click();
+    const setting = page.getByRole('dialog', { name: '红字冲销设置', exact: true });
+    await setting.getByLabel('目标日期', { exact: true }).fill('2026-02-01');
+    await setting.getByRole('button', { name: '生成预览', exact: true }).click();
+    return page.getByRole('dialog', { name: '红字冲销预览', exact: true });
+  };
+  let dialog = await start();
+  await expect(dialog.getByRole('button', { name: '确认执行', exact: true })).toBeDisabled();
+  const choose = async () => {
+    await dialog.getByLabel('第1行红冲现金流量项目', { exact: true }).click();
+    await expect(
+      page.locator('.ant-select-item-option-content').filter({ hasText: 'CF02' }),
+    ).toHaveCount(0);
+    await page.locator('.ant-select-item-option-content').filter({ hasText: 'CF01' }).click();
+  };
+  await choose();
+  await dialog.getByRole('button', { name: '取消', exact: true }).click();
+  expect(await joint.count()).toBe(count);
+  expect(await joint.get(original.id)).toEqual(original);
+  dialog = await start();
+  await expect(dialog.getByRole('button', { name: '确认执行', exact: true })).toBeDisabled();
+  await choose();
+  await dialog.getByRole('button', { name: '确认执行', exact: true }).click();
+  await expect(page.getByText('成功 1 张，跳过 0 张', { exact: true })).toBeVisible();
+  const reverseRow = page.getByRole('row').filter({ hasText: `冲销 #${original.id}` });
+  await reverseRow.getByRole('checkbox').check();
+  await page.getByRole('button', { name: '审核 F4', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: '审核预览', exact: true });
+  await expect(dialog).toContainText('制单人与审核人相同');
+  await expect(dialog.getByRole('button', { name: '确认执行', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: '取消', exact: true }).click();
+  await joint.open(page, 'auditor');
+  await page
+    .getByRole('row')
+    .filter({ hasText: `冲销 #${original.id}` })
+    .getByRole('checkbox')
+    .check();
+  await page.getByRole('button', { name: '审核 F4', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: '审核预览', exact: true });
+  await expect(dialog).toContainText('可处理 1 张，跳过 0 张');
+  await expect(dialog.getByRole('checkbox')).toHaveCount(0);
+  await dialog.getByRole('button', { name: '确认执行', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: `冲销 #${original.id}` })).toContainText(
+    '已审核',
+  );
+  expect(await joint.get(original.id)).toEqual(original);
+  expect(await joint.count()).toBe(count + 1);
+});
+
+test('w_pzedit_fc HTTP内部转移红冲仍精确配平，遗留内部差额不允许生成', async ({ joint }) => {
+  for (const amount of [1, -1, Number.MAX_SAFE_INTEGER, -Number.MAX_SAFE_INTEGER]) {
+    const original = await joint.save(
+      await joint.input([
+        { debit: amount, flow: 'CFI' },
+        { account: '100201', credit: amount, flow: 'CFI' },
+      ]),
+    );
+    const plan = await joint.reverse(original.id, original.voucherTypeId);
+    expect(plan.reversalCashflow!.map((r) => r.direction)).toEqual(['internal', 'internal']);
+    const r = await joint.commit(plan.token, 'maker');
+    const reversed = await joint.get(r.createdIds[0]!);
+    expect(reversed.debitTotal).toBe(-amount);
+    expect(reversed.lines.map((l) => l.dimensions.cashflow)).toEqual(
+      original.lines.map((l) => l.dimensions.cashflow),
+    );
+    const audit = await joint.preview(reversed.id);
+    expect(audit.eligibleCount).toBe(1);
+    await joint.commit(audit.token);
+    expect(await joint.get(original.id)).toEqual(original);
+  }
+  const count = await joint.count();
+  for (const invalid of joint.legacyInternal)
+    await expect(joint.reverse(invalid.id, invalid.voucherTypeId)).rejects.toThrow(
+      /内部现金流入流出未配平/,
+    );
+  expect(await joint.count()).toBe(count);
 });

@@ -58,6 +58,7 @@ export default function BookPage() {
   const [compactAfter, setCompactAfter] = useState(false);
   const [plan, setPlan] = useState<Preview | null>(null);
   const [cashConfirmed, setCashConfirmed] = useState(false);
+  const [cashflowMappings, setCashflowMappings] = useState<Record<number, number>>({});
   const [numberConfirmed, setNumberConfirmed] = useState(false);
   const [operation, setOperation] = useState<{
     action: 'copy' | 'reverse' | 'insert' | 'renumber' | 'modify';
@@ -88,6 +89,7 @@ export default function BookPage() {
   const ready = (p: Preview) => {
     setPlan(p);
     setCashConfirmed(false);
+    setCashflowMappings({});
     setNumberConfirmed(false);
     setOperation(null);
   };
@@ -397,6 +399,9 @@ export default function BookPage() {
               danger={plan?.action === 'delete'}
               disabled={
                 !plan?.eligibleCount ||
+                !!plan.reversalCashflow?.some(
+                  (r) => r.direction !== 'internal' && !cashflowMappings[r.lineNo],
+                ) ||
                 (!!plan.rows.some((r) => r.eligible && r.warnings.length) && !cashConfirmed) ||
                 ((!!plan.mappings.some((m) => m.from !== m.to) || plan.action === 'modify') &&
                   !numberConfirmed)
@@ -409,6 +414,10 @@ export default function BookPage() {
                   confirmed: true,
                   cashflowConfirmed: cashConfirmed,
                   numberingConfirmed: numberConfirmed,
+                  cashflowMappings: Object.entries(cashflowMappings).map(([lineNo, itemId]) => ({
+                    lineNo: Number(lineNo),
+                    itemId,
+                  })),
                 })
               }
             >
@@ -426,6 +435,64 @@ export default function BookPage() {
             />
             {plan.generatedDebit != null && (
               <span>新凭证借方 / 贷方合计：{formatMoney(plan.generatedDebit)}；原凭证保持原样</span>
+            )}
+            {!!plan.reversalCashflow?.length && (
+              <>
+                <Alert
+                  type="info"
+                  title="选择红冲现金流量项目"
+                  description="红冲后的实际收付方向已反转，请逐行选择对应业务项目。系统不自动推定对应关系；内部转移保留原项目并单独配平。没有合法选项时，请先到基础档案维护项目后重新预览。取消不会生成凭证。"
+                />
+                <Table
+                  size="small"
+                  pagination={false}
+                  rowKey="lineNo"
+                  dataSource={plan.reversalCashflow}
+                  columns={[
+                    { title: '行 / 科目', render: (_, r) => `第${r.lineNo}行 ${r.account}` },
+                    { title: '原现金流量项目', dataIndex: 'originalItem' },
+                    {
+                      title: '红冲借方 / 贷方',
+                      render: (_, r) => `${formatMoney(r.debit)} / ${formatMoney(r.credit)}`,
+                    },
+                    {
+                      title: '红冲方向',
+                      render: (_, r) =>
+                        r.direction === 'internal'
+                          ? '内部转移（保留原项目）'
+                          : r.direction === 'inflow'
+                            ? '流入'
+                            : '流出',
+                    },
+                    {
+                      title: '红冲现金流量项目',
+                      render: (_, r) =>
+                        r.direction === 'internal' ? (
+                          r.originalItem
+                        ) : (
+                          <Select
+                            aria-label={`第${r.lineNo}行红冲现金流量项目`}
+                            style={{ minWidth: 220 }}
+                            placeholder={
+                              r.options.length ? '请选择对应项目' : '没有合法项目，请维护后重预览'
+                            }
+                            allowClear
+                            value={cashflowMappings[r.lineNo]}
+                            options={r.options.map((o) => ({ value: o.id, label: o.label }))}
+                            onChange={(value: number | undefined) =>
+                              setCashflowMappings((previous) => {
+                                const next = { ...previous };
+                                if (value == null) delete next[r.lineNo];
+                                else next[r.lineNo] = value;
+                                return next;
+                              })
+                            }
+                          />
+                        ),
+                    },
+                  ]}
+                />
+              </>
             )}
             <Table
               size="small"
@@ -666,7 +733,7 @@ function OperationDrawer({
             title={`原凭证：${original.date} ${original.displayNo}`}
             description={
               operation?.action === 'reverse'
-                ? '红字同向负数：借贷金额、原币与数量取反，汇率和单价保持；保留辅助项，并建立双向关联'
+                ? '红字同向负数：借贷金额、原币与数量取反，汇率和单价保持；在预览中逐行选择反向现金流量项目，其它辅助项保留，并建立双向关联'
                 : operation?.action === 'insert'
                   ? '以下内容初始复制自所选凭证，可直接修改摘要、科目和金额。保存后是完整待审核凭证；所选号及其后编号加一'
                   : '生成新的手工待审核凭证，使用新编号和当前制单人'

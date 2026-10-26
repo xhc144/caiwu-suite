@@ -132,6 +132,15 @@ export type PreviewRow = {
   periodUrl: string;
 };
 export type NumberMapping = { id: number; from: number; to: number; label: string };
+export type ReversalCashflowRow = {
+  lineNo: number;
+  account: string;
+  originalItem: string;
+  direction: 'inflow' | 'outflow' | 'internal';
+  debit: number;
+  credit: number;
+  options: { id: number; label: string }[];
+};
 export type Preview = {
   token: string;
   action: Action;
@@ -141,6 +150,7 @@ export type Preview = {
   eligibleCount: number;
   skippedCount: number;
   generatedDebit: number | null;
+  reversalCashflow?: ReversalCashflowRow[];
 };
 export const CommitSchema = z.object({
   token: z.string().uuid(),
@@ -148,6 +158,15 @@ export const CommitSchema = z.object({
   cashflowConfirmed: z.boolean().default(false),
   numberingConfirmed: z.boolean().default(false),
   overwriteConfirmed: z.boolean().default(false),
+  cashflowMappings: z
+    .array(
+      z.object({
+        lineNo: z.number().int().min(1).max(999),
+        itemId: zId,
+      }),
+    )
+    .max(999)
+    .default([]),
 });
 export type CommitInput = z.input<typeof CommitSchema>;
 export type ActionResult = {
