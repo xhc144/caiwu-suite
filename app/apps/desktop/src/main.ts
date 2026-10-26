@@ -125,7 +125,8 @@ function spawnServer(token: string): ServiceChild {
     stdout: child.stdout,
     stderr: child.stderr,
     requestStop: () => {
-      child.send('caiwu:shutdown');
+      // IPC 异步发送错误由回调接收；仍以真实退出结果决定成功与否。
+      child.send('caiwu:shutdown', () => {});
     },
     forceStop: () => {
       child.kill('SIGKILL');
@@ -151,7 +152,8 @@ function checkDirectory(dir: string) {
 }
 
 async function selectDirectory(): Promise<string | null> {
-  if (choosingDirectory || quitting || recovering) return null;
+  if (choosingDirectory || quitting || recovering || stoppingServer) return null;
+  if (!mainWindow && server) return null; // 服务尚未确认关闭时不能直接提交启动目录。
   if (process.env.CAIWU_DATA_DIR) {
     dialog.showMessageBoxSync({
       type: 'info',
