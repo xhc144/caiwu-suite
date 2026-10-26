@@ -186,6 +186,15 @@ test('w_cn_dz 刷新失败：保留两侧勾账选择和余额，明确错误并
 test('w_cn_dz 延迟旧响应不能覆盖新截止日或新账户的真实结果', async ({ cashier }) => {
   const book = await postedBook(cashier);
   const { page } = cashier;
+  const timings: { phase: string; ms: number }[] = [];
+  const origin = performance.now();
+  const mark = (phase: string) => timings.push({ phase, ms: performance.now() - origin });
+  page.on('request', (request) => {
+    if (request.url().includes('m.cashier.reconcile')) mark('reconcile-request');
+  });
+  page.on('response', (response) => {
+    if (response.url().includes('m.cashier.reconcile')) mark('reconcile-response');
+  });
   const coreAccountId = await cashier.withServices(
     book.bookId,
     async (svc) => (await svc.accounts.require('1001')).id,
@@ -221,21 +230,31 @@ test('w_cn_dz 延迟旧响应不能覆盖新截止日或新账户的真实结果
     await test.step(
       '切换账户5秒内只显示新账户且清除旧选择',
       async () => {
+        mark('select-start');
         await page.getByLabel('对账账户', { exact: true }).click();
+        mark('select-open');
         await page
           .locator('.ant-select-item-option-content')
           .getByText('切换现金', { exact: true })
           .click();
+        mark('select-option-done');
+        mark('query-click-start');
         await page.getByRole('button', { name: /查询$/ }).click();
+        mark('query-click-done');
         await expect(page).toHaveURL(new RegExp(`accountId=${second.id}`));
         await expect(page.getByText('切换现金 · CNY · 截止 2026-01-09')).toBeVisible();
         await expect(balance).toContainText('330.00');
         await expect(page.getByText('所选出纳净额：0.00；财务净额：0.00')).toBeVisible();
+        mark('new-account-visible');
       },
       feedback,
     );
   } finally {
     gate.release();
+    await test.info().attach('cashier-account-switch-timings', {
+      body: JSON.stringify(timings, null, 2),
+      contentType: 'application/json',
+    });
   }
   await gate.done;
   // 交付旧响应后跨过浏览器渲染帧再检查，不能只检查切换瞬间。
