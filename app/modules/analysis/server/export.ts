@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import type { Worksheet } from 'exceljs';
 import { centsToYuan } from '@caiwu/core';
 import type { AgingReport, TrendReport } from '../shared';
+import type { ContractReport } from './contracts';
 
 const { Workbook } = ExcelJS;
 // Excel 数值只有15位有效数字；分值超过15位时，必须保留精确十进制文本。
@@ -44,7 +45,7 @@ export async function exportAging(report: AgingReport) {
     `截止 ${report.filter.cutoff}；${report.filter.includeUnposted ? '含未过账' : '仅已过账'}；${report.filter.direction === 'receivable' ? '应收' : '应付'}；借正贷负；金额均为本位币 ${report.baseCurrency}`,
   ]);
   sheet.addRow([
-    `按期初优先约定核销，其余按业务日期 FIFO；当日为0天；期初残额未分龄；客供和币种分别核销；未来业务日期单列；${MONEY_NOTE}`,
+    `原始到期日未知，逾期天数未知；按期初优先约定核销，其余按业务日期 FIFO；当日为0天；期初残额未分龄；客供和币种分别核销；未来业务日期单列；${MONEY_NOTE}`,
   ]);
   sheet.addRow(['快照', report.generatedAt]);
   sheet.addRow([
@@ -84,6 +85,125 @@ export async function exportAging(report: AgingReport) {
     ]),
   );
   formatSheet(control, 1, [3, 4, 5]);
+  const detail = wb.addWorksheet('账龄来源');
+  detail.addRow([
+    '科目',
+    '辅助项',
+    '币种',
+    '凭证ID',
+    '分录ID',
+    '凭证字号',
+    '凭证日期',
+    '原始业务日期',
+    '起龄日期',
+    '日期来源',
+    '原始到期日',
+    '逾期天数',
+    '原始正向金额',
+    '核销后剩余敞口',
+  ]);
+  for (const row of report.rows)
+    for (const lot of row.lots)
+      detail.addRow([
+        row.accountCode,
+        lot.groupName ?? row.groupName,
+        row.currency,
+        lot.voucherId,
+        lot.lineId,
+        lot.voucherNo,
+        lot.date,
+        lot.originalBizDate ?? '未知',
+        lot.bizDate ?? '未知',
+        lot.dateBasis === 'business'
+          ? '原始业务日期'
+          : lot.dateBasis === 'voucher'
+            ? '业务日期缺失，取凭证日期'
+            : '期初历史日期未知',
+        '未知',
+        '未知',
+        excelMoney(lot.amount),
+        excelMoney(lot.remaining),
+      ]);
+  formatSheet(detail, 1, [13, 14]);
+  return Buffer.from(await wb.xlsx.writeBuffer()).toString('base64');
+}
+export async function exportContracts(report: ContractReport) {
+  const wb = new Workbook();
+  const ws = wb.addWorksheet('合同账款');
+  ws.addRow([
+    `收付 ${report.filter.from} 至 ${report.filter.to}；仅明确关联的已过账整条分录；本位币 ${report.baseCurrency}；期初收付截至启用日 ${report.openingDate}；原始到期日与逾期天数未知；${MONEY_NOTE}`,
+  ]);
+  ws.addRow(['快照', report.generatedAt]);
+  ws.addRow([
+    '合同号',
+    '名称',
+    '客供',
+    '签订日期',
+    '类型',
+    '合同金额',
+    '期初收付',
+    '本期收付',
+    '累计收付',
+    '未完成金额',
+    '到期日',
+    '说明',
+    '备注',
+  ]);
+  for (const r of report.rows)
+    ws.addRow([
+      r.code,
+      r.name,
+      r.partnerName,
+      r.signed_date,
+      r.kind === 'receipt' ? '收款' : '付款',
+      ...[r.amount, r.opening, r.current, r.cumulative, r.remaining].map(excelMoney),
+      '未知',
+      r.description,
+      r.remark,
+    ]);
+  ws.addRow([
+    '合计',
+    '',
+    '',
+    '',
+    '',
+    ...[
+      report.totals.amount,
+      report.totals.opening,
+      report.totals.current,
+      report.totals.cumulative,
+      report.totals.remaining,
+    ].map(excelMoney),
+  ]);
+  formatSheet(ws, 3, [6, 7, 8, 9, 10]);
+  const detail = wb.addWorksheet('关联分录');
+  detail.addRow([
+    '合同号',
+    '凭证ID',
+    '分录ID',
+    '日期',
+    '凭证字号',
+    '科目',
+    '摘要',
+    '收付款金额',
+    '关联人ID',
+    '关联时间',
+  ]);
+  for (const r of report.rows)
+    for (const l of r.lines.filter((line) => line.date <= report.filter.to))
+      detail.addRow([
+        r.code,
+        l.voucherId,
+        l.line_id,
+        l.date,
+        l.displayNo,
+        l.accountCode,
+        l.summary,
+        excelMoney(l.amount),
+        l.linked_by,
+        l.linked_at,
+      ]);
+  formatSheet(detail, 1, [8]);
   return Buffer.from(await wb.xlsx.writeBuffer()).toString('base64');
 }
 export async function exportTrend(report: TrendReport) {

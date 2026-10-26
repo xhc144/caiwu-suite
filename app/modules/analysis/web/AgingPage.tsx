@@ -105,7 +105,7 @@ function AgingPage() {
     }) => [...r.buckets, r.unaged, r.future, r.reverse, r.closing].map((n) => formatMoney(n));
     await printTable(
       '账龄分析',
-      `截止 ${report.filter.cutoff}；${report.filter.includeUnposted ? '含未过账' : '仅已过账'}；${report.filter.direction === 'receivable' ? '应收' : '应付'}；借正贷负；本位币 ${report.baseCurrency}；快照 ${report.generatedAt}`,
+      `截止 ${report.filter.cutoff}；${report.filter.includeUnposted ? '含未过账' : '仅已过账'}；${report.filter.direction === 'receivable' ? '应收' : '应付'}；借正贷负；原始到期日未知，逾期天数未知；本位币 ${report.baseCurrency}；快照 ${report.generatedAt}`,
       [
         '科目',
         '辅助项',
@@ -242,7 +242,7 @@ function AgingPage() {
           <Alert
             type="info"
             showIcon
-            title="口径说明"
+            title="口径说明：原始到期日未知，逾期天数未知"
             description="凭证日期≤截止日才纳入；账龄天数=截止日−业务日期（未填取凭证日期），当日为0天，区间含两端且连续。期初优先是核销约定，不代表其属于最老账龄；其余按业务日期先进先出，期初缺历史日期的残额单列未分龄。客供、末级科目、交易币种之间不互相核销；所有金额均折合本位币、借正贷负。未来业务日期和反向余额单列。账龄保留全部结转，便于核对原始总账。"
           />
           {config.isError && (
@@ -374,7 +374,19 @@ function AgingPage() {
                     ),
                 },
                 { key: 'date', title: '凭证日期', dataIndex: 'date', width: 110 },
-                { key: 'biz', title: '业务日期', dataIndex: 'bizDate', width: 110 },
+                { key: 'biz', title: '起龄日期', dataIndex: 'bizDate', width: 110 },
+                {
+                  key: 'basis',
+                  title: '日期来源',
+                  width: 180,
+                  render: (_, r) =>
+                    r.dateBasis === 'business'
+                      ? '原始业务日期'
+                      : r.dateBasis === 'voucher'
+                        ? '业务日期缺失，取凭证日期'
+                        : '期初历史日期未知',
+                },
+                { key: 'due', title: '原始到期日 / 逾期天数', render: () => '未知', width: 200 },
                 { key: 'amount', title: '原始正向金额', dataIndex: 'amount', money: true },
                 { key: 'remaining', title: '核销后剩余敞口', dataIndex: 'remaining', money: true },
               ]}
