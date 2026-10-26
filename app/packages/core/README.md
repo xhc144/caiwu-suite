@@ -13,7 +13,7 @@
 
 - 只读快照：`const snapshot = await svc.inventory.snapshot(period)`；返回 `InventorySnapshot`，包含账套、actor、module、库存/期初版本和 fingerprint。输入及结果类型从 `@caiwu/core` 导出。复用库存模块算法，core 不读写库存表。
 - 原子发布：`await svc.tx(t => t.inventory.with(async inv => { /* 先写调用方批次，再 await inv.commitCosting(input)，以及 t.vouchers / inv.lockVoucherSource */ }))`。任何错误让同一事务内批次、库存、凭证、日志一起回滚。
-- `inv` 只提供 `snapshot`、`commitCosting`、`cancelCosting`、`lockVoucherSource`、`releaseVoucherSource`。入参沿用 `CostingCommitInput`、`CostingCancelInput`、`VoucherSourceInput`，金额为整数分、数量为十进制字符串。必须 await 每个操作。
+- `inv` 只提供 `snapshot`、`commitCosting`、`cancelCosting`、`lockVoucherSource`、`releaseVoucherSource`。入参沿用 `CostingCommitInput`、`CostingCancelInput`、`VoucherSourceInput`，金额为整数分、数量为十进制字符串。必须 await 每个操作和整个 `with`；事务会排空遗漏等待的 `with` 并失败回滚，捕获 `with` 异常也不能提交部分写入。
 - inventory 模块通过 `defineServerModule(..., { providers: { inventory: svc => ... } })` 注册无状态工厂。每个 runtime 独立登记，每次调用传入原始 svc；不缓存绑定账套/操作员的实例。未注册报 `INVENTORY_PROVIDER_MISSING`。
 - 请求、事务和 with 回调任一结束即撤销对应能力；其它请求、事务、模块不能借用，事务内不得使用外层 svc。库存工厂仍负责权限、账套/actor/module/fingerprint 和正式来源状态检查。
 
