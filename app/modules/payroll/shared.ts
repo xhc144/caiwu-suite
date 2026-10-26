@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { zCents, zDate, zId, zPeriod } from '@caiwu/core';
 const name = z.string().trim().min(1, '名称不能为空').max(60);
-const key = z.string().regex(/^[a-z][a-z0-9_]{0,29}$/, '变量须为小写字母开头的字母、数字、下划线');
+const key = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]{0,29}$/, '变量须为小写字母开头的字母、数字、下划线')
+  .refine(
+    (k) => !['constructor', 'prototype', '__proto__', 'gross', 'deductions', 'net'].includes(k),
+    '变量不能使用保留字',
+  );
 export const FieldSchema = z.object({
   key,
   name,
@@ -135,6 +141,7 @@ export type Batch = {
   closed: boolean;
   rows: RowInput[];
   snapshots: SalaryRow[];
+  previous: SalaryRow[];
   vouchers: { kind: string; id: number; number: string; status: string }[];
 };
 export const TAX_RULE = {
@@ -226,3 +233,58 @@ export const DEFAULT_FIELDS: Field[] = [
     disabled: false,
   },
 ];
+
+export const BulkInputSchema = z.object({
+  id: zId,
+  revision: z.number().int().nonnegative(),
+  employeeIds: z.array(zId).min(1, '请选择置数范围').max(500),
+  field: key,
+  value: zCents,
+  onlyEmpty: z.boolean().default(false),
+});
+export const PasteInputSchema = z.object({
+  id: zId,
+  revision: z.number().int().nonnegative(),
+  rows: z
+    .array(z.object({ code: z.string().trim().min(1), values: z.record(key, zCents) }))
+    .min(1)
+    .max(500),
+});
+export const ReportInputSchema = z.object({
+  categoryId: zId,
+  from: zPeriod,
+  to: zPeriod,
+  departmentId: zId.optional(),
+  employeeIds: z.array(zId).min(1, '请选择报告人员').max(500),
+  columns: z.array(z.string()).min(1, '请选择汇总栏目').max(50),
+  kind: z.enum(['table', 'department', 'cumulative', 'cash']),
+  denominations: z
+    .array(zCents.refine((v) => v > 0, '面额须为正整数分'))
+    .min(1)
+    .max(20)
+    .default([10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]),
+});
+export type ReportInput = z.output<typeof ReportInputSchema>;
+export const QueryConditionSchema = z.discriminatedUnion('field', [
+  z.object({
+    field: z.enum(['code', 'name', 'department']),
+    operator: z.enum(['contains', 'equals', 'notContains']),
+    value: z.string().max(100),
+  }),
+  z.object({
+    field: z.enum(['gross', 'deductions', 'taxAmount', 'net']),
+    operator: z.enum(['equals', 'gt', 'lt', 'gte', 'lte']),
+    value: zCents,
+  }),
+  z.object({
+    field: z.literal('startDate'),
+    operator: z.enum(['equals', 'gt', 'lt', 'gte', 'lte']),
+    value: zDate,
+  }),
+]);
+export const SalaryQuerySchema = z.object({
+  categoryId: zId,
+  from: zPeriod,
+  to: zPeriod,
+  conditions: z.array(QueryConditionSchema).max(10).default([]),
+});

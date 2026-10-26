@@ -16,6 +16,7 @@ export default defineManifest({
     ['export', '导出及打印工资'],
   ].map(([id, name]) => ({ id: `payroll.${id}`, name: name! })),
   menu: [
+    { group: 'payroll', title: '工资综合查询', path: '/query', permission: 'payroll.salary.view' },
     { group: 'payroll', title: '工资管理', path: '/', permission: 'payroll.salary.view' },
     { group: 'payroll', title: '人事档案', path: '/employees', permission: 'payroll.hr.view' },
     {
@@ -24,7 +25,8 @@ export default defineManifest({
       path: '/structure',
       permission: 'payroll.salary.edit',
     },
+    { group: 'payroll', title: '工资报表', path: '/reports', permission: 'payroll.salary.view' },
     { group: 'payroll', title: '计税参数', path: '/tax', permission: 'payroll.tax.configure' },
   ],
-  sources: [{ type: 'batch', name: '工资批次', path: '/?id={id}' }],
+  sources: [{ type: 'batch', name: '工资批次', path: '/batch?id={id}' }],
 });

@@ -275,6 +275,7 @@ export function payrollService(svc: CoreServices) {
         calculated: !!b.calculated,
         closed: !!b.closed,
         rows: rows.map((r) => decode<RowInput>(r.input_json)),
+        previous: decode<SalaryRow[]>(b.previous_json),
         snapshots: rows
           .filter((r) => r.snapshot_json)
           .map((r) => decode<SalaryRow>(r.snapshot_json!)),
@@ -314,9 +315,15 @@ export function payrollService(svc: CoreServices) {
           const old = await s.assertMutable(id, input.revision);
           if (old.period !== input.period || old.category_id !== input.categoryId)
             fail('BATCH_IDENTITY', '已有批次不能换期间或类别');
+          const last = await s.batch(id);
           await td
             .updateTable('payroll_batch')
-            .set({ revision: old.revision + 1, category_json: JSON.stringify(c), calculated: 0 })
+            .set({
+              previous_json: JSON.stringify(last.calculated ? last.snapshots : last.previous),
+              revision: old.revision + 1,
+              category_json: JSON.stringify(c),
+              calculated: 0,
+            })
             .where('id', '=', id)
             .execute();
           await td.deleteFrom('payroll_row').where('batch_id', '=', id).execute();

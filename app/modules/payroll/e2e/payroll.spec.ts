@@ -157,6 +157,112 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       expect(sheet.rowCount).toBe(4);
       expect(sheet.getRow(2).values).toContain(10850);
       expect(sheet.getRow(4).values).toContain(2480);
+      // 观察真实 printHtml 生成的 iframe 内容，无凭证/余额接口替身。
+      const printed = page.evaluate(
+        () =>
+          new Promise<string>((resolve) => {
+            const observer = new MutationObserver((records) => {
+              for (const record of records)
+                for (const node of record.addedNodes)
+                  if (node instanceof HTMLIFrameElement) {
+                    node.addEventListener(
+                      'load',
+                      () => {
+                        observer.disconnect();
+                        resolve(node.contentDocument?.body.textContent ?? '');
+                      },
+                      { once: true },
+                    );
+                  }
+            });
+            observer.observe(document.body, { childList: true });
+          }),
+      );
+      await page.getByRole('button', { name: '打印所选工资条' }).click();
+      expect(await printed).toContain('合成人员1');
+      const salaryUrl = page.url();
+      const batchId = Number(new URL(salaryUrl).searchParams.get('id'));
+      // 先取消置数，确认真实持久化工资未改变；再仅对一人补齐零奖金并重算。
+      await salary.getByRole('checkbox').first().uncheck();
+      await salary.getByRole('row').filter({ hasText: '合成人员1' }).getByRole('checkbox').check();
+      await page.getByRole('button', { name: '统一置数 / 粘贴' }).click();
+      drawer = page.getByRole('dialog', { name: '统一置数 / Excel 粘贴' });
+      await drawer.getByRole('combobox', { name: '置数栏目' }).click();
+      await page
+        .locator('.ant-select-item-option-content')
+        .getByText('奖金', { exact: true })
+        .click();
+      await drawer.getByLabel('统一金额', { exact: true }).fill('100');
+      await drawer.getByRole('button', { name: '预览修改范围' }).click();
+      await expect(drawer.getByRole('row').filter({ hasText: '合成人员1' })).toContainText(
+        '100.00',
+      );
+      await drawer.getByRole('button', { name: '关闭', exact: true }).click();
+      expect(
+        (
+          await callApi<Batch>(
+            request,
+            'm.payroll.batch',
+            { id: batchId },
+            { token, method: 'GET' },
+          )
+        ).rows[0]!.values.bonus,
+      ).toBeUndefined();
+      await page.getByRole('button', { name: '统一置数 / 粘贴' }).click();
+      drawer = page.getByRole('dialog', { name: '统一置数 / Excel 粘贴' });
+      await drawer.getByRole('combobox', { name: '置数栏目' }).click();
+      await page
+        .locator('.ant-select-item-option-content')
+        .getByText('奖金', { exact: true })
+        .click();
+      await drawer.getByRole('button', { name: '预览修改范围' }).click();
+      await drawer.getByRole('button', { name: '确认批量修改' }).click();
+      await page.getByRole('button', { name: '确定', exact: true }).click();
+      await expect(drawer).not.toBeVisible();
+      const modified = await callApi<Batch>(
+        request,
+        'm.payroll.batch',
+        { id: batchId },
+        { token, method: 'GET' },
+      );
+      expect(modified.rows.map((r) => r.values.bonus)).toEqual([0, undefined, undefined]);
+      expect(modified.calculated).toBe(false);
+      await page.getByRole('button', { name: '计算工资', exact: true }).click();
+      await expect(salary.getByRole('row').filter({ hasText: '合成人员1' })).toContainText(
+        '10,850.00',
+      );
+      await page.goto('/m/payroll/reports');
+      for (let i = 1; i <= 3; i++)
+        await select(page.getByRole('combobox', { name: '报告人员' }), `E00${i}`);
+      await page.getByLabel('报表', { exact: true }).click();
+      await page
+        .locator('.ant-select-item-option-content')
+        .getByText('票面计算', { exact: true })
+        .click();
+      await page.getByRole('button', { name: 'search 查询', exact: true }).click();
+      await expect(page.getByRole('row').filter({ hasText: '合成人员1' })).toContainText(
+        '10,850.00',
+      );
+      const reportDownload = page.waitForEvent('download');
+      await page.getByRole('button', { name: '导出报表 Excel' }).click();
+      const reportFile = await reportDownload;
+      expect(reportFile.suggestedFilename()).toBe('票面计算表.xlsx');
+      const reportBook = new ExcelJS.Workbook();
+      await reportBook.xlsx.readFile((await reportFile.path())!);
+      expect(reportBook.worksheets[0]!.rowCount).toBe(4);
+      await page.goto('/m/payroll/query');
+      await page.getByRole('button', { name: '添加查询条件' }).click();
+      await page.getByLabel('条件值1', { exact: true }).fill('合成人员2');
+      await page.getByRole('button', { name: 'search 查询', exact: true }).click();
+      await expect(page.getByRole('row').filter({ hasText: '合成人员2' })).toBeVisible();
+      await expect(page.getByRole('row').filter({ hasText: '合成人员1' })).toHaveCount(0);
+      await page.goto(
+        `/m/payroll/query?category=1&from=202601&to=202601&run=1&conditions=${encodeURIComponent(JSON.stringify([{ field: 'gross', operator: 'contains', value: '1' }]))}`,
+      );
+      await expect(page.getByText(/查询条件不兼容/)).toBeVisible();
+      await expect(page.getByRole('row').filter({ hasText: '合成人员' })).toHaveCount(0);
+      await page.goto(`/m/payroll/batch?id=${batchId}`);
+      await expect(page.getByRole('heading', { name: /202601 合成月薪/ })).toBeVisible();
       await page.getByRole('button', { name: '凭证设置与生成' }).click();
       drawer = page.getByRole('dialog', { name: '工资凭证设置与生成' });
       for (const [label, code] of [
@@ -202,6 +308,30 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
       await expect(
         callApi(request, 'm.payroll.calculate', { id, revision: saved.revision }, { token }),
       ).rejects.toThrow('已经结账或生成凭证');
+      await page.getByRole('button', { name: '工资结账', exact: true }).click();
+      await page.getByRole('button', { name: '确定', exact: true }).click();
+      await expect(page.getByRole('button', { name: '工资反结账', exact: true })).toBeVisible();
+      const carried = await callApi<{ id: number }[]>(
+        request,
+        'm.payroll.batches',
+        { period: 202602 },
+        { token, method: 'GET' },
+      );
+      expect(carried).toHaveLength(1);
+      const feb = await callApi<Batch>(
+        request,
+        'm.payroll.batch',
+        { id: carried[0]!.id },
+        { token, method: 'GET' },
+      );
+      expect(feb.rows[0]!.values).toEqual({ base: 1000000 });
+      expect(feb.rows[0]!.tax.confirmed).toBe(false);
+      expect((await svc.periods.get(202601))!.status).toBe('open');
+      await page.getByRole('button', { name: '工资反结账', exact: true }).click();
+      await page.getByRole('button', { name: '确定', exact: true }).click();
+      await expect(
+        page.getByText('该工资来源凭证已审核或过账，不能反结账', { exact: true }),
+      ).toBeVisible();
       await page.getByRole('link', { name: /发放凭证/ }).click();
       await expect(page).toHaveURL(new RegExp(`/m/voucher-entry/edit\\?id=${voucher.id}$`));
     } finally {

@@ -33,7 +33,6 @@ import {
   PageContainer,
   PeriodPicker,
   exportToExcel,
-  useUrlFilters,
   type DataColumn,
   type ExcelColumn,
 } from '@caiwu/ui';
@@ -53,37 +52,9 @@ import {
   type TaxInput,
 } from '../shared';
 import { api } from './api';
+import { usePayrollFilters } from './filters';
+import BulkDrawer from './BulkDrawer';
 
-/** W0 多标签页的 location 快照在同页查询变化时可能滞后；在本模块适配活动页 URL，仍由 useUrlFilters 写入。 */
-function usePayrollFilters<V extends Record<string, string | number | boolean | undefined>>(
-  defaults: V,
-): [V, (next: Partial<V>) => void] {
-  const [url, write] = useUrlFilters(defaults);
-  const location = useLocation();
-  const [, render] = useState(0);
-  const values = { ...url };
-  if (window.location.pathname.replace(/\/$/, '') === location.pathname.replace(/\/$/, '')) {
-    const actual = new URLSearchParams(window.location.search);
-    for (const [key, defaultValue] of Object.entries(defaults)) {
-      const raw = actual.get(key);
-      (values as Record<string, unknown>)[key] =
-        raw == null
-          ? defaultValue
-          : typeof defaultValue === 'number'
-            ? Number(raw)
-            : typeof defaultValue === 'boolean'
-              ? raw === 'true' || raw === '1'
-              : raw;
-    }
-  }
-  return [
-    values,
-    (next) => {
-      write({ ...values, ...next });
-      render((n) => n + 1);
-    },
-  ];
-}
 const refresh = () => queryClient.invalidateQueries({ queryKey: api.pathKey() });
 function ErrorState({ error }: { error: { message: string } | null }) {
   return error ? <Alert type="error" showIcon title={error.message} /> : null;
@@ -96,17 +67,30 @@ function useLeaveGuard(dirty: boolean) {
     };
     const click = (e: MouseEvent) => {
       if (
-        (e.target as HTMLElement).closest('a[href]') &&
+        (e.target as HTMLElement).closest(
+          'a[href], [role=menuitem], [role=tab], .ant-tabs-tab-remove',
+        ) &&
         !window.confirm('有工资资料未保存，确认离开并放弃修改？')
       ) {
         e.preventDefault();
         e.stopPropagation();
       }
     };
+    const keyboard = (e: KeyboardEvent) => {
+      if (
+        ((e.ctrlKey && e.key === 'F4') || (e.altKey && e.key === 'ArrowLeft')) &&
+        !window.confirm('有未保存资料，确认离开并放弃修改？')
+      ) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    };
+    window.addEventListener('keydown', keyboard, true);
     window.addEventListener('beforeunload', before);
     document.addEventListener('click', click, true);
     return () => {
       window.removeEventListener('beforeunload', before);
+      window.removeEventListener('keydown', keyboard, true);
       document.removeEventListener('click', click, true);
     };
   }, [dirty]);
@@ -120,6 +104,8 @@ export default function PayrollPage() {
         <Link to="/m/payroll/employees">人事档案</Link>
         <Link to="/m/payroll/structure">工资结构与公式</Link>
         <Link to="/m/payroll/tax">计税参数</Link>
+        <Link to="/m/payroll/reports">工资报表</Link>
+        <Link to="/m/payroll/query">工资综合查询</Link>
       </Space>
       {path.endsWith('/employees') ? (
         <Employees />
@@ -667,6 +653,7 @@ type SalaryFilters = {
   person: string;
 };
 function Salaries() {
+  const independent = useLocation().pathname.endsWith('/batch');
   const [values, setValues] = usePayrollFilters({
     period: 202601,
     category: 0,
@@ -679,13 +666,15 @@ function Salaries() {
   const setter = useRef(setValues);
   setter.current = setValues;
   const onFilters = useCallback((next: Partial<SalaryFilters>) => setter.current(next), []);
-  return <SalaryContent filters={stable} setFilters={onFilters} />;
+  return <SalaryContent filters={stable} setFilters={onFilters} independent={independent} />;
 }
 // 隔离 W0 标签页标题回调的重复父渲染，避免表格布局状态被反复触发。共享壳修复另列 PR。
 const SalaryContent = memo(function SalaryContent({
   filters,
   setFilters,
+  independent,
 }: {
+  independent: boolean;
   filters: SalaryFilters;
   setFilters: (next: Partial<SalaryFilters>) => void;
 }) {
@@ -704,6 +693,11 @@ const SalaryContent = memo(function SalaryContent({
     canCalculate = usePermission('payroll.salary.calculate'),
     canVoucher = usePermission('payroll.voucher'),
     canExport = usePermission('payroll.export');
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const canClose = usePermission('payroll.close'),
+    canReopen = usePermission('payroll.reopen');
+  const close = useMutation(api.close.mutationOptions({ onSuccess: () => void refresh() }));
+  const reopen = useMutation(api.reopen.mutationOptions({ onSuccess: () => void refresh() }));
   const [editing, setEditing] = useState<Batch | 'new' | null>(null),
     [voucher, setVoucher] = useState(false),
     [selected, setSelected] = useState<number[]>([]),
@@ -791,80 +785,113 @@ const SalaryContent = memo(function SalaryContent({
         )
       }
     >
-      <FilterBar initialValues={filters} onSearch={(v) => setFilters({ ...v, id: 0 })}>
-        <Form.Item name="period" label="期间">
-          <PeriodPicker />
-        </Form.Item>
-        <Form.Item name="category" label="类别">
-          <Select
-            allowClear
-            style={{ width: 140 }}
-            options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+      {!independent && (
+        <>
+          <FilterBar initialValues={filters} onSearch={(v) => setFilters({ ...v, id: 0 })}>
+            <Form.Item name="period" label="期间">
+              <PeriodPicker />
+            </Form.Item>
+            <Form.Item name="category" label="类别">
+              <Select
+                allowClear
+                style={{ width: 140 }}
+                options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+              />
+            </Form.Item>
+            <Form.Item name="department" label="部门">
+              <DimensionSelect type="department" style={{ width: 150 }} />
+            </Form.Item>
+            <Form.Item name="person" label="人员">
+              <Input placeholder="编号或姓名" />
+            </Form.Item>
+          </FilterBar>
+          <ErrorState error={list.error ?? detail.error ?? categories.error} />
+          <DataTable
+            tableId="payroll.batches"
+            rowKey="id"
+            loading={list.isLoading}
+            dataSource={list.data ?? []}
+            columns={[
+              { key: 'id', title: '批次', dataIndex: 'id', width: 90 },
+              { key: 'period', title: '期间', dataIndex: 'period', width: 110 },
+              {
+                key: 'category',
+                title: '工资类别',
+                width: 160,
+                render: (_, r) => categories.data?.find((c) => c.id === r.category_id)?.name,
+              },
+              {
+                key: 'state',
+                title: '状态',
+                width: 130,
+                render: (_, r) => (r.closed ? '已结账' : r.calculated ? '已计算' : '待计算'),
+              },
+              {
+                key: 'open',
+                title: '操作',
+                width: 120,
+                render: (_, r) => (
+                  <Button
+                    onClick={() => {
+                      setFilters({ id: r.id });
+                      setSelected([]);
+                    }}
+                  >
+                    打开工资
+                  </Button>
+                ),
+              },
+            ]}
           />
-        </Form.Item>
-        <Form.Item name="department" label="部门">
-          <DimensionSelect type="department" style={{ width: 150 }} />
-        </Form.Item>
-        <Form.Item name="person" label="人员">
-          <Input placeholder="编号或姓名" />
-        </Form.Item>
-      </FilterBar>
-      <ErrorState error={list.error ?? detail.error ?? categories.error} />
-      <DataTable
-        tableId="payroll.batches"
-        rowKey="id"
-        loading={list.isLoading}
-        dataSource={list.data ?? []}
-        columns={[
-          { key: 'id', title: '批次', dataIndex: 'id', width: 90 },
-          { key: 'period', title: '期间', dataIndex: 'period', width: 110 },
-          {
-            key: 'category',
-            title: '工资类别',
-            width: 160,
-            render: (_, r) => categories.data?.find((c) => c.id === r.category_id)?.name,
-          },
-          {
-            key: 'state',
-            title: '状态',
-            width: 130,
-            render: (_, r) => (r.closed ? '已结账' : r.calculated ? '已计算' : '待计算'),
-          },
-          {
-            key: 'open',
-            title: '操作',
-            width: 120,
-            render: (_, r) => (
-              <Button
-                onClick={() => {
-                  setFilters({ id: r.id });
-                  setSelected([]);
-                }}
-              >
-                打开工资
-              </Button>
-            ),
-          },
-        ]}
-      />
+        </>
+      )}
+      {independent && <ErrorState error={detail.error} />}
+      {independent && !filters.id && (
+        <Alert type="warning" title="缺少工资批次编号，请返回工资管理选择批次" />
+      )}
       {detail.isFetching && <Spin />}
       {b && (
         <>
           <Typography.Title level={5}>
             {b.period} {b.category.name} · 批次 {b.id} ·{' '}
-            {b.vouchers.length ? '已锁定' : b.calculated ? '已计算' : '待计算'}
+            {b.closed
+              ? '已结账'
+              : b.vouchers.length
+                ? '已锁定'
+                : b.calculated
+                  ? '已计算'
+                  : '待计算'}
           </Typography.Title>
           <Space wrap style={{ marginBottom: 12 }}>
-            {canEdit && !b.vouchers.length && (
+            {canEdit && !b.vouchers.length && !b.closed && (
               <Button onClick={() => setEditing(b)}>编辑工资</Button>
             )}
-            {canCalculate && !b.vouchers.length && (
+            {canCalculate && !b.vouchers.length && !b.closed && (
               <Button
                 loading={calculate.isPending}
                 onClick={() => calculate.mutate({ id: b.id, revision: b.revision })}
               >
                 计算工资
               </Button>
+            )}
+            {canEdit && !b.vouchers.length && !b.closed && (
+              <Button onClick={() => setBulkOpen(true)}>统一置数 / 粘贴</Button>
+            )}
+            {canClose && !b.closed && (
+              <Popconfirm
+                title="确认冻结本期工资并按传递栏目建立下月？"
+                onConfirm={() => close.mutate({ id: b.id, revision: b.revision, confirmed: true })}
+              >
+                <Button loading={close.isPending}>工资结账</Button>
+              </Popconfirm>
+            )}
+            {canReopen && b.closed && (
+              <Popconfirm
+                title="确认仅回退最近已结月份及未修改的下月传递数据？"
+                onConfirm={() => reopen.mutate({ id: b.id, revision: b.revision, confirmed: true })}
+              >
+                <Button loading={reopen.isPending}>工资反结账</Button>
+              </Popconfirm>
             )}
             {canVoucher && <Button onClick={() => setVoucher(true)}>凭证设置与生成</Button>}
             {canExport && (
@@ -881,6 +908,38 @@ const SalaryContent = memo(function SalaryContent({
             ))}
           </Space>
           {!b.calculated && <Alert type="info" title="工资已保存，计算后显示工资及税额快照。" />}
+          {b.previous.length > 0 && (
+            <>
+              <Typography.Title level={5}>
+                重算前后对照{!b.calculated ? '（当前修改待重算）' : ''}
+              </Typography.Title>
+              <DataTable<SalaryRow>
+                tableId="payroll.comparison"
+                rowKey="employeeId"
+                dataSource={b.previous}
+                columns={[
+                  { key: 'name', title: '人员', dataIndex: ['employee', 'name'], width: 120 },
+                  ...(['gross', 'deductions', 'taxAmount', 'net'] as const).flatMap((key, i) => [
+                    {
+                      key: `old_${key}`,
+                      title: `原${['应发', '扣款', '个税', '实发'][i]}`,
+                      dataIndex: key,
+                      money: true,
+                    },
+                    {
+                      key: `new_${key}`,
+                      title: `现${['应发', '扣款', '个税', '实发'][i]}`,
+                      money: true,
+                      render: (_: unknown, row: SalaryRow) => {
+                        const current = b.snapshots.find((r) => r.employeeId === row.employeeId);
+                        return current ? formatMoney(current[key]) : '待重算 / 已移除';
+                      },
+                    },
+                  ]),
+                ]}
+              />
+            </>
+          )}
           <DataTable<SalaryRow>
             tableId="payroll.salary"
             rowKey="employeeId"
@@ -897,13 +956,21 @@ const SalaryContent = memo(function SalaryContent({
         <BatchEditor
           batch={editing}
           categories={categories.data ?? []}
-          defaultPeriod={filters.period}
+          defaultPeriod={b?.period ?? filters.period}
           onClose={() => setEditing(null)}
           onSaved={(id) => {
             setFilters({ id });
             void refresh();
             setEditing(null);
           }}
+        />
+      )}
+      {bulkOpen && b && (
+        <BulkDrawer
+          batch={b}
+          selected={selected}
+          onClose={() => setBulkOpen(false)}
+          onSaved={() => void refresh()}
         />
       )}
       {voucher && b && <VoucherEditor key={b.id} batch={b} onClose={() => setVoucher(false)} />}
@@ -977,7 +1044,7 @@ function BatchEditor({
   onClose: () => void;
   onSaved: (id: number) => void;
 }) {
-  const employees = useQuery(api.employees.queryOptions());
+  const employees = useQuery(api.salaryEmployees.queryOptions());
   const [categoryId, setCategoryId] = useState(
     batch === 'new' ? categories.find((c) => !c.disabled)?.id : batch.categoryId,
   );

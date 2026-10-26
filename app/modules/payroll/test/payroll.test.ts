@@ -397,6 +397,10 @@ describe('工资纵切', () => {
       api.revoke({ id: b.id, revision: b.revision, kind: 'allocation', confirmed: true }),
     ).rejects.toThrow('不能删除');
     expect((await api.batch({ id: b.id })).vouchers).toHaveLength(1);
+    await app.svc.vouchers.changeStatus({ ids: [b.vouchers[0]!.id], to: 'posted' });
+    await expect(
+      api.revoke({ id: b.id, revision: b.revision, kind: 'allocation', confirmed: true }),
+    ).rejects.toThrow('不能删除');
     await app.svc.periods.setStatus(202601, 'closed');
     await expect(
       api.preview({ id: b.id, revision: b.revision, kind: 'payment', date: '2026-01-31' }),
@@ -703,4 +707,79 @@ describe('窗口规则补充', () => {
       { numRuns: 20 },
     );
   });
+});
+
+it('w_gz_gzgl 官方累计预扣全部扣除分项与税额解释，政策施行日/资格年度/无任职月份阻止', async () => {
+  const { employees } = await setup();
+  const e = employees[0]!;
+  const profile = TaxInputSchema.parse({
+    confirmed: true,
+    special: 100000,
+    additional: 50000,
+    other: 25000,
+    relief: 750,
+    openingTax: 1000,
+  });
+  expect(calculateTax(e, 202601, profile, 1000000, 100000, 2000)).toMatchObject({
+    taxable: 225000,
+    expense: 500000,
+    rate: '0.03',
+    cumulativeTax: 6000,
+    alreadyWithheld: 3000,
+    currentTax: 3000,
+  });
+  expect(() => calculateTax(e, 201812, profile, 1000000, 0, 0)).toThrow('施行日期');
+  expect(() =>
+    calculateTax({ ...e, startDate: '2027-01-01' }, 202601, profile, 1000000, 0, 0),
+  ).toThrow('没有任职受雇月份');
+  const previous = {
+    ...e,
+    startDate: '2019-01-01',
+    policy: 'annual60000' as const,
+    qualificationYear: 2020,
+    qualificationConfirmed: true,
+  };
+  expect(() => calculateTax(previous, 202001, profile, 1000000, 0, 0)).toThrow('自2021年');
+  expect(() =>
+    calculateTax({ ...previous, policy: 'firstIncome' }, 202001, profile, 1000000, 0, 0),
+  ).toThrow('自2020年');
+  expect(() =>
+    calculateTax({ ...previous, qualificationYear: 2025 }, 202601, profile, 1000000, 0, 0),
+  ).toThrow('逐年确认');
+});
+it('w_pz_sz/build_gz 设置乐观锁、基本栏目类型与失衡拦截使用真实批次/凭证服务', async () => {
+  const { category, employees } = await setup();
+  const m = await mapping(category);
+  let b = await computed(category, [row(employees[0]!.id, 1000000)]);
+  await expect(
+    api.saveMapping({
+      categoryId: category.id,
+      mapping: { ...m, allocationField: 'base' },
+    } as never),
+  ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  const newer = await api.saveMapping({
+    categoryId: category.id,
+    mapping: { ...m, bankAccountId: m.deductionAccountId },
+  });
+  expect(newer.revision).toBe(m.revision + 1);
+  await expect(api.saveMapping({ categoryId: category.id, mapping: m })).rejects.toThrow(
+    '其他操作修改',
+  );
+  // 注入本模块快照损坏，验证失衡阻止；凭证读写仍使用真实 core 服务。
+  const broken = { ...b.snapshots[0]!, net: 1 };
+  await sql`UPDATE payroll_row SET snapshot_json=${JSON.stringify(broken)} WHERE batch_id=${b.id}`.execute(
+    app.svc.db,
+  );
+  await expect(
+    api.preview({ id: b.id, revision: b.revision, kind: 'payment', date: '2026-01-31' }),
+  ).rejects.toThrow('借贷金额不平');
+  expect((await app.svc.vouchers.list({})).items).toHaveLength(0);
+  b = await api.calculate({ id: b.id, revision: b.revision });
+  expect(b.snapshots[0]!.net).toBe(985000);
+});
+
+it('w_xt_gzsz 保留变量名拒绝，防止原型属性混入工资取值', async () => {
+  await expect(
+    api.saveCategory({ name: '变量校验', fields: [{ ...DEFAULT_FIELDS[0]!, key: 'constructor' }] }),
+  ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
 });

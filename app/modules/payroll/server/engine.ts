@@ -12,7 +12,20 @@ export function fail(
     code: `PAYROLL_${code}`,
     message,
     hint,
-    actions: [{ label: '返回工资', to }],
+    actions: [
+      {
+        label: to.startsWith('/m/voucher-entry/')
+          ? '查看来源凭证'
+          : to === '/m/payroll/tax'
+            ? '配置计税参数'
+            : to === '/m/payroll/employees'
+              ? '维护人事档案'
+              : to.includes('id=')
+                ? '打开相关工资批次'
+                : '返回工资',
+        to,
+      },
+    ],
   });
 }
 export function cents(value: Decimal.Value): number {
@@ -137,6 +150,12 @@ export function evaluate(node: Node, values: Record<string, number>): Decimal {
 }
 export function validateCategory(c: Category | Omit<Category, 'id'>) {
   const keys = new Set(c.fields.map((f) => f.key));
+  if (
+    c.fields.some((f) =>
+      ['constructor', 'prototype', '__proto__', 'gross', 'deductions', 'net'].includes(f.key),
+    )
+  )
+    fail('FIELDS', '栏目变量使用了保留字', '换一个稳定变量名');
   if (keys.size !== c.fields.length) fail('FIELDS', '栏目变量重复');
   const formulas = c.formulas.filter((f) => f.enabled);
   if (formulas.some((f) => f.tax))

@@ -11,8 +11,23 @@ CREATE INDEX payroll_history ON payroll_row(employee_id,batch_id);
 CREATE TABLE payroll_voucher(batch_id INTEGER NOT NULL REFERENCES payroll_batch(id), kind TEXT NOT NULL, voucher_id INTEGER NOT NULL REFERENCES voucher(id), PRIMARY KEY(batch_id,kind));
 `,
   },
+  {
+    id: '0002_payroll_period',
+    sql: `CREATE TABLE payroll_period(period INTEGER NOT NULL, category_id INTEGER NOT NULL REFERENCES payroll_category(id), batch_id INTEGER NOT NULL UNIQUE REFERENCES payroll_batch(id), closed INTEGER NOT NULL, next_batch_id INTEGER REFERENCES payroll_batch(id), PRIMARY KEY(period,category_id));`,
+  },
+  {
+    id: '0003_previous_calculation',
+    sql: `ALTER TABLE payroll_batch ADD COLUMN previous_json TEXT NOT NULL DEFAULT '[]';`,
+  },
 ]);
 export type PayrollTables = {
+  payroll_period: {
+    period: number;
+    category_id: number;
+    batch_id: number;
+    closed: number;
+    next_batch_id: number | null;
+  };
   payroll_category: { id: Generated<number>; name: string; revision: number; data: string };
   payroll_employee: {
     id: Generated<number>;
@@ -27,6 +42,7 @@ export type PayrollTables = {
     category_id: number;
     revision: number;
     category_json: string;
+    previous_json: Generated<string>;
     calculated: number;
     closed: number;
   };
