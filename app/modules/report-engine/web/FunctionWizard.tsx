@@ -210,6 +210,7 @@ export function FunctionWizard({
         <div hidden={kind !== 'balance'}>
           <Form.Item label="科目">
             <AccountSelect
+              leafOnly={false}
               value={accountId}
               onChange={(id) => {
                 setAccountId(id ?? undefined);

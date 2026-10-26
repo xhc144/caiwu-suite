@@ -15,8 +15,12 @@ const base = {
 };
 async function choose(page: Page, input: Locator, label: string) {
   await input.click();
+  const listId = await input.getAttribute('aria-controls');
+  expect(listId).toBeTruthy();
   await page
-    .locator('.ant-select-dropdown:visible .ant-select-item-option-content')
+    .locator('.ant-select-dropdown')
+    .filter({ has: page.locator(`[id="${listId}"]`) })
+    .locator('.ant-select-item-option-content')
     .filter({ hasText: new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`) })
     .click();
 }
