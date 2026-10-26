@@ -1,0 +1,13 @@
+{
+  "provenance": "synthetic; no original installation or real account-set data",
+  "opening": 1000.123456,
+  "documents": [
+    {"date":"2026-01-10", "direction":"Receipt", "amount":200.100001, "counterAccount":"6001"},
+    {"date":"2026-01-10", "direction":"Payment", "amount":50.000001, "counterAccount":"6601"}
+  ],
+  "postedLedger": [
+    {"id":"synthetic-receipt", "debit":200.100001, "credit":0},
+    {"id":"synthetic-payment", "debit":0, "credit":50.000001}
+  ],
+  "expectedClosing": 1150.223456
+}
