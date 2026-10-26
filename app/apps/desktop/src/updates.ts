@@ -372,7 +372,10 @@ export class DesktopUpdates {
       await fn();
     } catch (error) {
       this.#status.state = 'error';
-      this.#status.message = error instanceof Error ? error.message : '更新未完成，请稍后重新检查';
+      this.#status.message =
+        error instanceof Error && /^[\u4e00-\u9fff]/u.test(error.message)
+          ? error.message
+          : '更新未完成，请检查网络连接和磁盘空间后重新检查；当前程序和账套未更改';
     } finally {
       this.#busy = false;
     }

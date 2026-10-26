@@ -645,15 +645,15 @@ function registerIpc() {
   });
   handle('caiwu:host:checkUpdate', async (...args) => {
     if (args.length || !updates) throw new Error('当前平台不支持 Windows 安装更新');
-    return updates.check();
+    return updateRequest('check');
   });
   handle('caiwu:host:downloadUpdate', async (...args) => {
     if (args.length || !updates) throw new Error('当前平台不支持 Windows 安装更新');
-    return updates.download();
+    return updateRequest('download');
   });
   handle('caiwu:host:installUpdate', async (...args) => {
     if (args.length) throw new Error('桌面参数不合法');
-    return installUpdate();
+    return installUpdate().finally(refreshUpdateMenu);
   });
   handle('caiwu:host:chooseDataDir', async (...args) => {
     if (args.length) throw new Error('桌面参数不合法');
@@ -681,6 +681,29 @@ function registerIpc() {
     });
     return result.canceled ? null : (result.filePaths[0] ?? null);
   });
+}
+
+function refreshUpdateMenu() {
+  const state = updates?.status().state;
+  const menu = Menu.getApplicationMenu();
+  const check = menu?.getMenuItemById('caiwu-check-update');
+  const install = menu?.getMenuItemById('caiwu-install-update');
+  if (check) check.enabled = !!updates && state !== 'checking' && state !== 'downloading';
+  if (install) install.enabled = state === 'downloaded';
+}
+
+async function updateRequest(action: 'check' | 'download') {
+  const pending = updates![action]();
+  refreshUpdateMenu();
+  if (action === 'download' && mainWindow && !mainWindow.isDestroyed())
+    mainWindow.setProgressBar(2);
+  try {
+    return await pending;
+  } finally {
+    refreshUpdateMenu();
+    if (action === 'download' && mainWindow && !mainWindow.isDestroyed())
+      mainWindow.setProgressBar(-1);
+  }
 }
 
 async function installUpdate(): Promise<boolean> {
@@ -718,7 +741,7 @@ async function checkForUpdates(manual: boolean) {
   if (!updates || updateDialog || quitting || recovering || !mainWindow) return;
   updateDialog = true;
   try {
-    const result = await updates.check();
+    const result = await updateRequest('check');
     if (!mainWindow || quitting || recovering) return;
     if (result.state !== 'available' || !result.update) {
       if (manual)
@@ -745,7 +768,7 @@ async function checkForUpdates(manual: boolean) {
       noLink: true,
     });
     if (response !== 1 || quitting || recovering) return;
-    const downloaded = await updates.download();
+    const downloaded = await updateRequest('download');
     if (downloaded.state === 'error') dialog.showErrorBox('更新下载未完成', downloaded.message);
     else await installUpdate();
   } catch {
@@ -946,6 +969,7 @@ async function initialize() {
         label: '帮助',
         submenu: [
           {
+            id: 'caiwu-check-update',
             label: '检查软件更新…',
             enabled: !!updates,
             click: () => {
@@ -953,12 +977,15 @@ async function initialize() {
             },
           },
           {
+            id: 'caiwu-install-update',
             label: '安装已下载更新…',
-            enabled: !!updates,
+            enabled: false,
             click: () => {
-              void installUpdate().catch(() =>
-                dialog.showErrorBox('更新尚未准备好', '请先在帮助菜单检查更新并完成下载校验'),
-              );
+              void installUpdate()
+                .finally(refreshUpdateMenu)
+                .catch(() =>
+                  dialog.showErrorBox('更新尚未准备好', '请先在帮助菜单检查更新并完成下载校验'),
+                );
             },
           },
           {
