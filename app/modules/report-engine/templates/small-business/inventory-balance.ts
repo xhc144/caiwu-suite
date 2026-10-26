@@ -44,6 +44,7 @@ export const officialInventoryMapping: InventoryMapping = {
  * 仅供有完整科目表的显式模板构造；只认可本表标准母科目下的完整覆盖。
  * 缺角色、漏明细、父子重复都拒绝。不存在须同时有文字依据和完整科目表佐证。
  * 该检查没有接入公共router，不能代替生成时的原子预检或持久profile。
+ * 验证通过仅表示当前快照一致，不代表允许输出依赖此快照的模板。
  */
 export function validateInventoryMapping(
   mapping: InventoryMapping,
@@ -94,27 +95,33 @@ export function applyInventoryBalances(t: ReportTemplate, config?: InventoryConf
   if (config) validateInventoryMapping(config.mapping, config.accounts);
   // 默认十项全部强制引用；缺任一母科目由共享BALANCE.require明确报错，不回退零。
   const mapping = config?.mapping ?? officialInventoryMapping;
+  // 公共引擎尚不能绑定/复核科目表版本。先拒绝所有依赖构造期快照的省略：
+  // absent变常量零会漏掉以后新增的母科目，明细列表会漏掉以后新增的兄弟科目。
+  // 必须在修改任何单元格之前阻止输出；不能用README提示或自校验等式代替门禁。
+  for (const { role, code, name } of inventoryRoles) {
+    const entry = mapping[role];
+    if ('absent' in entry || entry.accounts.length !== 1 || entry.accounts[0] !== code)
+      throw new Error(
+        `${name}的不存在声明或明细映射需要公共生成/导出的科目版本原子绑定；当前不能构造该存货模板，请等待共享门禁后重新核实映射`,
+      );
+  }
   for (const column of ['closing', 'yearOpening'] as const) {
     const source = (role: InventoryRole) => {
-      const entry = mapping[role];
-      if ('absent' in entry) return '0';
-      return entry.accounts
-        .map((account) =>
-          balanceFormula({
-            account,
-            metric: column === 'closing' ? 'closing' : 'opening',
-            unit: 'cents',
-            currency: 'CNY',
-            direction: 'signed',
-            dimension: 'none',
-            item: '',
-            options:
-              column === 'closing'
-                ? { from: 'current', to: 'current' }
-                : { from: 'yearStart', to: 'yearStart' },
-          }),
-        )
-        .join('+');
+      // 仅母科目范围可以随真实总账动态包含后续新增的所有明细。
+      const account = inventoryRoles.find((r) => r.role === role)!.code;
+      return balanceFormula({
+        account,
+        metric: column === 'closing' ? 'closing' : 'opening',
+        unit: 'cents',
+        currency: 'CNY',
+        direction: 'signed',
+        dimension: 'none',
+        item: '',
+        options:
+          column === 'closing'
+            ? { from: 'current', to: 'current' }
+            : { from: 'yearStart', to: 'yearStart' },
+      });
     };
     const total = inventoryRoles.map(({ role }) => `(${source(role)})`).join('+');
     replace(t, balanceAddress(9, column), total);
@@ -151,14 +158,4 @@ export function applyInventoryBalances(t: ReportTemplate, config?: InventoryConf
   if (note)
     note.source =
       '存货十项取总账有符号余额；在产品取生产成本末级明细；存货及其中项年初取年度期初。其它简单项目按年度累计还原。';
-  if (config) {
-    const evidence = inventoryRoles.flatMap(({ role, name }) => {
-      const entry = mapping[role];
-      return 'absent' in entry ? [`${name}不存在依据：${entry.absent.reason.trim()}`] : [];
-    });
-    if (evidence.length) {
-      const warning = t.cells.find((c) => c.address === 'A2');
-      if (warning) warning.source += ` ${evidence.join('；')}。科目表变更后须重新核实并构造模板。`;
-    }
-  }
 }
