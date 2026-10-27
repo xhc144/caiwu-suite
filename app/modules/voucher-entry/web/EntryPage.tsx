@@ -32,6 +32,7 @@ import { confirm } from './dialogs';
 import LineGrid, { LineDetails } from './LineGrid';
 import PasteDialog from './PasteDialog';
 import CalculatorDialog from './CalculatorDialog';
+import { useSaveActivity } from './useSaveActivity';
 
 type Bootstrap = inferRouterOutputs<EntryRouter>['bootstrap'];
 const inputOf = (v: Voucher): Entry => ({
@@ -174,7 +175,7 @@ function Editor({
   const frame = useRef<HTMLDivElement>(null);
   const amountSide = useRef<'debit' | 'credit'>('debit');
   const moneyFocused = useRef(false);
-  const pending = useRef(false);
+  const { pending, saving, startSaving, finishSaving } = useSaveActivity();
   const readonly =
     !ready ||
     !canEdit ||
@@ -330,7 +331,7 @@ function Editor({
         }
       }
       setStatus('保存中');
-      pending.current = true;
+      startSaving();
       try {
         const result = await persist.mutateAsync({
           key: editorKey,
@@ -389,7 +390,7 @@ function Editor({
         }
         return false;
       } finally {
-        pending.current = false;
+        finishSaving();
       }
     };
     const task = tail.current.then(operation, operation);
@@ -420,11 +421,10 @@ function Editor({
     };
     window.addEventListener('beforeunload', listener);
     return () => window.removeEventListener('beforeunload', listener);
-  }, []);
+  }, [pending]);
   useUnsavedChanges({
     title: header?.displayNo ? `凭证 ${header.displayNo}` : '凭证录入',
-    dirty:
-      ready && !readonly && (live.current.version !== live.current.savedVersion || pending.current),
+    dirty: ready && !readonly && (live.current.version !== live.current.savedVersion || saving),
     version: live.current.version,
     save: () => saveRef.current(true),
     discard: async () => {
@@ -510,7 +510,7 @@ function Editor({
     };
     document.addEventListener('click', guard, true);
     return () => document.removeEventListener('click', guard, true);
-  }, [tab.active]);
+  }, [tab.active, pending]);
   useEffect(() => {
     if (!tab.active) return;
     const listener = (e: KeyboardEvent) => {

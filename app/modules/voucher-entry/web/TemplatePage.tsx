@@ -18,6 +18,7 @@ import { api } from './api';
 import { confirm } from './dialogs';
 import LineGrid, { LineDetails } from './LineGrid';
 import CalculatorDialog, { type CalculatorDialogHandle } from './CalculatorDialog';
+import { useSaveActivity } from './useSaveActivity';
 
 type TemplateDraft = {
   id?: number;
@@ -49,7 +50,7 @@ export default function TemplatePage() {
   const root = useRef<HTMLDivElement>(null);
   const draftRef = useRef(draft);
   const version = useRef(0);
-  const pending = useRef(false);
+  const { pending, saving, startSaving, finishSaving } = useSaveActivity();
   const confirming = useRef(false);
   const ask = async (title: string, content: string) => {
     confirming.current = true;
@@ -86,7 +87,7 @@ export default function TemplatePage() {
     };
     window.addEventListener('beforeunload', before);
     return () => window.removeEventListener('beforeunload', before);
-  }, []);
+  }, [pending]);
   const close = async () => {
     if (pending.current) {
       notify.info('模版正在保存，请等待响应后再关闭');
@@ -107,7 +108,7 @@ export default function TemplatePage() {
     const snapshot = draftRef.current;
     if (!snapshot || !canEdit || pending.current) return false;
     const savedVersion = version.current;
-    pending.current = true;
+    startSaving();
     try {
       const hasUnknown = snapshot.lines.some((l) => {
         const a = boot.data?.accounts.find((a) => a.id === l.accountId);
@@ -146,13 +147,13 @@ export default function TemplatePage() {
       /* 框架显示可操作的业务提示 */
       return false;
     } finally {
-      pending.current = false;
+      finishSaving();
     }
     return !dirtyRef.current;
   };
   useUnsavedChanges({
     title: '凭证模版',
-    dirty: dirty || pending.current,
+    dirty: dirty || saving,
     version: version.current,
     save: submit,
     discard: () => {
