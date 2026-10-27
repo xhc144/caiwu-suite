@@ -14,8 +14,18 @@ const [role, mode, port, dir] = process.argv.slice(2);
 if (role === 'child') {
   const grandchild = spawn(process.execPath, [self, 'grandchild', mode, port, dir], {
     stdio: ['ignore', process.stdout, process.stderr, 'ipc'],
+    detached: mode === 'detached',
   });
-  if (mode === 'original') process.exit(0);
+  writeFileSync(
+    path.join(dir, 'child.json'),
+    JSON.stringify({
+      event: 'child.spawn',
+      pid: process.pid,
+      grandchild: grandchild.pid,
+      at: Date.now(),
+    }),
+  );
+  if (mode !== 'handshake') process.exit(0);
   grandchild.once('message', () => process.exit(0));
 } else if (role === 'grandchild') {
   const trace = [];
@@ -55,7 +65,11 @@ if (role === 'child') {
     process.stderr.write('STDERR_READY\n', initialized);
   }
 } else {
-  for (const candidate of ['original', 'handshake']) {
+  process.on('uncaughtException', (error) => {
+    console.log(`::error title=stdio-probe-driver::${error.stack?.replaceAll('\n', '%0A')}`);
+    process.exit(1);
+  });
+  for (const candidate of ['original', 'handshake', 'detached']) {
     const dataDir = await mkdtemp(path.join(os.tmpdir(), 'caiwu-stdio-probe-'));
     const events = [];
     const record = (event, detail) => events.push({ event, detail, at: Date.now() });
@@ -119,13 +133,15 @@ if (role === 'child') {
         errors,
       };
       console.log(`::notice title=stdio-probe-${candidate}::${JSON.stringify(result)}`);
-      if (candidate === 'handshake') {
+      if (candidate === 'detached') {
         assert.ok(output.includes('FINAL_STDIO'), JSON.stringify(result));
         assert.ok(errors.includes('FINAL_STDERR'), JSON.stringify(result));
       }
     } catch (error) {
-      console.log(`::warning title=stdio-probe-${candidate}::${JSON.stringify({ platform: process.platform, mode: candidate, error: error.message, events, output, errors })}`);
-      if (candidate === 'handshake') process.exitCode = 1;
+      console.log(
+        `::warning title=stdio-probe-${candidate}::${JSON.stringify({ platform: process.platform, mode: candidate, error: error.message, child: JSON.parse(await readFile(path.join(dataDir, 'child.json'), 'utf8')), events, output, errors })}`,
+      );
+      if (candidate === 'detached') process.exitCode = 1;
     } finally {
       clearTimeout(timer);
       watcher?.close();
