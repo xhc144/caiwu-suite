@@ -19,6 +19,13 @@ export default defineManifest({
     },
     {
       group: 'voucher',
+      title: '凭证修改',
+      path: '/edit',
+      permission: 'voucher-entry.view',
+      keywords: ['pzxg', '凭证浏览'],
+    },
+    {
+      group: 'voucher',
       title: '凭证模版',
       path: '/templates',
       permission: 'voucher-entry.view',

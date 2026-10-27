@@ -42,16 +42,84 @@ export const EntrySchema = VoucherInputSchema.omit({
   })
   .strict();
 export type Entry = z.input<typeof EntrySchema>;
-export const SaveSchema = z.object({
-  key: z.string().min(1).max(100),
-  id: z.number().int().positive().optional(),
-  expectedRevision: z.number().int().positive().optional(),
-  bufferRevision: z.number().int().nonnegative().default(0),
-  data: EntrySchema,
-  confirmFuture: z.boolean().default(false),
-  confirmNumberChange: z.boolean().default(false),
-  acknowledgeCashflowUnknown: z.boolean().default(false),
-});
+/** 日期逐字编辑经过无效中间态时也清除旧期间汇率，保留原币和本币供核对。 */
+export function changeEntryDate(data: Entry, date: string): Entry {
+  const valid = isEntryDate(date);
+  const samePeriod =
+    valid && isEntryDate(data.date) && periodOfDate(date) === periodOfDate(data.date);
+  return {
+    ...data,
+    date,
+    number: samePeriod ? data.number : null,
+    lines: samePeriod
+      ? data.lines
+      : data.lines.map((line) => (line.currency ? { ...line, exchangeRate: null } : line)),
+  };
+}
+
+/** 带入期间汇率时同步折算；保留借贷侧和红字符号。 */
+export function applyExchangeRate(line: VoucherLineInput, rate: string): VoucherLineInput {
+  const patch = { ...line, exchangeRate: rate };
+  if (line.fcAmount == null) return patch;
+  const amount = foreignAmount(line.fcAmount, rate);
+  return { ...patch, ...(line.credit ? { credit: amount } : { debit: amount }) };
+}
+function invalidEntryInput(error: Pick<z.core.$ZodError, 'issues'>): never {
+  if (!error.issues.some((issue) => issue.path.includes('lines')))
+    throw new z.ZodError(error.issues);
+  const problems = error.issues.map((issue) => {
+    const offset = issue.path.indexOf('lines');
+    const index = offset >= 0 ? issue.path[offset + 1] : null;
+    const line = typeof index === 'number' ? index + 1 : 0;
+    const primary = issue.path[offset + 2];
+    const field = String(primary === 'dimensions' ? issue.path[offset + 3] : (primary ?? 'lines'));
+    const label =
+      (
+        {
+          accountId: '科目',
+          summary: '摘要',
+          project: '项目',
+          partner: '客供',
+          department: '部门',
+          person: '个人',
+          cashflow: '现金流量项目',
+          settlementMethodId: '结算类别',
+          debit: '借方金额',
+          credit: '贷方金额',
+          fcAmount: '外币金额',
+          quantity: '数量',
+          unitPrice: '单价',
+          exchangeRate: '汇率',
+          bizDate: '业务日期',
+        } as Record<string, string>
+      )[field] ?? '输入内容';
+    return {
+      line,
+      field,
+      message: line
+        ? `第${line}行：${label}无效，请核对后重试`
+        : '凭证内容不完整或格式有误，请核对日期、类型和金额',
+    };
+  });
+  throw new BusinessError({
+    code: 'ENTRY_INVALID',
+    message: problems[0]?.message ?? '凭证内容有误',
+    hint: '请修正标出的输入后重新保存，当前内容已保留',
+    details: { problems },
+  });
+}
+export const SaveSchema = z
+  .object({
+    key: z.string().min(1).max(100),
+    id: z.number().int().positive().optional(),
+    expectedRevision: z.number().int().positive().optional(),
+    bufferRevision: z.number().int().nonnegative().default(0),
+    data: EntrySchema,
+    confirmFuture: z.boolean().default(false),
+    confirmNumberChange: z.boolean().default(false),
+    acknowledgeCashflowUnknown: z.boolean().default(false),
+  })
+  .catch(({ error }) => invalidEntryInput(error));
 export type SaveInput = z.input<typeof SaveSchema>;
 export const TemplateSchema = z
   .object({
@@ -63,7 +131,8 @@ export const TemplateSchema = z
     lines: z.array(VoucherLineInputSchema).min(2).max(999),
     acknowledgeCashflowUnknown: z.boolean().default(false),
   })
-  .strict();
+  .strict()
+  .catch(({ error }) => invalidEntryInput(error));
 export type TemplateInput = z.input<typeof TemplateSchema>;
 export const CashflowDirectionSchema = z.enum(['inflow', 'outflow', 'internal']);
 export type Problem = { line: number; field: string; message: string };
@@ -74,6 +143,30 @@ export const blankLine = (): VoucherLineInput => ({
   debit: 0,
   credit: 0,
 });
+
+/** 只忽略真正空白的编辑行；坏数字和任何半填业务内容都留给校验。 */
+export function isEmptyEntryLine(line: VoucherLineInput): boolean {
+  const zero = (value: unknown) => value == null || (typeof value === 'number' && value === 0);
+  const decimalZero = (value: unknown) =>
+    value == null ||
+    value === '' ||
+    (typeof value === 'string' && /^[-+]?\d+(\.\d+)?$/.test(value) && new Decimal(value).isZero());
+  return (
+    line.accountId == null &&
+    !line.summary?.trim() &&
+    Object.values(line.dimensions ?? {}).every((id) => id == null) &&
+    !line.refNo?.trim() &&
+    !line.bizDate &&
+    line.settlementMethodId == null &&
+    (!line.currency || line.currency === 'CNY') &&
+    line.exchangeRate == null &&
+    zero(line.debit) &&
+    zero(line.credit) &&
+    zero(line.fcAmount) &&
+    decimalZero(line.quantity) &&
+    decimalZero(line.unitPrice)
+  );
+}
 
 export function monthDistance(date: string, today: string): number {
   if (!isValidDate(date) || !isValidDate(today)) throw new Error('请输入真实的 YYYY-MM-DD 日期');
@@ -104,7 +197,7 @@ export function balanceCell(
   if (!Number.isSafeInteger(amount))
     throw new BusinessError({
       code: 'ENTRY_AMOUNT_RANGE',
-      message: '找平金额超出安全整数分范围',
+      message: '找平金额超出可保存金额范围',
       hint: '请核对其它行的金额',
     });
   current[side] = amount === 0 ? 0 : amount;

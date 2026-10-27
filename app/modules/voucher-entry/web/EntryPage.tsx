@@ -1,10 +1,16 @@
 import { Alert, Button, Drawer, Input, InputNumber, Modal, Select, Space, Spin, Tag } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { EntryRouter } from '../server/router';
-import { formatMoney, periodOfDate, VOUCHER_STATUS_LABELS, type Voucher } from '@caiwu/core';
+import {
+  formatMoney,
+  periodOfDate,
+  sumCents,
+  VOUCHER_STATUS_LABELS,
+  type Voucher,
+} from '@caiwu/core';
 import { PageContainer, useUrlFilters } from '@caiwu/ui';
 import {
   getBusinessError,
@@ -18,6 +24,7 @@ import {
 import {
   isEntryDate,
   balanceCell,
+  changeEntryDate,
   blankLine,
   monthDistance,
   type Entry,
@@ -27,6 +34,9 @@ import { api } from './api';
 import { confirm } from './dialogs';
 import LineGrid, { LineDetails } from './LineGrid';
 import PasteDialog from './PasteDialog';
+import CalculatorDialog from './CalculatorDialog';
+import { invalidAmount } from './EntryMoneyInput';
+import { AmountDraftContext, useAmountDrafts } from './amount-drafts';
 
 type Bootstrap = inferRouterOutputs<EntryRouter>['bootstrap'];
 const inputOf = (v: Voucher): Entry => ({
@@ -78,6 +88,8 @@ function newKey(book: string) {
   return key;
 }
 export default function EntryPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [filters] = useUrlFilters({ id: 0 });
   const session = useSession();
   const initial = useQuery(api.bootstrap.queryOptions());
@@ -88,9 +100,23 @@ export default function EntryPage() {
     refetchOnMount: 'always',
   });
   if (initial.isLoading || (filters.id && (existing.isLoading || !existing.isFetchedAfterMount)))
-    return <Spin />;
+    return (
+      <Spin tip="正在读取凭证">
+        <div style={{ height: 100 }} />
+      </Spin>
+    );
   if (!initial.data || (filters.id && (existing.isError || !existing.data)))
     return <Alert type="error" title="无法打开凭证，请刷新并核对编号和查看权限" />;
+  if (location.pathname.replace(/\/$/, '').endsWith('/edit') && !filters.id)
+    return (
+      <PageContainer title="凭证修改">
+        <Alert
+          type="info"
+          title="请先选择要查看或修改的凭证"
+          action={<Button onClick={() => void navigate('/m/voucher-book')}>打开凭证序时簿</Button>}
+        />
+      </PageContainer>
+    );
   return (
     <Editor
       key={`${filters.id}:${session?.bookId}`}
@@ -115,6 +141,9 @@ function Editor({
   const navigate = useNavigate();
   const session = useSession();
   const tab = useTab();
+  const activeTab = useRef(tab.active);
+  activeTab.current = tab.active;
+  const amountDrafts = useAmountDrafts();
   const canEdit = usePermission('voucher-entry.edit');
   const canTemplate = usePermission('voucher-entry.template');
   const initial: Entry = voucher
@@ -129,12 +158,16 @@ function Editor({
   const [data, setData] = useState(initial);
   const [header, setHeader] = useState(voucher);
   const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState('正在恢复编辑缓冲');
+  const [status, setStatus] = useState('正在恢复暂存内容');
   const [error, setError] = useState('');
   const [conflict, setConflict] = useState(false);
   const [active, setActive] = useState(0);
   const [details, setDetails] = useState(false);
   const [paste, setPaste] = useState(false);
+  const [calculator, setCalculator] = useState<{
+    line: number;
+    side: 'debit' | 'credit' | null;
+  } | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const templateEpoch = useRef(0);
   useEffect(
@@ -154,10 +187,12 @@ function Editor({
     bufferRevision: 0,
     version: 0,
     savedVersion: 0,
+    leaveEpoch: 0,
   });
   const tail = useRef<Promise<unknown>>(Promise.resolve());
   const root = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  const detailRoot = useRef<HTMLDivElement>(null);
   const amountSide = useRef<'debit' | 'credit'>('debit');
   const moneyFocused = useRef(false);
   const pending = useRef(false);
@@ -218,7 +253,7 @@ function Editor({
           if (staleBuffer) {
             live.current.data = inputOf(current);
             setData(inputOf(current));
-            restoredStatus = '已载入服务端新版本；旧编辑缓冲未自动覆盖，恢复前请核对';
+            restoredStatus = '已载入服务端新版本；旧暂存内容未自动覆盖，恢复前请核对';
           } else if (!current || current.status === 'draft' || !voucher) {
             live.current.data = buffer.data;
             setData(buffer.data);
@@ -227,7 +262,7 @@ function Editor({
             JSON.stringify({ ...buffer.data, draft: false }) !==
               JSON.stringify({ ...initial, draft: false })
           ) {
-            restoredStatus = '存在未提交编辑缓冲，可点击“恢复编辑缓冲”继续';
+            restoredStatus = '存在未提交暂存内容，可点击“恢复暂存内容”继续';
           }
         }
         live.current.savedData = live.current.data;
@@ -237,7 +272,7 @@ function Editor({
       .catch(() => {
         if (liveEffect) {
           setStatus('恢复失败，请刷新');
-          setError('读取编辑缓冲失败');
+          setError('读取暂存内容失败');
         }
       });
     return () => {
@@ -247,6 +282,16 @@ function Editor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorKey]);
 
+  const hasChanges = useCallback(() => {
+    const state = live.current;
+    return (
+      amountDrafts.values.size > 0 ||
+      invalidAmount(frame.current) != null ||
+      (state.version !== state.savedVersion &&
+        JSON.stringify({ ...state.data, draft: false }) !==
+          JSON.stringify({ ...state.savedData, draft: false }))
+    );
+  }, [amountDrafts.values]);
   const change = (next: Entry) => {
     if (readonly) return;
     live.current.data = next;
@@ -256,20 +301,38 @@ function Editor({
     setError('');
     setStatus('等待自动保存');
   };
-  const focus = (line: number, field: string) => {
+  const focus = useCallback((line: number, field: string) => {
     setActive(Math.max(0, line));
     setTimeout(() => {
+      if (!activeTab.current) return;
       const row = root.current?.querySelector(`[data-line="${Math.max(0, line)}"]`);
       const target =
         row?.querySelector<HTMLElement>(`[data-field="${field}"]`) ??
-        document.querySelector<HTMLElement>(`[role="dialog"] [data-field="${field}"]`);
+        detailRoot.current?.querySelector<HTMLElement>(`[data-field="${field}"]`);
       (target?.tagName === 'INPUT' ? target : target?.querySelector<HTMLElement>('input'))?.focus();
       row?.scrollIntoView({ block: 'nearest' });
     }, 0);
-  };
-  const save = (draft: boolean): Promise<boolean> => {
+  }, []);
+  const save = (draft: boolean, automatic = false): Promise<boolean> => {
+    const epoch = live.current.leaveEpoch;
     const operation = async () => {
+      if (epoch !== live.current.leaveEpoch) return false;
       if (readonly || !ready || pending.current) return false;
+      // 排队期间前一次保存可能已清除 dirty；仅自动保存跳过，手动草稿仍须执行。
+      if (automatic && !hasChanges()) return true;
+      const invalid = invalidAmount(frame.current) ?? invalidAmount(detailRoot.current);
+      if (invalid) {
+        setError(`${invalid.getAttribute('aria-label') ?? '金额'}格式有误，请修正后保存`);
+        if (tab.active) invalid.focus();
+        return false;
+      }
+      const invalidDraft = amountDrafts.values.values().next().value;
+      if (invalidDraft) {
+        setError(`${invalidDraft.label}格式有误，请修正后保存`);
+        if (invalidDraft.field === 'fcAmount') setDetails(true);
+        focus(invalidDraft.line - 1, invalidDraft.field);
+        return false;
+      }
       const snapshot = { ...live.current.data, draft };
       const version = live.current.version;
       const current = live.current.header;
@@ -343,11 +406,11 @@ function Editor({
         });
         setStatus(
           result.coreError
-            ? `编辑缓冲已保存；core 草稿未保存：${result.coreError}`
+            ? `已暂存；草稿保存未成功：${result.coreError}`
             : draft
               ? result.voucher?.status === 'pending'
-                ? '编辑缓冲已保存，正式凭证待手动保存'
-                : '草稿与编辑缓冲已保存'
+                ? '暂存内容已保存，正式凭证待手动保存'
+                : '草稿与暂存内容已保存'
               : `已保存 ${result.voucher?.displayNo}`,
         );
         if (live.current.version !== version) setStatus('上一版已保存，当前新修改等待自动保存');
@@ -385,7 +448,7 @@ function Editor({
   useEffect(() => {
     if (!ready || readonly || !changed || leave) return;
     const timer = setTimeout(() => {
-      if (live.current.version !== live.current.savedVersion) void saveRef.current(true);
+      if (live.current.version !== live.current.savedVersion) void saveRef.current(true, true);
     }, 850);
     return () => clearTimeout(timer);
   }, [changed, ready, readonly, leave]);
@@ -394,24 +457,27 @@ function Editor({
       void tail.current.then(() => handlers.current.requestLeave(action));
       return;
     }
-    if (live.current.version !== live.current.savedVersion) setLeave(() => action);
+    if (hasChanges()) setLeave(() => action);
     else action();
   };
   useEffect(() => {
     const listener = (event: BeforeUnloadEvent) => {
-      if (live.current.version !== live.current.savedVersion || pending.current)
-        event.preventDefault();
+      if (hasChanges() || pending.current) event.preventDefault();
     };
     window.addEventListener('beforeunload', listener);
     return () => window.removeEventListener('beforeunload', listener);
-  }, []);
+  }, [hasChanges]);
   const insert = () => {
+    amountDrafts.remap((line) => (line > active + 1 ? line + 1 : line));
     const lines = [...live.current.data.lines];
     lines.splice(active + 1, 0, blankLine());
     change({ ...live.current.data, lines });
     focus(active + 1, 'summary');
   };
   const remove = () => {
+    amountDrafts.remap((line) =>
+      line === active + 1 ? null : line > active + 1 ? line - 1 : line,
+    );
     const lines = live.current.data.lines.filter((_, i) => i !== active);
     if (!lines.length) lines.push(blankLine());
     change({ ...live.current.data, lines });
@@ -447,6 +513,7 @@ function Editor({
     const lines = [...live.current.data.lines];
     const l = lines[active];
     if (!l) return;
+    amountDrafts.remap((line) => (line > active + 1 ? line + 1 : line));
     lines.splice(active + 1, 0, { ...l, dimensions: { ...l.dimensions }, debit: 0, credit: 0 });
     const side = l.debit ? 'credit' : 'debit';
     change({ ...live.current.data, lines: balanceCell(lines, active + 1, side) });
@@ -458,8 +525,7 @@ function Editor({
     if (!tab.active) return;
     let replaying = false;
     const guard = (event: MouseEvent) => {
-      if (replaying || (!pending.current && live.current.version === live.current.savedVersion))
-        return;
+      if (replaying || (!pending.current && !hasChanges())) return;
       const target = event.target as HTMLElement;
       if (frame.current?.contains(target)) return;
       const navigation = target.closest<HTMLElement>(
@@ -476,7 +542,7 @@ function Editor({
     };
     document.addEventListener('click', guard, true);
     return () => document.removeEventListener('click', guard, true);
-  }, [tab.active]);
+  }, [tab.active, hasChanges]);
   useEffect(() => {
     if (!tab.active) return;
     const listener = (e: KeyboardEvent) => {
@@ -485,6 +551,7 @@ function Editor({
         e.keyCode === 229 ||
         details ||
         paste ||
+        calculator ||
         templateOpen ||
         templateName ||
         leave
@@ -524,6 +591,11 @@ function Editor({
         h.requestLeave(() => {
           void navigate(`/m/print-settings?voucherId=${live.current.header?.id ?? ''}`);
         });
+        return;
+      }
+      if (matchHotkey(e, 'F9')) {
+        stop();
+        setCalculator({ line: active, side: moneyFocused.current ? amountSide.current : null });
         return;
       }
       if (readonly) return;
@@ -576,7 +648,20 @@ function Editor({
     };
     document.addEventListener('keydown', listener, true);
     return () => document.removeEventListener('keydown', listener, true);
-  }, [tab.active, tab, readonly, active, details, paste, templateOpen, templateName, leave]);
+  }, [
+    tab.active,
+    tab,
+    readonly,
+    active,
+    details,
+    paste,
+    calculator,
+    templateOpen,
+    templateName,
+    leave,
+    focus,
+    navigate,
+  ]);
 
   const reset = async () => {
     if (
@@ -619,10 +704,22 @@ function Editor({
       if (p?.line) focus(p.line - 1, p.field);
     }
   };
-  const totalDebit = data.lines.reduce((n, l) => n + (l.debit ?? 0), 0);
-  const totalCredit = data.lines.reduce((n, l) => n + (l.credit ?? 0), 0);
+  const total = (side: 'debit' | 'credit') => {
+    try {
+      return sumCents(data.lines.map((line) => line[side]));
+    } catch {
+      return NaN;
+    }
+  };
+  const totalDebit = total('debit');
+  const totalCredit = total('credit');
   const saveAsTemplate = async () => {
     if (!templateName) return;
+    const invalidDraft = amountDrafts.values.values().next().value;
+    if (invalidDraft) {
+      setError(`${invalidDraft.label}格式有误，请修正后保存`);
+      return;
+    }
     const unknown = await confirm(
       '保存模版',
       '模版将保留分录和辅助项，不携带凭证编号、来源和审核信息。现金流量方向未配置的行仍需人工核验。',
@@ -655,501 +752,528 @@ function Editor({
       : [];
   });
   const displayMoney = (amount: number) =>
-    Number.isSafeInteger(amount) ? formatMoney(amount) : '超出安全整数分范围';
+    Number.isSafeInteger(amount) ? formatMoney(amount) : '超出可保存金额范围';
   return (
-    <div ref={frame}>
-      <PageContainer
-        title="凭证录入"
-        subtitle="正式保存后由服务端分配编号；F5 / Ctrl+S 保存，Ctrl+D / Ctrl+K 删行"
-      >
-        <Space wrap>
-          <Button
-            type="primary"
-            disabled={readonly || !ready}
-            loading={persist.isPending}
-            onClick={() => void save(false)}
-          >
-            保存
-          </Button>
-          <Button
-            disabled={readonly || !ready}
-            onClick={() =>
-              void save(false).then((ok) => {
-                if (ok) requestLeave(startNew);
-              })
-            }
-          >
-            保存并新增
-          </Button>
-          <Button disabled={readonly || !ready} onClick={() => void save(true)}>
-            保存草稿/缓冲
-          </Button>
-          <Button disabled={readonly} onClick={insert}>
-            插行（Ctrl+I）
-          </Button>
-          <Button disabled={readonly} onClick={remove}>
-            删行
-          </Button>
-          <Button disabled={readonly} onClick={balance}>
-            找平（Ctrl+H）
-          </Button>
-          <Button disabled={readonly} onClick={balanceCopy}>
-            平衡复制（F7）
-          </Button>
-          <Button disabled={readonly} onClick={swap}>
-            借贷互换（F8）
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void reset();
-              })
-            }
-          >
-            重新输入
-          </Button>
-          <Button disabled={readonly} onClick={() => setTemplateOpen(true)}>
-            读入模版
-          </Button>
-          <Button disabled={!canTemplate} onClick={() => setTemplateName({ code: '', name: '' })}>
-            转成模版
-          </Button>
-          <Button disabled={readonly} onClick={() => setPaste(true)}>
-            Excel 粘贴
-          </Button>
-          {header && (
+    <AmountDraftContext.Provider value={amountDrafts}>
+      <div ref={frame}>
+        <PageContainer title="凭证录入" subtitle="F5保存；自动暂存的修改需正式保存后生效">
+          <Space wrap>
             <Button
-              onClick={() =>
-                void queryClient
-                  .fetchQuery({ ...api.buffer.queryOptions({ key: editorKey }), staleTime: 0 })
-                  .then((b) => {
-                    if (b)
-                      void confirm(
-                        '恢复编辑缓冲',
-                        `缓冲对应 revision ${b.voucherRevision ?? '未建凭证'}；当前服务端 revision ${header?.revision ?? '未建凭证'}。确认恢复？旧缓冲不会自动覆盖新版本。`,
-                      ).then((ok) => {
-                        if (ok) change(b.data);
-                      });
-                  })
-              }
-              disabled={readonly}
+              type="primary"
+              disabled={readonly || !ready}
+              loading={persist.isPending}
+              onClick={() => void save(false)}
             >
-              恢复编辑缓冲
+              保存
             </Button>
-          )}
-        </Space>
-        <Space wrap style={{ marginTop: 12 }}>
-          {(['first', 'previous', 'next', 'last'] as const).map((key, i) => (
             <Button
-              key={key}
-              disabled={!neighbors.data?.[key]}
+              disabled={readonly || !ready}
+              onClick={() =>
+                void save(false).then((ok) => {
+                  if (ok) requestLeave(startNew);
+                })
+              }
+            >
+              保存并新增
+            </Button>
+            <Button disabled={readonly || !ready} onClick={() => void save(true)}>
+              保存草稿
+            </Button>
+            <Button disabled={readonly} onClick={insert}>
+              插行（Ctrl+I）
+            </Button>
+            <Button disabled={readonly} onClick={remove}>
+              删行
+            </Button>
+            <Button disabled={readonly} onClick={balance}>
+              找平（Ctrl+H）
+            </Button>
+            <Button disabled={readonly} onClick={balanceCopy}>
+              平衡复制（F7）
+            </Button>
+            <Button disabled={readonly} onClick={swap}>
+              借贷互换（F8）
+            </Button>
+            <Button
               onClick={() =>
                 requestLeave(() => {
-                  void navigate(`/m/voucher-entry/edit?id=${neighbors.data![key]}`);
+                  void reset();
                 })
               }
             >
-              {['首张', '上一张', '下一张', '末张'][i]}
+              重新输入
             </Button>
-          ))}
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void goReview();
-              })
-            }
-          >
-            去审核
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate(`/m/voucher-book?action=copy&id=${header?.id ?? ''}`);
-              })
-            }
-          >
-            复制凭证
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate(`/m/voucher-book?action=reverse&id=${header?.id ?? ''}`);
-              })
-            }
-          >
-            反冲凭证
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate('/m/cashier');
-              })
-            }
-          >
-            出纳读取/单据生成
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate('/m/accounts');
-              })
-            }
-          >
-            科目维护
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate(`/m/period-close?period=${header?.period ?? ''}`);
-              })
-            }
-          >
-            期末处理/反过账
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate(`/m/print-settings?voucherId=${header?.id ?? ''}`);
-              })
-            }
-          >
-            打印
-          </Button>
-        </Space>
-        {ready && readonly && (
-          <Alert
-            style={{ marginTop: 12 }}
-            type="warning"
-            title={conflict ? '版本冲突：请刷新后核对' : '当前凭证只读'}
-            description={
-              header?.source
-                ? `来源：${header.source.module} / ${header.source.type} / ${header.source.id}`
-                : '已审核、过账、作废或没有编辑权限时不能修改。'
-            }
-            action={
-              sourceUrl ? (
-                <Button onClick={() => void navigate(sourceUrl)}>查看来源</Button>
-              ) : undefined
-            }
-          />
-        )}
-        {!!unverifiedCashflow.length && (
-          <Alert
-            type="warning"
-            title="现金流量仍待核验"
-            description={unverifiedCashflow.join('；')}
-          />
-        )}
-        <div role="status" style={{ margin: '12px 0' }}>
-          {status}
-        </div>
-        {error && (
-          <Alert
-            type="error"
-            title={error}
-            action={
-              conflict ? <Button onClick={() => window.location.reload()}>刷新</Button> : undefined
-            }
-          />
-        )}
-        <Alert
-          type="info"
-          title="core 草稿不分配编号、不进入账表；未选科目的行仅保留在本模块编辑缓冲。正式凭证的自动保存只写缓冲，需手动保存才能提交修改。"
-        />
-        <Space wrap style={{ marginTop: 16 }}>
-          <label>
-            凭证类型
-            <Select
-              aria-label="凭证类型"
-              style={{ width: 150 }}
-              disabled={readonly}
-              value={data.voucherTypeId || undefined}
-              options={boot.types.map((t) => ({
-                value: t.id,
-                label: `${t.code} ${t.name}`,
-                disabled: t.disabled,
-              }))}
-              onChange={(v) => change({ ...data, voucherTypeId: v, number: null })}
-            />
-          </label>
-          <label>
-            日期
-            <Input
-              aria-label="凭证日期"
-              style={{ width: 150 }}
-              disabled={readonly}
-              value={data.date}
-              placeholder="YYYY-MM-DD"
-              onChange={(e) =>
-                change({
-                  ...data,
-                  date: e.target.value,
-                  number:
-                    header?.period !==
-                    (isEntryDate(e.target.value) ? periodOfDate(e.target.value) : 0)
-                      ? null
-                      : data.number,
-                  lines:
-                    isEntryDate(e.target.value) &&
-                    isEntryDate(data.date) &&
-                    periodOfDate(e.target.value) !== periodOfDate(data.date)
-                      ? data.lines.map((l) => (l.currency ? { ...l, exchangeRate: null } : l))
-                      : data.lines,
+            <Button disabled={readonly} onClick={() => setTemplateOpen(true)}>
+              读入模版
+            </Button>
+            <Button disabled={!canTemplate} onClick={() => setTemplateName({ code: '', name: '' })}>
+              转成模版
+            </Button>
+            <Button disabled={readonly} onClick={() => setPaste(true)}>
+              Excel 粘贴
+            </Button>
+            <Button
+              onClick={() =>
+                setCalculator({
+                  line: active,
+                  side: moneyFocused.current ? amountSide.current : null,
                 })
               }
-            />
-          </label>
-          <label>
-            附单据数
-            <InputNumber
-              aria-label="附单据数"
-              min={0}
-              max={9999}
-              disabled={readonly}
-              value={data.attachments}
-              onChange={(v) => change({ ...data, attachments: v ?? 0 })}
-            />
-          </label>
-          <label>
-            编号（留空自动）
-            <InputNumber
-              aria-label="手动编号"
-              min={1}
-              disabled={readonly}
-              value={data.number}
-              onChange={(v) => change({ ...data, number: v })}
-            />
-          </label>
-          <Tag>{header?.displayNo ?? `自动编号提示 ${hint.data ?? '—'}（未占号）`}</Tag>
-          <Tag>{header ? VOUCHER_STATUS_LABELS[header.status] : '尚未保存'}</Tag>
-          {header && (
-            <a
-              href={`/m/voucher-entry/edit?id=${header.id}`}
-              onClick={(event) => {
-                event.preventDefault();
-                requestLeave(() => window.location.assign(`/m/voucher-entry/edit?id=${header.id}`));
-              }}
             >
-              重新打开凭证
-            </a>
-          )}
-        </Space>
-        <p style={{ marginTop: 10 }}>
-          制单：{header?.createdBy.name ?? session?.user.name}；审核：
-          {header?.auditedBy?.name ?? '—'}
-          ；记账：{header?.postedBy?.name ?? '—'}
-        </p>
-        <div ref={root}>
-          <LineGrid
-            lines={data.lines}
-            accounts={boot.accounts}
-            items={boot.items}
-            date={data.date}
-            methods={boot.methods}
-            summaries={boot.summaries}
-            readonly={readonly}
-            active={active}
-            onActive={(i, field) => {
-              setActive(i);
-              moneyFocused.current = field === 'debit' || field === 'credit';
-              if (field === 'debit' || field === 'credit') amountSide.current = field;
-            }}
-            onChange={(lines) => change({ ...live.current.data, lines })}
-            onInfo={() => setDetails(true)}
-          />
-        </div>
-        <p style={{ marginTop: 16 }}>
-          借方合计 {displayMoney(totalDebit)}；贷方合计 {displayMoney(totalCredit)}；
-          <span
-            data-testid="difference"
-            style={{ color: safeTotals && totalDebit === totalCredit ? '#18823a' : '#c33' }}
-          >
-            差额 {safeTotals ? formatMoney(totalDebit - totalCredit) : '合计超出范围，请核对'}
-          </span>
-        </p>
-        <p style={{ color: '#666' }}>
-          汇兑损益尚未实现：需要明确期末汇率、汇兑损益科目配置、按辅助项折算及幂等生成契约；此处不生成推测凭证。合同及财务/预算双体系校验尚缺核心契约。
-        </p>
-        <Drawer
-          open={details}
-          title={`第${active + 1}行分录信息`}
-          size={480}
-          focusable={{ focusTriggerAfterClose: false }}
-          onClose={() => setDetails(false)}
-          afterOpenChange={(open) => {
-            if (
-              !open &&
-              (document.activeElement === document.body ||
-                document.activeElement?.closest('[data-voucher-line-details]'))
-            )
-              requestAnimationFrame(() => {
-                if (
-                  document.activeElement === document.body ||
-                  document.activeElement?.closest('[data-voucher-line-details]')
-                )
-                  root.current
-                    ?.querySelector<HTMLInputElement>(
-                      `[data-line="${active}"] input[data-field="summary"]`,
-                    )
-                    ?.focus();
-              });
-          }}
-          destroyOnHidden
-        >
-          {data.lines[active] && (
-            <div data-voucher-line-details>
-              <LineDetails
-                line={data.lines[active]}
-                index={active}
-                accounts={boot.accounts}
-                items={boot.items}
-                methods={boot.methods}
-                readonly={readonly}
-                onChange={(patch) =>
-                  change({
-                    ...live.current.data,
-                    lines: live.current.data.lines.map((l, i) =>
-                      i === active ? { ...l, ...patch } : l,
-                    ),
+              计算器（F9）
+            </Button>
+            {header && (
+              <Button
+                onClick={() =>
+                  void queryClient
+                    .fetchQuery({ ...api.buffer.queryOptions({ key: editorKey }), staleTime: 0 })
+                    .then((b) => {
+                      if (b)
+                        void confirm(
+                          '恢复暂存内容',
+                          '暂存内容可能早于当前凭证。恢复后请核对，正式保存前不会改变已保存的凭证。确认恢复？',
+                        ).then((ok) => {
+                          if (ok) change(b.data);
+                        });
+                    })
+                }
+                disabled={readonly}
+              >
+                恢复暂存内容
+              </Button>
+            )}
+          </Space>
+          <Space wrap style={{ marginTop: 12 }}>
+            {(['first', 'previous', 'next', 'last'] as const).map((key, i) => (
+              <Button
+                key={key}
+                disabled={!neighbors.data?.[key]}
+                onClick={() =>
+                  requestLeave(() => {
+                    void navigate(`/m/voucher-entry/edit?id=${neighbors.data![key]}`);
                   })
                 }
-              />
-            </div>
+              >
+                {['首张', '上一张', '下一张', '末张'][i]}
+              </Button>
+            ))}
+            <Button
+              onClick={() =>
+                requestLeave(() => {
+                  void goReview();
+                })
+              }
+            >
+              去审核
+            </Button>
+            <Button
+              onClick={() =>
+                requestLeave(() => {
+                  void navigate(`/m/voucher-book?action=copy&id=${header?.id ?? ''}`);
+                })
+              }
+            >
+              复制凭证
+            </Button>
+            <Button
+              onClick={() =>
+                requestLeave(() => {
+                  void navigate(`/m/voucher-book?action=reverse&id=${header?.id ?? ''}`);
+                })
+              }
+            >
+              反冲凭证
+            </Button>
+            <Button
+              onClick={() =>
+                requestLeave(() => {
+                  void navigate('/m/cashier');
+                })
+              }
+            >
+              出纳读取/单据生成
+            </Button>
+            <Button
+              onClick={() =>
+                requestLeave(() => {
+                  void navigate('/m/accounts');
+                })
+              }
+            >
+              科目维护
+            </Button>
+            <Button
+              onClick={() =>
+                requestLeave(() => {
+                  void navigate(`/m/period-close?period=${header?.period ?? ''}`);
+                })
+              }
+            >
+              期末处理/反过账
+            </Button>
+            <Button
+              onClick={() =>
+                requestLeave(() => {
+                  void navigate(`/m/print-settings?voucherId=${header?.id ?? ''}`);
+                })
+              }
+            >
+              打印
+            </Button>
+          </Space>
+          {ready && readonly && (
+            <Alert
+              style={{ marginTop: 12 }}
+              type="warning"
+              title={conflict ? '版本冲突：请刷新后核对' : '当前凭证只读'}
+              description={
+                header?.source
+                  ? '这张凭证由其他业务生成，请打开来源办理修改。'
+                  : '已审核、过账、作废或没有编辑权限时不能修改。'
+              }
+              action={
+                sourceUrl ? (
+                  <Button onClick={() => void navigate(sourceUrl)}>查看来源</Button>
+                ) : undefined
+              }
+            />
           )}
-        </Drawer>
-        {paste && (
-          <PasteDialog
-            onCancel={() => setPaste(false)}
-            onApply={(lines) => {
-              change({ ...data, lines });
-              setPaste(false);
-              focus(0, 'summary');
-            }}
-          />
-        )}
-        <Modal
-          title="读入凭证模版"
-          open={templateOpen}
-          onCancel={() => {
-            templateEpoch.current += 1;
-            setTemplateOpen(false);
-          }}
-          okText="确认替换当前分录"
-          okButtonProps={{ disabled: !templateChoice }}
-          onOk={() => {
-            const requestedEpoch = ++templateEpoch.current;
-            if (templateChoice)
-              void queryClient
-                .fetchQuery({ ...api.template.queryOptions({ id: templateChoice }), staleTime: 0 })
-                .then(async (t) => {
-                  if (requestedEpoch !== templateEpoch.current) return;
-                  if (
-                    !(await confirm(
-                      '调用模版',
-                      `用 ${t.code} ${t.name} 替换当前分录？失效引用需重新选择，保存前会重新校验。`,
-                    ))
-                  )
-                    return;
-                  if (requestedEpoch !== templateEpoch.current) return;
-                  change({
-                    ...live.current.data,
-                    voucherTypeId: t.voucher_type_id,
-                    lines: t.lines,
-                    number: null,
-                  });
-                  if (t.validation.problems.length || t.validation.warnings.length)
-                    setError(
-                      [...t.validation.problems, ...t.validation.warnings]
-                        .map((p) => p.message)
-                        .join('；'),
-                    );
-                  setTemplateOpen(false);
-                });
-          }}
-        >
-          <Select
-            aria-label="选择凭证模版"
-            style={{ width: '100%' }}
-            showSearch={{ filterOption: (q, o) => (o?.label ?? '').includes(q) }}
-            options={(templates.data ?? []).map((t) => ({
-              value: t.id,
-              label: `${t.code} ${t.name}`,
-            }))}
-            value={templateChoice}
-            onChange={setTemplateChoice}
-          />
-        </Modal>
-        <Modal
-          title="转成凭证模版"
-          open={!!templateName}
-          onCancel={() => setTemplateName(null)}
-          onOk={() => void saveAsTemplate()}
-          okText="保存模版"
-        >
-          <Input
-            aria-label="模版编码"
-            maxLength={4}
-            placeholder="编码（最多4位）"
-            value={templateName?.code}
-            onChange={(e) =>
-              setTemplateName((old) => ({ code: e.target.value, name: old?.name ?? '' }))
-            }
-          />
-          <Input
-            aria-label="模版名称"
-            placeholder="名称"
-            value={templateName?.name}
-            onChange={(e) =>
-              setTemplateName((old) => ({ code: old?.code ?? '', name: e.target.value }))
-            }
-          />
-        </Modal>
-        <Modal
-          title="尚有未持久化内容"
-          open={!!leave}
-          onCancel={() => setLeave(null)}
-          footer={
-            <Space>
-              <Button onClick={() => setLeave(null)}>取消</Button>
-              <Button
-                danger
-                onClick={() => {
-                  const action = leave;
-                  // 放弃只撤销尚未持久化的编辑；壳的离开保护仍会检查其它页面。
-                  const state = live.current;
-                  state.data = state.savedData;
-                  state.version += 1;
-                  state.savedVersion = state.version;
-                  setData(state.data);
-                  setChanged(state.version);
-                  setError('');
-                  setStatus('已放弃未保存修改，保留上次持久化内容');
-                  setLeave(null);
-                  action?.();
+          {!!unverifiedCashflow.length && (
+            <Alert
+              type="warning"
+              title="现金流量仍待核验"
+              description={unverifiedCashflow.join('；')}
+            />
+          )}
+          <div role="status" style={{ margin: '12px 0' }}>
+            {status}
+          </div>
+          {error && (
+            <Alert
+              type="error"
+              title={error}
+              action={
+                conflict ? (
+                  <Button onClick={() => window.location.reload()}>刷新</Button>
+                ) : undefined
+              }
+            />
+          )}
+          <Space wrap style={{ marginTop: 16 }}>
+            <label>
+              凭证类型
+              <Select
+                aria-label="凭证类型"
+                style={{ width: 150 }}
+                disabled={readonly}
+                value={data.voucherTypeId || undefined}
+                options={boot.types.map((t) => ({
+                  value: t.id,
+                  label: `${t.code} ${t.name}`,
+                  disabled: t.disabled,
+                }))}
+                onChange={(v) => change({ ...data, voucherTypeId: v, number: null })}
+              />
+            </label>
+            <label>
+              日期
+              <Input
+                aria-label="凭证日期"
+                style={{ width: 150 }}
+                disabled={readonly}
+                value={data.date}
+                placeholder="YYYY-MM-DD"
+                onChange={(e) => change(changeEntryDate(live.current.data, e.target.value))}
+              />
+            </label>
+            <label>
+              附单据数
+              <InputNumber
+                aria-label="附单据数"
+                min={0}
+                max={9999}
+                disabled={readonly}
+                value={data.attachments}
+                onChange={(v) => change({ ...data, attachments: v ?? 0 })}
+              />
+            </label>
+            <label>
+              编号（留空自动）
+              <InputNumber
+                aria-label="手动编号"
+                min={1}
+                disabled={readonly}
+                value={data.number}
+                onChange={(v) => change({ ...data, number: v })}
+              />
+            </label>
+            <Tag>{header?.displayNo ?? `自动编号提示 ${hint.data ?? '—'}（未占号）`}</Tag>
+            <Tag>{header ? VOUCHER_STATUS_LABELS[header.status] : '尚未保存'}</Tag>
+            {header && (
+              <a
+                href={`/m/voucher-entry/edit?id=${header.id}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  requestLeave(() =>
+                    window.location.assign(`/m/voucher-entry/edit?id=${header.id}`),
+                  );
                 }}
               >
-                放弃修改
-              </Button>
-              <Button
-                type="primary"
-                onClick={() =>
-                  void save(true).then((ok) => {
-                    if (ok) {
-                      const action = leave;
-                      setLeave(null);
-                      action?.();
+                重新打开凭证
+              </a>
+            )}
+          </Space>
+          <p style={{ marginTop: 10 }}>
+            制单：{header?.createdBy.name ?? session?.user.name}；审核：
+            {header?.auditedBy?.name ?? '—'}
+            ；记账：{header?.postedBy?.name ?? '—'}
+          </p>
+          <div ref={root}>
+            <LineGrid
+              lines={data.lines}
+              accounts={boot.accounts}
+              items={boot.items}
+              date={data.date}
+              methods={boot.methods}
+              summaries={boot.summaries}
+              readonly={readonly}
+              active={active}
+              onActive={(i, field) => {
+                setActive(i);
+                moneyFocused.current = field === 'debit' || field === 'credit';
+                if (field === 'debit' || field === 'credit') amountSide.current = field;
+              }}
+              onChange={(lines) => change({ ...live.current.data, lines })}
+              onInfo={() => setDetails(true)}
+            />
+          </div>
+          <p style={{ marginTop: 16 }}>
+            借方合计 {displayMoney(totalDebit)}；贷方合计 {displayMoney(totalCredit)}；
+            <span
+              data-testid="difference"
+              style={{ color: safeTotals && totalDebit === totalCredit ? '#18823a' : '#c33' }}
+            >
+              差额 {safeTotals ? formatMoney(totalDebit - totalCredit) : '合计超出范围，请核对'}
+            </span>
+          </p>
+          <p style={{ color: '#666' }}>
+            汇兑损益尚未实现：需要明确期末汇率、汇兑损益科目配置、按辅助项折算及幂等生成契约；此处不生成推测凭证。合同及财务/预算双体系校验尚缺核心契约。
+          </p>
+          <Drawer
+            open={details}
+            title={`第${active + 1}行分录信息`}
+            size={480}
+            focusable={{ focusTriggerAfterClose: false }}
+            onClose={() => setDetails(false)}
+            afterOpenChange={(open) => {
+              if (
+                !open &&
+                (document.activeElement === document.body ||
+                  document.activeElement?.closest('[data-voucher-line-details]'))
+              )
+                requestAnimationFrame(() => {
+                  if (
+                    document.activeElement === document.body ||
+                    document.activeElement?.closest('[data-voucher-line-details]')
+                  )
+                    root.current
+                      ?.querySelector<HTMLInputElement>(
+                        `[data-line="${active}"] input[data-field="summary"]`,
+                      )
+                      ?.focus();
+                });
+            }}
+            destroyOnHidden
+          >
+            {data.lines[active] && (
+              <div ref={detailRoot} data-voucher-line-details>
+                <LineDetails
+                  line={data.lines[active]}
+                  index={active}
+                  accounts={boot.accounts}
+                  items={boot.items}
+                  methods={boot.methods}
+                  readonly={readonly}
+                  onChange={(patch) =>
+                    change({
+                      ...live.current.data,
+                      lines: live.current.data.lines.map((l, i) =>
+                        i === active ? { ...l, ...patch } : l,
+                      ),
+                    })
+                  }
+                />
+              </div>
+            )}
+          </Drawer>
+          {paste && (
+            <PasteDialog
+              onCancel={() => setPaste(false)}
+              onApply={(lines) => {
+                change({ ...data, lines });
+                setPaste(false);
+                focus(0, 'summary');
+              }}
+            />
+          )}
+          {calculator && (
+            <CalculatorDialog
+              onClose={() => {
+                const { line, side } = calculator;
+                setCalculator(null);
+                if (side) focus(line, side);
+              }}
+              target={
+                calculator.side
+                  ? `第${calculator.line + 1}行${calculator.side === 'debit' ? '借方' : '贷方'}`
+                  : undefined
+              }
+              onApply={
+                !readonly && calculator.side
+                  ? (cents) => {
+                      const { line, side } = calculator;
+                      change({
+                        ...live.current.data,
+                        lines: live.current.data.lines.map((value, index) =>
+                          index === line ? { ...value, [side!]: cents } : value,
+                        ),
+                      });
+                      setCalculator(null);
+                      focus(line, side!);
                     }
+                  : undefined
+              }
+            />
+          )}
+          <Modal
+            title="读入凭证模版"
+            open={templateOpen}
+            onCancel={() => {
+              templateEpoch.current += 1;
+              setTemplateOpen(false);
+            }}
+            okText="确认替换当前分录"
+            okButtonProps={{ disabled: !templateChoice }}
+            onOk={() => {
+              const requestedEpoch = ++templateEpoch.current;
+              if (templateChoice)
+                void queryClient
+                  .fetchQuery({
+                    ...api.template.queryOptions({ id: templateChoice }),
+                    staleTime: 0,
                   })
-                }
-              >
-                保存缓冲并离开
-              </Button>
-            </Space>
-          }
-        >
-          保存到编辑缓冲、放弃本次修改，或取消离开。
-        </Modal>
-      </PageContainer>
-    </div>
+                  .then(async (t) => {
+                    if (requestedEpoch !== templateEpoch.current) return;
+                    if (
+                      !(await confirm(
+                        '调用模版',
+                        `用 ${t.code} ${t.name} 替换当前分录？失效引用需重新选择，保存前会重新校验。`,
+                      ))
+                    )
+                      return;
+                    if (requestedEpoch !== templateEpoch.current) return;
+                    change({
+                      ...live.current.data,
+                      voucherTypeId: t.voucher_type_id,
+                      lines: t.lines,
+                      number: null,
+                    });
+                    if (t.validation.problems.length || t.validation.warnings.length)
+                      setError(
+                        [...t.validation.problems, ...t.validation.warnings]
+                          .map((p) => p.message)
+                          .join('；'),
+                      );
+                    setTemplateOpen(false);
+                  });
+            }}
+          >
+            <Select
+              aria-label="选择凭证模版"
+              style={{ width: '100%' }}
+              showSearch={{ filterOption: (q, o) => (o?.label ?? '').includes(q) }}
+              options={(templates.data ?? []).map((t) => ({
+                value: t.id,
+                label: `${t.code} ${t.name}`,
+              }))}
+              value={templateChoice}
+              onChange={setTemplateChoice}
+            />
+          </Modal>
+          <Modal
+            title="转成凭证模版"
+            open={!!templateName}
+            onCancel={() => setTemplateName(null)}
+            onOk={() => void saveAsTemplate()}
+            okText="保存模版"
+          >
+            <Input
+              aria-label="模版编码"
+              maxLength={4}
+              placeholder="编码（最多4位）"
+              value={templateName?.code}
+              onChange={(e) =>
+                setTemplateName((old) => ({ code: e.target.value, name: old?.name ?? '' }))
+              }
+            />
+            <Input
+              aria-label="模版名称"
+              placeholder="名称"
+              value={templateName?.name}
+              onChange={(e) =>
+                setTemplateName((old) => ({ code: old?.code ?? '', name: e.target.value }))
+              }
+            />
+          </Modal>
+          <Modal
+            title="尚有未保存修改"
+            open={!!leave}
+            onCancel={() => setLeave(null)}
+            footer={
+              <Space>
+                <Button onClick={() => setLeave(null)}>取消</Button>
+                <Button
+                  danger
+                  onClick={() => {
+                    const action = leave;
+                    // 放弃只撤销尚未持久化的编辑；壳的离开保护仍会检查其它页面。
+                    const state = live.current;
+                    state.leaveEpoch += 1;
+                    amountDrafts.clear();
+                    state.data = state.savedData;
+                    state.version += 1;
+                    state.savedVersion = state.version;
+                    setData(state.data);
+                    setChanged(state.version);
+                    setError('');
+                    setStatus('已放弃未保存修改，保留上次持久化内容');
+                    setLeave(null);
+                    action?.();
+                  }}
+                >
+                  放弃修改
+                </Button>
+                <Button
+                  type="primary"
+                  onClick={() =>
+                    void save(true).then((ok) => {
+                      if (ok && !hasChanges()) {
+                        const action = leave;
+                        setLeave(null);
+                        action?.();
+                      }
+                    })
+                  }
+                >
+                  保存草稿并离开
+                </Button>
+              </Space>
+            }
+          >
+            保存修改、放弃本次修改，或取消离开。
+          </Modal>
+        </PageContainer>
+      </div>
+    </AmountDraftContext.Provider>
   );
 }

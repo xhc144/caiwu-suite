@@ -73,7 +73,7 @@ describe('w_main1 原工作台入口', () => {
       );
     }
     expect(screen.queryByRole('button', { name: /合同档案|自定义分析/ })).not.toBeInTheDocument();
-    expect(screen.getByText('合同档案 · 模块未加载')).toBeVisible();
+    expect(screen.getByText('合同档案 · 功能尚未启用')).toBeVisible();
   });
   it('原名映射仍服从读取权限、管理员身份和产品过滤', () => {
     setup({ ...user, isAdmin: false, permissions: ['books.view'] });

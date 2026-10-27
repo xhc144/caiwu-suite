@@ -1,7 +1,10 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 import { Alert, Button, Checkbox, Form, Input, Select, Space } from 'antd';
 import { useVoucherTypes } from '@caiwu/web-kit';
+import { useQuery } from '@tanstack/react-query';
+import { api } from './api';
+import { amountToForm, amountToUrl, conditionAmounts } from './amount-filters';
 import { VOUCHER_STATUS_LABELS } from '@caiwu/core';
 import { BookFilterSchema } from '../shared';
 
@@ -81,7 +84,7 @@ export function useBookFilters() {
   try {
     conditionData = values.conditions ? (JSON.parse(values.conditions) as unknown) : [];
   } catch {
-    syntaxError = '综合查询条件必须是有效 JSON 数组，查询未执行';
+    syntaxError = '综合查询条件格式有误，请清空后重新选择，查询未执行';
   }
   const page = Number(values.page),
     size = Number(values.size);
@@ -160,9 +163,29 @@ export function Filters({
   historyVersion: number;
 }) {
   const types = useVoucherTypes();
+  const creators = useQuery(api.creators.queryOptions());
+  const formValues = useMemo(() => {
+    const result = {
+      ...values,
+      amountFrom: amountToForm(values.amountFrom),
+      amountTo: amountToForm(values.amountTo),
+    };
+    try {
+      result.conditions = conditionAmounts(values.conditions, amountToForm);
+    } catch {
+      /* 查询和条件编辑器呈现错误 */
+    }
+    return result;
+  }, [values]);
+  const validateMoney = async (_rule: unknown, value: string) => {
+    amountToUrl(value ?? '');
+  };
+  const validateConditions = async (_rule: unknown, value: string) => {
+    conditionAmounts(value ?? '', amountToUrl);
+  };
   const formId = useId();
   const [form] = Form.useForm<UrlFilters>();
-  const [draft, setDraft] = useState<Partial<UrlFilters>>(values);
+  const [draft, setDraft] = useState<Partial<UrlFilters>>(formValues);
   const applied = JSON.stringify([values, historyVersion]);
   const previous = useRef(applied);
   useLayoutEffect(() => {
@@ -172,11 +195,11 @@ export function Filters({
     // 本次查询的导航确认只更新已应用条件，不能覆盖提交后继续编辑的草稿。
     // 真正改变条件的外部导航/历史导航同步表单，但保持同一Form及抽屉生命周期。
     if (!ownCommit) {
-      form.setFieldsValue(values);
-      setDraft(values);
+      form.setFieldsValue(formValues);
+      setDraft(formValues);
     }
-  }, [applied, values, form, isOwnCommit]);
-  const dirty = formKeys.some((key) => (draft[key] ?? defaults[key]) !== values[key]);
+  }, [applied, formValues, form, isOwnCommit]);
+  const dirty = formKeys.some((key) => (draft[key] ?? defaults[key]) !== formValues[key]);
   return (
     <>
       <Form<UrlFilters>
@@ -184,9 +207,18 @@ export function Filters({
         layout="inline"
         className="cw-filter-bar"
         form={form}
-        initialValues={values}
+        initialValues={formValues}
         onValuesChange={(_, all: UrlFilters) => setDraft(all)}
-        onFinish={(v) => set({ ...v, page: '1', id: '' })}
+        onFinish={(v) =>
+          set({
+            ...v,
+            amountFrom: amountToUrl(v.amountFrom ?? ''),
+            amountTo: amountToUrl(v.amountTo ?? ''),
+            conditions: conditionAmounts(v.conditions ?? '', amountToUrl),
+            page: '1',
+            id: '',
+          })
+        }
       >
         <Form.Item name="period" label="期间">
           <Input placeholder="202601" style={{ width: 105 }} />
@@ -226,17 +258,34 @@ export function Filters({
         <Form.Item name="account" label="科目含下级">
           <Input style={{ width: 120 }} />
         </Form.Item>
-        <Form.Item name="amountFrom" label="金额起（分）">
-          <Input style={{ width: 110 }} />
+        <Form.Item name="amountFrom" label="金额起（元）" rules={[{ validator: validateMoney }]}>
+          <Input inputMode="decimal" onFocus={(e) => e.target.select()} style={{ width: 110 }} />
         </Form.Item>
-        <Form.Item name="amountTo" label="金额止（分）">
-          <Input style={{ width: 110 }} />
+        <Form.Item name="amountTo" label="金额止（元）" rules={[{ validator: validateMoney }]}>
+          <Input inputMode="decimal" onFocus={(e) => e.target.select()} style={{ width: 110 }} />
         </Form.Item>
         <Form.Item name="summary" label="摘要">
           <Input data-voucher-summary="true" style={{ width: 170 }} />
         </Form.Item>
-        <Form.Item name="creator" label="制单人ID">
-          <Input style={{ width: 90 }} />
+        <Form.Item name="creator" label="制单人">
+          <Select
+            aria-label="制单人"
+            allowClear
+            showSearch={{ optionFilterProp: 'label' }}
+            style={{ width: 190 }}
+            loading={creators.isPending}
+            options={creators.data?.map((u) => ({
+              value: String(u.id),
+              label: `${u.name}（${u.code}${u.disabled ? '，已停用' : ''}）`,
+            }))}
+            notFoundContent={
+              creators.isPending
+                ? '正在读取制单人…'
+                : creators.isError
+                  ? '读取失败，请刷新重试'
+                  : '没有匹配的制单人'
+            }
+          />
         </Form.Item>
         <Form.Item name="voided" valuePropName="checked">
           <Checkbox>含作废</Checkbox>
@@ -244,7 +293,8 @@ export function Filters({
         <Form.Item
           name="conditions"
           label="综合查询"
-          tooltip="所有条件同时满足；编号和金额（分）使用整数，日期使用有效年月日。"
+          tooltip="所有条件同时满足；金额按元输入，日期使用有效年月日。"
+          rules={[{ validator: validateConditions }]}
         >
           <ConditionEditor />
         </Form.Item>
@@ -322,7 +372,7 @@ function ConditionEditor({
             options={[
               { value: 'date', label: '凭证日期' },
               { value: 'number', label: '凭证编号' },
-              { value: 'amount', label: '金额（分）' },
+              { value: 'amount', label: '金额（元）' },
               { value: 'summary', label: '分录摘要' },
               { value: 'creator', label: '制单人名称' },
             ]}
@@ -353,6 +403,9 @@ function ConditionEditor({
             aria-label={`综合查询值${i + 1}`}
             style={{ width: 170 }}
             type={r.field === 'date' ? 'date' : 'text'}
+            onFocus={(e) => {
+              if (r.field === 'amount') e.target.select();
+            }}
             value={r.value}
             onChange={(e) => update(i, { value: e.target.value })}
           />

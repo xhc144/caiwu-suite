@@ -14,7 +14,7 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import { notify, useVoucherTypes, usePermission } from '@caiwu/web-kit';
 import { downloadBlob } from '@caiwu/ui';
-import { TRANSFER_FIELD_LABELS, type ImportInput } from '../shared';
+import { TRANSFER_FIELD_LABELS, type ImportInput, type ActionResult } from '../shared';
 import type { ImportPreview } from '../server/transfer';
 import { api } from './api';
 
@@ -26,7 +26,7 @@ export function ImportDrawer({
 }: {
   open: boolean;
   onClose: () => void;
-  onSaved: (message: string) => void;
+  onSaved: (result: ActionResult) => void;
 }) {
   const [file, setFile] = useState<{
     name: string;
@@ -42,7 +42,7 @@ export function ImportDrawer({
   const commit = useMutation(
     api.importCommit.mutationOptions({
       onSuccess: (r) => {
-        onSaved(r.message);
+        onSaved(r);
         setPlan(null);
         setFile(null);
         onClose();
@@ -97,8 +97,11 @@ export function ImportDrawer({
           {plan ? (
             <Button
               type="primary"
+              aria-label="确认导入"
+              aria-busy={commit.isPending}
               loading={commit.isPending}
               disabled={
+                commit.isPending ||
                 plan.stopped ||
                 !plan.validCount ||
                 (!!plan.errorCount && !plan.onlyValid) ||
@@ -111,7 +114,14 @@ export function ImportDrawer({
               确认导入
             </Button>
           ) : (
-            <Button type="primary" loading={preview.isPending} onClick={() => void startPreview()}>
+            <Button
+              type="primary"
+              aria-label="逐凭证预览"
+              aria-busy={preview.isPending}
+              disabled={preview.isPending}
+              loading={preview.isPending}
+              onClick={() => void startPreview()}
+            >
               逐凭证预览
             </Button>
           )}
@@ -120,7 +130,7 @@ export function ImportDrawer({
     >
       <Alert
         type="info"
-        title="v1 Excel（金额为整数分）或本模块结构化文本"
+        title="凭证 Excel 或凭证转出文件"
         description="导入为新的手工待审核凭证，使用当前制单人。保留编码、辅助项、外币、数量、票号与业务日期；已审核、过账、作废和来源凭证不能覆盖；待审核覆盖须单独授权、预览与确认"
       />
       <Form
@@ -192,7 +202,7 @@ export function ImportDrawer({
         <Form.Item
           name="mapping"
           label="Excel字段映射"
-          tooltip="本模块导出的文件无需修改；其它表格请填写对应列的表头文字。金额列必须为整数分。"
+          tooltip="凭证导出文件无需修改；其他表格请填写对应列的表头文字，并按导出文件的金额格式填写。"
         >
           <FieldMapping />
         </Form.Item>

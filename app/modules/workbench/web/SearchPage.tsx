@@ -121,7 +121,7 @@ export default function SearchPage() {
         <Alert
           type="info"
           title={`未检索：${query.data.denied.join('、')}`}
-          description="对应来源模块未加载、产品不可用或没有明确读取权限。"
+          description="对应来源功能尚未启用、产品不可用或没有明确读取权限。"
         />
       ) : null}
       {canSearch && term.trim() && (!settled || query.isFetching) && <Spin size="small" />}

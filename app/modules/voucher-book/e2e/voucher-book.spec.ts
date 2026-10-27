@@ -14,6 +14,12 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
       .set({ attrs: JSON.stringify({ cashflowDirection: 'outflow' }) })
       .where('id', '=', cf.id)
       .execute();
+    const inflow = (await t.app.svc.dimensions.getByCode('cashflow', 'CF01'))!;
+    await t.app.svc.db
+      .updateTable('dimension_item')
+      .set({ attrs: JSON.stringify({ cashflowDirection: 'inflow' }) })
+      .where('id', '=', inflow.id)
+      .execute();
     const vs = await seedVouchers(
       t.app.svc,
       [1, 2].map((n) => ({
@@ -32,7 +38,9 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
     await page.getByRole('button', { name: '批量审核', exact: true }).click();
     let dialog = page.getByRole('dialog', { name: '审核预览', exact: true });
     await expect(dialog).toContainText('可处理 0 张，跳过 2 张');
-    await expect(dialog.getByText('制单人与审核人相同，请更换用户后审核')).toHaveCount(2);
+    await expect(
+      dialog.getByText('制单人与审核人相同，请更换另一有审核权限的操作员后审核'),
+    ).toHaveCount(2);
     await expect(dialog.getByRole('button', { name: '确认执行' })).toBeDisabled();
     await dialog.getByRole('button', { name: '取消', exact: true }).click();
     await t.login(page, 'B', 'b');
@@ -57,6 +65,9 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
     await dialog.getByRole('button', { name: '生成预览' }).click();
     dialog = page.getByRole('dialog', { name: '红字冲销预览', exact: true });
     await expect(dialog).toContainText('-0.01');
+    await expect(dialog.getByRole('button', { name: '确认执行' })).toBeDisabled();
+    await dialog.getByLabel('第2行红冲现金流量项目', { exact: true }).click();
+    await page.getByText(`${inflow.code} ${inflow.name}`, { exact: true }).last().click();
     await dialog.getByRole('button', { name: '确认执行' }).click();
     await expect(page.getByText('成功 1 张，跳过 0 张', { exact: true })).toBeVisible();
     const reverse = (await t.app.svc.vouchers.list({ sourceModule: 'voucher-book' })).items[0]!;
@@ -121,8 +132,8 @@ test('w_pz_pzxsb 插入/重排取消不变，筛选URL与跨模块路由，导�
     await expect(dialog).toContainText('旧号');
     await dialog.getByRole('button', { name: '取消', exact: true }).click();
     expect(await t.app.svc.vouchers.get(v!.id)).toEqual(before);
-    await page.getByLabel('金额起（分）', { exact: true }).fill('1');
-    await page.getByLabel('金额止（分）', { exact: true }).fill('1');
+    await page.getByLabel('金额起（元）', { exact: true }).fill('0.01');
+    await page.getByLabel('金额止（元）', { exact: true }).fill('0.01');
     await page.getByRole('button', { name: '查询', exact: true }).click();
     await expect(page).toHaveURL(/amountFrom=1/);
     await page.reload();
@@ -175,13 +186,13 @@ test('w_pz_pzxsb 插入/重排取消不变，筛选URL与跨模块路由，导�
       .getByRole('button', { name: '浏览', exact: true })
       .click();
     dialog = page.getByRole('dialog', { name: '凭证浏览', exact: true });
-    await expect(dialog).toContainText('由 cashier 生成');
+    await expect(dialog).toContainText('由其他业务生成');
     await dialog.getByRole('button', { name: '关闭' }).click();
     const row = page.getByRole('row').filter({ hasText: '其它模块来源' });
     await row.getByRole('checkbox').check();
     await page.getByRole('button', { name: '删除', exact: true }).click();
     dialog = page.getByRole('dialog', { name: '删除预览', exact: true });
-    await expect(dialog).toContainText('其它模块来源 cashier');
+    await expect(dialog).toContainText('其他业务生成');
     await dialog.getByRole('button', { name: '取消', exact: true }).click();
     await row.getByRole('button', { name: '打开', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/m/voucher-entry/edit\\?id=${foreign.id}`));

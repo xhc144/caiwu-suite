@@ -118,6 +118,29 @@ it('w_pz_pzedit：连续首次保存只创建一张；自动与手动串行后�
   expect(buffered.voucher?.status).toBe('pending');
   expect(buffered.voucher?.number).toBe(1);
   expect(buffered.voucher?.revision).toBe(formal.voucher?.revision);
+  expect(await app.svc.vouchers.get(formal.voucher!.id)).toEqual(formal.voucher);
+  expect(buffered.bufferRevision).toBe(formal.bufferRevision + 1);
+  expect((await api().buffer({ key: 'once' }))?.data).toMatchObject({
+    draft: true,
+    lines: [{ debit: 1 }, { credit: 12345 }],
+  });
+  // 草稿缓冲保留真实新编辑；再次正式保存才提交 core 并推进其 revision。
+  const resubmitted = await api().save({
+    key: 'once',
+    id: formal.voucher!.id,
+    expectedRevision: formal.voucher!.revision,
+    bufferRevision: buffered.bufferRevision,
+    data: { ...data, draft: false, note: '再次正式提交' },
+  });
+  expect(resubmitted.voucher).toMatchObject({
+    id: formal.voucher!.id,
+    status: 'pending',
+    number: 1,
+    revision: formal.voucher!.revision + 1,
+    debitTotal: 12345,
+    creditTotal: 12345,
+    note: '再次正式提交',
+  });
 });
 
 it('w_pz_pzedit_b：revision 冲突及缓冲版本冲突拒绝覆盖', async () => {
@@ -704,7 +727,7 @@ it('w_pz_pzedit：金额溢出和早于核心日期范围有可用错误，Excel
     ],
     true,
   );
-  expect(r.problems.some((p) => p.message.includes('超出安全整数分'))).toBe(true);
+  expect(r.problems.some((p) => p.message.includes('超出可保存'))).toBe(true);
   const preview = await api().paste({
     text: '大额\t6603\t9999999999999999999999\t0',
     mapping: ['summary', 'account', 'debit', 'credit'],
@@ -911,13 +934,13 @@ it.each([
     amount: -1,
     message: '差额 -0.01',
   },
-  { side: 'debit', fcAmount: 1000, rate: '7.1', amount: 0, message: '借贷金额不能都为零' },
+  { side: 'debit', fcAmount: 1000, rate: '7.1', amount: 0, message: '原币金额×汇率' },
   {
     side: 'credit',
     fcAmount: 1,
     rate: '0.49999999999999999999',
     amount: 0,
-    message: '借贷金额不能都为零',
+    message: '请填写借方、贷方、外币金额或数量',
   },
   { side: 'debit', fcAmount: 0, rate: '7.1', amount: 7100, message: '外币金额必填且不能为零' },
   { side: 'credit', fcAmount: null, rate: '7.1', amount: 7100, message: '外币金额必填且不能为零' },
@@ -928,14 +951,14 @@ it.each([
     fcAmount: Number.MAX_SAFE_INTEGER,
     rate: '1.0000000000000001',
     amount: Number.MAX_SAFE_INTEGER,
-    message: '超出安全整数分范围',
+    message: '超出可保存金额范围',
   },
   {
     side: 'credit',
     fcAmount: 1000,
     rate: '99999999999999999999',
     amount: 1,
-    message: '超出安全整数分范围',
+    message: '超出可保存金额范围',
   },
   {
     side: 'debit',

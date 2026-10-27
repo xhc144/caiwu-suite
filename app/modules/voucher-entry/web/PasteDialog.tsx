@@ -39,7 +39,7 @@ export default function PasteDialog({
     >
       <Alert
         type="info"
-        title="只按编码解析科目和辅助项；确认前不会改动凭证。金额按十进制文本转为整数分，保存时继续完整校验。"
+        title="请按科目和辅助项编码粘贴，金额按元填写。确认前不会改动凭证，保存时将再次核对。"
       />
       <Input.TextArea
         aria-label="Excel粘贴文本"
@@ -109,9 +109,7 @@ export default function PasteDialog({
           {
             title: '逐行错误',
             render: (_, r) =>
-              r.errors.join('；') ||
-              r.warnings.join('；') ||
-              '引用校验通过，正式保存仍走 core 校验',
+              r.errors.join('；') || r.warnings.join('；') || '引用校验通过，正式保存时将再次核对',
           },
         ]}
       />

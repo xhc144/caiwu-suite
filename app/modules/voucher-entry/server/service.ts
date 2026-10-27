@@ -12,6 +12,7 @@ import {
   today,
   VoucherLineInputSchema,
   type VoucherLineInput,
+  type BalanceQuery,
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
@@ -23,6 +24,7 @@ import {
   parsePaste,
   quantityAmount,
   foreignAmount,
+  isEmptyEntryLine,
   type PasteField,
   type Problem,
   type SaveInput,
@@ -54,8 +56,8 @@ export function entryService(svc: CoreServices) {
       const to = manifest && v.source ? sourceRoute(manifest, v.source.type, v.source.id) : null;
       throw new BusinessError({
         code: 'ENTRY_READONLY',
-        message: '该凭证已审核、过账、作废或由来源模块生成，只能查看',
-        hint: '请到凭证管理、期末处理或来源模块办理相应业务',
+        message: '该凭证已审核、过账、作废或由来源业务生成，只能查看',
+        hint: '请到凭证管理、期末处理或来源业务办理相应业务',
         actions: to
           ? [{ label: '查看来源', to }]
           : [
@@ -70,14 +72,17 @@ export function entryService(svc: CoreServices) {
   const inspect = async (lines: readonly VoucherLineInput[], complete: boolean) => {
     const problems: Problem[] = [];
     const warnings: Problem[] = [];
-    const normalized = lines.map((l) => ({ ...l, dimensions: { ...l.dimensions } }));
-    let internal = 0;
+    const indexed = lines
+      .map((line, index) => ({ line: { ...line, dimensions: { ...line.dimensions } }, index }))
+      .filter(({ line }) => !complete || !isEmptyEntryLine(line));
+    const normalized = indexed.map(({ line }) => line);
+    let internal = 0n;
     let hasInternal = false;
     const [currencies, methods] = await Promise.all([
       svc.reference.currencies(),
       svc.reference.settlementMethods(),
     ]);
-    for (const [index, l] of normalized.entries()) {
+    for (const { index, line: l } of indexed) {
       const n = index + 1;
       const add = (field: string, message: string) =>
         problems.push({ line: n, field, message: `第${n}行：${message}` });
@@ -89,7 +94,12 @@ export function entryService(svc: CoreServices) {
       if (a.disabled || !a.isLeaf) add('accountId', `科目 ${a.code} 已停用或不是末级科目`);
       if (complete && !l.summary?.trim()) add('summary', '摘要不能为空');
       if ((l.debit ?? 0) !== 0 && (l.credit ?? 0) !== 0) add('debit', '同一行借贷不能同时有值');
-      if (complete && !(l.debit || l.credit)) add('debit', '借贷金额不能都为零');
+      if (
+        complete &&
+        !(l.debit || l.credit || l.fcAmount) &&
+        (!l.quantity || new Decimal(l.quantity).isZero())
+      )
+        add('debit', '请填写借方、贷方、外币金额或数量');
       for (const type of DIMENSION_TYPE_IDS) {
         const cfg = a.dimensions.find((d) => d.type === type);
         if (type !== 'cashflow' && cfg && l.dimensions[type] == null && cfg.defaultItemId != null)
@@ -107,7 +117,7 @@ export function entryService(svc: CoreServices) {
           }
           if (type === 'cashflow' && a.cashflowRequired) {
             const direction = CashflowDirectionSchema.safeParse(item.attrs.cashflowDirection);
-            const signed = (l.debit ?? 0) - (l.credit ?? 0);
+            const signed = BigInt(l.debit ?? 0) - BigInt(l.credit ?? 0);
             if (!direction.success)
               warnings.push({
                 line: n,
@@ -118,8 +128,8 @@ export function entryService(svc: CoreServices) {
               hasInternal = true;
               internal += signed;
             } else if (
-              (direction.data === 'inflow' && signed < 0) ||
-              (direction.data === 'outflow' && signed > 0)
+              (direction.data === 'inflow' && signed < 0n) ||
+              (direction.data === 'outflow' && signed > 0n)
             )
               add(type, `现金流量 ${item.code} 的方向与红字调整后的借贷方向冲突`);
           }
@@ -154,7 +164,7 @@ export function entryService(svc: CoreServices) {
               );
             }
           } catch {
-            add('exchangeRate', '原币金额×汇率超出安全整数分范围，请核对原币金额和汇率');
+            add('exchangeRate', '原币金额×汇率超出可保存金额范围，请核对原币金额和汇率');
           }
         }
       } else if (
@@ -179,7 +189,7 @@ export function entryService(svc: CoreServices) {
             const amount = quantityAmount(l.quantity, l.unitPrice);
             const actual = l.credit ? l.credit : (l.debit ?? 0);
             if (amount !== actual)
-              add('quantity', `数量×单价应四舍五入到分：${amount} 分，请重新计算金额`);
+              add('quantity', `数量×单价应为 ${formatMoney(amount)} 元，请重新计算金额`);
           } catch {
             add('quantity', '数量×单价超出安全金额范围，请核对');
           }
@@ -202,16 +212,16 @@ export function entryService(svc: CoreServices) {
       problems.push({
         line: 0,
         field: 'debit',
-        message: '金额合计超出安全整数分范围，请拆分凭证并核对金额',
+        message: '金额合计超出可保存范围，请拆分凭证并核对金额',
       });
     }
     if (complete && normalized.length < 2)
       problems.push({ line: 0, field: 'lines', message: '至少录入两条有效分录' });
-    if (complete && hasInternal && internal !== 0)
+    if (complete && hasInternal && internal !== 0n)
       problems.push({
         line: 0,
         field: 'cashflow',
-        message: `内部现金流入流出未配平，差额 ${internal} 分`,
+        message: `内部现金流入流出未配平，请核对内部转移的金额`,
       });
     return { lines: normalized, problems, warnings };
   };
@@ -220,7 +230,7 @@ export function entryService(svc: CoreServices) {
       throw new BusinessError({
         code: 'ENTRY_INVALID',
         message: r.problems[0]!.message,
-        hint: '请按行号修正；未完成的内容可先保存在编辑缓冲',
+        hint: '请按行号修正；未完成的内容可先暂存',
         details: { problems: r.problems },
       });
     if (r.warnings.length && !acknowledged)
@@ -283,7 +293,7 @@ export function entryService(svc: CoreServices) {
         last: index >= 0 && index < rows.length - 1 ? rows.at(-1)!.id : null,
       };
     },
-    async context(accountId: number, date: string) {
+    async context(accountId: number, date: string, dimensions: BalanceQuery['dimensions'] = {}) {
       requireView();
       const a = await svc.accounts.require(accountId);
       const period = periodOfDate(date);
@@ -295,11 +305,16 @@ export function entryService(svc: CoreServices) {
           includeUnposted: true,
           includeZero: true,
           rollup: false,
+          dimensions,
+          currency: a.currency ?? undefined,
         }),
         a.currency ? svc.reference.exchangeRate(a.currency, period) : Promise.resolve(null),
       ]);
+      const balance = balances.find((b) => b.accountId === accountId);
       return {
-        balance: balances.find((b) => b.accountId === accountId)?.closing ?? 0,
+        balance: balance?.closing ?? 0,
+        fcBalance: balance?.fcClosing ?? 0,
+        quantityBalance: balance?.qtyClosing ?? '0',
         period,
         includeUnposted: true,
         rate,
@@ -404,6 +419,30 @@ export function entryService(svc: CoreServices) {
                 })
               : await tsvc.vouchers.create(coreData);
           } catch (error) {
+            if (
+              !data.draft &&
+              error instanceof BusinessError &&
+              error.data.code === 'VOUCHER_INVALID'
+            ) {
+              const originalLines = data.lines.flatMap((line, index) =>
+                isEmptyEntryLine(line) ? [] : [index + 1],
+              );
+              const problems = (
+                error.data.details?.problems as { line: number; message: string }[] | undefined
+              )?.map((problem) => ({
+                ...problem,
+                line: problem.line > 0 ? (originalLines[problem.line - 1] ?? problem.line) : 0,
+                field: 'debit',
+              }));
+              if (problems?.length) {
+                const first = problems[0]!;
+                throw new BusinessError({
+                  ...error.data,
+                  message: `${first.line > 0 ? `第${first.line}行：` : ''}${first.message}`,
+                  details: { ...error.data.details, problems },
+                });
+              }
+            }
             if (!data.draft || !(error instanceof BusinessError)) throw error;
             coreError = error.data.message;
           }

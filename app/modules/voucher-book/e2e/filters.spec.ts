@@ -173,13 +173,13 @@ test('w_pz_pzxsb 外部URL、历史提交重放与重置同步字段，Form保�
       window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
     });
     await expect(summary).toHaveValue('历史第一');
-    await expect(page.getByLabel('金额起（分）', { exact: true })).toHaveValue('1');
+    await expect(page.getByLabel('金额起（元）', { exact: true })).toHaveValue('0.01');
     await expect(page.getByRole('checkbox', { name: '含作废', exact: true })).toBeChecked();
     await expect(page.getByRole('row').filter({ hasText: '历史第一' })).toBeVisible();
     await expect(page.getByRole('row').filter({ hasText: '历史第二' })).toHaveCount(0);
     await page.getByRole('button', { name: '重置', exact: true }).click();
     await expect(summary).toHaveValue('');
-    await expect(page.getByLabel('金额起（分）', { exact: true })).toHaveValue('');
+    await expect(page.getByLabel('金额起（元）', { exact: true })).toHaveValue('');
     await expect(page.getByRole('checkbox', { name: '含作废', exact: true })).not.toBeChecked();
     await expect(page).toHaveURL(
       (url) => !url.searchParams.has('summary') && !url.searchParams.has('amountFrom'),
@@ -193,6 +193,85 @@ test('w_pz_pzxsb 外部URL、历史提交重放与重置同步字段，Form保�
       ),
     ).toBe(true);
     await identity.dispose();
+  } finally {
+    await t.close();
+  }
+});
+
+test('w_pz_pzxsb / w_pz_zhcx：金额按元输入，旧分值链接和综合条件刷新往返，制单人按名称查询历史停用账号', async ({
+  page,
+}) => {
+  const t = await browserRuntime();
+  try {
+    const user = await t.app.svc.users.create({
+      code: 'history-maker',
+      name: '历史制单人',
+      password: 'example-only',
+    });
+    // 独立账套前置通过公开凭证入口建立，没有修改核心凭证表。
+    const actor = await import('@caiwu/core/server');
+    const svc = actor.createCoreServices({
+      db: t.app.svc.db,
+      user: (await actor.loadServiceUser(t.app.svc.db, user.id))!,
+      moduleId: null,
+      now: t.app.runtime.now,
+      modules: t.app.runtime.modules.lookup,
+    });
+    await seedVouchers(svc, [
+      {
+        date: '2026-01-05',
+        summary: '元金额负数',
+        lines: [
+          { account: '6603', debit: -1 },
+          { account: '6001', credit: -1 },
+        ],
+      },
+    ]);
+    await t.app.svc.db
+      .updateTable('app_user')
+      .set({ disabled: 1 })
+      .where('id', '=', user.id)
+      .execute();
+    await t.login(page, 'admin', 'admin');
+    await page.goto(`${t.address}/m/voucher-book?amountFrom=-1&amountTo=-1`);
+    await expect(page.getByLabel('金额起（元）', { exact: true })).toHaveValue('-0.01');
+    await expect(page.getByRole('row').filter({ hasText: '元金额负数' })).toBeVisible();
+    const creator = page.getByRole('combobox', { name: '制单人', exact: true });
+    await creator.fill('历史制单人');
+    await expect(
+      page.locator('.ant-select-item-option-content').filter({ hasText: 'history-maker，已停用' }),
+    ).toBeVisible();
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: '查询', exact: true }).click();
+    await expect(page).toHaveURL(
+      (url) =>
+        url.searchParams.get('creator') === String(user.id) &&
+        url.searchParams.get('amountFrom') === '-1',
+    );
+    await page.reload();
+    await expect(page.getByLabel('金额止（元）', { exact: true })).toHaveValue('-0.01');
+    await expect(page.getByRole('row').filter({ hasText: '元金额负数' })).toBeVisible();
+    await page.getByRole('button', { name: '添加查询条件', exact: true }).click();
+    await page.getByLabel('综合查询字段1', { exact: true }).click();
+    await page.locator('.ant-select-item-option-content').filter({ hasText: '金额（元）' }).click();
+    await page.getByLabel('综合查询操作1', { exact: true }).click();
+    await page
+      .locator('.ant-select-item-option-content')
+      .filter({ hasText: /^等于$/ })
+      .click();
+    await page.getByLabel('综合查询值1', { exact: true }).fill('-0.01');
+    await page.getByRole('button', { name: '查询', exact: true }).click();
+    await expect(page).toHaveURL(
+      (url) => JSON.parse(url.searchParams.get('conditions') ?? '[]')[0]?.value === '-1',
+    );
+    await page.reload();
+    await expect(page.getByLabel('综合查询值1', { exact: true })).toHaveValue('-0.01');
+    await expect(page.getByRole('row').filter({ hasText: '元金额负数' })).toBeVisible();
+    await page.getByLabel('金额起（元）', { exact: true }).fill('90071992547409.92');
+    const before = page.url();
+    await page.getByRole('button', { name: '查询', exact: true }).click();
+    await expect(page.getByText('金额超出可查询范围，请缩小金额', { exact: true })).toBeVisible();
+    expect(page.url()).toBe(before);
   } finally {
     await t.close();
   }

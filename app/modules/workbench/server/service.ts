@@ -15,7 +15,7 @@ const forbidden = (message: string) =>
   new BusinessError({
     code: 'FORBIDDEN',
     message,
-    hint: '请让管理员授权对应业务模块的读取权限；模块未加载时请先安装该模块',
+    hint: '请让管理员授权对应业务的读取权限；功能尚未启用时请联系管理员',
   });
 
 export function workbenchService(svc: CoreServices, manifests: ModuleManifest[], devMode: boolean) {

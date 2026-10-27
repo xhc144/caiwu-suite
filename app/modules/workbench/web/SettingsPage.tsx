@@ -61,7 +61,7 @@ export default function SettingsPage() {
           <Descriptions.Item label="会计制度">{session.book.templateName}</Descriptions.Item>
         </Descriptions>
         <Typography.Paragraph>
-          只改变当前账套可见模块，不修改会计制度、科目或历史数据，也不删除隐藏模块的数据。更改会保存到账套，重新登录后仍生效。
+          只改变当前账套可见功能，不修改会计制度、科目或历史数据，也不删除隐藏功能的数据。更改会保存到账套，重新登录后仍生效。
         </Typography.Paragraph>
         {!canSwitch && <Alert type="warning" title="没有产品形态切换权限" />}
         <Space wrap>
@@ -101,7 +101,7 @@ export default function SettingsPage() {
       >
         <p>
           将从{productName(session.book.product)}切换为{productName(next)}
-          ，不适用的模块和标签将隐藏。
+          ，不适用的功能和标签将隐藏。
         </p>
         <p>请先保存所有表单。当前框架不能判断每个业务表单的未保存状态；已有离开保护会阻止切换。</p>
       </Modal>

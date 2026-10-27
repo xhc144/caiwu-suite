@@ -126,7 +126,7 @@ test('w_pz_pzedit：全键盘三行、部门项目和 USD → Ctrl+S → 重开 
     await select(page, '第1行科目', '6603');
     await page.getByLabel('第1行借方', { exact: true }).fill('12.34');
     await page.getByLabel('第2行摘要', { exact: true }).fill('无科目缓冲也恢复');
-    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    await expect(page.getByRole('status')).toContainText('草稿与暂存内容已保存');
     await page.reload();
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('自动草稿行');
     await expect(page.getByLabel('第2行摘要', { exact: true })).toHaveValue('无科目缓冲也恢复');
@@ -320,13 +320,13 @@ test('w_pz_pzedit_b：来源只读与来源跳转；隐藏页快捷键不生效�
     await expect(page.getByRole('status')).toContainText('已恢复');
     await page.getByLabel('第1行摘要', { exact: true }).fill('离开确认内容');
     await page.getByRole('button', { name: '科目维护', exact: true }).click();
-    const leave = page.getByRole('dialog', { name: '尚有未持久化内容' });
+    const leave = page.getByRole('dialog', { name: '尚有未保存修改' });
     await expect(leave).toBeVisible();
     await leave.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('离开确认内容');
     await page.getByLabel('第1行摘要', { exact: true }).fill('保存离开内容');
     await page.getByRole('button', { name: '科目维护', exact: true }).click();
-    await leave.getByRole('button', { name: '保存缓冲并离开' }).click();
+    await leave.getByRole('button', { name: '保存草稿并离开' }).click();
     await expect(page).toHaveURL(`${local.url}/m/accounts`);
     await page.goto(`${local.url}/m/voucher-entry/new`);
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('保存离开内容');
@@ -364,7 +364,7 @@ test('w_pz_pzedit.closequery / u_new：壳关闭按钮与 Ctrl+F4 提供取消/�
     await expect(page.getByRole('status')).toContainText('已恢复');
     await page.getByLabel('第1行摘要', { exact: true }).fill('关闭取消保留');
     await page.getByRole('button', { name: 'remove', exact: true }).click();
-    const leave = page.getByRole('dialog', { name: '尚有未持久化内容' });
+    const leave = page.getByRole('dialog', { name: '尚有未保存修改' });
     await expect(leave).toBeVisible();
     await leave.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('关闭取消保留');
@@ -380,8 +380,8 @@ test('w_pz_pzedit.closequery / u_new：壳关闭按钮与 Ctrl+F4 提供取消/�
     await expect(page.getByRole('status')).toContainText('已恢复');
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('');
     await page.getByLabel('第1行摘要', { exact: true }).fill('重输之前已存');
-    await page.getByRole('button', { name: '保存草稿/缓冲', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    await page.getByRole('button', { name: '保存草稿', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('草稿与暂存内容已保存');
     const original = (await svc.vouchers.list({ statuses: ['draft'] })).items.at(-1)!;
     await page.getByRole('button', { name: '重新输入', exact: true }).click();
     const reset = page.getByRole('dialog', { name: '重新输入', exact: true });
@@ -471,7 +471,7 @@ test('w_pz_pzedit.closequery：自动草稿后30秒内关壳标签再菜单重�
     await page.goto(`${local.url}/m/voucher-entry/new`);
     await expect(page.getByRole('status')).toContainText('已恢复');
     await page.getByLabel('第1行摘要', { exact: true }).fill('30秒内重开保留无科目摘要');
-    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    await expect(page.getByRole('status')).toContainText('草稿与暂存内容已保存');
     const before = (await svc.vouchers.list({ statuses: ['draft'] })).items;
     expect(before).toHaveLength(1);
     await page.keyboard.press('Control+F4');
@@ -482,7 +482,7 @@ test('w_pz_pzedit.closequery：自动草稿后30秒内关壳标签再菜单重�
       '30秒内重开保留无科目摘要',
     );
     await page.getByLabel('第2行摘要', { exact: true }).fill('重开后继续输入');
-    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    await expect(page.getByRole('status')).toContainText('草稿与暂存内容已保存');
     await expect(page.getByRole('alert').filter({ hasText: '版本冲突' })).toHaveCount(0);
     const after = (await svc.vouchers.list({ statuses: ['draft'] })).items;
     expect(after).toHaveLength(1);
