@@ -134,7 +134,7 @@ export const NET_ROLES: Record<string, string[]> = {
   inventory: ['allowance'],
   heldForSaleAssets: ['allowance'],
   debtInvestments: ['allowance'],
-  longTermReceivables: ['allowance'],
+  longTermReceivables: ['allowance', 'financing'],
   equityInvestments: ['allowance'],
   investmentProperty: ['depreciation', 'allowance'],
   fixedAssets: ['depreciation', 'allowance', 'clearing'],

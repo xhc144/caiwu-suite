@@ -790,3 +790,37 @@ it('w_bb_proc 同一坏账准备科目按真实对象跨项目分配，不需为
   expect(b.accountsReceivable).toBe('900');
   expect(b.otherReceivables).toBe('450');
 });
+it('w_bb_proc 独审回归：长期应收款按绑定未实现融资收益净额列报', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '长期应收款'),
+    { accountId: 9, line: 'longTermReceivables', kind: 'maturity', role: 'gross' },
+    10000,
+  );
+  const target = balanceBucket(d.balances[202512]!.at(-1)!);
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: target,
+    current: false,
+    duePeriod: 202712,
+    ...provenance,
+  });
+  addAccount(
+    c,
+    d,
+    account(10, '未实现融资收益', 'asset', 'credit'),
+    { accountId: 10, line: 'longTermReceivables', kind: 'maturity', role: 'financing' },
+    -1000,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    allowanceFor: target,
+    ...provenance,
+  });
+  expect(calculateBalance(c, d, 202512).longTermReceivables).toBe('9000');
+});
