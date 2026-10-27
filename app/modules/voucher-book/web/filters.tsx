@@ -1,9 +1,13 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useSearchParams } from 'react-router';
 import { Alert, Button, Checkbox, Form, Input, Select, Space } from 'antd';
 import { useVoucherTypes } from '@caiwu/web-kit';
+import { useQuery } from '@tanstack/react-query';
+import { api } from './api';
+import { amountToForm, amountToUrl, conditionAmounts, queryProblem } from './amount-filters';
 import { VOUCHER_STATUS_LABELS } from '@caiwu/core';
-import { BookFilterSchema } from '../shared';
+import { BookFilterSchema, ConditionSchema } from '../shared';
+import { userError } from './errors';
 
 const defaults = {
   period: '',
@@ -81,7 +85,7 @@ export function useBookFilters() {
   try {
     conditionData = values.conditions ? (JSON.parse(values.conditions) as unknown) : [];
   } catch {
-    syntaxError = '综合查询条件必须是有效 JSON 数组，查询未执行';
+    syntaxError = '综合查询条件格式有误，请清空后重新选择，查询未执行';
   }
   const page = Number(values.page),
     size = Number(values.size);
@@ -113,13 +117,16 @@ export function useBookFilters() {
     (params.has('voided') && !['0', '1', 'true', 'false'].includes(params.get('voided')!)
       ? '含作废参数必须为0或1'
       : '') ||
+    ([values.amountFrom, values.amountTo].some((value) => value !== '' && !/^-?\d+$/.test(value))
+      ? '金额查询条件无效，请在筛选栏重新输入金额'
+      : '') ||
     (values.scope && !['filter', 'all', 'unposted', 'posted'].includes(values.scope)
       ? '凭证范围参数非法'
       : '') ||
     (values.level && !['root', 'leaf'].includes(values.level) ? '汇总级次参数非法' : '') ||
     (values.foreign && !['0', '1'].includes(values.foreign) ? '原币展开参数非法' : '') ||
     (!Number.isSafeInteger(page) || page < 1 ? '页码必须是正整数' : '') ||
-    (!result.success ? result.error.issues.map((i) => i.message).join('；') : '');
+    (!result.success ? result.error.issues.map(queryProblem).join('；') : '');
   return {
     values,
     set,
@@ -160,9 +167,32 @@ export function Filters({
   historyVersion: number;
 }) {
   const types = useVoucherTypes();
+  const creators = useQuery(api.creators.queryOptions());
+  const formValues = useMemo(() => {
+    const result = {
+      ...values,
+      amountFrom: amountToForm(values.amountFrom),
+      amountTo: amountToForm(values.amountTo),
+    };
+    try {
+      result.conditions = conditionAmounts(values.conditions, amountToForm);
+    } catch {
+      /* 查询和条件编辑器呈现错误 */
+    }
+    return result;
+  }, [values]);
+  const validateMoney = async (_rule: unknown, value: string) => {
+    amountToUrl(value ?? '');
+  };
+  const validateConditions = async (_rule: unknown, value: string) => {
+    const converted = conditionAmounts(value ?? '', amountToUrl);
+    const rows: unknown = converted ? JSON.parse(converted) : [];
+    const result = BookFilterSchema.safeParse({ conditions: rows });
+    if (!result.success) throw new Error(result.error.issues.map(queryProblem).join('；'));
+  };
   const formId = useId();
   const [form] = Form.useForm<UrlFilters>();
-  const [draft, setDraft] = useState<Partial<UrlFilters>>(values);
+  const [draft, setDraft] = useState<Partial<UrlFilters>>(formValues);
   const applied = JSON.stringify([values, historyVersion]);
   const previous = useRef(applied);
   useLayoutEffect(() => {
@@ -172,11 +202,11 @@ export function Filters({
     // 本次查询的导航确认只更新已应用条件，不能覆盖提交后继续编辑的草稿。
     // 真正改变条件的外部导航/历史导航同步表单，但保持同一Form及抽屉生命周期。
     if (!ownCommit) {
-      form.setFieldsValue(values);
-      setDraft(values);
+      form.setFieldsValue(formValues);
+      setDraft(formValues);
     }
-  }, [applied, values, form, isOwnCommit]);
-  const dirty = formKeys.some((key) => (draft[key] ?? defaults[key]) !== values[key]);
+  }, [applied, formValues, form, isOwnCommit]);
+  const dirty = formKeys.some((key) => (draft[key] ?? defaults[key]) !== formValues[key]);
   return (
     <>
       <Form<UrlFilters>
@@ -184,9 +214,18 @@ export function Filters({
         layout="inline"
         className="cw-filter-bar"
         form={form}
-        initialValues={values}
+        initialValues={formValues}
         onValuesChange={(_, all: UrlFilters) => setDraft(all)}
-        onFinish={(v) => set({ ...v, page: '1', id: '' })}
+        onFinish={(v) =>
+          set({
+            ...v,
+            amountFrom: amountToUrl(v.amountFrom ?? ''),
+            amountTo: amountToUrl(v.amountTo ?? ''),
+            conditions: conditionAmounts(v.conditions ?? '', amountToUrl),
+            page: '1',
+            id: '',
+          })
+        }
       >
         <Form.Item name="period" label="期间">
           <Input placeholder="202601" style={{ width: 105 }} />
@@ -226,17 +265,49 @@ export function Filters({
         <Form.Item name="account" label="科目含下级">
           <Input style={{ width: 120 }} />
         </Form.Item>
-        <Form.Item name="amountFrom" label="金额起（分）">
-          <Input style={{ width: 110 }} />
+        <Form.Item name="amountFrom" label="金额起（元）" rules={[{ validator: validateMoney }]}>
+          <Input inputMode="decimal" onFocus={(e) => e.target.select()} style={{ width: 110 }} />
         </Form.Item>
-        <Form.Item name="amountTo" label="金额止（分）">
-          <Input style={{ width: 110 }} />
+        <Form.Item name="amountTo" label="金额止（元）" rules={[{ validator: validateMoney }]}>
+          <Input inputMode="decimal" onFocus={(e) => e.target.select()} style={{ width: 110 }} />
         </Form.Item>
         <Form.Item name="summary" label="摘要">
           <Input data-voucher-summary="true" style={{ width: 170 }} />
         </Form.Item>
-        <Form.Item name="creator" label="制单人ID">
-          <Input style={{ width: 90 }} />
+        <Form.Item name="creator" label="制单人">
+          <Select
+            aria-label="制单人"
+            allowClear
+            showSearch={{ optionFilterProp: 'label' }}
+            style={{ width: 190 }}
+            loading={creators.isPending}
+            options={[
+              ...(creators.data ?? []).map((u) => ({
+                value: String(u.id),
+                label: `${u.name}（${u.code}${u.disabled ? '，已停用' : ''}）`,
+              })),
+              ...(formValues.creator &&
+              !creators.data?.some((u) => String(u.id) === formValues.creator)
+                ? [
+                    {
+                      value: formValues.creator,
+                      label: creators.isPending
+                        ? '正在读取制单人…'
+                        : creators.isError
+                          ? '制单人读取失败'
+                          : '制单人已不存在，请重新选择',
+                    },
+                  ]
+                : []),
+            ]}
+            notFoundContent={
+              creators.isPending
+                ? '正在读取制单人…'
+                : creators.isError
+                  ? '读取失败，请刷新重试'
+                  : '没有匹配的制单人'
+            }
+          />
         </Form.Item>
         <Form.Item name="voided" valuePropName="checked">
           <Checkbox>含作废</Checkbox>
@@ -244,7 +315,8 @@ export function Filters({
         <Form.Item
           name="conditions"
           label="综合查询"
-          tooltip="所有条件同时满足；编号和金额（分）使用整数，日期使用有效年月日。"
+          tooltip="所有条件同时满足；金额按元输入，日期使用有效年月日。"
+          rules={[{ validator: validateConditions }]}
         >
           <ConditionEditor />
         </Form.Item>
@@ -263,6 +335,14 @@ export function Filters({
           </Button>
         </Form.Item>
       </Form>
+      {creators.isError && (
+        <Alert
+          type="warning"
+          title="无法读取制单人"
+          description={userError(creators.error, '请检查本地服务后重试')}
+          action={<Button onClick={() => void creators.refetch()}>重试</Button>}
+        />
+      )}
       {dirty && (
         <Alert
           type="info"
@@ -293,7 +373,14 @@ function ConditionEditor({
       !Array.isArray(parsed) ||
       !parsed.every(
         (r) =>
-          r != null && typeof r === 'object' && 'field' in r && 'operator' in r && 'value' in r,
+          r != null &&
+          typeof r === 'object' &&
+          'field' in r &&
+          'operator' in r &&
+          'value' in r &&
+          ConditionSchema.shape.field.safeParse(r.field).success &&
+          ConditionSchema.shape.operator.safeParse(r.operator).success &&
+          typeof r.value === 'string',
       )
     )
       throw new Error();
@@ -322,7 +409,7 @@ function ConditionEditor({
             options={[
               { value: 'date', label: '凭证日期' },
               { value: 'number', label: '凭证编号' },
-              { value: 'amount', label: '金额（分）' },
+              { value: 'amount', label: '金额（元）' },
               { value: 'summary', label: '分录摘要' },
               { value: 'creator', label: '制单人名称' },
             ]}
@@ -353,6 +440,9 @@ function ConditionEditor({
             aria-label={`综合查询值${i + 1}`}
             style={{ width: 170 }}
             type={r.field === 'date' ? 'date' : 'text'}
+            onFocus={(e) => {
+              if (r.field === 'amount') e.target.select();
+            }}
             value={r.value}
             onChange={(e) => update(i, { value: e.target.value })}
           />

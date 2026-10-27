@@ -120,7 +120,7 @@ export function ImportDrawer({
     >
       <Alert
         type="info"
-        title="v1 Excel（金额为整数分）或本模块结构化文本"
+        title="导入凭证簿导出的 Excel 或凭证数据文件"
         description="导入为新的手工待审核凭证，使用当前制单人。保留编码、辅助项、外币、数量、票号与业务日期；已审核、过账、作废和来源凭证不能覆盖；待审核覆盖须单独授权、预览与确认"
       />
       <Form
@@ -192,7 +192,7 @@ export function ImportDrawer({
         <Form.Item
           name="mapping"
           label="Excel字段映射"
-          tooltip="本模块导出的文件无需修改；其它表格请填写对应列的表头文字。金额列必须为整数分。"
+          tooltip="凭证簿导出的文件无需修改；其它表格请填写对应列的表头文字，并按导出文件的金额格式填写。"
         >
           <FieldMapping />
         </Form.Item>
