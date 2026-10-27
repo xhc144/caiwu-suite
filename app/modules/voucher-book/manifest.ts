@@ -18,6 +18,7 @@ export default defineManifest({
     { id: 'voucher-book.import', name: '导入凭证' },
     { id: 'voucher-book.overwrite', name: '导入覆盖待审核凭证' },
     { id: 'voucher-book.export', name: '导出凭证' },
+    { id: 'voucher-book.print', name: '打印凭证汇总与丁字账' },
   ],
   menu: [
     { group: 'voucher', title: '凭证序时簿', path: '/', permission: 'voucher-book.view' },
