@@ -12,6 +12,13 @@ import payroll from '../server';
 
 async function select(control: Locator, text: string) {
   await control.fill(text);
+  await expect(
+    control
+      .page()
+      .locator('.ant-select-dropdown:visible .ant-select-item-option-content')
+      .filter({ hasText: text })
+      .first(),
+  ).toBeVisible();
   await control.press('Enter');
 }
 
@@ -233,8 +240,14 @@ test('工资：独立账套建结构与三人 → 手算税额 → 工资条Exce
         '10,850.00',
       );
       await page.goto('/m/payroll/reports');
-      for (let i = 1; i <= 3; i++)
+      for (let i = 1; i <= 3; i++) {
         await select(page.getByRole('combobox', { name: '报告人员' }), `E00${i}`);
+        await expect(
+          page.locator('.ant-select-selection-item-content').filter({
+            hasText: `E00${i} 合成人员${i}`,
+          }),
+        ).toBeVisible();
+      }
       await page.getByLabel('报表', { exact: true }).click();
       await page
         .locator('.ant-select-item-option-content')
