@@ -1,0 +1,238 @@
+name: Archive and prune merged branches (2026-10-27)
+on:
+  push:
+    branches:
+      - maintenance/merged-branches-cleanup-20261027
+    paths:
+      - .github/workflows/merged-branches-cleanup-20261027.yml
+permissions: {}
+concurrency:
+  group: merged-branches-cleanup-20261027
+  cancel-in-progress: false
+jobs:
+  prune:
+    if: github.repository == 'xhc144/caiwu-suite' && github.ref == 'refs/heads/maintenance/merged-branches-cleanup-20261027' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+          show-progress: false
+          submodules: false
+          lfs: false
+      - name: Verify merge, archive exact heads, then delete with leases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          
+          REPOSITORY = "xhc144/caiwu-suite"
+          MAINTENANCE_BRANCH = "maintenance/merged-branches-cleanup-20261027"
+          ARCHIVE_PREFIX = "archive/2026-10-27/"
+          FROZEN = [('codex/w2-09-voucher-entry', '1b8fdce5d1f4fd3ffebdc2d10ab1edeb99cc9d5e'), ('work/w2-20-inventory-completion', 'd271e7d770e19f60fd50e11ad78c0fafe8db15ce'), ('codex/w2-backup-20261026', '5ba3ee6fda1571e1119e490d9158f212ef329fbc'), ('codex/pr122-verify-20261026', 'ebc31fef724ef75a2fc61a327f6e5b315695f95f'), ('codex/payroll-calculate-a11y-20261027', '3da19b19cb4ade1b0ee60acf68164faffff7da30'), ('codex/w2-inventory-opening-amount-20261027', '24c567a50abde6a365e34e645dd4c33005503ad0'), ('codex/w2-fixed-assets-query-20261027', 'fe0e981553e6b0b878e74d824391aa1f445b2f16'), ('codex/voucher-calculator-enter-20261027', '4d93795466f5dd653a5210f7dcfe5e566bebb405'), ('codex/three-module-ci-sync-20261026', '534d2d20bcaa216a32d28b485e5e0be5e01dd804'), ('codex/business-integration-verified-20261027', '19af7a52e4fdf61cd79c0c299c1f59d71e8d74ea'), ('codex/preview-integration-20261027-0443', '7dbd52a021e5e7b995960520556f88b47d6865e6'), ('maintenance/verify-voucher-fixtures-20261027', '941d39c2b1b2690180c6db3aad9ee866ee851f74'), ('wave3/shared-successor', '196075a968bfc2e9034ddea92646aec99c7f9151'), ('wave3/books-templates', 'daac3ed60e69e2803a1f303855a3087757185c91'), ('wave3/book-workbench-successor', 'f0c4938b88c96f3bb87b2c64cb3a7bd2be05365f'), ('wave3/book-redlink-check', 'dc89a7ff8ca34914d1ec0c3fccf2f7e7ff10720c'), ('wave3/report-public-integration', '0fd58017ffa60006d98a1bb9ae93590d8eab70f8'), ('wave3/enterprise-reports', '7dc8504622e189921356384f936ea8d39d22bcd4'), ('wave3/nonprofit-reports', 'baad4a9832e81d5f01885e9f27c83c3ea7f59e67'), ('wave3/small-reports', 'cf763b5bc92c9a29d4d7288e7d6e69c5ae85a93a'), ('maintenance/merge-check-20261027', 'f42961887ffdb46846880836e86c80ff1474925a')]
+          
+          REQUIRED_MERGED_PR = 135
+          REQUIRED_MERGED_HEAD = 'f42961887ffdb46846880836e86c80ff1474925a'
+          REQUIRED_MERGED_TREE = '23a29b2047e6fa563f301a26589e9d2e4f09c044'
+          REQUIRED_CLOSED_PRS = [96, 108, 109, 124, 126, 131, 133, 125, 122, 129, 128, 134, 136, 137, 138, 139]
+          
+          
+          class Halt(Exception):
+              def __init__(self, code, branch="-", sha="-"):
+                  self.code, self.branch, self.sha = code, branch, sha
+          
+          
+          def emit(code, branch, sha):
+              print(code, branch, sha, flush=True)
+          
+          
+          def git(*args, branch="-", sha="-"):
+              result = subprocess.run(["git", *args], capture_output=True, text=True)
+              if result.returncode:
+                  raise Halt("GIT_REJECTED", branch, sha)
+              return result.stdout
+          
+          
+          def api(path):
+              request = urllib.request.Request(
+                  "https://api.github.com/repos/" + REPOSITORY + ("/" + path if path else ""),
+                  headers={
+                      "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "User-Agent": "frozen-branch-archive-prune",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      return json.load(response)
+              except (urllib.error.URLError, json.JSONDecodeError):
+                  raise Halt("API_REJECTED") from None
+          
+          
+          def remote_ref(ref):
+              lines = git("ls-remote", "--refs", "origin", ref).splitlines()
+              if not lines:
+                  return None
+              if len(lines) != 1:
+                  raise Halt("AMBIGUOUS_REF")
+              sha, actual = lines[0].split("\t")
+              if actual != ref or not re.fullmatch(r"[0-9a-f]{40}", sha):
+                  raise Halt("INVALID_REF")
+              return sha
+          
+          
+          def open_pr_refs():
+              refs = set()
+              page = 1
+              while True:
+                  pulls = api("pulls?state=open&per_page=100&page=" + str(page))
+                  if not isinstance(pulls, list):
+                      raise Halt("INVALID_PR_RESPONSE")
+                  for pull in pulls:
+                      refs.add(pull["base"]["ref"])
+                      # Conservative: matching fork head names also prevent deletion.
+                      refs.add(pull["head"]["ref"])
+                  if len(pulls) < 100:
+                      return refs
+                  page += 1
+          
+          
+          def check_candidate(branch, sha):
+              tag = "refs/tags/" + ARCHIVE_PREFIX + branch
+              actual = remote_ref("refs/heads/" + branch)
+              if actual is None:
+                  if remote_ref(tag) == sha:
+                      return False
+                  raise Halt("MISSING_UNARCHIVED", branch, sha)
+              if actual != sha:
+                  raise Halt("HEAD_CHANGED", branch, sha)
+              default = api("")["default_branch"]
+              if branch in {"main", "master", "integration", default}:
+                  raise Halt("DEFAULT_OR_INTEGRATION", branch, sha)
+              metadata = api("branches/" + urllib.parse.quote(branch, safe=""))
+              if metadata.get("protected") is not False:
+                  raise Halt("PROTECTED_OR_UNKNOWN", branch, sha)
+              if metadata.get("commit", {}).get("sha") != sha:
+                  raise Halt("API_HEAD_CHANGED", branch, sha)
+              if branch in open_pr_refs():
+                  raise Halt("OPEN_PR", branch, sha)
+              return True
+          
+          
+          def validate_targets(targets):
+              names = [branch for branch, _ in targets]
+              if len(set(names)) != len(names):
+                  raise Halt("DUPLICATE_TARGET")
+              for branch, sha in targets:
+                  if not re.fullmatch(r"[0-9a-f]{40}", sha):
+                      raise Halt("INVALID_SHA", branch, "-")
+                  git("check-ref-format", "refs/heads/" + branch, branch=branch, sha=sha)
+                  git("check-ref-format", "refs/tags/" + ARCHIVE_PREFIX + branch, branch=branch, sha=sha)
+          
+          
+          def archive_target(branch, sha):
+              tag = "refs/tags/" + ARCHIVE_PREFIX + branch
+              existing = remote_ref(tag)
+              if existing not in (None, sha):
+                  raise Halt("ARCHIVE_TAG_COLLISION", branch, sha)
+              if existing is None:
+                  # Obtain only an existing remote source ref; no invented objects.
+                  git("fetch", "--no-tags", "origin", "refs/heads/" + branch, branch=branch, sha=sha)
+                  git("cat-file", "-e", sha + "^{commit}", branch=branch, sha=sha)
+                  # Empty lease means the archive tag must not already exist.
+                  git("push", "--porcelain", "--force-with-lease=" + tag + ":", "origin", sha + ":" + tag,
+                      branch=branch, sha=sha)
+              if remote_ref(tag) != sha:
+                  raise Halt("ARCHIVE_VERIFY_FAILED", branch, sha)
+              emit("ARCHIVED", branch, sha)
+          
+          
+          def prune(targets):
+              validate_targets(targets)
+              # Preflight every target before the first remote mutation.
+              for branch, sha in targets:
+                  check_candidate(branch, sha)
+                  emit("PREFLIGHT", branch, sha)
+              # Preserve and verify all archive refs before deleting any branch.
+              for branch, sha in targets:
+                  archive_target(branch, sha)
+              for branch, sha in targets:
+                  present = check_candidate(branch, sha)
+                  if remote_ref("refs/tags/" + ARCHIVE_PREFIX + branch) != sha:
+                      raise Halt("ARCHIVE_LOST", branch, sha)
+                  if present:
+                      ref = "refs/heads/" + branch
+                      git("push", "--porcelain", "--force-with-lease=" + ref + ":" + sha,
+                          "origin", ":" + ref, branch=branch, sha=sha)
+                  if remote_ref("refs/heads/" + branch) is not None:
+                      raise Halt("DELETE_VERIFY_FAILED", branch, sha)
+                  emit("DELETED", branch, sha)
+              # Independent final readback, including the maintenance branch itself.
+              for branch, sha in targets:
+                  if remote_ref("refs/tags/" + ARCHIVE_PREFIX + branch) != sha:
+                      raise Halt("FINAL_ARCHIVE_FAILED", branch, sha)
+                  if remote_ref("refs/heads/" + branch) is not None:
+                      raise Halt("FINAL_REF_EXISTS", branch, sha)
+                  emit("VERIFIED", branch, sha)
+          
+          
+          def assert_completion_gate():
+              merged = api("pulls/" + str(REQUIRED_MERGED_PR))
+              if (merged.get("state") != "closed" or merged.get("merged") is not True
+                      or merged.get("base", {}).get("ref") != "main"
+                      or merged.get("head", {}).get("sha") != REQUIRED_MERGED_HEAD
+                      or merged.get("head", {}).get("ref") != "maintenance/merge-check-20261027"):
+                  raise Halt("INTEGRATION_NOT_MERGED")
+              commit = api("git/commits/" + REQUIRED_MERGED_HEAD)
+              if commit.get("tree", {}).get("sha") != REQUIRED_MERGED_TREE:
+                  raise Halt("INTEGRATION_TREE_CHANGED")
+              for number in REQUIRED_CLOSED_PRS:
+                  if api("pulls/" + str(number)).get("state") != "closed":
+                      raise Halt("SOURCE_PR_OPEN")
+          
+          
+          def main():
+              head = os.environ.get("GITHUB_SHA", "")
+              if (os.environ.get("GITHUB_REPOSITORY") != REPOSITORY
+                      or os.environ.get("GITHUB_EVENT_NAME") != "push"
+                      or os.environ.get("GITHUB_REF") != "refs/heads/" + MAINTENANCE_BRANCH
+                      or os.environ.get("GITHUB_REF_PROTECTED") != "false"
+                      or not re.fullmatch(r"[0-9a-f]{40}", head)):
+                  raise Halt("WRONG_EVENT_OR_REF")
+              event_path = os.environ["GITHUB_EVENT_PATH"]
+              with open(event_path, encoding="utf-8") as stream:
+                  event = json.load(stream)
+              if event.get("deleted") or event.get("after") != head:
+                  raise Halt("WRONG_PUSH_SHA", MAINTENANCE_BRANCH, head)
+              assert_completion_gate()
+              # The final, run-bound target archives and removes this one-use branch.
+              targets = list(FROZEN) + [(MAINTENANCE_BRANCH, head)]
+              prune(targets)
+          
+          
+          if __name__ == "__main__":
+              try:
+                  main()
+              except Halt as error:
+                  emit(error.code, error.branch, error.sha)
+                  sys.exit(1)
+              except Exception:
+                  # Never leak HTTP auth, environment values or raw git diagnostics.
+                  emit("UNEXPECTED_FAILURE", "-", "-")
+                  sys.exit(1)
+          PY
