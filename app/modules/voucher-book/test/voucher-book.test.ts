@@ -281,7 +281,9 @@ describe('w_pz_tjdel / w_pz_pzxsb 删除、作废与来源保护', () => {
       .svcFor('cashier')
       .vouchers.create({ ...(await input()), source: { type: 'document', id: '1' } });
     for (const action of ['delete', 'void'] as const)
-      expect((await plan(action, [foreign.id])).rows[0]!.reasons.join()).toMatch(/其它模块来源/);
+      expect((await plan(action, [foreign.id])).rows[0]!.reasons.join()).toMatch(
+        /凭证由其他业务生成，请到来源单据处理/,
+      );
     const [v] = await seed();
     await app.svc.vouchers.changeStatus({ ids: [v!.id], to: 'audited' });
     expect((await plan('delete', [v!.id])).eligibleCount).toBe(0);
@@ -1025,7 +1027,7 @@ it('w_pz_pzxsb 插入与导入金额中间合计也必须保持安全整数分',
         { ...base.lines[1], credit: 1 },
       ],
     }),
-  ).toThrow(/合计超过安全整数分/);
+  ).toThrow(/凭证合计超过可准确计算的范围，请拆分凭证/);
 });
 
 it('w_pz_get 预览后编码字典变更使确认失效，不把原科目悄悄映射成改名后的编码', async () => {
@@ -1140,3 +1142,58 @@ it.each(['json', 'xlsx'] as const)(
     });
   },
 );
+
+describe('w_pz_pzxsb 制单人和辅助核算显示', () => {
+  it('制单人查询须有凭证读取权限，只返回公开四字段并包含已停用历史账号', async () => {
+    const viewer = await app.addUser('viewer', { permissions: ['voucher-book.view'] });
+    const outsider = await app.addUser('outsider', { permissions: [] });
+    await app.addUser('historical');
+    await app.svc.db
+      .updateTable('app_user')
+      .set({ disabled: 1 })
+      .where('code', '=', 'historical')
+      .execute();
+    const rows = await caller(viewer).creators();
+    expect(rows.find((row) => row.code === 'historical')).toMatchObject({
+      name: 'historical',
+      disabled: 1,
+    });
+    for (const row of rows)
+      expect(Object.keys(row).sort()).toEqual(['code', 'disabled', 'id', 'name']);
+    await expect(caller(outsider).creators()).rejects.toThrow(/权限/);
+  });
+  it('列表和浏览均提供辅助项编码名称，历史停用档案仍可识别', async () => {
+    const account = (await app.svc.accounts.getByCode('6602'))!;
+    const department = (await app.svc.dimensions.getByCode('department', '01'))!;
+    const voucher = await app.svc.vouchers.create({
+      date: '2026-01-05',
+      voucherTypeId: (await app.svc.reference.voucherTypes())[0]!.id,
+      lines: [
+        {
+          accountId: account.id,
+          summary: '部门费用',
+          dimensions: { department: department.id },
+          debit: 100,
+          credit: 0,
+        },
+        {
+          accountId: (await app.svc.accounts.getByCode('1001'))!.id,
+          summary: '部门费用',
+          debit: 0,
+          credit: 100,
+        },
+      ],
+    });
+    await app.svc.db
+      .updateTable('dimension_item')
+      .set({ disabled: 1 })
+      .where('id', '=', department.id)
+      .execute();
+    const row = (await api.list({ id: voucher.id })).items[0]!;
+    const detail = await api.detail({ id: voucher.id });
+    expect(row.dimensionLabels[voucher.lines[0]!.id]).toBe(
+      `部门：${department.code} ${department.name}`,
+    );
+    expect(detail.dimensionLabels).toEqual(row.dimensionLabels);
+  });
+});
