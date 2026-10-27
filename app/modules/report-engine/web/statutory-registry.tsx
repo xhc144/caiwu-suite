@@ -285,6 +285,7 @@ function NonprofitConfigurationEditor(
                 key={current.year}
                 sources={props.source.current}
                 initial={current}
+                previousConfiguration={props.configuration.previous}
                 request={props.source.request}
                 periods={periods}
                 onDirtyChange={dirty}

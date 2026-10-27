@@ -233,3 +233,73 @@ it('w_bb_get 民非隐藏比较年草稿合并保存；隐藏未确认子表单�
     '尚未确认的比较年子表单',
   );
 });
+it('w_bb_get 公共本年面板从同账套上年度已保存recognitions提供组成下拉', async () => {
+  const current = blankConfiguration('book-A', 2027),
+    previous = blankConfiguration('book-A', 2026);
+  previous.recognitions = [
+    {
+      line: {
+        voucherId: 1,
+        lineId: 1,
+        revision: 1,
+        period: 202601,
+        account: '5101',
+        debit: 100,
+        credit: 0,
+      },
+      row: 'activityCost',
+      allocations: [
+        {
+          resourceId: 'U',
+          classification: 'unrestricted',
+          debit: 100,
+          credit: 0,
+          detail: '上年已保存教育服务',
+          acquisitionReference: '合成取得依据',
+          recognitionReference: '合成已保存上年逐笔确认',
+          charitableTrust: false,
+          fundraisingCost: false,
+        },
+      ],
+    },
+  ];
+  const request = {
+    code: '402',
+    from: 202701,
+    to: 202712,
+    kind: 'annual',
+    includeUnposted: false,
+    comparison: true,
+  } as const;
+  const emptySource = { entries: [], accounts: [], balances: [], dimensionNames: {}, to: 202712 };
+  render(
+    <StatutoryConfiguration
+      definitionId="nonprofit-2026"
+      configuration={{ period: 202712, scope: 'annual', request, current, previous }}
+      source={{
+        current: emptySource,
+        previous: emptySource,
+        request,
+        previousRequest: { ...request, from: 202601, to: 202612, comparison: false },
+        periods: [{ period: 202601 }],
+      }}
+      onSave={async () => {}}
+      onGenerate={async () => {}}
+      onPeriodChange={() => {}}
+      onOptionsChange={() => {}}
+    />,
+  );
+  await userEvent.click(screen.getByText('核对上年度可比口径及项目重列'));
+  await userEvent.click(screen.getByRole('button', { name: '增加明细项目重列' }));
+  const row = within(screen.getByText('项目重列1').closest('fieldset')!);
+  const selection = row.getByRole('combobox', { name: '真实明细项目' });
+  await userEvent.click(selection);
+  await userEvent.type(selection, '上年已保存教育服务');
+  fireEvent.keyDown(document.activeElement!, {
+    key: 'Enter',
+    code: 'Enter',
+    keyCode: 13,
+    which: 13,
+  });
+  expect(row.getByText('业务组成：上年已保存教育服务')).toBeVisible();
+});
