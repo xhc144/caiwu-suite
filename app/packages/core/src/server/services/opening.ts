@@ -1,8 +1,10 @@
+import { withTransaction } from '@caiwu/db';
 import { BusinessError } from '../../errors';
 import { OPENING_DIMENSION_TYPES, dimensionsKey, type DimensionValues } from '../../dimensions';
 import { qtyFromE6, qtyToE6 } from '../../decimal';
 import type { Cents } from '../../money';
 import { nowIso, type ServiceContext } from '../context';
+import { periodService, permissionService } from './basic';
 import { accountService } from './accounts';
 
 export interface OpeningBalanceInput {
@@ -37,7 +39,7 @@ export interface OpeningBalance extends Required<
  */
 export function openingService(ctx: ServiceContext) {
   const accounts = accountService(ctx);
-  return {
+  const self = {
     async list(year: number): Promise<OpeningBalance[]> {
       const rows = await ctx.db
         .selectFrom('opening_balance')
@@ -65,7 +67,28 @@ export function openingService(ctx: ServiceContext) {
     },
 
     /** 新增或覆盖一条期初（按 年度 + 科目 + 维度组合 + 币种 唯一）。只能录在末级科目上。 */
-    async upsert(input: OpeningBalanceInput): Promise<void> {
+    async upsert(
+      input: OpeningBalanceInput,
+      opts: { mode?: 'opening' | 'year-close' } = {},
+    ): Promise<void> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => openingService({ ...ctx, db }).upsert(input, opts));
+      if (opts.mode === 'year-close' && !ctx.user.isAdmin) {
+        if (ctx.moduleId !== 'period-close')
+          throw new BusinessError({ code: 'FORBIDDEN', message: '年度承接只能由期末处理执行' });
+        permissionService(ctx).require('period-close.year-end');
+      }
+      const fiscal = await ctx.db
+        .selectFrom('fiscal_year')
+        .selectAll()
+        .where('year', '=', input.year)
+        .executeTakeFirst();
+      if (fiscal)
+        await periodService(ctx).assertWritable({
+          period: fiscal.opening_period,
+          mode: opts.mode ?? 'opening',
+          action: '修改期初余额',
+        });
       const account = await accounts.require(input.accountId);
       if (!account.isLeaf) {
         throw new BusinessError({
@@ -122,13 +145,41 @@ export function openingService(ctx: ServiceContext) {
     },
 
     async remove(id: number): Promise<void> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => openingService({ ...ctx, db }).remove(id));
+      const row = await ctx.db
+        .selectFrom('opening_balance')
+        .select('year')
+        .where('id', '=', id)
+        .executeTakeFirst();
+      if (row) {
+        const fiscal = await ctx.db
+          .selectFrom('fiscal_year')
+          .select('opening_period')
+          .where('year', '=', row.year)
+          .executeTakeFirstOrThrow();
+        await periodService(ctx).assertWritable({
+          period: fiscal.opening_period,
+          mode: 'opening',
+          action: '删除期初余额',
+        });
+      }
       await ctx.db.deleteFrom('opening_balance').where('id', '=', id).execute();
     },
 
     /** 用一组新数据整体替换某年度的期初（年结用），并标记该年期初以此为准。 */
     async replaceYear(year: number, rows: Omit<OpeningBalanceInput, 'year'>[]): Promise<void> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) =>
+          openingService({ ...ctx, db }).replaceYear(year, rows),
+        );
+      if (!ctx.user.isAdmin) {
+        if (ctx.moduleId !== 'period-close')
+          throw new BusinessError({ code: 'FORBIDDEN', message: '年度承接只能由期末处理执行' });
+        permissionService(ctx).require('period-close.year-end');
+      }
       await ctx.db.deleteFrom('opening_balance').where('year', '=', year).execute();
-      for (const r of rows) await this.upsert({ ...r, year });
+      for (const r of rows) await self.upsert({ ...r, year }, { mode: 'year-close' });
       await ctx.db
         .updateTable('fiscal_year')
         .set({ opening_stored: 1 })
@@ -136,4 +187,5 @@ export function openingService(ctx: ServiceContext) {
         .execute();
     },
   };
+  return self;
 }

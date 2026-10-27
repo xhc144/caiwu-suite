@@ -1,6 +1,7 @@
 import type { AnyTRPCRouter } from '@trpc/server';
 import type { Migration } from '@caiwu/db';
 import type { ModuleManifest } from '@caiwu/core';
+import type { CoreServiceProviders } from '@caiwu/core/server';
 import { moduleProcedure } from './procedures';
 import { t } from './trpc';
 import type { RuntimeHooks } from './lifecycle';
@@ -14,6 +15,7 @@ export interface ServerModule<R extends AnyTRPCRouter = AnyTRPCRouter> {
   /** 模块提供的会计制度模板（JSON 对象） */
   templates: readonly unknown[];
   lifecycle?: RuntimeHooks;
+  providers?: CoreServiceProviders;
 }
 
 export function defineServerModule<R extends AnyTRPCRouter>(
@@ -23,6 +25,7 @@ export function defineServerModule<R extends AnyTRPCRouter>(
     migrations?: readonly Migration[];
     templates?: readonly unknown[];
     lifecycle?: RuntimeHooks;
+    providers?: CoreServiceProviders;
   },
 ): ServerModule<R> {
   return Object.freeze({
@@ -31,6 +34,7 @@ export function defineServerModule<R extends AnyTRPCRouter>(
     migrations: def.migrations ?? [],
     templates: def.templates ?? [],
     lifecycle: def.lifecycle,
+    providers: def.providers,
   });
 }
 

@@ -45,6 +45,9 @@ const TemplateAccountSchema = z.object({
   disabled: z.boolean().optional(),
   /** 依据（文件名 + 条款），便于核对 */
   source: z.string().optional(),
+  sourceVersion: z.string().optional(),
+  isContra: z.boolean().optional(),
+  balanceNature: z.enum(['debit', 'credit', 'both', 'no-closing-balance']).optional(),
   /** 还没有对照原文核实 */
   needsReview: z.boolean().optional(),
 });
@@ -144,4 +147,31 @@ export function templateProblems(t: AccountingTemplate, scheme?: CodeScheme): st
     vtypes.add(v.code);
   }
   return problems;
+}
+
+/** Map every native code segment into the requested scheme, preserving the parent chain. */
+export function mapTemplateScheme(
+  template: AccountingTemplate,
+  target: CodeScheme,
+): AccountingTemplate {
+  const native = parseCodeScheme(template.codeScheme);
+  if (target[0] !== native[0])
+    throw new Error(`一级科目编码不能使用科目级次 ${target.join('-')}，无法映射`);
+  const lengths = cumulativeLengths(native);
+  const accounts = template.accounts.map((account) => {
+    const level = levelOfCode(account.code, native);
+    if (level == null || level > target.length)
+      throw new Error(`科目 ${account.code} 无法映射到级次 ${target.join('-')}`);
+    let code = '';
+    for (let index = 0; index < level; index++) {
+      const segment = account.code.slice(index === 0 ? 0 : lengths[index - 1], lengths[index]);
+      const digits = target[index]!;
+      const significant = segment.replace(/^0+(?=\d)/, '');
+      if (significant.length > digits)
+        throw new Error(`科目 ${account.code} 第${index + 1}级编码超出 ${digits} 位`);
+      code += significant.padStart(digits, '0');
+    }
+    return { ...account, code, sourceVersion: account.sourceVersion ?? template.version };
+  });
+  return parseTemplate({ ...template, codeScheme: target.join('-'), accounts });
 }

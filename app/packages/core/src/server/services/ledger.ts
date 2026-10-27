@@ -8,7 +8,14 @@ import {
   type DimensionValues,
 } from '../../dimensions';
 import { qtyFromE6 } from '../../decimal';
-import { formatPeriod, makePeriod, periodYear, prevPeriod, type Period } from '../../period';
+import {
+  formatPeriod,
+  makePeriod,
+  periodYear,
+  periodMonth,
+  prevPeriod,
+  type Period,
+} from '../../period';
 import {
   BalanceQuerySchema,
   DEFAULT_COUNTED_STATUSES,
@@ -28,11 +35,19 @@ import { bookService } from './basic';
 interface Accum {
   accountId: number;
   dims: DimensionValues;
+  balanceDebit: bigint;
+  balanceCredit: bigint;
+  fcBalanceDelta: bigint;
+  qtyBalanceDelta: bigint;
   opening: bigint;
   debit: bigint;
   credit: bigint;
   ytdDebit: bigint;
   ytdCredit: bigint;
+  fcYtdDebit: bigint;
+  fcYtdCredit: bigint;
+  qtyYtdDebit: bigint;
+  qtyYtdCredit: bigint;
   fcOpening: bigint;
   fcDebit: bigint;
   fcCredit: bigint;
@@ -45,11 +60,19 @@ function emptyAccum(accountId: number, dims: DimensionValues): Accum {
   return {
     accountId,
     dims,
+    balanceDebit: 0n,
+    balanceCredit: 0n,
+    fcBalanceDelta: 0n,
+    qtyBalanceDelta: 0n,
     opening: 0n,
     debit: 0n,
     credit: 0n,
     ytdDebit: 0n,
     ytdCredit: 0n,
+    fcYtdDebit: 0n,
+    fcYtdCredit: 0n,
+    qtyYtdDebit: 0n,
+    qtyYtdCredit: 0n,
     fcOpening: 0n,
     fcDebit: 0n,
     fcCredit: 0n,
@@ -132,6 +155,11 @@ export function ledgerService(ctx: ServiceContext) {
      */
     async entries(raw: EntryFilter): Promise<EntryRow[]> {
       const f = EntryFilterSchema.parse(raw);
+      if (f.periodFrom > f.periodTo)
+        throw new BusinessError({
+          code: 'PERIOD_RANGE_INVALID',
+          message: '开始期间不能晚于结束期间',
+        });
       const statuses = f.includeUnposted ? UNPOSTED_COUNTED_STATUSES : DEFAULT_COUNTED_STATUSES;
       let q = ctx.db
         .selectFrom('voucher_line as l')
@@ -151,6 +179,14 @@ export function ledgerService(ctx: ServiceContext) {
         .where('l.period', '<=', f.periodTo)
         .where('v.status', 'in', [...statuses])
         .where('v.voided', '=', 0);
+      if (f.excludeClosing) q = q.where('v.closing_kind', 'is', null);
+      else if (f.excludeClosingKinds.length)
+        q = q.where((eb) =>
+          eb.or([
+            eb('v.closing_kind', 'is', null),
+            eb('v.closing_kind', 'not in', f.excludeClosingKinds),
+          ]),
+        );
       if (f.accountCode) {
         q = f.includeChildren
           ? q.where('a.code', 'like', `${f.accountCode}%`)
@@ -180,6 +216,8 @@ export function ledgerService(ctx: ServiceContext) {
       return rows.map((r) => ({
         voucherId: r.voucher_id,
         lineId: r.id,
+        cashflowDirection: r.cashflow_direction,
+        entrySide: r.entry_side,
         period: r.period,
         date: r.date,
         voucherTypeCode: r.type_code,
@@ -214,7 +252,7 @@ export function ledgerService(ctx: ServiceContext) {
      * 余额"借正贷负"。rollup=true 时同时返回上级科目的汇总行。
      *
      * 期初 = 最近一个"期初已确定"年度的 opening_balance + 该年期初期间到 periodFrom 前一期的发生额。
-     * 所以年结前也能跨年查询（上年期末自动结转为下年期初）。
+     * 所用期间均已建立时，年结前也能跨年承接历史余额；未建期间不按零推算。
      */
     async balances(raw: BalanceQuery): Promise<BalanceRow[]> {
       const q = BalanceQuerySchema.parse(raw);
@@ -227,7 +265,34 @@ export function ledgerService(ctx: ServiceContext) {
       const statuses = q.includeUnposted ? UNPOSTED_COUNTED_STATUSES : DEFAULT_COUNTED_STATUSES;
       const base = await baseOf(q.periodFrom);
       const targetYear = periodYear(q.periodTo);
-      const baseCurrency = q.currency ? (await bookService(ctx).info()).baseCurrency : null;
+      const book = await bookService(ctx).info();
+      // 每行同时包含余额和 YTD：从实际期初锚点至查询末期、以及本年累计范围都要完整。
+      // 首启用年从 startPeriod 起算；已存期初锚点之前未参与计算的期间不强制补建。
+      const requiredYtdFrom = Math.max(book.startPeriod, makePeriod(targetYear, 1));
+      const requiredFrom = Math.min(base.opening_period, requiredYtdFrom);
+      const coveredPeriods = await ctx.db
+        .selectFrom('period')
+        .select('period')
+        .where('period', '>=', requiredFrom)
+        .where('period', '<=', q.periodTo)
+        .execute();
+      const ytdComplete =
+        coveredPeriods.filter((p) => p.period >= requiredYtdFrom).length ===
+        periodMonth(q.periodTo) - periodMonth(requiredYtdFrom) + 1;
+      const coveredMonths =
+        (targetYear - periodYear(requiredFrom)) * 12 +
+        periodMonth(q.periodTo) -
+        periodMonth(requiredFrom) +
+        1;
+      if (!ytdComplete || coveredPeriods.length !== coveredMonths)
+        throw new BusinessError({
+          code: ytdComplete ? 'LEDGER_BALANCE_PERIOD_MISSING' : 'LEDGER_YTD_PERIOD_MISSING',
+          message: `${ytdComplete ? '余额承接' : '本年累计'}实际范围中有尚未建立的期间，不能按零发生额计算`,
+          hint: '请补齐实际覆盖范围内的期间后重新查询；首启用年从启用期间累计，余额从已存期初锚点承接',
+        });
+      const baseCurrency = q.currency ? book.baseCurrency : null;
+      const all = await accounts.list();
+      const byId = new Map(all.map((a) => [a.id, a]));
       const groupDims = DIMENSION_TYPES.filter((d) => q.groupBy.includes(d.id));
       const groupCols = groupDims.map((d) => d.column);
 
@@ -258,6 +323,10 @@ export function ledgerService(ctx: ServiceContext) {
             sql<string>`cast(sum(o.quantity_e6) as text)`.as('qty'),
             sql<string>`cast(sum(o.ytd_debit) as text)`.as('ytd_debit'),
             sql<string>`cast(sum(o.ytd_credit) as text)`.as('ytd_credit'),
+            // SUM 之前记录任一原始非零累计；正负抵销不代表来源已知。
+            sql<string>`cast(max(case when o.ytd_debit <> 0 or o.ytd_credit <> 0 then 1 else 0 end) as text)`.as(
+              'has_unknown_ytd',
+            ),
           ])
           .where('o.year', '=', base.year)
           .groupBy('o.account_id');
@@ -282,10 +351,26 @@ export function ledgerService(ctx: ServiceContext) {
         }
         for (const r of (await aggregateRows(oq)) as Record<string, unknown>[]) {
           const a = get(r.account_id as number, dimsOf(r));
+          if (q.quantityUnit && byId.get(a.accountId)?.quantityUnit !== q.quantityUnit) {
+            acc.delete(keyOf(a.accountId, a.dims));
+            continue;
+          }
           a.opening += n(r.balance);
           a.fcOpening += n(r.fc_balance);
           a.qtyOpening += n(r.qty);
           if (base.year === targetYear) {
+            const account = byId.get(a.accountId);
+            if (
+              (q.excludeClosing || q.excludeClosingKinds.length > 0) &&
+              n(r.has_unknown_ytd) !== 0n &&
+              account &&
+              accountMatches(account, q)
+            )
+              throw new BusinessError({
+                code: 'LEDGER_CLOSING_SCOPE_UNKNOWN',
+                message: '启用前累计发生额没有结转来源，无法可靠排除结转',
+                hint: '请使用有完整凭证明细的年度，或选择包含结转的账面口径',
+              });
             a.ytdDebit += n(r.ytd_debit);
             a.ytdCredit += n(r.ytd_credit);
           }
@@ -293,7 +378,7 @@ export function ledgerService(ctx: ServiceContext) {
       }
 
       // 2. 分录发生额按区间汇总
-      const sumLines = async (from: Period, to: Period) => {
+      const sumLines = async (from: Period, to: Period, filterClosing = false) => {
         if (from > to) return [];
         let lq = ctx.db
           .selectFrom('voucher_line as l')
@@ -302,16 +387,16 @@ export function ledgerService(ctx: ServiceContext) {
           .select([
             sql<string>`cast(sum(l.debit) as text)`.as('debit'),
             sql<string>`cast(sum(l.credit) as text)`.as('credit'),
-            sql<string>`cast(sum(case when l.debit <> 0 then coalesce(l.fc_amount, 0) else 0 end) as text)`.as(
+            sql<string>`cast(sum(case when l.entry_side = 'debit' OR (l.entry_side IS NULL AND l.debit <> 0) then coalesce(l.fc_amount, 0) else 0 end) as text)`.as(
               'fc_debit',
             ),
-            sql<string>`cast(sum(case when l.credit <> 0 then coalesce(l.fc_amount, 0) else 0 end) as text)`.as(
+            sql<string>`cast(sum(case when l.entry_side = 'credit' OR (l.entry_side IS NULL AND l.credit <> 0) then coalesce(l.fc_amount, 0) else 0 end) as text)`.as(
               'fc_credit',
             ),
-            sql<string>`cast(sum(case when l.debit <> 0 then coalesce(l.quantity_e6, 0) else 0 end) as text)`.as(
+            sql<string>`cast(sum(case when l.entry_side = 'debit' OR (l.entry_side IS NULL AND l.debit <> 0) then coalesce(l.quantity_e6, 0) else 0 end) as text)`.as(
               'qty_debit',
             ),
-            sql<string>`cast(sum(case when l.credit <> 0 then coalesce(l.quantity_e6, 0) else 0 end) as text)`.as(
+            sql<string>`cast(sum(case when l.entry_side = 'credit' OR (l.entry_side IS NULL AND l.credit <> 0) then coalesce(l.quantity_e6, 0) else 0 end) as text)`.as(
               'qty_credit',
             ),
           ])
@@ -320,6 +405,22 @@ export function ledgerService(ctx: ServiceContext) {
           .where('v.status', 'in', [...statuses])
           .where('v.voided', '=', 0)
           .groupBy('l.account_id');
+        if (q.quantityUnit)
+          lq = lq.where(
+            'l.account_id',
+            'in',
+            all.filter((a) => a.quantityUnit === q.quantityUnit).map((a) => a.id),
+          );
+        if (filterClosing) {
+          if (q.excludeClosing) lq = lq.where('v.closing_kind', 'is', null);
+          else if (q.excludeClosingKinds.length)
+            lq = lq.where((eb) =>
+              eb.or([
+                eb('v.closing_kind', 'is', null),
+                eb('v.closing_kind', 'not in', q.excludeClosingKinds),
+              ]),
+            );
+        }
         for (const col of groupCols)
           lq = lq.select(sql.ref(`l.${col}`).as(col)).groupBy(sql.ref(`l.${col}`));
         if (q.currency)
@@ -342,8 +443,16 @@ export function ledgerService(ctx: ServiceContext) {
         a.fcOpening += n(r.fc_debit) - n(r.fc_credit);
         a.qtyOpening += n(r.qty_debit) - n(r.qty_credit);
       }
-      // 本期发生
+      // Balance movement always includes closing vouchers, independently of turnover filters.
       for (const r of await sumLines(q.periodFrom, q.periodTo)) {
+        const a = get(r.account_id as number, dimsOf(r));
+        a.balanceDebit += n(r.debit);
+        a.balanceCredit += n(r.credit);
+        a.fcBalanceDelta += n(r.fc_debit) - n(r.fc_credit);
+        a.qtyBalanceDelta += n(r.qty_debit) - n(r.qty_credit);
+      }
+      // 本期发生
+      for (const r of await sumLines(q.periodFrom, q.periodTo, true)) {
         const a = get(r.account_id as number, dimsOf(r));
         a.debit += n(r.debit);
         a.credit += n(r.credit);
@@ -354,22 +463,32 @@ export function ledgerService(ctx: ServiceContext) {
       }
       // 本年累计：targetYear 年初（或启用期间）到 periodTo
       const ytdFrom = base.year === targetYear ? base.opening_period : makePeriod(targetYear, 1);
-      for (const r of await sumLines(ytdFrom, q.periodTo)) {
+      for (const r of await sumLines(ytdFrom, q.periodTo, true)) {
         const a = get(r.account_id as number, dimsOf(r));
         a.ytdDebit += n(r.debit);
         a.ytdCredit += n(r.credit);
+        a.fcYtdDebit += n(r.fc_debit);
+        a.fcYtdCredit += n(r.fc_credit);
+        a.qtyYtdDebit += n(r.qty_debit);
+        a.qtyYtdCredit += n(r.qty_credit);
       }
 
       // 3. 汇总到上级科目
-      const all = await accounts.list();
-      const byId = new Map(all.map((a) => [a.id, a]));
       const totals = new Map<string, Accum>();
       const addInto = (target: Accum, src: Accum) => {
+        target.balanceDebit += src.balanceDebit;
+        target.balanceCredit += src.balanceCredit;
+        target.fcBalanceDelta += src.fcBalanceDelta;
+        target.qtyBalanceDelta += src.qtyBalanceDelta;
         target.opening += src.opening;
         target.debit += src.debit;
         target.credit += src.credit;
         target.ytdDebit += src.ytdDebit;
         target.ytdCredit += src.ytdCredit;
+        target.fcYtdDebit += src.fcYtdDebit;
+        target.fcYtdCredit += src.fcYtdCredit;
+        target.qtyYtdDebit += src.qtyYtdDebit;
+        target.qtyYtdCredit += src.qtyYtdCredit;
         target.fcOpening += src.fcOpening;
         target.fcDebit += src.fcDebit;
         target.fcCredit += src.fcCredit;
@@ -400,7 +519,7 @@ export function ledgerService(ctx: ServiceContext) {
       for (const t of totals.values()) {
         const account = byId.get(t.accountId);
         if (!account || !accountMatches(account, q)) continue;
-        const closing = t.opening + t.debit - t.credit;
+        const closing = t.opening + t.balanceDebit - t.balanceCredit;
         const isZero =
           t.opening === 0n &&
           t.debit === 0n &&
@@ -426,14 +545,38 @@ export function ledgerService(ctx: ServiceContext) {
           closing: safeNumber(closing, '期末金额'),
           ytdDebit: safeNumber(t.ytdDebit, '本年累计借方'),
           ytdCredit: safeNumber(t.ytdCredit, '本年累计贷方'),
+          fcYtdDebit:
+            book.startPeriod % 100 !== 1 && targetYear === periodYear(book.startPeriod)
+              ? null
+              : q.currency && q.currency !== book.baseCurrency
+                ? safeNumber(t.fcYtdDebit, '外币累计借方')
+                : null,
+          fcYtdCredit:
+            book.startPeriod % 100 !== 1 && targetYear === periodYear(book.startPeriod)
+              ? null
+              : q.currency && q.currency !== book.baseCurrency
+                ? safeNumber(t.fcYtdCredit, '外币累计贷方')
+                : null,
+          qtyYtdDebit:
+            book.startPeriod % 100 !== 1 && targetYear === periodYear(book.startPeriod)
+              ? null
+              : qtyFromE6(safeNumber(t.qtyYtdDebit, '累计借方数量')),
+          qtyYtdCredit:
+            book.startPeriod % 100 !== 1 && targetYear === periodYear(book.startPeriod)
+              ? null
+              : qtyFromE6(safeNumber(t.qtyYtdCredit, '累计贷方数量')),
+          dimensionYtdMissing:
+            book.startPeriod % 100 !== 1 && targetYear === periodYear(book.startPeriod)
+              ? '启用前外币/数量累计尚无独立来源，不能按零计算'
+              : null,
           fcOpening: q.currency ? safeNumber(t.fcOpening, '外币期初') : 0,
           fcDebit: q.currency ? safeNumber(t.fcDebit, '外币借方') : 0,
           fcCredit: q.currency ? safeNumber(t.fcCredit, '外币贷方') : 0,
-          fcClosing: q.currency ? safeNumber(t.fcOpening + t.fcDebit - t.fcCredit, '外币期末') : 0,
+          fcClosing: q.currency ? safeNumber(t.fcOpening + t.fcBalanceDelta, '外币期末') : 0,
           qtyOpening: qtyFromE6(safeNumber(t.qtyOpening, '累计数量')),
           qtyDebit: qtyFromE6(safeNumber(t.qtyDebit, '累计数量')),
           qtyCredit: qtyFromE6(safeNumber(t.qtyCredit, '累计数量')),
-          qtyClosing: qtyFromE6(safeNumber(t.qtyOpening + t.qtyDebit - t.qtyCredit, '期末数量')),
+          qtyClosing: qtyFromE6(safeNumber(t.qtyOpening + t.qtyBalanceDelta, '期末数量')),
         });
       }
       rows.sort((a, b) =>
@@ -442,6 +585,63 @@ export function ledgerService(ctx: ServiceContext) {
           : a.accountCode.localeCompare(b.accountCode),
       );
       return rows;
+    },
+
+    /** Debit/credit balances are split at the leaf and auxiliary-object level before any account rollup. */
+    async balanceSides(raw: BalanceQuery) {
+      const rows = await self.balances({
+        ...raw,
+        rollup: false,
+        groupBy: ['project', 'partner', 'department', 'person'],
+      });
+      return rows.map((row) => ({
+        ...row,
+        openingDebit: Math.max(row.opening, 0),
+        openingCredit: Math.max(-row.opening, 0),
+        closingDebit: Math.max(row.closing, 0),
+        closingCredit: Math.max(-row.closing, 0),
+      }));
+    },
+    async quantityBalances(raw: BalanceQuery & { quantityUnit: string }) {
+      return self.balances(raw);
+    },
+    /** Historical NULL direction stays unallocated even when the current project has direction metadata. */
+    async cashflow(raw: EntryFilter) {
+      const entries = await self.entries(raw);
+      const accounts = new Map((await accountService(ctx).list()).map((a) => [a.id, a]));
+      const rows = entries.filter((row) => {
+        const account = accounts.get(row.accountId);
+        return account?.isCash || account?.isBank || account?.cashflowRequired;
+      });
+      const total = (filter: (row: EntryRow) => boolean) =>
+        safeNumber(
+          rows
+            .filter(filter)
+            .reduce((sum, row) => sum + BigInt(row.debit) - BigInt(row.credit), 0n),
+          '现金流量金额',
+        );
+      const unallocated = rows.filter(
+        (row) => row.cashflowDirection == null || row.dimensions.cashflow == null,
+      );
+      return {
+        rows,
+        cashNet: total(() => true),
+        inflow: total((row) => row.cashflowDirection === 'inflow'),
+        outflow: -total((row) => row.cashflowDirection === 'outflow'),
+        internalNet: total((row) => row.cashflowDirection === 'internal'),
+        unallocatedNet: total((row) => unallocated.includes(row)),
+        unallocatedCount: unallocated.length,
+        internalUnbalancedVouchers: [
+          ...new Set(
+            rows.filter((row) => row.cashflowDirection === 'internal').map((row) => row.voucherId),
+          ),
+        ].filter(
+          (id) =>
+            rows
+              .filter((row) => row.voucherId === id && row.cashflowDirection === 'internal')
+              .reduce((sum, row) => sum + BigInt(row.debit) - BigInt(row.credit), 0n) !== 0n,
+        ),
+      };
     },
 
     /** 试算平衡：一级科目期初、本期、期末借贷合计是否相等。 */

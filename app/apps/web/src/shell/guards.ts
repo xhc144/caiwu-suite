@@ -1,3 +1,6 @@
+import { Modal } from 'antd';
+import { createElement } from 'react';
+import { unsavedPages } from '@caiwu/web-kit';
 import type { CurrentUser, ModuleManifest } from '@caiwu/core';
 import type { NavItem } from './NavMenu';
 import { tabPath } from './paths';
@@ -32,6 +35,7 @@ export function routeAccess(
 
 export function checkBeforeLeave() {
   const event = new Event('beforeunload', { cancelable: true });
+  Object.defineProperty(event, 'registeredPagesConfirmed', { value: true });
   return window.dispatchEvent(event) && !event.defaultPrevented;
 }
 
@@ -46,4 +50,50 @@ export function editableTarget(target: EventTarget | null) {
 }
 export function canHandleShellKey(e: KeyboardEvent) {
   return !e.defaultPrevented && !e.isComposing && e.keyCode !== 229 && !editableTarget(e.target);
+}
+
+/** One confirmation is completed before any page is unmounted. */
+export async function requestBeforeLeave(bookId: string, keys?: readonly string[]) {
+  const accepted = await unsavedPages.leave(
+    bookId,
+    keys,
+    (pages) =>
+      new Promise((resolve) => {
+        const dialog = Modal.confirm({
+          title: '有未保存内容',
+          transitionName: '',
+          maskTransitionName: '',
+          content: createElement(
+            'div',
+            null,
+            ...pages.map((p, i) => createElement('p', { key: i }, p.title)),
+          ),
+          okText: '保存并继续',
+          cancelText: '取消',
+          onOk: () => {
+            resolve('save');
+          },
+          onCancel: () => resolve('cancel'),
+          footer: (_, { OkBtn, CancelBtn }) =>
+            createElement(
+              'div',
+              null,
+              createElement(
+                'button',
+                {
+                  type: 'button',
+                  onClick: () => {
+                    dialog.destroy();
+                    resolve('discard');
+                  },
+                },
+                '放弃修改并继续',
+              ),
+              createElement(CancelBtn),
+              createElement(OkBtn),
+            ),
+        });
+      }),
+  );
+  return accepted && checkBeforeLeave();
 }

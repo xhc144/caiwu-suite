@@ -4,6 +4,7 @@ import type { AnyTRPCRouter } from '@trpc/server';
 import { createTRPCOptionsProxy, type TRPCOptionsProxy } from '@trpc/tanstack-react-query';
 import type { CoreShell, ModuleShell } from '@caiwu/server-kit';
 import { getBusinessError, showError } from './notify';
+import { requestActivity } from './loading';
 import { sessionStore } from './session';
 
 declare global {
@@ -43,6 +44,18 @@ export const trpcClient: TRPCClient<AnyTRPCRouter> = createTRPCClient<AnyTRPCRou
   links: [
     httpBatchLink({
       url: '/trpc',
+      fetch: async (input, init) => {
+        const token = sessionStore.get()?.token;
+        const done = requestActivity.start();
+        try {
+          const response = await fetch(input, init);
+          if (sessionStore.get()?.token !== token)
+            throw new DOMException('账套或操作员已变化', 'AbortError');
+          return response;
+        } finally {
+          done();
+        }
+      },
       maxURLLength: 4000,
       headers() {
         const token = sessionStore.get()?.token;

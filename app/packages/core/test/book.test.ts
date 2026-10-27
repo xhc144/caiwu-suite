@@ -81,8 +81,8 @@ describe('账套', () => {
 
   it('模板与科目级次不匹配时拒绝', async () => {
     const store = makeStore();
-    await expect(store.create({ ...input, codeScheme: '4-3-3' })).rejects.toThrow(
-      /不能使用科目级次 4-3-3/,
+    await expect(store.create({ ...input, codeScheme: '3-2-2' })).rejects.toThrow(
+      /无法映射|编码超出/,
     );
     expect(readdirSync(store.booksDir)).toEqual([]);
   });

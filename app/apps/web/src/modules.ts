@@ -1,3 +1,4 @@
+import { lazy } from 'react';
 import type { ModuleManifest, ProductId } from '@caiwu/core';
 import { moduleAvailableIn } from '@caiwu/core';
 import type { EntryPages, WebModule } from '@caiwu/web-kit';
@@ -39,7 +40,28 @@ export function loadWebModule(id: string): Promise<WebModule | null> {
   let p = cache.get(id);
   if (!p) {
     const loader = webLoaders.get(id);
-    p = loader ? loader() : Promise.resolve(null);
+    p = loader
+      ? loader()
+          .then((module) =>
+            id === 'example'
+              ? {
+                  ...module,
+                  routes: [
+                    ...module.routes,
+                    ...['a', 'b', ':slot'].map((path) => ({
+                      path: `/shared/${path}`,
+                      title: path === 'b' ? '乙编辑页' : '甲编辑页',
+                      component: lazy(() => import('./testing/UnsavedFixture')),
+                    })),
+                  ],
+                }
+              : module,
+          )
+          .catch((error: unknown) => {
+            cache.delete(id);
+            throw error;
+          })
+      : Promise.resolve(null);
     cache.set(id, p);
   }
   return p;

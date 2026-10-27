@@ -1,11 +1,13 @@
 import Database from 'better-sqlite3';
 import { DataDirectoryLease } from './data-directory-lease';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   existsSync,
   lstatSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
+  writeFileSync,
   renameSync,
   rmSync,
   statSync,
@@ -28,7 +30,7 @@ import {
 import { BusinessError } from '../errors';
 import { parseCodeScheme, formatCodeScheme } from '../code-scheme';
 import { DIMENSION_TYPES } from '../dimensions';
-import { templateProblems } from '../template';
+import { mapTemplateScheme, templateProblems } from '../template';
 import { makePeriod } from '../period';
 import {
   CreateBookInputSchema,
@@ -74,6 +76,7 @@ export interface BookStoreOptions {
   modules?: ModuleLookup;
   now?: () => Date;
   maintenanceStarted?: (bookId: string) => void;
+  created?: (book: BookInfo) => Promise<void>;
   beforeClose?: (
     book: OpenBook,
     signal: AbortSignal,
@@ -84,6 +87,8 @@ export interface BookStoreOptions {
 /** 破坏性计划仅冻结接口，当前总是拒绝；回调只支持备份、检查和重连，不得改动账套文件。 */
 export interface BookMaintenancePlan<T = void> {
   kind: 'reconnect' | 'delete' | 'replace';
+  /** Opaque ticket returned by prepareReplacement; no filesystem paths accepted. */
+  replacementId?: string;
   timeoutMs?: number;
   prepare?: (book: OpenBook, signal: AbortSignal) => Promise<T>;
   validate?: (book: OpenBook, signal: AbortSignal) => Promise<void>;
@@ -108,6 +113,18 @@ export class BookStore {
   #lease: DataDirectoryLease | null;
   #closingAll: Promise<void> | null = null;
   #disposed = false;
+  readonly #replacements = new Map<
+    string,
+    {
+      bookId: string;
+      file: string;
+      digest: string;
+      expectedRevision: string;
+      expiresAt: number;
+      status: 'prepared' | 'applying' | 'done' | 'failed';
+      protectionId?: string;
+    }
+  >();
   #disposeAfterClose = false;
   readonly #known = new Set<string>();
 
@@ -229,7 +246,7 @@ export class BookStore {
   /** 仅重连已支持；delete/replace 在任何 callback 和会话变更前拒绝。 */
   maintain<T>(id: string, plan: BookMaintenancePlan<T>): Promise<T | undefined> {
     if (isInDatabaseTransaction()) return Promise.reject(new Error('事务回调内不能启动账套维护'));
-    if (plan.kind !== 'reconnect')
+    if (plan.kind === 'delete' || (plan.kind === 'replace' && !plan.replacementId))
       return Promise.reject(
         new BusinessError({
           code: 'DESTRUCTIVE_MAINTENANCE_UNAVAILABLE',
@@ -251,6 +268,10 @@ export class BookStore {
               let book = this.open(id);
               await this.#beforeClose(id, signal, 'maintenance');
               signal.throwIfAborted();
+              if (plan.kind === 'replace') {
+                await this.#replace(id, book, plan.replacementId!, signal, plan.validate);
+                return undefined;
+              }
               const result = await plan.prepare?.(book, signal);
               signal.throwIfAborted();
               await this.#closeConnections(id);
@@ -267,6 +288,240 @@ export class BookStore {
         plan.timeoutMs,
       ),
     );
+  }
+
+  /** Exact full-database revision, including module/report/print tables and committed WAL contents. */
+  revision(id: string): string {
+    const book = this.open(id);
+    return createHash('sha256').update(book.raw.serialize()).digest('hex');
+  }
+
+  /** Stage verified bytes under a managed UUID. The ticket binds target contents and expires. */
+  async prepareReplacement(input: {
+    bookId: string;
+    bytes: Uint8Array;
+    length: number;
+    sha256: string;
+    expectedRevision: string;
+    expiresAt: number;
+  }) {
+    return this.withBook(input.bookId, async () => {
+      if (input.expiresAt <= Date.now() || input.expiresAt > Date.now() + 300_000)
+        throw new BusinessError({
+          code: 'RESTORE_PLAN_EXPIRED',
+          message: '恢复确认已过期，请重新预览',
+        });
+      if (
+        input.bytes.byteLength !== input.length ||
+        input.length <= 0 ||
+        input.length > 1024 ** 3 ||
+        createHash('sha256').update(input.bytes).digest('hex') !== input.sha256
+      )
+        throw new BusinessError({
+          code: 'RESTORE_DIGEST',
+          message: '恢复文件长度或摘要不符，原账套保留',
+        });
+      if (this.revision(input.bookId) !== input.expectedRevision)
+        throw new BusinessError({
+          code: 'RESTORE_TARGET_CHANGED',
+          message: '目标账套已变化，请重新预览',
+        });
+      const dir = this.#managedDirectory('restore-staging');
+      const id = randomUUID(),
+        file = path.join(dir, `${id}.sqlite`);
+      writeFileSync(file, input.bytes, { flag: 'wx', mode: 0o600 });
+      let source: Database.Database | undefined;
+      try {
+        source = new Database(file, { fileMustExist: true });
+        source.pragma('trusted_schema = OFF');
+        assertRestoreDatabase(source);
+        const known = new Map(
+          this.#allMigrations().flatMap((set) =>
+            set.migrations.map(
+              (m) =>
+                [
+                  `${set.scope}/${m.id}`,
+                  createHash('sha256').update(m.sql.replace(/\r\n/g, '\n').trim()).digest('hex'),
+                ] as const,
+            ),
+          ),
+        );
+        for (const row of source.prepare('SELECT scope,id,checksum FROM _migration').all() as {
+          scope: string;
+          id: string;
+          checksum: string;
+        }[])
+          if (known.get(`${row.scope}/${row.id}`) !== row.checksum)
+            throw new BusinessError({
+              code: 'RESTORE_VERSION',
+              message: `备份迁移 ${row.scope}/${row.id} 与当前程序不兼容`,
+            });
+        runMigrations(source, this.#allMigrations());
+        source.prepare('UPDATE book_info SET book_id=? WHERE id=1').run(input.bookId);
+        source.pragma('wal_checkpoint(TRUNCATE)');
+        source.pragma('journal_mode = DELETE');
+        assertRestoreDatabase(source);
+        source.close();
+        source = undefined;
+        const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
+        this.#replacements.set(id, {
+          bookId: input.bookId,
+          file,
+          digest,
+          expectedRevision: input.expectedRevision,
+          expiresAt: input.expiresAt,
+          status: 'prepared',
+        });
+        return { replacementId: id, bookId: input.bookId, expiresAt: input.expiresAt };
+      } catch (error) {
+        source?.close();
+        for (const suffix of ['', '-wal', '-shm']) rmSync(file + suffix, { force: true });
+        throw error;
+      }
+    });
+  }
+
+  replacementStatus(id: string) {
+    const ticket = this.#replacements.get(id);
+    if (!ticket)
+      throw new BusinessError({
+        code: 'RESTORE_PLAN_MISSING',
+        message: '恢复计划不存在，请重新预览',
+      });
+    return {
+      bookId: ticket.bookId,
+      status: ticket.status,
+      protectionId: ticket.protectionId ?? null,
+      relogin: ticket.status === 'done',
+    };
+  }
+
+  #managedDirectory(...segments: string[]): string {
+    let directory = this.#lease!.directory;
+    for (const segment of segments) {
+      directory = path.join(directory, segment);
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
+      const stat = lstatSync(directory);
+      if (!stat.isDirectory() || stat.isSymbolicLink())
+        throw new BusinessError({ code: 'RESTORE_PATH', message: '恢复目录不是受管普通目录' });
+    }
+    return directory;
+  }
+
+  async #replace(
+    id: string,
+    book: OpenBook,
+    replacementId: string,
+    signal: AbortSignal,
+    validate?: (book: OpenBook, signal: AbortSignal) => Promise<void>,
+  ) {
+    const ticket = this.#replacements.get(replacementId);
+    if (
+      !ticket ||
+      ticket.bookId !== id ||
+      ticket.status !== 'prepared' ||
+      ticket.expiresAt <= Date.now()
+    )
+      throw new BusinessError({
+        code: 'RESTORE_PLAN_EXPIRED',
+        message: '恢复计划不存在、已使用或过期，请重新预览',
+      });
+    if (this.revision(id) !== ticket.expectedRevision)
+      throw new BusinessError({
+        code: 'RESTORE_TARGET_CHANGED',
+        message: '目标账套已变化，覆盖未执行',
+      });
+    const sourceStat = lstatSync(ticket.file);
+    if (
+      !sourceStat.isFile() ||
+      sourceStat.isSymbolicLink() ||
+      sourceStat.nlink !== 1 ||
+      createHash('sha256').update(readFileSync(ticket.file)).digest('hex') !== ticket.digest
+    )
+      throw new BusinessError({
+        code: 'RESTORE_DIGEST',
+        message: '恢复暂存文件已变化，覆盖未执行',
+      });
+    ticket.status = 'applying';
+    const protectionId = randomUUID();
+    const protection = path.join(
+      this.#managedDirectory('core-protection', id),
+      `${protectionId}.caiwu`,
+    );
+    let replaced = false;
+    const copy = async (from: string, to: string, abort?: AbortSignal) => {
+      const source = new Database(from, { readonly: true, fileMustExist: true });
+      try {
+        await source.backup(to, {
+          progress: () => {
+            abort?.throwIfAborted();
+            return 128;
+          },
+        });
+      } finally {
+        source.close();
+      }
+    };
+    try {
+      signal.throwIfAborted();
+      await book.raw.backup(protection, {
+        progress: () => {
+          signal.throwIfAborted();
+          return 128;
+        },
+      });
+      const backup = new Database(protection, { readonly: true, fileMustExist: true });
+      try {
+        assertRestoreDatabase(backup);
+      } finally {
+        backup.close();
+      }
+      const bytes = readFileSync(protection);
+      const metadata = {
+        bookId: id,
+        length: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        createdAt: new Date().toISOString(),
+      };
+      writeFileSync(`${protection}.json`, JSON.stringify(metadata), { flag: 'wx', mode: 0o600 });
+      ticket.protectionId = protectionId;
+      const checkpoint = book.raw.pragma('wal_checkpoint(TRUNCATE)') as { busy: number }[];
+      if (checkpoint.some((row) => row.busy !== 0))
+        throw new BusinessError({
+          code: 'RESTORE_SQLITE_BUSY',
+          message: '仍有 SQLite 事务占用，覆盖未执行',
+        });
+      signal.throwIfAborted();
+      await this.#closeConnections(id);
+      // SQLite's backup transaction replaces database contents atomically. Never unlink or rename an open main/WAL file.
+      await copy(ticket.file, this.pathOf(id), signal);
+      replaced = true;
+      const reopened = this.open(id);
+      assertRestoreDatabase(reopened.raw);
+      await validate?.(reopened, signal);
+      signal.throwIfAborted();
+      ticket.status = 'done';
+      rmSync(ticket.file, { force: true });
+    } catch (error) {
+      ticket.status = 'failed';
+      if (replaced) {
+        try {
+          await this.#closeConnections(id);
+          await copy(protection, this.pathOf(id));
+          const restored = this.open(id);
+          assertRestoreDatabase(restored.raw);
+        } catch (rollbackError) {
+          throw new AggregateError(
+            [error, rollbackError],
+            '恢复及回滚未完成，保护备份保留，请由管理员处理',
+            { cause: rollbackError },
+          );
+        }
+      } else {
+        this.open(id);
+      }
+      throw error;
+    }
   }
 
   close(id: string): Promise<void> {
@@ -403,8 +658,9 @@ export class BookStore {
 
   async #create(raw: CreateBookInput): Promise<BookInfo> {
     const input = CreateBookInputSchema.parse(raw);
-    const template = this.#opts.templates.get(input.templateId);
-    const scheme = parseCodeScheme(input.codeScheme ?? template.codeScheme);
+    const nativeTemplate = this.#opts.templates.get(input.templateId);
+    const scheme = parseCodeScheme(input.codeScheme ?? nativeTemplate.codeScheme);
+    const template = mapTemplateScheme(nativeTemplate, scheme);
     const problems = templateProblems(template, scheme);
     if (problems.length) {
       throw new BusinessError({
@@ -539,6 +795,10 @@ export class BookStore {
               name: a.name,
               categoryId: a.category,
               direction: a.direction,
+              isContra: a.isContra,
+              balanceNature: a.balanceNature,
+              source: a.source,
+              sourceVersion: a.sourceVersion,
               isCash: a.cash,
               isBank: a.bank,
               cashflowRequired: a.cashflow,
@@ -564,13 +824,15 @@ export class BookStore {
       throw e;
     }
     const opened = this.open(id);
-    return createCoreServices({
+    const info = await createCoreServices({
       db: opened.db,
       user: { id: 0, code: 'system', name: '系统', isAdmin: true, permissions: new Set() },
       moduleId: null,
       now: () => new Date(),
       modules: emptyModuleLookup,
     }).book.info();
+    await this.#opts.created?.(info);
+    return info;
   }
 
   #allMigrations(): MigrationSet[] {
@@ -622,4 +884,16 @@ function toBookInfo(row: CoreDB['book_info']): BookInfo {
     baseCurrency: row.base_currency,
     createdAt: row.created_at,
   };
+}
+
+function assertRestoreDatabase(raw: Database.Database): void {
+  if (
+    raw.pragma('integrity_check', { simple: true }) !== 'ok' ||
+    (raw.pragma('foreign_key_check') as unknown[]).length
+  )
+    throw new BusinessError({ code: 'RESTORE_INTEGRITY', message: '备份 SQLite 完整性检查失败' });
+  const row = raw.prepare('SELECT book_id FROM book_info WHERE id=1').get() as
+    { book_id: string } | undefined;
+  if (!row || !BookStore.isValidId(row.book_id))
+    throw new BusinessError({ code: 'RESTORE_BOOK', message: '备份账套信息无效' });
 }

@@ -31,6 +31,8 @@ async function stop() {
       ['-e', "setTimeout(() => process.stdout.write('FINAL_STDIO\\n'), 150)"],
       {
         stdio: ['ignore', process.stdout, process.stderr],
+        // Windows 的非 detached 子进程会随父进程 Job 关闭而被终止；unref 不会脱离 Job。
+        detached: true,
       },
     ).unref();
   }

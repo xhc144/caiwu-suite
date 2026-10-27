@@ -24,12 +24,14 @@ import {
   sessionStore,
   useRequiredSession,
   useBootstrap,
+  useRequestActivity,
+  unsavedPages,
 } from '@caiwu/web-kit';
 import { visibleModules } from '../modules';
 import { GlobalHotkeys } from './GlobalHotkeys';
 import { NavMenu, buildNavItems } from './NavMenu';
 import { TabsHost } from './TabsHost';
-import { checkBeforeLeave } from './guards';
+import { requestBeforeLeave } from './guards';
 import { SearchDialog, ShortcutDialog, SessionMonitor } from './Tools';
 import { loadAppearance, saveAppearance } from './preferences';
 import './shell.css';
@@ -89,6 +91,7 @@ export function Shell({ devMode }: { devMode: boolean }) {
 function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
   const session = useRequiredSession();
   const bootstrap = useBootstrap();
+  const activity = useRequestActivity();
   const devMode = bootstrap?.devMode ?? initialDevMode;
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,8 +99,6 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
   const [searchAt, setSearchAt] = useState<string | null>(null);
   const [shortcuts, setShortcuts] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
-  const [exitTarget, setExitTarget] = useState<'user' | 'book' | null>(null);
-  const [openPaths, setOpenPaths] = useState<string[]>(['/home']);
   const prefKey = `${session.bookId}.${session.user.id}`;
   const [appearance, setAppearance] = useState(() => loadAppearance(prefKey));
   const [systemDark, setSystemDark] = useState(
@@ -168,8 +169,37 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
   const onHelp = useCallback(() => {
     void navigate('/m/workbench/help');
   }, [navigate]);
+  useEffect(() => {
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (
+        !(event as BeforeUnloadEvent & { registeredPagesConfirmed?: boolean })
+          .registeredPagesConfirmed &&
+        unsavedPages.dirty(session.bookId).length
+      ) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    const exitKey = (event: KeyboardEvent) => {
+      if (
+        !event.defaultPrevented &&
+        event.altKey &&
+        event.key.toLowerCase() === 'x' &&
+        !event.isComposing
+      ) {
+        event.preventDefault();
+        void exit('user');
+      }
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    window.addEventListener('keydown', exitKey);
+    return () => {
+      window.removeEventListener('beforeunload', beforeUnload);
+      window.removeEventListener('keydown', exitKey);
+    };
+  });
   const exit = async (kind: 'user' | 'book') => {
-    if (!checkBeforeLeave()) return;
+    if (!(await requestBeforeLeave(session.bookId))) return;
     const target = kind === 'user' ? `/login/${encodeURIComponent(session.bookId)}` : '/';
     // 先撤销并卸载旧页面；即使注销请求失败也不会恢复旧财务缓存。
     await queryClient.cancelQueries();
@@ -183,12 +213,7 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
     void navigate(target, { replace: true });
   };
   const requestExit = (kind: 'user' | 'book') => {
-    // 工作台首页没有待保存业务表单；打开过的其他标签可能仍保留输入。
-    const homeOnly = [location.pathname, ...openPaths].every(
-      (path) => path === '/home' || path === '/m/workbench',
-    );
-    if (homeOnly) void exit(kind);
-    else setExitTarget(kind);
+    void exit(kind);
   };
   return (
     <ConfigProvider
@@ -283,6 +308,7 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
                 {me.data?.currentPeriod && <Tag>{formatPeriod(me.data.currentPeriod.period)}</Tag>}
               </div>
               <div className="cw-header-actions">
+                {activity.slow > 0 && <span role="status">正在加载或刷新，请稍候…</span>}
                 <Button onClick={onSearch}>搜索 Ctrl+K</Button>
                 <Button onClick={onShortcuts}>快捷键 ?</Button>
                 <Button onClick={onHelp}>帮助</Button>
@@ -306,7 +332,7 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
               </div>
             </Layout.Header>
             <Layout.Content style={{ minHeight: 0, minWidth: 0 }}>
-              <TabsHost navItems={navItems} devMode={devMode} onWorkspaceChange={setOpenPaths} />
+              <TabsHost navItems={navItems} devMode={devMode} />
             </Layout.Content>
           </Layout>
         </Layout>
@@ -354,20 +380,6 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
             <Button onClick={() => setAppearance({ theme: 'system', scale: 100 })}>恢复默认</Button>
             <p>仅影响当前用户的本机网页界面，不修改账套产品或桌面原生缩放。</p>
           </Space>
-        </Modal>
-        <Modal
-          getContainer={false}
-          title={exitTarget === 'book' ? '切换账套' : '切换用户 / 退出登录'}
-          open={exitTarget !== null}
-          onCancel={() => !logout.isPending && setExitTarget(null)}
-          onOk={() => {
-            if (exitTarget) void exit(exitTarget);
-          }}
-          confirmLoading={logout.isPending}
-          okText="已保存内容，继续"
-          cancelText="取消"
-        >
-          <p>请先保存所有表单。现有页面的离开保护会被检查；当前框架尚不能识别所有未保存内容。</p>
         </Modal>
       </div>
     </ConfigProvider>
