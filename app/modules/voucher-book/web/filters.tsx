@@ -4,7 +4,7 @@ import { Alert, Button, Checkbox, Form, Input, Select, Space } from 'antd';
 import { useVoucherTypes } from '@caiwu/web-kit';
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
-import { amountToForm, amountToUrl, conditionAmounts } from './amount-filters';
+import { amountToForm, amountToUrl, conditionAmounts, queryProblem } from './amount-filters';
 import { VOUCHER_STATUS_LABELS } from '@caiwu/core';
 import { BookFilterSchema } from '../shared';
 
@@ -122,7 +122,7 @@ export function useBookFilters() {
     (values.level && !['root', 'leaf'].includes(values.level) ? '汇总级次参数非法' : '') ||
     (values.foreign && !['0', '1'].includes(values.foreign) ? '原币展开参数非法' : '') ||
     (!Number.isSafeInteger(page) || page < 1 ? '页码必须是正整数' : '') ||
-    (!result.success ? result.error.issues.map((i) => i.message).join('；') : '');
+    (!result.success ? result.error.issues.map(queryProblem).join('；') : '');
   return {
     values,
     set,

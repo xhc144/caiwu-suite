@@ -1,7 +1,7 @@
 import { Alert, Input, Modal, Select, Space, Table } from 'antd';
 import { useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import type { VoucherLineInput } from '@caiwu/core';
+import { formatMoney, type VoucherLineInput } from '@caiwu/core';
 import { pasteFields, pasteLabels, type PasteField } from '../shared';
 import { api } from './api';
 export default function PasteDialog({
@@ -104,8 +104,8 @@ export default function PasteDialog({
           { title: '行', dataIndex: 'line' },
           { title: '摘要', render: (_, r) => r.values.summary },
           { title: '科目编码', render: (_, r) => r.values.account },
-          { title: '借方（分）', render: (_, r) => r.amounts.debit },
-          { title: '贷方（分）', render: (_, r) => r.amounts.credit },
+          { title: '借方（元）', render: (_, r) => formatMoney(r.amounts.debit) },
+          { title: '贷方（元）', render: (_, r) => formatMoney(r.amounts.credit) },
           {
             title: '逐行错误',
             render: (_, r) =>

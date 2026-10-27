@@ -38,3 +38,24 @@ export function conditionAmounts(value: string, convert: (value: string) => stri
     }),
   );
 }
+
+/** 外部链接的基础类型错误也用会计字段说明，保留已有的业务提示。 */
+export function queryProblem(issue: { path: readonly PropertyKey[]; message: string }): string {
+  if (/[\u3400-\u9fff]/.test(issue.message) && !/整数分|安全整数/.test(issue.message))
+    return issue.message;
+  const labels: Record<string, string> = {
+    periodFrom: '起始期间',
+    periodTo: '结束期间',
+    dateFrom: '起始日期',
+    dateTo: '结束日期',
+    voucherTypeId: '凭证类型',
+    statuses: '凭证状态',
+    numberFrom: '起始编号',
+    numberTo: '结束编号',
+    amountFrom: '起始金额',
+    amountTo: '结束金额',
+    createdBy: '制单人',
+    conditions: '综合查询条件',
+  };
+  return `${labels[String(issue.path[0])] ?? '查询条件'}格式无效，请在筛选栏修正后重新查询`;
+}

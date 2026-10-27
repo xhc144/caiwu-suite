@@ -63,6 +63,7 @@ type Row = Voucher & {
 export default function BookPage() {
   const navigate = useNavigate();
   const filters = useBookFilters();
+  const creators = useQuery(api.creators.queryOptions());
   const filterArea = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<number[]>([]);
   const [scope, setScope] = useState(false);
@@ -201,7 +202,10 @@ export default function BookPage() {
       {
         key: 'creator',
         title: '制单人',
-        render: (_, v) => `${v.createdBy.name} (${v.createdBy.id})`,
+        render: (_, v) => {
+          const creator = creators.data?.find((user) => user.id === v.createdBy.id);
+          return creator ? `${v.createdBy.name}（${creator.code}）` : v.createdBy.name;
+        },
         width: 120,
       },
       { key: 'auditor', title: '审核人', render: (_, v) => v.auditedBy?.name ?? '—', width: 100 },
@@ -241,7 +245,7 @@ export default function BookPage() {
         ),
       },
     ],
-    [navigate],
+    [navigate, creators.data],
   );
   return (
     <PageContainer

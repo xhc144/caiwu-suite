@@ -23,6 +23,8 @@ export default function ReportPage() {
   const canExport = usePermission('voucher-book.export');
   const canPrint = usePermission('voucher-book.print');
   const types = useVoucherTypes();
+  const creators = useQuery(api.creators.queryOptions());
+  const creator = creators.data?.find((user) => user.id === filters.filter?.createdBy);
   const [printing, setPrinting] = useState(false);
   const filter = {
     ...(filters.filter ?? {}),
@@ -43,6 +45,7 @@ export default function ReportPage() {
   const caption = reportCaption(
     reportInput.filter,
     types.find((t) => t.id === filter.voucherTypeId)?.code,
+    creator ? `${creator.name}（${creator.code}）` : undefined,
   );
   const sum = useQuery(
     api.summary.queryOptions(reportInput, { enabled: !isT && !!filters.filter }),

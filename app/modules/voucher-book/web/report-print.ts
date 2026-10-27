@@ -2,7 +2,7 @@ import { formatMoney, VOUCHER_STATUS_LABELS } from '@caiwu/core';
 import { escapeHtml } from '@caiwu/print';
 import { reportTotals, type BookFilter } from '../shared';
 
-export function reportCaption(filter: BookFilter, typeName?: string) {
+export function reportCaption(filter: BookFilter, typeName?: string, creatorName?: string) {
   const text = [
     `科目 ${filter.accountCode ?? '全部'}`,
     `期间 ${filter.periodFrom ?? '全部'} 至 ${filter.periodTo ?? '全部'}`,
@@ -16,15 +16,15 @@ export function reportCaption(filter: BookFilter, typeName?: string) {
       `金额 ${filter.amountFrom == null ? '不限' : formatMoney(filter.amountFrom)} 至 ${filter.amountTo == null ? '不限' : formatMoney(filter.amountTo)} 元`,
     );
   if (filter.summaryContains) text.push(`摘要含有“${filter.summaryContains}”`);
-  if (filter.createdBy != null) text.push(`制单人编号 ${filter.createdBy}`);
+  if (filter.createdBy != null) text.push(`制单人 ${creatorName ?? '已限定'}`);
   if (filter.id != null) text.push(`凭证记录编号 ${filter.id}`);
   if (filter.sourceModule) text.push('已限定来源业务');
-  if (filter.sourceType) text.push(`来源类型 ${filter.sourceType}`);
+  if (filter.sourceType) text.push('已限定来源类型');
   if (filter.sourceId) text.push(`来源单据 ${filter.sourceId}`);
   const fields = {
     date: '日期',
     number: '编号',
-    amount: '金额（分）',
+    amount: '金额（元）',
     summary: '摘要',
     creator: '制单人',
   };
@@ -37,7 +37,9 @@ export function reportCaption(filter: BookFilter, typeName?: string) {
     notContains: '不含有',
   };
   for (const c of filter.conditions ?? [])
-    text.push(`${fields[c.field]}${operators[c.operator]}“${c.value}”`);
+    text.push(
+      `${fields[c.field]}${operators[c.operator]}“${c.field === 'amount' ? formatMoney(Number(c.value)) : c.value}”`,
+    );
   text.push('不含期初、草稿和作废');
   return text.join('；');
 }

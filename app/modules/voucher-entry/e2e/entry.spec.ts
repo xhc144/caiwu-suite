@@ -213,7 +213,7 @@ test('m_work_pz_pzedit / w_pz_pzmb_main：IME、快捷键、Excel取消与确认
       .getByLabel('Excel粘贴文本')
       .fill('粘贴费用\t6603\t12.34\t0\n粘贴收入\t6001\t0\t12.34');
     await paste.getByRole('button', { name: '解析预览' }).click();
-    await expect(paste).toContainText('1234');
+    await expect(paste.getByRole('cell', { name: '12.34', exact: true })).toHaveCount(2);
     await paste.getByRole('button', { name: '确认替换分录' }).click();
     await expect(countRows()).toHaveCount(2);
     await page.getByLabel('第2行贷方', { exact: true }).fill('0');
