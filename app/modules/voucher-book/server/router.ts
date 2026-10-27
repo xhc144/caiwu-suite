@@ -80,6 +80,14 @@ export const voucherBookRouter = m.router({
     .meta({ permission: 'voucher-book.export' })
     .input(SummarySchema)
     .query(({ ctx, input }) => ctx.svc.tx((t) => summary(t, input))),
+  summaryPrint: m.procedure
+    .meta({ permission: 'voucher-book.print' })
+    .input(SummarySchema)
+    .query(({ ctx, input }) => ctx.svc.tx((t) => summary(t, input))),
+  tAccountPrint: m.procedure
+    .meta({ permission: 'voucher-book.print' })
+    .input(BookFilterSchema)
+    .query(({ ctx, input }) => ctx.svc.tx((t) => tAccount(t, input))),
   tAccountExport: m.procedure
     .meta({ permission: 'voucher-book.export' })
     .input(BookFilterSchema)

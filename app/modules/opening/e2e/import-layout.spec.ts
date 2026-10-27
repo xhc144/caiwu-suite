@@ -159,28 +159,78 @@ test('w_xt_ye：720px 冷启动动画中展开，缩窄至360px后选项可读�
   await page.setViewportSize({ width: 720, height: 900 });
   await loginWithNewBook(page, request);
   await page.goto('/m/opening?year=2026');
-  // 普通点击只负责打开弹窗；用实时命中坐标展开，不跳过遮挡或强制点击。
+  // 普通点击打开弹窗；下方仍在真实入场动画中派发物理指针，不暂停动画。
   await page.getByRole('button', { name: '导入 Excel', exact: true }).click();
   const modal = page.getByRole('dialog', { name: 'Excel 导入预览', exact: true });
   await expect(modal).toBeVisible();
-  const state = await modal.evaluate((element) => {
+  const state = await modal.evaluate(async (element) => {
     const select = element.querySelector<HTMLElement>('.ant-select')!;
-    const rect = select.getBoundingClientRect();
-    return {
-      x: rect.x + rect.width / 2,
-      y: rect.y + rect.height / 2,
-      transform: getComputedStyle(element).transform,
-      running: element
-        .getAnimations({ subtree: true })
-        .some((animation) => animation.playState === 'running'),
-    };
-  });
-  await info.attach('冷启动实际点击帧', {
-    body: JSON.stringify(state),
-    contentType: 'application/json',
+    const entry = element
+      .getAnimations({ subtree: true })
+      .find(
+        (animation) => animation instanceof CSSAnimation && /zoom/i.test(animation.animationName),
+      );
+    const running = () => entry?.playState === 'running';
+    const target = element as HTMLElement;
+    return new Promise<{ x: number; y: number; transform: string; running: boolean }>(
+      (resolve, reject) => {
+        const sample = () => {
+          if (!running()) return reject(new Error('未在真实弹窗入场动画中捕获可点击区域'));
+          const style = getComputedStyle(element);
+          const matrix = new DOMMatrixReadOnly(style.transform);
+          const rect = select.getBoundingClientRect();
+          const modalRect = element.getBoundingClientRect();
+          const [originX, originY] = style.transformOrigin.split(' ').map(Number.parseFloat);
+          if (matrix.a > 0 && matrix.d > 0) {
+            const left = modalRect.left - originX! * (1 - matrix.a);
+            const top = modalRect.top - originY! * (1 - matrix.d);
+            const finalLeft = left + (rect.left - modalRect.left) / matrix.a;
+            const finalTop = top + (rect.top - modalRect.top) / matrix.d;
+            // 取当前矩形与动画终点矩形的交集；单调缩放的后续帧都包含此点。
+            // 当前中心在下一帧就可能离开控件，不能先采中心再跨进程点击。
+            const x1 = Math.max(rect.left, finalLeft);
+            const x2 = Math.min(rect.right, finalLeft + rect.width / matrix.a);
+            const y1 = Math.max(rect.top, finalTop);
+            const y2 = Math.min(rect.bottom, finalTop + rect.height / matrix.d);
+            const y = (y1 + y2) / 2;
+            const x = [0.5, 0.75, 0.25]
+              .map((fraction) => x1 + (x2 - x1) * fraction)
+              .find((point) => select.contains(document.elementFromPoint(point, y)));
+            if (x2 - x1 >= 16 && y2 - y1 >= 8 && x !== undefined) {
+              document.addEventListener(
+                'pointerdown',
+                (event) => {
+                  target.dataset.importPointer = JSON.stringify({
+                    hit: select.contains(event.target as Node),
+                    running: running(),
+                    x: event.clientX,
+                    y: event.clientY,
+                    transform: getComputedStyle(element).transform,
+                  });
+                },
+                { once: true, capture: true },
+              );
+              resolve({ x, y, transform: style.transform, running: running() });
+              return;
+            }
+          }
+          requestAnimationFrame(sample);
+        };
+        sample();
+      },
+    );
   });
   expect(state.running).toBe(true);
   await page.mouse.click(state.x, state.y);
+  const pointer = JSON.parse((await modal.getAttribute('data-import-pointer')) ?? 'null') as {
+    hit: boolean;
+    running: boolean;
+  } | null;
+  await info.attach('冷启动实际点击帧', {
+    body: JSON.stringify({ sampled: state, pointer }),
+    contentType: 'application/json',
+  });
+  expect(pointer).toMatchObject({ hit: true, running: true });
   await expect(modal.getByLabel('导入模式', { exact: true })).toHaveAttribute(
     'aria-expanded',
     'true',

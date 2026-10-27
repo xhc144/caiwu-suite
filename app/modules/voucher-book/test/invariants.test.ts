@@ -233,3 +233,81 @@ it('w_pz_tjsh/w_pz_bhzl/w_pz_get fast-check：任意步骤故障，状态、编�
     { numRuns: 15 },
   );
 });
+
+it('w_pzedit_fc fast-check：显式项目映射后正负借贷红冲金额净额为零、来源不变且可异人审核', async () => {
+  await fc.assert(
+    fc.asyncProperty(
+      fc.integer({ min: 1, max: 1_000_000 }),
+      fc.boolean(),
+      fc.boolean(),
+      async (amount, red, debitSide) => {
+        const t = await createTestApp({ modules: [server] });
+        try {
+          const items = new Map<string, number>();
+          for (const [code, cashflowDirection] of [
+            ['CF01', 'inflow'],
+            ['CF02', 'outflow'],
+          ] as const) {
+            const item = (await t.svc.dimensions.getByCode('cashflow', code))!;
+            await t.svc.db
+              .updateTable('dimension_item')
+              .set({ attrs: JSON.stringify({ cashflowDirection }) })
+              .where('id', '=', item.id)
+              .execute();
+            items.set(code, item.id);
+          }
+          const signed = red ? -amount : amount;
+          const incoming = debitSide !== red;
+          const [v] = await seedVouchers(t.svc, [
+            {
+              date: '2026-01-05',
+              lines: [
+                {
+                  account: '1001',
+                  ...(debitSide ? { debit: signed } : { credit: signed }),
+                  dims: { cashflow: incoming ? 'CF01' : 'CF02' },
+                },
+                { account: '6603', ...(debitSide ? { credit: signed } : { debit: signed }) },
+              ],
+            },
+          ]);
+          const api = t.call(server);
+          const p = await api.preview.reverse({
+            action: 'reverse',
+            selection: { ids: [v!.id] },
+            date: '2026-02-01',
+            voucherTypeId: v!.voucherTypeId,
+          });
+          const r = await api.commit({
+            token: p.token,
+            confirmed: true,
+            cashflowMappings: [{ lineNo: 1, itemId: items.get(incoming ? 'CF02' : 'CF01')! }],
+          });
+          const reverse = (await t.svc.vouchers.get(r.createdIds[0]!))!;
+          for (const [index, line] of v!.lines.entries()) {
+            expect(BigInt(line.debit) + BigInt(reverse.lines[index]!.debit)).toBe(0n);
+            expect(BigInt(line.credit) + BigInt(reverse.lines[index]!.credit)).toBe(0n);
+            expect(reverse.lines[index]!.accountId).toBe(line.accountId);
+          }
+          expect(reverse.lines[0]!.dimensions.cashflow).toBe(items.get(incoming ? 'CF02' : 'CF01'));
+          expect(await t.svc.vouchers.get(v!.id)).toEqual(v);
+          const reviewer = t.call(
+            server,
+            await t.addUser('review', { permissions: ['voucher-book.view', 'voucher-book.audit'] }),
+          );
+          const audit = await reviewer.preview.audit({
+            action: 'audit',
+            selection: { ids: [reverse.id] },
+          });
+          expect(audit.eligibleCount).toBe(1);
+          expect(audit.rows[0]!.warnings).toEqual([]);
+          await reviewer.commit({ token: audit.token, confirmed: true });
+          expect((await t.svc.vouchers.get(reverse.id))!.status).toBe('audited');
+        } finally {
+          await t.close();
+        }
+      },
+    ),
+    { numRuns: 20 },
+  );
+});

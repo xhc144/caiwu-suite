@@ -17,6 +17,7 @@ import type { CoreServices } from '@caiwu/core/server';
 import {
   BookFilterSchema,
   PreviewSchema,
+  reportTotals,
   type BookFilter,
   type Selection,
   type PreviewInput,
@@ -26,6 +27,7 @@ import {
   type CommitInput,
   type ActionResult,
   type NumberMapping,
+  type ReversalCashflowRow,
   type SummaryInput,
 } from '../shared';
 import type { VoucherBookTables } from './migrations';
@@ -196,10 +198,8 @@ export async function cashflowCheck(svc: CoreServices, v: Voucher) {
   const warnings: string[] = [],
     errors: string[] = [];
   const accounts = new Map((await svc.accounts.list()).map((a) => [a.id, a]));
-  const cashNet = v.lines.reduce(
-    (s, l) => (accounts.get(l.accountId)?.cashflowRequired ? s + l.debit - l.credit : s),
-    0,
-  );
+  let internalNet = 0n;
+  const internalRows: string[] = [];
   for (const l of v.lines) {
     const a = accounts.get(l.accountId);
     const prefix = `${v.period} ${v.displayNo} 第${l.lineNo}行`;
@@ -226,16 +226,19 @@ export async function cashflowCheck(svc: CoreServices, v: Voucher) {
       continue;
     }
     const direction = parsed.data.cashflowDirection;
-    // 红字同向负数是冲减原流向；方向按借贷列核验，不因金额为负再翻转。
-    if (
-      (direction === 'inflow' && l.credit !== 0) ||
-      (direction === 'outflow' && l.debit !== 0) ||
-      (direction === 'internal' && cashNet !== 0)
-    )
+    // 与录入正式保存一致：红字按实际净额判断流向，内部项单独配平。
+    const signed = BigInt(l.debit) - BigInt(l.credit);
+    if (direction === 'internal') {
+      internalNet += signed;
+      internalRows.push(prefix);
+    }
+    if ((direction === 'inflow' && signed < 0n) || (direction === 'outflow' && signed > 0n))
       errors.push(
         `${prefix} 现金流量方向 ${direction === 'inflow' ? '流入' : direction === 'outflow' ? '流出' : '内部转移'} 与金额方向冲突`,
       );
   }
+  if (internalNet !== 0n)
+    errors.push(`${internalRows[0]}等内部现金流入流出未配平，差额 ${internalNet} 分`);
   return { warnings, errors };
 }
 export function copiedInput(
@@ -272,12 +275,102 @@ export function reversedInput(v: Voucher, date: string, voucherTypeId: number): 
     reversalOfId: v.id,
     lines: input.lines.map((l) => ({
       ...l,
-      debit: -(l.debit ?? 0),
-      credit: -(l.credit ?? 0),
+      debit: l.debit ? -l.debit : 0,
+      credit: l.credit ? -l.credit : 0,
       fcAmount: l.fcAmount == null ? null : -l.fcAmount,
       quantity: l.quantity == null ? null : new Decimal(l.quantity).negated().toFixed(),
     })),
   };
+}
+/** 外部收付必须逐行由用户选择；内部转移原项目保留，不能借映射改成外部项配平。 */
+async function reversalCashflow(svc: CoreServices, original: Voucher, generated: VoucherInput) {
+  const accounts = new Map((await svc.accounts.list()).map((a) => [a.id, a]));
+  const items = await svc.dimensions.items('cashflow');
+  const rows: ReversalCashflowRow[] = [];
+  const checking = structuredClone(original);
+  for (const [index, line] of original.lines.entries()) {
+    const account = accounts.get(line.accountId);
+    if (!account?.cashflowRequired) continue;
+    const old = items.find((d) => d.id === line.dimensions.cashflow);
+    const parsed = DirectionSchema.safeParse(old?.attrs);
+    const next = generated.lines[index]!;
+    const signed = BigInt(next.debit ?? 0) - BigInt(next.credit ?? 0);
+    const direction =
+      parsed.success && parsed.data.cashflowDirection === 'internal'
+        ? 'internal'
+        : signed > 0n
+          ? 'inflow'
+          : 'outflow';
+    rows.push({
+      lineNo: line.lineNo,
+      account: `${account.code} ${account.name}`,
+      originalItem: old ? `${old.code} ${old.name}` : '未设置或项目不存在',
+      direction,
+      debit: next.debit ?? 0,
+      credit: next.credit ?? 0,
+      options:
+        direction === 'internal'
+          ? []
+          : items
+              .filter((d) => {
+                const meta = DirectionSchema.safeParse(d.attrs);
+                return (
+                  !d.disabled &&
+                  d.isLeaf &&
+                  meta.success &&
+                  meta.data.cashflowDirection === direction
+                );
+              })
+              .map((d) => ({ id: d.id, label: `${d.code} ${d.name}` })),
+    });
+    // 待选外部项不沿用原方向；只用内部项和非现金科目做生成前核验。
+    checking.lines[index]!.dimensions = {
+      ...line.dimensions,
+      cashflow: direction === 'internal' ? line.dimensions.cashflow : null,
+    };
+  }
+  const check = await cashflowCheck(svc, checking);
+  if (check.errors.length)
+    fail('CASHFLOW', check.errors.join('；'), '请先在来源页面修正现金流量项目或内部配平后重新预览');
+  return rows;
+}
+async function mappedReversal(
+  svc: CoreServices,
+  original: Voucher,
+  generated: VoucherInput,
+  mappings: CommitInput['cashflowMappings'],
+) {
+  const rows = await reversalCashflow(svc, original, generated);
+  const requested = new Map<number, number>();
+  for (const mapping of mappings ?? []) {
+    const row = rows.find((r) => r.lineNo === mapping.lineNo && r.direction !== 'internal');
+    if (!row || requested.has(mapping.lineNo))
+      fail(
+        'CASHFLOW_MAPPING',
+        `第${mapping.lineNo}行现金流量映射重复或不允许修改`,
+        '请重新预览并逐行选择',
+      );
+    if (!row.options.some((o) => o.id === mapping.itemId))
+      fail(
+        'CASHFLOW_MAPPING',
+        `第${mapping.lineNo}行现金流量项目无效或方向冲突`,
+        '请选择该行列出的有效反向项目',
+      );
+    requested.set(mapping.lineNo, mapping.itemId);
+  }
+  const result = structuredClone(generated);
+  for (const row of rows.filter((r) => r.direction !== 'internal')) {
+    const itemId = requested.get(row.lineNo);
+    if (itemId == null)
+      fail(
+        'CASHFLOW_MAPPING',
+        `第${row.lineNo}行尚未选择红冲现金流量项目`,
+        '请在红冲预览中逐行选择对应项目；没有选项时请先维护同方向的末级现金流量项目',
+      );
+    const index = original.lines.findIndex((l) => l.lineNo === row.lineNo);
+    result.lines[index]!.dimensions = { ...result.lines[index]!.dimensions, cashflow: itemId };
+  }
+  return result;
 }
 export function numberMapping(vouchers: Voucher[], byDate: boolean): NumberMapping[] {
   return vouchers
@@ -465,6 +558,15 @@ export async function finishPlan(svc: CoreServices, token: string, result: Actio
     .where('token', '=', token)
     .execute();
 }
+/** 只在业务写入成功后的同一事务内生成，重放确认返回保存的原结果。 */
+export async function resultVoucher(svc: CoreServices, id: number) {
+  const v = await svc.vouchers.get(id);
+  return {
+    voucherId: v?.id ?? null,
+    voucherLabel: v ? `${v.date} ${v.displayNo}` : null,
+    status: v ? (v.voided ? '已作废' : VOUCHER_STATUS_LABELS[v.status]) : '不存在或已删除',
+  };
+}
 export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Preview> {
   const input = PreviewSchema.parse(raw);
   await svc.permissions.require(permissionFor(input.action));
@@ -486,6 +588,7 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
     let generated: VoucherInput | null = null;
     let reversalHash: string | null = null;
     const updates: StoredPlan['updates'] = [];
+    let reversalRows: ReversalCashflowRow[] | undefined;
     if (input.action === 'renumber' || input.action === 'insert') {
       const first = await requireVoucher(t, ids[0]!);
       const all = await group(t, first.period, first.voucherTypeId);
@@ -523,6 +626,7 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
           ? copiedInput(original, input.date, input.voucherTypeId)
           : reversedInput(original, input.date, input.voucherTypeId);
       if (input.action === 'reverse') {
+        reversalRows = await reversalCashflow(t, original, generated);
         const existing = await t.db
           .selectFrom('voucher')
           .select('id')
@@ -616,6 +720,7 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
       eligibleCount: rows.filter((r) => r.eligible).length,
       skippedCount: rows.filter((r) => !r.eligible).length,
       generatedDebit: generated ? generated.lines.reduce((s, l) => s + (l.debit ?? 0), 0) : null,
+      ...(reversalRows ? { reversalCashflow: reversalRows } : {}),
     };
     await savePlan(
       t,
@@ -643,6 +748,8 @@ export async function commit(svc: CoreServices, input: CommitInput): Promise<Act
     const { action } = plan.preview;
     await t.permissions.require(permissionFor(action));
     if (saved.result) return JSON.parse(saved.result) as ActionResult;
+    if (action !== 'reverse' && input.cashflowMappings?.length)
+      fail('CASHFLOW_MAPPING', '只有红冲操作可以选择反向现金流量项目');
     if (plan.metadata !== (await metadata(t)))
       fail('STALE', '科目或现金流量项目已变更，请重新核验');
     for (const r of plan.preview.rows) {
@@ -723,21 +830,53 @@ export async function commit(svc: CoreServices, input: CommitInput): Promise<Act
       await t.periods.assertOpen(periodOfDate(plan.generated.date), '生成凭证');
       const generated =
         action === 'reverse'
-          ? { ...plan.generated, source: { type: 'reversal', id: String(ids[0]) } }
+          ? {
+              ...(await mappedReversal(
+                t,
+                await requireVoucher(t, ids[0]!),
+                plan.generated,
+                input.cashflowMappings,
+              )),
+              source: { type: 'reversal', id: String(ids[0]) },
+            }
           : plan.generated;
-      createdIds.push((await t.vouchers.create(checkedInput(generated))).id);
+      const created = await t.vouchers.create(checkedInput(generated));
+      if (action === 'reverse') {
+        const check = await cashflowCheck(t, created);
+        if (check.errors.length || check.warnings.length)
+          fail(
+            'CASHFLOW',
+            check.errors.concat(check.warnings).join('；'),
+            '请重新预览并选择有效的现金流量项目',
+          );
+      }
+      createdIds.push(created.id);
     }
-    const result = {
+    const result: ActionResult = {
       successCount: createdIds.length || ids.length,
       skippedCount: plan.preview.skippedCount,
       createdIds,
       message: `成功 ${createdIds.length || ids.length} 张，跳过 ${plan.preview.skippedCount} 张`,
+      rows: await Promise.all(
+        plan.preview.rows.map(async (r) => ({
+          key: String(r.id),
+          label: r.label,
+          outcome: r.eligible ? ('success' as const) : ('skipped' as const),
+          reasons: r.eligible ? [] : r.reasons,
+          ...(await resultVoucher(t, r.eligible && createdIds.length ? createdIds[0]! : r.id)),
+        })),
+      ),
     };
     await finishPlan(t, input.token, result);
     await t.log.write({
       action: `voucher-book.${action}`,
       summary: result.message,
-      detail: { ids, skipped: plan.preview.rows.filter((r) => !r.eligible), createdIds },
+      detail: {
+        ids,
+        skipped: plan.preview.rows.filter((r) => !r.eligible),
+        createdIds,
+        ...(action === 'reverse' ? { cashflowMappings: input.cashflowMappings ?? [] } : {}),
+      },
     });
     return result;
   });
@@ -816,9 +955,23 @@ export async function tAccount(svc: CoreServices, filter: BookFilter) {
     const v = await requireVoucher(svc, id);
     if (v.status === 'draft') continue;
     for (const l of v.lines.filter((l) => l.accountCode.startsWith(filter.accountCode!)))
-      rows.push({ ...l, voucherId: id, displayNo: v.displayNo, date: v.date });
+      rows.push({
+        ...l,
+        voucherId: id,
+        displayNo: v.displayNo,
+        date: v.date,
+        voucherTypeCode: v.voucherTypeCode,
+      });
   }
-  return rows;
+  reportTotals(rows);
+  return rows.sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      a.voucherTypeCode.localeCompare(b.voucherTypeCode) ||
+      a.displayNo.localeCompare(b.displayNo) ||
+      a.voucherId - b.voucherId ||
+      a.lineNo - b.lineNo,
+  );
 }
 
 /** core 嵌套 tx 复用事务；预览试写用显式保存点回滚。 */
