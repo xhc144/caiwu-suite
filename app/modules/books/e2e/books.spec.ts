@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import type { Account, BookSummary } from '@caiwu/core';
+import { clickModalAction, probeModalPointers } from './pointer-probe';
 
 const tokenOf = (page: Page) =>
   page.evaluate(
@@ -47,7 +48,9 @@ test('w_login / w_xt_kgzb / w_tzjl：UI创建66科目 → 壳登录 → A-B-A隔
   await wizard.getByRole('button', { name: '下一步' }).click();
   await wizard.getByLabel('科目级次', { exact: true }).fill('3-2-2');
   await wizard.getByRole('button', { name: '下一步' }).click();
-  await expect(wizard.getByText(/科目 1001 的一级编码需要 4 位/)).toBeVisible();
+  await expect(wizard.locator('.ant-form-item-explain-error')).toContainText(
+    '一级科目编码不能使用科目级次 3-2-2，无法映射',
+  );
   await wizard.getByLabel('科目级次', { exact: true }).fill('4-3-3');
   await wizard.getByRole('button', { name: '下一步' }).click();
   await expect(wizard.getByText('当前支持人民币本位币（CNY）')).toBeVisible();
@@ -129,58 +132,70 @@ test('w_login / w_xt_kgzb / w_tzjl：UI创建66科目 → 壳登录 → A-B-A隔
 test('w_tzjl_1 / w_xt_tz_find：取消向导零半成品、无结果搜索、双击与刷新', async ({
   page,
   request,
-}) => {
-  const name = `取消新建-${Date.now()}`;
-  await page.goto('/');
-  await page.getByRole('button', { name: '新建账套', exact: true }).click();
-  const wizard = page.getByRole('dialog', { name: '新建账套', exact: true });
-  await wizard.getByLabel('账套名称', { exact: true }).fill(name);
-  await wizard.getByRole('button', { name: '取消', exact: true }).click();
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click();
-  await expect(wizard.getByLabel('账套名称', { exact: true })).toHaveValue(name);
-  await wizard.getByRole('button', { name: '取消', exact: true }).click();
-  await page.getByRole('button', { name: '放弃创建', exact: true }).click();
-  expect(
-    (await callApi<BookSummary[]>(request, 'core.books.list')).some((b) => b.name === name),
-  ).toBe(false);
-  await page.getByRole('textbox', { name: '搜索账套' }).fill(name);
-  await expect(page.getByText('没有匹配的账套，请修改搜索内容')).toBeVisible();
-  await page.reload();
-  await expect(page.getByRole('textbox', { name: '搜索账套' })).toHaveValue('');
-  const b = await callApi<{ id: string; name: string }>(request, 'core.books.create', {
-    name: `双击-${Date.now()}`,
-    orgName: '双击测试单位',
-    templateId: 'books-small-business',
-    product: 'qingsong',
-    startYear: 2026,
-    startMonth: 1,
-    adminPassword: 'pw',
-  });
-  await page.getByRole('button', { name: '刷新列表' }).click();
-  await page.getByRole('textbox', { name: '搜索账套' }).fill(b.name);
-  await page.getByRole('row', { name: new RegExp(b.name) }).dblclick();
-  await expect(page).toHaveURL(new RegExp(`/login/${b.id}$`));
-  await page.reload();
-  await expect(page.getByText(b.name, { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: '返回账套列表', exact: true }).click();
-  await page.getByRole('button', { name: '新建账套', exact: true }).click();
-  await page
-    .getByRole('dialog', { name: '新建账套', exact: true })
-    .getByLabel('账套名称', { exact: true })
-    .fill('浏览器后退保留');
-  page.once('dialog', (dialog) => void dialog.dismiss());
-  // 后退被确认框取消时没有load事件，直接触发真实history遍历并检查页面状态。
-  await page.evaluate(() => history.back());
-  await expect(page).toHaveURL(/\/$/);
-  await expect(
-    page
+}, info) => {
+  const attachPointers = await probeModalPointers(page, info);
+  try {
+    const name = `取消新建-${Date.now()}`;
+    await page.goto('/');
+    await page.getByRole('button', { name: '新建账套', exact: true }).click();
+    const wizard = page.getByRole('dialog', { name: '新建账套', exact: true });
+    await wizard.getByLabel('账套名称', { exact: true }).fill(name);
+    await wizard.getByRole('button', { name: '取消', exact: true }).click();
+    const confirmation = page.getByRole('dialog', {
+      name: '放弃未提交的新建账套内容？',
+      exact: true,
+    });
+    await clickModalAction(confirmation, '继续编辑');
+    await expect(confirmation).toHaveCount(0);
+    await expect(wizard.getByLabel('账套名称', { exact: true })).toHaveValue(name);
+    await wizard.getByRole('button', { name: '取消', exact: true }).click();
+    await clickModalAction(confirmation, '放弃创建');
+    await expect(confirmation).toHaveCount(0);
+    await expect(wizard).toHaveCount(0);
+    expect(
+      (await callApi<BookSummary[]>(request, 'core.books.list')).some((b) => b.name === name),
+    ).toBe(false);
+    await page.getByRole('textbox', { name: '搜索账套' }).fill(name);
+    await expect(page.getByText('没有匹配的账套，请修改搜索内容')).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('textbox', { name: '搜索账套' })).toHaveValue('');
+    const b = await callApi<{ id: string; name: string }>(request, 'core.books.create', {
+      name: `双击-${Date.now()}`,
+      orgName: '双击测试单位',
+      templateId: 'books-small-business',
+      product: 'qingsong',
+      startYear: 2026,
+      startMonth: 1,
+      adminPassword: 'pw',
+    });
+    await page.getByRole('button', { name: '刷新列表' }).click();
+    await page.getByRole('textbox', { name: '搜索账套' }).fill(b.name);
+    await page.getByRole('row', { name: new RegExp(b.name) }).dblclick();
+    await expect(page).toHaveURL(new RegExp(`/login/${b.id}$`));
+    await page.reload();
+    await expect(page.getByText(b.name, { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: '返回账套列表', exact: true }).click();
+    await page.getByRole('button', { name: '新建账套', exact: true }).click();
+    await page
       .getByRole('dialog', { name: '新建账套', exact: true })
-      .getByLabel('账套名称', { exact: true }),
-  ).toHaveValue('浏览器后退保留');
-  page.once('dialog', (dialog) => void dialog.accept());
-  // 后退被确认框取消时没有load事件，直接触发真实history遍历并检查页面状态。
-  await page.evaluate(() => history.back());
-  await expect(page).toHaveURL(new RegExp(`/login/${b.id}$`));
+      .getByLabel('账套名称', { exact: true })
+      .fill('浏览器后退保留');
+    page.once('dialog', (dialog) => void dialog.dismiss());
+    // 后退被确认框取消时没有load事件，直接触发真实history遍历并检查页面状态。
+    await page.evaluate(() => history.back());
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page
+        .getByRole('dialog', { name: '新建账套', exact: true })
+        .getByLabel('账套名称', { exact: true }),
+    ).toHaveValue('浏览器后退保留');
+    page.once('dialog', (dialog) => void dialog.accept());
+    // 后退被确认框取消时没有load事件，直接触发真实history遍历并检查页面状态。
+    await page.evaluate(() => history.back());
+    await expect(page).toHaveURL(new RegExp(`/login/${b.id}$`));
+  } finally {
+    await attachPointers();
+  }
 });
 
 test('w_tzjl_2 / w_tzjl_kl：管理界面真实复制、目标口令拦截、备份预览与删除执行阻断', async ({

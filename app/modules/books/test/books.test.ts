@@ -17,7 +17,7 @@ import {
 import booksServer from '../server';
 import { booksService, type FileHooks } from '../server/service';
 import small from '../templates/small-business.json';
-import enterprise from '../templates/enterprise.json';
+import { enterpriseChart as enterprise } from '../chart';
 
 let app: TestApp;
 beforeEach(async () => {
@@ -114,7 +114,9 @@ describe('w_tzjl_1 / w_xt_kgzb_1 / w_xt_kgzb_3 新建账套', () => {
     expect((await app.runtime.bookStore.list()).length).toBe(5);
   });
   it('w_xt_kgzb_a4/a5 仅CNY；年中启用仍为公历年度，期间从启用月起', async () => {
-    expect('baseCurrency' in WizardSchema.shape).toBe(false);
+    expect(WizardSchema.shape.baseCurrency.safeParse('CNY').success).toBe(true);
+    expect(WizardSchema.shape.baseCurrency.safeParse('').success).toBe(false);
+    expect(WizardSchema.shape.baseCurrency.safeParse('USD').success).toBe(false);
     const b = await create();
     const svc = await targetSvc(b);
     expect(b.baseCurrency).toBe('CNY');
@@ -127,7 +129,7 @@ describe('w_tzjl_1 / w_xt_kgzb_1 / w_xt_kgzb_3 新建账套', () => {
   });
   it('w_xt_kgzb_a2/a3 无空白制度、空级次，兼容级次提示指向具体科目', () => {
     const t = parseTemplate(small);
-    expect(() => validateScheme(t, '3-2-2')).toThrow(/1001/);
+    expect(() => validateScheme(t, '3-2-2')).toThrow(/一级科目编码/);
     expect(() => validateScheme(t, '')).toThrow(/1–6/);
     expect(WizardSchema.safeParse({}).success).toBe(false);
     expect(() => parseTemplate({ ...small, accounts: [] })).toThrow();
@@ -527,32 +529,50 @@ describe('w_xt_kgzb_a2/a3 模板', () => {
     const t = parseTemplate(raw);
     expect(templateProblems(t)).toEqual([]);
     expect(new Set(t.accounts.map((a) => a.code)).size).toBe(t.accounts.length);
-    for (const a of t.accounts) expect(a.source).toMatch(/\.pdf|待核/);
+    for (const a of t.accounts) expect(a.source).toMatch(/\.pdf|财会〔\d{4}〕\d+号/);
     expect(validateScheme(t, '4-2-2')).toEqual([4, 2, 2]);
     expect(validateScheme(t, '4-3-3')).toEqual([4, 3, 3]);
   });
   it('66项逐项编码和名称对照附录；资产备抵和损益正常方向明确', () => {
     expect(small.accounts).toHaveLength(66);
     const expected =
-      '1001库存现金 1002银行存款 1012其他货币资金 1101短期投资 1121应收票据 1122应收账款 1123预付账款 1131应收股利 1132应收利息 1221其他应收款 1401材料采购 1402在途物资 1403原材料 1404材料成本差异 1405库存商品 1407商品进销差价 1408委托加工物资 1411周转材料 1421消耗性生物资产 1501长期债券投资 1511长期股权投资 1601固定资产 1602累计折旧 1604在建工程 1605工程物资 1606固定资产清理 1621生产性生物资产 1622生产性生物资产累计折旧 1701无形资产 1702累计摊销 1801长期待摊费用 1901待处理财产损溢 2001短期借款 2201应付票据 2202应付账款 2203预收账款 2211应付职工薪酬 2221应交税费 2231应付利息 2232应付利润 2241其他应付款 2401递延收益 2501长期借款 2701长期应付款 3001实收资本 3002资本公积 3101盈余公积 3103本年利润 3104利润分配 4001生产成本 4101制造费用 4301研发支出 4401工程施工 4403机械作业 5001主营业务收入 5051其他业务收入 5111投资收益 5301营业外收入 5401主营业务成本 5402其他业务成本 5403营业税金及附加 5601销售费用 5602管理费用 5603财务费用 5711营业外支出 5801所得税费用'.split(
+      '1001库存现金 1002银行存款 1012其他货币资金 1101短期投资 1121应收票据 1122应收账款 1123预付账款 1131应收股利 1132应收利息 1221其他应收款 1401材料采购 1402在途物资 1403原材料 1404材料成本差异 1405库存商品 1407商品进销差价 1408委托加工物资 1411周转材料 1421消耗性生物资产 1501长期债券投资 1511长期股权投资 1601固定资产 1602累计折旧 1604在建工程 1605工程物资 1606固定资产清理 1621生产性生物资产 1622生产性生物资产累计折旧 1701无形资产 1702累计摊销 1801长期待摊费用 1901待处理财产损溢 2001短期借款 2201应付票据 2202应付账款 2203预收账款 2211应付职工薪酬 2221应交税费 2231应付利息 2232应付利润 2241其他应付款 2401递延收益 2501长期借款 2701长期应付款 3001实收资本 3002资本公积 3101盈余公积 3103本年利润 3104利润分配 4001生产成本 4101制造费用 4301研发支出 4401工程施工 4403机械作业 5001主营业务收入 5051其他业务收入 5111投资收益 5301营业外收入 5401主营业务成本 5402其他业务成本 5403税金及附加 5601销售费用 5602管理费用 5603财务费用 5711营业外支出 5801所得税费用'.split(
         ' ',
       );
     expect(small.accounts.map((a) => a.code + a.name)).toEqual(expected);
     for (const code of ['1407', '1602', '1622', '1702', '5001', '5111'])
       expect(small.accounts.find((a) => a.code === code)?.direction).toBe('credit');
     expect(small.accounts.find((a) => a.code === '1702')?.needsReview).toBe(true);
-    expect(enterprise.accounts.every((a) => a.needsReview && a.source.includes('待核'))).toBe(true);
+    expect(enterprise.accounts).toHaveLength(248);
+    expect(
+      enterprise.accounts.every((a) => a.needsReview === false && !a.source?.includes('待核')),
+    ).toBe(true);
   });
-  it.each([small.id, enterprise.id])('两种兼容级次真实建账科目集一致：%s', async (templateId) => {
-    const a = await create({ templateId, codeScheme: '4-2-2' });
-    const b = await create({ templateId, codeScheme: '4-3-3' });
-    const read = async (book: BookInfo) =>
-      (await (await targetSvc(book)).accounts.list()).map((a) => ({
-        code: a.code,
-        name: a.name,
-        direction: a.direction,
-        categoryId: a.categoryId,
-      }));
-    expect(await read(a)).toEqual(await read(b));
-  });
+  it.each([small.id, enterprise.id])(
+    '两种级次真实建账保留名称、类别、方向并按段映射：%s',
+    async (templateId) => {
+      const a = await create({ templateId, codeScheme: '4-2-2' });
+      const b = await create({ templateId, codeScheme: '4-3-3' });
+      const read = async (book: BookInfo) =>
+        (await (await targetSvc(book)).accounts.list()).map((a) => ({
+          code: a.code,
+          name: a.name,
+          direction: a.direction,
+          categoryId: a.categoryId,
+        }));
+      const left = await read(a);
+      const right = await read(b);
+      expect(left.map(({ code: _code, ...meaning }) => meaning)).toEqual(
+        right.map(({ code: _code, ...meaning }) => meaning),
+      );
+      expect(left.filter((account) => account.code.length === 4)).toEqual(
+        right.filter((account) => account.code.length === 4),
+      );
+      if (templateId === enterprise.id) {
+        expect(left.find((account) => account.code === '22210101')?.name).toBe('进项税额');
+        expect(right.find((account) => account.code === '2221001001')?.name).toBe('进项税额');
+        expect(right.find((account) => account.code === '2211001')?.name).toBe('工资');
+      }
+    },
+  );
 });

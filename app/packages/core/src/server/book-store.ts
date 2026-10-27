@@ -1029,6 +1029,7 @@ export class BookStore {
               direction: a.direction,
               isContra: a.isContra,
               balanceNature: a.balanceNature,
+              closingRule: a.closingRule,
               source: a.source,
               sourceVersion: a.sourceVersion,
               isCash: a.cash,
