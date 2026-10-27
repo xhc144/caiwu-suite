@@ -68,6 +68,7 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
       .getByRole('row')
       .filter({ hasText: '独立凭证1' })
       .filter({ has: page.getByRole('cell', { name: reverse.date, exact: true }) })
+      .filter({ has: page.getByRole('cell', { name: reverse.displayNo, exact: true }) })
       .filter({ has: page.getByText('红字冲销', { exact: true }) });
     await expect(reverseRow).toHaveCount(1);
     await expect(reverseRow).toContainText('-0.01');
