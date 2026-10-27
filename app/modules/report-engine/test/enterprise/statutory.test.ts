@@ -1,0 +1,751 @@
+import { describe, it, expect } from 'vitest';
+import fc from 'fast-check';
+import {
+  calculateEnterprise,
+  calculateBalance,
+  calculateProfit,
+  calculateCashflow,
+  enterpriseRanges,
+} from '../../templates/enterprise/calculate';
+import { balanceBucket } from '../../templates/enterprise/model';
+import { suggestEnterpriseRules } from '../../templates/enterprise/mapping';
+import { fixture, account, addAccount, provenance } from './fixture';
+const ZERO = {
+  capital: '0',
+  equityPreferred: '0',
+  equityPerpetual: '0',
+  equityOther: '0',
+  capitalReserve: '0',
+  treasuryStock: '0',
+  otherComprehensive: '0',
+  specialReserve: '0',
+  surplusReserve: '0',
+  retainedEarnings: '0',
+  total: '0',
+};
+describe('企业2019附件2四表', () => {
+  it('w_bb_proc 连续两年12个月、真实损益结转与年结，四表逐金额格核对', () => {
+    const { c, d } = fixture(),
+      r = calculateEnterprise(c, d);
+    const balance = {
+      cash: '220000',
+      tradingAssets: '0',
+      derivativeAssets: '0',
+      notesReceivable: '0',
+      accountsReceivable: '0',
+      receivablesFinancing: '0',
+      prepayments: '0',
+      otherReceivables: '0',
+      inventory: '0',
+      contractAssets: '0',
+      heldForSaleAssets: '0',
+      currentNoncurrentAssets: '0',
+      otherCurrentAssets: '0',
+      currentAssetsTotal: '220000',
+      debtInvestments: '0',
+      otherDebtInvestments: '0',
+      longTermReceivables: '0',
+      equityInvestments: '0',
+      otherEquityInvestments: '0',
+      otherFinancialAssets: '0',
+      investmentProperty: '0',
+      fixedAssets: '0',
+      construction: '0',
+      biologicalAssets: '0',
+      oilGasAssets: '0',
+      rightOfUseAssets: '0',
+      intangibleAssets: '0',
+      development: '0',
+      goodwill: '0',
+      longTermPrepaid: '0',
+      deferredTaxAssets: '0',
+      otherNoncurrentAssets: '0',
+      noncurrentAssetsTotal: '0',
+      assetsTotal: '220000',
+      shortTermLoans: '0',
+      tradingLiabilities: '0',
+      derivativeLiabilities: '0',
+      notesPayable: '0',
+      accountsPayable: '0',
+      advances: '0',
+      contractLiabilities: '0',
+      employeePayable: '0',
+      taxesPayable: '0',
+      otherPayables: '0',
+      heldForSaleLiabilities: '0',
+      currentNoncurrentLiabilities: '0',
+      otherCurrentLiabilities: '0',
+      currentLiabilitiesTotal: '0',
+      longTermLoans: '0',
+      bondsPayable: '0',
+      bondPreferred: '0',
+      bondPerpetual: '0',
+      leaseLiabilities: '0',
+      longTermPayables: '0',
+      provisions: '0',
+      deferredIncome: '0',
+      deferredTaxLiabilities: '0',
+      otherNoncurrentLiabilities: '0',
+      noncurrentLiabilitiesTotal: '0',
+      liabilitiesTotal: '0',
+      capital: '100000',
+      otherEquity: '0',
+      equityPreferred: '0',
+      equityPerpetual: '0',
+      capitalReserve: '0',
+      treasuryStock: '0',
+      otherComprehensive: '0',
+      specialReserve: '0',
+      surplusReserve: '0',
+      retainedEarnings: '120000',
+      equityTotal: '220000',
+      liabilitiesEquityTotal: '220000',
+      equityOther: '0',
+    };
+    expect(r.balance.current).toEqual(balance);
+    expect(r.balance.previous).toEqual({
+      ...balance,
+      cash: '160000',
+      currentAssetsTotal: '160000',
+      assetsTotal: '160000',
+      retainedEarnings: '60000',
+      equityTotal: '160000',
+      liabilitiesEquityTotal: '160000',
+    });
+    const profit = {
+      revenue: '120000',
+      cost: '48000',
+      taxes: '0',
+      selling: '0',
+      administration: '0',
+      research: '0',
+      finance: '0',
+      interestExpense: '0',
+      interestIncome: '0',
+      otherIncome: '0',
+      investmentIncome: '0',
+      associateIncome: '0',
+      derecognitionIncome: '0',
+      hedgeIncome: '0',
+      fairValueIncome: '0',
+      creditImpairment: '0',
+      assetImpairment: '0',
+      disposalIncome: '0',
+      operatingProfit: '72000',
+      nonoperatingIncome: '0',
+      nonoperatingExpense: '0',
+      profitTotal: '72000',
+      incomeTax: '12000',
+      netProfit: '60000',
+      continuingProfit: '60000',
+      discontinuedProfit: '0',
+      oci: '0',
+      ociNonreclass: '0',
+      remeasurement: '0',
+      equityNonreclass: '0',
+      otherEquityFairValue: '0',
+      ownCreditRisk: '0',
+      otherNonreclass: '0',
+      ociReclass: '0',
+      equityReclass: '0',
+      debtFairValue: '0',
+      financialReclassification: '0',
+      debtImpairment: '0',
+      cashflowHedge: '0',
+      translation: '0',
+      otherReclass: '0',
+      comprehensiveIncome: '60000',
+      basicEps: '不适用',
+      dilutedEps: '不适用',
+    };
+    expect(r.profit.current).toEqual(profit);
+    expect(r.profit.previous).toEqual(profit);
+    const cashflow = {
+      salesReceipts: '120000',
+      taxRefunds: '0',
+      otherOperatingReceipts: '0',
+      operatingReceipts: '120000',
+      purchases: '48000',
+      employees: '0',
+      taxPayments: '12000',
+      otherOperatingPayments: '0',
+      operatingPayments: '60000',
+      operatingNet: '60000',
+      investmentRecovery: '0',
+      investmentReturns: '0',
+      assetDisposals: '0',
+      businessDisposals: '0',
+      otherInvestingReceipts: '0',
+      investingReceipts: '0',
+      assetPurchases: '0',
+      investmentPayments: '0',
+      businessPurchases: '0',
+      otherInvestingPayments: '0',
+      investingPayments: '0',
+      investingNet: '0',
+      capitalReceipts: '0',
+      loanReceipts: '0',
+      otherFinancingReceipts: '0',
+      financingReceipts: '0',
+      debtPayments: '0',
+      dividendInterestPayments: '0',
+      otherFinancingPayments: '0',
+      financingPayments: '0',
+      financingNet: '0',
+      exchangeEffect: '0',
+      cashIncrease: '60000',
+      cashOpening: '160000',
+      cashClosing: '220000',
+      cashScopeChange: '0',
+      actualCashClosing: '220000',
+    };
+    expect(r.cashflow.current).toEqual(cashflow);
+    expect(r.cashflow.previous).toEqual({
+      ...cashflow,
+      cashOpening: '100000',
+      cashClosing: '160000',
+      actualCashClosing: '160000',
+    });
+    for (const column of ['current', 'previous'] as const) {
+      const matrix = r.equity[column];
+      for (const row of [
+        'policy',
+        'error',
+        'otherAdjustment',
+        'contributions',
+        'ordinaryContributions',
+        'instrumentContributions',
+        'sharePayments',
+        'otherContributions',
+        'distribution',
+        'surplusAppropriation',
+        'distributions',
+        'otherDistribution',
+        'transfers',
+        'capitalizationReserve',
+        'capitalizationSurplus',
+        'lossRecovery',
+        'benefitTransfer',
+        'ociTransfer',
+        'otherTransfer',
+      ])
+        expect(matrix[row], row).toEqual(ZERO);
+      expect(matrix.previousClosing).toEqual({
+        ...ZERO,
+        capital: '100000',
+        retainedEarnings: column === 'current' ? '60000' : '0',
+        total: column === 'current' ? '160000' : '100000',
+      });
+      expect(matrix.opening).toEqual(matrix.previousClosing);
+      expect(matrix.changes).toEqual({ ...ZERO, retainedEarnings: '60000', total: '60000' });
+      expect(matrix.comprehensive).toEqual({ ...ZERO, retainedEarnings: '60000', total: '60000' });
+      expect(matrix.closing).toEqual({
+        ...ZERO,
+        capital: '100000',
+        retainedEarnings: column === 'current' ? '120000' : '60000',
+        total: column === 'current' ? '220000' : '160000',
+      });
+    }
+    expect(r.checks.every((c) => c.difference === '0')).toBe(true);
+  });
+  it('w_bb_proc P2：存量比较标签取上年12月，流量比较标签取上年同期', () => {
+    const { c, d } = fixture();
+    c.period = 202506;
+    c.scope = 'month';
+    c.eps.push(
+      {
+        from: 202506,
+        to: 202506,
+        applicable: false,
+        preference: '0',
+        dilutions: [],
+        ...provenance,
+      },
+      {
+        from: 202406,
+        to: 202406,
+        applicable: false,
+        preference: '0',
+        dilutions: [],
+        ...provenance,
+      },
+    );
+    const r = calculateEnterprise(c, d);
+    expect(r.ranges.balancePrevious).toBe(202412);
+    expect(r.ranges.previous.to).toBe(202406);
+    expect(r.checks.find((x) => x.statement === 'balance' && x.column === 'previous')?.period).toBe(
+      202412,
+    );
+    expect(
+      r.checks.find((x) => x.statement === 'cashflow' && x.column === 'previous')?.period,
+    ).toBe(202406);
+  });
+  it('w_bb_proc 年报必须完整年度、缺期及未知启用前比较拒绝', () => {
+    const { c, d } = fixture();
+    expect(() => enterpriseRanges({ ...c, period: 202511 })).toThrow('12月');
+    d.periods = d.periods.filter((p) => p !== 202406);
+    expect(() => calculateEnterprise(c, d)).toThrow('缺少会计期间');
+    d.periods.push(202406);
+    d.startPeriod = 202501;
+    expect(() => calculateEnterprise(c, d)).toThrow('早于账套启用');
+  });
+  it('w_bb_get 标准名称匹配、不猜编码、未知科目准确提示', () => {
+    const a = account(9, '固定资产');
+    a.code = '999901';
+    expect(suggestEnterpriseRules([a]).suggestions[0]?.line).toBe('fixedAssets');
+    expect(suggestEnterpriseRules([account(10, '自定义待核')]).unmatched).toHaveLength(1);
+  });
+  it('w_bb_proc 往来借贷不跨对象抵销且旧分类不能跨报告日', () => {
+    const { c, d } = fixture(),
+      a = account(9, '预付账款');
+    addAccount(
+      c,
+      d,
+      a,
+      { accountId: 9, line: 'prepayments', kind: 'payable', role: 'gross' },
+      1000,
+      202512,
+      { partner: 1 },
+    );
+    d.balances[202512]!.push({
+      ...d.balances[202512]!.at(-1)!,
+      dimensions: { partner: 2 },
+      closing: -800,
+    });
+    for (const row of d.balances[202512]!.filter((x) => x.accountId === 9))
+      c.facts.push({
+        period: 202512,
+        basis: 'closing',
+        bucket: balanceBucket(row),
+        current: true,
+        ...provenance,
+      });
+    const r = calculateBalance(c, d, 202512);
+    expect(r.prepayments).toBe('1000');
+    expect(r.accountsPayable).toBe('800');
+    expect(() => calculateBalance(c, d, 202511)).not.toThrow();
+    d.balances[202511]!.push(d.balances[202512]!.at(-1)!);
+    expect(() => calculateBalance(c, d, 202511)).toThrow('本报告日');
+  });
+  it('w_bb_proc 同一客户的两个合同不得抵销、同科目支持合同分项', () => {
+    const { c, d } = fixture(),
+      a = account(9, '合同结算');
+    addAccount(
+      c,
+      d,
+      a,
+      { accountId: 9, line: 'contractAssets', kind: 'contract', role: 'gross' },
+      200,
+      202512,
+      { partner: 1 },
+    );
+    const row = d.balances[202512]!.at(-1)!;
+    c.facts.push({
+      period: 202512,
+      basis: 'closing',
+      bucket: balanceBucket(row),
+      segments: [
+        { key: '合同甲', contractId: '甲', amount: '1000', current: true, ...provenance },
+        { key: '合同乙', contractId: '乙', amount: '-800', current: true, ...provenance },
+      ],
+      ...provenance,
+    });
+    const r = calculateBalance(c, d, 202512);
+    expect(r.contractAssets).toBe('1000');
+    expect(r.contractLiabilities).toBe('800');
+    c.facts.at(-1)!.segments![1]!.amount = '-700';
+    expect(() => calculateBalance(c, d, 202512)).toThrow('合计');
+  });
+  it('w_bb_proc 同一明细优先股、永续债及负债工具按金额拆分', () => {
+    const { c, d } = fixture(),
+      a = account(9, '其他权益工具', 'equity', 'credit');
+    addAccount(
+      c,
+      d,
+      a,
+      { accountId: 9, line: 'otherEquity', kind: 'equityInstrument', role: 'gross' },
+      -9000,
+    );
+    c.facts.push({
+      period: 202512,
+      basis: 'closing',
+      bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+      parts: [
+        {
+          id: '优先',
+          amount: '-3000',
+          classification: 'equity',
+          instrument: 'preferred',
+          ...provenance,
+        },
+        {
+          id: '永续',
+          amount: '-4000',
+          classification: 'equity',
+          instrument: 'perpetual',
+          ...provenance,
+        },
+        {
+          id: '债务',
+          amount: '-2000',
+          classification: 'liability',
+          instrument: 'perpetual',
+          duePeriod: 202812,
+          current: false,
+          ...provenance,
+        },
+      ],
+      ...provenance,
+    });
+    const r = calculateBalance(c, d, 202512);
+    expect(r.equityPreferred).toBe('3000');
+    expect(r.equityPerpetual).toBe('4000');
+    expect(r.otherEquity).toBe('7000');
+    expect(r.bondsPayable).toBe('2000');
+    expect(r.bondPerpetual).toBe('2000');
+  });
+  it('w_bb_proc 流动性分项及递延收益特殊规则', () => {
+    const { c, d } = fixture(),
+      a = account(9, '长期借款', 'liability', 'credit');
+    addAccount(
+      c,
+      d,
+      a,
+      { accountId: 9, line: 'longTermLoans', kind: 'maturity', role: 'gross' },
+      -9000,
+    );
+    c.facts.push({
+      period: 202512,
+      basis: 'closing',
+      bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+      segments: [
+        { key: '本年到期', amount: '-3000', current: true, duePeriod: 202606, ...provenance },
+        { key: '以后到期', amount: '-6000', current: false, duePeriod: 202801, ...provenance },
+      ],
+      ...provenance,
+    });
+    addAccount(
+      c,
+      d,
+      account(10, '递延收益', 'liability', 'credit'),
+      { accountId: 10, line: 'deferredIncome', kind: 'maturity', role: 'gross' },
+      -500,
+    );
+    c.facts.push({
+      period: 202512,
+      basis: 'closing',
+      bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+      current: true,
+      duePeriod: 202606,
+      ...provenance,
+    });
+    const r = calculateBalance(c, d, 202512);
+    expect(r.currentNoncurrentLiabilities).toBe('3000');
+    expect(r.longTermLoans).toBe('6000');
+    expect(r.deferredIncome).toBe('500');
+  });
+  it('w_bb_proc 现金逐笔分配守恒，不能用全期相同净额遮掩漏分', () => {
+    const { c, d } = fixture();
+    c.cashAllocations.shift();
+    expect(() =>
+      calculateCashflow(c, d, { from: 202401, to: 202412, label: '本年' }, [], 'current'),
+    ).toThrow('未分类');
+  });
+  it('w_bb_proc 非账务现金范围变化独立调节且核实当日余额', () => {
+    const { c, d } = fixture();
+    const policy = c.cashPolicies.find((p) => p.period === 202512 && p.basis === 'closing')!;
+    policy.accounts = [];
+    policy.restrictedAccounts = [1];
+    c.cashScopeChanges.push({
+      period: 202512,
+      date: '2025-12-31',
+      accountId: 1,
+      amount: '-220000',
+      kind: 'restriction',
+      ...provenance,
+    });
+    const checks: Parameters<typeof calculateCashflow>[3] = [];
+    const r = calculateCashflow(
+      c,
+      d,
+      { from: 202501, to: 202512, label: '本年' },
+      checks,
+      'current',
+    );
+    expect(r.cashScopeChange).toBe('-220000');
+    expect(r.actualCashClosing).toBe('0');
+    expect(checks[0]?.difference).toBe('0');
+    c.cashScopeChanges[0]!.amount = '-219999';
+    expect(() =>
+      calculateCashflow(c, d, { from: 202501, to: 202512, label: '本年' }, [], 'current'),
+    ).toThrow('当日账面');
+  });
+  it('w_bb_proc 固定资产净额不重复扣减、缺备抵拒绝', () => {
+    const { c, d } = fixture();
+    addAccount(
+      c,
+      d,
+      account(9, '固定资产'),
+      { accountId: 9, line: 'fixedAssets', kind: 'balance', role: 'gross' },
+      10000,
+    );
+    addAccount(
+      c,
+      d,
+      account(10, '累计折旧', 'asset', 'credit'),
+      { accountId: 10, line: 'fixedAssets', kind: 'balance', role: 'depreciation' },
+      -2000,
+    );
+    expect(calculateBalance(c, d, 202512).fixedAssets).toBe('8000');
+    expect(() => calculateEnterprise(c, d)).toThrow('缺少组成角色');
+  });
+  it('w_bb_proc 每股收益按覆盖日数的普通股和反稀释排除', () => {
+    const { c, d } = fixture();
+    c.shares = [{ from: '2025-01-01', to: '2025-12-31', ordinary: '1000', ...provenance }];
+    c.eps.find((e) => e.from === 202501)!.applicable = true;
+    c.eps.find((e) => e.from === 202501)!.dilutions = [
+      { numerator: '0', shares: '1000', ...provenance },
+      { numerator: '100000', shares: '1', ...provenance },
+    ];
+    const r = calculateProfit(c, d, { from: 202501, to: 202512, label: '本年' });
+    expect(r.basicEps).toBe('0.6000');
+    expect(r.dilutedEps).toBe('0.3000');
+  });
+  it('w_bb_get 2026新准则不按发布日期切换、主体强制日期及提前执行独立', () => {
+    const { c, d } = fixture();
+    c.period = 202612;
+    c.scope = 'annual';
+    c.adoption.entityClass = 'dualListed';
+    expect(() => enterpriseRanges(c)).not.toThrow();
+    c.period = 202712;
+    expect(() => calculateEnterprise(c, d)).toThrow('已采用2026');
+    c.period = 202512;
+    c.adoption.cas30_2026 = '2025-01-01';
+    expect(() => calculateEnterprise(c, d)).toThrow('正式发布日期');
+  });
+  it('w_bb_proc fast-check 往来分项方向不抵销', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100000 }),
+        fc.integer({ min: 1, max: 100000 }),
+        (debit, credit) => {
+          const { c, d } = fixture(),
+            a = account(9, '预付账款');
+          addAccount(
+            c,
+            d,
+            a,
+            { accountId: 9, line: 'prepayments', kind: 'payable', role: 'gross' },
+            debit - credit,
+          );
+          const row = d.balances[202512]!.at(-1)!;
+          c.facts.push({
+            period: 202512,
+            basis: 'closing',
+            bucket: balanceBucket(row),
+            segments: [
+              { key: '一', amount: String(debit), current: true, ...provenance },
+              { key: '二', amount: String(-credit), current: true, ...provenance },
+            ],
+            ...provenance,
+          });
+          const r = calculateBalance(c, d, 202512);
+          expect(r.prepayments).toBe(String(debit));
+          expect(r.accountsPayable).toBe(String(credit));
+        },
+      ),
+    );
+  });
+});
+it('w_bb_proc 独审回归：负债金融工具到期必须转流动项目', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '应付债券', 'liability', 'credit'),
+    { accountId: 9, line: 'bondsPayable', kind: 'equityInstrument', role: 'gross' },
+    -10000,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    parts: [
+      {
+        id: '债券甲',
+        amount: '-10000',
+        classification: 'liability',
+        instrument: 'other',
+        current: true,
+        duePeriod: 202606,
+        ...provenance,
+      },
+    ],
+    ...provenance,
+  });
+  const b = calculateBalance(c, d, 202512);
+  expect(b.currentNoncurrentLiabilities).toBe('10000');
+  expect(b.bondsPayable).toBe('0');
+});
+it('w_bb_proc 独审回归：金融备抵继承目标报告日分类，冲突事实拒绝', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '债权投资'),
+    { accountId: 9, line: 'debtInvestments', kind: 'financial', role: 'gross' },
+    10000,
+  );
+  const target = balanceBucket(d.balances[202512]!.at(-1)!);
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: target,
+    category: 'amortized',
+    sppi: true,
+    businessModel: 'collect',
+    duePeriod: 202712,
+    expectedHoldMonths: 24,
+    originallyLongTerm: true,
+    ...provenance,
+  });
+  addAccount(
+    c,
+    d,
+    account(10, '债权投资减值准备', 'asset', 'credit'),
+    { accountId: 10, line: 'debtInvestments', kind: 'financial', role: 'allowance' },
+    -1000,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    allowanceFor: target,
+    ...provenance,
+  });
+  const b = calculateBalance(c, d, 202512);
+  expect(b.debtInvestments).toBe('9000');
+  expect(b.currentNoncurrentAssets).toBe('0');
+  c.facts.at(-1)!.duePeriod = 202606;
+  expect(() => calculateBalance(c, d, 202512)).toThrow('分类与对应资产不一致');
+});
+it('w_bb_proc 独审回归：其他应收款贷方按对象转其他应付款', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '其他应收款'),
+    { accountId: 9, line: 'otherReceivables', kind: 'receivable', role: 'gross' },
+    -10000,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    current: true,
+    ...provenance,
+  });
+  const b = calculateBalance(c, d, 202512);
+  expect(b.otherReceivables).toBe('0');
+  expect(b.otherPayables).toBe('10000');
+});
+it('w_bb_proc 独审回归：同一合同净资产可以按流动及非流动拆分', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '合同资产'),
+    { accountId: 9, line: 'contractAssets', kind: 'contract', role: 'gross' },
+    20000,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    segments: [
+      { key: '甲-流动', contractId: '合同甲', amount: '10000', current: true, ...provenance },
+      { key: '甲-长期', contractId: '合同甲', amount: '10000', current: false, ...provenance },
+    ],
+    ...provenance,
+  });
+  const b = calculateBalance(c, d, 202512);
+  expect(b.contractAssets).toBe('10000');
+  expect(b.otherNoncurrentAssets).toBe('10000');
+});
+it('w_bb_proc 普通业务或自定义转账伪标损益结转仍计入利润', () => {
+  const { c, d } = fixture();
+  const original = d.vouchers.find((v) => v.closingKind === 'pnl')!;
+  original.source = null;
+  const p = calculateProfit(c, d, { from: 202401, to: 202412, label: '本年' });
+  expect(p.revenue).toBe('110000');
+  expect(p.cost).toBe('44000');
+  expect(p.incomeTax).toBe('11000');
+  expect(p.netProfit).toBe('55000');
+});
+it('w_bb_proc 未结转与已结转净利润都与资产负债表闭合', () => {
+  const { c, d } = fixture();
+  const ids = new Set(
+    d.vouchers.filter((v) => v.period === 202512 && v.closingKind === 'pnl').map((v) => v.id),
+  );
+  d.entries = d.entries.filter((e) => !ids.has(e.voucherId));
+  d.vouchers = d.vouchers.filter((v) => !ids.has(v.id));
+  const rows = d.balances[202512]!;
+  rows.find((r) => r.accountId === 3)!.closing = -10000;
+  rows.find((r) => r.accountId === 4)!.closing = 4000;
+  rows.find((r) => r.accountId === 5)!.closing = 1000;
+  rows.find((r) => r.accountId === 6)!.closing = 5000;
+  const r = calculateEnterprise(c, d);
+  expect(r.balance.current.retainedEarnings).toBe('120000');
+  expect(r.profit.current.netProfit).toBe('60000');
+  expect(
+    r.checks.find((x) => x.row === '净利润与真实结转及未结转损益' && x.column === 'current')
+      ?.difference,
+  ).toBe('0');
+});
+it('w_bb_proc 权益投资无合同到期日不强迫编造期限，交易性与指定OCI分别列报', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '其他权益工具投资'),
+    { accountId: 9, line: 'otherEquityInvestments', kind: 'financial', role: 'gross' },
+    10000,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    category: 'equity-fvoci',
+    nonTrading: true,
+    irrevocableElection: true,
+    ...provenance,
+  });
+  expect(calculateBalance(c, d, 202512).otherEquityInvestments).toBe('10000');
+  c.rules.at(-1)!.line = 'tradingAssets';
+  Object.assign(c.facts.at(-1)!, {
+    category: 'fvtpl',
+    contractualMaturity: 'none',
+    expectedHoldMonths: 24,
+  });
+  expect(calculateBalance(c, d, 202512).otherFinancialAssets).toBe('10000');
+});
+it('w_bb_proc 非流动税费借方不得机械冒充递延所得税资产', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '应交税费'),
+    { accountId: 9, line: 'taxesPayable', kind: 'receivable', role: 'gross' },
+    1000,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    current: false,
+    ...provenance,
+  });
+  const b = calculateBalance(c, d, 202512);
+  expect(b.otherNoncurrentAssets).toBe('1000');
+  expect(b.deferredTaxAssets).toBe('0');
+});
