@@ -82,7 +82,7 @@ export const reportRouter = m.router({
     .meta({ permission: 'report-engine.export' })
     .input(selection)
     .query(async ({ ctx, input }) => {
-      const snapshot = await reportService(ctx.svc).snapshot(
+      const snapshot = await reportService(ctx.svc).exportSnapshot(
         input.id,
         input.period,
         input.includeUnposted,
