@@ -151,62 +151,101 @@ it('w_autobak：真实退出备份失败不释放账套；关闭缓存、修复�
   }
 });
 
-it('w_autobak：onExit=false定时失败已记录时退出可重试，恢复后备份包含新提交，定时任务不永久停止', async () => {
-  const callbacks = new Map<object, () => void>();
-  const module = withAutomaticBackup(backup, {
-    now: Date.now,
-    set: (fn) => {
-      const id = {};
-      callbacks.set(id, () => {
-        callbacks.delete(id);
-        fn();
-      });
-      return id;
-    },
-    clear: (id) => {
-      callbacks.delete(id as object);
-    },
-  });
-  app = await createTestApp({ modules: [module] });
-  const api = app.call(module);
-  await api.saveSettings({
-    enabled: true,
-    directory: '自动备份',
-    onStart: true,
-    onExit: false,
-    intervalMinutes: 5,
-    keep: 10,
-  });
-  const spy = vi
-    .spyOn(Database.prototype, 'backup')
-    .mockRejectedValue(new Error('SQLITE_IOERR: 定时备份失败'));
-  [...callbacks.values()].at(-1)!();
-  await expect
-    .poll(async () => (await api.list()).filter((row) => row.status === 'failed').length)
-    .toBe(1);
-  await expect(app.runtime.lifecycle.stop()).rejects.toThrow(/退出备份失败/);
-  expect(app.runtime.lifecycle.state).toBe('failed');
-  expect(callbacks.size).toBeGreaterThan(0);
-  spy.mockRestore();
-  await app.svc.settings.set('after-failure', '新的真实提交');
-  const file = app.runtime.bookStore.pathOf(app.book.id);
-  await app.runtime.lifecycle.stop();
-  expect(app.runtime.lifecycle.state).toBe('stopped');
-  expect(callbacks.size).toBe(0);
-  const raw = new Database(file, { readonly: true });
-  try {
-    expect(
-      raw
-        .prepare("SELECT count(*) AS n FROM backup_item WHERE status='valid' AND kind='automatic'")
-        .get(),
-    ).toEqual({ n: 2 });
-    expect(raw.prepare("SELECT value FROM book_setting WHERE key='after-failure'").get()).toEqual({
-      value: '"新的真实提交"',
+it.each([false, true])(
+  'w_autobak：onExit=false定时失败后禁用=%s，退出仍须真实重试并备份新提交',
+  async (disabled) => {
+    const callbacks = new Map<object, () => void>();
+    const module = withAutomaticBackup(backup, {
+      now: Date.now,
+      set: (fn) => {
+        const id = {};
+        callbacks.set(id, () => {
+          callbacks.delete(id);
+          fn();
+        });
+        return id;
+      },
+      clear: (id) => {
+        callbacks.delete(id as object);
+      },
     });
-  } finally {
-    raw.close();
-  }
-});
+    app = await createTestApp({ modules: [module] });
+    const api = app.call(module);
+    await api.saveSettings({
+      enabled: true,
+      directory: '自动备份',
+      onStart: true,
+      onExit: false,
+      intervalMinutes: 5,
+      keep: 10,
+    });
+    const spy = vi
+      .spyOn(Database.prototype, 'backup')
+      .mockRejectedValue(new Error('SQLITE_IOERR: 定时备份失败'));
+    [...callbacks.values()].at(-1)!();
+    await expect
+      .poll(async () => (await api.list()).filter((row) => row.status === 'failed').length)
+      .toBe(1);
+    if (disabled)
+      await api.saveSettings({
+        enabled: false,
+        directory: '自动备份',
+        onStart: true,
+        onExit: false,
+        intervalMinutes: 5,
+        keep: 10,
+      });
+    await expect(app.runtime.lifecycle.stop()).rejects.toThrow(/退出备份失败/);
+    expect(app.runtime.lifecycle.state).toBe('failed');
+    if (disabled) expect(callbacks.size).toBe(0);
+    else expect(callbacks.size).toBeGreaterThan(0);
+    spy.mockRestore();
+    await app.svc.settings.set('after-failure', '新的真实提交');
+    const file = app.runtime.bookStore.pathOf(app.book.id);
+    await app.runtime.lifecycle.stop();
+    expect(app.runtime.lifecycle.state).toBe('stopped');
+    expect(callbacks.size).toBe(0);
+    const raw = new Database(file, { readonly: true });
+    let newest!: { id: string; directory: string };
+    try {
+      expect(
+        raw
+          .prepare(
+            "SELECT count(*) AS n FROM backup_item WHERE status='valid' AND kind='automatic'",
+          )
+          .get(),
+      ).toEqual({ n: 2 });
+      expect(raw.prepare("SELECT value FROM book_setting WHERE key='after-failure'").get()).toEqual(
+        {
+          value: '"新的真实提交"',
+        },
+      );
+      newest = raw
+        .prepare(
+          "SELECT id,directory FROM backup_item WHERE status='valid' ORDER BY created_at DESC,id DESC LIMIT 1",
+        )
+        .get() as typeof newest;
+    } finally {
+      raw.close();
+    }
+    const checked = await validatePackage(
+      packagePath(
+        path.join(app.runtime.dataDir, 'backups', app.book.id, newest.directory),
+        newest.id,
+      ),
+      app.runtime,
+    );
+    const snapshot = new Database(checked.snapshot, { readonly: true });
+    try {
+      expect(
+        snapshot.prepare("SELECT value FROM book_setting WHERE key='after-failure'").get(),
+      ).toEqual({ value: '"新的真实提交"' });
+    } finally {
+      snapshot.close();
+      rmSync(checked.snapshot, { force: true });
+    }
+  },
+);
 
 it('w_autobak：退出备份成功后宿主关闭失败，再次退出仍备份新的真实提交', async () => {
   const callbacks = new Set<() => void>();

@@ -161,10 +161,10 @@ export function withAutomaticBackup<R extends ServerModule>(
             if (controller.status(id).running) await controller.run(id);
             // A failed scheduled backup must complete a real successful retry,
             // even with onExit=false.
-            if ((config.enabled && config.onExit) || controller.status(id).lastFailure)
-              await controller.run(id);
+            if ((config.enabled && config.onExit) || controller.status(id).lastFailure !== null)
+              await controller.run(id, { retryFailure: true });
             const failure = controller.status(id).lastFailure;
-            if (failure)
+            if (failure !== null)
               throw new BusinessError({
                 code: 'AUTOMATIC_BACKUP_FAILED',
                 message: `账套 ${id} 退出备份失败：${failure}`,
