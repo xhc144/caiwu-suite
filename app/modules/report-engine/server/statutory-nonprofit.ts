@@ -58,14 +58,18 @@ export function nonprofitRequest(
 }
 async function sources(svc: CoreServices, c: NonprofitPublicConfiguration, key: string) {
   const request = nonprofitRequest(c.period, c.scope, key, c.request);
-  const current = await readNonprofitSources(svc, request);
+  const current = await readNonprofitSources(svc, request, c.current);
   const previous = c.previous
-    ? await readNonprofitSources(svc, {
-        ...request,
-        from: request.from - 100,
-        to: request.to - 100,
-        comparison: false,
-      })
+    ? await readNonprofitSources(
+        svc,
+        {
+          ...request,
+          from: request.from - 100,
+          to: request.to - 100,
+          comparison: false,
+        },
+        c.previous,
+      )
     : undefined;
   return { request, current, previous };
 }
@@ -111,16 +115,20 @@ export const nonprofitAdapter: StatutoryAdapter = {
       options ??
         (value?.request?.to === period && value.scope === scope ? value.request : undefined),
     );
-    const current = await readNonprofitSources(svc, request);
+    const savedCurrent =
+      value?.current?.year === Math.floor(period / 100) ? value.current : undefined;
+    const current = await readNonprofitSources(svc, request, savedCurrent);
     const previousRequest = {
       ...request,
       from: request.from - 100,
       to: request.to - 100,
       comparison: false,
     };
+    const savedPrevious =
+      value?.previous?.year === Math.floor(previousRequest.to / 100) ? value.previous : undefined;
     const previous =
       period >= 202701 && key !== '401'
-        ? await readNonprofitSources(svc, previousRequest)
+        ? await readNonprofitSources(svc, previousRequest, savedPrevious)
         : undefined;
     return {
       configuration: {
@@ -131,7 +139,7 @@ export const nonprofitAdapter: StatutoryAdapter = {
           value?.current && value.current.year === Math.floor(period / 100)
             ? value.current
             : nonprofitConfigurationDraft(current),
-        ...(previous ? { previous: value?.previous ?? nonprofitConfigurationDraft(previous) } : {}),
+        ...(previous ? { previous: savedPrevious ?? nonprofitConfigurationDraft(previous) } : {}),
       },
       source: { request, current, previous, previousRequest, periods: await svc.periods.list() },
     };

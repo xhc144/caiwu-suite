@@ -351,6 +351,15 @@ function StatutoryEditor({
                       await queryClient.invalidateQueries({
                         queryKey: api.statutory.list.queryKey(),
                       });
+                      await queryClient.invalidateQueries({
+                        queryKey: api.statutory.editor.queryKey({
+                          ...identity,
+                          id: saved.id,
+                          period,
+                          scope,
+                          options,
+                        }),
+                      });
                       window.history.replaceState(
                         null,
                         '',

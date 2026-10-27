@@ -1,5 +1,5 @@
 import type { StatutoryProfile } from '../shared';
-import { useLayoutEffect, useRef, useState, type ComponentProps, type ComponentType } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Select, Space, Tabs } from 'antd';
 import { MoneyText } from '@caiwu/ui';
 import type { EnterpriseConfig, EnterpriseResult, SourceData } from '../templates/enterprise/model';
@@ -23,15 +23,6 @@ import type {
   NonprofitPublicSource,
 } from '../server/statutory-nonprofit';
 import type { StatutoryDraftCallbacks } from './statutory-draft';
-import type { Configuration as NonprofitConfiguration } from '../templates/nonprofit/model';
-
-// 民非作者负责实现这些可选通知；公共适配不写其专属组件。
-const NonprofitPanel = NonprofitConfigurationPanel as ComponentType<
-  ComponentProps<typeof NonprofitConfigurationPanel> &
-    StatutoryDraftCallbacks & {
-      onDraftChange?(configuration: NonprofitConfiguration): void;
-    }
->;
 
 /** 服务和页面登记同一真实定义；以后新增制度在这里提供其配置及结果组件。 */
 export function StatutoryConfiguration(
@@ -242,6 +233,43 @@ function NonprofitConfigurationEditor(
   const [previous, setPrevious] = useState(props.configuration.previous);
   const currentDraft = useRef(current),
     previousDraft = useRef(previous);
+  const currentSave = useRef<(() => Promise<void>) | null>(null);
+  const previousSave = useRef<(() => Promise<void>) | null>(null);
+  const collecting = useRef(false),
+    editVersion = useRef(0);
+  const inFlight = useRef<Promise<void> | null>(null);
+  const dirty = (changed: boolean) => {
+    if (changed) editVersion.current++;
+    props.onDirtyChange?.(changed);
+  };
+  const saveCombined = async (initiator?: 'current' | 'previous') => {
+    if (inFlight.current) return inFlight.current;
+    const submitted = editVersion.current;
+    const run = (async () => {
+      collecting.current = true;
+      try {
+        if (initiator !== 'current' && currentSave.current) await currentSave.current();
+        if (initiator !== 'previous' && previousSave.current) await previousSave.current();
+      } finally {
+        collecting.current = false;
+      }
+      await props.onSave({
+        ...props.configuration,
+        current: currentDraft.current,
+        ...(previousDraft.current ? { previous: previousDraft.current } : {}),
+      });
+      if (editVersion.current !== submitted) props.onDirtyChange?.(true);
+    })();
+    inFlight.current = run;
+    try {
+      await run;
+    } finally {
+      inFlight.current = null;
+    }
+  };
+  useLayoutEffect(() => {
+    props.onSaveReady?.(() => saveCombined());
+  });
   const [error, setError] = useState('');
   const periods = props.source.periods.map((p) => ({ period: p.period, label: String(p.period) }));
   return (
@@ -253,14 +281,16 @@ function NonprofitConfigurationEditor(
             key: 'current',
             label: '本年资料',
             children: (
-              <NonprofitPanel
+              <NonprofitConfigurationPanel
                 key={current.year}
                 sources={props.source.current}
                 initial={current}
                 request={props.source.request}
                 periods={periods}
-                onDirtyChange={props.onDirtyChange}
-                onSaveReady={props.onSaveReady}
+                onDirtyChange={dirty}
+                onSaveReady={(save) => {
+                  currentSave.current = save;
+                }}
                 onDraftChange={(value) => {
                   currentDraft.current = value;
                   setCurrent(value);
@@ -280,11 +310,7 @@ function NonprofitConfigurationEditor(
                 onSave={async (value) => {
                   currentDraft.current = value;
                   setCurrent(value);
-                  await props.onSave({
-                    ...props.configuration,
-                    current: value,
-                    ...(previousDraft.current ? { previous: previousDraft.current } : {}),
-                  });
+                  if (!collecting.current) await saveCombined('current');
                 }}
                 onGenerate={() => props.onGenerate()}
               />
@@ -301,13 +327,16 @@ function NonprofitConfigurationEditor(
                         type="info"
                         title="本年及比较年资料均需核实并保存，比较年报表不单独生成。"
                       />
-                      <NonprofitPanel
+                      <NonprofitConfigurationPanel
                         key={props.configuration.previous.year}
                         sources={props.source.previous}
                         initial={previous ?? props.configuration.previous}
                         request={props.source.previousRequest}
                         periods={periods}
-                        onDirtyChange={props.onDirtyChange}
+                        onDirtyChange={dirty}
+                        onSaveReady={(save) => {
+                          previousSave.current = save;
+                        }}
                         onDraftChange={(value) => {
                           previousDraft.current = value;
                           setPrevious(value);
@@ -318,11 +347,7 @@ function NonprofitConfigurationEditor(
                         onSave={async (value) => {
                           previousDraft.current = value;
                           setPrevious(value);
-                          await props.onSave({
-                            ...props.configuration,
-                            current: currentDraft.current,
-                            previous: value,
-                          });
+                          if (!collecting.current) await saveCombined('previous');
                         }}
                         onGenerate={async () => {
                           throw new Error('请通过本年资料生成包含比较数据的报表');

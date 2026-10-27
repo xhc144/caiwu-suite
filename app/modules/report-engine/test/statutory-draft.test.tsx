@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, expect, it, vi } from 'vitest';
 import { sessionStore, unsavedPages, type SessionState } from '@caiwu/web-kit';
 import { EnterpriseConfiguration } from '../templates/enterprise/statutory.web';
@@ -8,6 +9,7 @@ import { initialConfiguration } from '../templates/small-business/configuration'
 import { StatutoryConfiguration } from '../web/statutory-registry';
 import { useStatutoryDraft } from '../web/statutory-draft';
 import type { StatutoryProfile } from '../shared';
+import { blankConfiguration } from './nonprofit/fixture';
 
 afterEach(() => {
   cleanup();
@@ -145,4 +147,89 @@ it('w_bb_def 小企受控配置通过同一壳守卫保存当前编辑', async (
     value: { firstYear: { year: 2026, reason: '合成设立日期及首年依据' } },
   });
   expect(unsavedPages.dirty('book-A')).toHaveLength(0);
+});
+it('w_bb_get 民非隐藏比较年草稿合并保存；隐藏未确认子表单拒绝保存全部而保留dirty', async () => {
+  session();
+  const onSave = vi.fn(async (_configuration: StatutoryProfile['configuration']) => {});
+  const current = blankConfiguration('book-A', 2027),
+    previous = blankConfiguration('book-A', 2026);
+  const request = {
+    code: '402',
+    from: 202701,
+    to: 202712,
+    kind: 'annual',
+    includeUnposted: false,
+    comparison: true,
+  } as const;
+  const previousRequest = { ...request, from: 202601, to: 202612, comparison: false };
+  const source = (year: number) => ({
+    book: { id: 'book-A', startPeriod: 202601 },
+    entries: [],
+    accounts: [],
+    categories: [],
+    balances: [],
+    dimensionNames: {},
+    dimensionItems: [],
+    from: year * 100 + 1,
+    to: year * 100 + 12,
+    openingDate: `${year}-01-01`,
+    closingDate: `${year}-12-31`,
+    unpostedCount: 0,
+  });
+  function Editor() {
+    const draft = useStatutoryDraft('民非本年与比较年', () => {});
+    return (
+      <StatutoryConfiguration
+        definitionId="nonprofit-2026"
+        configuration={{ period: 202712, scope: 'annual', request, current, previous }}
+        source={{
+          request,
+          previousRequest,
+          current: source(2027),
+          previous: source(2026),
+          periods: [{ period: 202612 }, { period: 202712 }],
+        }}
+        onDirtyChange={draft.markDirty}
+        onSaveReady={draft.registerSave}
+        onSave={(value) => draft.persist(() => onSave(value))}
+        onGenerate={async () => {}}
+        onPeriodChange={() => {}}
+        onOptionsChange={() => {}}
+      />
+    );
+  }
+  render(<Editor />);
+  fireEvent.click(screen.getByRole('tab', { name: '上年比较资料' }));
+  fireEvent.change(screen.getByRole('textbox', { name: '年初凭据' }), {
+    target: { value: '隐藏比较年最新承接依据' },
+  });
+  fireEvent.click(screen.getByRole('tab', { name: '本年资料' }));
+  expect(unsavedPages.dirty('book-A')).toHaveLength(1);
+  let allowed = false;
+  await act(async () => {
+    allowed = await unsavedPages.leave('book-A', undefined, async () => 'save');
+  });
+  expect(allowed).toBe(true);
+  expect(onSave).toHaveBeenCalledOnce();
+  expect(onSave.mock.calls[0]![0]).toMatchObject({
+    previous: { transitionOpeningReference: '隐藏比较年最新承接依据' },
+  });
+  fireEvent.click(screen.getByRole('tab', { name: '上年比较资料' }));
+  const previousPanel = screen.getByRole('tabpanel', { name: '上年比较资料' });
+  await userEvent.click(within(previousPanel).getByText('调整自定义科目对应项目'));
+  await userEvent.type(
+    within(previousPanel).getByRole('textbox', { name: '科目用途及对应依据' }),
+    '尚未确认的比较年子表单',
+  );
+  fireEvent.click(screen.getByRole('tab', { name: '本年资料' }));
+  await act(async () => {
+    allowed = await unsavedPages.leave('book-A', undefined, async () => 'save');
+  });
+  expect(allowed).toBe(false);
+  expect(onSave).toHaveBeenCalledOnce();
+  expect(unsavedPages.dirty('book-A')).toHaveLength(1);
+  fireEvent.click(screen.getByRole('tab', { name: '上年比较资料' }));
+  expect(within(previousPanel).getByRole('textbox', { name: '科目用途及对应依据' })).toHaveValue(
+    '尚未确认的比较年子表单',
+  );
 });
