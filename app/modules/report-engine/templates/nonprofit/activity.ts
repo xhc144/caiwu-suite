@@ -8,6 +8,7 @@ import {
   expenseIds,
   incomeIds,
   lineIdentity,
+  lineSource,
   mappedRow,
   sameLine,
   type Configuration,
@@ -93,7 +94,7 @@ export function classifyActivity(s: Sources, c: Configuration): ClassifiedAmount
       const base = {
         period: e.period,
         kind: a.classification,
-        source: `/m/voucher-entry/edit?id=${e.voucherId}`,
+        source: lineSource(e),
       };
       out.push({ ...base, row, amount });
       if (a.detail) {

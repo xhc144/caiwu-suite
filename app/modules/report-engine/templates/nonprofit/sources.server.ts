@@ -8,11 +8,13 @@ import {
   RequestSchema,
   lineIdentity,
 } from './model';
+import { mergePreStartHistory } from './history.server';
 
 /** 只调用核心只读服务；由公共生成事务传入同一个 svc，不另开事务或读模块私表。 */
 export async function readNonprofitSources(
   svc: CoreServices,
   raw: StatementRequest,
+  configuration?: Pick<Configuration, 'preStartHistory'>,
 ): Promise<Sources> {
   const r = RequestSchema.parse(raw),
     year = Math.floor(r.to / 100),
@@ -24,24 +26,25 @@ export async function readNonprofitSources(
     r.to < 202601
   )
     throw new Error('本账套未采用2026年民间非营利组织会计制度，请先核对账套制度及施行日期');
-  // 年初资料须来自年度起点；年中启用不能将启用月期初伪装成年初。
-  if (book.startPeriod > start)
-    throw new Error('缺少完整年度年初和启用前逐笔来源，请先补充有凭据的年初与累计资料');
-  for (let p = start; p <= r.to; p++) await svc.periods.require(p);
+  if (Math.floor(book.startPeriod / 100) > year)
+    throw new Error('报告年度早于账套启用年度，缺少可核对的年度来源');
+  const liveStart = Math.max(start, book.startPeriod),
+    liveTo = Math.max(liveStart, r.to);
+  for (let p = liveStart; p <= liveTo; p++) await svc.periods.require(p);
   const [accounts, categories, balances, entries, unposted, partners, people] = await Promise.all([
     svc.accounts.list(),
     svc.accounts.categories(),
     svc.ledger.balances({
-      periodFrom: start,
-      periodTo: r.to,
+      periodFrom: liveStart,
+      periodTo: liveTo,
       rollup: false,
       includeZero: true,
       groupBy: ['partner', 'person'],
     }),
-    svc.ledger.entries({ periodFrom: start, periodTo: r.to, limit: 200000 }),
+    svc.ledger.entries({ periodFrom: liveStart, periodTo: liveTo, limit: 200000 }),
     svc.vouchers.list({
-      periodFrom: start,
-      periodTo: r.to,
+      periodFrom: liveStart,
+      periodTo: liveTo,
       statuses: ['draft', 'pending', 'audited'],
       limit: 1,
     }),
@@ -59,7 +62,7 @@ export async function readNonprofitSources(
       .filter((v) => v !== null)
       .map((v) => [v.id, v]),
   );
-  return {
+  const sources: Sources = {
     book,
     accounts,
     categories,
@@ -69,15 +72,27 @@ export async function readNonprofitSources(
       if (!v) throw new Error('凭证来源已变化，请刷新后重新确认');
       return { ...e, revision: v.revision, closingKind: v.closingKind };
     }),
-    from: start,
-    to: r.to,
-    openingDate: `${year}-01-01`,
-    closingDate: periodEndDate(r.to),
+    from: liveStart,
+    to: liveTo,
+    openingDate: `${year}-${String(liveStart % 100).padStart(2, '0')}-01`,
+    closingDate: periodEndDate(liveTo),
     unpostedCount: unposted.total,
     dimensionNames: Object.fromEntries(
       [...partners, ...people].map((d) => [`${d.typeId}:${d.id}`, d.name]),
     ),
+    dimensionItems: [
+      ...partners.map((d) => ({ type: 'partner' as const, id: d.id, code: d.code, name: d.name })),
+      ...people.map((d) => ({ type: 'person' as const, id: d.id, code: d.code, name: d.name })),
+    ],
   };
+  if (book.startPeriod > start) {
+    if (configuration?.preStartHistory)
+      return mergePreStartHistory(sources, configuration.preStartHistory, r.to);
+    if (configuration)
+      throw new Error('缺少完整年度年初和启用前逐笔来源，请在来源配置中导入并核对承接');
+    return { ...sources, historyMissing: true };
+  }
+  return sources;
 }
 export function sourceFingerprint(s: Sources, c: Configuration) {
   return createHash('sha256')

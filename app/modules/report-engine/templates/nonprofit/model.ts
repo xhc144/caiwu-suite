@@ -71,8 +71,16 @@ export type Resource = z.infer<typeof ResourceSchema>;
 
 export const LineIdentitySchema = z
   .object({
-    voucherId: z.number().int().positive(),
-    lineId: z.number().int().positive(),
+    voucherId: z
+      .number()
+      .int()
+      .safe()
+      .refine((n) => n !== 0),
+    lineId: z
+      .number()
+      .int()
+      .safe()
+      .refine((n) => n !== 0),
     revision: z.number().int().positive(),
     period,
     account,
@@ -301,6 +309,43 @@ export const CashConfirmationSchema = z
   })
   .strict();
 export type CashConfirmation = z.infer<typeof CashConfirmationSchema>;
+export const PreStartHistorySchema = z
+  .object({
+    basis: reference,
+    postedConfirmed: z.literal(true, { error: '请核对启用前逐笔资料均已过账且完整' }),
+    from: period,
+    to: period,
+    periods: z.array(period),
+    opening: z.array(
+      z
+        .object({
+          account,
+          partner: z.number().int().positive().optional(),
+          person: z.number().int().positive().optional(),
+          balance: money,
+          sourceReference: reference,
+        })
+        .strict(),
+    ),
+    entries: z.array(
+      z
+        .object({
+          voucher: reference,
+          line: z.number().int().positive(),
+          revision: z.number().int().positive(),
+          date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          account,
+          partner: z.number().int().positive().optional(),
+          person: z.number().int().positive().optional(),
+          debit: money,
+          credit: money,
+          closingKind: z.string().max(80).nullable(),
+          sourceReference: reference,
+        })
+        .strict(),
+    ),
+  })
+  .strict();
 export const ConfigurationSchema = z
   .object({
     version: z.literal(1),
@@ -317,6 +362,7 @@ export const ConfigurationSchema = z
     cashConfirmations: z.array(CashConfirmationSchema),
     cashPolicy: reference,
     policyChangeReference: reference.optional(),
+    preStartHistory: PreStartHistorySchema.optional(),
     comparison: z
       .object({
         basis: reference,
@@ -325,10 +371,35 @@ export const ConfigurationSchema = z
             z
               .object({
                 at: z.enum(['opening', 'closing']),
+                period: period.optional(),
                 key: reference,
                 originalBalance: money,
                 delta: money,
                 basis: reference,
+              })
+              .strict(),
+          )
+          .optional(),
+        retrospectivePeriods: z
+          .array(
+            z
+              .object({
+                at: z.enum(['opening', 'closing']),
+                period,
+                basis: reference,
+              })
+              .strict(),
+          )
+          .optional(),
+        cashRestatements: z
+          .array(
+            z
+              .object({
+                at: z.enum(['opening', 'closing']),
+                basis: reference,
+                cashPolicy: reference,
+                cashScope: z.array(CashScopeSchema),
+                balanceFacts: z.array(BalanceFactSchema),
               })
               .strict(),
           )
@@ -350,12 +421,32 @@ export const ConfigurationSchema = z
   })
   .strict();
 export type Configuration = z.infer<typeof ConfigurationSchema>;
-export type ActualLine = EntryRow & { revision: number; closingKind: string | null };
+export type ActualLine = EntryRow & {
+  revision: number;
+  closingKind: string | null;
+  historicalSource?: string;
+  originalRevision?: number;
+};
 export type Sources = {
   book: BookInfo;
   accounts: Account[];
   categories: AccountCategory[];
-  balances: BalanceRow[];
+  balances: Pick<
+    BalanceRow,
+    | 'accountId'
+    | 'accountCode'
+    | 'accountName'
+    | 'level'
+    | 'isLeaf'
+    | 'direction'
+    | 'dimensions'
+    | 'opening'
+    | 'debit'
+    | 'credit'
+    | 'closing'
+    | 'ytdDebit'
+    | 'ytdCredit'
+  >[];
   entries: ActualLine[];
   from: number;
   to: number;
@@ -363,6 +454,8 @@ export type Sources = {
   closingDate: string;
   unpostedCount: number;
   dimensionNames: Record<string, string>;
+  dimensionItems?: { type: 'partner' | 'person'; id: number; code: string; name: string }[];
+  historyMissing?: boolean;
 };
 export type Check = {
   name: string;
@@ -410,10 +503,15 @@ export function lineIdentity(e: ActualLine): LineIdentity {
     credit: e.credit,
   };
 }
+export function lineSource(e: ActualLine) {
+  return e.historicalSource
+    ? `启用前凭证${e.displayNo}第${e.lineNo}行：${e.historicalSource}`
+    : `/m/voucher-entry/edit?id=${e.voucherId}`;
+}
 export function sameLine(a: LineIdentity, b: LineIdentity) {
   return Object.keys(a).every((k) => a[k as keyof LineIdentity] === b[k as keyof LineIdentity]);
 }
-export function balanceKey(row: BalanceRow) {
+export function balanceKey(row: Pick<BalanceRow, 'accountCode' | 'dimensions'>) {
   return `${row.accountCode}:${row.dimensions.partner ?? ''}:${row.dimensions.person ?? ''}`;
 }
 export function mappedRow(code: string, mappings: AccountMapping[]) {
