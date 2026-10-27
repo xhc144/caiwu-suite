@@ -15,6 +15,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { createServer } from 'node:http';
 import type { DesktopHost } from '../src/bridge';
+import { checkInstalledUpdates } from './update-checks';
 
 // 测试侧结构契约；不修改或重新声明共享 print 包的 DesktopBridge。
 type PrintApi = {
@@ -142,6 +143,18 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
     }, fixture.bookId);
     expect(loggedIn, '安装后的 utilityProcess 必须用真实 SQLite 完成 core 登录').toBe(true);
     console.log('② 安装后启动、账套显示和真实 SQLite 登录：通过');
+    if (newInstaller) {
+      page = await checkInstalledUpdates(
+        desktop,
+        page,
+        newInstaller,
+        process.env.CAIWU_DESKTOP_EXPECTED_VERSION!,
+        fixture.dataDir,
+      );
+      console.log(
+        '更新机械回归：真实安装包下载/校验、失败重检、取消确认、未保存拦截、备份失败阻断通过；不代表历史发行版完整升级验收',
+      );
+    }
     await desktop.evaluate(({ BrowserWindow }) => {
       BrowserWindow.getAllWindows()[0]!.minimize();
     });
@@ -367,6 +380,11 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
       rmSync(legacyBook);
       rmdirSync(legacyDir);
       await install(newInstaller);
+      // 同代码测试旧包仅用于验证安装器的版本保护，不能作为历史兼容验收。
+      expect(
+        await run(oldInstaller!, ['/S', '/currentuser', `/D=${path.dirname(executable)}`]),
+        '原生 NSIS 拒绝以更低版本覆盖已安装新版',
+      ).toBe(5);
     }
     desktop = await launch();
     page = await desktop.firstWindow();
@@ -376,7 +394,10 @@ test('桌面独立回归：启动/登录壳 → 第二实例 → PDF → 未保�
         BrowserWindow.getAllWindows()[0]!.isMaximized(),
       ),
     ).toBe(true);
-    if (newInstaller) expect(await desktop.evaluate(({ app }) => app.getVersion())).toBe('0.1.0');
+    if (newInstaller)
+      expect(await desktop.evaluate(({ app }) => app.getVersion())).toBe(
+        process.env.CAIWU_DESKTOP_EXPECTED_VERSION,
+      );
     expect(hash()).toBe(originalBackup);
     expect(existsSync(path.join(fixture.dataDir, 'books', `${fixture.bookId}.caiwu`))).toBe(true);
     expect(

@@ -9,6 +9,12 @@ contextBridge.exposeInMainWorld('caiwuDesktop', {
 });
 
 contextBridge.exposeInMainWorld('caiwuDesktopHost', {
+  updates: {
+    status: () => ipcRenderer.invoke('caiwu:host:updateStatus'),
+    check: () => ipcRenderer.invoke('caiwu:host:checkUpdate'),
+    download: () => ipcRenderer.invoke('caiwu:host:downloadUpdate'),
+    install: () => ipcRenderer.invoke('caiwu:host:installUpdate'),
+  },
   dataDirectory: {
     get: () => ipcRenderer.invoke('caiwu:host:dataDir'),
     choose: () => ipcRenderer.invoke('caiwu:host:chooseDataDir'),
