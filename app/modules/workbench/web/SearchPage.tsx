@@ -3,8 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { usePermission } from '@caiwu/web-kit';
+import { MENU_GROUPS } from '@caiwu/core';
 import type { SearchResult } from '../shared';
 import { api } from './api';
+import { userError } from './errors';
 import { matchesFunction } from './search-match';
 import { useWorkbenchContext } from './context';
 
@@ -43,7 +45,7 @@ export default function SearchPage() {
       key: `fn:${i.to}`,
       category: '功能',
       title: i.title,
-      detail: `功能 · ${i.group}`,
+      detail: `功能 · ${MENU_GROUPS.find((group) => group.id === i.group)?.title ?? '其他功能'}`,
       to: i.to,
     }));
   // 只展示当前输入对应的数据，旧查询不能覆盖新词；查询内容不写持久存储。
@@ -106,7 +108,7 @@ export default function SearchPage() {
         <Alert
           type="error"
           title="业务资料搜索失败"
-          description={query.error.message}
+          description={userError(query.error, '无法读取业务资料，请检查本地服务后重试')}
           action={<Button onClick={() => void query.refetch()}>重试</Button>}
         />
       )}
@@ -121,7 +123,7 @@ export default function SearchPage() {
         <Alert
           type="info"
           title={`未检索：${query.data.denied.join('、')}`}
-          description="对应来源模块未加载、产品不可用或没有明确读取权限。"
+          description="对应来源功能尚未启用、产品不可用或没有明确读取权限。"
         />
       ) : null}
       {canSearch && term.trim() && (!settled || query.isFetching) && <Spin size="small" />}

@@ -14,3 +14,6 @@ export * from './account';
 export * from './voucher';
 export * from './ledger';
 export * from './book';
+export * from './inventory';
+
+export * from './rows';

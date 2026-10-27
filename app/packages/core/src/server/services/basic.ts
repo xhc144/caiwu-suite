@@ -1,4 +1,4 @@
-import { sql } from '@caiwu/db';
+import { sql, withTransaction } from '@caiwu/db';
 import { BusinessError } from '../../errors';
 import {
   formatPeriod,
@@ -10,6 +10,7 @@ import {
 } from '../../period';
 import { parseCodeScheme } from '../../code-scheme';
 import type { BookInfo, PeriodInfo } from '../../book';
+import type { PeriodWriteCheck, DependencyBlock } from '../inventory-provider';
 import type { ProductId } from '../../products';
 import { nowIso, type ServiceContext } from '../context';
 
@@ -105,16 +106,76 @@ export function periodService(ctx: ServiceContext) {
 
     /** 期间必须存在且未结账。action 用于提示，例如 "保存凭证"。 */
     async assertOpen(period: Period, action = '修改数据'): Promise<PeriodInfo> {
-      const p = await self.require(period);
-      if (p.status === 'closed') {
-        throw new BusinessError({
-          code: 'PERIOD_CLOSED',
-          message: `${formatPeriod(period)}已经结账，不能${action}`,
-          hint: '确实需要修改的话，先对该月反结账',
-          actions: [{ label: '去期末处理', to: '/m/period-close' }],
-        });
+      return self.assertWritable({ period, action, mode: 'business' });
+    },
+
+    async dependencies(input: PeriodWriteCheck): Promise<DependencyBlock[]> {
+      const blocks: DependencyBlock[] = [];
+      for (const provider of ctx.providers?.periodDependencies ?? [])
+        blocks.push(...(await provider(ctx, input)));
+      return blocks.filter((block) => block.count > 0);
+    },
+
+    async assertWritable(input: PeriodWriteCheck): Promise<PeriodInfo> {
+      const mode = input.mode ?? 'business';
+      const action = input.action ?? '修改数据';
+      const book = await bookService(ctx).info();
+      for (const period of new Set([input.period, input.oldPeriod ?? input.period])) {
+        if (period < book.startPeriod)
+          throw new BusinessError({
+            code: 'PERIOD_BEFORE_START',
+            message: `${formatPeriod(period)}早于启用期间${formatPeriod(book.startPeriod)}，不能${action}`,
+          });
+        const p = await self.require(period);
+        const year = await ctx.db
+          .selectFrom('fiscal_year')
+          .selectAll()
+          .where('year', '=', periodYear(period))
+          .executeTakeFirst();
+        if (!year)
+          throw new BusinessError({
+            code: 'YEAR_NOT_FOUND',
+            message: `${periodYear(period)}年度未建立`,
+          });
+        if (mode !== 'year-reopen' && year.status === 'closed')
+          throw new BusinessError({
+            code: 'YEAR_CLOSED',
+            message: `${year.year}年度已经年结，不能${action}`,
+            actions: [{ label: '去期末处理', to: '/m/period-close' }],
+          });
+        if ((mode === 'business' || mode === 'opening') && p.status === 'closed')
+          throw new BusinessError({
+            code: 'PERIOD_CLOSED',
+            message: `${formatPeriod(period)}已经结账，不能${action}`,
+            hint: '先对该月反结账，再重新操作',
+            actions: [{ label: '去期末处理', to: '/m/period-close' }],
+          });
+        if (mode === 'opening') {
+          const lock = await ctx.db
+            .selectFrom('book_setting')
+            .select('value')
+            .where('scope', '=', 'opening')
+            .where('key', '=', `lock.${year.year}`)
+            .executeTakeFirst();
+          if (lock && JSON.parse(lock.value) === true)
+            throw new BusinessError({
+              code: 'OPENING_LOCKED',
+              message: `${year.year}年期初已锁定，不能${action}`,
+              actions: [{ label: '去期初录入', to: '/m/opening' }],
+            });
+        }
+        const blocks = await self.dependencies({ ...input, period, mode });
+        if (blocks.length)
+          throw new BusinessError({
+            code: 'PERIOD_DEPENDENCIES',
+            message: `${formatPeriod(period)}不能${action}：${blocks.map((b) => `${b.category}${b.count}项`).join('、')}`,
+            details: { blocks },
+            actions: blocks.flatMap((b) =>
+              b.to ? [{ label: `处理${b.category}`, to: b.to }] : [],
+            ),
+          });
       }
-      return p;
+      return self.require(input.period);
     },
 
     /** 会计年度：首年 opening_period 为启用期间。 */
@@ -172,8 +233,23 @@ export function periodService(ctx: ServiceContext) {
     },
 
     /** 结账 / 反结账只改状态；检查规则由期末处理模块负责。 */
-    async setStatus(period: Period, status: 'open' | 'closed') {
+    async setStatus(period: Period, status: 'open' | 'closed'): Promise<void> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) =>
+          periodService({ ...ctx, db }).setStatus(period, status),
+        );
       await self.require(period);
+      const blocks =
+        status === 'closed'
+          ? await self.dependencies({ period, mode: 'year-close', action: '结账' })
+          : [];
+      if (blocks.length)
+        throw new BusinessError({
+          code: 'PERIOD_DEPENDENCIES',
+          message: `${formatPeriod(period)}尚有${blocks.map((b) => `${b.category}${b.count}项`).join('、')}，不能结账`,
+          details: { blocks },
+          actions: blocks.flatMap((b) => (b.to ? [{ label: `处理${b.category}`, to: b.to }] : [])),
+        });
       await ctx.db
         .updateTable('period')
         .set({

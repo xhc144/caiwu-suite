@@ -1,4 +1,4 @@
-import { Button, Modal, Result, Spin, Tabs } from 'antd';
+import { Button, Modal, Result, Skeleton, Tabs } from 'antd';
 import {
   Component,
   Suspense,
@@ -23,9 +23,15 @@ import {
   type Location,
   type Navigator,
 } from 'react-router';
-import { TabContext, useRequiredSession, type TabContextValue } from '@caiwu/web-kit';
+import {
+  TabContext,
+  unsavedPages,
+  useRequiredSession,
+  resetWebModuleRoutes,
+  type TabContextValue,
+} from '@caiwu/web-kit';
 import { loadWebModule, visibleModules } from '../modules';
-import { checkBeforeLeave, routeAccess } from './guards';
+import { requestBeforeLeave, routeAccess } from './guards';
 import { EntryPage } from './EntryPage';
 import { HomePage } from './HomePage';
 import type { NavItem } from './NavMenu';
@@ -87,10 +93,10 @@ export function TabsHost({
   const pendingCommit =
     !!selection &&
     (historyLocation ? location.key !== historyLocation.key : selection.from === location);
-  const activeLocation = selection && pendingCommit ? selection.to : location;
-  const activeKey = tabPath(activeLocation.pathname);
+  const candidateLocation = selection && pendingCommit ? selection.to : location;
+  const candidateKey = tabPath(candidateLocation.pathname);
+  const [approvedNavigation, setApprovedNavigation] = useState<string | null>(null);
   const modules = visibleModules(session.book.product, devMode);
-  const [closing, setClosing] = useState(false);
   const [limitReached, setLimitReached] = useState(false);
   // 首页标签始终存在，且不能关闭
   const [tabs, setTabs] = useState<TabState[]>(() => [
@@ -101,6 +107,16 @@ export function TabsHost({
       customTitle: true,
     },
   ]);
+  const priorTab = tabs.find((tab) => tab.key === candidateKey);
+  const needsRouteConfirmation =
+    !!priorTab &&
+    priorTab.location.key !== candidateLocation.key &&
+    (priorTab.location.search !== candidateLocation.search ||
+      priorTab.location.hash !== candidateLocation.hash) &&
+    unsavedPages.dirty(session.bookId, [candidateKey]).length > 0;
+  const routeHeld = needsRouteConfirmation && approvedNavigation !== candidateLocation.key;
+  const activeLocation = routeHeld ? priorTab!.location : candidateLocation;
+  const activeKey = tabPath(activeLocation.pathname);
   // 标签与路由在同一次render里对齐，POP即使回到刚关闭的地址也会重建页面。
   // 不能只监听location的effect：关闭本身也会改变标签集合。
   const currentTab = tabs.find((tab) => tab.key === activeKey);
@@ -183,9 +199,45 @@ export function TabsHost({
     }
   }, [activeKey, tabs, navigate, syncNavigation]);
 
+  useEffect(() => {
+    if (!routeHeld || !priorTab) return;
+    let current = true;
+    void requestBeforeLeave(session.bookId, [candidateKey]).then((accepted) => {
+      if (!current) return;
+      if (accepted) setApprovedNavigation(candidateLocation.key);
+      else {
+        void navigate(
+          priorTab.location.pathname + priorTab.location.search + priorTab.location.hash,
+          { replace: true },
+        );
+        syncNavigation(priorTab.location);
+      }
+    });
+    return () => {
+      current = false;
+    };
+  }, [
+    routeHeld,
+    priorTab,
+    candidateKey,
+    candidateLocation.key,
+    session.bookId,
+    navigate,
+    syncNavigation,
+  ]);
+
   const close = useCallback(
-    (key: string) => {
-      if (key === HOME || !checkBeforeLeave()) return;
+    async (key: string) => {
+      const requested = tabsRef.current.find((tab) => tab.key === key);
+      if (key === HOME || !requested || !(await requestBeforeLeave(session.bookId, [key]))) return;
+      const current = tabsRef.current.find((tab) => tab.key === key);
+      if (
+        !current ||
+        current.location.pathname !== requested.location.pathname ||
+        current.location.search !== requested.location.search ||
+        current.location.hash !== requested.location.hash
+      )
+        return;
       const prev = tabsRef.current;
       const idx = prev.findIndex((t) => t.key === key);
       const next = prev.filter((t) => t.key !== key);
@@ -202,8 +254,42 @@ export function TabsHost({
         syncNavigation(neighbor?.location);
       }
     },
-    [navigate, syncNavigation],
+    [navigate, syncNavigation, session.bookId],
   );
+
+  const closeAll = async () => {
+    const requested = tabsRef.current.map((tab) => [
+      tab.key,
+      tab.location.pathname,
+      tab.location.search,
+      tab.location.hash,
+    ]);
+    if (
+      !(await requestBeforeLeave(
+        session.bookId,
+        tabsRef.current.map((t) => t.key),
+      ))
+    )
+      return;
+    if (
+      JSON.stringify(requested) !==
+      JSON.stringify(
+        tabsRef.current.map((tab) => [
+          tab.key,
+          tab.location.pathname,
+          tab.location.search,
+          tab.location.hash,
+        ]),
+      )
+    )
+      return;
+    activeKeyRef.current = HOME;
+    const home = tabsRef.current.find((t) => t.key === HOME)!;
+    tabsRef.current = [home];
+    setTabs([home]);
+    void navigate(HOME);
+    syncNavigation(home.location);
+  };
 
   const setTitle = useCallback((key: string, title: string) => {
     setTabs((prev) =>
@@ -243,7 +329,7 @@ export function TabsHost({
       ) {
         e.preventDefault();
         const current = activeKeyRef.current;
-        if (current !== HOME) closeRef.current(current);
+        if (current !== HOME) void closeRef.current(current);
       }
     };
     window.addEventListener('popstate', onPop);
@@ -276,10 +362,10 @@ export function TabsHost({
           }
         }}
         onEdit={(key, action) => {
-          if (action === 'remove' && typeof key === 'string') close(key);
+          if (action === 'remove' && typeof key === 'string') void close(key);
         }}
         tabBarExtraContent={
-          <Button size="small" onClick={() => setClosing(true)}>
+          <Button size="small" onClick={() => void closeAll()}>
             关闭所有
           </Button>
         }
@@ -300,25 +386,6 @@ export function TabsHost({
           ),
         }))}
       />
-      <Modal
-        getContainer={false}
-        title="关闭所有标签"
-        open={closing}
-        onCancel={() => setClosing(false)}
-        okText="已保存内容，关闭"
-        cancelText="取消"
-        onOk={() => {
-          if (!checkBeforeLeave()) return;
-          activeKeyRef.current = HOME;
-          const home = tabsRef.current.find((t) => t.key === HOME)!;
-          setTabs((prev) => prev.filter((t) => t.key === HOME));
-          void navigate(HOME);
-          syncNavigation(home.location);
-          setClosing(false);
-        }}
-      >
-        <p>请先保存表单。已有页面的离开保护会被检查；当前框架尚不能判断所有未保存内容。</p>
-      </Modal>
       <Modal
         getContainer={false}
         title="标签数量已达上限"
@@ -367,8 +434,20 @@ function TabPane({
       value={{ location: tab.location, navigationType: NavigationType.Pop }}
     >
       <TabContext.Provider value={ctx}>
-        <PageErrorBoundary>
-          <Suspense fallback={<Spin style={{ display: 'block', margin: 48 }} />}>
+        <PageErrorBoundary
+          onRetry={async () => {
+            const mod = await loadWebModule(tab.key.split('/')[2] ?? '');
+            if (mod) resetWebModuleRoutes(mod);
+          }}
+        >
+          <Suspense
+            fallback={
+              <div role="status" aria-label="正在加载页面" style={{ padding: 24 }}>
+                <p>正在加载页面，请稍候…</p>
+                <Skeleton active />
+              </div>
+            }
+          >
             {access === 'missing' ? (
               <NotFound />
             ) : access === 'denied' ? (
@@ -446,7 +525,10 @@ function NotFound() {
   );
 }
 
-class PageErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class PageErrorBoundary extends Component<
+  { children: ReactNode; onRetry?: () => void | Promise<void> },
+  { error: Error | null }
+> {
   override state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) {
     return { error };
@@ -461,7 +543,17 @@ class PageErrorBoundary extends Component<{ children: ReactNode }, { error: Erro
           status="error"
           title="页面出错了"
           subTitle={this.state.error.message}
-          extra={<Button onClick={() => this.setState({ error: null })}>重新加载这个页面</Button>}
+          extra={
+            <Button
+              onClick={() => {
+                void Promise.resolve(this.props.onRetry?.()).then(() =>
+                  this.setState({ error: null }),
+                );
+              }}
+            >
+              重新加载这个页面
+            </Button>
+          }
         />
       );
     }

@@ -134,7 +134,13 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
   const sourceIds: number[] = [];
   const sourceRatios = new Map<number, string>();
   if (r.kind === 'pnl') {
-    for (const a of accounts.filter((a) => a.isLeaf && pnl.has(a.categoryId))) {
+    for (const a of accounts.filter(
+      (a) =>
+        a.isLeaf &&
+        pnl.has(a.categoryId) &&
+        // 旧账空语义沿用原规则；明确转未分配利润等用途不能混入本年利润。
+        (a.closingRule == null || a.closingRule === 'profit'),
+    )) {
       sourceIds.push(a.id);
       sourceRatios.set(a.id, '100');
     }

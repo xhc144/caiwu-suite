@@ -10,6 +10,7 @@ import {
   utilityProcess,
   type IpcMainInvokeEvent,
 } from 'electron';
+import { CloseHandshake } from './close-handshake';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { copyFileSync, mkdirSync } from 'node:fs';
@@ -481,6 +482,28 @@ async function createWindow(current: ServiceSession) {
         if (response === 1 && !win.isDestroyed()) win.webContents.reload();
       });
   });
+  const closeHandshake = new CloseHandshake();
+  let rendererApprovedClose = false;
+  let closePending = false;
+  const closeResponse = (event: Electron.IpcMainEvent, id: unknown, allowed: unknown) => {
+    try {
+      assertSender(
+        event,
+        {
+          webContents: win.webContents,
+          mainFrame: win.webContents.mainFrame,
+          url: win.webContents.getURL(),
+        },
+        event.senderFrame?.url ?? '',
+        origin,
+      );
+      if (typeof id === 'string' && typeof allowed === 'boolean')
+        closeHandshake.respond(id, allowed);
+    } catch {
+      /* Untrusted frames cannot release the native close guard. */
+    }
+  };
+  ipcMain.on('caiwu:host:closeResponse', closeResponse);
   let closingState: WindowState | undefined;
   let lastMaximized = settings.window?.maximized ?? false;
   win.on('maximize', () => {
@@ -489,13 +512,36 @@ async function createWindow(current: ServiceSession) {
   win.on('unmaximize', () => {
     lastMaximized = false;
   });
-  win.on('close', () => {
+  win.on('close', (event) => {
+    if (!rendererApprovedClose && !recovering && current.running) {
+      event.preventDefault();
+      if (!closePending) {
+        closePending = true;
+        void closeHandshake
+          .request((id) => win.webContents.send('caiwu:host:closeRequest', id))
+          .then((allowed) => {
+            closePending = false;
+            if (allowed && !win.isDestroyed()) {
+              rendererApprovedClose = true;
+              win.close();
+            } else {
+              pendingDataDir = null;
+              quitting = false;
+              closeAction = 'quit';
+            }
+          });
+      }
+      return;
+    }
+    rendererApprovedClose = false;
     closingState = {
       ...win.getNormalBounds(),
       maximized: win.isMinimized() ? lastMaximized : win.isMaximized(),
     };
   });
   win.on('closed', () => {
+    closeHandshake.cancel();
+    ipcMain.removeListener('caiwu:host:closeResponse', closeResponse);
     if (mainWindow === win) mainWindow = null;
     pendingWindowState = closingState;
     if (closeAction === 'recover') {

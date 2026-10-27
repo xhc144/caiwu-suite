@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "version": "1.0.0",
+  "codeScheme": "4-2-2",
+  "categories": [
+    {
+      "id": "asset",
+      "name": "资产",
+      "direction": "debit",
+      "isPnl": false
+    },
+    {
+      "id": "liability",
+      "name": "负债",
+      "direction": "credit",
+      "isPnl": false
+    },
+    {
+      "id": "equity",
+      "name": "所有者权益",
+      "direction": "credit",
+      "isPnl": false
+    },
+    {
+      "id": "cost",
+      "name": "成本",
+      "direction": "debit",
+      "isPnl": false
+    },
+    {
+      "id": "pnl",
+      "name": "损益",
+      "direction": "debit",
+      "isPnl": true
+    }
+  ],
+  "voucherTypes": [
+    {
+      "code": "记",
+      "name": "记账凭证"
+    }
+  ],
+  "currencies": [],
+  "reports": [],
+  "id": "books-enterprise-review",
+  "name": "企业会计准则（9项待核工程样例）",
+  "regime": "enterprise",
+  "order": 20,
+  "description": "仅9项待核工程样例，所有数字编码均未取得正式科目表核验。enterprise-2019-appendix2.pdf 是财务报表格式，不是完整科目编码来源。不可据此当作完整企业科目表。",
+  "accounts": [
+    {
+      "code": "1002",
+      "name": "银行存款",
+      "category": "asset",
+      "direction": "debit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；名称亦待核"
+    },
+    {
+      "code": "1403",
+      "name": "原材料",
+      "category": "asset",
+      "direction": "debit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；名称亦待核"
+    },
+    {
+      "code": "1601",
+      "name": "固定资产",
+      "category": "asset",
+      "direction": "debit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；该名称可见附件2报表或编制说明"
+    },
+    {
+      "code": "1602",
+      "name": "累计折旧",
+      "category": "asset",
+      "direction": "credit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；该名称可见附件2报表或编制说明"
+    },
+    {
+      "code": "4001",
+      "name": "实收资本",
+      "category": "equity",
+      "direction": "credit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；该名称可见附件2报表或编制说明"
+    },
+    {
+      "code": "4103",
+      "name": "本年利润",
+      "category": "equity",
+      "direction": "credit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；名称亦待核"
+    },
+    {
+      "code": "6001",
+      "name": "主营业务收入",
+      "category": "pnl",
+      "direction": "credit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；名称亦待核"
+    },
+    {
+      "code": "6401",
+      "name": "主营业务成本",
+      "category": "pnl",
+      "direction": "debit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；名称亦待核"
+    },
+    {
+      "code": "6602",
+      "name": "管理费用",
+      "category": "pnl",
+      "direction": "debit",
+      "needsReview": true,
+      "source": "待核：尚缺正式可追溯的企业科目编码表；enterprise-2019-appendix2.pdf 仅为报表格式，不能核验此编码/方向；该名称可见附件2报表或编制说明"
+    }
+  ],
+  "sources": [
+    {
+      "title": "企业财务报表格式（仅作范围说明）",
+      "file": "enterprise-2019-appendix2.pdf",
+      "note": "财会〔2019〕6号附件2，不支持完整科目编码表；9项工程样例全部待核"
+    }
+  ]
+}

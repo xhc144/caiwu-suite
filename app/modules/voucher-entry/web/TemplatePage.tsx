@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { type VoucherLineInput } from '@caiwu/core';
 import { PageContainer, useUrlFilters } from '@caiwu/ui';
-import { notify, queryClient, usePermission } from '@caiwu/web-kit';
+import { notify, queryClient, usePermission, useUnsavedChanges } from '@caiwu/web-kit';
 import { blankLine } from '../shared';
 import { api } from './api';
 import { confirm } from './dialogs';
@@ -29,11 +29,14 @@ export default function TemplatePage() {
   const [details, setDetails] = useState(false);
   const [issues, setIssues] = useState('');
   const [dirty, setDirty] = useState(false);
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
   const save = useMutation(api.saveTemplate.mutationOptions());
   const remove = useMutation(api.removeTemplate.mutationOptions());
   const change = (value: TemplateDraft) => {
+    draftRef.current = value;
     setDraft(value);
     setDirty(true);
   };
@@ -50,7 +53,7 @@ export default function TemplatePage() {
     setDirty(false);
   };
   const submit = async () => {
-    if (!draft) return;
+    if (!draft) return false;
     const hasUnknown = draft.lines.some((l) => {
       const a = boot.data?.accounts.find((a) => a.id === l.accountId);
       const item = boot.data?.items.find((i) => i.id === l.dimensions?.cashflow);
@@ -67,17 +70,31 @@ export default function TemplatePage() {
         '方向未配置，无法核验。确认保留待核验的模版，或取消并先维护现金流量档案。',
       ))
     )
-      return;
+      return false;
+    const snapshot = draft;
     try {
       await save.mutateAsync({ ...draft, acknowledgeCashflowUnknown: hasUnknown });
       notify.success('凭证模版已保存');
-      setDraft(null);
-      setDirty(false);
+      if (draftRef.current === snapshot) {
+        setDraft(null);
+        setDirty(false);
+      }
       await queryClient.invalidateQueries({ queryKey: api.templates.queryKey() });
     } catch {
-      /* 框架显示可操作的业务提示 */
+      return false;
     }
+    return true;
   };
+  useUnsavedChanges({
+    title: '凭证模版',
+    dirty,
+    version: JSON.stringify(draft),
+    save: submit,
+    discard: () => {
+      setDraft(null);
+      setDirty(false);
+    },
+  });
   return (
     <PageContainer
       title="凭证模版"

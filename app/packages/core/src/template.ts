@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BusinessError } from './errors';
 import {
   cumulativeLengths,
   levelOfCode,
@@ -7,6 +8,7 @@ import {
   type CodeScheme,
 } from './code-scheme';
 import { DIMENSION_TYPE_IDS } from './dimensions';
+import { ACCOUNT_CLOSING_RULES } from './account';
 
 /**
  * 会计制度模板：新建账套时选择，决定科目表、科目类别、默认凭证类型。
@@ -45,6 +47,11 @@ const TemplateAccountSchema = z.object({
   disabled: z.boolean().optional(),
   /** 依据（文件名 + 条款），便于核对 */
   source: z.string().optional(),
+  sourceVersion: z.string().optional(),
+  isContra: z.boolean().optional(),
+  balanceNature: z.enum(['debit', 'credit', 'both', 'no-closing-balance']).optional(),
+  /** 与法定类别独立：例如6901属损益类，但应转未分配利润。 */
+  closingRule: z.enum(ACCOUNT_CLOSING_RULES).optional(),
   /** 还没有对照原文核实 */
   needsReview: z.boolean().optional(),
 });
@@ -144,4 +151,43 @@ export function templateProblems(t: AccountingTemplate, scheme?: CodeScheme): st
     vtypes.add(v.code);
   }
   return problems;
+}
+
+/** Map every native code segment into the requested scheme, preserving the parent chain. */
+export function mapTemplateScheme(
+  template: AccountingTemplate,
+  target: CodeScheme,
+): AccountingTemplate {
+  const native = parseCodeScheme(template.codeScheme);
+  if (target[0] !== native[0])
+    throw new BusinessError({
+      code: 'TEMPLATE_SCHEME',
+      message: `一级科目编码不能使用科目级次 ${target.join('-')}，无法映射`,
+      hint: `请保留模板的一级编码位数，原级次为 ${template.codeScheme}`,
+    });
+  const lengths = cumulativeLengths(native);
+  const accounts = template.accounts.map((account) => {
+    const level = levelOfCode(account.code, native);
+    if (level == null || level > target.length)
+      throw new BusinessError({
+        code: 'TEMPLATE_SCHEME',
+        message: `科目 ${account.code} 无法映射到级次 ${target.join('-')}`,
+        hint: '请选择能够容纳模板全部科目的级次',
+      });
+    let code = '';
+    for (let index = 0; index < level; index++) {
+      const segment = account.code.slice(index === 0 ? 0 : lengths[index - 1], lengths[index]);
+      const digits = target[index]!;
+      const significant = segment.replace(/^0+(?=\d)/, '');
+      if (significant.length > digits)
+        throw new BusinessError({
+          code: 'TEMPLATE_SCHEME',
+          message: `科目 ${account.code} 第${index + 1}级编码超出 ${digits} 位`,
+          hint: '请增加对应级次的编码位数',
+        });
+      code += significant.padStart(digits, '0');
+    }
+    return { ...account, code, sourceVersion: account.sourceVersion ?? template.version };
+  });
+  return parseTemplate({ ...template, codeScheme: target.join('-'), accounts });
 }

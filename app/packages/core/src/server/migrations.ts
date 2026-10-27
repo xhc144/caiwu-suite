@@ -283,4 +283,23 @@ CREATE TABLE opening_balance (
 CREATE UNIQUE INDEX opening_balance_key ON opening_balance(year, account_id, dims_key, IFNULL(currency_code, ''));
 `,
   },
+  {
+    id: '0002_shared_semantics',
+    sql: `
+ALTER TABLE voucher_line ADD COLUMN cashflow_direction TEXT CHECK(cashflow_direction IN ('inflow','outflow','internal'));
+ALTER TABLE voucher_line ADD COLUMN entry_side TEXT CHECK(entry_side IN ('debit','credit'));
+ALTER TABLE account ADD COLUMN is_contra INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE account ADD COLUMN balance_nature TEXT CHECK(balance_nature IN ('debit','credit','both','no-closing-balance'));
+ALTER TABLE account ADD COLUMN source TEXT;
+ALTER TABLE account ADD COLUMN source_version TEXT;
+ALTER TABLE dimension_item ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
+`,
+  },
+  {
+    id: '0003_account_closing_rule',
+    // 只新增可空字段；旧科目不自动补语义，不改凭证、期初或余额。
+    sql: `
+ALTER TABLE account ADD COLUMN closing_rule TEXT CHECK(closing_rule IN ('none','profit','retained-earnings','year-retained-earnings','clearing','seasonal-allocation'));
+`,
+  },
 ]);

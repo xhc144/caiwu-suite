@@ -1,10 +1,11 @@
 import { Alert, Button, Card, Descriptions, Modal, Select, Space, Typography } from 'antd';
 import { useMutation } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PRODUCTS, productName, type ProductId } from '@caiwu/core';
 import {
   coreApi,
+  unsavedPages,
   queryClient,
   sessionStore,
   usePermission,
@@ -12,6 +13,7 @@ import {
 } from '@caiwu/web-kit';
 import { PageContainer } from '@caiwu/ui';
 import { api } from './api';
+import { userError } from './errors';
 
 export default function SettingsPage() {
   const session = useRequiredSession();
@@ -21,16 +23,70 @@ export default function SettingsPage() {
   const [confirm, setConfirm] = useState(false);
   const mutation = useMutation(api.switchProduct.mutationOptions());
   const [error, setError] = useState('');
+  const switching = useRef(false);
+  const [checking, setChecking] = useState(false);
   const commit = async () => {
+    if (switching.current) return;
+    switching.current = true;
+    setChecking(true);
+    setConfirm(false);
     setError('');
-    // 现有模块的 beforeunload 可取消切换；统一 dirty 回调待共享层接入。
-    const event = new Event('beforeunload', { cancelable: true });
-    if (!window.dispatchEvent(event)) {
-      setError('有页面阻止离开，请先保存内容再切换。');
-      return;
-    }
     const expected = sessionStore.get();
     try {
+      const allowed = await unsavedPages.leave(
+        session.bookId,
+        undefined,
+        (pages) =>
+          new Promise((resolve) => {
+            const dialog = Modal.confirm({
+              title: '有未保存内容',
+              transitionName: '',
+              maskTransitionName: '',
+              content: (
+                <div>
+                  {pages.map((page, i) => (
+                    <p key={i}>{page.title}</p>
+                  ))}
+                </div>
+              ),
+              okText: '保存并继续',
+              cancelText: '取消',
+              onOk: () => {
+                resolve('save');
+              },
+              onCancel: () => resolve('cancel'),
+              footer: (_, { OkBtn, CancelBtn }) => (
+                <Space wrap>
+                  <Button
+                    onClick={() => {
+                      dialog.destroy();
+                      resolve('discard');
+                    }}
+                  >
+                    放弃修改并继续
+                  </Button>
+                  <CancelBtn />
+                  <OkBtn />
+                </Space>
+              ),
+            });
+          }),
+      );
+      if (!allowed) {
+        setError('切换已取消，或仍有内容未保存。请检查相关页面后重试。');
+        return;
+      }
+      const event = new Event('beforeunload', { cancelable: true });
+      Object.defineProperty(event, 'registeredPagesConfirmed', { value: true });
+      if (!window.dispatchEvent(event)) {
+        setError('有页面阻止离开，请先保存内容再切换。');
+        return;
+      }
+      if (
+        sessionStore.get()?.token !== expected?.token ||
+        sessionStore.get()?.bookId !== expected?.bookId
+      )
+        return;
       await mutation.mutateAsync({
         product: next,
         expectedProduct: session.book.product,
@@ -48,7 +104,10 @@ export default function SettingsPage() {
         sessionStore.set({ ...expected, user: me.user, book: me.book });
       void navigate('/home', { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : '切换失败，请刷新重试');
+      setError(userError(e, '无法保存产品形态，请检查本地服务后重试'));
+    } finally {
+      switching.current = false;
+      setChecking(false);
     }
   };
   return (
@@ -61,14 +120,15 @@ export default function SettingsPage() {
           <Descriptions.Item label="会计制度">{session.book.templateName}</Descriptions.Item>
         </Descriptions>
         <Typography.Paragraph>
-          只改变当前账套可见模块，不修改会计制度、科目或历史数据，也不删除隐藏模块的数据。更改会保存到账套，重新登录后仍生效。
+          只改变当前账套可见功能，不修改会计制度、科目或历史数据，也不删除隐藏功能的数据。更改会保存到账套，重新登录后仍生效。
         </Typography.Paragraph>
         {!canSwitch && <Alert type="warning" title="没有产品形态切换权限" />}
         <Space wrap>
           <Select
+            id="workbench-product"
             aria-label="产品形态"
             value={next}
-            disabled={!canSwitch || mutation.isPending}
+            disabled={!canSwitch || checking || mutation.isPending}
             style={{ width: 180 }}
             options={PRODUCTS.map((p) => ({ value: p.id, label: p.name }))}
             onChange={setNext}
@@ -76,7 +136,7 @@ export default function SettingsPage() {
           <Button
             type="primary"
             disabled={!canSwitch || next === session.book.product}
-            loading={mutation.isPending}
+            loading={checking || mutation.isPending}
             onClick={() => setConfirm(true)}
           >
             切换产品形态
@@ -90,21 +150,23 @@ export default function SettingsPage() {
         </Typography.Paragraph>
         <Typography.Paragraph>桌面窗口的原生缩放需桌面壳支持。</Typography.Paragraph>
       </Card>
-      <Modal
-        title="确认切换产品形态"
-        open={confirm}
-        onCancel={() => !mutation.isPending && setConfirm(false)}
-        onOk={() => void commit()}
-        confirmLoading={mutation.isPending}
-        okText="已保存内容，确认切换"
-        cancelText="取消"
-      >
-        <p>
-          将从{productName(session.book.product)}切换为{productName(next)}
-          ，不适用的模块和标签将隐藏。
-        </p>
-        <p>请先保存所有表单。当前框架不能判断每个业务表单的未保存状态；已有离开保护会阻止切换。</p>
-      </Modal>
+      {confirm && (
+        <Modal
+          title="确认切换产品形态"
+          open={confirm}
+          onCancel={() => !checking && !mutation.isPending && setConfirm(false)}
+          onOk={() => void commit()}
+          confirmLoading={checking || mutation.isPending}
+          okText="已保存内容，确认切换"
+          cancelText="取消"
+        >
+          <p>
+            将从{productName(session.book.product)}切换为{productName(next)}
+            ，不适用的功能和标签将隐藏。
+          </p>
+          <p>切换前会检查未保存内容；如有修改，可选择保存、放弃修改或取消切换。</p>
+        </Modal>
+      )}
     </PageContainer>
   );
 }

@@ -2,6 +2,17 @@ import type { DimensionTypeId } from './dimensions';
 
 export type BalanceDirection = 'debit' | 'credit';
 
+/** 科目结转用途；null/未提供表示旧账未声明，不从名称或来源文字推断。 */
+export const ACCOUNT_CLOSING_RULES = [
+  'none',
+  'profit',
+  'retained-earnings',
+  'year-retained-earnings',
+  'clearing',
+  'seasonal-allocation',
+] as const;
+export type AccountClosingRule = (typeof ACCOUNT_CLOSING_RULES)[number];
+
 export const DIRECTION_LABELS: Record<BalanceDirection, string> = { debit: '借', credit: '贷' };
 
 export interface AccountCategory {
@@ -20,6 +31,11 @@ export interface AccountDimensionConfig {
 
 /** 科目（接口返回的形态）。 */
 export interface Account {
+  isContra?: boolean;
+  balanceNature?: 'debit' | 'credit' | 'both' | 'no-closing-balance' | null;
+  closingRule?: AccountClosingRule | null;
+  source?: string | null;
+  sourceVersion?: string | null;
   id: number;
   code: string;
   name: string;
@@ -48,6 +64,7 @@ export interface Account {
 }
 
 export interface DimensionItem {
+  revision?: number;
   id: number;
   typeId: DimensionTypeId;
   code: string;

@@ -85,22 +85,49 @@ describe('真实 Node 子进程退出（无 kill/send mock）', () => {
     const { server, dataDir } = await fixture('stdio');
     await server.ready();
     let output = '';
+    const events: { event: string; at: number }[] = [];
+    const record = (event: string) => events.push({ event, at: Date.now() });
+    server.child.once('exit', () => record('exit'));
+    server.child.once('close', () => record('close'));
     server.child.stdout!.on('data', (chunk: Buffer) => {
+      const hadFinal = output.includes('FINAL_STDIO');
       output += chunk.toString();
+      if (!hadFinal && output.includes('FINAL_STDIO')) record('FINAL_STDIO');
     });
     await server.close();
+    record('close.resolved');
     expect(output).toContain('FINAL_STDIO');
+    expect(
+      events.map(({ event }) => event),
+      JSON.stringify(events),
+    ).toEqual(['exit', 'FINAL_STDIO', 'close', 'close.resolved']);
+    expect(server.child.exitCode).toBe(0);
+    expect(server.child.signalCode).toBe(null);
     await retained(dataDir);
   });
 
   for (const mode of ['nonzero', 'signal', 'hang'])
     it(`${mode}：关闭失败保留目录，强制清理不转成通过`, async () => {
       const { server, dataDir } = await fixture(mode);
-      await server.ready();
-      await expect(server.close(mode === 'hang' ? 150 : 5_000)).rejects.toThrow(
-        mode === 'nonzero' ? '合成关闭故障' : '保留临时目录',
-      );
-      expect(server.child.exitCode !== null || server.child.signalCode !== null).toBe(true);
+      const port = await server.ready();
+      const guard = await fixture('normal');
+      const guardPort = await guard.server.ready();
+      try {
+        const closing = server.close(mode === 'hang' ? 150 : 5_000);
+        // 重复请求不能以更大的预算重新启动关闭或把失败变为成功。
+        expect(server.close()).toBe(closing);
+        await expect(closing).rejects.toThrow(mode === 'nonzero' ? '合成关闭故障' : '保留临时目录');
+        expect(server.child.exitCode !== null || server.child.signalCode !== null).toBe(true);
+        if (mode === 'nonzero') expect(server.child.exitCode).toBe(9);
+        await expect(fetch(`http://127.0.0.1:${port}`)).rejects.toThrow();
+        // 同时运行的另一个真实进程必须仍可响应，不能靠范围 kill 清理失败服务。
+        expect(await (await fetch(`http://127.0.0.1:${guardPort}`)).text()).toBe('ok');
+        expect(guard.server.child.exitCode).toBe(null);
+        expect(guard.server.child.signalCode).toBe(null);
+      } finally {
+        await guard.server.close();
+        await retained(guard.dataDir);
+      }
       await retained(dataDir);
     });
 

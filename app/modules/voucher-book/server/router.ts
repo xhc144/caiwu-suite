@@ -55,6 +55,15 @@ const actionProcedures = {
     .mutation(({ ctx, input }) => preview(ctx.svc, { ...input, action: 'renumber' })),
 };
 export const voucherBookRouter = m.router({
+  creators: m.procedure
+    .meta({ permission: 'voucher-book.view' })
+    .query(({ ctx }) =>
+      ctx.svc.db
+        .selectFrom('app_user')
+        .select(['id', 'code', 'name', 'disabled'])
+        .orderBy('code')
+        .execute(),
+    ),
   list: m.procedure
     .meta({ permission: 'voucher-book.view' })
     .input(BookFilterSchema)

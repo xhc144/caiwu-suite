@@ -283,7 +283,9 @@ describe('修改、删除、状态', () => {
   it('作废与断号整理', async () => {
     const [a, b, c] = await seedVouchers(t.svc, [cashSale, cashSale, cashSale]);
     await t.svc.vouchers.delete(b!.id);
-    await t.svc.vouchers.setNumbers([{ id: c!.id, number: 2 }]);
+    const plan = await t.svc.vouchers.previewNumbers([{ id: c!.id, number: 2 }]);
+    await expect(t.svc.vouchers.setNumbers(plan.updates)).rejects.toThrow(/确认/);
+    await t.svc.vouchers.setNumbers(plan.updates, { plan, confirmed: true });
     expect((await t.svc.vouchers.get(c!.id))!.number).toBe(2);
     const voided = await t.svc.vouchers.setVoided(a!.id, true);
     expect(voided.voided).toBe(true);

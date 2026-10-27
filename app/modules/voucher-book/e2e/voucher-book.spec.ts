@@ -98,7 +98,13 @@ test('w_pz_pzxsb 插入/重排取消不变，筛选URL与跨模块路由，导�
         ],
       },
     ]);
-    await t.app.svc.vouchers.setNumbers([{ id: v!.id, number: 3 }]);
+    {
+      const numberPlan = await t.app.svc.vouchers.previewNumbers([{ id: v!.id, number: 3 }]);
+      await t.app.svc.vouchers.setNumbers(numberPlan.updates, {
+        plan: numberPlan,
+        confirmed: true,
+      });
+    }
     const before = await t.app.svc.vouchers.get(v!.id);
     await t.login(page, 'admin', 'admin');
     await page.getByRole('row').filter({ hasText: '往返测试' }).getByRole('checkbox').check();
@@ -121,8 +127,8 @@ test('w_pz_pzxsb 插入/重排取消不变，筛选URL与跨模块路由，导�
     await expect(dialog).toContainText('旧号');
     await dialog.getByRole('button', { name: '取消', exact: true }).click();
     expect(await t.app.svc.vouchers.get(v!.id)).toEqual(before);
-    await page.getByLabel('金额起（分）', { exact: true }).fill('1');
-    await page.getByLabel('金额止（分）', { exact: true }).fill('1');
+    await page.getByLabel('金额起（元）', { exact: true }).fill('0.01');
+    await page.getByLabel('金额止（元）', { exact: true }).fill('0.01');
     await page.getByRole('button', { name: '查询', exact: true }).click();
     await expect(page).toHaveURL(/amountFrom=1/);
     await page.reload();
@@ -175,13 +181,15 @@ test('w_pz_pzxsb 插入/重排取消不变，筛选URL与跨模块路由，导�
       .getByRole('button', { name: '浏览', exact: true })
       .click();
     dialog = page.getByRole('dialog', { name: '凭证浏览', exact: true });
-    await expect(dialog).toContainText('由 cashier 生成');
+    await expect(dialog).toContainText('由来源单据生成，请在来源页面处理');
+    await expect(dialog).not.toContainText('cashier');
     await dialog.getByRole('button', { name: '关闭' }).click();
     const row = page.getByRole('row').filter({ hasText: '其它模块来源' });
     await row.getByRole('checkbox').check();
     await page.getByRole('button', { name: '删除', exact: true }).click();
     dialog = page.getByRole('dialog', { name: '删除预览', exact: true });
-    await expect(dialog).toContainText('其它模块来源 cashier');
+    await expect(dialog).toContainText('凭证由其他业务生成，请到来源单据处理');
+    await expect(dialog).not.toContainText('cashier');
     await dialog.getByRole('button', { name: '取消', exact: true }).click();
     await row.getByRole('button', { name: '打开', exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/m/voucher-entry/edit\\?id=${foreign.id}`));

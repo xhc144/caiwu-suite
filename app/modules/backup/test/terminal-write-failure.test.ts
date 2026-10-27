@@ -26,6 +26,13 @@ it('w_bf：最终状态/日志持久化失败不吞错，维护、关闭和退�
     });
     for (const key of ['jobError', 'maintenanceError', 'closeError', 'stopError'])
       expect(evidence[key]).toBe('备份最终状态或日志未能保存，不能安全关闭账套');
+    expect(evidence.recovery).toEqual({
+      item: { status: 'failed', reason: '文件读写或 SQLite 校验失败' },
+      logs: [{ action: 'backup.failed', user_id: 1, user_name: '系统管理员' }],
+      state: 'stopped',
+      rawOpen: false,
+      newCommit: { value: 'true' },
+    });
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

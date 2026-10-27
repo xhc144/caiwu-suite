@@ -1,4 +1,5 @@
 import type { Generated } from '@caiwu/db';
+import type { AccountClosingRule } from '../account';
 
 /**
  * 核心表的 Kysely 类型，与 migrations.ts 保持一致。
@@ -91,6 +92,7 @@ export interface CoreDB {
     pinyin: string;
     disabled: number;
     attrs: string;
+    revision: Generated<number>;
     sort: number;
     created_at: string;
     updated_at: string;
@@ -104,6 +106,11 @@ export interface CoreDB {
     level: number;
     category_id: string;
     direction: 'debit' | 'credit';
+    is_contra: Generated<number>;
+    balance_nature: Generated<'debit' | 'credit' | 'both' | 'no-closing-balance' | null>;
+    closing_rule: Generated<AccountClosingRule | null>;
+    source: Generated<string | null>;
+    source_version: Generated<string | null>;
     is_leaf: number;
     disabled: number;
     is_cash: number;
@@ -177,6 +184,8 @@ export interface CoreDB {
   voucher_line: {
     id: Generated<number>;
     voucher_id: number;
+    cashflow_direction: Generated<'inflow' | 'outflow' | 'internal' | null>;
+    entry_side: Generated<'debit' | 'credit' | null>;
     line_no: number;
     period: number;
     summary: string;
