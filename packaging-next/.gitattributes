@@ -1,2 +1,0 @@
-# Preserve the upstream license byte-for-byte, including original CRLF and whitespace.
-NSIS-COPYING.txt -text -whitespace

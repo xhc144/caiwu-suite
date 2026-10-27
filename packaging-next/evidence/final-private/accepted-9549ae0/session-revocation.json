@@ -1,9 +1,0 @@
-{
-  "id": "08a0acd6-ce1f-46ef-86b3-dba6c026388e",
-  "actorKey": "operator:08a0acd6ce1f46ef86b3dba6c026388e",
-  "loginName": "FIXTURE-REVIEWER",
-  "beforeEnabled": true,
-  "afterEnabled": false,
-  "ordinaryAuthorizedApi": "LocalOperatorService.UpdateOperator",
-  "noLedgerWrite": true
-}

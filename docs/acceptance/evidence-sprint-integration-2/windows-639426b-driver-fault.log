@@ -1,9 +1,0 @@
-NATIVE-DIALOG-DRIVER-FAIL: System.AggregateException: One or more errors occurred. (Native confirmation button missing/disabled/hidden.)
- ---> System.InvalidOperationException: Native confirmation button missing/disabled/hidden.
-   at Program.Check(Boolean value, String message) in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.Acceptance\MutationWindows\Program.cs:line 147
-   at Program.<>c__DisplayClass13_0.<Dialogs>b__0() in D:\a\caiwu-suite\caiwu-suite\tests\Caiwu.Acceptance\MutationWindows\Program.cs:line 176
-   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
---- End of stack trace from previous location ---
-   at System.Threading.ExecutionContext.RunFromThreadPoolDispatchLoop(Thread threadPoolThread, ExecutionContext executionContext, ContextCallback callback, Object state)
-   at System.Threading.Tasks.Task.ExecuteWithThreadLocal(Task& currentTaskSlot, Thread threadPoolThread)
-   --- End of inner exception stack trace ---

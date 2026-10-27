@@ -1,7 +1,0 @@
-{
-  "sourceCommit": "500024c15b4feb51550f491b19d732ffe5a06f52",
-  "runUrl": "https://github.com/xhc144/caiwu-suite/actions/runs/40192804676",
-  "status": "compile-failed; installed business cases not run",
-  "reason": "New independent provenance-hash utility omitted explicit System.IO required by WPF implicit-using set. Added using System.IO; production unchanged.",
-  "logSha256": "ae53f20683f0f9fa32c1d5e1217d8b69fc65c3ed21bbf192806f0721c85c5210"
-}
