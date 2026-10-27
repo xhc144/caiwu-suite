@@ -1,3 +1,0 @@
-import { moduleApi } from '@caiwu/web-kit';
-import type { PrintRouter } from '../server/router';
-export const api = moduleApi<PrintRouter>('print-settings');

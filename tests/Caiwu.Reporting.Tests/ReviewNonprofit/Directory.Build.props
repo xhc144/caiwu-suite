@@ -1,8 +1,0 @@
-<Project>
-  <Import Project="../../../Directory.Build.props" />
-  <PropertyGroup>
-    <!-- Keep generated .cs files out of the enclosing Reporting.Tests default source glob. -->
-    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory).build/obj/</BaseIntermediateOutputPath>
-    <BaseOutputPath>$(MSBuildThisFileDirectory).build/bin/</BaseOutputPath>
-  </PropertyGroup>
-</Project>
