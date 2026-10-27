@@ -1,9 +1,43 @@
+import type { Page } from '@playwright/test';
 import { seedVouchers } from '@caiwu/testkit';
 import periodCloseServer from '../server';
 import { test, expect } from './fixture';
 
 // 本模块在 CI 和本地都只执行一次，失败必须保留。
 test.describe.configure({ retries: 0 });
+
+async function confirmPeriodAction(page: Page, title: string, action: 'close' | 'reopen') {
+  const confirmation = page.locator('.ant-popover').filter({
+    has: page.getByText(title, { exact: true }),
+  });
+  await expect(confirmation).toBeVisible();
+  // 入场缩放会移动确认按钮；等待真实动画完成，不修改动画或绕过命中检查。
+  await expect
+    .poll(() =>
+      confirmation.evaluate(
+        (element) =>
+          getComputedStyle(element).transform === 'none' &&
+          !/ant-zoom-big-(appear|enter)/.test(element.getAttribute('class') ?? '') &&
+          !element.getAnimations({ subtree: true }).some((entry) => entry.playState === 'running'),
+      ),
+    )
+    .toBe(true);
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === `/trpc/m.period-close.${action}`,
+      { timeout: 5_000 },
+    ),
+    confirmation.getByRole('button', { name: '确定', exact: true }).click(),
+  ]);
+  expect(response.ok()).toBe(true);
+  expect(await response.json()).toMatchObject([
+    { result: { data: { message: expect.any(String) } } },
+  ]);
+  // 旧层完全退场后才能打开下一次确认；定位始终属于当前动作。
+  await expect(confirmation).toBeHidden();
+}
 
 test('独立账套真实主流程：过账 → 浏览器结转预览生成 → 夹具用户B审核 → 过账 → 结账 → 反结账', async ({
   page,
@@ -52,10 +86,10 @@ test('独立账套真实主流程：过账 → 浏览器结转预览生成 → �
   const opening = await app.svc.opening.list(2026);
   const balances = await app.svc.ledger.balances({ periodFrom: 202601, periodTo: 202601 });
   await page.getByRole('button', { name: '结账', exact: true }).click();
-  await page.getByRole('button', { name: '确定', exact: true }).click();
+  await confirmPeriodAction(page, '确认结账 2026年01月？', 'close');
   await expect(page.getByRole('heading', { name: /2026年01月 · 已结账/ })).toBeVisible();
   await page.getByRole('button', { name: '反结账', exact: true }).click();
-  await page.getByRole('button', { name: '确定', exact: true }).click();
+  await confirmPeriodAction(page, '从 202601 向前反结账至 202601？', 'reopen');
   await expect(
     page.getByText('已反结账 1 个月，余额及当年期初保持不变', { exact: true }),
   ).toBeVisible();
