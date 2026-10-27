@@ -7,5 +7,6 @@ export default defineWebModule(manifest, {
     { path: '/', title: '报表管理', component: lazy(() => import('./ListPage')) },
     { path: '/designer', title: '报表定义', component: lazy(() => import('./DesignerPage')) },
     { path: '/view', title: '报表生成', component: lazy(() => import('./ViewPage')) },
+    { path: '/statutory', title: '法定报表', component: lazy(() => import('./StatutoryPage')) },
   ],
 });

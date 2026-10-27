@@ -13,6 +13,7 @@ import {
 import { ReportTemplateSchema, type Report } from '../shared';
 import exampleTemplate from '../templates/example.json';
 import { api } from './api';
+import StatutoryList, { StatutoryChoices } from './StatutoryList';
 
 type Editing = { mode: 'new' } | { mode: 'copy' | 'header'; report: Report };
 type Fields = { code: string; name: string; rows: number; cols: number };
@@ -114,7 +115,7 @@ export default function ListPage() {
   return (
     <PageContainer
       title="报表管理"
-      subtitle="自定义单元格报表；示例用于演示，不代表法定报表。"
+      subtitle="选择适用的法定报表，或定义自己的单元格报表。"
       extra={
         canEdit && (
           <Button type="primary" onClick={() => setEditing({ mode: 'new' })}>
@@ -123,6 +124,7 @@ export default function ListPage() {
         )
       }
     >
+      <StatutoryList />
       <FilterBar<{ keyword: string }>
         initialValues={filters}
         onSearch={(v) => {
@@ -235,6 +237,13 @@ function HeaderDrawer({
   };
   return (
     <Drawer open title={title} onClose={onClose} destroyOnHidden size={420}>
+      {editing.mode === 'new' && (
+        <>
+          <h3>选择法定报表</h3>
+          <StatutoryChoices />
+          <h3>或新增自定义报表</h3>
+        </>
+      )}
       <Form<Fields>
         layout="vertical"
         form={form}
