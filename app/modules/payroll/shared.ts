@@ -250,6 +250,7 @@ export const PasteInputSchema = z.object({
     .min(1)
     .max(500),
 });
+export const CASH_DENOMINATIONS = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1];
 export const ReportInputSchema = z.object({
   categoryId: zId,
   from: zPeriod,
@@ -258,11 +259,17 @@ export const ReportInputSchema = z.object({
   employeeIds: z.array(zId).min(1, '请选择报告人员').max(500),
   columns: z.array(z.string()).min(1, '请选择汇总栏目').max(50),
   kind: z.enum(['table', 'department', 'cumulative', 'cash']),
+  cashField: z.string().min(1).max(30).default('net'),
   denominations: z
     .array(zCents.refine((v) => v > 0, '面额须为正整数分'))
-    .min(1)
+    .min(1, '至少选择一种票面面额')
     .max(20)
-    .default([10000, 5000, 2000, 1000, 500, 200, 100, 50, 20, 10, 5, 2, 1]),
+    .refine((units) => new Set(units).size === units.length, '票面面额不能重复')
+    .refine(
+      (units) => units.every((unit) => CASH_DENOMINATIONS.includes(unit)),
+      '请选择支持的人民币面额',
+    )
+    .default(CASH_DENOMINATIONS),
 });
 export type ReportInput = z.output<typeof ReportInputSchema>;
 export const QueryConditionSchema = z.discriminatedUnion('field', [

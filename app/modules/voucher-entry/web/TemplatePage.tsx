@@ -9,7 +9,7 @@ import { blankLine } from '../shared';
 import { api } from './api';
 import { confirm } from './dialogs';
 import LineGrid, { LineDetails } from './LineGrid';
-import CalculatorDialog from './CalculatorDialog';
+import CalculatorDialog, { type CalculatorDialogHandle } from './CalculatorDialog';
 
 type TemplateDraft = {
   id?: number;
@@ -27,6 +27,7 @@ export default function TemplatePage() {
   const boot = useQuery(api.bootstrap.queryOptions());
   const canEdit = usePermission('voucher-entry.template');
   const [draft, setDraft] = useState<TemplateDraft | null>(null);
+  const calculatorFocus = useRef<CalculatorDialogHandle>(null);
   const [active, setActive] = useState(0);
   const [details, setDetails] = useState(false);
   const [calculator, setCalculator] = useState<{
@@ -332,6 +333,10 @@ export default function TemplatePage() {
       <Modal
         title={draft?.id ? '编辑凭证模版' : '新增凭证模版'}
         open={!!draft}
+        afterOpenChange={(open) => {
+          // 父层入场会重新聚焦；将焦点交还给仍在打开的计算器算式。
+          if (open) calculatorFocus.current?.focusExpression();
+        }}
         width="95vw"
         onCancel={() => void close()}
         onOk={() => void submit()}
@@ -440,7 +445,12 @@ export default function TemplatePage() {
       </Drawer>
       {calculator && (
         <CalculatorDialog
-          onClose={() => setCalculator(null)}
+          ref={calculatorFocus}
+          onClose={() => {
+            const { line, side } = calculator;
+            setCalculator(null);
+            if (side) focus(line, side);
+          }}
           target={
             calculator.side
               ? `第${calculator.line + 1}行${calculator.side === 'debit' ? '借方' : '贷方'}`

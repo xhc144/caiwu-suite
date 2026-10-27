@@ -8,6 +8,7 @@ export type OpeningFilters = {
   quantity: boolean;
   account: string;
   dimension: string;
+  item: string;
 };
 const defaults: OpeningFilters = {
   year: 0,
@@ -15,6 +16,7 @@ const defaults: OpeningFilters = {
   quantity: false,
   account: '',
   dimension: '',
+  item: '',
 };
 export function parseFilters(search: string): OpeningFilters {
   const p = new URLSearchParams(search);
@@ -24,15 +26,18 @@ export function parseFilters(search: string): OpeningFilters {
     quantity: ['1', 'true'].includes(p.get('quantity') ?? ''),
     account: p.get('account') ?? '',
     dimension: p.get('dimension') ?? '',
+    item: p.get('item') ?? '',
   };
 }
-/** 壳的标签页 location 在同路径替换参数时可能滞后。保留 useUrlFilters 写地址，
- * 本地立即更新查询；仅活动标签同步浏览器参数，隐藏标签保留自己的条件。 */
+const tabPath = (pathname: string) => pathname.replace(/\/+$/, '') || '/';
+/** 保留 useUrlFilters 写地址并即时更新本地条件；活动标签同步浏览器参数，
+ * 隐藏标签保留自己的条件。尾斜杠与壳的标签身份采用同样的比较口径。 */
 export function useOpeningFilters(): [OpeningFilters, (next: Partial<OpeningFilters>) => void] {
   const [urlFilters, setUrlFilters] = useUrlFilters(defaults);
   const { active, key } = useTab();
   const [filters, setFilters] = useState<OpeningFilters>(urlFilters);
-  const browserSearch = active && window.location.pathname === key ? window.location.search : null;
+  const browserSearch =
+    active && tabPath(window.location.pathname) === tabPath(key) ? window.location.search : null;
   useEffect(() => {
     if (browserSearch != null) {
       const next = parseFilters(browserSearch);
@@ -43,7 +48,7 @@ export function useOpeningFilters(): [OpeningFilters, (next: Partial<OpeningFilt
   }, [browserSearch]);
   useEffect(() => {
     const pop = () => {
-      if (active && window.location.pathname === key)
+      if (active && tabPath(window.location.pathname) === tabPath(key))
         setFilters(parseFilters(window.location.search));
     };
     window.addEventListener('popstate', pop);

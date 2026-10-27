@@ -1,5 +1,7 @@
 import { loginWithNewBook, callApi } from '@caiwu/testkit/e2e';
-import type { Page } from '@playwright/test';
+import type { Page, Response } from '@playwright/test';
+import type { inferRouterOutputs } from '@trpc/server';
+import type { InvoiceRouter } from '../server/router';
 import type { Invoice } from '../shared';
 import { sampleFile } from '../test/fixtures';
 import { test, expect } from './isolated';
@@ -13,111 +15,236 @@ async function select(page: Page, label: string, text: string) {
 test('w_fp_lr_2 → w_fp_sz_2 → w_fp_pz → w_fp_zzs_hz：5票真实导入、配置、来源凭证与pending/posted比对', async ({
   page,
   isolated,
-}) => {
+}, testInfo) => {
+  // 真实导入、配置、制证和过账共用总预算；局部响应/断言仍有独立上限。
+  test.setTimeout(60_000);
+  const started = performance.now();
+  const timings: { phase: string; durationMs: number; passed: boolean }[] = [];
+  async function phase<T>(name: string, run: () => Promise<T>, timeout?: number): Promise<T> {
+    const start = performance.now();
+    let passed = false;
+    try {
+      const result = await test.step(name, run, { timeout });
+      passed = true;
+      return result;
+    } finally {
+      const timing = { phase: name, durationMs: Math.round(performance.now() - start), passed };
+      timings.push(timing);
+      console.info('[invoice-long-chain]', JSON.stringify(timing));
+    }
+  }
   const { origin, request, inBook } = isolated;
-  const { bookId, token } = await loginWithNewBook(page, request, { product: 'chengben' });
-  await inBook(bookId, createInvoiceAccounts);
-  await page.goto(`${origin}/m/invoice/input`);
-  await page.getByRole('button', { name: '导入 Excel', exact: true }).click();
-  const file = await sampleFile();
-  await page.getByLabel('选择 Excel 文件', { exact: true }).setInputFiles({
-    name: file.fileName,
-    mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    buffer: Buffer.from(file.base64, 'base64'),
-  });
-  const dialog = page.getByRole('dialog', { name: 'Excel 发票导入预览' });
-  await expect(
-    dialog.getByRole('heading', { name: '预览 5 张发票 / 错误 0 行 / 重复或冲突 0 张' }),
-  ).toBeVisible();
-  await expect(dialog.getByRole('row', { name: /00000000000000000001/ })).toContainText('150.00');
-  await dialog.getByRole('button', { name: '确认导入', exact: true }).click();
-  await page.getByRole('button', { name: '确定', exact: true }).click();
-  await expect(dialog).toBeHidden();
-  await page.reload();
-  await expect(page.getByRole('row', { name: /00000000000000000001/ })).toContainText('202602');
-  await page.getByRole('columnheader').getByRole('checkbox').check();
-  await page.getByRole('button', { name: '审核所选', exact: true }).click();
-  await expect(page.getByRole('row', { name: /00000000000000000001/ })).toContainText('已审核');
-
-  await page.goto(`${origin}/m/invoice/settings?direction=input`);
-  await page.getByLabel('纳税人口径（由使用者明确配置）').click();
-  await page.getByText('其他口径（用户声明）', { exact: true }).click();
-  await page.getByLabel('进项税额处理口径').click();
-  await page.getByText('税额单列进项税科目（使用者自行核实资格）', { exact: true }).click();
-  await select(page, '材料/费用科目', '7901');
-  await select(page, '材料/费用部门', '发票测试部门');
-  await select(page, '进项税科目', '7902');
-  await select(page, '应付/结算科目', '7903');
-  await select(page, '应付/结算客户/供应商', '发票测试供应商');
-  await select(page, '非抵扣税额成本/费用科目', '7904');
-  const saved = page.waitForResponse(
-    (r) => r.url().includes('m.invoice.saveSettings') && r.status() === 200,
-  );
-  await page.getByRole('button', { name: '保存映射', exact: true }).click();
-  await saved;
-  await page.goto(`${origin}/m/invoice/process?direction=input&period=202602`);
-  await page.getByRole('columnheader').getByRole('checkbox').check();
-  await page.getByLabel('凭证日期', { exact: true }).fill('2026-02-28');
-  await page.getByLabel('凭证字', { exact: true }).click();
-  await page.getByText('记账凭证', { exact: true }).click();
-  await page.getByRole('button', { name: '预览分录', exact: true }).click();
-  await expect(page.getByText('凭证预览（尚未保存）', { exact: true })).toBeVisible();
-  await expect(page.getByText('-5.00', { exact: true }).last()).toBeVisible();
-  const generation = page.waitForRequest(
-    (r) => r.url().includes('m.invoice.generate') && r.method() === 'POST',
-  );
-  await page.getByRole('button', { name: '确认生成凭证', exact: true }).click();
-  await page.getByRole('button', { name: '确定', exact: true }).click();
-  await expect(page.getByText('凭证预览（尚未保存）', { exact: true })).toBeHidden();
-  const docs = await callApi<Invoice[]>(
-    request,
-    'm.invoice.list',
-    { direction: 'input' },
-    { token, method: 'GET' },
-  );
-  expect(docs).toHaveLength(5);
-  expect(new Set(docs.map((d) => d.voucherId)).size).toBe(1);
-  const voucherId = docs[0]!.voucherId!;
-  await expect(page.getByRole('link', { name: '去凭证处理', exact: true })).toHaveAttribute(
-    'href',
-    `/m/voucher-book?period=202602&status=pending`,
-  );
-  await expect(page.getByRole('link', { name: '记-0001', exact: true }).last()).toHaveAttribute(
-    'href',
-    `/m/voucher-entry/edit?id=${voucherId}`,
-  );
-  await page.goto(`${origin}/m/invoice/vat`);
-  const vatRow = page
-    .getByRole('row')
-    .filter({ has: page.getByRole('cell', { name: '进项', exact: true }) })
-    .filter({ has: page.getByRole('cell', { name: '202602', exact: true }) });
-  await expect(vatRow).toContainText('100.00');
-  await expect(vatRow).toContainText('-100.00');
-  await expect(page.getByText('账面口径：仅已过账（默认）', { exact: true })).toBeVisible();
-  await page.getByLabel('含未过账').check();
-  await page.getByRole('button', { name: /^(?:search )?查询$/ }).click();
-  await expect(vatRow).not.toContainText('-100.00');
-  await inBook(bookId, async (svc) => {
-    await svc.vouchers.changeStatus({ ids: [voucherId], to: 'audited' });
-    await svc.vouchers.changeStatus({ ids: [voucherId], to: 'posted' });
-  });
-  await page.getByLabel('含未过账').uncheck();
-  await page.getByRole('button', { name: /^(?:search )?查询$/ }).click();
-  await page.getByRole('button', { name: '刷新比对', exact: true }).click();
-  await expect(vatRow).not.toContainText('-100.00');
-  await expect(vatRow.getByRole('cell', { name: '100.00', exact: true })).toHaveCount(2);
-  await expect(vatRow.getByRole('cell', { name: '0.00', exact: true })).toHaveCount(1);
-  await expect(vatRow.getByRole('link', { name: '明细账', exact: true })).toHaveAttribute(
-    'href',
-    '/m/ledgers/detail?account=7902&from=202602&to=202602&dims=',
-  );
-  const originalInput = (await generation).postDataJSON() as Record<string, unknown>;
-  expect(originalInput['0']).toBeDefined();
-  await callApi(request, 'm.invoice.generate', originalInput['0'], { token });
-  await expect(saveInvoiceAgain(request, token, docs[0]!)).rejects.toThrow(/已审核或已后续处理/);
-  await inBook(bookId, async (svc) => {
-    expect((await svc.vouchers.list({ sourceModule: 'invoice' })).total).toBe(1);
-  });
+  try {
+    const { bookId, token } = await phase('新账套登录与科目准备', async () => {
+      const book = await loginWithNewBook(page, request, { product: 'chengben' });
+      await inBook(book.bookId, createInvoiceAccounts);
+      return book;
+    });
+    await phase('五票真实导入与审核', async () => {
+      await page.goto(`${origin}/m/invoice/input`);
+      await page.getByRole('button', { name: '导入 Excel', exact: true }).click();
+      const file = await sampleFile();
+      await page.getByLabel('选择 Excel 文件', { exact: true }).setInputFiles({
+        name: file.fileName,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        buffer: Buffer.from(file.base64, 'base64'),
+      });
+      const dialog = page.getByRole('dialog', { name: 'Excel 发票导入预览' });
+      await expect(
+        dialog.getByRole('heading', { name: '预览 5 张发票 / 错误 0 行 / 重复或冲突 0 张' }),
+      ).toBeVisible();
+      await expect(dialog.getByRole('row', { name: /00000000000000000001/ })).toContainText(
+        '150.00',
+      );
+      await dialog.getByRole('button', { name: '确认导入', exact: true }).click();
+      await page.getByRole('button', { name: '确定', exact: true }).click();
+      await expect(dialog).toBeHidden();
+      await page.reload();
+      await expect(page.getByRole('row', { name: /00000000000000000001/ })).toContainText('202602');
+      await page.getByRole('columnheader').getByRole('checkbox').check();
+      await page.getByRole('button', { name: '审核所选', exact: true }).click();
+      await expect(page.getByRole('row', { name: /00000000000000000001/ })).toContainText('已审核');
+    });
+    await phase('配置科目映射', async () => {
+      await page.goto(`${origin}/m/invoice/settings?direction=input`);
+      await page.getByLabel('纳税人口径（由使用者明确配置）').click();
+      await page.getByText('其他口径（用户声明）', { exact: true }).click();
+      await page.getByLabel('进项税额处理口径').click();
+      await page.getByText('税额单列进项税科目（使用者自行核实资格）', { exact: true }).click();
+      await select(page, '材料/费用科目', '7901');
+      await select(page, '材料/费用部门', '发票测试部门');
+      await select(page, '进项税科目', '7902');
+      await select(page, '应付/结算科目', '7903');
+      await select(page, '应付/结算客户/供应商', '发票测试供应商');
+      await select(page, '非抵扣税额成本/费用科目', '7904');
+      const saved = page.waitForResponse(
+        (r) => r.url().includes('m.invoice.saveSettings') && r.status() === 200,
+      );
+      await page.getByRole('button', { name: '保存映射', exact: true }).click();
+      await saved;
+    });
+    const { docs, voucherId, generation } = await phase('预览与生成来源凭证', async () => {
+      await page.goto(`${origin}/m/invoice/process?direction=input&period=202602`);
+      await page.getByRole('columnheader').getByRole('checkbox').check();
+      await page.getByLabel('凭证日期', { exact: true }).fill('2026-02-28');
+      await page.getByLabel('凭证字', { exact: true }).click();
+      await page.getByText('记账凭证', { exact: true }).click();
+      await page.getByRole('button', { name: '预览分录', exact: true }).click();
+      await expect(page.getByText('凭证预览（尚未保存）', { exact: true })).toBeVisible();
+      await expect(page.getByText('-5.00', { exact: true }).last()).toBeVisible();
+      const generation = page.waitForRequest(
+        (r) => r.url().includes('m.invoice.generate') && r.method() === 'POST',
+      );
+      await page.getByRole('button', { name: '确认生成凭证', exact: true }).click();
+      await page.getByRole('button', { name: '确定', exact: true }).click();
+      await expect(page.getByText('凭证预览（尚未保存）', { exact: true })).toBeHidden();
+      const docs = await callApi<Invoice[]>(
+        request,
+        'm.invoice.list',
+        { direction: 'input' },
+        { token, method: 'GET' },
+      );
+      expect(docs).toHaveLength(5);
+      expect(new Set(docs.map((d) => d.voucherId)).size).toBe(1);
+      const voucherId = docs[0]!.voucherId!;
+      await expect(page.getByRole('link', { name: '去凭证处理', exact: true })).toHaveAttribute(
+        'href',
+        `/m/voucher-book?period=202602&status=pending`,
+      );
+      await expect(page.getByRole('link', { name: '记-0001', exact: true }).last()).toHaveAttribute(
+        'href',
+        `/m/voucher-entry/edit?id=${voucherId}`,
+      );
+      return { docs, voucherId, generation };
+    });
+    const vatRow = await phase('VAT待审核与含未过账口径', async () => {
+      await page.goto(`${origin}/m/invoice/vat?year=2026&groupBy=month&includeUnposted=0`);
+      const vatRow = page
+        .getByRole('row')
+        .filter({ has: page.getByRole('cell', { name: '进项', exact: true }) })
+        .filter({ has: page.getByRole('cell', { name: '202602', exact: true }) });
+      await expect(vatRow).toContainText('100.00');
+      await expect(vatRow).toContainText('-100.00');
+      await expect(page.getByText('账面口径：仅已过账（默认）', { exact: true })).toBeVisible();
+      await page.getByLabel('含未过账').check();
+      await page.getByRole('button', { name: /^(?:search )?查询$/ }).click();
+      await expect(vatRow).not.toContainText('-100.00');
+      return vatRow;
+    });
+    await phase(
+      '同账套core审核过账与HTTP posted回读',
+      async () => {
+        await inBook(bookId, async (svc) => {
+          expect((await svc.book.info()).id).toBe(bookId);
+          expect((await svc.vouchers.get(voucherId))?.status).toBe('pending');
+          await svc.vouchers.changeStatus({ ids: [voucherId], to: 'audited' });
+          await svc.vouchers.changeStatus({ ids: [voucherId], to: 'posted' });
+          expect((await svc.vouchers.get(voucherId))?.status).toBe('posted');
+        });
+        const me = await callApi<{ book: { id: string } }>(
+          request,
+          'core.auth.me',
+          {},
+          {
+            token,
+            method: 'GET',
+          },
+        );
+        expect(me.book.id).toBe(bookId);
+        const posted = await callApi<{ id: number; status: string }>(
+          request,
+          'core.vouchers.get',
+          { id: voucherId },
+          { token, method: 'GET' },
+        );
+        expect(posted).toMatchObject({ id: voucherId, status: 'posted' });
+      },
+      10000,
+    );
+    await phase(
+      '查询后立即刷新：同会话精确VAT响应',
+      async () => {
+        await page.getByLabel('含未过账').uncheck();
+        const matchesVat = (response: Response) => {
+          const url = new URL(response.url());
+          const req = response.request();
+          const index = url.pathname.split('/trpc/')[1]?.split(',').indexOf('m.invoice.vat') ?? -1;
+          if (
+            url.origin !== origin ||
+            index < 0 ||
+            response.status() !== 200 ||
+            req.method() !== 'GET' ||
+            req.headers()['authorization'] !== `Bearer ${token}`
+          )
+            return false;
+          const batch = JSON.parse(url.searchParams.get('input') ?? '{}') as Record<
+            string,
+            unknown
+          >;
+          const input = batch[String(index)];
+          return (
+            JSON.stringify(input) ===
+            JSON.stringify({
+              year: 2026,
+              groupBy: 'month',
+              includeUnposted: false,
+            })
+          );
+        };
+        // 在两个动作前监听；两次点击之间不能等待响应，以保留原竞态窗口。
+        const changed = page.waitForResponse(matchesVat, { timeout: 5_000 });
+        await page.getByRole('button', { name: /^(?:search )?查询$/ }).click();
+        await page.getByRole('button', { name: '刷新比对', exact: true }).click();
+        const response = await changed;
+        const index = new URL(response.url()).pathname
+          .split('/trpc/')[1]!
+          .split(',')
+          .indexOf('m.invoice.vat');
+        type VatRows = inferRouterOutputs<InvoiceRouter>['vat'];
+        const body = (await response.json()) as { result: { data: VatRows } }[];
+        expect(body[index]!.result.data.find((r) => r.key === 'input-202602')).toMatchObject({
+          count: 5,
+          face: 10000,
+          book: 10000,
+          difference: 0,
+        });
+      },
+      5000,
+    );
+    await phase(
+      'VAT最终DOM金额与明细账链接',
+      async () => {
+        await expect(vatRow).not.toContainText('-100.00');
+        await expect(vatRow.getByRole('cell', { name: '100.00', exact: true })).toHaveCount(2);
+        await expect(vatRow.getByRole('cell', { name: '0.00', exact: true })).toHaveCount(1);
+        await expect(vatRow.getByRole('link', { name: '明细账', exact: true })).toHaveAttribute(
+          'href',
+          '/m/ledgers/detail?account=7902&from=202602&to=202602&dims=',
+        );
+      },
+      5000,
+    );
+    await phase('重复生成与来源锁定', async () => {
+      const originalInput = (await generation).postDataJSON() as Record<string, unknown>;
+      expect(originalInput['0']).toBeDefined();
+      await callApi(request, 'm.invoice.generate', originalInput['0'], { token });
+      await expect(saveInvoiceAgain(request, token, docs[0]!)).rejects.toThrow(
+        /已审核或已后续处理/,
+      );
+      await inBook(bookId, async (svc) => {
+        expect((await svc.vouchers.list({ sourceModule: 'invoice' })).total).toBe(1);
+      });
+    });
+  } finally {
+    await testInfo.attach('invoice-long-chain-timings', {
+      body: JSON.stringify(
+        { bodyDurationMs: Math.round(performance.now() - started), timings },
+        null,
+        2,
+      ),
+      contentType: 'application/json',
+    });
+  }
 });
 
 test('w_fp_lr_2：已过账来源锁定、重复导入预览与Excel导出', async ({ page, isolated }) => {

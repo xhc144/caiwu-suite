@@ -149,17 +149,24 @@ export const masterdataRouter = m.router({
     export: view
       .input(
         z.object({
-          kind: z.enum(['accounts', 'dimensions']),
+          kind: z.enum(['accounts', 'dimensions', 'reference']),
           type: DimensionTypeSchema.optional(),
+          referenceKind: ReferenceKindSchema.optional(),
         }),
       )
-      .query(({ ctx, input }) => excelService(ctx.svc).export(input.kind, input.type)),
+      .query(({ ctx, input }) =>
+        excelService(ctx.svc).export(input.kind, input.type, input.referenceKind),
+      ),
     preview: m.procedure
       .meta({ permission: 'masterdata.import' })
       .input(ExcelInputSchema)
       .mutation(({ ctx, input }) => {
         ctx.svc.permissions.require(
-          input.kind === 'accounts' ? 'masterdata.accounts.edit' : 'masterdata.dimensions.edit',
+          input.kind === 'accounts'
+            ? 'masterdata.accounts.edit'
+            : input.kind === 'dimensions'
+              ? 'masterdata.dimensions.edit'
+              : 'masterdata.reference.edit',
         );
         return excelService(ctx.svc).process(input, false);
       }),
@@ -168,7 +175,11 @@ export const masterdataRouter = m.router({
       .input(ExcelInputSchema)
       .mutation(({ ctx, input }) => {
         ctx.svc.permissions.require(
-          input.kind === 'accounts' ? 'masterdata.accounts.edit' : 'masterdata.dimensions.edit',
+          input.kind === 'accounts'
+            ? 'masterdata.accounts.edit'
+            : input.kind === 'dimensions'
+              ? 'masterdata.dimensions.edit'
+              : 'masterdata.reference.edit',
         );
         return excelService(ctx.svc).process(input, true);
       }),

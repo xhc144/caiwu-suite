@@ -6,7 +6,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
 import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
 import { parseTemplate, templateProblems, type BookInfo } from '@caiwu/core';
-import { CopySchema, filterBooks, validateScheme, WizardSchema } from '../shared';
+import {
+  CopySchema,
+  filterBooks,
+  moveBookSelection,
+  selectedBook,
+  validateScheme,
+  WizardSchema,
+} from '../shared';
 import booksServer from '../server';
 import { booksService, type FileHooks } from '../server/service';
 import small from '../templates/small-business.json';
@@ -489,6 +496,29 @@ describe('w_login / w_xt_tz_find 查找和文件异常', () => {
     await expect(
       app.call(booksServer).copy({ ...copyInput(app.book), targetId: randomUUID() }),
     ).rejects.toThrow(/移走/);
+  });
+  it('w_xt_tz_find 编号支持完整/局部/大小写和空白；同名账套按身份选择，刷新换序不换账套', async () => {
+    const a = await create({ name: '同名账套' });
+    const b = await create({ name: '同名账套' });
+    const list = await app.core(null).books.list();
+    expect(filterBooks(list, '同名账套')).toHaveLength(2);
+    expect(filterBooks(list, ` ${a.id.toUpperCase()} `).map((row) => row.id)).toEqual([a.id]);
+    expect(filterBooks(list, b.id.slice(0, 18)).map((row) => row.id)).toEqual([b.id]);
+    const rows = filterBooks(list, '同名账套');
+    const chosen = moveBookSelection(rows, null, 1);
+    expect(chosen).toBe(rows[1]!.id);
+    expect(selectedBook([...rows].reverse(), chosen)?.id).toBe(chosen);
+    expect(
+      selectedBook(
+        rows.filter((row) => row.id !== chosen),
+        chosen,
+      ),
+    ).toBeUndefined();
+    expect(moveBookSelection([], null, 1)).toBeNull();
+    expect(moveBookSelection([], null, -1)).toBeNull();
+    expect(selectedBook(rows, null)?.id).toBe(rows[0]!.id);
+    expect(moveBookSelection(rows, rows[0]!.id, -1)).toBe(rows[0]!.id);
+    expect(moveBookSelection(rows, rows[1]!.id, 1)).toBe(rows[1]!.id);
   });
 });
 

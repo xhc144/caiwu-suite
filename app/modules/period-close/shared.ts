@@ -36,6 +36,15 @@ export const RuleSchema = z.object({
     })
     .default({}),
   targetCashflows: CashflowsSchema.optional(),
+  // 显式绑定币种/计量单位，档案变化后必须重新设置，不能沿用旧换算。
+  targetConversion: z
+    .object({
+      currency: z.string().trim().min(1).max(10).optional(),
+      exchangeRate: z.string().trim().max(40).pipe(zDecimal).optional(),
+      quantityUnit: z.string().trim().min(1).max(40).optional(),
+      unitPrice: z.string().trim().max(40).pipe(zDecimal).optional(),
+    })
+    .optional(),
   sources: z
     .array(
       z.object({
@@ -58,6 +67,10 @@ export const CloseSchema = PeriodSchema.extend({
   confirmed: z.boolean(),
   allowUntransferredPnl: z.boolean().default(false),
   acknowledgeDrafts: z.boolean().default(false),
+});
+export const CloseRangeSchema = RangeSchema.extend({
+  confirmed: z.boolean(),
+  previewToken: z.string(),
 });
 export const ReopenSchema = RangeSchema.extend({ confirmed: z.boolean() });
 export const RenumberSchema = PeriodSchema.extend({

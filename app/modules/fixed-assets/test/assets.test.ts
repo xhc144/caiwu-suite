@@ -10,6 +10,7 @@ import manifest from '../manifest';
 import type { CardInput } from '../shared';
 import type { FixedAssetsTables } from '../server/migrations';
 import { calculateDepreciation } from '../server/service';
+import { createOpeningWorkbook, readOpeningWorkbook } from '../web/opening-workbook';
 let app: TestApp;
 let api: ReturnType<TestApp['call']> & ReturnType<typeof caller>;
 const caller = (a: TestApp, token?: string) => a.call(server, token);
@@ -639,6 +640,145 @@ describe('固定资产规则与闭环', () => {
     );
     expect(await api.list({ code: 'B' })).toHaveLength(0);
     expect((await code(api.reset())).code).toBe('FIXED_ASSETS_RESET_UNAVAILABLE');
+  });
+  it('w_xt_kgzb_zc/w_zcgl_kp_fssb：双表期初入库、精确附属金额、重导及变更拒绝保留旧账', async () => {
+    const workbook = await createOpeningWorkbook([
+      {
+        values: [
+          '0001',
+          '期初服务器',
+          '01',
+          '01',
+          '01',
+          '01',
+          '2025-01-01',
+          '2025-01-01',
+          '6000',
+          '0',
+          '1',
+          '60',
+          '100',
+          '1',
+          '0',
+          '0',
+          '',
+          '台',
+          '1',
+          '否',
+          '',
+          '参考01',
+        ],
+        accessories: [
+          { code: '000A', name: '硬盘', quantity: '0.1', unitPrice: '0.2', note: '历史说明' },
+        ],
+      },
+    ]);
+    const { rows } = readOpeningWorkbook(workbook, {
+      masters: await api.masters(),
+      departments: await app.svc.dimensions.items('department'),
+    });
+    const preview = await api.importPreview({ rows });
+    expect(preview.valid).toBe(true);
+    expect(await api.importConfirm({ rows, token: preview.token, confirm: true })).toEqual({
+      imported: 1,
+      skipped: 0,
+    });
+    const id = (await api.list({}))[0]!.id;
+    const original = await api.detail({ id });
+    expect(original.card).toMatchObject({ code: '0001', depreciation: 10000, is_opening: 1 });
+    expect(original.accessories[0]).toMatchObject({
+      code: '000A',
+      amount: 2,
+      quantity: '0.1',
+      unit_price: '0.2',
+      note: '历史说明',
+    });
+    const exported = await api.exportOpening();
+    expect(exported.cards[0]).toMatchObject({ id, code: '0001', opening_depreciation: 10000 });
+    expect(exported.accessories[0]).toMatchObject({
+      asset_id: id,
+      code: '000A',
+      amount: 2,
+      note: '历史说明',
+    });
+    const noView = caller(app, await app.addUser('no-asset-view'));
+    expect((await code(noView.exportOpening())).code).toBe('FORBIDDEN');
+    const again = await api.importPreview({ rows });
+    expect(await api.importConfirm({ rows, token: again.token, confirm: true })).toEqual({
+      imported: 0,
+      skipped: 1,
+    });
+    const changed = structuredClone(rows);
+    changed[0]!.data.accessories![0]!.unitPrice = '0.3';
+    const difference = await api.importPreview({ rows: changed });
+    expect(difference.valid).toBe(false);
+    expect(difference.rows[0]!.error).toContain('禁止覆盖');
+    await expect(
+      api.importConfirm({ rows: changed, token: again.token, confirm: true }),
+    ).rejects.toThrow();
+    // 旧单表不能在重导时悄悄删除已有附属设备。
+    changed[0]!.data.accessories = [];
+    expect((await api.importPreview({ rows: changed })).valid).toBe(false);
+    expect((await code(api.reset())).code).toBe('FIXED_ASSETS_RESET_UNAVAILABLE');
+    expect(await api.detail({ id })).toEqual(original);
+  });
+  it('w_xt_kgzb_zc/w_zcgl_kp_fssb：第二张卡片附属写入失败，整批卡片/附属/启用设置/日志回滚', async () => {
+    const oldId = await api.save({
+      data: {
+        ...data,
+        code: 'OLD',
+        accessories: [{ code: 'OLD-A', name: '旧配件', quantity: '1', unitPrice: '10' }],
+      },
+    });
+    const old = await api.detail({ id: oldId });
+    const rows = ['NEW1', 'NEW2'].map((code, index) => ({
+      row: index + 2,
+      data: {
+        ...data,
+        code,
+        accessories: [
+          { code: 'A', name: index ? '模拟失败附属' : '新配件', quantity: '0.1', unitPrice: '0.2' },
+        ],
+      },
+    }));
+    const logsBefore = await app.svc.db.selectFrom('operation_log').selectAll().execute();
+    await sql`CREATE TRIGGER fixed_assets_fail_opening BEFORE INSERT ON fixed_assets_accessory WHEN NEW.name = '模拟失败附属' BEGIN SELECT RAISE(ABORT,'模拟导入中途失败'); END`.execute(
+      app.svc.db,
+    );
+    const preview = await api.importPreview({ rows });
+    expect(preview.valid).toBe(true);
+    await expect(
+      api.importConfirm({ rows, token: preview.token, confirm: true }),
+    ).rejects.toThrow();
+    expect((await api.list({ includeDisposed: true })).map((c) => c.code)).toEqual(['OLD']);
+    expect(await api.detail({ id: oldId })).toEqual(old);
+    expect(await app.svcFor('fixed-assets').settings.get('enabled', false)).toBe(false);
+    expect(await app.svc.db.selectFrom('operation_log').selectAll().execute()).toEqual(logsBefore);
+  });
+  it('w_xt_kgzb_zc/w_zcgl_kp_fssb：附属变更使预览失效、只读用户不能预览或确认导入', async () => {
+    const rows = [
+      {
+        row: 2,
+        data: {
+          ...data,
+          accessories: [{ code: 'A', name: '配件', quantity: '0.1', unitPrice: '0.2' }],
+        },
+      },
+    ];
+    const preview = await api.importPreview({ rows });
+    rows[0]!.data.accessories[0]!.quantity = '0.2';
+    expect(
+      (await code(api.importConfirm({ rows, token: preview.token, confirm: true }))).code,
+    ).toBe('FIXED_ASSETS_PREVIEW_CHANGED');
+    const readOnly = caller(
+      app,
+      await app.addUser('import-viewer', { permissions: ['fixed-assets.view'] }),
+    );
+    expect((await code(readOnly.importPreview({ rows }))).code).toBe('FORBIDDEN');
+    expect(
+      (await code(readOnly.importConfirm({ rows, token: preview.token, confirm: true }))).code,
+    ).toBe('FORBIDDEN');
+    expect(await api.list({})).toEqual([]);
   });
   it('w_zcgl_zs：补零冲突跳过、数字日期校验、确认和锁资产', async () => {
     const id = await api.save({ data: { ...data, code: '1' } });

@@ -30,7 +30,14 @@ export function parseDimensions(text: string): z.infer<typeof DimensionsSchema> 
 }
 
 export const QuerySchema = z.object({
-  mode: z.enum(['summary', 'foreign']).default('summary'),
+  mode: z.enum(['summary', 'foreign', 'quantity']).default('summary'),
+  dimension: z
+    .enum(['', 'project', 'partner', 'department', 'person'], {
+      error: '辅助核算类型无效，请重新选择项目、客供、部门或个人',
+    })
+    .default(''),
+  dimensionFrom: z.string().trim().max(40).default(''),
+  dimensionTo: z.string().trim().max(40).default(''),
   periodFrom: zPeriod.optional(),
   periodTo: zPeriod.optional(),
   codeFrom: z.string().trim().max(40).default(''),
@@ -71,7 +78,16 @@ export type Totals = {
   fcCredit: number;
   fcClosing: number;
 };
-export type ReportGroup = { currency: string; rows: ReportRow[]; totals: Totals };
+export const quantityKeys = ['qtyOpening', 'qtyDebit', 'qtyCredit', 'qtyClosing'] as const;
+export type QuantityTotals = Record<(typeof quantityKeys)[number], string>;
+export type ReportGroup = {
+  currency: string;
+  rows: ReportRow[];
+  totals: Totals;
+  unit?: string;
+  quantityTotals?: QuantityTotals;
+  dimension?: { type: string; id: number | null; code: string; name: string };
+};
 export type Report = {
   periodFrom: number;
   periodTo: number;
@@ -80,7 +96,8 @@ export type Report = {
   groups: ReportGroup[];
   dimensions: DimensionValues;
   includeUnposted: boolean;
-  mode: 'summary' | 'foreign';
+  mode: 'summary' | 'foreign' | 'quantity';
+  auxiliary?: boolean;
   scope: string;
 };
 
@@ -132,6 +149,21 @@ export function reportCaption(report: Report, currency: string): string {
   return `单位：${report.orgName}；期间：${report.periodFrom}—${report.periodTo}；币种：${currency || '全部（仅汇总本位币）'}；本位币：${report.baseCurrency}；金额单位：元；${report.includeUnposted ? '含待审核、已审核、已过账（排除草稿、作废）' : '仅已过账'}；${report.scope}；辅助条件：${JSON.stringify(report.dimensions)}`;
 }
 
+export function reportTitle(report: Pick<Report, 'mode' | 'auxiliary'>): string {
+  return `${report.auxiliary ? '辅助' : ''}${report.mode === 'foreign' ? '外币' : report.mode === 'quantity' ? '数量' : report.auxiliary ? '' : '汇总'}余额表`;
+}
+
+export function groupCaption(group: ReportGroup): string {
+  return [
+    group.unit != null ? `数量单位：${group.unit}（不同单位不合计）` : '',
+    group.dimension
+      ? `辅助类型：${({ project: '项目', partner: '客户/供应商', department: '部门', person: '个人' } as Record<string, string>)[group.dimension.type] ?? group.dimension.type}；辅助项：${group.dimension.code} ${group.dimension.name}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('；');
+}
+
 export type OutputRow = {
   key: string;
   source?: ReportRow;
@@ -149,6 +181,10 @@ export type OutputRow = {
   fcDebit: number;
   fcCredit: number;
   fcClosing: number;
+  qtyOpening?: string;
+  qtyDebit?: string;
+  qtyCredit?: string;
+  qtyClosing?: string;
 };
 
 /** 页、Excel、打印使用相同的行和列值。合计的余额保留借、贷两边。 */
@@ -170,6 +206,7 @@ export function outputRows(group: ReportGroup, level: number, expanded: number[]
     fcDebit: r.fcDebit,
     fcCredit: r.fcCredit,
     fcClosing: r.fcClosing,
+    ...(group.quantityTotals ? Object.fromEntries(quantityKeys.map((key) => [key, r[key]])) : {}),
   }));
   const t = group.totals;
   rows.push({
@@ -181,6 +218,7 @@ export function outputRows(group: ReportGroup, level: number, expanded: number[]
     closingSide: '借 / 贷',
     closing: `${formatMoney(t.closingDebit)} / ${formatMoney(t.closingCredit)}`,
     ...t,
+    ...group.quantityTotals,
   });
   return rows;
 }

@@ -2,7 +2,8 @@
 
 | 文件 | 给谁 |
 |---|---|
-| [orchestrator-prompt.md](orchestrator-prompt.md) | 原样贴给 **GPT 总控**，由它输出后续几十个 Codex 任务的提示词 |
+| [wave3-orchestrator-prompt.md](wave3-orchestrator-prompt.md) | **当前用这个。** 0.2.1 试用后的续改总控提示词：收口 PR、补共享契约、法定报表、企业科目表、逐模块补齐、出 0.3.0 |
+| [orchestrator-prompt.md](orchestrator-prompt.md) | Wave 1/2 的总控提示词，任务格式和模块间约定仍沿用；原样贴给 **GPT 总控**，由它输出后续几十个 Codex 任务的提示词 |
 | [wave0-task.md](wave0-task.md) | 地基任务的原始需求。**已完成**，仅作参考 |
 | [../../AGENTS.md](../../AGENTS.md) | 所有 Codex 任务自动读取的开发指南（规则、写法、core 服务、测试、常见坑） |
 

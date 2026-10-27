@@ -5,9 +5,19 @@ import { payrollService } from './service';
 import { fail, sum } from './engine';
 import type { PayrollTables } from './migrations';
 const builtins = ['gross', 'deductions', 'taxAmount', 'net'];
-export function decomposeCash(net: number, denominations: number[]) {
+const builtinNames: Record<string, string> = {
+  gross: '应发',
+  deductions: '扣款',
+  taxAmount: '个税',
+  net: '实发',
+};
+export function decomposeCash(net: number, denominations: number[], label = '实发工资') {
   if (!Number.isSafeInteger(net) || net < 0)
-    fail('CASH_NEGATIVE', '存在负实发工资，不能计算现金票面', '先检查扣款和预扣，负数不生成负张数');
+    fail(
+      'CASH_NEGATIVE',
+      `存在负${label}，不能计算现金票面`,
+      '先检查所选工资栏目，负数不生成负张数',
+    );
   const units = [...new Set(denominations)].sort((a, b) => b - a);
   let remainder = net;
   const notes = units.map((unit) => {
@@ -50,8 +60,13 @@ export async function salaryReport(svc: CoreServices, raw: ReportInput) {
   for (const col of input.columns)
     if (!builtins.includes(col) && !fields.has(col))
       fail('REPORT_COLUMN', `未知汇总栏目 ${col}`, '选择工资金额栏目');
-  if (input.kind === 'cash' && !input.columns.includes('net'))
-    fail('REPORT_COLUMN', '票面计算必须选择实发栏目', '在汇总栏目中选择实发');
+  const cashName = builtinNames[input.cashField] ?? fields.get(input.cashField);
+  if (input.kind === 'cash') {
+    if (!builtins.includes(input.cashField) && !fields.has(input.cashField))
+      fail('REPORT_COLUMN', `未知票面工资栏目 ${input.cashField}`, '选择本工资类别的金额栏目');
+    if (!input.columns.includes(input.cashField))
+      fail('REPORT_COLUMN', `票面计算必须选择${cashName}栏目`, '在汇总栏目中加入票面所用工资栏目');
+  }
   const selected = (await snapshots(svc, input.categoryId, input.from, input.to)).filter(
     (s) =>
       input.employeeIds.includes(s.row.employeeId) &&
@@ -102,7 +117,7 @@ export async function salaryReport(svc: CoreServices, raw: ReportInput) {
     for (const col of input.columns)
       target.values[col] = sum([target.values[col] ?? 0, value(r, col)]);
     if (input.kind === 'cash') {
-      const cash = decomposeCash(r.net, input.denominations);
+      const cash = decomposeCash(value(r, input.cashField), input.denominations, cashName);
       target.remainder = sum([target.remainder, cash.remainder]);
       for (const note of cash.notes) {
         let n = target.notes.find((n) => n.unit === note.unit);
@@ -119,16 +134,11 @@ export async function salaryReport(svc: CoreServices, raw: ReportInput) {
     totals,
     columns: input.columns.map((key) => ({
       key,
-      name:
-        (
-          { gross: '应发', deductions: '扣款', taxAmount: '个税', net: '实发' } as Record<
-            string,
-            string
-          >
-        )[key] ?? fields.get(key)!,
+      name: builtinNames[key] ?? fields.get(key)!,
     })),
     rows: [...result.values()],
     sourceBatches: [...new Set(selected.map((s) => s.batchId))],
+    cashColumn: input.kind === 'cash' ? { key: input.cashField, name: cashName! } : null,
   };
 }
 export async function querySalary(svc: CoreServices, raw: z.input<typeof SalaryQuerySchema>) {
