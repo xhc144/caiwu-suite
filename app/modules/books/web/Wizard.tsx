@@ -71,6 +71,7 @@ async function verifyBook(book: BookInfo, input: WizardInput) {
                       .direction) &&
                 b.isContra === (a.isContra ?? false) &&
                 (b.balanceNature ?? null) === (a.balanceNature ?? null) &&
+                (b.closingRule ?? null) === (a.closingRule ?? null) &&
                 b.sourceVersion === a.sourceVersion &&
                 b.dimensions.length === a.dimensions.length &&
                 a.dimensions.every((dimension) =>

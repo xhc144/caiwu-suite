@@ -56,6 +56,7 @@ describe('w_xt_kgzb_a2/a3 企业完整官方表及正式增补', () => {
         direction,
         isContra: contra,
         balanceNature: nature,
+        closingRule: closing,
       });
     }
   });
@@ -160,7 +161,7 @@ describe('w_xt_kgzb_a2/a3 企业完整官方表及正式增补', () => {
       'books-enterprise-cas-2006',
       'books-small-business',
     ]);
-    expect(enterpriseChart.version).toBe('2006.18+2026.1');
+    expect(enterpriseChart.version).toBe('2006.18+2026.2');
     expect(meaningForTemplate('books-enterprise-review', '4-2-2')).toEqual([]);
     expect(enterpriseChart.accounts.every((a) => !a.source?.includes('待核'))).toBe(true);
   });

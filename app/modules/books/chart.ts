@@ -46,7 +46,7 @@ const nativeAccounts = rawEnterpriseAccounts.map((account) => ({
 
 export const enterpriseChart = parseTemplate({
   ...enterprise,
-  version: '2006.18+2026.1',
+  version: '2006.18+2026.2',
   name: '企业会计准则',
   order: 10,
   description:

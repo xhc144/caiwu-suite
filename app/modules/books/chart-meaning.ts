@@ -1,18 +1,11 @@
 import { z } from 'zod';
-import type { TemplateAccount } from '@caiwu/core';
+import { ACCOUNT_CLOSING_RULES, type TemplateAccount } from '@caiwu/core';
 
 /** 原始资料的余额/结转性质与共享字段的明确对应，不限制凭证的借贷侧。 */
 export const AccountMeaningSchema = z.object({
   contra: z.boolean(),
   balanceNature: z.enum(['one-sided', 'two-sided']),
-  closingRule: z.enum([
-    'none',
-    'profit',
-    'retained-earnings',
-    'year-retained-earnings',
-    'clearing',
-    'seasonal-allocation',
-  ]),
+  closingRule: z.enum(ACCOUNT_CLOSING_RULES),
   scope: z.string().min(1),
 });
 export type AccountMeaning = z.infer<typeof AccountMeaningSchema>;

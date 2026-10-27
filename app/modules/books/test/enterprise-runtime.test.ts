@@ -53,7 +53,7 @@ describe.each(['4-2-2', '4-3-3'])('w_xt_kgzb_3 / w_login 企业完整SQLite：%s
       const opened = app.runtime.bookStore.open(book.id);
       expect(
         opened.raw.prepare('SELECT template_id,template_version FROM book_info').get(),
-      ).toEqual({ template_id: enterpriseChart.id, template_version: '2006.18+2026.1' });
+      ).toEqual({ template_id: enterpriseChart.id, template_version: '2006.18+2026.2' });
       const svc = createCoreServices({
         db: opened.db,
         user: (await loadServiceUser(opened.db, 1))!,
@@ -74,6 +74,10 @@ describe.each(['4-2-2', '4-3-3'])('w_xt_kgzb_3 / w_login 企业完整SQLite：%s
       });
       expect((await svc.accounts.require('3001')).balanceNature).toBe('both');
       expect((await svc.accounts.require('6001')).balanceNature).toBe('no-closing-balance');
+      expect(await svc.accounts.provenance((await svc.accounts.require('6901')).id)).toMatchObject({
+        closingRule: 'retained-earnings',
+      });
+      expect((await svc.accounts.require('6001')).closingRule).toBe('profit');
       const salary = scheme === '4-2-2' ? '221101' : '2211001';
       const vat = scheme === '4-2-2' ? '22210101' : '2221001001';
       expect((await svc.accounts.require(vat)).parentId).toBe(
