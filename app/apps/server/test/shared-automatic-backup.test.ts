@@ -263,3 +263,105 @@ it('w_autobak：退出备份成功后宿主关闭失败，再次退出仍备份�
     rmSync(checked.snapshot, { force: true });
   }
 });
+
+it.each(['record', 'log'] as const)(
+  'w_autobak：onExit=false定时失败且%s落库失败，修复后真实补写终态并退出，新备份保留新提交',
+  async (fault) => {
+    const callbacks = new Set<() => void>();
+    const module = withAutomaticBackup(backup, {
+      now: Date.now,
+      set: (fn) => {
+        const callback = () => {
+          callbacks.delete(callback);
+          fn();
+        };
+        callbacks.add(callback);
+        return callback;
+      },
+      clear: (id) => callbacks.delete(id as () => void),
+    });
+    app = await createTestApp({ modules: [module] });
+    const api = app.call(module);
+    await api.saveSettings({
+      enabled: true,
+      directory: '自动备份',
+      onStart: true,
+      onExit: false,
+      intervalMinutes: 5,
+      keep: 10,
+    });
+    const raw = app.runtime.bookStore.open(app.book.id).raw;
+    const original = new Set(
+      (raw.prepare('SELECT id FROM backup_item').all() as { id: string }[]).map((row) => row.id),
+    );
+    raw.exec(
+      fault === 'record'
+        ? "CREATE TRIGGER terminal_fault BEFORE UPDATE ON backup_item WHEN NEW.status='failed' BEGIN SELECT RAISE(ABORT,'合成终态记录不可写'); END"
+        : "CREATE TRIGGER terminal_fault BEFORE INSERT ON operation_log WHEN NEW.action='backup.failed' BEGIN SELECT RAISE(ABORT,'合成终态日志不可写'); END",
+    );
+    const spy = vi
+      .spyOn(Database.prototype, 'backup')
+      .mockRejectedValue(new Error('SQLITE_IOERR: 合成定时失败'));
+    try {
+      [...callbacks].at(-1)!();
+      await expect.poll(() => callbacks.size).toBeGreaterThan(0);
+      await expect(app.runtime.lifecycle.stop()).rejects.toThrow(/退出备份失败/);
+      expect(raw.open).toBe(true);
+      expect(
+        raw.prepare("SELECT count(*) AS n FROM operation_log WHERE action='backup.failed'").get(),
+      ).toEqual({ n: 0 });
+      spy.mockRestore();
+      raw.exec('DROP TRIGGER terminal_fault');
+      await app.svc.settings.set('terminal-repair-commit', '故障修复后的新提交');
+      const file = app.runtime.bookStore.pathOf(app.book.id);
+      await app.runtime.lifecycle.stop();
+      expect(app.runtime.lifecycle.state).toBe('stopped');
+      expect(callbacks.size).toBe(0);
+      const closed = new Database(file, { readonly: true });
+      let latest!: { id: string; directory: string };
+      try {
+        expect(
+          closed.prepare("SELECT count(*) AS n FROM backup_item WHERE status='running'").get(),
+        ).toEqual({ n: 0 });
+        expect(
+          closed.prepare("SELECT count(*) AS n FROM backup_item WHERE status='failed'").get(),
+        ).toEqual({ n: 2 });
+        expect(
+          closed
+            .prepare(
+              "SELECT count(*) AS n FROM operation_log WHERE action='backup.failed' AND user_id=1 AND user_name='系统管理员'",
+            )
+            .get(),
+        ).toEqual({ n: 2 });
+        const rows = closed
+          .prepare("SELECT id,directory FROM backup_item WHERE status='valid'")
+          .all() as { id: string; directory: string }[];
+        expect(rows).toHaveLength(2);
+        latest = rows.find((row) => !original.has(row.id))!;
+      } finally {
+        closed.close();
+      }
+      const checked = await validatePackage(
+        packagePath(
+          path.join(app.runtime.dataDir, 'backups', app.book.id, latest.directory),
+          latest.id,
+        ),
+        app.runtime,
+      );
+      const snapshot = new Database(checked.snapshot, { readonly: true });
+      try {
+        expect(
+          snapshot
+            .prepare("SELECT value FROM book_setting WHERE key='terminal-repair-commit'")
+            .get(),
+        ).toEqual({ value: '"故障修复后的新提交"' });
+      } finally {
+        snapshot.close();
+        rmSync(checked.snapshot, { force: true });
+      }
+    } finally {
+      spy.mockRestore();
+      if (raw.open) raw.exec('DROP TRIGGER IF EXISTS terminal_fault');
+    }
+  },
+);

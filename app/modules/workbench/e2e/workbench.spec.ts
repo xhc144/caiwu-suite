@@ -157,28 +157,37 @@ test('首页无业务标签时直接切账套，隐藏业务标签仍需确认�
   await expect(page).toHaveURL(`${seeded.origin}/`);
   expect(await page.evaluate(() => sessionStorage.getItem('caiwu.session'))).toBeNull();
   await seeded.login(page);
-  await page.goto(`${seeded.origin}/m/example/memos`);
-  await page.getByLabel('摘要', { exact: true }).fill('保留隐藏标签输入');
+  await page.goto(`${seeded.origin}/m/example/shared/a`);
+  await page.getByLabel('合成文本', { exact: true }).fill('保留隐藏标签输入');
   await page.getByRole('tab', { name: '首页', exact: true }).click();
   await page.getByRole('button', { name: /系统管理员/ }).hover();
   await userMenu.getByRole('menuitem', { name: '切换账套', exact: true }).click();
-  const confirm = page.getByRole('dialog', { name: '切换账套', exact: true });
+  const confirm = page.getByRole('dialog', { name: '有未保存内容', exact: true });
   await expect(confirm).toBeVisible();
-  await confirm.getByRole('button', { name: '取消', exact: true }).click();
-  await page.getByRole('tab', { name: '示范记账单', exact: true }).click();
-  await expect(page.getByLabel('摘要', { exact: true })).toHaveValue('保留隐藏标签输入');
+  await expect(confirm).toContainText('甲编辑页');
+  await confirm.getByRole('button', { name: /取\s*消/ }).click();
+  await page.getByRole('tab', { name: '甲编辑页', exact: true }).click();
+  await expect(page.getByLabel('合成文本', { exact: true })).toHaveValue('保留隐藏标签输入');
   await page.getByRole('tab', { name: '首页', exact: true }).click();
   await page.evaluate(() => {
     window.onbeforeunload = (e) => e.preventDefault();
   });
   await page.getByRole('button', { name: /系统管理员/ }).hover();
   await userMenu.getByRole('menuitem', { name: '切换账套', exact: true }).click();
-  await confirm.getByRole('button', { name: '已保存内容，继续', exact: true }).click();
+  await confirm.getByRole('button', { name: '保存并继续', exact: true }).click();
   await expect(page).toHaveURL(`${seeded.origin}/home`);
-  await expect(confirm).toBeVisible();
+  await expect(confirm).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      (id) => sessionStorage.getItem(`caiwu.fixture.${id}.甲编辑页`),
+      seeded.bookId,
+    ),
+  ).toBe('保留隐藏标签输入');
+  expect(await page.evaluate(() => sessionStorage.getItem('caiwu.session'))).not.toBeNull();
   await page.evaluate(() => {
     window.onbeforeunload = null;
   });
-  await confirm.getByRole('button', { name: '已保存内容，继续', exact: true }).click();
+  await page.getByRole('button', { name: /系统管理员/ }).hover();
+  await userMenu.getByRole('menuitem', { name: '切换账套', exact: true }).click();
   await expect(page).toHaveURL(`${seeded.origin}/`);
 });

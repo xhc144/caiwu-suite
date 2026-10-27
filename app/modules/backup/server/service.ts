@@ -3,7 +3,13 @@ import { constants } from 'node:fs';
 import { copyFile, link, lstat, open, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { authenticateUser, createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import {
+  authenticateUser,
+  createCoreServices,
+  loadServiceUser,
+  withServiceScope,
+  type CoreServices,
+} from '@caiwu/core/server';
 import type { AppRuntime, AuthedContext } from '@caiwu/server-kit';
 import {
   ConfirmSchema,
@@ -41,6 +47,31 @@ type Protection = {
   available: boolean;
 };
 type Job = { bookId: string; abort: AbortController; promise: Promise<void>; progress: number };
+type Terminal = { status: 'failed' | 'cancelled'; reason: string };
+type FinalFailure = {
+  bookId: string;
+  error: unknown;
+  user: Context['user'];
+  terminal: Terminal;
+  recovering?: Promise<void>;
+};
+
+async function writeFailure(svc: CoreServices, id: string, terminal: Terminal) {
+  const updated = await svc.db
+    .withTables<BackupTables>()
+    .updateTable('backup_item')
+    .set(terminal)
+    .where('id', '=', id)
+    .executeTakeFirst();
+  if (updated.numUpdatedRows !== 1n)
+    throw fail('FINAL_STATE', '备份终态记录不存在，不能确认安全关闭');
+  await svc.log.write({
+    action: 'backup.failed',
+    summary: terminal.reason,
+    targetType: 'backup_item',
+    targetId: id,
+  });
+}
 
 /** 单次扫描，常量栈空间；重复分组正则会在数 MiB 的合法输入上耗尽 V8 栈。 */
 function decodeUploadBase64(text: string): Buffer {
@@ -74,7 +105,7 @@ const states = new WeakMap<
   AppRuntime,
   {
     busy: Set<string>;
-    failures: Map<string, { bookId: string; error: unknown }>;
+    failures: Map<string, FinalFailure>;
     jobs: Map<string, Job>;
     creating: Map<string, Promise<BackupTables['backup_item']>>;
     preparing: Map<string, Promise<Protection>>;
@@ -118,6 +149,34 @@ export async function waitForJobs(app: AppRuntime, bookId?: string, signal?: Abo
   try {
     if (signal?.aborted) abort();
     await Promise.allSettled([...s.jobs.values()].filter(matches).map((j) => j.promise));
+    for (const [id, failure] of [...s.failures]) {
+      if (!matches(failure)) continue;
+      signal?.throwIfAborted();
+      failure.recovering ??= withServiceScope(() =>
+        app.bookStore.withBook(failure.bookId, async (book) => {
+          const svc = createCoreServices({
+            db: book.db,
+            user: failure.user,
+            moduleId: 'backup',
+            now: app.now,
+            modules: app.modules.lookup,
+          });
+          await svc.tx(async (tx) => {
+            signal?.throwIfAborted();
+            await writeFailure(tx, id, failure.terminal);
+            signal?.throwIfAborted();
+          });
+          if (s.failures.get(id) === failure) s.failures.delete(id);
+        }),
+      );
+      try {
+        await failure.recovering;
+      } catch (error) {
+        failure.error = error;
+      } finally {
+        failure.recovering = undefined;
+      }
+    }
     const errors = [...s.failures.values()].filter(matches).map((f) => f.error);
     if (errors.length)
       throw new AggregateError(errors, '备份最终状态或日志未能保存，不能安全关闭账套');
@@ -328,6 +387,8 @@ export function backupService(ctx: Context) {
         })
         .execute();
       const abort = new AbortController();
+      let terminal: Terminal | undefined;
+      const originalUser = { ...ctx.user, permissions: new Set(ctx.user.permissions) };
       const promise = ctx.app.bookStore
         .withBook(ctx.book.id, async (book) => {
           const user = await loadServiceUser(book.db, ctx.user.id);
@@ -378,21 +439,23 @@ export function backupService(ctx: Context) {
             }
           } catch (e) {
             const err = fileError(e);
-            await db
-              .updateTable('backup_item')
-              .set({ status: abort.signal.aborted ? 'cancelled' : 'failed', reason: err.message })
-              .where('id', '=', id)
-              .execute();
-            await svc.log.write({
-              action: 'backup.failed',
-              summary: err.message,
-              targetType: 'backup_item',
-              targetId: id,
-            });
+            terminal = {
+              status: abort.signal.aborted ? 'cancelled' : 'failed',
+              reason: err.message,
+            };
+            await writeFailure(svc, id, terminal);
           }
         })
         .catch((error: unknown) => {
-          state(ctx.app).failures.set(id, { bookId: ctx.book.id, error });
+          state(ctx.app).failures.set(id, {
+            bookId: ctx.book.id,
+            error,
+            user: originalUser,
+            terminal: terminal ?? {
+              status: abort.signal.aborted ? 'cancelled' : 'failed',
+              reason: fileError(error).message,
+            },
+          });
           throw error;
         })
         .finally(() => {
