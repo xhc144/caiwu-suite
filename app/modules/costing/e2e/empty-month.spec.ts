@@ -93,9 +93,11 @@ test('w_cb_hz：空月发布后次月采购', async ({ page, request }) => {
   await expect(page.getByText(/202602 正式成本核算已发布/)).toBeVisible();
   expect(await t.batches()).toHaveLength(2);
   expect(
-    (await t.get<{ balance: string; balanceCents: number }[]>('m.inventory.stock', {
-      warehouseId: t.warehouseId,
-    }))[0],
+    (
+      await t.get<{ balance: string; balanceCents: number }[]>('m.inventory.stock', {
+        warehouseId: t.warehouseId,
+      })
+    )[0],
   ).toMatchObject({ balance: '10', balanceCents: 3000 });
   await expect(page.getByRole('button', { name: '撤销正式核算', exact: true })).toHaveCount(1);
   await cancelLatest(page);
@@ -119,9 +121,9 @@ test('w_cb_fgz：空月HTTP幂等与撤销保护', async ({ page, request }) => 
   };
   const before = await t.snapshot();
   expect(before.products).toEqual([]);
-  await expect(
-    t.post('m.costing.commit', { ...payload, confirmed: false }),
-  ).rejects.toThrow(/明确确认/);
+  await expect(t.post('m.costing.commit', { ...payload, confirmed: false })).rejects.toThrow(
+    /明确确认/,
+  );
   expect(await t.batches()).toEqual([]);
   expect(await t.snapshot()).toEqual(before);
   const batch = await t.post<Batch>('m.costing.commit', payload);
@@ -133,9 +135,9 @@ test('w_cb_fgz：空月HTTP幂等与撤销保护', async ({ page, request }) => 
   await expect(
     t.post('m.costing.cancelCalculation', { ...cancel, confirmed: false }),
   ).rejects.toThrow(/确认/);
-  await expect(
-    t.post('m.costing.cancelCalculation', { ...cancel, revision: 999 }),
-  ).rejects.toThrow(/版本/);
+  await expect(t.post('m.costing.cancelCalculation', { ...cancel, revision: 999 })).rejects.toThrow(
+    /版本/,
+  );
   expect(await t.snapshot()).toEqual(committed);
   const cancelled = await t.post<Batch>('m.costing.cancelCalculation', cancel);
   expect(await t.post<Batch>('m.costing.cancelCalculation', cancel)).toEqual(cancelled);

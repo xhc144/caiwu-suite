@@ -166,8 +166,7 @@ export async function cancelCalculation(
 ) {
   requireOwner(svc);
   const input = CancelCalculationSchema.parse(raw);
-  if (!input.confirmed)
-    fail('CONFIRM', '撤销正式核算需要明确确认', '请核对最后有效批次后确认撤销');
+  if (!input.confirmed) fail('CONFIRM', '撤销正式核算需要明确确认', '请核对最后有效批次后确认撤销');
   return inTransaction(svc, (t) =>
     t.inventory.with(async (inv) => {
       const db = t.db.withTables<CostingTables>();

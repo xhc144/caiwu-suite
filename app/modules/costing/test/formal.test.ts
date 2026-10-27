@@ -385,9 +385,9 @@ describe('w_cb_hz 正式发布：真实库存能力、成本批次和日志的�
     await expect(t.api.commit({ ...payload, confirmed: false })).rejects.toThrow(/明确确认/);
     const viewer = caller(t.app, await t.app.addUser('viewer', { permissions: ['costing.view'] }));
     await expect(viewer.commit(payload)).rejects.toThrow(/权限/);
-    await expect(
-      viewer.cancelCalculation({ id: 1, revision: 1, confirmed: true }),
-    ).rejects.toThrow(/权限/);
+    await expect(viewer.cancelCalculation({ id: 1, revision: 1, confirmed: true })).rejects.toThrow(
+      /权限/,
+    );
     const operator = caller(
       t.app,
       await t.app.addUser('operator', { permissions: ['costing.view', 'costing.calculate'] }),
@@ -505,9 +505,9 @@ describe('w_cb_fgz 正式撤销和历史成本链', () => {
       grossProfitCents: null,
       unknownHistoryLines: 1,
     });
-    await expect(
-      t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' }),
-    ).rejects.toThrow(/历史成本未知/);
+    await expect(t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' })).rejects.toThrow(
+      /历史成本未知/,
+    );
     await expect(
       t.api.cancelCalculation({ id: february.id, revision: 1, confirmed: true }),
     ).rejects.toThrow(/批次链/);

@@ -194,9 +194,9 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
       /权限/,
     );
     await expect(viewer.commit({ ...input, confirmed: true })).rejects.toThrow(/权限/);
-    await expect(
-      viewer.cancelCalculation({ id: 1, revision: 1, confirmed: true }),
-    ).rejects.toThrow(/权限/);
+    await expect(viewer.cancelCalculation({ id: 1, revision: 1, confirmed: true })).rejects.toThrow(
+      /权限/,
+    );
     await expect(viewer.previewVoucher({ documentId: 1, purpose: 'receipt' })).rejects.toThrow(
       /权限/,
     );

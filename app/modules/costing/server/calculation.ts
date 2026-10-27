@@ -111,13 +111,10 @@ export function calculate(
     if (countLine) {
       const expectedBook =
         integer(openingQ) +
-        current.reduce(
-          (n, l) => {
-            const sign = documentMap.get(l.documentId)!.kind === 'receipt' ? 1n : -1n;
-            return n + sign * integer(e6(l.quantity));
-          },
-          0n,
-        );
+        current.reduce((n, l) => {
+          const sign = documentMap.get(l.documentId)!.kind === 'receipt' ? 1n : -1n;
+          return n + sign * integer(e6(l.quantity));
+        }, 0n);
       if (integer(e6(countLine.bookQuantity)) !== expectedBook)
         fail(
           'STALE_COUNT',
