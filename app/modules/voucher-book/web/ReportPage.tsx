@@ -7,6 +7,7 @@ import { DataTable, PageContainer, exportToExcel, type DataColumn } from '@caiwu
 import type { SummaryInput } from '../shared';
 import { api } from './api';
 import { Filters, useBookFilters } from './filters';
+import { userError } from './errors';
 
 export default function ReportPage() {
   const filters = useBookFilters();
@@ -128,11 +129,15 @@ export default function ReportPage() {
   return (
     <PageContainer
       title={isT ? '丁字帐户' : '凭证科目汇总'}
-      subtitle="仅统计当前范围的凭证分录，剔除草稿和作废；原币按币种分别汇总，不含期初余额"
+      subtitle="仅统计当前范围的凭证分录，剔除草稿和作废；原币按币种分别汇总，不含期初余额；金额单位：元"
     >
       <Filters {...filters} />
       {(sum.isError || t.isError) && (
-        <Alert type="error" title="查询失败" description={(sum.error ?? t.error)?.message} />
+        <Alert
+          type="error"
+          title="查询失败"
+          description={userError(sum.error ?? t.error, '无法读取汇总，请检查本地服务后重试')}
+        />
       )}
       <Space wrap style={{ margin: '12px 0' }}>
         <span>凭证范围</span>

@@ -13,12 +13,13 @@ import {
   Typography,
 } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { MENU_GROUPS, formatCodeScheme, formatPeriod, productName } from '@caiwu/core';
-import { usePermission } from '@caiwu/web-kit';
+import { usePermission, useTab } from '@caiwu/web-kit';
 import { PageContainer } from '@caiwu/ui';
 import { api } from './api';
+import { userError } from './errors';
 import { matchesFunction } from './search-match';
 import { FeatureMap } from './FeatureMap';
 import { useGuidance } from './guidance';
@@ -31,6 +32,7 @@ export default function HomePage() {
   const rawPeriod = params.get('period');
   const period = rawPeriod && /^\d{6}$/.test(rawPeriod) ? Number(rawPeriod) : undefined;
   const canView = usePermission('workbench.overview.view');
+  const tab = useTab();
   const guidance = useGuidance();
   const canSettings = usePermission('workbench.settings');
   const overviewOpts = api.overview.queryOptions({ period });
@@ -39,6 +41,10 @@ export default function HomePage() {
     queryKeyHashFn: (key) => JSON.stringify([scope, key]),
     enabled: canView,
   });
+  const refreshOverview = overview.refetch;
+  useEffect(() => {
+    if (tab.active && canView) void refreshOverview();
+  }, [tab.active, canView, refreshOverview]);
   const prefOpts = api.preferences.queryOptions();
   const prefs = useQuery({ ...prefOpts, queryKeyHashFn: (key) => JSON.stringify([scope, key]) });
   const save = useMutation(
@@ -118,13 +124,13 @@ export default function HomePage() {
         <Alert
           type="error"
           title="无法读取本期统计"
-          description={overview.error.message}
+          description={userError(overview.error, '无法连接本地服务，请检查服务后重试')}
           action={<Button onClick={() => void overview.refetch()}>重试</Button>}
         />
       ) : data?.counts && p ? (
         <>
           <Typography.Text type="secondary">
-            {data.scope}。待审核=pending，待过账=audited。
+            {data.scope}。已审核且尚未过账的凭证列入待过账。
           </Typography.Text>
           <div
             style={{
@@ -253,7 +259,7 @@ export default function HomePage() {
             </section>
           ))}
         {!entries.length && !manifests.isPending && (
-          <Empty description="当前没有可用功能，请联系管理员检查模块与权限" />
+          <Empty description="当前没有可用功能，请联系管理员检查功能与权限" />
         )}
       </Card>
       <FeatureMap />

@@ -28,6 +28,7 @@ import { type Action, type Preview, type PreviewInput, type Selection } from '..
 import { api } from './api';
 import { Filters, useBookFilters } from './filters';
 import { ImportDrawer } from './ImportDrawer';
+import { userError } from './errors';
 
 const labels: Record<Action, string> = {
   audit: '审核',
@@ -41,7 +42,11 @@ const labels: Record<Action, string> = {
   renumber: '编号整理',
   modify: '批量修改',
 };
-type Row = Voucher & { readonlyReasons: string[]; sourceUrl: string | null };
+type Row = Voucher & {
+  readonlyReasons: string[];
+  sourceUrl: string | null;
+  dimensionLabels: Record<number, string>;
+};
 export default function BookPage() {
   const navigate = useNavigate();
   const filters = useBookFilters();
@@ -180,7 +185,7 @@ export default function BookPage() {
       {
         key: 'creator',
         title: '制单人',
-        render: (_, v) => `${v.createdBy.name} (${v.createdBy.id})`,
+        render: (_, v) => v.createdBy.name,
         width: 120,
       },
       { key: 'auditor', title: '审核人', render: (_, v) => v.auditedBy?.name ?? '—', width: 100 },
@@ -193,7 +198,7 @@ export default function BookPage() {
             <Tag color={v.voided ? 'red' : 'blue'}>
               {v.voided ? '已作废' : VOUCHER_STATUS_LABELS[v.status]}
             </Tag>
-            {v.reversalOfId && <Tag>冲销 #{v.reversalOfId}</Tag>}
+            {v.reversalOfId && <Tag>红字冲销</Tag>}
           </Space>
         ),
         width: 160,
@@ -225,7 +230,7 @@ export default function BookPage() {
   return (
     <PageContainer
       title="凭证序时簿"
-      subtitle="查询范围、审核人与来源保护均由服务端核验；金额筛选使用整数分"
+      subtitle="按期间、金额和制单人查询凭证；审核前请先核对凭证内容"
       extra={
         canNew && (
           <Button type="primary" onClick={() => void navigate('/m/voucher-entry/new')}>
@@ -323,7 +328,13 @@ export default function BookPage() {
           丁字帐户
         </Button>
       </Space>
-      {list.isError && <Alert type="error" title="查询失败" description={list.error.message} />}
+      {list.isError && (
+        <Alert
+          type="error"
+          title="查询失败"
+          description={userError(list.error, '无法读取凭证，请检查本地服务后重试')}
+        />
+      )}
       <DataTable<Row>
         tableId="voucher-book.list"
         key={JSON.stringify(filters.filter)}
@@ -614,7 +625,7 @@ function OperationDrawer({
               <Input placeholder="202601" />
             </Form.Item>
             <Form.Item name="byDate" valuePropName="checked">
-              <Checkbox>按照日期、旧号、ID重新排序</Checkbox>
+              <Checkbox>按照日期和原编号重新排序（同号按录入顺序）</Checkbox>
             </Form.Item>
           </>
         ) : (
@@ -684,18 +695,24 @@ function OperationDrawer({
     </Drawer>
   );
 }
-export function VoucherLines({ voucher }: { voucher: Voucher }) {
+export function VoucherLines({
+  voucher,
+}: {
+  voucher: Voucher & { dimensionLabels?: Record<number, string> };
+}) {
   const navigate = useNavigate();
   return (
     <>
       <Space wrap>
         {voucher.source && (
           <Tag>
-            来源 {voucher.source.module}/{voucher.source.type}/{voucher.source.id}
+            {voucher.source.module === 'voucher-book' && voucher.source.type === 'reversal'
+              ? '红字冲销凭证'
+              : '由来源单据生成'}
           </Tag>
         )}
         {voucher.reversalOfId && (
-          <a href={`/m/voucher-book?id=${voucher.reversalOfId}`}>原凭证 #{voucher.reversalOfId}</a>
+          <a href={`/m/voucher-book?id=${voucher.reversalOfId}`}>查看原凭证</a>
         )}
         {voucher.note && <span>{voucher.note}</span>}
       </Space>
@@ -725,15 +742,8 @@ export function VoucherLines({ voucher }: { voucher: Voucher }) {
             ),
           },
           {
-            title: '辅助项ID',
-            render: (_, l) =>
-              Object.entries(l.dimensions)
-                .filter(([, id]) => id != null)
-                .map(
-                  ([t, id]) =>
-                    `${({ project: '项目', partner: '客供', department: '部门', person: '个人', cashflow: '现金流量' } as Record<string, string>)[t] ?? t}:${id}`,
-                )
-                .join(' / '),
+            title: '辅助核算',
+            render: (_, l) => voucher.dimensionLabels?.[l.id] || '—',
           },
           { title: '借方', render: (_, l) => formatMoney(l.debit) },
           { title: '贷方', render: (_, l) => formatMoney(l.credit) },
@@ -772,13 +782,15 @@ function ViewDrawer({ id, onClose }: { id: number | null; onClose: () => void })
           {v.data.reversals.map((r) => (
             <p key={r.id}>
               <a href={`/m/voucher-book?id=${r.id}`}>
-                冲销凭证 #{r.id} · {r.date} · {formatMoney(r.debit_total)}
+                查看冲销凭证 · {r.date} · {formatMoney(r.debit_total)}
               </a>
             </p>
           ))}
         </>
       )}
-      {v.isError && <Alert type="error" title={v.error.message} />}
+      {v.isError && (
+        <Alert type="error" title={userError(v.error, '无法读取凭证，请检查本地服务后重试')} />
+      )}
     </Drawer>
   );
 }
