@@ -17,7 +17,33 @@ export function withAutomaticBackup<R extends ServerModule>(
   clock?: ConstructorParameters<typeof AutomaticBackupController>[0],
 ): R {
   if (module.manifest.id !== 'backup') return module;
-  const controller = new AutomaticBackupController(clock);
+  const sourceClock = clock ?? {
+    now: Date.now,
+    set: (fn: () => void, ms: number) => setTimeout(fn, ms),
+    clear: (id: unknown) => clearTimeout(id as ReturnType<typeof setTimeout>),
+  };
+  let pausing = false;
+  const timers = new Map<object, unknown>();
+  const controller = new AutomaticBackupController({
+    now: sourceClock.now,
+    set: (fn, ms) => {
+      const token = {};
+      if (!pausing)
+        timers.set(
+          token,
+          sourceClock.set(() => {
+            timers.delete(token);
+            if (!pausing) fn();
+          }, ms),
+        );
+      return token;
+    },
+    clear: (token) => {
+      const handle = timers.get(token as object);
+      if (handle !== undefined) sourceClock.clear(handle);
+      timers.delete(token as object);
+    },
+  });
   const attached = new Set<string>();
   const configurations = new Map<string, string>();
   const attaching = new Map<string, Promise<void>>();
@@ -137,14 +163,19 @@ export function withAutomaticBackup<R extends ServerModule>(
         if (ctx.procedure?.endsWith('saveSettings')) await discover(ctx.app);
       },
       stop: async (ctx) => {
-        await Promise.all(attaching.values());
-        // Do not call the module controller's sticky shutdown until all real exit backups succeeded.
-        // A failed attempt can legally retry run() on this same live controller.
-        for (const id of attached) {
-          const config = await withService(ctx.app, id, (c) => backupService(c).settings());
-          if (config.enabled && config.onExit) {
+        pausing = true;
+        for (const handle of timers.values()) sourceClock.clear(handle);
+        timers.clear();
+        try {
+          await Promise.all(attaching.values());
+          for (const id of attached) {
+            const config = await withService(ctx.app, id, (c) => backupService(c).settings());
+            configurations.set(id, JSON.stringify(config));
             if (controller.status(id).running) await controller.run(id);
-            await controller.run(id);
+            // A failed scheduled backup must complete a real successful retry before
+            // entering the controller's irreversible shutdown, even with onExit=false.
+            if ((config.enabled && config.onExit) || controller.status(id).lastFailure)
+              await controller.run(id);
             const failure = controller.status(id).lastFailure;
             if (failure)
               throw new BusinessError({
@@ -153,15 +184,20 @@ export function withAutomaticBackup<R extends ServerModule>(
                 hint: '原账套仍保留，请修正后重新正常退出',
               });
           }
+          await module.lifecycle?.stop?.(ctx);
+          exitBackupsCompleted = true;
+          const failures = await controller.shutdown();
+          if (failures.length)
+            throw new BusinessError({
+              code: 'AUTOMATIC_BACKUP_FAILED',
+              message: failures.map((f) => f.reason).join('；'),
+            });
+        } finally {
+          if (!exitBackupsCompleted) {
+            pausing = false;
+            for (const id of attached) await controller.reconfigure(id);
+          }
         }
-        await module.lifecycle?.stop?.(ctx);
-        exitBackupsCompleted = true;
-        const failures = await controller.shutdown();
-        if (failures.length)
-          throw new BusinessError({
-            code: 'AUTOMATIC_BACKUP_FAILED',
-            message: failures.map((f) => f.reason).join('；'),
-          });
       },
     },
   }) as R;

@@ -98,7 +98,13 @@ test('w_pz_pzxsb 插入/重排取消不变，筛选URL与跨模块路由，导�
         ],
       },
     ]);
-    await t.app.svc.vouchers.setNumbers([{ id: v!.id, number: 3 }]);
+    {
+      const numberPlan = await t.app.svc.vouchers.previewNumbers([{ id: v!.id, number: 3 }]);
+      await t.app.svc.vouchers.setNumbers(numberPlan.updates, {
+        plan: numberPlan,
+        confirmed: true,
+      });
+    }
     const before = await t.app.svc.vouchers.get(v!.id);
     await t.login(page, 'admin', 'admin');
     await page.getByRole('row').filter({ hasText: '往返测试' }).getByRole('checkbox').check();

@@ -47,6 +47,8 @@ export const COLUMNS = [
   'department',
   'person',
   'cashflow',
+  'entrySide',
+  'cashflowDirection',
   'currency',
   'exchangeRate',
   'fcAmount',
@@ -76,6 +78,8 @@ export async function transferData(svc: CoreServices, filter: BookFilter): Promi
       note: v.note,
       lines: v.lines.map((l) => ({
         summary: l.summary,
+        entrySide: l.entrySide,
+        cashflowDirection: l.cashflowDirection,
         account: l.accountCode,
         dimensions: Object.fromEntries(
           Object.entries(l.dimensions)
@@ -117,7 +121,19 @@ export async function exportFile(svc: CoreServices, filter: BookFilter, format: 
   for (const v of data.vouchers)
     for (const [i, l] of v.lines.entries()) {
       const row = { ...v, ...l, line: i + 1, ...l.dimensions };
-      ws.addRow(COLUMNS.map((k) => (row as Record<string, unknown>)[k] ?? ''));
+      ws.addRow(
+        COLUMNS.map((k) =>
+          k === 'entrySide'
+            ? l.entrySide
+              ? { debit: '借方', credit: '贷方' }[l.entrySide]
+              : ''
+            : k === 'cashflowDirection'
+              ? l.cashflowDirection
+                ? { inflow: '流入', outflow: '流出', internal: '内部转移' }[l.cashflowDirection]
+                : ''
+              : ((row as Record<string, unknown>)[k] ?? ''),
+        ),
+      );
     }
   ws.columns.forEach((c) => {
     c.width = 18;
@@ -235,6 +251,22 @@ export async function parseFile(raw: ImportInput): Promise<Transfer> {
       fail('FILE', `第${n}行与同 key 凭证头不一致`);
     v.lines.push({
       summary: text('summary'),
+      entrySide: z
+        .enum(['debit', 'credit'])
+        .nullable()
+        .parse(
+          ({ 借方: 'debit', 贷方: 'credit' } as Record<string, string>)[text('entrySide')] ??
+            (text('entrySide') || null),
+        ),
+      cashflowDirection: z
+        .enum(['inflow', 'outflow', 'internal'])
+        .nullable()
+        .parse(
+          ({ 流入: 'inflow', 流出: 'outflow', 内部转移: 'internal' } as Record<string, string>)[
+            text('cashflowDirection')
+          ] ??
+            (text('cashflowDirection') || null),
+        ),
       account: text('account'),
       dimensions: Object.fromEntries(
         DIMENSION_TYPE_IDS.map((t) => [t, text(t)]).filter(([, v]) => v),

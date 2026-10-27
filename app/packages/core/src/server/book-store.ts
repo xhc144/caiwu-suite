@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { verifyPassword } from './password';
 import { DataDirectoryLease } from './data-directory-lease';
 import { createHash, randomUUID } from 'node:crypto';
 import {
@@ -99,6 +100,10 @@ const BOOK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 type DirectoryState = {
   operations: ResourceGate;
   stores: Set<BookStore>;
+  quarantines: Map<
+    string,
+    { protection: string; metadata: { length: number; sha256: string }; end?: () => void }
+  >;
   creations: Map<string, { requestHash: string; task: Promise<BookInfo> }>;
 };
 const directories = new Map<string, DirectoryState>();
@@ -139,6 +144,7 @@ export class BookStore {
     this.#directory = directories.get(this.#lease.directory) ?? {
       operations: new ResourceGate(maintenanceError),
       stores: new Set(),
+      quarantines: new Map(),
       creations: new Map(),
     };
     directories.set(this.#lease.directory, this.#directory);
@@ -288,7 +294,9 @@ export class BookStore {
               signal.throwIfAborted();
               return result;
             } finally {
-              end();
+              const quarantine = this.#directory.quarantines.get(id);
+              if (quarantine) quarantine.end = end;
+              else end();
             }
           }),
         plan.timeoutMs,
@@ -559,9 +567,23 @@ export class BookStore {
           const restored = this.open(id);
           assertRestoreDatabase(restored.raw);
         } catch (rollbackError) {
+          // The replacement has been rejected and rollback is uncertain. Never admit
+          // this database again merely because the exclusive callback has finished.
+          this.#directory.quarantines.set(id, { protection, metadata: protectionMetadata! });
+          this.#gate(id).block();
+          const marker = `${this.pathOf(id)}.quarantine.json`;
+          try {
+            writeFileSync(
+              marker,
+              JSON.stringify({ bookId: id, protectionId, ...protectionMetadata }),
+              { flag: 'wx', mode: 0o600 },
+            );
+          } catch {
+            /* The runtime maintenance marker and gate remain closed even if disk writes fail. */
+          }
           throw new AggregateError(
             [error, rollbackError],
-            '恢复及回滚未完成，保护备份保留，请由管理员处理',
+            '恢复及回滚未完成，目标账套已隔离，保护备份保留；请修复存储后由管理员调用 recoverQuarantined 复核原账名称及密码恢复保护副本',
             { cause: rollbackError },
           );
         }
@@ -570,6 +592,88 @@ export class BookStore {
       }
       throw error;
     }
+  }
+
+  /** Host recovery only: authenticate against the original protection copy while the target stays isolated. */
+  async recoverQuarantined(input: {
+    bookId: string;
+    bookName: string;
+    adminCode: string;
+    password: string;
+  }): Promise<void> {
+    const id = input.bookId;
+    this.#ensureLease();
+    const quarantine = this.#directory.quarantines.get(id);
+    if (!quarantine || !quarantine.end)
+      throw new BusinessError({
+        code: 'RESTORE_RECOVERY_UNAVAILABLE',
+        message: '没有本实例可安全恢复的隔离账套，请保留运行锁和保护备份并联系维护人员',
+      });
+    return this.#operations.run(() =>
+      this.#gate(id).recover(async () => {
+        const stat = lstatSync(quarantine.protection);
+        const parent = lstatSync(path.dirname(quarantine.protection));
+        const bytes = readFileSync(quarantine.protection);
+        if (
+          !parent.isDirectory() ||
+          parent.isSymbolicLink() ||
+          !stat.isFile() ||
+          stat.isSymbolicLink() ||
+          stat.nlink !== 1 ||
+          bytes.length !== quarantine.metadata.length ||
+          createHash('sha256').update(bytes).digest('hex') !== quarantine.metadata.sha256
+        )
+          throw new BusinessError({
+            code: 'RESTORE_DIGEST',
+            message: '保护备份已变化，账套继续隔离，请联系维护人员',
+          });
+        const source = new Database(quarantine.protection, { readonly: true, fileMustExist: true });
+        try {
+          assertRestoreDatabase(source);
+          const info = source.prepare('SELECT book_id, name FROM book_info WHERE id=1').get() as {
+            book_id: string;
+            name: string;
+          };
+          const admin = source
+            .prepare(
+              'SELECT password_hash FROM app_user WHERE code=? AND is_admin=1 AND disabled=0',
+            )
+            .get(input.adminCode) as { password_hash: string } | undefined;
+          if (
+            info.book_id !== id ||
+            info.name !== input.bookName ||
+            !admin ||
+            !(await verifyPassword(input.password, admin.password_hash))
+          )
+            throw new BusinessError({
+              code: 'RESTORE_CONFIRM_FAILED',
+              message: '请准确输入原账套名称及原管理员账号密码，账套继续隔离',
+            });
+          this.#assertConnectionsQuiescent(id);
+          await this.#closeConnections(id);
+          const target = lstatSync(this.pathOf(id));
+          if (!target.isFile() || target.isSymbolicLink() || target.nlink !== 1)
+            throw new BusinessError({
+              code: 'RESTORE_PATH',
+              message: '恢复目标不是受管普通账套文件，账套继续隔离',
+            });
+          await source.backup(this.pathOf(id));
+          const restored = new Database(this.pathOf(id), { fileMustExist: true });
+          try {
+            assertRestoreDatabase(restored);
+            runMigrations(restored, this.#allMigrations());
+            assertRestoreDatabase(restored);
+          } finally {
+            restored.close();
+          }
+          rmSync(`${this.pathOf(id)}.quarantine.json`, { force: true });
+          quarantine.end!();
+          this.#directory.quarantines.delete(id);
+        } finally {
+          source.close();
+        }
+      }),
+    );
   }
 
   close(id: string): Promise<void> {
@@ -695,6 +799,7 @@ export class BookStore {
     const state = databaseFile(file);
     this.#known.add(id);
     state.gate.error = maintenanceError;
+    if (existsSync(`${file}.quarantine.json`)) state.gate.block();
     return state.gate;
   }
 

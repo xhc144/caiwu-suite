@@ -230,7 +230,13 @@ export function TabsHost({
     async (key: string) => {
       const requested = tabsRef.current.find((tab) => tab.key === key);
       if (key === HOME || !requested || !(await requestBeforeLeave(session.bookId, [key]))) return;
-      if (tabsRef.current.find((tab) => tab.key === key)?.location.key !== requested.location.key)
+      const current = tabsRef.current.find((tab) => tab.key === key);
+      if (
+        !current ||
+        current.location.pathname !== requested.location.pathname ||
+        current.location.search !== requested.location.search ||
+        current.location.hash !== requested.location.hash
+      )
         return;
       const prev = tabsRef.current;
       const idx = prev.findIndex((t) => t.key === key);
@@ -252,7 +258,12 @@ export function TabsHost({
   );
 
   const closeAll = async () => {
-    const requested = tabsRef.current.map((tab) => [tab.key, tab.location.key]);
+    const requested = tabsRef.current.map((tab) => [
+      tab.key,
+      tab.location.pathname,
+      tab.location.search,
+      tab.location.hash,
+    ]);
     if (
       !(await requestBeforeLeave(
         session.bookId,
@@ -262,7 +273,14 @@ export function TabsHost({
       return;
     if (
       JSON.stringify(requested) !==
-      JSON.stringify(tabsRef.current.map((tab) => [tab.key, tab.location.key]))
+      JSON.stringify(
+        tabsRef.current.map((tab) => [
+          tab.key,
+          tab.location.pathname,
+          tab.location.search,
+          tab.location.hash,
+        ]),
+      )
     )
       return;
     activeKeyRef.current = HOME;

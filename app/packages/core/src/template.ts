@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BusinessError } from './errors';
 import {
   cumulativeLengths,
   levelOfCode,
@@ -156,19 +157,31 @@ export function mapTemplateScheme(
 ): AccountingTemplate {
   const native = parseCodeScheme(template.codeScheme);
   if (target[0] !== native[0])
-    throw new Error(`一级科目编码不能使用科目级次 ${target.join('-')}，无法映射`);
+    throw new BusinessError({
+      code: 'TEMPLATE_SCHEME',
+      message: `一级科目编码不能使用科目级次 ${target.join('-')}，无法映射`,
+      hint: `请保留模板的一级编码位数，原级次为 ${template.codeScheme}`,
+    });
   const lengths = cumulativeLengths(native);
   const accounts = template.accounts.map((account) => {
     const level = levelOfCode(account.code, native);
     if (level == null || level > target.length)
-      throw new Error(`科目 ${account.code} 无法映射到级次 ${target.join('-')}`);
+      throw new BusinessError({
+        code: 'TEMPLATE_SCHEME',
+        message: `科目 ${account.code} 无法映射到级次 ${target.join('-')}`,
+        hint: '请选择能够容纳模板全部科目的级次',
+      });
     let code = '';
     for (let index = 0; index < level; index++) {
       const segment = account.code.slice(index === 0 ? 0 : lengths[index - 1], lengths[index]);
       const digits = target[index]!;
       const significant = segment.replace(/^0+(?=\d)/, '');
       if (significant.length > digits)
-        throw new Error(`科目 ${account.code} 第${index + 1}级编码超出 ${digits} 位`);
+        throw new BusinessError({
+          code: 'TEMPLATE_SCHEME',
+          message: `科目 ${account.code} 第${index + 1}级编码超出 ${digits} 位`,
+          hint: '请增加对应级次的编码位数',
+        });
       code += significant.padStart(digits, '0');
     }
     return { ...account, code, sourceVersion: account.sourceVersion ?? template.version };

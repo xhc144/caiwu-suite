@@ -525,3 +525,314 @@ it('w_pz_bhzl/w_pz_tjdel/w_gz_bmwh：确认计划绑定运行实例、账套及�
   await book.svc.dimensions.delete(plan, true);
   expect(await book.svc.dimensions.get(department.id)).toBeNull();
 });
+
+it('w_pz_pzedit：零本币非零数量按最终六位存储值校验，舍入到零不得正式保存或转正式', async () => {
+  book = await createTestBook();
+  const accountId = (await book.svc.accounts.require('1403')).id;
+  const input = {
+    voucherTypeId: (await book.svc.reference.voucherTypes())[0]!.id,
+    date: '2026-01-10',
+    lines: [
+      {
+        accountId,
+        summary: '借方数量',
+        debit: 0,
+        credit: 0,
+        entrySide: 'debit' as const,
+        quantity: '0.0000001',
+      },
+      {
+        accountId,
+        summary: '贷方数量',
+        debit: 0,
+        credit: 0,
+        entrySide: 'credit' as const,
+        quantity: '1',
+      },
+    ],
+  };
+  for (const quantity of ['0.0000001', '-0.0000001', '0.00000049', '-0.00000049']) {
+    input.lines[0]!.quantity = quantity;
+    await expect(book.svc.vouchers.create(input)).rejects.toThrow(/本币、外币和数量均为 0/);
+  }
+  const draft = await book.svc.vouchers.create({ ...input, draft: true });
+  await expect(
+    book.svc.vouchers.update(draft.id, input, { expectedRevision: draft.revision }),
+  ).rejects.toThrow(/本币、外币和数量均为 0/);
+  expect((await book.svc.vouchers.get(draft.id))!.status).toBe('draft');
+  expect((await book.svc.vouchers.list()).total).toBe(1);
+  for (const quantity of ['0.0000005', '-0.0000005', '0.000001', '-0.000001']) {
+    input.lines[0]!.quantity = quantity;
+    const v = await book.svc.vouchers.create(input);
+    expect(v.lines[0]!.quantity).toBe(quantity.startsWith('-') ? '-0.000001' : '0.000001');
+    expect(
+      book.book.raw
+        .prepare('SELECT quantity_e6 FROM voucher_line WHERE voucher_id=? AND line_no=1')
+        .get(v.id),
+    ).toEqual({ quantity_e6: quantity.startsWith('-') ? -1 : 1 });
+  }
+});
+
+it('w_pzedit_fc：零本币原币/数量冲销必须保留借贷侧并反号，过账后原币和数量净额归零', async () => {
+  book = await createTestBook();
+  const original = await book.svc.vouchers.create({
+    voucherTypeId: 1,
+    date: '2026-01-10',
+    lines: [
+      {
+        summary: '原币调整',
+        accountId: (await book.svc.accounts.require('100202')).id,
+        debit: 0,
+        credit: 0,
+        currency: 'USD',
+        exchangeRate: '7.1',
+        fcAmount: 100,
+        entrySide: 'debit',
+      },
+      {
+        summary: '数量调整',
+        accountId: (await book.svc.accounts.require('1403')).id,
+        debit: 0,
+        credit: 0,
+        quantity: '2',
+        entrySide: 'credit',
+      },
+    ],
+  });
+  await book.svc.vouchers.changeStatus({ ids: [original.id], to: 'audited' });
+  await book.svc.vouchers.changeStatus({ ids: [original.id], to: 'posted' });
+  const reversed = {
+    voucherTypeId: 1,
+    date: '2026-01-11',
+    reversalOfId: original.id,
+    lines: original.lines.map((line) => ({
+      ...line,
+      debit: -line.debit,
+      credit: -line.credit,
+      fcAmount: line.fcAmount == null ? null : -line.fcAmount,
+      quantity: line.quantity == null ? null : String(-Number(line.quantity)),
+    })),
+  };
+  for (const index of [0, 1]) {
+    const tampered = structuredClone(reversed);
+    tampered.lines[index]!.entrySide =
+      tampered.lines[index]!.entrySide === 'debit' ? 'credit' : 'debit';
+    await expect(book.svc.vouchers.create(tampered)).rejects.toThrow(/借贷方向/);
+  }
+  expect((await book.svc.vouchers.list()).total).toBe(1);
+  const reversal = await book.svc.vouchers.create(reversed);
+  await book.svc.vouchers.changeStatus({ ids: [reversal.id], to: 'audited' });
+  await book.svc.vouchers.changeStatus({ ids: [reversal.id], to: 'posted' });
+  const query = { periodFrom: 202601, periodTo: 202601, includeZero: true, rollup: false };
+  expect(
+    (await book.svc.ledger.balances({ ...query, currency: 'USD', accountCodes: ['100202'] }))[0],
+  ).toMatchObject({ fcClosing: 0, fcDebit: 0, fcCredit: 0 });
+  expect(
+    (
+      await book.svc.ledger.quantityBalances({
+        ...query,
+        quantityUnit: '千克',
+        accountCodes: ['1403'],
+      })
+    )[0],
+  ).toMatchObject({ qtyClosing: '0', qtyDebit: '0', qtyCredit: '0' });
+});
+
+it('w_pzedit_fc：历史NULL借贷侧以原本币栏合法回退，冲销不丢原币或数量', async () => {
+  book = await createTestBook();
+  const original = await book.svc.vouchers.create({
+    voucherTypeId: 1,
+    date: '2026-01-10',
+    lines: [
+      {
+        summary: '旧数量',
+        accountId: (await book.svc.accounts.require('1403')).id,
+        debit: 100,
+        credit: 0,
+        quantity: '2',
+      },
+      {
+        summary: '旧外币',
+        accountId: (await book.svc.accounts.require('100202')).id,
+        debit: 0,
+        credit: 100,
+        currency: 'USD',
+        exchangeRate: '10',
+        fcAmount: 10,
+      },
+    ],
+  });
+  book.book.raw
+    .prepare('UPDATE voucher_line SET entry_side=NULL WHERE voucher_id=?')
+    .run(original.id);
+  const history = (await book.svc.vouchers.get(original.id))!;
+  expect(history.lines.every((line) => line.entrySide === null)).toBe(true);
+  const reversal = await book.svc.vouchers.create({
+    voucherTypeId: 1,
+    date: '2026-01-11',
+    reversalOfId: original.id,
+    lines: history.lines.map((line) => ({
+      ...line,
+      debit: -line.debit,
+      credit: -line.credit,
+      fcAmount: line.fcAmount == null ? null : -line.fcAmount,
+      quantity: line.quantity == null ? null : String(-Number(line.quantity)),
+    })),
+  });
+  for (const id of [original.id, reversal.id]) {
+    await book.svc.vouchers.changeStatus({ ids: [id], to: 'audited' });
+    await book.svc.vouchers.changeStatus({ ids: [id], to: 'posted' });
+  }
+  const query = { periodFrom: 202601, periodTo: 202601, includeZero: true, rollup: false };
+  expect(
+    (await book.svc.ledger.balances({ ...query, currency: 'USD', accountCodes: ['100202'] }))[0]!
+      .fcClosing,
+  ).toBe(0);
+  expect(
+    (
+      await book.svc.ledger.quantityBalances({
+        ...query,
+        quantityUnit: '千克',
+        accountCodes: ['1403'],
+      })
+    )[0]!.qtyClosing,
+  ).toBe('0');
+});
+
+it('w_xt_xjwh：科目/ID/币种/辅助过滤只影响局部流量，内部转移是否配平按完整凭证同快照诊断', async () => {
+  book = await createTestBook();
+  const cf = (await book.svc.dimensions.getByCode('cashflow', 'CF01'))!;
+  await book.svc.dimensions.update(
+    cf.id,
+    { code: cf.code, name: cf.name, attrs: { cashflowDirection: 'internal' } },
+    { expectedRevision: cf.revision! },
+  );
+  const a = await book.svc.accounts.create(
+    {
+      code: '1003',
+      name: '内部转出',
+      categoryId: 'asset',
+      isCash: true,
+      currency: 'USD',
+      cashflowRequired: true,
+      dimensions: [{ type: 'project', required: false }],
+    },
+    [4, 2, 2],
+  );
+  const b = await book.svc.accounts.create(
+    { code: '1004', name: '内部转入', categoryId: 'asset', isBank: true, cashflowRequired: true },
+    [4, 2, 2],
+  );
+  const project = (await book.svc.dimensions.getByCode('project', 'XM01'))!.id;
+  const v = await book.svc.vouchers.create({
+    voucherTypeId: 1,
+    date: '2026-01-10',
+    lines: [
+      {
+        summary: '内部借',
+        accountId: a.id,
+        debit: 100,
+        credit: 0,
+        currency: 'USD',
+        exchangeRate: '10',
+        fcAmount: 10,
+        dimensions: { cashflow: cf.id, project },
+        cashflowDirection: 'internal',
+      },
+      {
+        summary: '内部贷',
+        accountId: b.id,
+        debit: 0,
+        credit: 100,
+        dimensions: { cashflow: cf.id },
+        cashflowDirection: 'internal',
+      },
+    ],
+  });
+  await book.svc.vouchers.changeStatus({ ids: [v.id], to: 'audited' });
+  await book.svc.vouchers.changeStatus({ ids: [v.id], to: 'posted' });
+  const query = { periodFrom: 202601, periodTo: 202601 };
+  for (const filter of [
+    { accountCode: '1003' },
+    { accountIds: [a.id] },
+    { currency: 'USD' },
+    { dimensions: { project } },
+  ]) {
+    const filtered = await book.svc.ledger.cashflow({ ...query, ...filter });
+    expect(filtered.rows).toHaveLength(1);
+    expect(filtered.internalNet).toBe(100);
+    expect(filtered.internalUnbalancedVouchers).toEqual([]);
+  }
+  expect((await book.svc.ledger.cashflow(query)).internalNet).toBe(0);
+  // A historical corrupt direction must still be reported under the same filter.
+  book.book.raw
+    .prepare('UPDATE voucher_line SET cashflow_direction=NULL WHERE voucher_id=? AND account_id=?')
+    .run(v.id, b.id);
+  expect(
+    (await book.svc.ledger.cashflow({ ...query, accountIds: [a.id] })).internalUnbalancedVouchers,
+  ).toEqual([v.id]);
+});
+
+it('w_pz_tjdel：删除最高待审核号或无号草稿不触碰前方已过账来源，需移动的审核/来源行仍阻止', async () => {
+  book = await createTestBook();
+  const input = await voucherInputFromSpec(book.svc, base);
+  const owner = book.forModule('cashier');
+  const source = await owner.vouchers.create({
+    ...input,
+    source: { type: 'document', id: 'protected-before' },
+  });
+  await owner.vouchers.changeStatus({ ids: [source.id], to: 'audited' });
+  await owner.vouchers.changeStatus({ ids: [source.id], to: 'posted' });
+  const pending = await book.svc.vouchers.create(input);
+  const draft = await book.svc.vouchers.create({ ...input, draft: true });
+  await book.svc.voucherPolicy.set({
+    numbering: 'automatic',
+    renumberAfterDelete: true,
+    allowModifyOthers: true,
+  });
+  const before = await book.svc.vouchers.get(source.id);
+  const plan = await book.svc.vouchers.previewDelete([pending.id]);
+  expect(plan.impacts).toEqual([{ id: source.id, oldNumber: 1, number: 1 }]);
+  await book.svc.vouchers.deleteBatch(plan, true);
+  expect(await book.svc.vouchers.get(source.id)).toEqual(before);
+  const draftPlan = await book.svc.vouchers.previewDelete([draft.id]);
+  expect(draftPlan.impacts).toEqual([]);
+  await book.svc.vouchers.deleteBatch(draftPlan, true);
+  const middle = await book.svc.vouchers.create(input);
+  const locked = await book.svc.vouchers.create(input);
+  await book.svc.vouchers.changeStatus({ ids: [locked.id], to: 'audited' });
+  await expect(book.svc.vouchers.previewDelete([middle.id])).rejects.toThrow(/已审核或过账/);
+  await book.svc.vouchers.changeStatus({ ids: [locked.id], to: 'pending' });
+  await book.svc.vouchers.deleteBatch(await book.svc.vouchers.previewDelete([locked.id]), true);
+  await owner.vouchers.create({ ...input, source: { type: 'document', id: 'protected-after' } });
+  await expect(book.svc.vouchers.previewDelete([middle.id])).rejects.toThrow(/不能在这里/);
+  expect(await book.svc.vouchers.get(source.id)).toEqual(before);
+  expect(await book.svc.vouchers.get(middle.id)).toBeTruthy();
+});
+
+it('w_xt_kgzb：非法级次返回可操作业务原因、不留下账套；修复后相同请求可成功建账', async () => {
+  book = await createTestBook();
+  const before = await book.store.list();
+  const input = {
+    name: '级次失败重试',
+    orgName: '合成单位',
+    templateId: 'demo-enterprise',
+    product: 'chengben' as const,
+    startYear: 2026,
+    startMonth: 1,
+    adminPassword: 'admin',
+    requestKey: 'scheme-failure-retry',
+  };
+  await expect(book.store.create({ ...input, codeScheme: '3-2-2' })).rejects.toMatchObject({
+    data: { code: 'TEMPLATE_SCHEME', message: expect.stringContaining('不能使用科目级次') },
+  });
+  expect(await book.store.list()).toEqual(before);
+  const created = await book.store.create({ ...input, codeScheme: '4-3-3' });
+  expect((await book.store.list()).filter((b) => b.id === created.id)).toHaveLength(1);
+  expect(
+    book.store
+      .open(created.id)
+      .raw.prepare("SELECT count(*) AS n FROM account WHERE code='2221001001'")
+      .get(),
+  ).toEqual({ n: 1 });
+});

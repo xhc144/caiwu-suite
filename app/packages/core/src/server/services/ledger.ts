@@ -25,6 +25,7 @@ import {
   type BalanceRow,
   type EntryFilter,
   type EntryRow,
+  type CashflowSummary,
 } from '../../ledger';
 import { formatVoucherNo } from '../../voucher';
 import type { Account } from '../../account';
@@ -600,14 +601,24 @@ export function ledgerService(ctx: ServiceContext) {
         const closing = t.opening + t.balanceDebit - t.balanceCredit;
         const isZero =
           t.opening === 0n &&
+          closing === 0n &&
           t.debit === 0n &&
           t.credit === 0n &&
           t.ytdDebit === 0n &&
           t.ytdCredit === 0n &&
-          (!q.currency || (t.fcOpening === 0n && t.fcDebit === 0n && t.fcCredit === 0n)) &&
+          (!q.currency ||
+            (t.fcOpening === 0n &&
+              t.fcDebit === 0n &&
+              t.fcCredit === 0n &&
+              t.fcOpening + t.fcBalanceDelta === 0n &&
+              t.fcYtdDebit === 0n &&
+              t.fcYtdCredit === 0n)) &&
           t.qtyOpening === 0n &&
           t.qtyDebit === 0n &&
-          t.qtyCredit === 0n;
+          t.qtyCredit === 0n &&
+          t.qtyOpening + t.qtyBalanceDelta === 0n &&
+          t.qtyYtdDebit === 0n &&
+          t.qtyYtdCredit === 0n;
         if (isZero && !q.includeZero) continue;
         rows.push({
           quantityUnit: units?.values().next().value ?? account.quantityUnit,
@@ -702,13 +713,43 @@ export function ledgerService(ctx: ServiceContext) {
       return self.balances(raw);
     },
     /** Historical NULL direction stays unallocated even when the current project has direction metadata. */
-    async cashflow(raw: EntryFilter) {
+    async cashflow(raw: EntryFilter): Promise<CashflowSummary> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => ledgerService({ ...ctx, db }).cashflow(raw));
       const entries = await self.entries({ ...raw, limit: 200_000 }, true);
       const accounts = new Map((await accountService(ctx).list()).map((a) => [a.id, a]));
       const rows = entries.filter((row) => {
         const account = accounts.get(row.accountId);
         return account?.isCash || account?.isBank || account?.cashflowRequired;
       });
+      const candidates = [
+        ...new Set(
+          rows.filter((row) => row.cashflowDirection === 'internal').map((row) => row.voucherId),
+        ),
+      ];
+      const unbalanced = new Set<number>();
+      // Totals follow the requested subset. A voucher-level diagnostic must inspect
+      // all its cash lines in the same snapshot, including the filtered-out side.
+      for (let offset = 0; offset < candidates.length; offset += 500) {
+        const complete = await ctx.db
+          .selectFrom('voucher_line as l')
+          .innerJoin('account as a', 'a.id', 'l.account_id')
+          .select('l.voucher_id')
+          .select(sql<string>`cast(sum(l.debit) - sum(l.credit) as text)`.as('net'))
+          .where('l.voucher_id', 'in', candidates.slice(offset, offset + 500))
+          .where((eb) =>
+            eb.or([
+              eb('a.is_cash', '=', 1),
+              eb('a.is_bank', '=', 1),
+              eb('a.cashflow_required', '=', 1),
+            ]),
+          )
+          .where('l.cashflow_direction', '=', 'internal')
+          .groupBy('l.voucher_id')
+          .execute();
+        for (const voucher of complete)
+          if (BigInt(voucher.net) !== 0n) unbalanced.add(voucher.voucher_id);
+      }
       const total = (filter: (row: EntryRow) => boolean) =>
         safeNumber(
           rows
@@ -727,16 +768,7 @@ export function ledgerService(ctx: ServiceContext) {
         internalNet: total((row) => row.cashflowDirection === 'internal'),
         unallocatedNet: total((row) => unallocated.includes(row)),
         unallocatedCount: unallocated.length,
-        internalUnbalancedVouchers: [
-          ...new Set(
-            rows.filter((row) => row.cashflowDirection === 'internal').map((row) => row.voucherId),
-          ),
-        ].filter(
-          (id) =>
-            rows
-              .filter((row) => row.voucherId === id && row.cashflowDirection === 'internal')
-              .reduce((sum, row) => sum + BigInt(row.debit) - BigInt(row.credit), 0n) !== 0n,
-        ),
+        internalUnbalancedVouchers: candidates.filter((id) => unbalanced.has(id)),
       };
     },
 

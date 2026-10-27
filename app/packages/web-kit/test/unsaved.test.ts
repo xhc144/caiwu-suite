@@ -33,18 +33,28 @@ it('w_frame.closequery：统一确认后保存失败/冲突不关闭，成功后
     },
   });
   expect(await registry.leave('book', undefined, async () => 'save')).toBe(false);
-  registration.update({ ...page('录入'), save: async () => true });
+  registration.update({
+    ...page('录入'),
+    save: async () => {
+      registration.update(page('录入', false));
+      return true;
+    },
+  });
   expect(await registry.leave('book', undefined, async () => 'save')).toBe(true);
   expect(save).toHaveBeenCalledOnce();
 });
 it('w_frame：保存期间新编辑/新增脏页使旧离开确认失效，另一账套互不影响', async () => {
   const registry = new UnsavedRegistry();
   let release!: () => void;
-  registry.register({
-    ...page('录入'),
+  const original = page('录入');
+  const registration = registry.register({
+    ...original,
     save: () =>
       new Promise<boolean>((resolve) => {
-        release = () => resolve(true);
+        release = () => {
+          registration.update({ ...original, dirty: false });
+          resolve(true);
+        };
       }),
   });
   registry.register({ ...page('另一账套'), bookId: 'other' });
@@ -55,4 +65,46 @@ it('w_frame：保存期间新编辑/新增脏页使旧离开确认失效，另�
   release();
   expect(await leaving).toBe(false);
   expect(registry.dirty('other')).toHaveLength(1);
+});
+
+it('w_frame.closequery：缺少version，保存期间原地更新仍dirty不能离开；重新保存变clean才离开', async () => {
+  const registry = new UnsavedRegistry();
+  let finish!: (value: boolean) => void;
+  const original = {
+    ...page('录入'),
+    save: () =>
+      new Promise<boolean>((resolve) => {
+        finish = resolve;
+      }),
+  };
+  const registration = registry.register(original);
+  const leaving = registry.leave('book', undefined, async () => 'save');
+  await Promise.resolve();
+  registration.update({ ...original, title: '新编辑' });
+  expect([...registry.pages.values()][0]).toBe(original);
+  finish(true);
+  expect(await leaving).toBe(false);
+  registration.update({
+    ...original,
+    save: async () => {
+      registration.update({ ...original, dirty: false });
+      return true;
+    },
+  });
+  expect(await registry.leave('book', undefined, async () => 'save')).toBe(true);
+});
+
+it('w_frame.closequery：新version仍dirty失效，新version已clean不误报丢数', async () => {
+  for (const dirty of [true, false]) {
+    const registry = new UnsavedRegistry();
+    const registration = registry.register({
+      ...page('录入'),
+      version: 1,
+      save: async () => {
+        registration.update({ ...page('录入', dirty), version: 2 });
+        return true;
+      },
+    });
+    expect(await registry.leave('book', undefined, async () => 'save')).toBe(!dirty);
+  }
 });

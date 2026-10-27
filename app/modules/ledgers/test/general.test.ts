@@ -344,6 +344,7 @@ describe('w_zc_zc/w_zc_zc_1 总分类账', () => {
       })),
     );
     const api = app.call(server);
+    for (let year = 2027; year <= 2035; year++) await app.svc.periods.ensureYear(year);
     const q = query({ periodTo: 203507 });
     const report = await api.report(q);
     expect(report.rows.filter((r) => r.kind === 'month')).toHaveLength(109);
@@ -476,4 +477,26 @@ describe('w_zc_zc/w_zc_zc_1 总分类账', () => {
       { numRuns: 8 },
     );
   });
+});
+
+it('w_zc_zc：合法已建期间可查；缺202701明确阻止且查询不补期间或静默补零', async () => {
+  await seedVouchers(app.svc, [
+    {
+      date: '2026-07-01',
+      status: 'posted',
+      lines: [
+        { account: '1001', debit: 1 },
+        { account: '4001', credit: 1 },
+      ],
+    },
+  ]);
+  const api = app.call(server);
+  const periods = await app.svc.periods.list();
+  expect((await api.report(query())).rows.length).toBeGreaterThan(0);
+  await expect(api.report(query({ periodTo: 202701 }))).rejects.toThrow(/2027年01月/);
+  expect(await app.svc.periods.list()).toEqual(periods);
+  await app.svc.periods.ensureYear(2027);
+  expect(
+    (await api.report(query({ periodTo: 202701 }))).rows.filter((row) => row.kind === 'month'),
+  ).toHaveLength(7);
 });

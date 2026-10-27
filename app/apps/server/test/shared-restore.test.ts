@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -330,4 +330,103 @@ it.each([
   await expect(stage(bytes)).rejects.toThrow(/未支持的触发器、视图或虚拟表/);
   expect(raw.pragma('integrity_check', { simple: true })).toBe('ok');
   expect(await fresh().book.info()).toMatchObject({ name: app.book.name });
+});
+
+it('w_hf：替换后validate与保护回拷IOERR双故障持续隔离读写和登录，修复后验证保护副本才解封', async () => {
+  app = await createTestApp({ modules: [module] });
+  const store = app.runtime.bookStore;
+  await app.svc.settings.set('value', '被拒收替换账');
+  const bytes = store.open(app.book.id).raw.serialize();
+  await app.svc.settings.set('value', '原账保护内容');
+  const token = await app.login();
+  const ticket = await stage(bytes);
+  const backup = Database.prototype.backup;
+  const spy = vi.spyOn(Database.prototype, 'backup').mockImplementation(async function (
+    this: Database.Database,
+    file,
+    options,
+  ) {
+    if (this.name.includes('core-protection')) throw new Error('SQLITE_IOERR: 保护回拷失败');
+    return backup.call(this, file, options);
+  });
+  try {
+    await expect(
+      app.runtime.lifecycle.maintainBook({
+        token,
+        bookId: app.book.id,
+        permission: 'restore-test.replace',
+        confirmation: { bookId: app.book.id, bookName: app.book.name, password: 'admin' },
+        authorize: async () => {},
+        plan: {
+          kind: 'replace',
+          replacementId: ticket.replacementId,
+          validate: async () => {
+            throw new Error('替换后validate拒收');
+          },
+        },
+      }),
+    ).rejects.toThrow(/已隔离/);
+    expect(
+      existsSync(path.join(app.runtime.dataDir, '.caiwu-runtime.lock', 'maintenance.json')),
+    ).toBe(true);
+    expect(existsSync(store.pathOf(app.book.id) + '.quarantine.json')).toBe(true);
+    expect(() => store.open(app.book.id)).toThrow(/正在维护/);
+    await expect(
+      store.withBook(app.book.id, async (book) => {
+        await book.db.updateTable('book_info').set({ name: '不应提交' }).execute();
+      }),
+    ).rejects.toThrow(/正在维护/);
+    await expect(app.login()).rejects.toThrow(/正在维护/);
+    await expect(app.svc.settings.set('value', '不得提交')).rejects.toThrow();
+    const protection = path.join(app.runtime.dataDir, 'core-protection', app.book.id);
+    const before = readdirSync(protection).map((name) => [
+      name,
+      hash(readFileSync(path.join(protection, name))),
+    ]);
+    await expect(
+      store.recoverQuarantined({
+        bookId: app.book.id,
+        bookName: app.book.name,
+        adminCode: 'admin',
+        password: '错误',
+      }),
+    ).rejects.toThrow(/管理员账号密码/);
+    await expect(
+      store.recoverQuarantined({
+        bookId: app.book.id,
+        bookName: app.book.name,
+        adminCode: 'admin',
+        password: 'admin',
+      }),
+    ).rejects.toThrow(/IOERR/);
+    expect(() => store.open(app.book.id)).toThrow(/正在维护/);
+    spy.mockRestore();
+    await store.recoverQuarantined({
+      bookId: app.book.id,
+      bookName: app.book.name,
+      adminCode: 'admin',
+      password: 'admin',
+    });
+    expect(await fresh().settings.get('value', '')).toBe('原账保护内容');
+    expect(await app.login()).toBeTruthy();
+    expect(
+      existsSync(path.join(app.runtime.dataDir, '.caiwu-runtime.lock', 'maintenance.json')),
+    ).toBe(false);
+    expect(existsSync(store.pathOf(app.book.id) + '.quarantine.json')).toBe(false);
+    expect(
+      readdirSync(protection).map((name) => [
+        name,
+        hash(readFileSync(path.join(protection, name))),
+      ]),
+    ).toEqual(before);
+  } finally {
+    spy.mockRestore();
+    if (existsSync(store.pathOf(app.book.id) + '.quarantine.json'))
+      await store.recoverQuarantined({
+        bookId: app.book.id,
+        bookName: app.book.name,
+        adminCode: 'admin',
+        password: 'admin',
+      });
+  }
 });

@@ -136,3 +136,15 @@ export const DEFAULT_COUNTED_STATUSES: readonly VoucherStatus[] = ['posted'];
 export const UNPOSTED_COUNTED_STATUSES: readonly VoucherStatus[] = ['pending', 'audited', 'posted'];
 
 export { VOUCHER_STATUSES };
+
+/** Flow totals follow the requested subset; internal-balance diagnostics inspect each selected voucher in full. */
+export interface CashflowSummary {
+  rows: EntryRow[];
+  cashNet: number;
+  inflow: number;
+  outflow: number;
+  internalNet: number;
+  unallocatedNet: number;
+  unallocatedCount: number;
+  internalUnbalancedVouchers: number[];
+}

@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useReducer, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useTab } from './tabs';
 import { useRequiredSession } from './session';
 
@@ -16,15 +17,18 @@ export class UnsavedRegistry {
   readonly pages = new Map<symbol, UnsavedPage>();
   private confirmation?: Promise<boolean>;
   private confirmationKey?: string;
+  private unversionedUpdates = new WeakMap<UnsavedPage, number>();
   register(page: UnsavedPage) {
     const id = Symbol();
     this.pages.set(id, page);
     return {
       update: (next: UnsavedPage) => {
         const previous = this.pages.get(id);
-        if (previous && previous.dirty === next.dirty && previous.version === next.version)
+        if (previous && previous.dirty === next.dirty && previous.version === next.version) {
+          if (next.dirty && next.version === undefined)
+            this.unversionedUpdates.set(previous, (this.unversionedUpdates.get(previous) ?? 0) + 1);
           Object.assign(previous, next);
-        else this.pages.set(id, next);
+        } else this.pages.set(id, next);
       },
       unregister: () => this.pages.delete(id),
     };
@@ -45,18 +49,33 @@ export class UnsavedRegistry {
     this.confirmationKey = key;
     this.confirmation = (async () => {
       const pages = this.dirty(bookId, keys);
+      const versions = new Map(pages.map((page) => [page, page.version]));
+      const updates = new Map(pages.map((page) => [page, this.unversionedUpdates.get(page) ?? 0]));
       if (!pages.length) return true;
       const choice = await confirm(pages);
       if (choice === 'cancel') return false;
+      const changed = () =>
+        this.dirty(bookId, keys).some(
+          (page) =>
+            !versions.has(page) ||
+            versions.get(page) !== page.version ||
+            (page.version === undefined &&
+              updates.get(page) !== (this.unversionedUpdates.get(page) ?? 0)),
+        );
       try {
+        if (changed()) return false;
         for (const page of pages) {
-          if (!this.dirty(bookId, keys).includes(page)) return false;
-          if (choice === 'save' && (await page.save()) === false) return false;
+          // A clean page may have advanced its version while the dialog was open.
+          if (!this.dirty(bookId, keys).includes(page)) continue;
+          if (choice === 'save') {
+            if ((await page.save()) === false) return false;
+            // Success describes the saved snapshot, not edits made during that save.
+            // This also protects callers that omit the optional content version.
+            if (this.dirty(bookId, keys).includes(page)) return false;
+          } else await page.discard?.();
+          if (changed()) return false;
         }
-        // New edits or newly registered dirty pages invalidate the leave decision.
-        if (this.dirty(bookId, keys).some((p) => !pages.includes(p))) return false;
-        if (choice === 'discard') for (const page of pages) await page.discard?.();
-        return true;
+        return choice === 'discard' || this.dirty(bookId, keys).length === 0;
       } catch {
         return false;
       }
@@ -75,6 +94,7 @@ export function useUnsavedChanges(input: {
   save: () => Promise<boolean | void>;
   discard?: () => Promise<void> | void;
 }) {
+  const [, refresh] = useReducer((value: number) => value + 1, 0);
   const tab = useTab();
   const session = useRequiredSession();
   const latest = useRef(input);
@@ -83,6 +103,15 @@ export function useUnsavedChanges(input: {
   useLayoutEffect(() => {
     const entry = unsavedPages.register({
       ...latest.current,
+      save: async () => {
+        const result = await latest.current.save();
+        flushSync(() => refresh());
+        return result;
+      },
+      discard: async () => {
+        await latest.current.discard?.();
+        flushSync(() => refresh());
+      },
       bookId: session.bookId,
       tabKey: tab.key,
     });
@@ -93,6 +122,19 @@ export function useUnsavedChanges(input: {
     };
   }, [session.bookId, tab.key]);
   useLayoutEffect(() => {
-    registration.current?.update({ ...input, bookId: session.bookId, tabKey: tab.key });
+    registration.current?.update({
+      ...input,
+      save: async () => {
+        const result = await latest.current.save();
+        flushSync(() => refresh());
+        return result;
+      },
+      discard: async () => {
+        await latest.current.discard?.();
+        flushSync(() => refresh());
+      },
+      bookId: session.bookId,
+      tabKey: tab.key,
+    });
   }, [input, session.bookId, tab.key]);
 }

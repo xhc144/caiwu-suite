@@ -95,7 +95,15 @@ it('w_pz_bhzl fast-check：断号整理唯一连续，稳定日期顺序，分�
               ],
             })),
           );
-          await t.svc.vouchers.setNumbers(vs.map((v, i) => ({ id: v.id, number: numbers[i]! })));
+          {
+            const numberPlan = await t.svc.vouchers.previewNumbers(
+              vs.map((v, i) => ({ id: v.id, number: numbers[i]! })),
+            );
+            await t.svc.vouchers.setNumbers(numberPlan.updates, {
+              plan: numberPlan,
+              confirmed: true,
+            });
+          }
           await t.svc.vouchers.setVoided(vs[0]!.id, true);
           const lines = await t.svc.db
             .selectFrom('voucher_line')
@@ -163,7 +171,15 @@ it('w_pz_tjsh/w_pz_bhzl/w_pz_get fast-check：任意步骤故障，状态、编�
               ],
             })),
           );
-          await t.svc.vouchers.setNumbers(vs.map((v, i) => ({ id: v.id, number: i + 11 })));
+          {
+            const numberPlan = await t.svc.vouchers.previewNumbers(
+              vs.map((v, i) => ({ id: v.id, number: i + 11 })),
+            );
+            await t.svc.vouchers.setNumbers(numberPlan.updates, {
+              plan: numberPlan,
+              confirmed: true,
+            });
+          }
           const api = t.call(server);
           const b = t.call(
             server,

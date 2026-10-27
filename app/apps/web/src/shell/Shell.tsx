@@ -31,9 +31,10 @@ import { visibleModules } from '../modules';
 import { GlobalHotkeys } from './GlobalHotkeys';
 import { NavMenu, buildNavItems } from './NavMenu';
 import { TabsHost } from './TabsHost';
-import { requestBeforeLeave } from './guards';
+import { listenForNativeClose, requestBeforeLeave } from './guards';
 import { SearchDialog, ShortcutDialog, SessionMonitor } from './Tools';
 import { loadAppearance, saveAppearance } from './preferences';
+import { VoucherPolicyDialog } from './VoucherPolicyDialog';
 import './shell.css';
 
 export function sessionIdentity(session: ReturnType<typeof sessionStore.get>) {
@@ -99,6 +100,7 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
   const [searchAt, setSearchAt] = useState<string | null>(null);
   const [shortcuts, setShortcuts] = useState(false);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [voucherPolicyOpen, setVoucherPolicyOpen] = useState(false);
   const prefKey = `${session.bookId}.${session.user.id}`;
   const [appearance, setAppearance] = useState(() => loadAppearance(prefKey));
   const [systemDark, setSystemDark] = useState(
@@ -191,9 +193,11 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
         void exit('user');
       }
     };
+    const removeCloseHandler = listenForNativeClose(session.bookId);
     window.addEventListener('beforeunload', beforeUnload);
     window.addEventListener('keydown', exitKey);
     return () => {
+      removeCloseHandler?.();
       window.removeEventListener('beforeunload', beforeUnload);
       window.removeEventListener('keydown', exitKey);
     };
@@ -313,6 +317,9 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
                 <Button onClick={onShortcuts}>快捷键 ?</Button>
                 <Button onClick={onHelp}>帮助</Button>
                 <Button onClick={() => setAppearanceOpen(true)}>界面</Button>
+                {session.user.isAdmin && (
+                  <Button onClick={() => setVoucherPolicyOpen(true)}>凭证设置</Button>
+                )}
                 <Dropdown
                   menu={{
                     items: [
@@ -336,6 +343,9 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
             </Layout.Content>
           </Layout>
         </Layout>
+        {voucherPolicyOpen && (
+          <VoucherPolicyDialog open onClose={() => setVoucherPolicyOpen(false)} />
+        )}
         <SessionMonitor />
         <GlobalHotkeys
           navItems={navItems}

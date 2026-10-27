@@ -61,6 +61,7 @@ function invalid(problems: VoucherProblem[]): BusinessError {
 }
 
 export function voucherService(ctx: ServiceContext) {
+  let insertion: { period: number; type: number; number: number } | undefined;
   const periods = periodService(ctx);
   const accounts = accountService(ctx);
   const log = logService(ctx);
@@ -214,9 +215,9 @@ export function voucherService(ctx: ServiceContext) {
       if (debit !== 0 && credit !== 0) add('同一行不能同时有借方和贷方金额');
       const entrySide = debit !== 0 ? 'debit' : credit !== 0 ? 'credit' : (l.entrySide ?? null);
       if (l.entrySide && entrySide !== l.entrySide) add('借贷方向与金额栏不一致');
+      const quantityE6 = account.quantityUnit && l.quantity != null ? qtyToE6(l.quantity) : null;
       const hasDimensionAmount =
-        (l.fcAmount != null && l.fcAmount !== 0) ||
-        (l.quantity != null && !new Decimal(l.quantity).isZero());
+        (l.fcAmount != null && l.fcAmount !== 0) || (quantityE6 != null && quantityE6 !== 0);
       if (!draft && debit === 0 && credit === 0 && !hasDimensionAmount)
         add('本币、外币和数量均为 0');
       if (!draft && !entrySide) add('零本币分录必须明确选择借方或贷方');
@@ -279,6 +280,9 @@ export function voucherService(ctx: ServiceContext) {
       )
         cashflowDirection = configuredDirection as typeof cashflowDirection;
       const reversalLine = reversal?.lines[idx];
+      const reversalSide =
+        reversalLine?.entrySide ??
+        (reversalLine?.debit ? 'debit' : reversalLine?.credit ? 'credit' : null);
       if (
         reversal &&
         (!reversalLine ||
@@ -289,6 +293,7 @@ export function voucherService(ctx: ServiceContext) {
           DIMENSION_TYPES.some(
             (type) => (reversalLine.dimensions[type.id] ?? null) !== (dims[type.id] ?? null),
           ) ||
+          (reversalSide != null && reversalSide !== entrySide) ||
           reversalLine.debit !== -debit ||
           reversalLine.credit !== -credit ||
           (reversalLine.fcAmount == null
@@ -299,7 +304,7 @@ export function voucherService(ctx: ServiceContext) {
             : l.quantity == null ||
               !new Decimal(l.quantity).eq(new Decimal(reversalLine.quantity).negated())))
       )
-        add('冲销分录必须逐行保留原凭证的科目、借贷、原币和数量并反号');
+        add('冲销分录必须逐行保留原凭证的科目、借贷方向、原币和数量并反号');
       const flowNet = (debit - credit) * (reversal ? -1 : 1);
       if (cashflowDirection === 'inflow' && flowNet < 0) add('现金流入项目不能填写现金减少额');
       if (cashflowDirection === 'outflow' && flowNet > 0) add('现金流出项目不能填写现金增加额');
@@ -357,7 +362,7 @@ export function voucherService(ctx: ServiceContext) {
         currency_code: currency,
         exchange_rate: currency ? (l.exchangeRate ?? null) : null,
         fc_amount: currency ? (l.fcAmount ?? null) : null,
-        quantity_e6: account.quantityUnit && l.quantity ? qtyToE6(l.quantity) : null,
+        quantity_e6: quantityE6,
         unit_price: account.quantityUnit ? (l.unitPrice ?? null) : null,
         debit,
         credit,
@@ -426,7 +431,15 @@ export function voucherService(ctx: ServiceContext) {
       });
     if (wanted != null && (!Number.isSafeInteger(wanted) || wanted <= 0))
       throw new BusinessError({ code: 'VOUCHER_NUMBER_INVALID', message: '凭证编号必须是正整数' });
-    if (policy.numbering === 'automatic' && wanted != null) {
+    if (
+      policy.numbering === 'automatic' &&
+      wanted != null &&
+      !(
+        insertion?.period === period &&
+        insertion.type === voucherTypeId &&
+        insertion.number === wanted
+      )
+    ) {
       const current = selfId == null ? null : await loadRow(selfId);
       const unchanged =
         current?.period === period &&
@@ -661,7 +674,9 @@ export function voucherService(ctx: ServiceContext) {
       const affected: VoucherRow[] = [];
       if (policy.renumberAfterDelete)
         for (const group of new Map(
-          targets.map((r) => [`${r.period}:${r.voucher_type_id}`, r]),
+          targets
+            .filter((r) => r.number != null)
+            .map((r) => [`${r.period}:${r.voucher_type_id}`, r]),
         ).values()) {
           const rows = await ctx.db
             .selectFrom('voucher')
@@ -671,11 +686,33 @@ export function voucherService(ctx: ServiceContext) {
             .where('number', 'is not', null)
             .orderBy('number')
             .execute();
-          for (const row of rows) {
-            await assertCanModify(row, '删除后重排');
-            affected.push(row);
-          }
+          affected.push(...rows);
         }
+      const impacts = affected
+        .filter((r) => !unique.includes(r.id))
+        .map((row, _i, rows) => ({
+          id: row.id,
+          oldNumber: row.number,
+          number: rows.filter(
+            (r) =>
+              r.period === row.period &&
+              r.voucher_type_id === row.voucher_type_id &&
+              (r.number! < row.number! || (r.number === row.number && r.id <= row.id)),
+          ).length,
+        }));
+      const changed = impacts.filter((impact) => impact.oldNumber !== impact.number);
+      if (changed.length) {
+        for (const impact of changed) {
+          const row = affected.find((row) => row.id === impact.id)!;
+          await assertCanModify(row, '删除后重排');
+          if (row.status !== 'pending')
+            throw new BusinessError({
+              code: 'VOUCHER_LOCKED',
+              message: `凭证 ${await displayNo(row)} 已审核或过账，不能删除后重排`,
+              hint: '请先反过账并取消审核，再重新预览编号影响',
+            });
+        }
+      }
       const fingerprint = await confirmationFingerprint(ctx, 'voucher.delete', {
         targets,
         affected,
@@ -687,18 +724,7 @@ export function voucherService(ctx: ServiceContext) {
         expiresAt,
         fingerprint,
         renumber: policy.renumberAfterDelete,
-        impacts: affected
-          .filter((r) => !unique.includes(r.id))
-          .map((row, _i, rows) => ({
-            id: row.id,
-            oldNumber: row.number,
-            number: rows.filter(
-              (r) =>
-                r.period === row.period &&
-                r.voucher_type_id === row.voucher_type_id &&
-                (r.number! < row.number! || (r.number === row.number && r.id <= row.id)),
-            ).length,
-          })),
+        impacts,
       };
     },
     async deleteBatch(
@@ -726,9 +752,10 @@ export function voucherService(ctx: ServiceContext) {
           targetId: id,
         });
       }
-      if (current.impacts.length) {
-        const numbers = await self.previewNumbers(current.impacts);
-        await self.setNumbers(current.impacts, { plan: numbers, confirmed: true });
+      const changed = current.impacts.filter((impact) => impact.oldNumber !== impact.number);
+      if (changed.length) {
+        const numbers = await self.previewNumbers(changed);
+        await self.setNumbers(changed, { plan: numbers, confirmed: true });
       }
     },
 
@@ -957,6 +984,54 @@ export function voucherService(ctx: ServiceContext) {
           number: updates.find((u) => u.id === row.id)!.number,
         })),
       };
+    },
+    /** Insert at a reserved number only after confirming the complete shift plan. */
+    async insertNumbered(
+      input: VoucherInput,
+      plan: { updates: { id: number; number: number }[]; fingerprint: string; expiresAt: number },
+      confirmed: boolean,
+    ): Promise<Voucher> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) =>
+          voucherService({ ...ctx, db }).insertNumbered(input, plan, confirmed),
+        );
+      if (
+        input.draft ||
+        input.number == null ||
+        !Number.isSafeInteger(input.number) ||
+        input.number <= 0
+      )
+        throw new BusinessError({
+          code: 'VOUCHER_NUMBER_INVALID',
+          message: '插入凭证须提供正整数目标编号',
+        });
+      const period = periodOfDate(input.date);
+      const rows = await ctx.db
+        .selectFrom('voucher')
+        .selectAll()
+        .where('period', '=', period)
+        .where('voucher_type_id', '=', input.voucherTypeId)
+        .where('number', '>=', input.number)
+        .orderBy('id')
+        .execute();
+      if (
+        !rows.some((row) => row.number === input.number) ||
+        rows.length !== plan.updates.length ||
+        rows.some(
+          (row) => !plan.updates.some((u) => u.id === row.id && u.number === row.number! + 1),
+        )
+      )
+        throw new BusinessError({
+          code: 'VOUCHER_STALE',
+          message: '插入位置或腾号集合已变化，请重新预览',
+        });
+      await self.setNumbers(plan.updates, { plan, confirmed });
+      insertion = { period, type: input.voucherTypeId, number: input.number };
+      try {
+        return await self.create(input);
+      } finally {
+        insertion = undefined;
+      }
     },
     async setNumbers(
       updates: { id: number; number: number }[],

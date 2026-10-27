@@ -97,3 +97,23 @@ export async function requestBeforeLeave(bookId: string, keys?: readonly string[
   );
   return accepted && checkBeforeLeave();
 }
+
+/** The native host asks before it starts closing the renderer or local service. */
+export function listenForNativeClose(bookId: string) {
+  const desktop = (
+    window as Window & {
+      caiwuDesktopHost?: {
+        closing?: {
+          onRequest(handler: (id: string) => void): () => void;
+          respond(id: string, allowed: boolean): void;
+        };
+      };
+    }
+  ).caiwuDesktopHost?.closing;
+  return desktop?.onRequest((id) => {
+    void requestBeforeLeave(bookId).then(
+      (allowed) => desktop.respond(id, allowed),
+      () => desktop.respond(id, false),
+    );
+  });
+}

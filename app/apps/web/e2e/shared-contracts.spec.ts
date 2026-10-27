@@ -103,3 +103,26 @@ test('w_frame：20标签拒绝第21个，首个未保存页面及内容完整保
     '第一个标签不能被淘汰',
   );
 });
+
+test('w_xt_kgzb：管理员设置真实账套编号策略，保存和刷新后保持手工/重排/互改参数', async ({
+  page,
+  request,
+}) => {
+  await loginWithNewBook(page, request);
+  await page.goto('/m/voucher-entry/new');
+  await page.getByRole('button', { name: '凭证设置', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '凭证编号与修改设置' });
+  await dialog.getByRole('radio', { name: '手工编号', exact: true }).check();
+  await dialog.getByRole('checkbox', { name: '删除凭证后重新排列编号' }).check();
+  await dialog.getByRole('checkbox', { name: '允许修改其他操作员的凭证' }).uncheck();
+  await dialog.getByRole('button', { name: '保存账套设置' }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByRole('spinbutton', { name: '手动编号', exact: true })).toBeEnabled();
+  await page.reload();
+  await page.getByRole('button', { name: '凭证设置', exact: true }).click();
+  await expect(dialog.getByRole('radio', { name: '手工编号', exact: true })).toBeChecked();
+  await expect(dialog.getByRole('checkbox', { name: '删除凭证后重新排列编号' })).toBeChecked();
+  await expect(
+    dialog.getByRole('checkbox', { name: '允许修改其他操作员的凭证' }),
+  ).not.toBeChecked();
+});

@@ -126,6 +126,8 @@ export const SummarySchema = z.object({
 });
 export type SummaryInput = z.input<typeof SummarySchema>;
 export const TransferLineSchema = z.object({
+  entrySide: z.enum(['debit', 'credit']).nullable().optional(),
+  cashflowDirection: z.enum(['inflow', 'outflow', 'internal']).nullable().optional(),
   summary: z.string(),
   account: z.string().min(1),
   dimensions: z.record(z.string(), z.string()).default({}),
@@ -186,6 +188,8 @@ export const TRANSFER_FIELD_LABELS: Record<string, string> = {
   department: '部门编码',
   person: '个人编码',
   cashflow: '现金流量编码',
+  entrySide: '借贷方向',
+  cashflowDirection: '现金流量方向',
   currency: '币种',
   exchangeRate: '汇率',
   fcAmount: '原币金额（分）',

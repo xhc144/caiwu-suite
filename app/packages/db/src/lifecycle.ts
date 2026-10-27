@@ -106,6 +106,20 @@ export class ResourceGate {
     this.#blocked = true;
   }
 
+  /** Recovery keeps admission closed throughout the repair and only reopens on success. */
+  recover<T>(repair: () => Promise<T>): Promise<T> {
+    if (!this.#blocked || this.#busy) return Promise.reject(this.error('busy'));
+    this.#blocked = false;
+    const operation = this.exclusive(async () => {
+      this.#blocked = true;
+      const result = await repair();
+      this.#blocked = false;
+      return result;
+    });
+    this.#blocked = true;
+    return operation;
+  }
+
   /**
    * 同步关门，再排空。当前请求升级后旧 svc 永久失效，回调外不得再用它。
    * 超时通知调用者并 abort；未结束的回调仍持有门，直到真实结束才释放。

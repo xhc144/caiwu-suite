@@ -76,7 +76,10 @@ it('w_zw_fz 连续结账：后月未过账/断号/草稿/损益逐月定位，�
       ],
     },
   ]);
-  await app.svc.vouchers.setNumbers([{ id: vouchers[0]!.id, number: 2 }]);
+  {
+    const numberPlan = await app.svc.vouchers.previewNumbers([{ id: vouchers[0]!.id, number: 2 }]);
+    await app.svc.vouchers.setNumbers(numberPlan.updates, { plan: numberPlan, confirmed: true });
+  }
   const api = call(app);
   const before = snapshot(app);
   const range = { from: 202601, to: 202604 };
