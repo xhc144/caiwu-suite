@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 import { PRODUCTS, productName, type ProductId } from '@caiwu/core';
 import {
   coreApi,
+  getBusinessError,
   queryClient,
   sessionStore,
   usePermission,
@@ -48,7 +49,7 @@ export default function SettingsPage() {
         sessionStore.set({ ...expected, user: me.user, book: me.book });
       void navigate('/home', { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : '切换失败，请刷新重试');
+      setError(getBusinessError(e)?.message ?? '无法保存产品形态，请检查本地服务后重试');
     }
   };
   return (

@@ -2,7 +2,8 @@ import { Alert, Button, Empty, Input, Space, Spin, Tag, Typography, type InputRe
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { usePermission } from '@caiwu/web-kit';
+import { getBusinessError, usePermission } from '@caiwu/web-kit';
+import { MENU_GROUPS } from '@caiwu/core';
 import type { SearchResult } from '../shared';
 import { api } from './api';
 import { matchesFunction } from './search-match';
@@ -43,7 +44,7 @@ export default function SearchPage() {
       key: `fn:${i.to}`,
       category: '功能',
       title: i.title,
-      detail: `功能 · ${i.group}`,
+      detail: `功能 · ${MENU_GROUPS.find((group) => group.id === i.group)?.title ?? '其他功能'}`,
       to: i.to,
     }));
   // 只展示当前输入对应的数据，旧查询不能覆盖新词；查询内容不写持久存储。
@@ -106,7 +107,9 @@ export default function SearchPage() {
         <Alert
           type="error"
           title="业务资料搜索失败"
-          description={query.error.message}
+          description={
+            getBusinessError(query.error)?.message ?? '无法读取业务资料，请检查本地服务后重试'
+          }
           action={<Button onClick={() => void query.refetch()}>重试</Button>}
         />
       )}

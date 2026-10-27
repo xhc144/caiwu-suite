@@ -3,7 +3,13 @@ import { useLocation, useNavigate } from 'react-router';
 import { Alert, Button, Checkbox, Empty, Select, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { formatMoney } from '@caiwu/core';
-import { notify, queryClient, usePermission, useVoucherTypes } from '@caiwu/web-kit';
+import {
+  getBusinessError,
+  notify,
+  queryClient,
+  usePermission,
+  useVoucherTypes,
+} from '@caiwu/web-kit';
 import { printHtml } from '@caiwu/print';
 import { DataTable, PageContainer, exportToExcel, type DataColumn } from '@caiwu/ui';
 import { reportTotals, reportExcelAmount, type SummaryInput } from '../shared';
@@ -177,7 +183,12 @@ export default function ReportPage() {
           );
       await printHtml({ title: isT ? '丁字帐户' : '凭证科目汇总', html, orientation: 'landscape' });
     } catch (error) {
-      notify.warning(error instanceof Error ? error.message : '打印失败，请重试');
+      notify.warning(
+        getBusinessError(error)?.message ??
+          (error instanceof Error && /[\u3400-\u9fff]/.test(error.message)
+            ? error.message
+            : '无法打印当前范围，请检查本地服务后重试'),
+      );
     } finally {
       setPrinting(false);
     }
@@ -189,7 +200,13 @@ export default function ReportPage() {
     >
       <Filters {...filters} />
       {(sum.isError || t.isError) && (
-        <Alert type="error" title="查询失败" description={(sum.error ?? t.error)?.message} />
+        <Alert
+          type="error"
+          title="查询失败"
+          description={
+            getBusinessError(sum.error ?? t.error)?.message ?? '无法读取汇总，请检查本地服务后重试'
+          }
+        />
       )}
       <Space wrap style={{ margin: '12px 0' }}>
         <span>凭证范围</span>

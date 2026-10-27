@@ -3,6 +3,7 @@ import {
   formatMoney,
   formatVoucherNo,
   moduleAvailableIn,
+  MENU_GROUPS,
   type ModuleManifest,
   type ProductId,
 } from '@caiwu/core';
@@ -117,7 +118,7 @@ export function workbenchService(svc: CoreServices, manifests: ModuleManifest[],
           key: `fn:${i.to}`,
           category: '功能',
           title: i.title,
-          detail: `功能 · ${i.group}`,
+          detail: `功能 · ${MENU_GROUPS.find((group) => group.id === i.group)?.title ?? '其他功能'}`,
           to: i.to,
         }));
       const denied: string[] = [];
