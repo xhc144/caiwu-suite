@@ -19,12 +19,14 @@ export default function ImportButton({
   revision,
   document,
   onSaved,
+  disabled = false,
 }: {
   kind: 'products' | 'opening' | 'document';
   warehouseId?: number;
   revision?: number;
   document?: DocumentInput;
   onSaved?: () => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false),
     [rows, setRows] = useState<Record<string, unknown>[]>([]),
@@ -72,7 +74,11 @@ export default function ImportButton({
 
   return (
     <>
-      {can && <Button onClick={() => setOpen(true)}>Excel 导入预览</Button>}
+      {can && (
+        <Button disabled={disabled} onClick={() => setOpen(true)}>
+          Excel 导入预览
+        </Button>
+      )}
       <Modal
         title="Excel 导入：先预览再确认保存"
         open={open}
@@ -126,7 +132,9 @@ export default function ImportButton({
           {kind === 'document'
             ? '含税口径必须逐行明确填“是”或“否”，不能留空。单据头取当前编辑内容。'
             : '已有数据覆盖需再次预览并确认。'}
-          无法识别的列会报错；请使用导入模板，金额等只读报表列不能直接回导。
+          {kind === 'opening'
+            ? '期初每行只填所选口径的单价或金额；另一格留空。旧的数量、单价三列表按数量×单价读取。金额最多两位小数。'
+            : '无法识别的列会报错；请使用导入模板，金额等只读报表列不能直接回导。'}
         </p>
         <Button
           onClick={() =>
@@ -182,7 +190,11 @@ export default function ImportButton({
             {preview.data?.amounts && (
               <Alert
                 type="info"
-                title={`不含税金额 ${formatMoney(preview.data.amounts.netCents)}，税额 ${formatMoney(preview.data.amounts.taxCents)}，价税合计 ${formatMoney(preview.data.amounts.grossCents)}`}
+                title={
+                  kind === 'opening'
+                    ? `期初金额合计 ${formatMoney(preview.data.amounts.netCents)}`
+                    : `不含税金额 ${formatMoney(preview.data.amounts.netCents)}，税额 ${formatMoney(preview.data.amounts.taxCents)}，价税合计 ${formatMoney(preview.data.amounts.grossCents)}`
+                }
               />
             )}
             <pre style={{ maxHeight: 280, overflow: 'auto', whiteSpace: 'pre-wrap' }}>

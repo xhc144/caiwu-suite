@@ -179,12 +179,14 @@ export function Grid<T extends object>({
   rows,
   columns,
   toolbar,
+  exportable = true,
 }: {
   id: string;
   title: string;
   rows: readonly T[];
   columns: DataColumn<T>[];
   toolbar?: ReactNode;
+  exportable?: boolean;
 }) {
   const [reset, setReset] = useState(0);
   const cellValue = (r: T, c: DataColumn<T>) => {
@@ -226,7 +228,7 @@ export function Grid<T extends object>({
       columns={columns}
       dataSource={rows}
       locale={{ emptyText: '该范围内无数据' }}
-      exportName={rows.length ? title : undefined}
+      exportName={exportable && rows.length ? title : undefined}
       toolbar={
         <Space wrap>
           {toolbar}

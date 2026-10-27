@@ -31,7 +31,7 @@ export default function CountPage() {
   return (
     <PageContainer
       title="月末盘点"
-      subtitle={`支持月份 ${context?.book.startPeriod ?? ''} 至 ${context?.current?.period ?? ''}；账面快照只在生成时取得，实盘不会直接改变库存。`}
+      subtitle={`支持月份 ${context?.book.startPeriod ?? ''} 至 ${context?.current?.period ?? ''}；数量与金额快照只在生成时取得，实盘金额按快照折算，实盘不会直接改变库存。`}
     >
       <InventoryNavigation />
       <Space wrap>
@@ -137,6 +137,7 @@ export default function CountPage() {
         )}
       </Space>
       {q.error && <Alert type="error" title={q.error.message} />}
+      {draft && <Alert type="info" title="差异与金额列显示已保存的数据，保存实盘后更新。" />}
       <Grid
         id="counts"
         title={`月末盘点-${period}`}
@@ -165,6 +166,10 @@ export default function CountPage() {
               ),
           },
           { key: 'difference', title: '差异数量', dataIndex: 'difference' },
+          { key: 'bookCents', title: '账面金额快照', dataIndex: 'bookCents', money: true },
+          { key: 'actualCents', title: '实盘折算金额', dataIndex: 'actualCents', money: true },
+          { key: 'differenceCents', title: '差异金额', dataIndex: 'differenceCents', money: true },
+          { key: 'amountStatus', title: '金额口径', dataIndex: 'amountStatus' },
           {
             key: 'note',
             title: '说明',

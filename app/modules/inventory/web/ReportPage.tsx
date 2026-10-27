@@ -166,6 +166,7 @@ export default function ReportPage() {
             { key: 'unitPrice', title: '销售单价', dataIndex: 'unitPrice' },
             { key: 'revenueCents', title: '销售收入', dataIndex: 'revenueCents', money: true },
             { key: 'costCents', title: '已核算销售成本', dataIndex: 'costCents', money: true },
+            { key: 'unitCost', title: '已核算单位成本（元）', dataIndex: 'unitCost' },
             { key: 'costStatus', title: '成本/利润状态', dataIndex: 'costStatus' },
           ]}
         />

@@ -9,12 +9,14 @@ import {
   type VoucherLineInput,
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
+import { sql } from '@caiwu/db';
 import { createHash } from 'node:crypto';
 import type { z } from 'zod';
 import {
   BatchSchema,
   CardSchema,
   QuerySchema,
+  queryConditionProblem,
   ReportSchema,
   reportKinds,
   type CardInput,
@@ -355,25 +357,16 @@ export function operations(svc: CoreServices) {
       ] as const)
         if (v) q = q.where(col, '=', v);
       for (const c of f.conditions) {
-        const col = { code: 'c.code', name: 'c.name', amount: 'l.amount', useDate: 'c.use_date' }[
-          c.field
-        ] as 'c.code' | 'c.name' | 'l.amount' | 'c.use_date';
-        if (c.op === 'contains' && !['code', 'name'].includes(c.field))
-          fail(
-            'QUERY_OPERATOR',
-            `${c.field === 'amount' ? '金额' : '日期'}不能使用「含有」操作符`,
-            '请选择等于、大于或小于',
-          );
-        let value: string | number = c.value;
-        if (c.field === 'amount') {
-          if (!/^\d+$/.test(c.value) || !Number.isSafeInteger(Number(c.value)))
-            fail('QUERY_NUMBER', '金额条件必须为整数分');
-          value = Number(c.value);
-        }
-        if (c.field === 'useDate' && !isValidDate(c.value))
-          fail('QUERY_DATE', '日期条件格式应为 YYYY-MM-DD');
+        const col = (
+          { code: 'c.code', name: 'c.name', amount: 'l.amount', useDate: 'c.use_date' } as const
+        )[c.field];
+        const problem = queryConditionProblem(c);
+        if (problem) fail(problem.code, problem.message, problem.hint);
+        const value = c.field === 'amount' ? Number(c.value) : c.value;
         if (c.op === 'contains')
-          q = q.where(col, 'like', `%${c.value.replace(/[\\%_]/g, '\\$&')}%`);
+          q = q.where(
+            sql<boolean>`${sql.ref(col)} like ${`%${c.value.replace(/[\\%_]/g, '\\$&')}%`} escape '\\'`,
+          );
         else q = q.where(col, { eq: '=', gt: '>', lt: '<' }[c.op] as '=' | '>' | '<', value);
       }
       const [rows, masters, deps] = await Promise.all([

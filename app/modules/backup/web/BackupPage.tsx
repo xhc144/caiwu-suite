@@ -72,10 +72,10 @@ function base64(file: File) {
 }
 function BackupPage() {
   const session = useRequiredSession();
-  const view = useQuery(api.overview.queryOptions());
+  const view = useQuery({ ...api.overview.queryOptions(), refetchInterval: 5000 });
   const list = useQuery({
     ...api.list.queryOptions(),
-    refetchInterval: (q) => (q.state.data?.some((r) => r.status === 'running') ? 500 : false),
+    refetchInterval: (q) => (q.state.data?.some((r) => r.status === 'running') ? 500 : 5000),
   });
   const [name, setName] = useState('完整备份');
   const requestId = useRef(crypto.randomUUID());
@@ -370,7 +370,7 @@ function BackupPage() {
         <Alert
           type="warning"
           title="当前账套覆盖暂不可用；可安全恢复为独立新账套"
-          description="W0 尚无跨模块维护锁和请求排空接口，覆盖执行已阻止。启动、正常退出与定时自动备份未接入，请主动备份。原版 SQL Anywhere .bak 暂不支持。"
+          description="覆盖恢复仍需共享层原子替换及失败回滚协议，请恢复为新账套。自动备份按保存的配置运行，异常断电无法执行退出备份。原版 SQL Anywhere .bak 暂不支持。"
         />
         {deletion && (
           <Card title="删除受管备份确认">
@@ -646,9 +646,9 @@ function BackupPage() {
         />
         <Card title="系统自动备份设置（w_autobak）">
           <Alert
-            type="info"
-            title={view.data?.runtimeStatus ?? '运行时未接入'}
-            description={`上次成功：${view.data?.lastSuccess?.created_at ?? '暂无'}；上次失败：${view.data?.lastFailure ? `${view.data.lastFailure.created_at} ${view.data.lastFailure.reason}` : '暂无'}；下次：未安排（待接入）。保存配置不代表已经开始保护。`}
+            type={view.data?.automaticFailure ? 'error' : 'info'}
+            title={view.data?.runtimeStatus ?? '正在读取自动备份状态'}
+            description={`上次成功：${view.data?.lastSuccess?.created_at ?? '暂无'}；上次失败：${view.data?.lastFailure ? `${view.data.lastFailure.created_at} ${view.data.lastFailure.reason}` : '暂无'}；下次：${view.data?.nextAt ?? '未安排'}；当前调度错误：${view.data?.automaticFailure ?? '无'}。`}
           />
           {view.data && (
             <Form<BackupSettings>
@@ -669,13 +669,13 @@ function BackupPage() {
               >
                 <Input />
               </Form.Item>
-              <Form.Item name="onStart" label="启动时备份（未接入）" valuePropName="checked">
+              <Form.Item name="onStart" label="启动时备份" valuePropName="checked">
                 <Switch />
               </Form.Item>
-              <Form.Item name="onExit" label="正常退出时备份（未接入）" valuePropName="checked">
+              <Form.Item name="onExit" label="正常退出时备份" valuePropName="checked">
                 <Switch />
               </Form.Item>
-              <Form.Item name="intervalMinutes" label="定时间隔 / 分钟（未接入）">
+              <Form.Item name="intervalMinutes" label="定时间隔 / 分钟">
                 <InputNumber min={5} max={43200} />
               </Form.Item>
               <Form.Item name="keep" label="保留有效自动备份份数（手动及保护备份不轮替）">

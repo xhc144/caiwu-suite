@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import {
   balanceSide,
+  DIMENSION_TYPE_IDS,
   Decimal,
   dimensionName,
   formatMoney,
@@ -14,7 +15,7 @@ import {
 } from '@caiwu/core';
 import { AccountSelect, MoneyInput } from '@caiwu/ui';
 import { useAccounts } from '@caiwu/web-kit';
-import { isEntryDate, foreignAmount, quantityAmount } from '../shared';
+import { isEntryDate, foreignAmount, quantityAmount, applyExchangeRate } from '../shared';
 import { api } from './api';
 
 type Props = {
@@ -239,7 +240,7 @@ export default function LineGrid(p: Props) {
                       date={p.date}
                       line={l}
                       readonly={p.readonly}
-                      onRate={(rate) => set(i, { exchangeRate: rate })}
+                      onRate={(rate) => set(i, applyExchangeRate(l, rate))}
                     />
                   )}
                 </td>
@@ -318,11 +319,28 @@ function AccountContext({
   readonly: boolean;
   onRate: (rate: string) => void;
 }) {
+  const dimensions = DIMENSION_TYPE_IDS.reduce<Partial<Record<DimensionTypeId, number>>>(
+    (out, type) => {
+      const id = line.dimensions?.[type];
+      if (id != null) out[type] = id;
+      return out;
+    },
+    {},
+  );
   const q = useQuery({
-    ...api.context.queryOptions({ accountId: account.id, date }),
+    ...api.context.queryOptions({ accountId: account.id, date, dimensions }),
     enabled: isEntryDate(date),
   });
   const side = balanceSide(q.data?.balance ?? 0, account.direction);
+  const [rateError, setRateError] = useState('');
+  const bringRate = (rate: string) => {
+    try {
+      onRate(rate);
+      setRateError('');
+    } catch {
+      setRateError('期间汇率折算超出安全整数分范围，请按 F6 核对原币金额；原金额未改动。');
+    }
+  };
   let conversionProblem = '';
   if (
     account.currency &&
@@ -341,25 +359,36 @@ function AccountContext({
     }
   }
   useEffect(() => {
-    if (!readonly && account.currency && !line.exchangeRate && q.data?.rate) onRate(q.data.rate);
-  }, [readonly, account.currency, line.exchangeRate, q.data?.rate, onRate]);
+    if (isEntryDate(date) && !readonly && account.currency && !line.exchangeRate && q.data?.rate) {
+      try {
+        onRate(q.data.rate);
+        setRateError('');
+      } catch {
+        setRateError('期间汇率折算超出安全整数分范围，请按 F6 核对原币金额；原金额未改动。');
+      }
+    }
+  }, [date, readonly, account.currency, line.exchangeRate, q.data?.rate, onRate]);
   return (
     <div style={{ fontSize: 12, color: '#666' }}>
       {q.data && (
         <span>
-          余额 {q.data.period}（含未过账）{side.side} {formatMoney(side.amount)}
+          余额 {q.data.period}（{Object.keys(dimensions).length ? '当前辅助组合，' : ''}含未过账）
+          {side.side} {formatMoney(side.amount)}
+          {account.currency && `；原币 ${account.currency} ${formatMoney(q.data.fcBalance)}`}
+          {account.quantityUnit && `；数量 ${q.data.quantityBalance} ${account.quantityUnit}`}
         </span>
       )}
       {account.currency &&
-        !line.exchangeRate &&
+        isEntryDate(date) &&
         !readonly &&
         (q.data?.rate ? (
-          <Button size="small" type="link" onClick={() => onRate(q.data!.rate!)}>
+          <Button size="small" type="link" onClick={() => bringRate(q.data!.rate!)}>
             带入期间汇率 {q.data.rate}
           </Button>
         ) : (
-          <span style={{ color: '#c33' }}>该期间缺少汇率，请到外币档案设置</span>
+          !q.isPending && <span style={{ color: '#c33' }}>该期间缺少汇率，请到外币档案设置</span>
         ))}
+      {rateError && <div role="alert">{rateError}</div>}
       {conversionProblem && (
         <div role="note" style={{ color: '#c33' }}>
           {conversionProblem}

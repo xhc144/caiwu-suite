@@ -5,7 +5,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
-import backupServer from '../server';
+import backupServer from './isolated-server';
 import { validatePackage } from '../server/files';
 import { waitForJobs } from '../server/service';
 import { TRANSFER_LIMIT } from '../shared';

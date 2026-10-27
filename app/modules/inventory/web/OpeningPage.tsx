@@ -1,21 +1,16 @@
 import { useState } from 'react';
 import { Alert, Button, Space } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { PageContainer, useUrlFilters } from '@caiwu/ui';
+import { PageContainer, exportToExcel, useUrlFilters } from '@caiwu/ui';
+import { centsToYuan } from '@caiwu/core';
 import { usePermission } from '@caiwu/web-kit';
 import { api } from './api';
 import { InventoryNavigation } from './common';
-import {
-  Grid,
-  LineEditor,
-  WarehouseSelect,
-  mayDiscard,
-  useCatalog,
-  useRefresh,
-  useUnsaved,
-  type EditLine,
-} from './common';
+import { Grid, WarehouseSelect, mayDiscard, useCatalog, useRefresh, useUnsaved } from './common';
 import ImportButton from './ImportButton';
+import OpeningEditor, { openingError, openingInput, type OpeningDraftLine } from './OpeningEditor';
+import { importExportColumns } from '../excel';
+import { openingValue } from '../opening';
 export default function OpeningPage() {
   const [f, setF] = useUrlFilters({ warehouseId: 0 });
   const { warehouses, context } = useCatalog();
@@ -28,14 +23,27 @@ export default function OpeningPage() {
   const [draft, setDraft] = useState<{
     warehouseId: number;
     revision: number;
-    lines: EditLine[];
+    lines: OpeningDraftLine[];
   } | null>(null);
+  const [error, setError] = useState('');
   const can = usePermission('inventory.edit');
   const refresh = useRefresh();
   const save = useMutation(api.saveOpening.mutationOptions());
   useUnsaved(!!draft);
   const submit = async () => {
     if (!draft) return;
+    let rows;
+    try {
+      rows = draft.lines.map((line) => {
+        const row = openingInput(line);
+        openingValue(row);
+        return row;
+      });
+      setError('');
+    } catch (e) {
+      setError(openingError(e));
+      return;
+    }
     const replace = !!q.data?.rows.length;
     if (
       replace &&
@@ -47,11 +55,7 @@ export default function OpeningPage() {
     await save.mutateAsync({
       warehouseId: draft.warehouseId,
       revision: draft.revision,
-      rows: draft.lines.map((l) => ({
-        productCode: l.productCode,
-        quantity: l.quantity,
-        unitPrice: l.unitPrice,
-      })),
+      rows,
       confirmReplace: replace,
     });
     setDraft(null);
@@ -68,26 +72,32 @@ export default function OpeningPage() {
         <WarehouseSelect
           value={warehouseId || undefined}
           onChange={(id) => {
+            if (save.isPending) return;
             if (mayDiscard(!!draft)) {
               setDraft(null);
+              setError('');
               setF({ warehouseId: id });
             }
           }}
         />
         {can && (
           <Button
-            disabled={!warehouseId}
+            disabled={!warehouseId || !q.data || save.isPending}
             onClick={() => {
-              if (mayDiscard(!!draft))
+              if (mayDiscard(!!draft)) {
+                setError('');
                 setDraft({
                   warehouseId,
                   revision: q.data?.revision ?? 0,
                   lines: (q.data?.rows ?? []).map((l) => ({
-                    ...l,
-                    priceIncludesTax: false,
-                    note: '',
+                    productCode: l.productCode,
+                    quantity: l.quantity,
+                    unitPrice: l.unitPrice,
+                    valueBasis: l.valueBasis,
+                    amount: centsToYuan(l.amountCents),
                   })),
                 });
+              }
             }}
           >
             编辑期初
@@ -98,17 +108,19 @@ export default function OpeningPage() {
           warehouseId={warehouseId || undefined}
           revision={q.data?.revision}
           onSaved={() => setDraft(null)}
+          disabled={!!draft || !q.data}
         />
       </Space>
       {q.error && <Alert type="error" title={q.error.message} />}
+      {error && <Alert type="error" title={error} />}
       {draft ? (
         <>
           <Alert
             type="info"
-            title="所有行一起保存；空或非法数字不会被当作零。关闭或刷新可取消退出。"
+            title="每行按所选口径保存；切换保留两种输入草稿。直接金额反算六位小数单价，仅在回算金额一致时保存。零数量反算、负数及无法保金额的尾差暂不支持。所有行一起保存。"
           />
-          <LineEditor
-            opening
+          <OpeningEditor
+            disabled={save.isPending}
             lines={draft.lines}
             onChange={(lines) => setDraft({ ...draft, lines })}
           />
@@ -117,6 +129,7 @@ export default function OpeningPage() {
               保存全部期初
             </Button>
             <Button
+              disabled={save.isPending}
               onClick={() => {
                 if (mayDiscard(true)) setDraft(null);
               }}
@@ -129,11 +142,31 @@ export default function OpeningPage() {
         <Grid
           id="opening"
           title="库存期初"
+          exportable={false}
+          toolbar={
+            <Button
+              disabled={!q.data?.rows.length}
+              onClick={() =>
+                void exportToExcel({
+                  fileName: '库存期初',
+                  columns: importExportColumns('opening'),
+                  rows: q.data?.rows ?? [],
+                })
+              }
+            >
+              导出 Excel
+            </Button>
+          }
           rows={q.data?.rows ?? []}
           columns={[
             { key: 'productCode', title: '产品编号', dataIndex: 'productCode' },
             { key: 'productName', title: '产品名称', dataIndex: 'productName' },
             { key: 'quantity', title: '数量', dataIndex: 'quantity' },
+            {
+              key: 'valueBasis',
+              title: '保存口径',
+              render: (_, r) => (r.valueBasis === 'amount' ? '直接金额' : '数量×单价'),
+            },
             { key: 'unitPrice', title: '单价', dataIndex: 'unitPrice' },
             { key: 'amountCents', title: '金额', dataIndex: 'amountCents', money: true },
           ]}
