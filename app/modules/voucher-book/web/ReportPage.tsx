@@ -1,13 +1,10 @@
-import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { Alert, Button, Checkbox, Empty, Select, Space } from 'antd';
 import { useQuery } from '@tanstack/react-query';
 import { formatMoney } from '@caiwu/core';
-import { notify, queryClient, usePermission, useVoucherTypes } from '@caiwu/web-kit';
-import { printHtml } from '@caiwu/print';
+import { queryClient, usePermission } from '@caiwu/web-kit';
 import { DataTable, PageContainer, exportToExcel, type DataColumn } from '@caiwu/ui';
-import { reportTotals, reportExcelAmount, type SummaryInput } from '../shared';
-import { tAccountHtml, summaryHtml, reportCaption } from './report-print';
+import type { SummaryInput } from '../shared';
 import { api } from './api';
 import { Filters, useBookFilters } from './filters';
 
@@ -21,9 +18,6 @@ export default function ReportPage() {
   const setting = (key: 'scope' | 'level' | 'foreign', value: string) =>
     filters.set({ [key]: value });
   const canExport = usePermission('voucher-book.export');
-  const canPrint = usePermission('voucher-book.print');
-  const types = useVoucherTypes();
-  const [printing, setPrinting] = useState(false);
   const filter = {
     ...(filters.filter ?? {}),
     statuses:
@@ -40,10 +34,6 @@ export default function ReportPage() {
     level,
     foreign,
   } satisfies SummaryInput;
-  const caption = reportCaption(
-    reportInput.filter,
-    types.find((t) => t.id === filter.voucherTypeId)?.code,
-  );
   const sum = useQuery(
     api.summary.queryOptions(reportInput, { enabled: !isT && !!filters.filter }),
   );
@@ -87,12 +77,6 @@ export default function ReportPage() {
     },
     { key: 'summary', title: '摘要', dataIndex: 'summary', width: 220 },
     {
-      key: 'account',
-      title: '科目',
-      render: (_, r) => `${r.accountCode} ${r.accountName}`,
-      width: 170,
-    },
-    {
       key: 'amount',
       title: '金额',
       money: true,
@@ -106,27 +90,17 @@ export default function ReportPage() {
         ...api.tAccountExport.queryOptions(reportInput.filter),
         staleTime: 0,
       });
-      if (!rows.length) {
-        notify.warning('该条件范围内没有单据输入，请调整范围后导出');
-        return;
-      }
-      const total = reportTotals(rows);
       await exportToExcel({
         fileName: '丁字帐户',
-        title: caption,
+        title: `科目 ${filter.accountCode ?? ''}；${JSON.stringify(reportInput.filter)}`,
         columns: [
           { title: '日期', value: (r) => r.date },
           { title: '字号', value: (r) => r.displayNo },
           { title: '摘要', value: (r) => r.summary },
-          { title: '科目编码', value: (r) => r.accountCode },
-          { title: '科目名称', value: (r) => r.accountName },
-          { title: '借方', value: (r) => reportExcelAmount(r.debit), money: true },
-          { title: '贷方', value: (r) => reportExcelAmount(r.credit), money: true },
+          { title: '借方', value: (r) => r.debit, money: true },
+          { title: '贷方', value: (r) => r.credit, money: true },
         ],
-        rows: [
-          ...rows,
-          { date: '', displayNo: '', summary: '合计', accountCode: '', accountName: '', ...total },
-        ],
+        rows,
       });
     } else {
       const rows = await queryClient.fetchQuery({
@@ -135,15 +109,15 @@ export default function ReportPage() {
       });
       await exportToExcel({
         fileName: '凭证科目汇总',
-        title: caption,
+        title: `凭证范围 ${JSON.stringify(reportInput.filter)}`,
         columns: [
           { title: '科目编码', value: (r) => r.code },
           { title: '名称', value: (r) => r.name },
           { title: '币种', value: (r) => r.currency },
-          { title: '借方', value: (r) => reportExcelAmount(r.debit), money: true },
-          { title: '贷方', value: (r) => reportExcelAmount(r.credit), money: true },
-          { title: '原币借方', value: (r) => reportExcelAmount(r.fcDebit), money: true },
-          { title: '原币贷方', value: (r) => reportExcelAmount(r.fcCredit), money: true },
+          { title: '借方', value: (r) => r.debit, money: true },
+          { title: '贷方', value: (r) => r.credit, money: true },
+          { title: '原币借方', value: (r) => r.fcDebit, money: true },
+          { title: '原币贷方', value: (r) => r.fcCredit, money: true },
         ],
         rows,
       });
@@ -151,34 +125,6 @@ export default function ReportPage() {
   };
   const debitRows = t.data?.filter((r) => r.debit !== 0) ?? [],
     creditRows = t.data?.filter((r) => r.credit !== 0) ?? [];
-  const totals = reportTotals(t.data ?? []);
-  const print = async () => {
-    if (!filters.filter) return;
-    setPrinting(true);
-    try {
-      const html = isT
-        ? tAccountHtml(
-            await queryClient.fetchQuery({
-              ...api.tAccountPrint.queryOptions(reportInput.filter),
-              staleTime: 0,
-            }),
-            caption,
-          )
-        : summaryHtml(
-            await queryClient.fetchQuery({
-              ...api.summaryPrint.queryOptions(reportInput),
-              staleTime: 0,
-            }),
-            caption,
-            foreign,
-          );
-      await printHtml({ title: isT ? '丁字帐户' : '凭证科目汇总', html, orientation: 'landscape' });
-    } catch (error) {
-      notify.warning(error instanceof Error ? error.message : '打印失败，请重试');
-    } finally {
-      setPrinting(false);
-    }
-  };
   return (
     <PageContainer
       title={isT ? '丁字帐户' : '凭证科目汇总'}
@@ -228,15 +174,6 @@ export default function ReportPage() {
             导出当前范围
           </Button>
         )}
-        {canPrint && (
-          <Button
-            loading={printing}
-            disabled={!filters.filter || (isT && !filter.accountCode)}
-            onClick={() => void print()}
-          >
-            打印当前范围
-          </Button>
-        )}
       </Space>
       <p>
         期间 {filter.periodFrom ?? '全部'} 至 {filter.periodTo ?? '全部'}；凭证类型{' '}
@@ -250,7 +187,7 @@ export default function ReportPage() {
           <>
             <Space align="start" style={{ width: '100%' }}>
               <div>
-                <h4>借方 合计 {formatMoney(totals.debit)}</h4>
+                <h4>借方 合计 {formatMoney(debitRows.reduce((s, r) => s + r.debit, 0))}</h4>
                 <DataTable
                   scroll={{ x: undefined }}
                   style={{ maxWidth: '100%', overflowX: 'auto' }}
@@ -262,7 +199,7 @@ export default function ReportPage() {
                 />
               </div>
               <div>
-                <h4>贷方 合计 {formatMoney(totals.credit)}</h4>
+                <h4>贷方 合计 {formatMoney(creditRows.reduce((s, r) => s + r.credit, 0))}</h4>
                 <DataTable
                   scroll={{ x: undefined }}
                   style={{ maxWidth: '100%', overflowX: 'auto' }}

@@ -30,7 +30,6 @@ import {
   savePlan,
   selectedIds,
   trial,
-  resultVoucher,
 } from './service';
 
 export const COLUMNS = [
@@ -161,35 +160,17 @@ export async function parseFile(raw: ImportInput): Promise<Transfer> {
     fail('EMPTY', '文件或所选范围没有数据');
   const header = ws.getRow(1).values;
   if (!Array.isArray(header)) fail('FILE', 'Excel 表头无法读取');
-  const indices = new Map<string, number[]>();
+  const indices = new Map<string, number>();
   header.forEach((h, i) => {
-    if (h != null) {
-      const label = cellText(h);
-      indices.set(label, [...(indices.get(label) ?? []), i]);
-    }
+    if (h != null) indices.set(cellText(h), i);
   });
   const column = (name: string) => {
     const mapped = input.mapping?.[name];
-    const names = mapped ? [mapped] : [...new Set([TRANSFER_FIELD_LABELS[name] ?? name, name])];
-    const matches = names.flatMap((label) => indices.get(label) ?? []);
-    if (matches.length > 1)
-      fail(
-        'MAPPING',
-        `字段“${TRANSFER_FIELD_LABELS[name] ?? name}”匹配到多个表头，请明确映射到唯一列或修正重复表头`,
-      );
-    return matches[0];
+    return (
+      indices.get(mapped || TRANSFER_FIELD_LABELS[name] || name) ??
+      (mapped ? undefined : indices.get(name))
+    );
   };
-  const used = new Map<number, string>();
-  for (const name of COLUMNS) {
-    const index = column(name);
-    if (index == null) continue;
-    if (used.has(index))
-      fail(
-        'MAPPING',
-        `字段“${TRANSFER_FIELD_LABELS[name]}”与“${TRANSFER_FIELD_LABELS[used.get(index)!]}”映射到同一列，请分别选择正确表头`,
-      );
-    used.set(index, name);
-  }
   for (const required of ['key', 'date', 'type', 'account', 'debit', 'credit'])
     if (column(required) == null) fail('MAPPING', `字段 ${required} 未映射，请填写正确的表头名称`);
   const vouchers = new Map<string, Transfer['vouchers'][number]>();
@@ -522,26 +503,11 @@ export async function importCommit(svc: CoreServices, input: CommitInput): Promi
         );
       } else createdIds.push((await t.vouchers.create(checkedInput(r.input!))).id);
     }
-    const imported = new Map(valid.map((r, i) => [r.key, createdIds[i]!]));
-    const result: ActionResult = {
+    const result = {
       successCount: createdIds.length,
       skippedCount: plan.rows.length - createdIds.length,
       createdIds,
       message: `导入 ${createdIds.length} 张，跳过 ${plan.rows.length - createdIds.length} 张`,
-      rows: await Promise.all(
-        plan.rows.map(async (r) => {
-          const id = imported.get(r.key);
-          return {
-            key: r.key,
-            label: r.label,
-            outcome: id == null ? ('skipped' as const) : ('success' as const),
-            reasons: r.errors,
-            ...(id == null
-              ? { voucherId: null, voucherLabel: null, status: '未导入' }
-              : await resultVoucher(t, id)),
-          };
-        }),
-      ),
     };
     await finishPlan(t, input.token, result);
     await t.log.write({

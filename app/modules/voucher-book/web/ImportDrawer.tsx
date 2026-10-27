@@ -14,7 +14,7 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import { notify, useVoucherTypes, usePermission } from '@caiwu/web-kit';
 import { downloadBlob } from '@caiwu/ui';
-import { TRANSFER_FIELD_LABELS, type ImportInput, type ActionResult } from '../shared';
+import { TRANSFER_FIELD_LABELS, type ImportInput } from '../shared';
 import type { ImportPreview } from '../server/transfer';
 import { api } from './api';
 
@@ -26,7 +26,7 @@ export function ImportDrawer({
 }: {
   open: boolean;
   onClose: () => void;
-  onSaved: (result: ActionResult) => void;
+  onSaved: (message: string) => void;
 }) {
   const [file, setFile] = useState<{
     name: string;
@@ -42,7 +42,7 @@ export function ImportDrawer({
   const commit = useMutation(
     api.importCommit.mutationOptions({
       onSuccess: (r) => {
-        onSaved(r);
+        onSaved(r.message);
         setPlan(null);
         setFile(null);
         onClose();
@@ -97,11 +97,8 @@ export function ImportDrawer({
           {plan ? (
             <Button
               type="primary"
-              aria-label="确认导入"
-              aria-busy={commit.isPending}
               loading={commit.isPending}
               disabled={
-                commit.isPending ||
                 plan.stopped ||
                 !plan.validCount ||
                 (!!plan.errorCount && !plan.onlyValid) ||
@@ -114,14 +111,7 @@ export function ImportDrawer({
               确认导入
             </Button>
           ) : (
-            <Button
-              type="primary"
-              aria-label="逐凭证预览"
-              aria-busy={preview.isPending}
-              disabled={preview.isPending}
-              loading={preview.isPending}
-              onClick={() => void startPreview()}
-            >
+            <Button type="primary" loading={preview.isPending} onClick={() => void startPreview()}>
               逐凭证预览
             </Button>
           )}
