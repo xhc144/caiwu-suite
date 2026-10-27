@@ -97,6 +97,7 @@ type Props = {
   sources: Sources;
   request: StatementRequest;
   initial: Configuration;
+  previousConfiguration?: Configuration;
   periods: { period: number; label: string }[];
   onRequestChange(r: StatementRequest): void;
   onSave(c: Configuration): Promise<void>;
@@ -127,11 +128,45 @@ const options = (ids: readonly string[]) =>
 const friendly = (e: ActualLine) =>
   `${e.date} ${e.displayNo} 第${e.lineNo}行 ${e.accountCode} ${e.summary}`;
 
+function comparativeDetailOptions(
+  current: Configuration,
+  previous: Configuration | undefined,
+  through: number,
+) {
+  const configurations = [{ configuration: current, through }];
+  if (previous && previous.bookId === current.bookId && previous.year === current.year - 1)
+    configurations.push({ configuration: previous, through: through - 100 });
+  const details = new Set(
+    configurations.flatMap(({ configuration, through }) =>
+      configuration.recognitions
+        .filter(
+          (r) =>
+            r.row === 'activityCost' &&
+            mappedRow(r.line.account, configuration.mappings) === 'activityCost' &&
+            Math.floor(r.line.period / 100) === configuration.year &&
+            r.line.period <= through,
+        )
+        .flatMap((r) =>
+          r.allocations
+            .filter((a) => a.detail && (a.debit !== 0 || a.credit !== 0))
+            .map((a) => a.detail!),
+        ),
+    ),
+  );
+  return [...details]
+    .sort((a, b) => a.localeCompare(b, 'zh-CN'))
+    .map((detail) => ({
+      value: `detail:${detail}`,
+      label: `业务组成：${detail}`,
+    }));
+}
+
 /** 由公共报表页面挂载，保存和生成均交回同一个受控接口；没有本地JSON或凭证回写入口。 */
 export function NonprofitConfigurationPanel({
   sources,
   request,
   initial,
+  previousConfiguration,
   periods,
   onRequestChange,
   onSave,
@@ -413,6 +448,7 @@ export function NonprofitConfigurationPanel({
                     <ComparativeConfigurationForm
                       sources={sources}
                       initial={c.comparison}
+                      detailOptions={comparativeDetailOptions(c, previousConfiguration, request.to)}
                       periods={periods.filter((p) => Math.floor(p.period / 100) === c.year - 1)}
                       onSave={(comparison) => change({ ...c, comparison })}
                     />
@@ -1615,11 +1651,13 @@ function NetAssetEventForm({
 function ComparativeConfigurationForm({
   sources,
   initial,
+  detailOptions,
   periods,
   onSave,
 }: {
   sources: Sources;
   initial: Configuration['comparison'];
+  detailOptions: { value: string; label: string }[];
   periods: Props['periods'];
   onSave(c: NonNullable<Configuration['comparison']>): void;
 }) {
@@ -1659,6 +1697,9 @@ function ComparativeConfigurationForm({
       >
         <p>
           上年度来源由本账套保存资料读取。没有重列时，确认相同编制口径即可；有重列须填写原发生期间、项目和凭据。
+        </p>
+        <p>
+          业务组成选项来自本年及上年度对应期间的逐笔确认；未读取到真实组成时，请先核对上年保存的来源配置。
         </p>
         <Form.Item name="basis" label="上年可比项目及口径核对依据" rules={[{ required: true }]}>
           <Input.TextArea />
@@ -1782,6 +1823,9 @@ function ComparativeConfigurationForm({
                     rules={[{ required: true }]}
                   >
                     <Select
+                      showSearch={{
+                        filterOption: (text, option) => String(option?.label ?? '').includes(text),
+                      }}
                       options={[
                         ...options([
                           ...incomeIds,
@@ -1790,6 +1834,7 @@ function ComparativeConfigurationForm({
                           'fundraisingCost',
                           'priorAdjustment',
                         ]),
+                        ...detailOptions,
                         ...cashflowRows
                           .filter((r) => !r.section && !r.total)
                           .filter(

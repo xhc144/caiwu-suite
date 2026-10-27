@@ -11,6 +11,6 @@
 - `w_bb_saveas`：同一有效快照生成真实xlsx及A4打印HTML，活动表横向、分页重复表头。
 - 原民非 `w_bb_proc` 有更多参数、辅助类型/内容、99期间及辅助占位；原公式校验和通用编辑器由公共引擎负责。
 
-接线：`nonprofitDescriptor`（`statutory.server.ts`）提供目录、配置与报告期校验、核心服务取数、生成、绑定复核和勾稽。`NonprofitConfigurationPanel`（`statutory.web.tsx`）接收保存/生成回调和三个可选通知：`onDirtyChange(dirty: boolean)`、`onDraftChange(draft: Configuration)`、`onSaveReady(save: () => Promise<void>)`；初始加载不报脏，真实编辑报脏，保存失败或保存中新编辑保持未保存状态，成功保存且没有新编辑才报干净。挂载时发布初始草稿，后续编辑持续发布最新草稿；注册的稳定保存函数在隐藏面板中也读取最新配置及持久化回调，校验失败或保存中新编辑会拒绝返回，调用方须等待 Promise 完成。年中账套初次 `readSources(svc, request)` 返回 `historyMissing` 供录入；保存后须 `readSources(svc, request, savedConfiguration)` 重新读取并显示历史逐笔确认。生成和输出复核仍须使用公共同一事务，保存 `statement` 与 `binding`；复制、改编号、导入须保留原制度及绑定，审核失败不得生成新快照或正式输出。
+接线：`nonprofitDescriptor`（`statutory.server.ts`）提供目录、配置与报告期校验、核心服务取数、生成、绑定复核和勾稽。`NonprofitConfigurationPanel`（`statutory.web.tsx`）接收保存/生成回调和三个可选通知：`onDirtyChange(dirty: boolean)`、`onDraftChange(draft: Configuration)`、`onSaveReady(save: () => Promise<void>)`；初始加载不报脏，真实编辑报脏，保存失败或保存中新编辑保持未保存状态，成功保存且没有新编辑才报干净。挂载时发布初始草稿，后续编辑持续发布最新草稿；注册的稳定保存函数在隐藏面板中也读取最新配置及持久化回调，校验失败或保存中新编辑会拒绝返回，调用方须等待 Promise 完成。比较组成下拉接收可选 `previousConfiguration`（同账套上一年度已保存配置），从本年与上年对应期间的业务活动成本逐笔确认提取真实组成，不开放任意标签输入。年中账套初次 `readSources(svc, request)` 返回 `historyMissing` 供录入；保存后须 `readSources(svc, request, savedConfiguration)` 重新读取并显示历史逐笔确认。生成和输出复核仍须使用公共同一事务，保存 `statement` 与 `binding`；复制、改编号、导入须保留原制度及绑定，审核失败不得生成新快照或正式输出。
 
 未完成：最新main上的公共目录、配置持久保存、原子生成与输出真实HTTP联调；真实系统xlsx及打印PDF全流程回归。原版99期间、通用S/W/F别名、旧二进制引入和完整编辑器由公共任务负责。
