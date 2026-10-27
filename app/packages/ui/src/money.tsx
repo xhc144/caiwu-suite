@@ -1,5 +1,12 @@
 import { Input, type InputProps, type InputRef } from 'antd';
-import { forwardRef, useEffect, useState } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useState,
+  useRef,
+  useImperativeHandle,
+  useLayoutEffect,
+} from 'react';
 import { formatMoney, parseMoney, type Cents } from '@caiwu/core';
 
 export interface MoneyTextProps {
@@ -49,18 +56,36 @@ export const MoneyInput = forwardRef<InputRef, MoneyInputProps>(function MoneyIn
   { value, onChange, allowNegative = true, onBlur, onFocus, ...rest },
   ref,
 ) {
+  const inputRef = useRef<InputRef>(null);
+  const mouseFocus = useRef(false);
+  useImperativeHandle(ref, () => inputRef.current!, []);
   const [focused, setFocused] = useState(false);
+  useLayoutEffect(() => {
+    if (!focused) return;
+    inputRef.current?.select();
+  }, [focused]);
   const [text, setText] = useState(() => formatMoney(value, { blankZero: false }));
   useEffect(() => {
     if (!focused) setText(value == null ? '' : formatMoney(value));
   }, [value, focused]);
   return (
     <Input
-      ref={ref}
+      ref={inputRef}
       {...rest}
       inputMode="decimal"
       className={['cw-money-input', rest.className].filter(Boolean).join(' ')}
       value={text}
+      onMouseDown={(e) => {
+        mouseFocus.current = document.activeElement !== inputRef.current?.input;
+        rest.onMouseDown?.(e);
+      }}
+      onMouseUp={(e) => {
+        if (mouseFocus.current) {
+          inputRef.current?.select();
+          mouseFocus.current = false;
+        }
+        rest.onMouseUp?.(e);
+      }}
       onFocus={(e) => {
         setFocused(true);
         setText(value == null ? '' : formatMoney(value, { thousands: false }));

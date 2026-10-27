@@ -1,3 +1,5 @@
+import { confirmationFingerprint } from '../confirmation';
+import { voucherPolicyService } from './voucher-policy';
 import { withTransaction, type Selectable, type Updateable } from '@caiwu/db';
 import { BusinessError, notFound } from '../../errors';
 import {
@@ -6,6 +8,8 @@ import {
   type DimensionTypeId,
   type DimensionValues,
 } from '../../dimensions';
+import { normalizeRows } from '../../rows';
+import { Decimal } from '../../decimal';
 import { qtyFromE6, qtyToE6 } from '../../decimal';
 import { formatMoney } from '../../money';
 import { formatPeriod, periodOfDate, type Period } from '../../period';
@@ -29,7 +33,7 @@ import { accountService } from './accounts';
 import { logService, periodService } from './basic';
 
 type VoucherRow = Selectable<CoreDB['voucher']>;
-type LineInsert = Omit<CoreDB['voucher_line'], 'id' | 'voucher_id'>;
+type LineInsert = Omit<Selectable<CoreDB['voucher_line']>, 'id' | 'voucher_id'>;
 
 export interface VoucherProblem {
   /** 第几行（从 1 开始）；凭证整体的问题为 0 */
@@ -57,6 +61,7 @@ function invalid(problems: VoucherProblem[]): BusinessError {
 }
 
 export function voucherService(ctx: ServiceContext) {
+  let insertion: { period: number; type: number; number: number } | undefined;
   const periods = periodService(ctx);
   const accounts = accountService(ctx);
   const log = logService(ctx);
@@ -64,7 +69,16 @@ export function voucherService(ctx: ServiceContext) {
   const moduleName = (id: string) => ctx.modules.manifest(id)?.name ?? id;
 
   /** 由其它模块生成的凭证，只能由该模块修改、删除、作废。 */
-  const assertCanModify = (row: VoucherRow, action: string) => {
+  const assertCanModify = async (row: VoucherRow, action: string) => {
+    if (
+      row.created_by !== ctx.user.id &&
+      !(await voucherPolicyService(ctx).get()).allowModifyOthers
+    )
+      throw new BusinessError({
+        code: 'VOUCHER_OTHER_AUTHOR',
+        message: `凭证 ${await displayNo(row)} 由其他操作员编制，当前账套禁止互相修改`,
+        hint: '请原制单人处理，或由管理员在账套信息修改策略',
+      });
     if (row.source_module && row.source_module !== ctx.moduleId) {
       const manifest = ctx.modules.manifest(row.source_module);
       const to =
@@ -113,12 +127,18 @@ export function voucherService(ctx: ServiceContext) {
   const prepareLines = async (
     input: ReturnType<typeof VoucherInputSchema.parse>,
     period: Period,
+    historicalLines?: VoucherLine[],
   ) => {
     const draft = input.draft;
     const problems: VoucherProblem[] = [];
-    const lines = draft ? input.lines.filter((l) => l.accountId != null) : input.lines;
+    const reversal = input.reversalOfId != null ? await self.get(input.reversalOfId) : null;
+    if (input.reversalOfId != null && !reversal) throw notFound('被冲销凭证', input.reversalOfId);
+    const normalized = normalizeRows(input.lines);
+    const lines = draft ? normalized.rows.filter((l) => l.accountId != null) : normalized.rows;
 
     if (!draft && lines.length < 2) problems.push({ line: 0, message: '凭证至少要有两行分录' });
+    if (reversal && reversal.lines.length !== lines.length)
+      problems.push({ line: 0, message: '冲销凭证必须完整保留原凭证的全部分录' });
 
     const accountIds = [
       ...new Set(lines.map((l) => l.accountId).filter((x): x is number => x != null)),
@@ -143,12 +163,38 @@ export function voucherService(ctx: ServiceContext) {
       : [];
     const itemMap = new Map(itemRows.map((r) => [r.id, r]));
 
+    // 只在保存入口核验当前可用性；历史 get/账簿和原有状态流程仍保留已存引用。
+    const currencyCodes = [
+      ...new Set([...accountMap.values()].flatMap((a) => (a.currency ? [a.currency] : []))),
+    ];
+    const currencyRows = currencyCodes.length
+      ? await ctx.db
+          .selectFrom('currency')
+          .select(['code', 'name', 'disabled'])
+          .where('code', 'in', currencyCodes)
+          .execute()
+      : [];
+    const currencyMap = new Map(currencyRows.map((r) => [r.code, r]));
+    const methodIds = [
+      ...new Set(
+        lines.flatMap((l) => (l.settlementMethodId != null ? [l.settlementMethodId] : [])),
+      ),
+    ];
+    const methodRows = methodIds.length
+      ? await ctx.db
+          .selectFrom('settlement_method')
+          .select(['id', 'code', 'name', 'disabled'])
+          .where('id', 'in', methodIds)
+          .execute()
+      : [];
+    const methodMap = new Map(methodRows.map((r) => [r.id, r]));
+
     const prepared: LineInsert[] = [];
     let debitSum = 0n;
     let creditSum = 0n;
 
     lines.forEach((l, idx) => {
-      const n = idx + 1;
+      const n = normalized.rowNumbers[normalized.rows.indexOf(l)] ?? idx + 1;
       const add = (message: string) => problems.push({ line: n, message });
       const account = l.accountId != null ? accountMap.get(l.accountId) : undefined;
       if (l.accountId == null) {
@@ -167,7 +213,16 @@ export function voucherService(ctx: ServiceContext) {
       const debit = l.debit ?? 0;
       const credit = l.credit ?? 0;
       if (debit !== 0 && credit !== 0) add('同一行不能同时有借方和贷方金额');
-      if (!draft && debit === 0 && credit === 0) add('借方、贷方金额都是 0');
+      const entrySide = debit !== 0 ? 'debit' : credit !== 0 ? 'credit' : (l.entrySide ?? null);
+      if (l.entrySide && entrySide !== l.entrySide) add('借贷方向与金额栏不一致');
+      const quantityE6 = account.quantityUnit && l.quantity != null ? qtyToE6(l.quantity) : null;
+      const hasDimensionAmount =
+        (l.fcAmount != null && l.fcAmount !== 0) || (quantityE6 != null && quantityE6 !== 0);
+      if (!draft && debit === 0 && credit === 0 && !hasDimensionAmount)
+        add('本币、外币和数量均为 0');
+      if (!draft && !entrySide) add('零本币分录必须明确选择借方或贷方');
+      if (l.exchangeRate != null && !new Decimal(l.exchangeRate).isPositive())
+        add('汇率必须大于 0');
       debitSum += BigInt(debit);
       creditSum += BigInt(credit);
 
@@ -196,6 +251,63 @@ export function voucherService(ctx: ServiceContext) {
         dims[type] = value;
       }
 
+      const previousLine = historicalLines?.[idx];
+      let cashflowDirection =
+        l.cashflowDirection === undefined && previousLine
+          ? (previousLine.cashflowDirection ?? null)
+          : (l.cashflowDirection ?? null);
+      const cashflowItem = dims.cashflow != null ? itemMap.get(dims.cashflow) : undefined;
+      const configuredDirection = cashflowItem
+        ? (JSON.parse(cashflowItem.attrs) as Record<string, unknown>).cashflowDirection
+        : null;
+      if (
+        configuredDirection != null &&
+        !['inflow', 'outflow', 'internal'].includes(String(configuredDirection))
+      )
+        add('现金流量项目方向无效，请先维护项目');
+      const cashAccount = account.isCash || account.isBank || account.cashflowRequired;
+      if (!cashAccount && l.cashflowDirection != null)
+        add('非现金银行科目没有启用现金流量核算，不能填写现金流量项目或方向');
+      if (cashflowDirection && !dims.cashflow) add('选择现金流量方向前需要选择项目');
+      if (cashflowDirection && configuredDirection && cashflowDirection !== configuredDirection)
+        add('现金流量方向与项目设置不一致');
+      if (
+        l.cashflowDirection === undefined &&
+        !previousLine &&
+        cashAccount &&
+        !cashflowDirection &&
+        ['inflow', 'outflow', 'internal'].includes(String(configuredDirection))
+      )
+        cashflowDirection = configuredDirection as typeof cashflowDirection;
+      const reversalLine = reversal?.lines[idx];
+      const reversalSide =
+        reversalLine?.entrySide ??
+        (reversalLine?.debit ? 'debit' : reversalLine?.credit ? 'credit' : null);
+      if (
+        reversal &&
+        (!reversalLine ||
+          reversalLine.accountId !== l.accountId ||
+          (reversalLine.currency ?? null) !== (l.currency ?? null) ||
+          (reversalLine.exchangeRate ?? null) !== (l.exchangeRate ?? null) ||
+          (reversalLine.unitPrice ?? null) !== (l.unitPrice ?? null) ||
+          DIMENSION_TYPES.some(
+            (type) => (reversalLine.dimensions[type.id] ?? null) !== (dims[type.id] ?? null),
+          ) ||
+          (reversalSide != null && reversalSide !== entrySide) ||
+          reversalLine.debit !== -debit ||
+          reversalLine.credit !== -credit ||
+          (reversalLine.fcAmount == null
+            ? l.fcAmount != null
+            : l.fcAmount !== -reversalLine.fcAmount) ||
+          (reversalLine.quantity == null
+            ? l.quantity != null
+            : l.quantity == null ||
+              !new Decimal(l.quantity).eq(new Decimal(reversalLine.quantity).negated())))
+      )
+        add('冲销分录必须逐行保留原凭证的科目、借贷方向、原币和数量并反号');
+      const flowNet = (debit - credit) * (reversal ? -1 : 1);
+      if (cashflowDirection === 'inflow' && flowNet < 0) add('现金流入项目不能填写现金减少额');
+      if (cashflowDirection === 'outflow' && flowNet > 0) add('现金流出项目不能填写现金增加额');
       // 外币
       let currency = l.currency ?? null;
       if (account.currency) {
@@ -214,6 +326,18 @@ export function voucherService(ctx: ServiceContext) {
         }
         currency = null;
       }
+      if (currency) {
+        const item = currencyMap.get(currency);
+        if (!item) add(`币种 ${currency} 不存在，请先维护币种或改用有效科目`);
+        else if (item.disabled)
+          add(`币种 ${item.code} ${item.name} 已停用，请先重新启用币种或改用有效科目`);
+      }
+      if (l.settlementMethodId != null) {
+        const method = methodMap.get(l.settlementMethodId);
+        if (!method) add(`结算方式（id ${l.settlementMethodId}）不存在，请改选有效结算方式`);
+        else if (method.disabled)
+          add(`结算方式 ${method.code} ${method.name} 已停用，请改选可用方式或重新启用`);
+      }
 
       // 数量
       if (account.quantityUnit) {
@@ -224,6 +348,8 @@ export function voucherService(ctx: ServiceContext) {
       }
 
       prepared.push({
+        cashflow_direction: cashflowDirection,
+        entry_side: entrySide,
         line_no: n,
         period,
         summary: l.summary ?? '',
@@ -236,7 +362,7 @@ export function voucherService(ctx: ServiceContext) {
         currency_code: currency,
         exchange_rate: currency ? (l.exchangeRate ?? null) : null,
         fc_amount: currency ? (l.fcAmount ?? null) : null,
-        quantity_e6: account.quantityUnit && l.quantity ? qtyToE6(l.quantity) : null,
+        quantity_e6: quantityE6,
         unit_price: account.quantityUnit ? (l.unitPrice ?? null) : null,
         debit,
         credit,
@@ -259,10 +385,19 @@ export function voucherService(ctx: ServiceContext) {
           line: 0,
           message: `借贷不平衡：借方合计 ${formatMoney(debitTotal)}，贷方合计 ${formatMoney(creditTotal)}，差额 ${difference}`,
         });
-      } else if (debitTotal === 0) {
-        problems.push({ line: 0, message: '凭证金额合计为 0' });
       }
     }
+    const internalNet = prepared
+      .filter((l) => {
+        const account = accountMap.get(l.account_id);
+        return (
+          l.cashflow_direction === 'internal' &&
+          (account?.isCash || account?.isBank || account?.cashflowRequired)
+        );
+      })
+      .reduce((total, l) => total + BigInt(l.debit) - BigInt(l.credit), 0n);
+    if (!draft && internalNet !== 0n)
+      problems.push({ line: 0, message: '本张凭证内部现金转移未配平' });
     if (problems.length) throw invalid(problems);
     return { lines: prepared, debitTotal, creditTotal };
   };
@@ -288,6 +423,44 @@ export function voucherService(ctx: ServiceContext) {
     wanted: number | null | undefined,
     selfId?: number,
   ) => {
+    const policy = await voucherPolicyService(ctx).get();
+    if (policy.numbering === 'manual' && wanted == null)
+      throw new BusinessError({
+        code: 'VOUCHER_NUMBER_REQUIRED',
+        message: `${formatPeriod(period)}采用手工编号，请输入正整数凭证号`,
+      });
+    if (wanted != null && (!Number.isSafeInteger(wanted) || wanted <= 0))
+      throw new BusinessError({ code: 'VOUCHER_NUMBER_INVALID', message: '凭证编号必须是正整数' });
+    if (
+      policy.numbering === 'automatic' &&
+      wanted != null &&
+      !(
+        insertion?.period === period &&
+        insertion.type === voucherTypeId &&
+        insertion.number === wanted
+      )
+    ) {
+      const current = selfId == null ? null : await loadRow(selfId);
+      const unchanged =
+        current?.period === period &&
+        current.voucher_type_id === voucherTypeId &&
+        current.number === wanted;
+      const next = await self.nextNumber(period, voucherTypeId);
+      const existingNumber =
+        current?.period === period &&
+        current.voucher_type_id === voucherTypeId &&
+        current.number != null;
+      if (!unchanged && (existingNumber || wanted !== next))
+        throw new BusinessError({
+          code: 'VOUCHER_NUMBER_AUTOMATIC',
+          message: existingNumber
+            ? `${formatPeriod(period)}凭证 ${await displayNo(current!)} 采用自动编号，普通保存不能改号`
+            : `${formatPeriod(period)}采用自动编号，当前下一个编号为 ${next}，不能指定 ${wanted}`,
+          hint: existingNumber
+            ? '请保留原编号；确需改号时先预览编号整理并明确确认'
+            : '清空凭证号后重新保存；需要沿用历史编号时，请管理员明确改为手工编号',
+        });
+    }
     if (wanted != null) {
       let q = ctx.db
         .selectFrom('voucher')
@@ -407,7 +580,7 @@ export function voucherService(ctx: ServiceContext) {
         const tsvc = self;
         const tperiods = periods;
         const row = await loadRow(id);
-        assertCanModify(row, '修改');
+        await assertCanModify(row, '修改');
         checkRevision(row, opts.expectedRevision, '保存');
         if (row.voided)
           throw new BusinessError({ code: 'VOUCHER_VOIDED', message: '已作废的凭证不能修改' });
@@ -422,7 +595,11 @@ export function voucherService(ctx: ServiceContext) {
         await tperiods.assertOpen(row.period, '修改凭证');
         await tperiods.assertOpen(period, '保存凭证');
         await checkType(input.voucherTypeId);
-        const { lines, debitTotal, creditTotal } = await prepareLines(input, period);
+        const { lines, debitTotal, creditTotal } = await prepareLines(
+          { ...input, reversalOfId: input.reversalOfId ?? row.reversal_of_id },
+          period,
+          (await tsvc.get(id))!.lines,
+        );
         let number: number | null = null;
         if (!input.draft) {
           const sameGroup = row.period === period && row.voucher_type_id === input.voucherTypeId;
@@ -431,7 +608,7 @@ export function voucherService(ctx: ServiceContext) {
               ? await assignNumber(period, input.voucherTypeId, input.number, id)
               : sameGroup && row.number != null
                 ? row.number
-                : await tsvc.nextNumber(period, input.voucherTypeId);
+                : await assignNumber(period, input.voucherTypeId, input.number, id);
         }
         await db
           .updateTable('voucher')
@@ -471,6 +648,117 @@ export function voucherService(ctx: ServiceContext) {
       }
     },
 
+    async previewDelete(ids: number[], expiresAt = ctx.now().getTime() + 300_000) {
+      if (expiresAt <= ctx.now().getTime() || expiresAt > ctx.now().getTime() + 300_000)
+        throw new BusinessError({
+          code: 'VOUCHER_STALE',
+          message: '删除预览已过期或期限无效，请重新预览',
+        });
+      const unique = [...new Set(ids)].sort((a, b) => a - b);
+      if (unique.length !== ids.length || !ids.length)
+        throw new BusinessError({
+          code: 'VOUCHER_SELECTION_INVALID',
+          message: '请选择不重复的凭证',
+        });
+      const policy = await voucherPolicyService(ctx).get();
+      const targets = await Promise.all(unique.map(loadRow));
+      for (const row of targets) {
+        await assertCanModify(row, '删除');
+        await periods.assertOpen(row.period, '删除凭证');
+        if (row.status !== 'draft' && row.status !== 'pending')
+          throw new BusinessError({
+            code: 'VOUCHER_LOCKED',
+            message: `凭证 ${await displayNo(row)} 已审核或过账，不能删除`,
+          });
+      }
+      const affected: VoucherRow[] = [];
+      if (policy.renumberAfterDelete)
+        for (const group of new Map(
+          targets
+            .filter((r) => r.number != null)
+            .map((r) => [`${r.period}:${r.voucher_type_id}`, r]),
+        ).values()) {
+          const rows = await ctx.db
+            .selectFrom('voucher')
+            .selectAll()
+            .where('period', '=', group.period)
+            .where('voucher_type_id', '=', group.voucher_type_id)
+            .where('number', 'is not', null)
+            .orderBy('number')
+            .execute();
+          affected.push(...rows);
+        }
+      const impacts = affected
+        .filter((r) => !unique.includes(r.id))
+        .map((row, _i, rows) => ({
+          id: row.id,
+          oldNumber: row.number,
+          number: rows.filter(
+            (r) =>
+              r.period === row.period &&
+              r.voucher_type_id === row.voucher_type_id &&
+              (r.number! < row.number! || (r.number === row.number && r.id <= row.id)),
+          ).length,
+        }));
+      const changed = impacts.filter((impact) => impact.oldNumber !== impact.number);
+      if (changed.length) {
+        for (const impact of changed) {
+          const row = affected.find((row) => row.id === impact.id)!;
+          await assertCanModify(row, '删除后重排');
+          if (row.status !== 'pending')
+            throw new BusinessError({
+              code: 'VOUCHER_LOCKED',
+              message: `凭证 ${await displayNo(row)} 已审核或过账，不能删除后重排`,
+              hint: '请先反过账并取消审核，再重新预览编号影响',
+            });
+        }
+      }
+      const fingerprint = await confirmationFingerprint(ctx, 'voucher.delete', {
+        targets,
+        affected,
+        policy,
+        expiresAt,
+      });
+      return {
+        ids: unique,
+        expiresAt,
+        fingerprint,
+        renumber: policy.renumberAfterDelete,
+        impacts,
+      };
+    },
+    async deleteBatch(
+      plan: { ids: number[]; expiresAt: number; fingerprint: string },
+      confirmed: boolean,
+    ): Promise<void> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) =>
+          voucherService({ ...ctx, db }).deleteBatch(plan, confirmed),
+        );
+      if (!confirmed)
+        throw new BusinessError({
+          code: 'CONFIRM_REQUIRED',
+          message: '请先确认凭证删除及编号影响',
+        });
+      const current = await self.previewDelete(plan.ids, plan.expiresAt);
+      if (ctx.now().getTime() >= plan.expiresAt || current.fingerprint !== plan.fingerprint)
+        throw new BusinessError({ code: 'VOUCHER_STALE', message: '凭证或编号已变化，请重新预览' });
+      for (const id of plan.ids) {
+        const row = await loadRow(id);
+        await ctx.db.deleteFrom('voucher').where('id', '=', id).execute();
+        await log.write({
+          action: 'voucher.delete',
+          summary: `删除凭证 ${await displayNo(row)}`,
+          targetId: id,
+        });
+      }
+      const changed = current.impacts.filter((impact) => impact.oldNumber !== impact.number);
+      if (changed.length) {
+        const numbers = await self.previewNumbers(changed);
+        await self.setNumbers(changed, { plan: numbers, confirmed: true });
+      }
+    },
+
     /** 删除凭证。只能删草稿和待审核的凭证。删除后编号会空出来（断号由凭证整理功能处理）。 */
     async delete(id: number, opts: { expectedRevision?: number } = {}): Promise<void> {
       if (!ctx.db.isTransaction) {
@@ -478,8 +766,14 @@ export function voucherService(ctx: ServiceContext) {
       }
       {
         const db = ctx.db;
+        if ((await voucherPolicyService(ctx).get()).renumberAfterDelete)
+          throw new BusinessError({
+            code: 'VOUCHER_DELETE_CONFIRM',
+            message: '删除后将重排编号，请先预览并明确确认',
+            hint: '使用凭证删除预览后再执行整批删除',
+          });
         const row = await loadRow(id);
-        assertCanModify(row, '删除');
+        await assertCanModify(row, '删除');
         checkRevision(row, opts.expectedRevision, '删除');
         if (row.status !== 'draft' && row.status !== 'pending') {
           throw new BusinessError({
@@ -578,7 +872,7 @@ export function voucherService(ctx: ServiceContext) {
       {
         const db = ctx.db;
         const row = await loadRow(id);
-        assertCanModify(row, voided ? '作废' : '取消作废');
+        await assertCanModify(row, voided ? '作废' : '取消作废');
         checkRevision(row, opts.expectedRevision, voided ? '作废' : '取消作废');
         if (row.status === 'posted') {
           throw new BusinessError({
@@ -617,10 +911,137 @@ export function voucherService(ctx: ServiceContext) {
     /**
      * 批量改凭证编号（断号整理用）。同一期间同一类型内编号必须唯一。
      */
-    async setNumbers(updates: { id: number; number: number }[]): Promise<void> {
+    async previewNumbers(
+      updates: { id: number; number: number }[],
+      expiresAt = ctx.now().getTime() + 300_000,
+    ) {
+      if (expiresAt <= ctx.now().getTime() || expiresAt > ctx.now().getTime() + 300_000)
+        throw new BusinessError({
+          code: 'VOUCHER_STALE',
+          message: '编号预览已过期或期限无效，请重新预览',
+        });
+      if (!updates.length || new Set(updates.map((u) => u.id)).size !== updates.length)
+        throw new BusinessError({
+          code: 'VOUCHER_SELECTION_INVALID',
+          message: '请选择不重复的凭证并填写目标编号',
+        });
+      const rows = await Promise.all(updates.map((u) => loadRow(u.id)));
+      for (const row of rows) {
+        await assertCanModify(row, '调整凭证编号');
+        await periods.assertOpen(row.period, '调整凭证编号');
+        if (row.status !== 'pending')
+          throw new BusinessError({
+            code: 'VOUCHER_LOCKED',
+            message: `凭证 ${await displayNo(row)} 不是待审核状态，不能调整编号`,
+          });
+      }
+      const groups = new Map(rows.map((r) => [`${r.period}:${r.voucher_type_id}`, r]));
+      const all: VoucherRow[] = [];
+      for (const row of groups.values())
+        all.push(
+          ...(await ctx.db
+            .selectFrom('voucher')
+            .selectAll()
+            .where('period', '=', row.period)
+            .where('voucher_type_id', '=', row.voucher_type_id)
+            .orderBy('id')
+            .execute()),
+        );
+      for (const row of rows) {
+        const wanted = updates.find((u) => u.id === row.id)!.number;
+        if (!Number.isSafeInteger(wanted) || wanted <= 0)
+          throw new BusinessError({
+            code: 'VOUCHER_NUMBER_INVALID',
+            message: '凭证编号必须是正整数',
+          });
+        if (
+          all.some(
+            (other) =>
+              other.id !== row.id &&
+              other.period === row.period &&
+              other.voucher_type_id === row.voucher_type_id &&
+              (updates.find((u) => u.id === other.id)?.number ?? other.number) === wanted,
+          )
+        )
+          throw new BusinessError({
+            code: 'VOUCHER_NUMBER_TAKEN',
+            message: `${formatPeriod(row.period)}目标凭证编号 ${wanted} 重复，请重新预览`,
+          });
+      }
+      const fingerprint = await confirmationFingerprint(ctx, 'voucher.renumber', {
+        updates,
+        all,
+        policy: await voucherPolicyService(ctx).get(),
+        expiresAt,
+      });
+      return {
+        updates,
+        fingerprint,
+        expiresAt,
+        impacts: rows.map((row) => ({
+          id: row.id,
+          oldNumber: row.number,
+          number: updates.find((u) => u.id === row.id)!.number,
+        })),
+      };
+    },
+    /** Insert at a reserved number only after confirming the complete shift plan. */
+    async insertNumbered(
+      input: VoucherInput,
+      plan: { updates: { id: number; number: number }[]; fingerprint: string; expiresAt: number },
+      confirmed: boolean,
+    ): Promise<Voucher> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) =>
+          voucherService({ ...ctx, db }).insertNumbered(input, plan, confirmed),
+        );
+      if (
+        input.draft ||
+        input.number == null ||
+        !Number.isSafeInteger(input.number) ||
+        input.number <= 0
+      )
+        throw new BusinessError({
+          code: 'VOUCHER_NUMBER_INVALID',
+          message: '插入凭证须提供正整数目标编号',
+        });
+      const period = periodOfDate(input.date);
+      const rows = await ctx.db
+        .selectFrom('voucher')
+        .selectAll()
+        .where('period', '=', period)
+        .where('voucher_type_id', '=', input.voucherTypeId)
+        .where('number', '>=', input.number)
+        .orderBy('id')
+        .execute();
+      if (
+        !rows.some((row) => row.number === input.number) ||
+        rows.length !== plan.updates.length ||
+        rows.some(
+          (row) => !plan.updates.some((u) => u.id === row.id && u.number === row.number! + 1),
+        )
+      )
+        throw new BusinessError({
+          code: 'VOUCHER_STALE',
+          message: '插入位置或腾号集合已变化，请重新预览',
+        });
+      await self.setNumbers(plan.updates, { plan, confirmed });
+      insertion = { period, type: input.voucherTypeId, number: input.number };
+      try {
+        return await self.create(input);
+      } finally {
+        insertion = undefined;
+      }
+    },
+    async setNumbers(
+      updates: { id: number; number: number }[],
+      confirmation?: { confirmed: boolean; plan: { fingerprint: string; expiresAt: number } },
+    ): Promise<void> {
       if (!updates.length) return;
       if (!ctx.db.isTransaction) {
-        return withTransaction(ctx.db, (db) => voucherService({ ...ctx, db }).setNumbers(updates));
+        return withTransaction(ctx.db, (db) =>
+          voucherService({ ...ctx, db }).setNumbers(updates, confirmation),
+        );
       }
       {
         const db = ctx.db;
@@ -636,10 +1057,33 @@ export function voucherService(ctx: ServiceContext) {
         if (rows.length !== updates.length)
           throw notFound('凭证', updates.map((u) => u.id).join(','));
         for (const r of rows) {
+          await assertCanModify(r, '调整凭证编号');
           if (r.status === 'draft')
             throw new BusinessError({ code: 'VOUCHER_DRAFT', message: '草稿没有编号' });
+          if (
+            !Number.isSafeInteger(updates.find((u) => u.id === r.id)!.number) ||
+            updates.find((u) => u.id === r.id)!.number <= 0
+          )
+            throw new BusinessError({
+              code: 'VOUCHER_NUMBER_INVALID',
+              message: '凭证编号必须是正整数',
+            });
           await periods.assertOpen(r.period, '调整凭证编号');
         }
+        const current = await self.previewNumbers(updates, confirmation?.plan.expiresAt);
+        if (!confirmation?.confirmed)
+          throw new BusinessError({
+            code: 'VOUCHER_NUMBER_CONFIRM',
+            message: '请先预览编号影响，并明确确认已打印凭证及账册可能失配',
+          });
+        if (
+          ctx.now().getTime() >= confirmation.plan.expiresAt ||
+          current.fingerprint !== confirmation.plan.fingerprint
+        )
+          throw new BusinessError({
+            code: 'VOUCHER_STALE',
+            message: '凭证、编号或策略已变化，请重新预览并确认',
+          });
         // 先改成负数避开唯一索引冲突，再改成目标编号
         for (const u of updates)
           await db
@@ -677,6 +1121,8 @@ export function voucherService(ctx: ServiceContext) {
         .execute();
       const lines: VoucherLine[] = lineRows.map((l) => ({
         id: l.id,
+        cashflowDirection: l.cashflow_direction,
+        entrySide: l.entry_side,
         lineNo: l.line_no,
         summary: l.summary,
         accountId: l.account_id,

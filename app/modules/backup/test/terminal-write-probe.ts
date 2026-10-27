@@ -1,8 +1,9 @@
 // 独立合成进程验证不可保存最终日志时的拒绝关闭；进程自然退出后由父测试删除临时目录。
 import { randomUUID } from 'node:crypto';
+import Database from 'better-sqlite3';
 import { createHTTPServer } from '@trpc/server/adapters/standalone';
 import { buildAppRouter, coreRouter, createRuntime } from '@caiwu/server-kit';
-import backupServer from './isolated-server';
+import backupServer from '../server';
 import { waitForJobs } from '../server/service';
 
 const app = createRuntime({ dataDir: process.argv[2]!, modules: [backupServer], devMode: true });
@@ -66,22 +67,55 @@ try {
   );
   const closeError = await rejectMessage(app.bookStore.close(created.id));
   const stopError = await rejectMessage(app.lifecycle.stop());
-  console.log(
-    JSON.stringify({
-      responseStatus: body.result.data.status,
-      jobError,
-      maintenanceError,
-      closeError,
-      stopError,
-      prepared,
-      runtimeState: app.lifecycle.state,
-      rawOpen: raw.open,
-      item: raw.prepare('SELECT status, reason FROM backup_item').get(),
-      logs: raw
-        .prepare("SELECT action FROM operation_log WHERE action LIKE 'backup.%' ORDER BY id")
-        .all(),
-    }),
-  );
+  const evidence = {
+    responseStatus: body.result.data.status,
+    jobError,
+    maintenanceError,
+    closeError,
+    stopError,
+    prepared,
+    runtimeState: app.lifecycle.state,
+    rawOpen: raw.open,
+    item: raw.prepare('SELECT status, reason FROM backup_item').get(),
+    logs: raw
+      .prepare("SELECT action FROM operation_log WHERE action LIKE 'backup.%' ORDER BY id")
+      .all(),
+  };
+  raw.exec('DROP TRIGGER backup_fixture_final_log_failure');
+  raw.backup = real;
+  raw
+    .prepare(
+      "INSERT INTO book_setting(scope,key,value,updated_at) VALUES('backup','repaired-commit','true',?)",
+    )
+    .run(new Date().toISOString());
+  await waitForJobs(app);
+  // Repeating the wait must not duplicate the recovered terminal audit entry.
+  await waitForJobs(app);
+  const recovered = raw.prepare('SELECT status, reason FROM backup_item').get();
+  const recoveredLogs = raw
+    .prepare("SELECT action,user_id,user_name FROM operation_log WHERE action='backup.failed'")
+    .all();
+  const file = app.bookStore.pathOf(created.id);
+  await app.lifecycle.stop();
+  const closed = new Database(file, { readonly: true });
+  try {
+    console.log(
+      JSON.stringify({
+        ...evidence,
+        recovery: {
+          item: recovered,
+          logs: recoveredLogs,
+          state: app.lifecycle.state,
+          rawOpen: raw.open,
+          newCommit: closed
+            .prepare("SELECT value FROM book_setting WHERE key='repaired-commit'")
+            .get(),
+        },
+      }),
+    );
+  } finally {
+    closed.close();
+  }
 } finally {
   await new Promise<void>((resolve, reject) =>
     http.close((error) => (error ? reject(error) : resolve())),

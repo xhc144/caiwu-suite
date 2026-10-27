@@ -81,8 +81,8 @@ describe('账套', () => {
 
   it('模板与科目级次不匹配时拒绝', async () => {
     const store = makeStore();
-    await expect(store.create({ ...input, codeScheme: '4-3-3' })).rejects.toThrow(
-      /不能使用科目级次 4-3-3/,
+    await expect(store.create({ ...input, codeScheme: '3-2-2' })).rejects.toThrow(
+      /无法映射|编码超出/,
     );
     expect(readdirSync(store.booksDir)).toEqual([]);
   });
@@ -166,4 +166,69 @@ describe('科目与期初', () => {
     const reloaded = await loadServiceUser(t.book.db, clerk.user.id);
     expect([...reloaded!.permissions]).toEqual(['example.memo.view']);
   });
+});
+
+it('w_xt_tz：相同建账请求并发及进程重开后只建一套；改内容/口令拒绝且不覆盖', async () => {
+  const store = makeStore();
+  const request = { ...input, requestKey: 'synthetic-create-request', codeScheme: '4-3-3' };
+  const results = await Promise.all(Array.from({ length: 4 }, () => store.create(request)));
+  expect(new Set(results.map((result) => result.id)).size).toBe(1);
+  expect(await store.list()).toHaveLength(1);
+  expect(results[0]!.codeScheme).toEqual([4, 3, 3]);
+  await expect(store.create({ ...request, name: '不同内容' })).rejects.toThrow(
+    /内容或管理员口令不同/,
+  );
+  await expect(store.create({ ...request, adminPassword: '不同口令' })).rejects.toThrow(
+    /内容或管理员口令不同/,
+  );
+  const dataDir = path.dirname(store.booksDir);
+  await store.closeAll();
+  const templates = new TemplateRegistry({ devMode: true });
+  templates.register('core', builtinTemplates);
+  const restarted = new BookStore({ dataDir, templates, migrationSets: () => [] });
+  try {
+    expect((await restarted.create(request)).id).toBe(results[0]!.id);
+    expect(await restarted.list()).toHaveLength(1);
+    const settings = await restarted
+      .open(results[0]!.id)
+      .db.selectFrom('book_setting')
+      .select('value')
+      .where('scope', '=', 'core')
+      .where('key', '=', 'creationRequest')
+      .executeTakeFirstOrThrow();
+    expect(settings.value).not.toContain('secret');
+    expect(JSON.parse(settings.value)).toMatchObject({
+      requestKey: request.requestKey,
+      payloadHash: expect.any(String),
+    });
+  } finally {
+    await restarted.closeAll();
+  }
+});
+
+it('w_xt_tz：建账晚阶段迁移失败不留下结果，相同请求修复后可以合法重试', async () => {
+  let broken = true;
+  const store = makeStore(() =>
+    broken
+      ? ([
+          {
+            scope: 'synthetic',
+            migrations: defineMigrations([
+              {
+                id: '0001_bad',
+                sql: 'CREATE TABLE broken_data(id INTEGER); INSERT INTO missing_table VALUES(1);',
+              },
+            ]),
+          },
+        ] as never[])
+      : [],
+  );
+  const request = { ...input, requestKey: 'synthetic-create-retry' };
+  await expect(store.create(request)).rejects.toThrow(/missing_table/);
+  expect(await store.list()).toHaveLength(0);
+  expect(readdirSync(store.booksDir).filter((file) => file.includes('creating'))).toEqual([]);
+  broken = false;
+  const created = await store.create(request);
+  expect((await store.list()).map((row) => row.id)).toEqual([created.id]);
+  await store.closeAll();
 });

@@ -9,7 +9,7 @@ import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
 import { defineManifest } from '@caiwu/core';
 import { defineMigrations } from '@caiwu/db';
 import { defineServerModule, moduleKit } from '@caiwu/server-kit';
-import backupServer from './isolated-server';
+import backupServer from '../server';
 import { backupService, waitForJobs } from '../server/service';
 import {
   directory,
@@ -529,7 +529,7 @@ describe('w_hf / w_tzjl_get 校验和确认', () => {
 describe('w_autobak 控制器与保留规则', () => {
   it('w_autobak：默认开启；空目录、路径、无效间隔/份数被拒绝，失败保留旧配置', async () => {
     expect((await api.overview()).config.enabled).toBe(true);
-    expect((await api.overview()).runtimeStatus).toContain('未启动');
+    expect((await api.overview()).runtimeStatus).toContain('未接入');
     expect((await api.overview()).nextAt).toBeNull();
     for (const patch of [
       { directory: '' },

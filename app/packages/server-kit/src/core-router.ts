@@ -105,6 +105,9 @@ export const coreRouter = t.router({
   }),
 
   accounts: t.router({
+    provenance: authedProcedure
+      .input(z.object({ id: zId }))
+      .query(({ ctx, input }) => ctx.svc.accounts.provenance(input.id)),
     list: authedProcedure.query(({ ctx }) => ctx.svc.accounts.list()),
     categories: authedProcedure.query(({ ctx }) => ctx.svc.accounts.categories()),
   }),
@@ -127,6 +130,19 @@ export const coreRouter = t.router({
     summaries: authedProcedure.query(({ ctx }) => ctx.svc.reference.summaries()),
   }),
 
+  voucherPolicy: t.router({
+    get: authedProcedure.query(({ ctx }) => ctx.svc.voucherPolicy.get()),
+    set: authedProcedure
+      .meta({ noPermission: true })
+      .input(
+        z.object({
+          numbering: z.enum(['automatic', 'manual']),
+          renumberAfterDelete: z.boolean(),
+          allowModifyOthers: z.boolean(),
+        }),
+      )
+      .mutation(({ ctx, input }) => ctx.svc.voucherPolicy.set(input)),
+  }),
   vouchers: t.router({
     get: authedProcedure
       .input(z.object({ id: zId }))
@@ -150,6 +166,15 @@ export const coreRouter = t.router({
   }),
 
   ledger: t.router({
+    compare: authedProcedure
+      .input(z.object({ current: BalanceQuerySchema, comparison: BalanceQuerySchema }))
+      .query(({ ctx, input }) => ctx.svc.ledger.compare(input)),
+    cashflow: authedProcedure
+      .input(EntryFilterSchema)
+      .query(({ ctx, input }) => ctx.svc.ledger.cashflow(input)),
+    balanceSides: authedProcedure
+      .input(BalanceQuerySchema)
+      .query(({ ctx, input }) => ctx.svc.ledger.balanceSides(input)),
     balances: authedProcedure
       .input(BalanceQuerySchema)
       .query(({ ctx, input }) => ctx.svc.ledger.balances(input)),

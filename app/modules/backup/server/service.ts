@@ -3,7 +3,13 @@ import { constants } from 'node:fs';
 import { copyFile, link, lstat, open, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { authenticateUser, createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import {
+  authenticateUser,
+  createCoreServices,
+  loadServiceUser,
+  withServiceScope,
+  type CoreServices,
+} from '@caiwu/core/server';
 import type { AppRuntime, AuthedContext } from '@caiwu/server-kit';
 import {
   ConfirmSchema,
@@ -32,10 +38,7 @@ import {
   writePackage,
 } from './files';
 
-type Context = Omit<AuthedContext, 'session'> & {
-  app: AppRuntime;
-  session?: AuthedContext['session'];
-};
+type Context = AuthedContext & { app: AppRuntime };
 type Protection = {
   protectionId: string;
   createdAt: string;
@@ -44,6 +47,31 @@ type Protection = {
   available: boolean;
 };
 type Job = { bookId: string; abort: AbortController; promise: Promise<void>; progress: number };
+type Terminal = { status: 'failed' | 'cancelled'; reason: string };
+type FinalFailure = {
+  bookId: string;
+  error: unknown;
+  user: Context['user'];
+  terminal: Terminal;
+  recovering?: Promise<void>;
+};
+
+async function writeFailure(svc: CoreServices, id: string, terminal: Terminal) {
+  const updated = await svc.db
+    .withTables<BackupTables>()
+    .updateTable('backup_item')
+    .set(terminal)
+    .where('id', '=', id)
+    .executeTakeFirst();
+  if (updated.numUpdatedRows !== 1n)
+    throw fail('FINAL_STATE', '备份终态记录不存在，不能确认安全关闭');
+  await svc.log.write({
+    action: 'backup.failed',
+    summary: terminal.reason,
+    targetType: 'backup_item',
+    targetId: id,
+  });
+}
 
 /** 单次扫描，常量栈空间；重复分组正则会在数 MiB 的合法输入上耗尽 V8 栈。 */
 function decodeUploadBase64(text: string): Buffer {
@@ -77,7 +105,7 @@ const states = new WeakMap<
   AppRuntime,
   {
     busy: Set<string>;
-    failures: Map<string, { bookId: string; error: unknown }>;
+    failures: Map<string, FinalFailure>;
     jobs: Map<string, Job>;
     creating: Map<string, Promise<BackupTables['backup_item']>>;
     preparing: Map<string, Promise<Protection>>;
@@ -121,6 +149,34 @@ export async function waitForJobs(app: AppRuntime, bookId?: string, signal?: Abo
   try {
     if (signal?.aborted) abort();
     await Promise.allSettled([...s.jobs.values()].filter(matches).map((j) => j.promise));
+    for (const [id, failure] of [...s.failures]) {
+      if (!matches(failure)) continue;
+      signal?.throwIfAborted();
+      failure.recovering ??= withServiceScope(() =>
+        app.bookStore.withBook(failure.bookId, async (book) => {
+          const svc = createCoreServices({
+            db: book.db,
+            user: failure.user,
+            moduleId: 'backup',
+            now: app.now,
+            modules: app.modules.lookup,
+          });
+          await svc.tx(async (tx) => {
+            signal?.throwIfAborted();
+            await writeFailure(tx, id, failure.terminal);
+            signal?.throwIfAborted();
+          });
+          if (s.failures.get(id) === failure) s.failures.delete(id);
+        }),
+      );
+      try {
+        await failure.recovering;
+      } catch (error) {
+        failure.error = error;
+      } finally {
+        failure.recovering = undefined;
+      }
+    }
     const errors = [...s.failures.values()].filter(matches).map((f) => f.error);
     if (errors.length)
       throw new AggregateError(errors, '备份最终状态或日志未能保存，不能安全关闭账套');
@@ -287,101 +343,6 @@ function backupOperations(ctx: Context) {
   return { db, now, load, fileOf, verify, settings, doBackup, pruneAutomatic };
 }
 
-/** 仅由已登记的生命周期 hook 调用；系统身份由共享层创建，不接收浏览器身份。 */
-export function automaticBinding(app: AppRuntime, bookId: string, signal: AbortSignal) {
-  const withService = <T>(fn: (ctx: Context) => Promise<T>) =>
-    app.lifecycle.withSystemBook('backup', bookId, (svc, book) =>
-      fn({ app, svc, book, user: svc.user, moduleId: 'backup' }),
-    );
-  return {
-    settings: () => withService((ctx) => backupOperations(ctx).settings()),
-    backup: () => {
-      const id = randomUUID();
-      let started = false;
-      const abort = new AbortController();
-      const cancel = () => abort.abort(signal.reason);
-      signal.addEventListener('abort', cancel, { once: true });
-      if (signal.aborted) cancel();
-      const task = withService((ctx) =>
-        exclusive(ctx, async () => {
-          const { db, now, settings, doBackup, pruneAutomatic, load } = backupOperations(ctx);
-          const config = await settings();
-          abort.signal.throwIfAborted();
-          await db
-            .insertInto('backup_item')
-            .values({
-              id,
-              owner_id: bookId,
-              request_id: randomUUID(),
-              name: `自动备份 ${now()}`,
-              directory: config.directory,
-              kind: 'automatic',
-              status: 'running',
-              reason: '',
-              metadata: null,
-              bytes: 0,
-              digest: null,
-              created_at: now(),
-              progress: 0,
-              retention_note: '',
-            })
-            .execute();
-          started = true;
-          try {
-            await doBackup(id, abort.signal);
-            abort.signal.throwIfAborted();
-            let note: string;
-            try {
-              const removed = await pruneAutomatic(config.keep);
-              note = `保留最新 ${config.keep} 份有效自动备份；已轮替 ${removed.length} 份`;
-            } catch {
-              note = '新备份成功；轮替失败，旧备份保留，请检查目录权限';
-            }
-            await db
-              .updateTable('backup_item')
-              .set({ retention_note: note })
-              .where('id', '=', id)
-              .execute();
-            await ctx.svc.log.write({
-              action: 'backup.retention',
-              summary: note,
-              targetType: 'backup_item',
-              targetId: id,
-            });
-          } catch (error) {
-            const err = fileError(error);
-            await db
-              .updateTable('backup_item')
-              .set({ status: abort.signal.aborted ? 'cancelled' : 'failed', reason: err.message })
-              .where('id', '=', id)
-              .execute();
-            await ctx.svc.log.write({
-              action: 'backup.failed',
-              summary: err.message,
-              targetType: 'backup_item',
-              targetId: id,
-            });
-          }
-          return load(id);
-        }),
-      )
-        .catch((error: unknown) => {
-          // 任务创建前的 BUSY 不阻塞退出；已创建却未能保存终态/日志则必须保留租约。
-          if (started) state(app).failures.set(id, { bookId, error });
-          throw error;
-        })
-        .finally(() => {
-          signal.removeEventListener('abort', cancel);
-          state(app).jobs.delete(id);
-        });
-      const completion = task.then(() => {});
-      state(app).jobs.set(id, { bookId, abort, promise: completion, progress: 0 });
-      void completion.catch(() => {});
-      return task;
-    },
-  };
-}
-
 export function backupService(ctx: Context) {
   const { db, now, load, fileOf, verify, settings } = backupOperations(ctx);
   const admin = () => {
@@ -426,6 +387,8 @@ export function backupService(ctx: Context) {
         })
         .execute();
       const abort = new AbortController();
+      let terminal: Terminal | undefined;
+      const originalUser = { ...ctx.user, permissions: new Set(ctx.user.permissions) };
       const promise = ctx.app.bookStore
         .withBook(ctx.book.id, async (book) => {
           const user = await loadServiceUser(book.db, ctx.user.id);
@@ -476,21 +439,23 @@ export function backupService(ctx: Context) {
             }
           } catch (e) {
             const err = fileError(e);
-            await db
-              .updateTable('backup_item')
-              .set({ status: abort.signal.aborted ? 'cancelled' : 'failed', reason: err.message })
-              .where('id', '=', id)
-              .execute();
-            await svc.log.write({
-              action: 'backup.failed',
-              summary: err.message,
-              targetType: 'backup_item',
-              targetId: id,
-            });
+            terminal = {
+              status: abort.signal.aborted ? 'cancelled' : 'failed',
+              reason: err.message,
+            };
+            await writeFailure(svc, id, terminal);
           }
         })
         .catch((error: unknown) => {
-          state(ctx.app).failures.set(id, { bookId: ctx.book.id, error });
+          state(ctx.app).failures.set(id, {
+            bookId: ctx.book.id,
+            error,
+            user: originalUser,
+            terminal: terminal ?? {
+              status: abort.signal.aborted ? 'cancelled' : 'failed',
+              reason: fileError(error).message,
+            },
+          });
           throw error;
         })
         .finally(() => {
@@ -578,6 +543,8 @@ export function backupService(ctx: Context) {
         last,
         lastSuccess,
         lastFailure,
+        nextAt: null,
+        runtimeStatus: '启动 / 正常退出 / 定时未接入；配置已保存，尚未全程生效',
         transferLimit: TRANSFER_LIMIT,
         managedRoot: `backups/${ctx.book.id}`,
       };
@@ -712,7 +679,7 @@ export function backupService(ctx: Context) {
       await ctx.svc.settings.set('automatic', config);
       await ctx.svc.log.write({
         action: 'backup.settings',
-        summary: '更新自动备份配置',
+        summary: '更新自动备份配置；运行时钩子尚未接入',
       });
       return config;
     },
@@ -897,7 +864,7 @@ export function backupService(ctx: Context) {
           throw fail(
             'MAINTENANCE_REQUIRED',
             '当前版本暂不能安全覆盖活动账套',
-            '共享维护接口目前仅支持重连，缺少原子替换与失败回滚协议；请恢复为新账套',
+            '需要共享层提供跨模块独占维护锁、在途请求排空及重新登录控制；可选择恢复为新账套',
           );
         }
         const checked = await verify(plan.backup_id);

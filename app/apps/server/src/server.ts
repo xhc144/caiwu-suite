@@ -1,3 +1,6 @@
+import { withSharedDependencies } from './shared-dependencies';
+import { withAutomaticBackup } from './automatic-backup';
+import { withInventoryProvider } from './inventory';
 import fastifyStatic from '@fastify/static';
 import { fastifyTRPCPlugin, type FastifyTRPCPluginOptions } from '@trpc/server/adapters/fastify';
 import Fastify, { type FastifyInstance } from 'fastify';
@@ -47,7 +50,10 @@ export async function createServer(opts: ServerOptions): Promise<CaiwuServer> {
   const runtime = createRuntime({
     dataDir: opts.dataDir,
     exclusiveServer: true,
-    modules: opts.modules,
+    modules: opts.modules
+      .map(withInventoryProvider)
+      .map((module) => withAutomaticBackup(module))
+      .map(withSharedDependencies),
     moduleDirs: opts.moduleDirs,
     devMode: opts.devMode,
     version: opts.version,

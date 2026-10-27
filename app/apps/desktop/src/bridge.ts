@@ -1,5 +1,9 @@
 /** 仅新增命名空间，不重声明共享包拥有的 window.caiwuDesktop。 */
 export interface DesktopHost {
+  closing: {
+    onRequest(handler: (id: string) => void): () => void;
+    respond(id: string, allowed: boolean): void;
+  };
   dataDirectory: {
     get(): Promise<{ path: string; overridden: boolean }>;
     choose(): Promise<string | null>;

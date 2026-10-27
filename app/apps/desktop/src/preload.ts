@@ -8,7 +8,22 @@ contextBridge.exposeInMainWorld('caiwuDesktop', {
     ipcRenderer.invoke('caiwu:printToPdf', html, opts),
 });
 
+let closeHandler: ((id: string) => void) | undefined;
+ipcRenderer.on('caiwu:host:closeRequest', (_event, id: string) => {
+  if (closeHandler) closeHandler(id);
+  else ipcRenderer.send('caiwu:host:closeResponse', id, true);
+});
 contextBridge.exposeInMainWorld('caiwuDesktopHost', {
+  closing: {
+    onRequest: (handler: (id: string) => void) => {
+      closeHandler = handler;
+      return () => {
+        if (closeHandler === handler) closeHandler = undefined;
+      };
+    },
+    respond: (id: string, allowed: boolean) =>
+      ipcRenderer.send('caiwu:host:closeResponse', id, allowed === true),
+  },
   dataDirectory: {
     get: () => ipcRenderer.invoke('caiwu:host:dataDir'),
     choose: () => ipcRenderer.invoke('caiwu:host:chooseDataDir'),

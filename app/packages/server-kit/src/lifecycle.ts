@@ -1,13 +1,19 @@
 import { ResourceGate, withRequestLeases } from '@caiwu/db';
 import { BusinessError } from '@caiwu/core';
 import type { BookMaintenancePlan, CoreServices, OpenBook } from '@caiwu/core/server';
-import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import {
+  withServiceScope,
+  createCoreServices,
+  loadServiceUser,
+  authenticateUser,
+} from '@caiwu/core/server';
 import type { AppRuntime } from './context';
 import type { ServerModule } from './module';
 
 export interface RuntimeHookContext {
   app: AppRuntime;
   signal: AbortSignal;
+  procedure?: string;
 }
 export interface BookCloseHookContext extends RuntimeHookContext {
   book: OpenBook;
@@ -16,6 +22,8 @@ export interface BookCloseHookContext extends RuntimeHookContext {
 /** 显式注册才生效；hook 必须等待自己的后台任务并响应 signal，不能依赖页面存活。 */
 export interface RuntimeHooks {
   start?: (ctx: RuntimeHookContext) => Promise<void>;
+  bookCreated?: (ctx: RuntimeHookContext & { bookId: string }) => Promise<void>;
+  afterRequest?: (ctx: RuntimeHookContext) => Promise<void>;
   beforeBookClose?: (ctx: BookCloseHookContext) => Promise<void>;
   stop?: (ctx: RuntimeHookContext) => Promise<void>;
 }
@@ -76,10 +84,30 @@ export class RuntimeLifecycle {
     return this.#startTask;
   }
 
-  async request<T>(fn: () => Promise<T>): Promise<T> {
+  async request<T>(fn: () => Promise<T>, procedure?: string): Promise<T> {
     await this.start();
     if (this.#state !== 'ready') throw this.#requests.error('busy');
-    return this.#requests.run(() => withRequestLeases(fn));
+    return this.#requests.run(() =>
+      withRequestLeases(async () => {
+        const result = await fn();
+        for (const module of this.#entered)
+          await module.lifecycle?.afterRequest?.({
+            app: this.app,
+            signal: new AbortController().signal,
+            procedure,
+          });
+        return result;
+      }),
+    );
+  }
+
+  async bookCreated(bookId: string): Promise<void> {
+    for (const module of this.#entered)
+      await module.lifecycle?.bookCreated?.({
+        app: this.app,
+        bookId,
+        signal: new AbortController().signal,
+      });
   }
 
   async beforeBookClose(
@@ -128,28 +156,32 @@ export class RuntimeLifecycle {
   ): Promise<T> {
     if (this.#state === 'failed' || this.#state === 'stopped') throw this.#requests.error('busy');
     if (!this.app.modules.lookup.manifest(moduleId)) throw new Error('系统服务必须绑定已登记模块');
-    return this.app.bookStore.withBook(bookId, (book) =>
-      fn(
-        createCoreServices({
-          db: book.db,
-          user: { id: 0, code: 'system', name: '系统', isAdmin: true, permissions: new Set() },
-          moduleId,
-          now: this.app.now,
-          modules: this.app.modules.lookup,
-        }),
-        book,
+    return withServiceScope(() =>
+      this.app.bookStore.withBook(bookId, (book) =>
+        fn(
+          createCoreServices({
+            db: book.db,
+            user: { id: 0, code: 'system', name: '系统', isAdmin: true, permissions: new Set() },
+            moduleId,
+            now: this.app.now,
+            modules: this.app.modules.lookup,
+            providers: this.app.modules.providers,
+          }),
+          book,
+        ),
       ),
     );
   }
 
   /**
-   * 不新增公共路由。模块仍须声明 mutation 权限并在 authorize 中复核目标密码/确认计划。
+   * 不新增公共路由。模块仍须声明 mutation 权限。覆盖由 core 复核目标名称及管理员密码，authorize 可补充模块计划。
    * 升级当前请求后旧 svc 不可再用；排空后撤销目标全部会话，成功或失败均须重新登录。
    */
   async maintainBook<T>(input: {
     token: string;
     bookId: string;
     permission: string;
+    confirmation?: { bookId: string; bookName: string; password: string };
     authorize: (svc: CoreServices) => Promise<void>;
     plan: Omit<BookMaintenancePlan<T>, 'onQuiesced'>;
   }): Promise<T | undefined> {
@@ -170,8 +202,29 @@ export class RuntimeLifecycle {
           moduleId: null,
           now: this.app.now,
           modules: this.app.modules.lookup,
+          providers: this.app.modules.providers,
         });
         svc.permissions.require(input.permission);
+        if (input.plan.kind === 'replace' && (!user.isAdmin || session.bookId !== input.bookId))
+          throw new BusinessError({
+            code: 'FORBIDDEN',
+            message: '覆盖恢复须由目标账套当前管理员确认',
+          });
+        if (input.plan.kind === 'replace' && input.plan.replacementId) {
+          const confirmation = input.confirmation;
+          const info = await svc.book.info();
+          if (
+            !confirmation ||
+            confirmation.bookId !== info.id ||
+            confirmation.bookName !== info.name ||
+            !(await authenticateUser(book.db, user.code, confirmation.password))
+          )
+            throw new BusinessError({
+              code: 'RESTORE_CONFIRM_FAILED',
+              message: `覆盖账套「${info.name}」前须准确输入账套名称并复核当前管理员密码`,
+              hint: '请重新核对覆盖目标及管理员密码；原账套尚未覆盖',
+            });
+        }
         await input.authorize(svc);
       });
       if (this.app.sessions.get(input.token) !== session)

@@ -57,6 +57,12 @@ it('w_pz_flxx1：汇率折算溢出保持原行，未填原币时只带汇率', 
   });
 });
 
+it('w_pz_flxx1：零本币外币调整带入新汇率仍保留明确的贷方方向', () => {
+  const line = { fcAmount: 100, debit: 0, credit: 0, entrySide: 'credit' as const };
+  expect(applyExchangeRate(line, '7.2')).toEqual({ ...line, exchangeRate: '7.2', credit: 720 });
+  expect(line.credit).toBe(0);
+});
+
 it('w_pz_flxx1：余额按当前辅助组合过滤，含已保存未过账，排除草稿和其它组合', async () => {
   app = await createTestApp({ modules: [server] });
   await seedVouchers(app.svc, [

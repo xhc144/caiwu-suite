@@ -6,7 +6,7 @@ export type AutomaticBackupBinding = {
   /** 必须等待完整备份、真实校验及轮替结束后返回。 */
   backup: (kind: 'automatic') => Promise<Result>;
 };
-export type Clock = {
+type Clock = {
   now: () => number;
   set: (fn: () => void, ms: number) => unknown;
   clear: (id: unknown) => void;
@@ -23,14 +23,10 @@ type Entry = {
 };
 const systemClock: Clock = {
   now: Date.now,
-  set: (fn, ms) => {
-    const timer = setTimeout(fn, ms);
-    timer.unref();
-    return timer;
-  },
+  set: (fn, ms) => setTimeout(fn, ms),
   clear: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
 };
-/** 运行时控制器；每个账套串行执行，调度不依赖页面存活。 */
+/** 可接入 runtime 的控制器。W0 没有模块生命周期，当前未自动实例化或从页面启动。 */
 export class AutomaticBackupController {
   readonly #clock: Clock;
   readonly #books = new Map<string, Entry>();
@@ -50,7 +46,7 @@ export class AutomaticBackupController {
         }
       : { lastSuccess: null, lastFailure: null, nextAt: null, running: false, attached: false };
   }
-  async attach(id: string, binding: AutomaticBackupBinding, runOnStart = true) {
+  async attach(id: string, binding: AutomaticBackupBinding) {
     if (this.#shutdown) throw new Error('自动备份控制器正在退出，不能再接入账套');
     if (this.#books.has(id)) return;
     const s: Entry = {
@@ -64,7 +60,7 @@ export class AutomaticBackupController {
     this.#books.set(id, s);
     try {
       const config = SettingsSchema.parse(await binding.settings());
-      if (runOnStart && config.enabled && config.onStart) await this.run(id);
+      if (config.enabled && config.onStart) await this.run(id);
     } catch (e) {
       s.lastFailure = this.#message(e);
     }
@@ -73,14 +69,15 @@ export class AutomaticBackupController {
   #message(e: unknown) {
     return e instanceof Error ? e.message : '自动备份失败';
   }
-  async run(id: string) {
+  async run(id: string, options: { retryFailure?: boolean } = {}) {
     const s = this.#books.get(id);
     if (!s || s.stopped) return;
     if (s.running) return s.running;
     s.running = (async () => {
       try {
         const config = SettingsSchema.parse(await s.binding.settings());
-        if (!config.enabled) return;
+        // Disabling future schedules cannot discharge an already failed backup.
+        if (!config.enabled && !(options.retryFailure && s.lastFailure !== null)) return;
         const result = await s.binding.backup('automatic');
         if (result.status !== 'valid') throw new Error(result.reason || '自动备份未完成');
         s.lastSuccess = new Date(this.#clock.now()).toISOString();
@@ -121,16 +118,6 @@ export class AutomaticBackupController {
   async reconfigure(id: string) {
     await this.#schedule(id);
   }
-  async detach(id: string) {
-    const s = this.#books.get(id);
-    if (!s) return;
-    s.stopped = true;
-    s.generation++;
-    s.nextAt = null;
-    if (s.timer != null) this.#clock.clear(s.timer);
-    await s.running;
-    this.#books.delete(id);
-  }
   shutdown() {
     if (!this.#shutdown) this.#shutdown = this.#stop();
     return this.#shutdown;
@@ -156,8 +143,8 @@ export class AutomaticBackupController {
         }
       } catch (e) {
         s.lastFailure = this.#message(e);
-        failures.push({ bookId: id, reason: s.lastFailure });
       }
+      if (s.lastFailure) failures.push({ bookId: id, reason: s.lastFailure });
     }
     return failures;
   }

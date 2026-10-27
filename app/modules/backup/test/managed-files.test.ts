@@ -16,7 +16,7 @@ import type * as FsPromises from 'node:fs/promises';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
-import backupServer from './isolated-server';
+import backupServer from '../server';
 import { directory, hashFile, packagePath } from '../server/files';
 import { waitForJobs } from '../server/service';
 

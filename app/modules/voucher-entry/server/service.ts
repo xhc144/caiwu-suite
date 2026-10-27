@@ -5,6 +5,7 @@ import {
   dimensionName,
   formatMoney,
   notFound,
+  normalizeRows,
   periodOfDate,
   sourceRoute,
   sumCents,
@@ -71,7 +72,8 @@ export function entryService(svc: CoreServices) {
   const inspect = async (lines: readonly VoucherLineInput[], complete: boolean) => {
     const problems: Problem[] = [];
     const warnings: Problem[] = [];
-    const normalized = lines.map((l) => ({ ...l, dimensions: { ...l.dimensions } }));
+    const editing = normalizeRows(lines);
+    const normalized = editing.rows.map((l) => ({ ...l, dimensions: { ...l.dimensions } }));
     let internal = 0;
     let hasInternal = false;
     const [currencies, methods] = await Promise.all([
@@ -79,7 +81,7 @@ export function entryService(svc: CoreServices) {
       svc.reference.settlementMethods(),
     ]);
     for (const [index, l] of normalized.entries()) {
-      const n = index + 1;
+      const n = editing.rowNumbers[index]!;
       const add = (field: string, message: string) =>
         problems.push({ line: n, field, message: `第${n}行：${message}` });
       const a = l.accountId ? await svc.accounts.get(l.accountId) : null;
@@ -90,7 +92,13 @@ export function entryService(svc: CoreServices) {
       if (a.disabled || !a.isLeaf) add('accountId', `科目 ${a.code} 已停用或不是末级科目`);
       if (complete && !l.summary?.trim()) add('summary', '摘要不能为空');
       if ((l.debit ?? 0) !== 0 && (l.credit ?? 0) !== 0) add('debit', '同一行借贷不能同时有值');
-      if (complete && !(l.debit || l.credit)) add('debit', '借贷金额不能都为零');
+      if (complete && !(l.debit || l.credit)) {
+        const nonzero =
+          (l.fcAmount ?? 0) !== 0 || (l.quantity != null && !new Decimal(l.quantity).isZero());
+        if (!nonzero) add('debit', '本币、原币和数量不能同时为零');
+        else if (!l.entrySide)
+          add('entrySide', '借贷金额不能都为零；本币为零的原币或数量调整须明确选择借贷方向');
+      }
       for (const type of DIMENSION_TYPE_IDS) {
         const cfg = a.dimensions.find((d) => d.type === type);
         if (type !== 'cashflow' && cfg && l.dimensions[type] == null && cfg.defaultItemId != null)
@@ -145,7 +153,7 @@ export function entryService(svc: CoreServices) {
           try {
             // 手工凭证没有汇兑差额豁免契约；借贷平衡不能替代本行折算一致性。
             const expected = foreignAmount(l.fcAmount, l.exchangeRate);
-            const side = l.credit ? 'credit' : 'debit';
+            const side = l.credit ? 'credit' : (l.entrySide ?? 'debit');
             const actual = l[side] ?? 0;
             if (actual !== expected) {
               const difference = new Decimal(actual).minus(expected).div(100).toFixed(2);

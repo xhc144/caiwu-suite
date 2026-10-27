@@ -38,7 +38,12 @@ const zDimensionValues = z
   )
   .default({});
 
+export const CASHFLOW_DIRECTIONS = ['inflow', 'outflow', 'internal'] as const;
+export type CashflowDirection = (typeof CASHFLOW_DIRECTIONS)[number];
+
 export const VoucherLineInputSchema = z.object({
+  cashflowDirection: z.enum(CASHFLOW_DIRECTIONS).nullable().optional(),
+  entrySide: z.enum(['debit', 'credit']).nullable().optional(),
   summary: z.string().trim().max(200).default(''),
   /** 草稿里允许没选科目的行（保存草稿时会丢弃这些行）；正式保存必须有 */
   accountId: zId.nullable().optional(),
@@ -86,6 +91,8 @@ export interface VoucherUserRef {
 }
 
 export interface VoucherLine {
+  cashflowDirection?: CashflowDirection | null;
+  entrySide?: 'debit' | 'credit' | null;
   id: number;
   lineNo: number;
   summary: string;

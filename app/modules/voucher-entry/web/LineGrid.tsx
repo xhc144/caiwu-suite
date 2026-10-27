@@ -502,7 +502,12 @@ export function LineDetails({
     onChange(
       amount == null
         ? patch
-        : { ...patch, ...(line.credit ? { credit: amount } : { debit: amount }) },
+        : {
+            ...patch,
+            ...(line.credit || line.entrySide === 'credit'
+              ? { credit: amount }
+              : { debit: amount }),
+          },
     );
   };
   const hierarchy: Account[] = [];
@@ -529,6 +534,24 @@ export function LineDetails({
   return (
     <Space orientation="vertical" style={{ width: '100%' }}>
       {calculationError && <Typography.Text type="danger">{calculationError}</Typography.Text>}
+      {!(line.debit || line.credit) && (a?.currency || a?.quantityUnit) && (
+        <label>
+          借贷方向
+          <Select
+            aria-label={`第${index + 1}行借贷方向`}
+            data-field="entrySide"
+            disabled={readonly}
+            value={line.entrySide ?? undefined}
+            placeholder="请选择借方或贷方"
+            style={{ width: 160 }}
+            options={[
+              { value: 'debit', label: '借方' },
+              { value: 'credit', label: '贷方' },
+            ]}
+            onChange={(entrySide) => update({ entrySide })}
+          />
+        </label>
+      )}
       {!!(unsupportedDimensions.length || obsoleteCurrency || obsoleteQuantity) && (
         <>
           <Typography.Text type="danger">

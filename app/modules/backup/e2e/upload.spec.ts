@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { callApi, E2E_APP_TOKEN, loginWithNewBook } from '@caiwu/testkit/e2e';
-import { DEFAULT_SETTINGS, TRANSFER_LIMIT, type BackupMetadata } from '../shared';
+import { TRANSFER_LIMIT, type BackupMetadata } from '../shared';
 import { largePortableFixture } from '../test/transfer-fixture';
 import { probeBodyLimit } from '../test/http-body-limit';
 
@@ -12,24 +12,6 @@ const MIB = 1024 * 1024;
 const HTTP_BODY_LIMIT = 50 * MIB; // W0 实际配置；本测试不覆盖或修改服务端配置。
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 async function seedPackage(request: APIRequestContext, token: string) {
-  // 传输测试只测上传/下载副作用；自动调度另由真实生命周期集成测试覆盖。
-  await callApi(
-    request,
-    'm.backup.saveSettings',
-    { ...DEFAULT_SETTINGS, enabled: false },
-    { token },
-  );
-  await expect
-    .poll(async () => {
-      const status = await callApi<{ automaticRunning: boolean }>(
-        request,
-        'm.backup.overview',
-        undefined,
-        { token, method: 'GET' },
-      );
-      return status.automaticRunning;
-    })
-    .toBe(false);
   const created = await callApi<{ id: string }>(
     request,
     'm.backup.create',
@@ -183,18 +165,12 @@ test('w_tzjl_get：32 MiB 加一字节由页面和 API 拒绝，真实 50 MiB HT
       if (mode === 'declared') expect(response.sentBodyBytes).toBe(0);
       else expect(response.sentBodyBytes).toBeGreaterThan(HTTP_BODY_LIMIT);
     }
-    const rows = await callApi<{ name: string; kind: string }[]>(
-      request,
-      'm.backup.list',
-      undefined,
-      {
-        token: session.token,
-        method: 'GET',
-      },
-    );
+    const rows = await callApi<{ name: string }[]>(request, 'm.backup.list', undefined, {
+      token: session.token,
+      method: 'GET',
+    });
     expect(rows).toEqual(before);
-    // 上方全量比较仍要求超限请求零副作用；这里核对本夹具唯一的手动种子。
-    expect(rows.filter((r) => r.kind === 'manual').map((r) => r.name)).toEqual(['大包测试种子']);
+    expect(rows.map((r) => r.name)).toEqual(['大包测试种子']);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

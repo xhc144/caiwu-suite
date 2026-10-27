@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, expect, it } from 'vitest';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
-import backupServer from './isolated-server';
+import backupServer from '../server';
 import { waitForJobs } from '../server/service';
 import { TRANSFER_LIMIT } from '../shared';
 import { padPortablePackage } from './transfer-fixture';

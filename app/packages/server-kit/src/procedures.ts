@@ -1,6 +1,7 @@
 import { BusinessError } from '@caiwu/core';
 import {
   createCoreServices,
+  withServiceScope,
   loadServiceUser,
   type CoreServices,
   type OpenBook,
@@ -12,7 +13,7 @@ import type { Session } from './sessions';
 /** 不需要登录的过程（账套列表、新建账套、登录）。 */
 export const publicProcedure = t.procedure
   .use(businessErrors)
-  .use(({ ctx, next }) => ctx.app.lifecycle.request(() => next()));
+  .use(({ ctx, next, path }) => ctx.app.lifecycle.request(() => next(), path));
 
 export interface AuthedContext {
   session: Session;
@@ -38,24 +39,27 @@ export const authedProcedure = publicProcedure.use(async ({ ctx, meta, next }) =
     ctx.app.sessions.deleteForBook(session.bookId);
     throw unauthorized();
   }
-  return ctx.app.bookStore.withBook(session.bookId, async (book) => {
-    const user = await loadServiceUser(book.db, session.userId);
-    if (!user) {
-      ctx.app.sessions.delete(session.token);
-      throw unauthorized();
-    }
-    const svc = createCoreServices({
-      db: book.db,
-      user,
-      moduleId: null,
-      now: ctx.app.now,
-      modules: ctx.app.modules.lookup,
-    });
-    if (meta?.permission) svc.permissions.require(meta.permission);
-    return next({
-      ctx: { session, book, user, svc, moduleId: null as string | null } satisfies AuthedContext,
-    });
-  });
+  return withServiceScope(() =>
+    ctx.app.bookStore.withBook(session.bookId, async (book) => {
+      const user = await loadServiceUser(book.db, session.userId);
+      if (!user) {
+        ctx.app.sessions.delete(session.token);
+        throw unauthorized();
+      }
+      const svc = createCoreServices({
+        db: book.db,
+        user,
+        moduleId: null,
+        now: ctx.app.now,
+        modules: ctx.app.modules.lookup,
+        providers: ctx.app.modules.providers,
+      });
+      if (meta?.permission) svc.permissions.require(meta.permission);
+      return next({
+        ctx: { session, book, user, svc, moduleId: null as string | null } satisfies AuthedContext,
+      });
+    }),
+  );
 });
 
 /** 模块的过程：在 authedProcedure 基础上把 svc 绑定到模块（生成的凭证记为该模块来源，参数按模块隔离）。 */

@@ -266,6 +266,11 @@ it.each([
 });
 
 it('w_pz_pzedit：早于启用、已结账、编号冲突由 core 阻止', async () => {
+  await app.svc.voucherPolicy.set({
+    numbering: 'manual',
+    renumberAfterDelete: false,
+    allowModifyOthers: true,
+  });
   const data = await base();
   expect((await code(save({ ...data, date: '2025-12-31' }))).code).toBe('PERIOD_BEFORE_START');
   await save({ ...data, number: 2 });
@@ -291,6 +296,11 @@ it('w_pz_pzedit：未来月份确认；跨年 12 个自然月边界，超过则�
 it('w_pz_pzedit_b：改类型/跨期间/手动改编号先确认，取消时不变更数据库', async () => {
   const data = await base();
   const first = (await save(data)).voucher!;
+  await app.svc.voucherPolicy.set({
+    numbering: 'manual',
+    renumberAfterDelete: false,
+    allowModifyOthers: true,
+  });
   await app.svc.db
     .insertInto('voucher_type')
     .values({ code: '收', name: '收款', rule: null, disabled: 0, sort: 2 })
@@ -580,10 +590,16 @@ it('w_pz_pzedit：Excel 粘贴严格按编码解析、逐行错误、精确分�
 });
 
 it('w_pz_pzedit_b：期间/类型/编号稳定移动及边界禁用', async () => {
+  await app.svc.voucherPolicy.set({
+    numbering: 'manual',
+    renumberAfterDelete: false,
+    allowModifyOthers: true,
+  });
   const data = await base();
   const a = (await save({ ...data, number: 3 })).voucher!;
   const b = (await save({ ...data, number: 1 })).voucher!;
-  const c = (await save({ ...data, date: '2026-02-03' }, { confirmFuture: true })).voucher!;
+  const c = (await save({ ...data, number: 1, date: '2026-02-03' }, { confirmFuture: true }))
+    .voucher!;
   expect(await api().neighbors({ id: b.id })).toEqual({
     first: null,
     previous: null,
@@ -1108,4 +1124,45 @@ it('w_pz_pzedit：fast-check 随机正负原币和汇率经 router 读回一致�
     ),
     { numRuns: 20 },
   );
+});
+
+it('w_pz_pzedit：共享全空行忽略并保留原行号，零本币数量行须明确借贷侧且可保存', async () => {
+  const data: Entry = await base();
+  data.lines.splice(1, 0, { summary: '', accountId: null, dimensions: {}, debit: 0, credit: 0 });
+  const result = await save(data);
+  expect(result.voucher!.lines).toHaveLength(2);
+  const invalid = structuredClone(data);
+  invalid.lines[2]!.accountId = null;
+  expect((await code(save(invalid))).details?.problems).toEqual(
+    expect.arrayContaining([expect.objectContaining({ line: 3, field: 'accountId' })]),
+  );
+  const quantities: Entry = {
+    ...data,
+    lines: [
+      {
+        accountId: await id('1403'),
+        summary: '数量借方调整',
+        quantity: '2',
+        entrySide: 'debit',
+        debit: 0,
+        credit: 0,
+      },
+      {
+        accountId: await id('1403'),
+        summary: '数量贷方调整',
+        quantity: '1',
+        entrySide: 'credit',
+        debit: 0,
+        credit: 0,
+      },
+    ],
+  };
+  const zero = await save(quantities);
+  expect(zero.voucher!.lines.map((l) => [l.entrySide, l.quantity])).toEqual([
+    ['debit', '2'],
+    ['credit', '1'],
+  ]);
+  expect(zero.voucher!.debitTotal).toBe(0);
+  quantities.lines[0]!.entrySide = null;
+  expect((await code(save(quantities))).message).toContain('借贷方向');
 });

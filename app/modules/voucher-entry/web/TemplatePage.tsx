@@ -1,10 +1,18 @@
 import { Alert, Button, Drawer, Input, Modal, Select, Space, Table } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router';
 import { type VoucherLineInput } from '@caiwu/core';
 import { PageContainer, useUrlFilters } from '@caiwu/ui';
-import { matchHotkey, notify, queryClient, usePermission, useTab } from '@caiwu/web-kit';
+import {
+  matchHotkey,
+  notify,
+  queryClient,
+  usePermission,
+  useTab,
+  useUnsavedChanges,
+} from '@caiwu/web-kit';
 import { blankLine } from '../shared';
 import { api } from './api';
 import { confirm } from './dialogs';
@@ -86,16 +94,18 @@ export default function TemplatePage() {
     }
     if (dirtyRef.current && !(await ask('放弃模版修改', '本次修改尚未保存，确定放弃？')))
       return false;
-    draftRef.current = null;
-    dirtyRef.current = false;
-    setDraft(null);
-    setDirty(false);
-    setDetails(false);
+    flushSync(() => {
+      draftRef.current = null;
+      dirtyRef.current = false;
+      setDraft(null);
+      setDirty(false);
+      setDetails(false);
+    });
     return true;
   };
   const submit = async () => {
     const snapshot = draftRef.current;
-    if (!snapshot || !canEdit || pending.current) return;
+    if (!snapshot || !canEdit || pending.current) return false;
     const savedVersion = version.current;
     pending.current = true;
     try {
@@ -115,7 +125,7 @@ export default function TemplatePage() {
           '方向未配置，无法核验。确认保留待核验的模版，或取消并先维护现金流量档案。',
         ))
       )
-        return;
+        return false;
       const id = await save.mutateAsync({ ...snapshot, acknowledgeCashflowUnknown: hasUnknown });
       if (version.current === savedVersion) {
         draftRef.current = null;
@@ -134,10 +144,30 @@ export default function TemplatePage() {
       await queryClient.invalidateQueries({ queryKey: api.templates.queryKey() });
     } catch {
       /* 框架显示可操作的业务提示 */
+      return false;
     } finally {
       pending.current = false;
     }
+    return !dirtyRef.current;
   };
+  useUnsavedChanges({
+    title: '凭证模版',
+    dirty: dirty || pending.current,
+    version: version.current,
+    save: submit,
+    discard: () => {
+      if (pending.current) {
+        notify.info('模版正在保存，请等待响应后再关闭');
+        throw new Error('模版正在保存');
+      }
+      draftRef.current = null;
+      dirtyRef.current = false;
+      setDraft(null);
+      setDirty(false);
+      setDetails(false);
+      setCalculator(null);
+    },
+  });
   const focus = (index: number, field: string) => {
     setActive(index);
     setTimeout(() => {

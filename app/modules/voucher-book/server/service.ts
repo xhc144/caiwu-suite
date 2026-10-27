@@ -250,6 +250,8 @@ export function copiedInput(
     note: v.note,
     lines: v.lines.map((l) => ({
       summary: l.summary,
+      entrySide: l.entrySide,
+      cashflowDirection: l.cashflowDirection,
       accountId: l.accountId,
       dimensions: l.dimensions,
       currency: l.currency,
@@ -418,6 +420,8 @@ async function rowPreview(
 }
 type StoredPlan = {
   input: PreviewInput;
+  numberPlan: Awaited<ReturnType<CoreServices['vouchers']['previewNumbers']>> | null;
+  deletePlan: Awaited<ReturnType<CoreServices['vouchers']['previewDelete']>> | null;
   preview: Preview;
   metadata: string;
   groups: { period: number; type: number; hash: string }[];
@@ -480,6 +484,8 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
       fail('ONE', '请只选择一张原凭证');
     const rows: PreviewRow[] = [];
     for (const id of ids) rows.push(await rowPreview(t, id, input.action, input));
+    let numberPlan: StoredPlan['numberPlan'] = null;
+    let deletePlan: StoredPlan['deletePlan'] = null;
     const mappings: NumberMapping[] = [],
       groups: StoredPlan['groups'] = [],
       warnings: string[] = [];
@@ -594,17 +600,44 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
         }
       }
       warnings.push(
-        input.compactAfter
+        input.compactAfter || (await t.voucherPolicy.get()).renumberAfterDelete
           ? '删除与已预览的编号整理在同一事务执行；已打印凭证和账册可能失配'
           : '删除分录及凭证，原编号将空出。不会自动整理；可勾选删除后整理并重新预览',
       );
+    }
+    const numberUpdates = () =>
+      mappings.filter((m) => m.from !== m.to).map((m) => ({ id: m.id, number: m.to }));
+    if ((input.action === 'insert' || input.action === 'renumber') && numberUpdates().length)
+      numberPlan = await t.vouchers.previewNumbers(numberUpdates());
+    if (input.action === 'delete' && rows.some((row) => row.eligible)) {
+      deletePlan = await t.vouchers.previewDelete(
+        rows.filter((row) => row.eligible).map((row) => row.id),
+      );
+      if (deletePlan.renumber) {
+        mappings.splice(
+          0,
+          mappings.length,
+          ...deletePlan.impacts.map((impact) => ({
+            id: impact.id,
+            from: impact.oldNumber!,
+            to: impact.number,
+            label: String(impact.id),
+          })),
+        );
+        warnings.push('账套已启用删除后重排，删除及上述编号变化将一并执行，请核对打印影响');
+      } else if (input.compactAfter && numberUpdates().length) {
+        await trial(t, async (test) => {
+          await test.vouchers.deleteBatch(deletePlan!, true);
+          numberPlan = await test.vouchers.previewNumbers(numberUpdates());
+        });
+      }
     }
     if (input.action === 'unaudit') warnings.push('取消审核后清除审核人和审核日期，凭证恢复待审核');
     if (generated && rows.every((r) => r.eligible)) {
       await trial(t, async (test) => {
         if (input.action === 'insert')
-          await test.vouchers.setNumbers(mappings.map((m) => ({ id: m.id, number: m.to })));
-        await test.vouchers.create(checkedInput(generated!));
+          await test.vouchers.insertNumbered(checkedInput(generated!), numberPlan!, true);
+        else await test.vouchers.create(checkedInput(generated!));
       });
     }
     const result: Preview = {
@@ -622,6 +655,8 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
       input.action,
       {
         input,
+        numberPlan,
+        deletePlan,
         preview: result,
         groups,
         generated,
@@ -679,13 +714,14 @@ export async function commit(svc: CoreServices, input: CommitInput): Promise<Act
       await t.vouchers.changeStatus({ ids, to: action === 'audit' ? 'audited' : 'pending' });
     if (action === 'delete') {
       if (plan.input.compactAfter) await t.permissions.require('voucher-book.renumber');
-      for (const r of eligible) await t.vouchers.delete(r.id, { expectedRevision: r.revision });
-      if (plan.input.compactAfter) {
-        await t.vouchers.setNumbers(
-          plan.preview.mappings
-            .filter((m) => m.from !== m.to)
-            .map((m) => ({ id: m.id, number: m.to })),
-        );
+      if (!plan.deletePlan) fail('STALE', '删除预览已失效，请重新预览');
+      await t.vouchers.deleteBatch(plan.deletePlan, true);
+      if (plan.input.compactAfter && !plan.deletePlan.renumber) {
+        if (plan.numberPlan)
+          await t.vouchers.setNumbers(plan.numberPlan.updates, {
+            plan: plan.numberPlan,
+            confirmed: true,
+          });
         await t.log.write({
           action: 'voucher-book.number.mapping',
           summary: '删除后编号前后映射',
@@ -699,11 +735,11 @@ export async function commit(svc: CoreServices, input: CommitInput): Promise<Act
     if (action === 'insert' || action === 'renumber') {
       if (eligible.length !== plan.preview.rows.length)
         fail('INELIGIBLE', '编号调整范围含不能操作的凭证，请先处理阻止原因');
-      await t.vouchers.setNumbers(
-        plan.preview.mappings
-          .filter((m) => m.from !== m.to)
-          .map((m) => ({ id: m.id, number: m.to })),
-      );
+      if (action === 'renumber' && plan.numberPlan)
+        await t.vouchers.setNumbers(plan.numberPlan.updates, {
+          plan: plan.numberPlan,
+          confirmed: true,
+        });
       await t.log.write({
         action: 'voucher-book.number.mapping',
         summary: '凭证编号前后映射',
@@ -725,7 +761,12 @@ export async function commit(svc: CoreServices, input: CommitInput): Promise<Act
         action === 'reverse'
           ? { ...plan.generated, source: { type: 'reversal', id: String(ids[0]) } }
           : plan.generated;
-      createdIds.push((await t.vouchers.create(checkedInput(generated))).id);
+      createdIds.push(
+        (action === 'insert'
+          ? await t.vouchers.insertNumbered(checkedInput(generated), plan.numberPlan!, true)
+          : await t.vouchers.create(checkedInput(generated))
+        ).id,
+      );
     }
     const result = {
       successCount: createdIds.length || ids.length,

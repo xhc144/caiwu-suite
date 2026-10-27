@@ -5,7 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createTestApp, seedVouchers, voucherInputFromSpec, type TestApp } from '@caiwu/testkit';
 import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
-import backupServer from './isolated-server';
+import backupServer from '../server';
 import { defineManifest } from '@caiwu/core';
 import { defineServerModule, moduleKit } from '@caiwu/server-kit';
 import { waitForJobs } from '../server/service';

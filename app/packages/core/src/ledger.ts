@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { DIMENSION_TYPE_IDS, type DimensionTypeId, type DimensionValues } from './dimensions';
 import { zId, zPeriod } from './schemas';
-import { VOUCHER_STATUSES, type VoucherStatus } from './voucher';
+import { VOUCHER_STATUSES, type VoucherStatus, type CashflowDirection } from './voucher';
 import type { BalanceDirection } from './account';
 import type { Cents } from './money';
 import type { Period } from './period';
@@ -27,11 +27,17 @@ export const EntryFilterSchema = z.object({
   currency: z.string().optional(),
   /** false（默认）只看已过账；true 包含待审核、已审核 */
   includeUnposted: z.boolean().default(false),
+  /** 排除 closingKind 非 NULL 的结转凭证；不按摘要或来源推测。 */
+  excludeClosing: z.boolean().default(false),
+  /** 按确切的 closingKind 排除；NULL 和其它标记保留。excludeClosing=true 时排除全部。 */
+  excludeClosingKinds: z.array(z.string().min(1).max(80)).max(32).default([]),
   limit: z.number().int().min(1).max(200_000).default(50_000),
 });
 export type EntryFilter = z.input<typeof EntryFilterSchema>;
 
 export interface EntryRow {
+  cashflowDirection?: CashflowDirection | null;
+  entrySide?: 'debit' | 'credit' | null;
   voucherId: number;
   lineId: number;
   period: Period;
@@ -56,8 +62,14 @@ export interface EntryRow {
   sourceModule: string | null;
 }
 
-/** 余额查询（余额表、报表取数、账簿期初用）。 */
+/**
+ * 余额查询（余额表、报表取数、账簿期初用）。
+ * 返回整行前检查实际覆盖期间：余额从最近的已存期初锚点承接，YTD 从目标年年初
+ * （首启用年从 startPeriod）累计。缺失期间明确拒绝，不视为零或推算未来余额。
+ * 此项收紧旧查询行为；参数格式兼容不代表未建期间仍可查询。
+ */
 export const BalanceQuerySchema = z.object({
+  quantityUnit: z.string().optional(),
   periodFrom: zPeriod,
   periodTo: zPeriod,
   /** 编码范围（含两端，按字符串比较），例如 { from: '1001', to: '1999' } */
@@ -72,6 +84,10 @@ export const BalanceQuerySchema = z.object({
   /** 指定本位币时包含 NULL 行；不填时汇总全部本位币金额，原币金额不混加。 */
   currency: z.string().optional(),
   includeUnposted: z.boolean().default(false),
+  /** 本期发生及本年累计排除标记为结转的凭证；历史期初仍按真实账面余额。 */
+  excludeClosing: z.boolean().default(false),
+  /** 仅筛本期及累计发生额；历史期初不重写。 */
+  excludeClosingKinds: z.array(z.string().min(1).max(80)).max(32).default([]),
   /** true 时同时返回各级上级科目的汇总行 */
   rollup: z.boolean().default(true),
   /** false（默认）去掉期初、发生、期末全为 0 的行 */
@@ -82,8 +98,11 @@ export type BalanceQuery = z.input<typeof BalanceQuerySchema>;
 /**
  * 余额行。所有余额都是"借正贷负"的有符号数，显示时用 balanceSide() 换算。
  * fc* 为外币金额（分），qty* 为数量（十进制字符串）。
+ * 任一余额/YTD 实际覆盖期间未建立时不返回确定数值，抛期间缺失业务错误。
  */
 export interface BalanceRow {
+  /** Quantity rows are never aggregated across units. */
+  quantityUnit?: string | null;
   accountId: number;
   accountCode: string;
   accountName: string;
@@ -98,6 +117,11 @@ export interface BalanceRow {
   /** 本年累计（年初到 periodTo） */
   ytdDebit: Cents;
   ytdCredit: Cents;
+  fcYtdDebit?: Cents | null;
+  fcYtdCredit?: Cents | null;
+  qtyYtdDebit?: string | null;
+  qtyYtdCredit?: string | null;
+  dimensionYtdMissing?: string | null;
   fcOpening: Cents;
   fcDebit: Cents;
   fcCredit: Cents;
@@ -112,3 +136,15 @@ export const DEFAULT_COUNTED_STATUSES: readonly VoucherStatus[] = ['posted'];
 export const UNPOSTED_COUNTED_STATUSES: readonly VoucherStatus[] = ['pending', 'audited', 'posted'];
 
 export { VOUCHER_STATUSES };
+
+/** Flow totals follow the requested subset; internal-balance diagnostics inspect each selected voucher in full. */
+export interface CashflowSummary {
+  rows: EntryRow[];
+  cashNet: number;
+  inflow: number;
+  outflow: number;
+  internalNet: number;
+  unallocatedNet: number;
+  unallocatedCount: number;
+  internalUnbalancedVouchers: number[];
+}

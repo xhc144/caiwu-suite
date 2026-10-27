@@ -41,6 +41,8 @@ export interface CurrentUser {
 }
 
 export const CreateBookInputSchema = z.object({
+  /** Reuse the same opaque key when retrying the same creation request. */
+  requestKey: z.string().min(8).max(100).optional(),
   name: z.string().trim().min(1, '账套名称不能为空').max(60),
   orgName: z.string().trim().min(1, '单位名称不能为空').max(100),
   templateId: z.string().min(1),

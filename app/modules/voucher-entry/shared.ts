@@ -62,7 +62,10 @@ export function applyExchangeRate(line: VoucherLineInput, rate: string): Voucher
   const patch = { ...line, exchangeRate: rate };
   if (line.fcAmount == null) return patch;
   const amount = foreignAmount(line.fcAmount, rate);
-  return { ...patch, ...(line.credit ? { credit: amount } : { debit: amount }) };
+  return {
+    ...patch,
+    ...(line.credit || line.entrySide === 'credit' ? { credit: amount } : { debit: amount }),
+  };
 }
 export const SaveSchema = z.object({
   key: z.string().min(1).max(100),

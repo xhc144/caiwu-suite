@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import {
   formatMoney,
   formatPeriod,
@@ -449,9 +450,16 @@ export async function renumberPreview(svc: CoreServices, period: number) {
       revision: v.revision,
     };
   });
+  const numberPlan = changes.some((v) => v.oldNumber !== v.number)
+    ? await svc.vouchers.previewNumbers(
+        changes
+          .filter((v) => v.oldNumber !== v.number)
+          .map((v) => ({ id: v.id, number: v.number })),
+      )
+    : null;
   return {
     changes: changes.filter((v) => v.oldNumber !== v.number),
-    previewToken: digest(changes),
+    previewToken: JSON.stringify({ digest: digest(changes), numberPlan }),
     message: '影响已打印凭证和账册，编号整理后不可直接恢复。整理后须重新检查再结账。',
   };
 }
@@ -463,9 +471,35 @@ export async function renumber(
     fail('CONFIRM', '编号整理需要两次确认', '核对新旧号，确认影响已打印凭证和账册且不可直接恢复');
   return svc.tx(async (t) => {
     const preview = await renumberPreview(t, input.period);
-    if (preview.previewToken !== input.previewToken)
+    const tokenSchema = z.object({
+      digest: z.string(),
+      numberPlan: z
+        .object({
+          updates: z.array(
+            z.object({ id: z.number().int().positive(), number: z.number().int().positive() }),
+          ),
+          fingerprint: z.string(),
+          expiresAt: z.number(),
+        })
+        .nullable(),
+    });
+    let submitted;
+    try {
+      submitted = tokenSchema.parse(JSON.parse(input.previewToken));
+    } catch {
+      fail('PREVIEW_CHANGED', '编号预览无效，请重新预览');
+    }
+    const current = tokenSchema.parse(JSON.parse(preview.previewToken));
+    if (
+      current.digest !== submitted.digest ||
+      digest(current.numberPlan?.updates) !== digest(submitted.numberPlan?.updates)
+    )
       fail('PREVIEW_CHANGED', '凭证已变化，请重新预览编号');
-    await t.vouchers.setNumbers(preview.changes.map((c) => ({ id: c.id, number: c.number })));
+    if (submitted.numberPlan)
+      await t.vouchers.setNumbers(submitted.numberPlan.updates, {
+        plan: submitted.numberPlan,
+        confirmed: true,
+      });
     await t.log.write({
       action: 'period-close.renumber',
       summary: `确认不可直接恢复后整理 ${input.period} 编号`,
