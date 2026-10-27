@@ -312,6 +312,11 @@ export const StatutoryGenerateSchema = IdentitySchema.extend({
   requestId: z.string().uuid(),
   confirmUnposted: z.boolean().default(false),
 }).strict();
+export const StatutoryOutputSchema = IdentitySchema.extend({
+  snapshotId: zId,
+  period: zPeriod,
+  format: z.enum(['xlsx', 'print']),
+}).strict();
 export const StatutoryImportSchema = StatutoryDefinitionSchema.extend({
   schemaVersion: z.literal(1),
   kind: z.literal('statutory-report'),

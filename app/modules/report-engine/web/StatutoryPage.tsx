@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import { Alert, Button, Input, Modal, Select, Space, Spin, Tabs } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { printHtml } from '@caiwu/print';
@@ -13,6 +14,7 @@ import { PageContainer, downloadBlob, useUrlFilters } from '@caiwu/ui';
 import type { StatutoryProfile } from '../shared';
 import { api } from './api';
 import { StatutoryConfiguration, StatutoryResult } from './statutory-registry';
+import { useStatutoryDraft } from './statutory-draft';
 
 type Selection = {
   id: number;
@@ -75,6 +77,15 @@ function StatutoryEditor({
   const [error, setError] = useState('');
   const [working, setWorking] = useState(false);
   const [pending, setPending] = useState<{ requestId: string; count: number } | null>(null);
+  const [draftEpoch, setDraftEpoch] = useState(0);
+  const draft = useStatutoryDraft(`法定报表：${name}`, () => {
+    setCode(profile?.code ?? selection.code);
+    setName(profile?.name ?? selection.name);
+    setPeriod(savedConfig?.period ?? selection.period);
+    setScope(savedConfig?.scope ?? selection.scope);
+    setOptions(undefined);
+    setDraftEpoch((epoch) => epoch + 1);
+  });
   const canEdit = usePermission('report-engine.edit');
   const canGenerate = usePermission('report-engine.generate');
   const canExport = usePermission('report-engine.export');
@@ -86,6 +97,11 @@ function StatutoryEditor({
     staleTime: 0,
     placeholderData: (previous) => previous,
   });
+  const lastEditor = useRef(editor.data);
+  useLayoutEffect(() => {
+    if (editor.data) lastEditor.current = editor.data;
+  }, [editor.data]);
+  const editorData = editor.data ?? lastEditor.current;
   const snapshot = useQuery({
     ...api.statutory.snapshot.queryOptions({ id: profile?.id ?? 0, period }),
     enabled: !!profile,
@@ -118,14 +134,27 @@ function StatutoryEditor({
       });
   };
   const output = async (format: 'xlsx' | 'print') => {
-    if (!profile) return;
+    const displayed = snapshot.data;
+    if (!profile || !displayed) return;
     setWorking(true);
     setError('');
     try {
       const out = await queryClient.fetchQuery({
-        ...api.statutory.output.queryOptions({ id: profile.id, period, format }),
+        ...api.statutory.output.queryOptions({
+          id: profile.id,
+          period: displayed.period,
+          format,
+          snapshotId: displayed.id,
+          expectedRevision: displayed.profile.revision,
+        }),
         staleTime: 0,
       });
+      if (
+        out.snapshotId !== displayed.id ||
+        out.revision !== displayed.profile.revision ||
+        out.period !== displayed.period
+      )
+        throw new Error('导出结果与当前显示结果不一致，请刷新页面后重试');
       if (format === 'print' && out.printJob) await printHtml(out.printJob);
       else
         downloadBlob(
@@ -145,10 +174,10 @@ function StatutoryEditor({
     <PageContainer
       title={`法定报表：${name}`}
       subtitle="确认分类和来源后，仅按已过账凭证生成。完整财务报告还需附注及首次执行附件。"
-      extra={<a href="/m/report-engine">返回报表管理</a>}
+      extra={<Link to="/m/report-engine">返回报表管理</Link>}
     >
       <Space wrap style={{ marginBottom: 12 }}>
-        {(!editor.data || !canEdit) && (
+        {(!editorData || !canEdit) && (
           <>
             <label>
               报告期间{' '}
@@ -161,6 +190,7 @@ function StatutoryEditor({
                   setPeriod(p);
                   setOptions(undefined);
                   setPending(null);
+                  draft.markDirty(true);
                 }}
               />
             </label>
@@ -179,6 +209,7 @@ function StatutoryEditor({
                 setScope(s);
                 setOptions(undefined);
                 setPending(null);
+                draft.markDirty(true);
               }}
             />
           </>
@@ -190,7 +221,10 @@ function StatutoryEditor({
             value={code}
             disabled={!canEdit}
             style={{ width: 90 }}
-            onChange={(e) => setCode(e.target.value)}
+            onChange={(e) => {
+              setCode(e.target.value);
+              draft.markDirty(true);
+            }}
           />
         </label>
         <label>
@@ -200,13 +234,16 @@ function StatutoryEditor({
             value={name}
             disabled={!canEdit}
             style={{ width: 240 }}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              draft.markDirty(true);
+            }}
           />
         </label>
         {canGenerate && (
           <Button
             type="primary"
-            disabled={!profile || editor.isFetching}
+            disabled={!profile || editor.isFetching || draft.dirty}
             loading={generate.isPending}
             onClick={() => run()}
           >
@@ -251,27 +288,32 @@ function StatutoryEditor({
             key: 'configuration',
             label: '配置与来源确认',
             children: canEdit ? (
-              editor.data && (
+              editorData && (
                 <StatutoryConfiguration
-                  key={`${profile?.id ?? 'new'}-${profile?.revision ?? 0}-${identity.definitionId}-${identity.reportKey}`}
+                  key={`${identity.definitionId}-${identity.reportKey}-${draftEpoch}`}
                   definitionId={identity.definitionId}
-                  configuration={editor.data.configuration}
-                  source={editor.data.source}
+                  configuration={editorData.configuration}
+                  source={editorData.source}
+                  onDirtyChange={draft.markDirty}
+                  onSaveReady={draft.registerSave}
                   onPeriodChange={(p, s) => {
                     setPeriod(p);
                     setScope(s);
                     setOptions(undefined);
                     setPending(null);
+                    draft.markDirty(true);
                   }}
                   onOptionsChange={(options, p, s) => {
                     setOptions(options);
                     setPeriod(p);
                     setScope(s);
                     setPending(null);
+                    draft.markDirty(true);
                   }}
                   onGenerate={async () => {
                     if (!canGenerate || !profile)
                       throw new Error('请先保存配置，并确认当前操作员有生成报表权限');
+                    if (draft.dirty) throw new Error('请先保存当前配置修改，再生成报表');
                     await generate.mutateAsync({
                       id: profile.id,
                       expectedRevision: profile.revision,
@@ -283,34 +325,38 @@ function StatutoryEditor({
                   onSave={async (configuration) => {
                     if (editor.isFetching)
                       throw new Error('正在重新读取所选期间的来源，请读取完成后再保存');
-                    const saved = await save.mutateAsync({
-                      ...identity,
-                      id: profile?.id,
-                      expectedRevision: profile?.revision,
-                      code,
-                      name,
-                      configuration,
-                    });
-                    queryClient.setQueryData(
-                      api.statutory.editor.queryKey({
+                    if (editor.isError || !editor.data)
+                      throw new Error('来源读取失败，请先选择有效期间并重试');
+                    await draft.persist(async () => {
+                      const saved = await save.mutateAsync({
                         ...identity,
-                        id: saved.id,
-                        period,
-                        scope,
-                        options,
-                      }),
-                      { configuration: saved.configuration, source: editor.data?.source },
-                    );
-                    setProfile(saved);
-                    queryClient.setQueryData(api.statutory.get.queryKey({ id: saved.id }), saved);
-                    await queryClient.invalidateQueries({
-                      queryKey: api.statutory.list.queryKey(),
+                        id: profile?.id,
+                        expectedRevision: profile?.revision,
+                        code,
+                        name,
+                        configuration,
+                      });
+                      queryClient.setQueryData(
+                        api.statutory.editor.queryKey({
+                          ...identity,
+                          id: saved.id,
+                          period,
+                          scope,
+                          options,
+                        }),
+                        { configuration: saved.configuration, source: editorData.source },
+                      );
+                      setProfile(saved);
+                      queryClient.setQueryData(api.statutory.get.queryKey({ id: saved.id }), saved);
+                      await queryClient.invalidateQueries({
+                        queryKey: api.statutory.list.queryKey(),
+                      });
+                      window.history.replaceState(
+                        null,
+                        '',
+                        `/m/report-engine/statutory?id=${saved.id}`,
+                      );
                     });
-                    window.history.replaceState(
-                      null,
-                      '',
-                      `/m/report-engine/statutory?id=${saved.id}`,
-                    );
                   }}
                 />
               )

@@ -128,12 +128,24 @@ it('w_bb_proc 真实账套prepare/verify/generate/成功快照均使用tsvc；�
   });
   await expect(api().generate(input)).rejects.toThrow('来源已变化');
   await expect(api().generate({ ...input, requestId: randomUUID() })).rejects.toThrow('来源已变化');
-  await expect(api().output({ id: p.id, period: 202512, format: 'xlsx' })).rejects.toThrow(
-    '来源已变化',
-  );
-  await expect(api().output({ id: p.id, period: 202512, format: 'print' })).rejects.toThrow(
-    '来源已变化',
-  );
+  await expect(
+    api().output({
+      id: p.id,
+      expectedRevision: p.revision,
+      snapshotId: snapshot.id,
+      period: 202512,
+      format: 'xlsx',
+    }),
+  ).rejects.toThrow('来源已变化');
+  await expect(
+    api().output({
+      id: p.id,
+      expectedRevision: p.revision,
+      snapshotId: snapshot.id,
+      period: 202512,
+      format: 'print',
+    }),
+  ).rejects.toThrow('来源已变化');
   expect(await api().snapshot({ id: p.id, period: 202512 })).toEqual(before);
   expect(await count()).toBe(1);
 });
@@ -253,12 +265,19 @@ it('w_bb_copy/w_bb_get 复制及重引入保留定义身份；不信任外来摘
 });
 it('w_bb_main/proc/saveas 所有公共入口按权限拒绝；真实xlsx及A4来自同一保存结果', async () => {
   const p = await saved();
-  await api().generate({
+  const generated = await api().generate({
     id: p.id,
     expectedRevision: p.revision,
     period: 202512,
     requestId: randomUUID(),
   });
+  if (generated.kind !== 'generated') throw new Error('意外确认');
+  const selection = {
+    id: p.id,
+    expectedRevision: p.revision,
+    snapshotId: generated.snapshot.id,
+    period: 202512,
+  };
   const clerk = app.call(
     mod,
     await app.addUser('viewer', { permissions: ['report-engine.view'] }),
@@ -278,8 +297,8 @@ it('w_bb_main/proc/saveas 所有公共入口按权限拒绝；真实xlsx及A4来
       requestId: randomUUID(),
     }),
   ).rejects.toThrow();
-  await expect(clerk.output({ id: p.id, period: 202512, format: 'xlsx' })).rejects.toThrow();
-  await expect(clerk.output({ id: p.id, period: 202512, format: 'print' })).rejects.toThrow();
+  await expect(clerk.output({ ...selection, format: 'xlsx' })).rejects.toThrow();
+  await expect(clerk.output({ ...selection, format: 'print' })).rejects.toThrow();
   await expect(clerk.exportTemplate({ id: p.id })).rejects.toThrow();
   const forbidden = app.call(mod, await app.addUser('none')).statutory;
   await expect(forbidden.catalog()).rejects.toThrow();
@@ -290,8 +309,8 @@ it('w_bb_main/proc/saveas 所有公共入口按权限拒绝；真实xlsx及A4来
   ).rejects.toThrow();
   await expect(forbidden.snapshot({ id: p.id, period: 202512 })).rejects.toThrow();
   await expect(clerk.importTemplate(await api().exportTemplate({ id: p.id }))).rejects.toThrow();
-  const xlsx = await api().output({ id: p.id, period: 202512, format: 'xlsx' });
-  const print = await api().output({ id: p.id, period: 202512, format: 'print' });
+  const xlsx = await api().output({ ...selection, format: 'xlsx' });
+  const print = await api().output({ ...selection, format: 'print' });
   expect(xlsx.snapshotId).toBe(print.snapshotId);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(Uint8Array.from(Buffer.from(xlsx.data, 'base64')).buffer);

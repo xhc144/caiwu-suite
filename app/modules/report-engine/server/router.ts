@@ -11,6 +11,7 @@ import {
   StatutoryGenerateSchema,
   StatutoryHeaderSchema,
   StatutoryImportSchema,
+  StatutoryOutputSchema,
   StatutorySaveSchema,
   StatutoryScopeSchema,
 } from '../shared';
@@ -74,10 +75,8 @@ export const reportRouter = m.router({
       .query(({ ctx, input }) => statutoryService(ctx.svc).snapshot(input.id, input.period)),
     output: m.procedure
       .meta({ permission: 'report-engine.export' })
-      .input(z.object({ id: zId, period: zPeriod, format: z.enum(['xlsx', 'print']) }).strict())
-      .query(({ ctx, input }) =>
-        statutoryService(ctx.svc).output(input.id, input.period, input.format),
-      ),
+      .input(StatutoryOutputSchema)
+      .query(({ ctx, input }) => statutoryService(ctx.svc).output(input)),
   }),
   list: m.procedure
     .meta({ permission: 'report-engine.view' })

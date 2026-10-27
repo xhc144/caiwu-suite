@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Input, InputNumber, Select, Space, Tabs } from 'antd';
 import Decimal from 'decimal.js';
 import { ASSETS, LIABILITIES_EQUITY, PROFIT, CASHFLOW } from './lines';
@@ -96,17 +96,28 @@ export function EnterpriseConfiguration({
   source,
   onSave,
   onPeriodChange,
+  onDirtyChange,
+  onSaveReady,
 }: {
   initial: EnterpriseConfig;
   source: SourceData;
   onSave(c: EnterpriseConfig): Promise<void>;
   onPeriodChange?(period: number, scope: EnterpriseConfig['scope']): void;
+  onDirtyChange?(dirty: boolean): void;
+  onSaveReady?(save: () => Promise<void>): void;
 }) {
   const [c, set] = useState(initial),
     [error, setError] = useState(''),
     [saving, setSaving] = useState(false);
+  const draft = useRef(c);
+  const inFlight = useRef<Promise<void> | null>(null);
+  const replace = (next: EnterpriseConfig) => {
+    draft.current = next;
+    set(next);
+    onDirtyChange?.(true);
+  };
   const change = <K extends keyof EnterpriseConfig>(key: K, value: EnterpriseConfig[K]) =>
-    set((old) => ({ ...old, [key]: value }));
+    replace({ ...draft.current, [key]: value });
   const accountOptions = source.accounts
     .filter((a) => a.isLeaf)
     .map((a) => ({ value: a.id, label: `${a.code} ${a.fullName}` }));
@@ -183,16 +194,31 @@ export function EnterpriseConfiguration({
       ) && !source.vouchers.some((v) => v.id === e.voucherId && v.closingKind === 'pnl'),
   );
   const save = async () => {
-    setError('');
-    setSaving(true);
+    if (inFlight.current) return inFlight.current;
+    const submitted = draft.current;
+    const run = (async () => {
+      setError('');
+      setSaving(true);
+      try {
+        await onSave(parseEnterpriseConfiguration(submitted));
+        if (draft.current === submitted) onDirtyChange?.(false);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '保存失败，请核实必填项目');
+        throw e;
+      } finally {
+        setSaving(false);
+      }
+    })();
+    inFlight.current = run;
     try {
-      await onSave(parseEnterpriseConfiguration(c));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '保存失败，请核实必填项目');
+      await run;
     } finally {
-      setSaving(false);
+      inFlight.current = null;
     }
   };
+  useLayoutEffect(() => {
+    onSaveReady?.(save);
+  });
   const sourceLink = (id: number) => `/m/voucher-entry/edit?id=${id}`;
   return (
     <div style={{ maxWidth: '100%' }}>
@@ -225,7 +251,7 @@ export function EnterpriseConfiguration({
             }}
           />
         </label>
-        <Button type="primary" loading={saving} onClick={() => void save()}>
+        <Button type="primary" loading={saving} onClick={() => void save().catch(() => {})}>
           保存并确认来源
         </Button>
       </Space>
@@ -955,7 +981,9 @@ export function EnterpriseConfiguration({
           {
             key: 'additional',
             label: '其他综合收益、股份及调整',
-            children: <AdditionalEnterpriseConfiguration c={c} source={source} onChange={set} />,
+            children: (
+              <AdditionalEnterpriseConfiguration c={c} source={source} onChange={replace} />
+            ),
           },
         ]}
       />

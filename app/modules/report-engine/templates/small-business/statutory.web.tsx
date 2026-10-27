@@ -30,6 +30,7 @@ export function SmallBusinessConfiguration({
   openingRows = [],
   onChange,
   onSave,
+  onDirtyChange,
   saving = false,
 }: {
   value: Configuration;
@@ -40,11 +41,15 @@ export function SmallBusinessConfiguration({
   openingRows?: { key: string; label: string; ytdDebit: number; ytdCredit: number; role?: Role }[];
   onChange: (v: Configuration) => void;
   onSave: () => void;
+  onDirtyChange?(dirty: boolean): void;
   saving?: boolean;
 }) {
   const mapped = resolveRoles(accounts, value, { allowStaleMappings: true });
   const roleOptions = Object.entries(roles).map(([value, label]) => ({ value, label }));
-  const update = (patch: Partial<Configuration>) => onChange({ ...value, ...patch });
+  const update = (patch: Partial<Configuration>) => {
+    onChange({ ...value, ...patch });
+    onDirtyChange?.(true);
+  };
   const factEditor = (a: AnalysisRow) => {
     const key = rowKey(a.row),
       fact = value.facts.find((f) => f.key === key && f.period === a.period);

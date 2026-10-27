@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import ExcelJS from 'exceljs';
 import { callApi } from '@caiwu/testkit/e2e';
-import type { StatutoryProfile } from '../shared';
+import type { StatutoryProfile, StatutorySnapshot } from '../shared';
 import { statutoryIdentity } from '../test/statutory-fixture';
 import { test } from './fixture';
 
@@ -95,6 +95,8 @@ test('w_bb_main → 真实配置保存 → 法定生成快照 → 授权xlsx与A
     .filter({ hasText: '完整年度及上年度' })
     .click();
   expect((await annualRead).ok()).toBe(true);
+  await page.getByRole('button', { name: '保存并确认来源' }).click();
+  await expect(page.getByText('已保存配置版本 3；', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: '生成法定报表', exact: true }).click();
   await expect(page.getByRole('tab', { name: '生成结果', exact: true })).toHaveAttribute(
     'aria-selected',
@@ -151,4 +153,69 @@ test('w_bb_main → 真实配置保存 → 法定生成快照 → 授权xlsx与A
   expect(events[0]!.css).toContain('A4');
   await expect(page.locator('iframe')).toHaveCount(0);
   await printed.dispose();
+  // B窗口通过真实接口更新配置并生成；A仍显示旧快照，输出必须提示刷新。
+  const displayed = await callApi<StatutorySnapshot>(
+    isolated.request,
+    'm.report-engine.statutory.snapshot',
+    { id: p.id, period: 202512 },
+    { token: login.token, method: 'GET' },
+  );
+  const latestProfile = await callApi<StatutoryProfile>(
+    isolated.request,
+    'm.report-engine.statutory.get',
+    { id: p.id },
+    { token: login.token, method: 'GET' },
+  );
+  const nextConfiguration = latestProfile.configuration as typeof configuration;
+  const nextProfile = await callApi<StatutoryProfile>(
+    isolated.request,
+    'm.report-engine.statutory.save',
+    {
+      ...statutoryIdentity,
+      id: p.id,
+      expectedRevision: latestProfile.revision,
+      code: p.code,
+      name: p.name,
+      configuration: {
+        ...nextConfiguration,
+        adoption: { ...nextConfiguration.adoption, version: 'B窗口再次核实' },
+      },
+    },
+    { token: login.token, method: 'POST' },
+  );
+  const next = await callApi<{ kind: 'generated'; snapshot: StatutorySnapshot }>(
+    isolated.request,
+    'm.report-engine.statutory.generate',
+    {
+      id: p.id,
+      expectedRevision: nextProfile.revision,
+      period: 202512,
+      requestId: crypto.randomUUID(),
+    },
+    { token: login.token, method: 'POST' },
+  );
+  expect(next.snapshot.id).not.toBe(displayed.id);
+  const downloads: string[] = [];
+  page.on('download', (download) => downloads.push(download.suggestedFilename()));
+  const staleResponse = page.waitForResponse((response) =>
+    response.url().includes('statutory.output'),
+  );
+  await page.getByRole('button', { name: '导出法定报表 Excel' }).click();
+  const sent = decodeURIComponent((await staleResponse).url());
+  expect(sent).toContain(`"snapshotId":${displayed.id}`);
+  expect(sent).toContain(`"expectedRevision":${displayed.profile.revision}`);
+  await expect(page.locator('.ant-alert').filter({ hasText: '刷新' }).first()).toBeVisible();
+  expect(downloads).toEqual([]);
+  await page.getByRole('button', { name: 'A4 打印' }).click();
+  await expect(page.locator('.ant-alert').filter({ hasText: '刷新' }).first()).toBeVisible();
+  await expect(page.locator('iframe')).toHaveCount(0);
+  await page.reload();
+  await page.getByRole('tab', { name: '生成结果', exact: true }).click();
+  await expect(
+    page.getByText(`配置版本 ${nextProfile.revision}`, { exact: false }).last(),
+  ).toBeVisible();
+  const freshDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出法定报表 Excel' }).click();
+  await freshDownload;
+  expect(downloads).toHaveLength(1);
 });

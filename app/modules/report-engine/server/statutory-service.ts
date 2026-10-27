@@ -5,6 +5,7 @@ import {
   StatutorySaveSchema,
   StatutoryImportSchema,
   StatutoryGenerateSchema,
+  StatutoryOutputSchema,
   type StatutoryProfile,
   type StatutorySnapshot,
 } from '../shared';
@@ -330,10 +331,13 @@ export function statutoryService(svc: CoreServices) {
         .executeTakeFirst();
       return row ? { ...(JSON.parse(row.result_json) as StatutorySnapshot), id: row.id } : null;
     },
-    async output(id: number, period: number, format: 'xlsx' | 'print') {
+    async output(raw: z.infer<typeof StatutoryOutputSchema>) {
       await svc.permissions.require('report-engine.export');
+      const input = StatutoryOutputSchema.parse(raw);
+      const { id, period, format } = input;
       return svc.tx(async (tsvc) => {
         const p = await load(tsvc, id);
+        revision(p, input.expectedRevision);
         const row = await tsvc.db
           .withTables<ReportTables>()
           .selectFrom(snapshotTable)
@@ -343,15 +347,18 @@ export function statutoryService(svc: CoreServices) {
           .orderBy('id', 'desc')
           .executeTakeFirst();
         if (!row) statutoryProblem('所选期间还没有成功生成的结果，请先生成报表');
+        if (row.id !== input.snapshotId)
+          statutoryProblem('生成结果已更新，请刷新页面查看当前结果后再导出或打印');
         const snapshot = { ...(JSON.parse(row.result_json) as StatutorySnapshot), id: row.id };
         // 导出保存的同一个结果，仍需当前配置及来源有效；拒绝静默导出过期资料。
-        if (snapshot.profile.revision !== p.revision)
-          statutoryProblem('配置已更新，请重新生成后再导出或打印');
+        if (snapshot.profile.revision !== input.expectedRevision)
+          statutoryProblem('配置已更新，请刷新页面并重新生成后再导出或打印');
         const { adapter } = await requireStatutory(tsvc, snapshot.profile);
         await domain(() => adapter.verify(tsvc, snapshot.profile, period, snapshot.result));
         const printJob = format === 'print' ? adapter.print(snapshot.result, p.reportKey) : null;
         return {
           snapshotId: snapshot.id,
+          revision: snapshot.profile.revision,
           name: p.name,
           period,
           printJob,

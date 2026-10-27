@@ -1,5 +1,5 @@
 import type { StatutoryProfile } from '../shared';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState, type ComponentProps, type ComponentType } from 'react';
 import { Alert, Select, Space, Tabs } from 'antd';
 import { MoneyText } from '@caiwu/ui';
 import type { EnterpriseConfig, EnterpriseResult, SourceData } from '../templates/enterprise/model';
@@ -22,21 +22,33 @@ import type {
   NonprofitPublicConfiguration,
   NonprofitPublicSource,
 } from '../server/statutory-nonprofit';
+import type { StatutoryDraftCallbacks } from './statutory-draft';
+import type { Configuration as NonprofitConfiguration } from '../templates/nonprofit/model';
+
+// 民非作者负责实现这些可选通知；公共适配不写其专属组件。
+const NonprofitPanel = NonprofitConfigurationPanel as ComponentType<
+  ComponentProps<typeof NonprofitConfigurationPanel> &
+    StatutoryDraftCallbacks & {
+      onDraftChange?(configuration: NonprofitConfiguration): void;
+    }
+>;
 
 /** 服务和页面登记同一真实定义；以后新增制度在这里提供其配置及结果组件。 */
-export function StatutoryConfiguration(props: {
-  definitionId: string;
-  configuration: StatutoryProfile['configuration'];
-  source: unknown;
-  onSave(configuration: StatutoryProfile['configuration']): Promise<void>;
-  onPeriodChange(period: number, scope: 'month' | 'yearToDate' | 'annual'): void;
-  onOptionsChange(
-    options: StatutoryProfile['configuration'],
-    period: number,
-    scope: 'month' | 'yearToDate' | 'annual',
-  ): void;
-  onGenerate(): Promise<void>;
-}) {
+export function StatutoryConfiguration(
+  props: {
+    definitionId: string;
+    configuration: StatutoryProfile['configuration'];
+    source: unknown;
+    onSave(configuration: StatutoryProfile['configuration']): Promise<void>;
+    onPeriodChange(period: number, scope: 'month' | 'yearToDate' | 'annual'): void;
+    onOptionsChange(
+      options: StatutoryProfile['configuration'],
+      period: number,
+      scope: 'month' | 'yearToDate' | 'annual',
+    ): void;
+    onGenerate(): Promise<void>;
+  } & StatutoryDraftCallbacks,
+) {
   if (props.definitionId === 'small-business')
     return (
       <SmallConfigurationEditor
@@ -62,6 +74,8 @@ export function StatutoryConfiguration(props: {
       source={props.source as SourceData}
       onSave={props.onSave}
       onPeriodChange={props.onPeriodChange}
+      onDirtyChange={props.onDirtyChange}
+      onSaveReady={props.onSaveReady}
     />
   );
 }
@@ -127,26 +141,45 @@ export function StatutoryResult({
   if (definitionId !== 'enterprise-2019-appendix2') return <p>所选报表暂不可用，请返回列表。</p>;
   return <EnterpriseStatements result={result as EnterpriseResult} />;
 }
-function SmallConfigurationEditor(props: {
-  configuration: SmallPublicConfiguration;
-  source: SmallPublicSource;
-  onSave(configuration: StatutoryProfile['configuration']): Promise<void>;
-  onPeriodChange(period: number, scope: 'month' | 'annual'): void;
-}) {
+function SmallConfigurationEditor(
+  props: {
+    configuration: SmallPublicConfiguration;
+    source: SmallPublicSource;
+    onSave(configuration: StatutoryProfile['configuration']): Promise<void>;
+    onPeriodChange(period: number, scope: 'month' | 'annual'): void;
+  } & StatutoryDraftCallbacks,
+) {
   const [value, setValue] = useState(props.configuration.value);
+  const draft = useRef(value),
+    inFlight = useRef<Promise<void> | null>(null);
   const [saving, setSaving] = useState(false),
     [error, setError] = useState('');
   const save = async () => {
-    setSaving(true);
-    setError('');
+    if (inFlight.current) return inFlight.current;
+    const submitted = draft.current;
+    const run = (async () => {
+      setSaving(true);
+      setError('');
+      try {
+        await props.onSave({ ...props.configuration, value: submitted });
+        if (draft.current === submitted) props.onDirtyChange?.(false);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : '保存失败');
+        throw e;
+      } finally {
+        setSaving(false);
+      }
+    })();
+    inFlight.current = run;
     try {
-      await props.onSave({ ...props.configuration, value });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '保存失败');
+      await run;
     } finally {
-      setSaving(false);
+      inFlight.current = null;
     }
   };
+  useLayoutEffect(() => {
+    props.onSaveReady?.(save);
+  });
   return (
     <>
       <Space wrap>
@@ -181,26 +214,34 @@ function SmallConfigurationEditor(props: {
         analysisRows={props.source.analysisRows}
         openingRows={props.source.openingRows}
         startPeriod={props.source.book.startPeriod}
-        onChange={setValue}
-        onSave={() => void save()}
+        onChange={(next) => {
+          draft.current = next;
+          setValue(next);
+        }}
+        onDirtyChange={props.onDirtyChange}
+        onSave={() => void save().catch(() => {})}
         saving={saving}
       />
     </>
   );
 }
-function NonprofitConfigurationEditor(props: {
-  configuration: NonprofitPublicConfiguration;
-  source: NonprofitPublicSource;
-  onSave(configuration: StatutoryProfile['configuration']): Promise<void>;
-  onOptionsChange(
-    options: StatutoryProfile['configuration'],
-    period: number,
-    scope: 'month' | 'yearToDate' | 'annual',
-  ): void;
-  onGenerate(): Promise<void>;
-}) {
+function NonprofitConfigurationEditor(
+  props: {
+    configuration: NonprofitPublicConfiguration;
+    source: NonprofitPublicSource;
+    onSave(configuration: StatutoryProfile['configuration']): Promise<void>;
+    onOptionsChange(
+      options: StatutoryProfile['configuration'],
+      period: number,
+      scope: 'month' | 'yearToDate' | 'annual',
+    ): void;
+    onGenerate(): Promise<void>;
+  } & StatutoryDraftCallbacks,
+) {
   const [current, setCurrent] = useState(props.configuration.current);
   const [previous, setPrevious] = useState(props.configuration.previous);
+  const currentDraft = useRef(current),
+    previousDraft = useRef(previous);
   const [error, setError] = useState('');
   const periods = props.source.periods.map((p) => ({ period: p.period, label: String(p.period) }));
   return (
@@ -212,12 +253,18 @@ function NonprofitConfigurationEditor(props: {
             key: 'current',
             label: '本年资料',
             children: (
-              <NonprofitConfigurationPanel
+              <NonprofitPanel
                 key={current.year}
                 sources={props.source.current}
                 initial={current}
                 request={props.source.request}
                 periods={periods}
+                onDirtyChange={props.onDirtyChange}
+                onSaveReady={props.onSaveReady}
+                onDraftChange={(value) => {
+                  currentDraft.current = value;
+                  setCurrent(value);
+                }}
                 onRequestChange={(r) => {
                   if (r.code !== props.source.request.code) {
                     setError('当前配置绑定所选报表，其他报表请返回报表管理新增。');
@@ -231,11 +278,12 @@ function NonprofitConfigurationEditor(props: {
                   );
                 }}
                 onSave={async (value) => {
+                  currentDraft.current = value;
                   setCurrent(value);
                   await props.onSave({
                     ...props.configuration,
                     current: value,
-                    ...(previous ? { previous } : {}),
+                    ...(previousDraft.current ? { previous: previousDraft.current } : {}),
                   });
                 }}
                 onGenerate={() => props.onGenerate()}
@@ -253,18 +301,28 @@ function NonprofitConfigurationEditor(props: {
                         type="info"
                         title="本年及比较年资料均需核实并保存，比较年报表不单独生成。"
                       />
-                      <NonprofitConfigurationPanel
+                      <NonprofitPanel
                         key={props.configuration.previous.year}
                         sources={props.source.previous}
                         initial={previous ?? props.configuration.previous}
                         request={props.source.previousRequest}
                         periods={periods}
+                        onDirtyChange={props.onDirtyChange}
+                        onDraftChange={(value) => {
+                          previousDraft.current = value;
+                          setPrevious(value);
+                        }}
                         onRequestChange={() =>
                           setError('比较期间随本年自动选择，请在本年资料中修改。')
                         }
                         onSave={async (value) => {
+                          previousDraft.current = value;
                           setPrevious(value);
-                          await props.onSave({ ...props.configuration, current, previous: value });
+                          await props.onSave({
+                            ...props.configuration,
+                            current: currentDraft.current,
+                            previous: value,
+                          });
                         }}
                         onGenerate={async () => {
                           throw new Error('请通过本年资料生成包含比较数据的报表');

@@ -126,10 +126,16 @@ it('w_bb_main/proc/saveas 小企真实公共接入只存唯一profile，减已�
   ]);
   expect(amounts[0].sources[0]!.toRoute).toContain('/m/ledgers/detail?');
   expect(await api.generate(input)).toEqual(generated);
-  const output = await api.output({ id: p.id, period: 202612, format: 'print' });
+  const outputSelection = {
+    id: p.id,
+    expectedRevision: p.revision,
+    snapshotId: generated.snapshot.id,
+    period: 202612,
+  };
+  const output = await api.output({ ...outputSelection, format: 'print' });
   expect(output.data).toContain('已归还投资');
   expect(output.data).toContain('200.00');
-  expect((await api.output({ id: p.id, period: 202612, format: 'xlsx' })).snapshotId).toBe(
+  expect((await api.output({ ...outputSelection, format: 'xlsx' })).snapshotId).toBe(
     output.snapshotId,
   );
   await app.svc.periods.ensureYear(2027);
@@ -199,9 +205,15 @@ it('w_bb_main/proc/saveas 民非2026三表真实公共接入、403年报限制�
     if (generated.kind !== 'generated') throw new Error('意外确认');
     expect((generated.snapshot.result as NonprofitGeneration).statement.code).toBe(key);
     expect(await api.generate(input)).toEqual(generated);
-    const print = await api.output({ id: p.id, period: 202612, format: 'print' });
+    const outputSelection = {
+      id: p.id,
+      expectedRevision: p.revision,
+      snapshotId: generated.snapshot.id,
+      period: 202612,
+    };
+    const print = await api.output({ ...outputSelection, format: 'print' });
     expect(print.printJob?.css).toContain('A4');
-    expect((await api.output({ id: p.id, period: 202612, format: 'xlsx' })).snapshotId).toBe(
+    expect((await api.output({ ...outputSelection, format: 'xlsx' })).snapshotId).toBe(
       print.snapshotId,
     );
   }
