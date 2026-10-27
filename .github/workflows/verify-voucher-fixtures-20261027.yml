@@ -1,4 +1,4 @@
-name: Verify two voucher UI fixtures (2026-10-27)
+name: Verify all voucher UI regressions (2026-10-27)
 
 on:
   push:
@@ -28,12 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: a052ae553d6ccb9b55f567e07b26688eb683db2b
+          ref: 47419bd17ed431495eefaed194d91a96eb711d7d
           persist-credentials: false
           submodules: false
           lfs: false
       - name: Confirm exact candidate checkout
-        run: test "$(git rev-parse HEAD)" = "a052ae553d6ccb9b55f567e07b26688eb683db2b"
+        run: test "$(git rev-parse HEAD)" = "47419bd17ed431495eefaed194d91a96eb711d7d"
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.0
@@ -46,8 +46,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build:web
-      - name: Run the two real UI regressions without retries
-        run: pnpm exec playwright test modules/voucher-entry/e2e/w2.spec.ts --grep '逐字改月|首上下一末' --retries=0
+      - name: Run all voucher UI regressions without retries
+        run: pnpm exec playwright test modules/voucher-entry/e2e --retries=0
       - name: Upload failed UI evidence
         if: failure()
         uses: actions/upload-artifact@v4
