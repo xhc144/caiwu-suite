@@ -182,7 +182,15 @@ jobs:
         with:
           node-version: "24.19.0"
       - name: Node 继承 stdio 合成诊断（无应用和依赖）
-        run: node packages/testkit/test/fixtures/stdio-probe.mjs
+        run: |
+          $diagnostic = @(node packages/testkit/test/fixtures/stdio-probe.mjs 2>&1)
+          $diagnosticExit = $LASTEXITCODE
+          foreach ($line in $diagnostic) {
+            $message = "$line".Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::notice title=stdio-probe::$message"
+          }
+          if ($diagnosticExit -ne 0) { Write-Output "::error title=stdio-probe::合成诊断退出码 $diagnosticExit" }
+          exit $diagnosticExit
       - name: 安装冻结依赖和浏览器
         id: install
         run: |
