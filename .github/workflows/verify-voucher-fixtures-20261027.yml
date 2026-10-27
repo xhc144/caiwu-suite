@@ -1,4 +1,4 @@
-name: Verify statutory PDF output with installed tools (2026-10-27)
+name: Diagnose first voucher filter race (2026-10-27)
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: verify-pdf-output-20261027-f429618
+  group: diagnose-voucher-filter-20261027-f429618
   cancel-in-progress: false
 
 jobs:
@@ -47,13 +47,13 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: sudo apt-get install --yes --no-install-recommends poppler-utils
       - run: pnpm build:web
-      - name: Run statutory PDF output regressions without retries
-        run: pnpm exec playwright test modules/report-engine/e2e/enterprise/output.spec.ts modules/report-engine/e2e/nonprofit/print.spec.ts modules/report-engine/e2e/small-business/output.spec.ts --retries=0
+      - name: Capture first amount-filter race without retries
+        run: pnpm exec playwright test modules/voucher-book/e2e/filters.spec.ts -g '元金额' --retries=0 --repeat-each=15 --max-failures=1
       - name: Upload failed UI evidence
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: statutory-pdf-output-failures-${{ github.run_id }}
+          name: voucher-filter-first-race-${{ github.run_id }}
           path: |
             app/playwright-report
             app/test-results
