@@ -576,7 +576,7 @@ export function AdditionalEnterpriseConfiguration({
           children: (
             <Space orientation="vertical">
               <p>
-                以变动日期零点账面余额核实非账务范围变化。不会将限制解除或政策变化塞入汇兑影响。
+                限制及解除限制按当日零点账面余额核实，并按真实用途列入经营、投资或筹资活动。例如非金融企业为短期借款质押及解除质押，通常列筹资活动。纯政策追溯请重列期初、期末及比较期间范围和逐笔分类，不作为期中现金流量。
               </p>
               <Button
                 onClick={() =>
@@ -587,7 +587,8 @@ export function AdditionalEnterpriseConfiguration({
                       date: '',
                       accountId: source.accounts.find((a) => a.isLeaf)?.id ?? 1,
                       amount: '0',
-                      kind: 'policy',
+                      kind: 'restriction',
+                      parts: [],
                       ...blank,
                     },
                   ])
@@ -628,7 +629,7 @@ export function AdditionalEnterpriseConfiguration({
                       options={opts([
                         ['restriction', '新增限制'],
                         ['release', '解除限制'],
-                        ['policy', '现金等价物政策变化'],
+                        ['policy', '纯政策追溯（须重列各期范围）'],
                       ])}
                       onChange={(kind) => patch({ kind })}
                     />
@@ -637,6 +638,54 @@ export function AdditionalEnterpriseConfiguration({
                       value={a.amount}
                       onChange={(amount) => patch({ amount })}
                     />
+                    <Button
+                      onClick={() =>
+                        patch({
+                          parts: [...(a.parts ?? []), { line: '', amount: '0', purpose: '' }],
+                        })
+                      }
+                    >
+                      增加活动分配
+                    </Button>
+                    {(a.parts ?? []).map((part, j) => {
+                      const setPart = (value: Partial<typeof part>) =>
+                        patch({
+                          parts: a.parts!.map((x, k) => (j === k ? { ...x, ...value } : x)),
+                        });
+                      return (
+                        <Space wrap key={j}>
+                          <Select
+                            aria-label="限制及解除现金流项目"
+                            placeholder="按真实用途选择现金流项目"
+                            value={part.line || undefined}
+                            style={{ width: 300 }}
+                            options={CASHFLOW.filter(
+                              (line) =>
+                                !line.section &&
+                                !line.total &&
+                                !['cashOpening', 'exchangeEffect'].includes(line.key),
+                            ).map((line) => ({ value: line.key, label: line.label }))}
+                            onChange={(line) => setPart({ line })}
+                          />
+                          <AmountEditor
+                            label="限制及解除现金流分配金额"
+                            value={part.amount}
+                            onChange={(amount) => setPart({ amount })}
+                          />
+                          <Input
+                            aria-label="限制及解除用途依据"
+                            placeholder="行业、实际用途及收付性质依据"
+                            value={part.purpose}
+                            onChange={(e) => setPart({ purpose: e.target.value })}
+                          />
+                          <Button
+                            onClick={() => patch({ parts: a.parts!.filter((_, k) => j !== k) })}
+                          >
+                            移除此分配
+                          </Button>
+                        </Space>
+                      );
+                    })}
                     <Evidence value={a} onChange={patch} />
                     <Button
                       onClick={() =>
