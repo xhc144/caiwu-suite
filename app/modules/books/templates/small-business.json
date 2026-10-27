@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "version": "1.0.0",
+  "version": "2011.17+2016.22",
   "codeScheme": "4-2-2",
   "categories": [
     {
@@ -46,7 +46,7 @@
   "name": "小企业会计准则（66项一级科目）",
   "regime": "small-business",
   "order": 10,
-  "description": "依据 small-appendix.pdf 第1—3页的66项一级科目快照。5403保留原文“营业税金及附加”；未覆盖后续更名与全部专项规则。1702原文余额方向有矛盾，按贷记处理设置，待核勘误。报表由报表模块提供。",
+  "description": "依据财会〔2011〕17号附录66项一级科目，5403按财会〔2016〕22号更名为税金及附加。1702原文余额方向有矛盾，按贷记处理设置。仅新建账套加载，不自动修改已有账套。报表由报表模块提供。",
   "accounts": [
     {
       "code": "1001",
@@ -473,10 +473,10 @@
     },
     {
       "code": "5403",
-      "name": "营业税金及附加",
+      "name": "税金及附加",
       "category": "pnl",
       "direction": "debit",
-      "source": "small-appendix.pdf 第3页会计科目表；第62页起 5403 主要账务处理"
+      "source": "small-appendix.pdf 第3页会计科目表；第62页起 5403 主要账务处理；财会〔2016〕22号第二（二）3后续更名段及第四部分附则，自发布之日起名称调整为税金及附加；https://www.mof.gov.cn/gp/xxgkml/hjs/201612/t20161214_2512803.htm"
     },
     {
       "code": "5601",
@@ -515,6 +515,11 @@
     }
   ],
   "sources": [
+    {
+      "title": "增值税会计处理规定（财会〔2016〕22号）",
+      "file": "https://www.mof.gov.cn/gp/xxgkml/hjs/201612/t20161214_2512803.htm",
+      "note": "第二（二）3后续更名段及第四部分附则；适用小企业，财政部2023年8月23日答复确认后法优先。"
+    },
     {
       "title": "小企业会计准则附录",
       "file": "small-appendix.pdf",

@@ -18,13 +18,14 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import type { CoreShell } from '@caiwu/server-kit';
 import { coreApi, appToken, notify, queryClient, showError } from '@caiwu/web-kit';
-import { parseTemplate, productName, type BookInfo } from '@caiwu/core';
+import { parseCodeScheme, productName, type BookInfo } from '@caiwu/core';
 import small from '../templates/small-business.json';
-import enterprise from '../templates/enterprise.json';
+import { primaryCharts, offeredTemplates } from '../chart';
 import { validateScheme, WizardSchema, type WizardInput } from '../shared';
-import { templateReviewWarning } from '../enterprise-evidence';
+import TemplatePreview from './TemplatePreview';
+import { mapChart } from '../chart-scheme';
 
-const localTemplates = [small, enterprise].map((t) => parseTemplate(t));
+const localTemplates = primaryCharts;
 
 async function verifyBook(book: BookInfo, input: WizardInput) {
   let token = '';
@@ -52,12 +53,33 @@ async function verifyBook(book: BookInfo, input: WizardInput) {
     ]);
     if (me.book.id !== book.id || me.book.orgName !== input.orgName.trim())
       throw new Error('新账套信息核对失败，请刷新后检查');
-    const template = localTemplates.find((t) => t.id === input.templateId);
+    const native = localTemplates.find((t) => t.id === input.templateId);
+    const template = native ? mapChart(native, input.codeScheme) : undefined;
     if (
       template &&
       (accounts.length !== template.accounts.length ||
         template.accounts.some(
-          (a) => !accounts.some((b) => b.code === a.code && b.name === a.name),
+          (a) =>
+            !accounts.some(
+              (b) =>
+                b.code === a.code &&
+                b.name === a.name &&
+                b.categoryId === a.category &&
+                b.direction ===
+                  (a.direction ??
+                    template.categories.find((category) => category.id === a.category)!
+                      .direction) &&
+                b.isContra === (a.isContra ?? false) &&
+                (b.balanceNature ?? null) === (a.balanceNature ?? null) &&
+                b.sourceVersion === a.sourceVersion &&
+                b.dimensions.length === a.dimensions.length &&
+                a.dimensions.every((dimension) =>
+                  b.dimensions.some(
+                    (actual) =>
+                      actual.type === dimension.type && actual.required === dimension.required,
+                  ),
+                ),
+            ),
         ))
     )
       throw new Error('新账套科目核对失败，请保留账套并联系管理员');
@@ -75,7 +97,25 @@ export default function Wizard({
 }) {
   const { modal } = App.useApp();
   const templates = useQuery(coreApi.books.templates.queryOptions());
+  const [open, setOpen] = useState(true);
+  const closing = useRef(false);
+  const cancellation = useRef<{ destroy: () => void } | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [step, setStep] = useState(0);
+  const [requestKey] = useState(() => crypto.randomUUID());
+  const [initialValues] = useState<WizardInput>(() => ({
+    name: '',
+    orgName: '',
+    adminCode: 'admin',
+    adminName: '系统管理员',
+    adminPassword: '',
+    product: 'qingsong',
+    templateId: small.id,
+    baseCurrency: 'CNY',
+    codeScheme: '4-2-2',
+    startYear: new Date().getFullYear(),
+    startMonth: 1,
+  }));
   const [form] = Form.useForm<WizardInput>();
   const values = Form.useWatch([], form) as WizardInput | undefined;
   const [dirty, setDirty] = useState(false);
@@ -86,8 +126,15 @@ export default function Wizard({
   const create = useMutation(coreApi.books.create.mutationOptions());
   const selected = templates.data?.find((t) => t.id === values?.templateId);
   const selectedLocal = localTemplates.find((t) => t.id === selected?.id);
-  const reviewWarning =
-    selectedLocal?.regime === 'enterprise' ? templateReviewWarning(selectedLocal) : null;
+  const offered = offeredTemplates(templates.data ?? []);
+  useEffect(
+    () => () => {
+      const dialog = cancellation.current;
+      cancellation.current = null;
+      dialog?.destroy();
+    },
+    [],
+  );
   useEffect(() => {
     const available = templates.data;
     if (available?.length && !form.getFieldValue('templateId')) {
@@ -144,17 +191,30 @@ export default function Wizard({
       window.removeEventListener('popstate', pop, true);
     };
   }, [dirty, created]);
+  const finishClose = () => {
+    if (closing.current) return;
+    closing.current = true;
+    // 保留退场中的遮罩，吸收快速第二次点击；afterClose 再通知父组件卸载。
+    setOpen(false);
+  };
   const close = () => {
-    if (busy.current || checking) return;
-    if (dirty && !created)
-      modal.confirm({
+    if (closing.current || busy.current || checking || cancellation.current) return;
+    if (dirty && !created) {
+      setConfirming(true);
+      const dialog = modal.confirm({
         title: '放弃未提交的新建账套内容？',
         content: '取消后不会建立账套。',
         okText: '放弃创建',
         cancelText: '继续编辑',
-        onOk: onClose,
+        onOk: finishClose,
+        afterClose: () => {
+          if (cancellation.current !== dialog) return;
+          cancellation.current = null;
+          setConfirming(false);
+        },
       });
-    else onClose();
+      cancellation.current = dialog;
+    } else finishClose();
   };
   const verify = async (entry: { book: BookInfo; input: WizardInput }) => {
     setChecking(true);
@@ -170,7 +230,7 @@ export default function Wizard({
     }
   };
   const submit = async () => {
-    if (busy.current || created) return;
+    if (closing.current || cancellation.current || busy.current || created) return;
     busy.current = true;
     try {
       const input = WizardSchema.parse(await form.validateFields());
@@ -182,8 +242,9 @@ export default function Wizard({
       const local = localTemplates.find((t) => t.id === input.templateId);
       if (local) validateScheme(local, input.codeScheme);
       setFailure('');
-      const book = await create.mutateAsync(input);
-      const entry = { book, input };
+      const actualInput = { ...input, requestKey };
+      const book = await create.mutateAsync(actualInput);
+      const entry = { book, input: actualInput };
       setCreated(entry);
       await verify(entry);
     } catch (e) {
@@ -195,7 +256,7 @@ export default function Wizard({
             ? 1
             : field === 'codeScheme'
               ? 2
-              : field === 'startYear' || field === 'startMonth'
+              : field === 'baseCurrency' || field === 'startYear' || field === 'startMonth'
                 ? 3
                 : 0,
         );
@@ -209,7 +270,12 @@ export default function Wizard({
       busy.current = false;
     }
   };
+  const changeStep = (nextStep: number) => {
+    if (closing.current || cancellation.current || busy.current || checking || created) return;
+    setStep(nextStep);
+  };
   const next = async () => {
+    if (closing.current || cancellation.current || busy.current || checking || created) return;
     try {
       await form.validateFields(
         step === 0
@@ -218,11 +284,12 @@ export default function Wizard({
             ? ['templateId']
             : step === 2
               ? ['codeScheme']
-              : ['startYear', 'startMonth'],
+              : ['baseCurrency', 'startYear', 'startMonth'],
       );
       const local = localTemplates.find((t) => t.id === values?.templateId);
       if (step === 2 && local) validateScheme(local, values?.codeScheme ?? '');
-      setStep(Math.min(step + 1, 4));
+      if (!closing.current && !cancellation.current && !busy.current)
+        setStep(Math.min(step + 1, 4));
     } catch (e) {
       if (e instanceof Error) showError(e);
     }
@@ -235,6 +302,14 @@ export default function Wizard({
       </Descriptions.Item>
       <Descriptions.Item label="会计制度">{selected?.name || '必须选择'}</Descriptions.Item>
       <Descriptions.Item label="科目级次">{values?.codeScheme}</Descriptions.Item>
+      {selectedLocal && (
+        <Descriptions.Item label="将建立的科目">
+          <TemplatePreview
+            template={selectedLocal}
+            scheme={values?.codeScheme ?? selectedLocal.codeScheme}
+          />
+        </Descriptions.Item>
+      )}
       <Descriptions.Item label="产品">
         {values?.product ? productName(values.product) : ''}
       </Descriptions.Item>
@@ -249,27 +324,48 @@ export default function Wizard({
   );
   return (
     <Modal
-      open
+      open={open}
       title="新建账套"
       width={900}
       onCancel={close}
+      afterClose={onClose}
+      keyboard={open && !confirming}
       maskClosable={false}
       footer={
         <Space>
-          <Button onClick={close} disabled={create.isPending || checking}>
+          <Button onClick={close} disabled={!open || confirming || create.isPending || checking}>
             取消
           </Button>
-          {step > 0 && !created && <Button onClick={() => setStep(step - 1)}>上一步</Button>}
-          {step < 4 && !created && <Button onClick={() => void next()}>下一步</Button>}
+          {step > 0 && !created && (
+            <Button
+              disabled={!open || confirming || create.isPending || checking}
+              onClick={() => changeStep(step - 1)}
+            >
+              上一步
+            </Button>
+          )}
+          {step < 4 && !created && (
+            <Button
+              disabled={!open || confirming || create.isPending || checking}
+              onClick={() => void next()}
+            >
+              下一步
+            </Button>
+          )}
           {created ? (
-            <Button type="primary" loading={checking} onClick={() => void verify(created)}>
+            <Button
+              type="primary"
+              disabled={!open || confirming}
+              loading={checking}
+              onClick={() => void verify(created)}
+            >
               重试核对
             </Button>
           ) : (
             <Button
               type="primary"
               loading={create.isPending || checking}
-              disabled={!selected}
+              disabled={!open || confirming || !selected}
               onClick={() => void submit()}
             >
               创建
@@ -289,7 +385,6 @@ export default function Wizard({
         逐步填写，或在下方复核全部默认参数后直接创建。取消不会产生半成品。
       </Typography.Paragraph>
       {failure && <Alert type="error" title={failure} showIcon />}
-      {reviewWarning && <Alert type="warning" title={reviewWarning} showIcon />}
       {templates.isError && (
         <Alert
           type="error"
@@ -300,19 +395,15 @@ export default function Wizard({
       <Form
         form={form}
         layout="vertical"
-        disabled={!!created || create.isPending || checking}
-        onValuesChange={() => setDirty(true)}
-        initialValues={{
-          name: '',
-          orgName: '',
-          adminCode: 'admin',
-          adminName: '系统管理员',
-          adminPassword: '',
-          product: 'qingsong',
-          codeScheme: '4-2-2',
-          startYear: new Date().getFullYear(),
-          startMonth: 1,
-        }}
+        disabled={!open || confirming || !!created || create.isPending || checking}
+        onValuesChange={(_, current: WizardInput) =>
+          setDirty(
+            Object.entries(initialValues).some(
+              ([key, value]) => (current as unknown as Record<string, unknown>)[key] !== value,
+            ),
+          )
+        }
+        initialValues={initialValues}
       >
         <div hidden={step !== 0}>
           <Form.Item
@@ -375,11 +466,18 @@ export default function Wizard({
             <Radio.Group
               onChange={(e) => {
                 const t = templates.data?.find((t) => t.id === e.target.value);
-                if (t) form.setFieldValue('codeScheme', t.codeScheme);
+                if (!t) return;
+                try {
+                  const current = parseCodeScheme(form.getFieldValue('codeScheme') ?? '');
+                  if (current[0] === parseCodeScheme(t.codeScheme)[0]) return;
+                } catch {
+                  /* 首次选择或级次尚未填写时使用制度默认值。 */
+                }
+                form.setFieldValue('codeScheme', t.codeScheme);
               }}
             >
               <Space orientation="vertical">
-                {templates.data?.map((t) => (
+                {offered.map((t) => (
                   <Radio value={t.id} key={t.id}>
                     {t.name} · 默认{t.codeScheme} · {t.accountCount}科目
                     <Typography.Paragraph type="secondary">{t.description}</Typography.Paragraph>
@@ -407,7 +505,8 @@ export default function Wizard({
             <Input placeholder="例如4-2-2或4-3-3" />
           </Form.Item>
           <Typography.Paragraph>
-            最多8级，每级1—6位；一级编码和上下级链必须与模板相容。一个制度只提供一个模板。
+            最多8级，每级1—6位；一级编码和上下级链必须与模板相容。 4-2-2示例：2221 → 222101 →
+            22210101；4-3-3示例：2221 → 2221001 → 2221001001。
           </Typography.Paragraph>
         </div>
         <div hidden={step !== 3}>
@@ -416,6 +515,13 @@ export default function Wizard({
             title="当前支持人民币本位币（CNY）"
             description="启用月份只是首次记账月份，年中启用不会改变公历1—12月的会计年度。"
           />
+          <Form.Item
+            name="baseCurrency"
+            label="本位币"
+            rules={[{ required: true, message: '请选择本位币' }]}
+          >
+            <Select options={[{ value: 'CNY', label: '人民币 CNY' }]} />
+          </Form.Item>
           <Form.Item
             name="startYear"
             label="启用年份"
@@ -438,9 +544,8 @@ export default function Wizard({
       {step < 4 && (
         <Button
           type="link"
-          onClick={() => {
-            setStep(4);
-          }}
+          disabled={!open || confirming || create.isPending || checking}
+          onClick={() => changeStep(4)}
         >
           展开最终复核
         </Button>

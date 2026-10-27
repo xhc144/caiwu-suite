@@ -64,7 +64,14 @@ test('w_xt_kgzb_a2 / w_xt_kgzb_1 / w_xt_kgzb_3：HTTP列出五套 → 逐套建�
     expect(rows.filter((a) => a.isBank).map((a) => a.code)).toEqual([
       expected.width === 4 ? '1002' : '102',
     ]);
-    expect(rows.every((a) => a.dimensions.length === 0 && a.currency === null)).toBe(true);
+    expect(rows.every((a) => a.currency === null)).toBe(true);
+    for (const a of rows) {
+      const required = expected.partnerCodes?.includes(a.code) ?? false;
+      expect(a.isPartner).toBe(required);
+      expect(a.dimensions).toEqual(
+        required ? [{ type: 'partner', required: true, defaultItemId: null }] : [],
+      );
+    }
     const categories = await callApi<AccountCategory[]>(
       request,
       'core.accounts.categories',
@@ -160,3 +167,75 @@ test('w_xt_kgzb_a2 阻止缺失制度、w_xt_kgzb_1 阻止错误级次；HTTP列
   const books = await callApi<BookInfo[]>(request, 'core.books.list');
   expect(books.filter((b) => b.orgName === failed.orgName)).toEqual([]);
 });
+
+for (const codeScheme of ['4-2-2', '4-3-3']) {
+  test(`w_xt_kgzb_a2：从真实新建入口选择民非2026，${codeScheme}建账持久化四项必填往来`, async ({
+    page,
+    request,
+  }) => {
+    const name = `W2民非-${codeScheme}-${randomUUID().slice(0, 8)}`;
+    await page.goto('/');
+    await page.getByRole('button', { name: '新建账套', exact: true }).click();
+    const wizard = page.getByRole('dialog', { name: '新建账套', exact: true });
+    await wizard.getByLabel('账套名称', { exact: true }).fill(name);
+    await wizard.getByLabel('单位名称', { exact: true }).fill('民非往来独立测试单位');
+    await wizard.getByLabel('管理员密码').fill('w2-partners');
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await wizard.getByRole('radio', { name: /民间非营利组织会计制度/ }).check();
+    await expect(wizard).toContainText('适用2026年1月1日');
+    await expect(wizard).toContainText('1121/1141/2202/2203启用必填往来对象');
+    await expect(wizard).toContainText('未提供限定/非限定等规定明细');
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await wizard.getByLabel('科目级次', { exact: true }).fill(codeScheme);
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await expect(wizard.getByText('当前支持人民币本位币（CNY）')).toBeVisible();
+    await wizard.getByLabel('启用年份', { exact: true }).fill('2026');
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await expect(wizard).toContainText('最终复核');
+    await wizard.getByRole('button', { name: '创建', exact: true }).click();
+    await expect(page).toHaveURL(/\/login\//);
+    const bookId = page.url().split('/').at(-1)!;
+    await page.getByLabel('密码', { exact: true }).fill('w2-partners');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page).toHaveURL('/home');
+    const session = await page.evaluate(
+      () =>
+        JSON.parse(sessionStorage.getItem('caiwu.session')!) as { token: string; bookId: string },
+    );
+    expect(session.bookId).toBe(bookId);
+    const rows = await callApi<Account[]>(request, 'core.accounts.list', undefined, {
+      token: session.token,
+    });
+    expect(rows).toHaveLength(56);
+    expect(rows.filter((a) => a.isPartner).map((a) => a.code)).toEqual([
+      '1121',
+      '1141',
+      '2202',
+      '2203',
+    ]);
+    for (const code of ['1121', '1141', '2202', '2203']) {
+      expect(rows.find((a) => a.code === code)).toMatchObject({
+        level: 1,
+        parentId: null,
+        isLeaf: true,
+        direction: code.startsWith('1') ? 'debit' : 'credit',
+        dimensions: [{ type: 'partner', required: true, defaultItemId: null }],
+      });
+    }
+    expect(await callApi(request, 'core.dimensions.items', {}, { token: session.token })).toEqual(
+      [],
+    );
+    await page.reload();
+    expect(
+      await callApi(request, 'core.accounts.list', undefined, { token: session.token }),
+    ).toEqual(rows);
+    const me = await callApi<{ book: BookInfo }>(request, 'core.auth.me', undefined, {
+      token: session.token,
+    });
+    expect(me.book.codeScheme.join('-')).toBe(codeScheme);
+    expect(me.book.templateId).toBe('nonprofit-2026');
+    expect(
+      (await callApi<BookInfo[]>(request, 'core.books.list')).filter((b) => b.name === name),
+    ).toHaveLength(1);
+  });
+}

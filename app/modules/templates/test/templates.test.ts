@@ -35,6 +35,11 @@ describe.each(expectedTemplates)('w_xt_kgzb_a2 行业选择：$id', (expected) =
       }
       for (const dim of a.dimensions) expect(DIMENSION_TYPE_IDS).toContain(dim.type);
     }
+    for (const a of template.accounts) {
+      const required = expected.partnerCodes?.includes(a.code) ?? false;
+      expect(a.partner ?? false).toBe(required);
+      expect(a.dimensions).toEqual(required ? [{ type: 'partner', required: true }] : []);
+    }
     expect(template.currencies).toEqual([]);
     expect(template.reports).toEqual([]);
     expect(template.voucherTypes.length).toBeGreaterThan(0);
