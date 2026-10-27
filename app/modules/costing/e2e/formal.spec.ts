@@ -124,7 +124,9 @@ test('w_cb_fgz：页面连续月份及末月撤销', async ({ page, request }) =
   await page.goto('/m/costing/calculation');
   await page.getByRole('spinbutton', { name: '核算年月', exact: true }).fill('202602');
   await page.getByRole('button', { name: '重新试算', exact: true }).click();
-  await expect(page.getByText('本月正式期初尚未就绪')).toBeVisible();
+  await expect(
+    page.getByRole('tabpanel', { name: '成本核算', exact: true }).getByText('本月正式期初尚未就绪'),
+  ).toBeVisible();
   expect(await t.batches()).toEqual([]);
   await preview(page);
   await confirmPublish(page);

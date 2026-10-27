@@ -182,12 +182,20 @@ test('w_cb_pz：历史断链时成本未知', async ({ guarded: t }) => {
     .getByText('出库成本', { exact: true })
     .click();
   await t.page.getByRole('button', { name: '预览凭证', exact: true }).click();
-  await expect(t.page.getByText('历史成本未知，不能预览成本凭证')).toBeVisible();
+  await expect(
+    t.page
+      .getByRole('tabpanel', { name: '出入库凭证预览', exact: true })
+      .getByText('历史成本未知，不能预览成本凭证'),
+  ).toBeVisible();
   await t.page.goto('/m/costing/calculation');
   await expect(t.page.getByText('正式批次链与控制锚点不一致，请核对历史核算记录')).toBeVisible();
   await expect(t.page.getByRole('button', { name: '撤销正式核算', exact: true })).toHaveCount(0);
   await t.page.getByRole('spinbutton', { name: '核算年月', exact: true }).fill('202604');
   await t.page.getByRole('button', { name: '重新试算', exact: true }).click();
-  await expect(t.page.getByText('正式成本批次链与库存控制锚点不一致')).toBeVisible();
+  await expect(
+    t.page
+      .getByRole('tabpanel', { name: '成本核算', exact: true })
+      .getByText('正式成本批次链与库存控制锚点不一致'),
+  ).toBeVisible();
   expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202604 })).toEqual(source);
 });

@@ -64,8 +64,9 @@ export async function preview(page: Page, period = 202601) {
   await expect(page.getByRole('button', { name: '发布正式核算', exact: true })).toBeVisible();
 }
 export async function confirmPublish(page: Page) {
-  await page.getByRole('button', { name: '发布正式核算', exact: true }).click();
   const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeHidden();
+  await page.getByRole('button', { name: '发布正式核算', exact: true }).click();
   await expect(dialog).toContainText('确认后将正式写入库存成本');
   await dialog.getByRole('button', { name: '确认发布并锁定本月', exact: true }).click();
 }
