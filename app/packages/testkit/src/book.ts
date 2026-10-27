@@ -12,6 +12,7 @@ import {
   emptyModuleLookup,
   loadServiceUser,
   type CoreServices,
+  type CoreServiceProviders,
   type ModuleLookup,
   type OpenBook,
   type ServiceUser,
@@ -29,6 +30,7 @@ export interface TestBookOptions {
   /** 额外的会计制度模板 */
   templates?: unknown[];
   modules?: ModuleLookup;
+  providers?: CoreServiceProviders;
   /** 是否预置辅助档案、汇率（默认 true） */
   seed?: boolean;
   now?: () => Date;
@@ -90,6 +92,7 @@ export async function createTestBook(opts: TestBookOptions = {}): Promise<TestBo
       moduleId,
       now: opts.now ?? (() => new Date()),
       modules,
+      providers: opts.providers,
     });
   const svc = make(admin, null);
   if (opts.seed !== false) await seedReferenceData(svc, info.startPeriod);

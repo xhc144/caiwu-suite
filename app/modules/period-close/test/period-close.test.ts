@@ -188,6 +188,9 @@ describe('过账与结账', () => {
     expect((await errorData(api.close({ period: 202601, confirmed: true }))).details?.gaps).toEqual(
       check.gaps,
     );
+    await expect(api.renumberPreview({ period: 202601 })).rejects.toThrow(/不是待审核/);
+    await app.svc.vouchers.changeStatus({ ids: [c!.id], to: 'audited' });
+    await app.svc.vouchers.changeStatus({ ids: [c!.id], to: 'pending' });
     const preview = await api.renumberPreview({ period: 202601 });
     expect(preview.changes).toMatchObject([{ id: c!.id, oldNumber: 3, number: 2 }]);
     const before = snapshot(app);
@@ -206,6 +209,8 @@ describe('过账与结账', () => {
       confirmed: true,
       confirmText: '影响已打印凭证和账册，编号不可直接恢复',
     });
+    await app.svc.vouchers.changeStatus({ ids: [c!.id], to: 'audited' });
+    await api.post({ from: 202601, to: 202601 });
     check = await api.check({ period: 202601 });
     expect(check.gaps).toEqual([]);
     await api.close({ period: 202601, confirmed: true });

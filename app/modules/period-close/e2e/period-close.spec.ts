@@ -138,7 +138,10 @@ test('独立账套未过账/断号拦截及取消确认不写库；处理链接�
       ],
     },
   ]);
-  await app.svc.vouchers.setNumbers([{ id: extra!.id, number: 5 }]);
+  {
+    const numberPlan = await app.svc.vouchers.previewNumbers([{ id: extra!.id, number: 5 }]);
+    await app.svc.vouchers.setNumbers(numberPlan.updates, { plan: numberPlan, confirmed: true });
+  }
   await app.svc.vouchers.setVoided(extra!.id, true);
   await page.getByRole('button', { name: '重新检查' }).click();
   const gaps = page.getByRole('row').filter({ has: page.getByText('凭证断号', { exact: true }) });

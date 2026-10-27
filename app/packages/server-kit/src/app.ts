@@ -40,6 +40,7 @@ export function createRuntime(opts: CreateRuntimeOptions): AppRuntime {
     migrationSets: () => modules.migrationSets(),
     now: opts.now,
     beforeClose: (book, signal, reason) => lifecycle.beforeBookClose(book, signal, reason),
+    created: (book) => lifecycle.bookCreated(book.id),
     maintenanceStarted: (bookId) => sessions.deleteForBook(bookId),
   });
   const runtime: AppRuntime = {

@@ -1,12 +1,14 @@
 import { Alert, Button, Drawer, Input, InputNumber, Modal, Select, Space, Spin, Tag } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { EntryRouter } from '../server/router';
 import { formatMoney, periodOfDate, VOUCHER_STATUS_LABELS, type Voucher } from '@caiwu/core';
 import { PageContainer, useUrlFilters } from '@caiwu/ui';
 import {
+  coreApi,
   getBusinessError,
   matchHotkey,
   notify,
@@ -14,6 +16,7 @@ import {
   usePermission,
   useSession,
   useTab,
+  useUnsavedChanges,
 } from '@caiwu/web-kit';
 import {
   isEntryDate,
@@ -38,6 +41,8 @@ const inputOf = (v: Voucher): Entry => ({
   lines: v.lines.map(
     ({
       summary,
+      entrySide,
+      cashflowDirection,
       accountId,
       dimensions,
       currency,
@@ -52,6 +57,8 @@ const inputOf = (v: Voucher): Entry => ({
       bizDate,
     }) => ({
       summary,
+      entrySide,
+      cashflowDirection,
       accountId,
       dimensions,
       currency,
@@ -126,6 +133,7 @@ function Editor({
         lines: [blankLine(), blankLine(), blankLine()],
         draft: true,
       };
+  const policy = useQuery(coreApi.voucherPolicy.get.queryOptions());
   const [data, setData] = useState(initial);
   const [header, setHeader] = useState(voucher);
   const [ready, setReady] = useState(false);
@@ -405,6 +413,24 @@ function Editor({
     window.addEventListener('beforeunload', listener);
     return () => window.removeEventListener('beforeunload', listener);
   }, []);
+  useUnsavedChanges({
+    title: header?.displayNo ? `凭证 ${header.displayNo}` : '凭证录入',
+    dirty:
+      ready && !readonly && (live.current.version !== live.current.savedVersion || pending.current),
+    version: live.current.version,
+    save: () => saveRef.current(true),
+    discard: async () => {
+      await tail.current;
+      const state = live.current;
+      state.data = state.savedData;
+      state.version += 1;
+      state.savedVersion = state.version;
+      setData(state.data);
+      setChanged(state.version);
+      setError('');
+      setLeave(null);
+    },
+  });
   const insert = () => {
     const lines = [...live.current.data.lines];
     lines.splice(active + 1, 0, blankLine());
@@ -576,7 +602,18 @@ function Editor({
     };
     document.addEventListener('keydown', listener, true);
     return () => document.removeEventListener('keydown', listener, true);
-  }, [tab.active, tab, readonly, active, details, paste, templateOpen, templateName, leave]);
+  }, [
+    tab.active,
+    tab,
+    readonly,
+    active,
+    details,
+    paste,
+    templateOpen,
+    templateName,
+    leave,
+    navigate,
+  ]);
 
   const reset = async () => {
     if (
@@ -911,11 +948,11 @@ function Editor({
             />
           </label>
           <label>
-            编号（留空自动）
+            {policy.data?.numbering === 'manual' ? '凭证编号（必填）' : '凭证编号（自动分配）'}
             <InputNumber
               aria-label="手动编号"
               min={1}
-              disabled={readonly}
+              disabled={readonly || !policy.data || policy.data.numbering === 'automatic'}
               value={data.number}
               onChange={(v) => change({ ...data, number: v })}
             />
@@ -1115,16 +1152,18 @@ function Editor({
                 danger
                 onClick={() => {
                   const action = leave;
-                  // 放弃只撤销尚未持久化的编辑；壳的离开保护仍会检查其它页面。
-                  const state = live.current;
-                  state.data = state.savedData;
-                  state.version += 1;
-                  state.savedVersion = state.version;
-                  setData(state.data);
-                  setChanged(state.version);
-                  setError('');
-                  setStatus('已放弃未保存修改，保留上次持久化内容');
-                  setLeave(null);
+                  flushSync(() => {
+                    // 放弃只撤销尚未持久化的编辑；壳的离开保护仍会检查其它页面。
+                    const state = live.current;
+                    state.data = state.savedData;
+                    state.version += 1;
+                    state.savedVersion = state.version;
+                    setData(state.data);
+                    setChanged(state.version);
+                    setError('');
+                    setStatus('已放弃未保存修改，保留上次持久化内容');
+                    setLeave(null);
+                  });
                   action?.();
                 }}
               >
@@ -1134,9 +1173,9 @@ function Editor({
                 type="primary"
                 onClick={() =>
                   void save(true).then((ok) => {
-                    if (ok) {
+                    if (ok && live.current.version === live.current.savedVersion) {
                       const action = leave;
-                      setLeave(null);
+                      flushSync(() => setLeave(null));
                       action?.();
                     }
                   })

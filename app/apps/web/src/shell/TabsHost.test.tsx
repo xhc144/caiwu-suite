@@ -1,10 +1,11 @@
+import { Modal } from 'antd';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { useState } from 'react';
 import { flushSync } from 'react-dom';
 import { defineManifest } from '@caiwu/core';
-import { sessionStore, useHotkey, useTab } from '@caiwu/web-kit';
+import { sessionStore, unsavedPages, useHotkey, useTab } from '@caiwu/web-kit';
 import { useUrlFilters } from '@caiwu/ui';
 import { TabsHost } from './TabsHost';
 import { buildNavItems } from './NavMenu';
@@ -107,6 +108,8 @@ beforeEach(() => {
   for (const key of Object.keys(saves)) delete saves[key];
 });
 afterEach(() => {
+  Modal.destroyAll();
+  unsavedPages.pages.clear();
   cleanup();
   sessionStore.set(null);
 });
@@ -193,33 +196,40 @@ describe('TabsHost URL与状态', () => {
     await act(async () => {});
     expect(screen.getByRole('tab', { name: '首页' })).toBeInTheDocument();
   });
-  it('关闭所有可取消，已有离开保护会阻止批量关闭', async () => {
+  it('关闭所有仅对已注册脏页统一确认，取消/保存失败保留；干净页直接关闭', async () => {
     await setup();
     await click(screen.getByText('打开甲'));
     await screen.findByTestId('/m/fixture/a');
     await click(screen.getByText('打开乙'));
     await screen.findByTestId('/m/fixture/b');
+    const registration = unsavedPages.register({
+      bookId: 'book-a',
+      tabKey: '/m/fixture/a',
+      title: '甲未保存',
+      dirty: true,
+      save: async () => false,
+    });
+    await click(screen.getByText('关闭所有'));
+    const dialog = await screen.findByRole('dialog', { name: '有未保存内容' });
+    expect(within(dialog).getByText('甲未保存')).toBeInTheDocument();
+    expect(within(dialog).queryByText('页面乙')).toBeNull();
+    await click(within(dialog).getByRole('button', { name: /取\s*消/ }));
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '有未保存内容' })).toBeNull());
     await click(screen.getByText('关闭所有'));
     await click(
-      within(await screen.findByRole('dialog', { name: '关闭所有标签' })).getByRole('button', {
-        name: /取\s*消/,
-      }),
+      within(await screen.findByRole('dialog', { name: '有未保存内容' })).getByText('保存并继续'),
     );
     expect(screen.getAllByRole('tab')).toHaveLength(3);
-    const block = (e: Event) => e.preventDefault();
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '有未保存内容' })).toBeNull());
+    registration.unregister();
+    const block = (event: Event) => event.preventDefault();
     window.addEventListener('beforeunload', block);
     await click(screen.getByText('关闭所有'));
-    await click(
-      within(await screen.findByRole('dialog', { name: '关闭所有标签' })).getByText(
-        '已保存内容，关闭',
-      ),
-    );
     expect(screen.getAllByRole('tab')).toHaveLength(3);
     window.removeEventListener('beforeunload', block);
-    await click(
-      within(screen.getByRole('dialog', { name: '关闭所有标签' })).getByText('已保存内容，关闭'),
-    );
-    expect(screen.getAllByRole('tab')).toHaveLength(1);
+    await click(screen.getByText('关闭所有'));
+    await waitFor(() => expect(screen.getAllByRole('tab')).toHaveLength(1));
     expect(screen.getByTestId('browser-url')).toHaveTextContent('/home');
   });
   it('标签达到上限不自动淘汰任何页面', async () => {

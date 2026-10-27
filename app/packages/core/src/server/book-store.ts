@@ -1,11 +1,14 @@
 import Database from 'better-sqlite3';
+import { verifyPassword } from './password';
 import { DataDirectoryLease } from './data-directory-lease';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   existsSync,
   lstatSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
+  writeFileSync,
   renameSync,
   rmSync,
   statSync,
@@ -28,7 +31,7 @@ import {
 import { BusinessError } from '../errors';
 import { parseCodeScheme, formatCodeScheme } from '../code-scheme';
 import { DIMENSION_TYPES } from '../dimensions';
-import { templateProblems } from '../template';
+import { mapTemplateScheme, templateProblems } from '../template';
 import { makePeriod } from '../period';
 import {
   CreateBookInputSchema,
@@ -40,7 +43,7 @@ import type { ProductId } from '../products';
 import type { CoreDB } from './schema';
 import { coreMigrations } from './migrations';
 import { emptyModuleLookup, type ModuleLookup, type ServiceContext } from './context';
-import { createCoreServices } from './services';
+import { createCoreServices, authenticateUser } from './services';
 import type { TemplateRegistry } from './templates';
 
 /** 结算方式默认值（原版 jslb 表的常用项）。 */
@@ -74,6 +77,7 @@ export interface BookStoreOptions {
   modules?: ModuleLookup;
   now?: () => Date;
   maintenanceStarted?: (bookId: string) => void;
+  created?: (book: BookInfo) => Promise<void>;
   beforeClose?: (
     book: OpenBook,
     signal: AbortSignal,
@@ -81,9 +85,11 @@ export interface BookStoreOptions {
   ) => Promise<void>;
 }
 
-/** 破坏性计划仅冻结接口，当前总是拒绝；回调只支持备份、检查和重连，不得改动账套文件。 */
+/** 覆盖仅接受受管暂存票据；独占维护内复核目标、保护备份及恢复校验。 */
 export interface BookMaintenancePlan<T = void> {
   kind: 'reconnect' | 'delete' | 'replace';
+  /** Opaque ticket returned by prepareReplacement; no filesystem paths accepted. */
+  replacementId?: string;
   timeoutMs?: number;
   prepare?: (book: OpenBook, signal: AbortSignal) => Promise<T>;
   validate?: (book: OpenBook, signal: AbortSignal) => Promise<void>;
@@ -91,7 +97,15 @@ export interface BookMaintenancePlan<T = void> {
 }
 
 const BOOK_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-type DirectoryState = { operations: ResourceGate; stores: Set<BookStore> };
+type DirectoryState = {
+  operations: ResourceGate;
+  stores: Set<BookStore>;
+  quarantines: Map<
+    string,
+    { protection: string; metadata: { length: number; sha256: string }; end?: () => void }
+  >;
+  creations: Map<string, { requestHash: string; task: Promise<BookInfo> }>;
+};
 const directories = new Map<string, DirectoryState>();
 
 /**
@@ -108,6 +122,19 @@ export class BookStore {
   #lease: DataDirectoryLease | null;
   #closingAll: Promise<void> | null = null;
   #disposed = false;
+  readonly #replacements = new Map<
+    string,
+    {
+      bookId: string;
+      file: string;
+      digest: string;
+      length: number;
+      expectedRevision: string;
+      expiresAt: number;
+      status: 'prepared' | 'applying' | 'done' | 'failed';
+      protectionId?: string;
+    }
+  >();
   #disposeAfterClose = false;
   readonly #known = new Set<string>();
 
@@ -117,6 +144,8 @@ export class BookStore {
     this.#directory = directories.get(this.#lease.directory) ?? {
       operations: new ResourceGate(maintenanceError),
       stores: new Set(),
+      quarantines: new Map(),
+      creations: new Map(),
     };
     directories.set(this.#lease.directory, this.#directory);
     this.#operations = this.#directory.operations;
@@ -226,10 +255,10 @@ export class BookStore {
     });
   }
 
-  /** 仅重连已支持；delete/replace 在任何 callback 和会话变更前拒绝。 */
+  /** 独占维护；覆盖必须提供已校验、绑定目标版本的恢复计划。 */
   maintain<T>(id: string, plan: BookMaintenancePlan<T>): Promise<T | undefined> {
     if (isInDatabaseTransaction()) return Promise.reject(new Error('事务回调内不能启动账套维护'));
-    if (plan.kind !== 'reconnect')
+    if (plan.kind === 'delete' || (plan.kind === 'replace' && !plan.replacementId))
       return Promise.reject(
         new BusinessError({
           code: 'DESTRUCTIVE_MAINTENANCE_UNAVAILABLE',
@@ -251,6 +280,10 @@ export class BookStore {
               let book = this.open(id);
               await this.#beforeClose(id, signal, 'maintenance');
               signal.throwIfAborted();
+              if (plan.kind === 'replace') {
+                await this.#replace(id, book, plan.replacementId!, signal, plan.validate);
+                return undefined;
+              }
               const result = await plan.prepare?.(book, signal);
               signal.throwIfAborted();
               await this.#closeConnections(id);
@@ -261,11 +294,388 @@ export class BookStore {
               signal.throwIfAborted();
               return result;
             } finally {
-              end();
+              const quarantine = this.#directory.quarantines.get(id);
+              if (quarantine) quarantine.end = end;
+              else end();
             }
           }),
         plan.timeoutMs,
       ),
+    );
+  }
+
+  /** Exact full-database revision, including module/report/print tables and committed WAL contents. */
+  revision(id: string): string {
+    const book = this.open(id);
+    return createHash('sha256').update(book.raw.serialize()).digest('hex');
+  }
+
+  /** Stage verified bytes under a managed UUID. The ticket binds target contents and expires. */
+  async prepareReplacement(input: {
+    bookId: string;
+    bytes: Uint8Array;
+    length: number;
+    sha256: string;
+    expectedRevision: string;
+    expiresAt: number;
+  }) {
+    return this.withBook(input.bookId, async () => {
+      if (input.expiresAt <= Date.now() || input.expiresAt > Date.now() + 300_000)
+        throw new BusinessError({
+          code: 'RESTORE_PLAN_EXPIRED',
+          message: '恢复确认已过期，请重新预览',
+        });
+      if (
+        input.bytes.byteLength !== input.length ||
+        input.length <= 0 ||
+        input.length > 1024 ** 3 ||
+        createHash('sha256').update(input.bytes).digest('hex') !== input.sha256
+      )
+        throw new BusinessError({
+          code: 'RESTORE_DIGEST',
+          message: '恢复文件长度或摘要不符，原账套保留',
+        });
+      if (this.revision(input.bookId) !== input.expectedRevision)
+        throw new BusinessError({
+          code: 'RESTORE_TARGET_CHANGED',
+          message: '目标账套已变化，请重新预览',
+        });
+      const dir = this.#managedDirectory('restore-staging');
+      const id = randomUUID(),
+        file = path.join(dir, `${id}.sqlite`);
+      writeFileSync(file, input.bytes, { flag: 'wx', mode: 0o600 });
+      let source: Database.Database | undefined;
+      try {
+        source = new Database(file, { fileMustExist: true });
+        source.pragma('trusted_schema = OFF');
+        assertRestoreDatabase(source);
+        const known = new Map(
+          this.#allMigrations().flatMap((set) =>
+            set.migrations.map(
+              (m) =>
+                [
+                  `${set.scope}/${m.id}`,
+                  createHash('sha256').update(m.sql.replace(/\r\n/g, '\n').trim()).digest('hex'),
+                ] as const,
+            ),
+          ),
+        );
+        for (const row of source.prepare('SELECT scope,id,checksum FROM _migration').all() as {
+          scope: string;
+          id: string;
+          checksum: string;
+        }[])
+          if (known.get(`${row.scope}/${row.id}`) !== row.checksum)
+            throw new BusinessError({
+              code: 'RESTORE_VERSION',
+              message: `备份迁移 ${row.scope}/${row.id} 与当前程序不兼容`,
+            });
+        runMigrations(source, this.#allMigrations());
+        source.prepare('UPDATE book_info SET book_id=? WHERE id=1').run(input.bookId);
+        source.pragma('wal_checkpoint(TRUNCATE)');
+        source.pragma('journal_mode = DELETE');
+        assertRestoreDatabase(source);
+        source.close();
+        source = undefined;
+        const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
+        this.#replacements.set(id, {
+          bookId: input.bookId,
+          file,
+          digest,
+          length: lstatSync(file).size,
+          expectedRevision: input.expectedRevision,
+          expiresAt: input.expiresAt,
+          status: 'prepared',
+        });
+        return { replacementId: id, bookId: input.bookId, expiresAt: input.expiresAt };
+      } catch (error) {
+        source?.close();
+        for (const suffix of ['', '-wal', '-shm']) rmSync(file + suffix, { force: true });
+        throw error;
+      }
+    });
+  }
+
+  replacementStatus(id: string) {
+    const ticket = this.#replacements.get(id);
+    if (!ticket)
+      throw new BusinessError({
+        code: 'RESTORE_PLAN_MISSING',
+        message: '恢复计划不存在，请重新预览',
+      });
+    return {
+      bookId: ticket.bookId,
+      status: ticket.status,
+      protectionId: ticket.protectionId ?? null,
+      relogin: ticket.status === 'done',
+    };
+  }
+
+  #managedDirectory(...segments: string[]): string {
+    let directory = this.#lease!.directory;
+    for (const segment of segments) {
+      directory = path.join(directory, segment);
+      mkdirSync(directory, { recursive: true, mode: 0o700 });
+      const stat = lstatSync(directory);
+      if (!stat.isDirectory() || stat.isSymbolicLink())
+        throw new BusinessError({ code: 'RESTORE_PATH', message: '恢复目录不是受管普通目录' });
+    }
+    return directory;
+  }
+
+  async #replace(
+    id: string,
+    book: OpenBook,
+    replacementId: string,
+    signal: AbortSignal,
+    validate?: (book: OpenBook, signal: AbortSignal) => Promise<void>,
+  ) {
+    // Capture the existing gate before changing the target. Poisoning admission
+    // after failed rollback must not depend on another filesystem lookup.
+    const gate = this.#gate(id);
+    const ticket = this.#replacements.get(replacementId);
+    if (
+      !ticket ||
+      ticket.bookId !== id ||
+      ticket.status !== 'prepared' ||
+      ticket.expiresAt <= Date.now()
+    )
+      throw new BusinessError({
+        code: 'RESTORE_PLAN_EXPIRED',
+        message: '恢复计划不存在、已使用或过期，请重新预览',
+      });
+    if (this.revision(id) !== ticket.expectedRevision)
+      throw new BusinessError({
+        code: 'RESTORE_TARGET_CHANGED',
+        message: '目标账套已变化，覆盖未执行',
+      });
+    const sourceStat = lstatSync(ticket.file);
+    if (
+      !sourceStat.isFile() ||
+      sourceStat.isSymbolicLink() ||
+      sourceStat.nlink !== 1 ||
+      sourceStat.size !== ticket.length ||
+      createHash('sha256').update(readFileSync(ticket.file)).digest('hex') !== ticket.digest
+    )
+      throw new BusinessError({
+        code: 'RESTORE_DIGEST',
+        message: '恢复暂存文件已变化，覆盖未执行',
+      });
+    ticket.status = 'applying';
+    const protectionId = randomUUID();
+    const protection = path.join(
+      this.#managedDirectory('core-protection', id),
+      `${protectionId}.caiwu`,
+    );
+    let replaced = false;
+    let protectionMetadata: { length: number; sha256: string } | undefined;
+    const verify = (file: string, expected: { length: number; sha256: string }) => {
+      const stat = lstatSync(file),
+        parent = lstatSync(path.dirname(file));
+      if (
+        !parent.isDirectory() ||
+        parent.isSymbolicLink() ||
+        !stat.isFile() ||
+        stat.isSymbolicLink() ||
+        stat.nlink !== 1 ||
+        stat.size !== expected.length ||
+        createHash('sha256').update(readFileSync(file)).digest('hex') !== expected.sha256
+      )
+        throw new BusinessError({
+          code: 'RESTORE_DIGEST',
+          message: '恢复暂存或保护备份的长度、摘要或文件类型已变化，原账套保护副本保留',
+        });
+    };
+    const copy = async (from: string, to: string, abort?: AbortSignal) => {
+      const expected =
+        from === ticket.file
+          ? { length: ticket.length, sha256: ticket.digest }
+          : protectionMetadata!;
+      verify(from, expected);
+      const target = lstatSync(to),
+        parent = lstatSync(path.dirname(to));
+      if (
+        !parent.isDirectory() ||
+        parent.isSymbolicLink() ||
+        !target.isFile() ||
+        target.isSymbolicLink() ||
+        target.nlink !== 1
+      )
+        throw new BusinessError({
+          code: 'RESTORE_PATH',
+          message: '恢复目标必须是受管普通账套文件，不能覆盖符号链接或硬链接',
+        });
+      const source = new Database(from, { readonly: true, fileMustExist: true });
+      try {
+        assertRestoreDatabase(source);
+        await source.backup(to, {
+          progress: () => {
+            abort?.throwIfAborted();
+            return 128;
+          },
+        });
+      } finally {
+        source.close();
+      }
+    };
+    try {
+      signal.throwIfAborted();
+      await book.raw.backup(protection, {
+        progress: () => {
+          signal.throwIfAborted();
+          return 128;
+        },
+      });
+      const backup = new Database(protection, { readonly: true, fileMustExist: true });
+      try {
+        assertRestoreDatabase(backup);
+      } finally {
+        backup.close();
+      }
+      const bytes = readFileSync(protection);
+      const metadata = {
+        bookId: id,
+        length: bytes.length,
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        createdAt: new Date().toISOString(),
+      };
+      protectionMetadata = metadata;
+      writeFileSync(`${protection}.json`, JSON.stringify(metadata), { flag: 'wx', mode: 0o600 });
+      ticket.protectionId = protectionId;
+      const checkpoint = book.raw.pragma('wal_checkpoint(TRUNCATE)') as { busy: number }[];
+      if (checkpoint.some((row) => row.busy !== 0))
+        throw new BusinessError({
+          code: 'RESTORE_SQLITE_BUSY',
+          message: '仍有 SQLite 事务占用，覆盖未执行',
+        });
+      signal.throwIfAborted();
+      verify(protection, protectionMetadata);
+      await this.#closeConnections(id);
+      // SQLite's backup transaction replaces database contents atomically. Never unlink or rename an open main/WAL file.
+      // Once replacement starts, treat an interrupted/uncertain copy as changed and restore protection.
+      replaced = true;
+      await copy(ticket.file, this.pathOf(id), signal);
+      const reopened = this.open(id);
+      assertRestoreDatabase(reopened.raw);
+      await validate?.(reopened, signal);
+      signal.throwIfAborted();
+      ticket.status = 'done';
+      rmSync(ticket.file, { force: true });
+    } catch (error) {
+      ticket.status = 'failed';
+      if (replaced) {
+        try {
+          await this.#closeConnections(id);
+          await copy(protection, this.pathOf(id));
+          const restored = this.open(id);
+          assertRestoreDatabase(restored.raw);
+        } catch (rollbackError) {
+          // The replacement has been rejected and rollback is uncertain. Never admit
+          // this database again merely because the exclusive callback has finished.
+          this.#directory.quarantines.set(id, { protection, metadata: protectionMetadata! });
+          gate.block();
+          const marker = `${book.file}.quarantine.json`;
+          try {
+            writeFileSync(
+              marker,
+              JSON.stringify({ bookId: id, protectionId, ...protectionMetadata }),
+              { flag: 'wx', mode: 0o600 },
+            );
+          } catch {
+            /* The runtime maintenance marker and gate remain closed even if disk writes fail. */
+          }
+          throw new AggregateError(
+            [error, rollbackError],
+            '恢复及回滚未完成，目标账套已隔离，保护备份保留；请修复存储后由管理员调用 recoverQuarantined 复核原账名称及密码恢复保护副本',
+            { cause: rollbackError },
+          );
+        }
+      } else {
+        this.open(id);
+      }
+      throw error;
+    }
+  }
+
+  /** Host recovery only: authenticate against the original protection copy while the target stays isolated. */
+  async recoverQuarantined(input: {
+    bookId: string;
+    bookName: string;
+    adminCode: string;
+    password: string;
+  }): Promise<void> {
+    const id = input.bookId;
+    this.#ensureLease();
+    const quarantine = this.#directory.quarantines.get(id);
+    if (!quarantine || !quarantine.end)
+      throw new BusinessError({
+        code: 'RESTORE_RECOVERY_UNAVAILABLE',
+        message: '没有本实例可安全恢复的隔离账套，请保留运行锁和保护备份并联系维护人员',
+      });
+    return this.#operations.run(() =>
+      this.#gate(id).recover(async () => {
+        const stat = lstatSync(quarantine.protection);
+        const parent = lstatSync(path.dirname(quarantine.protection));
+        const bytes = readFileSync(quarantine.protection);
+        if (
+          !parent.isDirectory() ||
+          parent.isSymbolicLink() ||
+          !stat.isFile() ||
+          stat.isSymbolicLink() ||
+          stat.nlink !== 1 ||
+          bytes.length !== quarantine.metadata.length ||
+          createHash('sha256').update(bytes).digest('hex') !== quarantine.metadata.sha256
+        )
+          throw new BusinessError({
+            code: 'RESTORE_DIGEST',
+            message: '保护备份已变化，账套继续隔离，请联系维护人员',
+          });
+        const source = new Database(quarantine.protection, { readonly: true, fileMustExist: true });
+        try {
+          assertRestoreDatabase(source);
+          const info = source.prepare('SELECT book_id, name FROM book_info WHERE id=1').get() as {
+            book_id: string;
+            name: string;
+          };
+          const admin = source
+            .prepare(
+              'SELECT password_hash FROM app_user WHERE code=? AND is_admin=1 AND disabled=0',
+            )
+            .get(input.adminCode) as { password_hash: string } | undefined;
+          if (
+            info.book_id !== id ||
+            info.name !== input.bookName ||
+            !admin ||
+            !(await verifyPassword(input.password, admin.password_hash))
+          )
+            throw new BusinessError({
+              code: 'RESTORE_CONFIRM_FAILED',
+              message: '请准确输入原账套名称及原管理员账号密码，账套继续隔离',
+            });
+          this.#assertConnectionsQuiescent(id);
+          await this.#closeConnections(id);
+          const target = lstatSync(this.pathOf(id));
+          if (!target.isFile() || target.isSymbolicLink() || target.nlink !== 1)
+            throw new BusinessError({
+              code: 'RESTORE_PATH',
+              message: '恢复目标不是受管普通账套文件，账套继续隔离',
+            });
+          await source.backup(this.pathOf(id));
+          const restored = new Database(this.pathOf(id), { fileMustExist: true });
+          try {
+            assertRestoreDatabase(restored);
+            runMigrations(restored, this.#allMigrations());
+            assertRestoreDatabase(restored);
+          } finally {
+            restored.close();
+          }
+          rmSync(`${this.pathOf(id)}.quarantine.json`, { force: true });
+          quarantine.end!();
+          this.#directory.quarantines.delete(id);
+        } finally {
+          source.close();
+        }
+      }),
     );
   }
 
@@ -392,19 +802,88 @@ export class BookStore {
     const state = databaseFile(file);
     this.#known.add(id);
     state.gate.error = maintenanceError;
+    if (existsSync(`${file}.quarantine.json`)) state.gate.block();
     return state.gate;
   }
 
   /** 新建账套：先写到临时文件，全部成功后再改名，避免留下半成品。 */
   async create(raw: CreateBookInput): Promise<BookInfo> {
     this.#ensureLease();
-    return this.#operations.run(() => this.#create(raw));
+    const input = CreateBookInputSchema.parse(raw);
+    if (!input.requestKey) return this.#operations.run(() => this.#create(input));
+    const requestKey = input.requestKey;
+    const requestHash = createHash('sha256').update(JSON.stringify(input)).digest('hex');
+    const existing = this.#directory.creations.get(requestKey);
+    if (existing) {
+      if (existing.requestHash !== requestHash)
+        throw new BusinessError({
+          code: 'BOOK_CREATE_CONFLICT',
+          message: '同一次建账请求被用于不同内容，请重新发起建账',
+        });
+      return existing.task;
+    }
+    const hex = createHash('sha256')
+      .update(`caiwu-book-request:${requestKey}`)
+      .digest('hex')
+      .slice(0, 32)
+      .split('');
+    hex[12] = '4';
+    hex[16] = ((parseInt(hex[16]!, 16) & 3) | 8).toString(16);
+    const text = hex.join('');
+    const id = `${text.slice(0, 8)}-${text.slice(8, 12)}-${text.slice(12, 16)}-${text.slice(16, 20)}-${text.slice(20)}`;
+    const { adminPassword: _password, requestKey: _key, ...payload } = input;
+    const payloadHash = createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+    const task = this.#operations.run(() =>
+      this.#gate(id).exclusive(() =>
+        this.#operations.runFresh(async () => {
+          if (existsSync(this.pathOf(id))) {
+            const book = this.open(id);
+            const stored = await book.db
+              .selectFrom('book_setting')
+              .select('value')
+              .where('scope', '=', 'core')
+              .where('key', '=', 'creationRequest')
+              .executeTakeFirst();
+            const metadata = stored
+              ? (JSON.parse(stored.value) as { requestKey: string; payloadHash: string })
+              : null;
+            const admin = await authenticateUser(book.db, input.adminCode, input.adminPassword);
+            if (
+              metadata?.requestKey !== requestKey ||
+              metadata.payloadHash !== payloadHash ||
+              !admin?.isAdmin
+            )
+              throw new BusinessError({
+                code: 'BOOK_CREATE_CONFLICT',
+                message: '该建账请求已有结果，但内容或管理员口令不同；原账套已保留',
+                hint: '请在账套列表核对并登录已有账套；需要另建时使用新的请求编号',
+              });
+            return toBookInfo(
+              await book.db
+                .selectFrom('book_info')
+                .selectAll()
+                .where('id', '=', 1)
+                .executeTakeFirstOrThrow(),
+            );
+          }
+          return this.#create(input, id, { requestKey, payloadHash });
+        }),
+      ),
+    );
+    this.#directory.creations.set(requestKey, { requestHash, task });
+    void task.finally(() => this.#directory.creations.delete(requestKey)).catch(() => {});
+    return task;
   }
 
-  async #create(raw: CreateBookInput): Promise<BookInfo> {
+  async #create(
+    raw: CreateBookInput,
+    id: string = randomUUID(),
+    creation?: { requestKey: string; payloadHash: string },
+  ): Promise<BookInfo> {
     const input = CreateBookInputSchema.parse(raw);
-    const template = this.#opts.templates.get(input.templateId);
-    const scheme = parseCodeScheme(input.codeScheme ?? template.codeScheme);
+    const nativeTemplate = this.#opts.templates.get(input.templateId);
+    const scheme = parseCodeScheme(input.codeScheme ?? nativeTemplate.codeScheme);
+    const template = mapTemplateScheme(nativeTemplate, scheme);
     const problems = templateProblems(template, scheme);
     if (problems.length) {
       throw new BusinessError({
@@ -414,7 +893,6 @@ export class BookStore {
         details: { problems },
       });
     }
-    const id = randomUUID();
     const tmp = path.join(this.booksDir, `.${id}.creating`);
     const creating = openDatabase<CoreDB>(tmp);
     const { raw: rawDb, db } = creating;
@@ -442,6 +920,16 @@ export class BookStore {
             updated_at: nowText,
           })
           .execute();
+        if (creation)
+          await trx
+            .insertInto('book_setting')
+            .values({
+              scope: 'core',
+              key: 'creationRequest',
+              value: JSON.stringify(creation),
+              updated_at: nowText,
+            })
+            .execute();
         await trx
           .insertInto('dimension_type')
           .values(
@@ -539,6 +1027,10 @@ export class BookStore {
               name: a.name,
               categoryId: a.category,
               direction: a.direction,
+              isContra: a.isContra,
+              balanceNature: a.balanceNature,
+              source: a.source,
+              sourceVersion: a.sourceVersion,
               isCash: a.cash,
               isBank: a.bank,
               cashflowRequired: a.cashflow,
@@ -564,13 +1056,15 @@ export class BookStore {
       throw e;
     }
     const opened = this.open(id);
-    return createCoreServices({
+    const info = await createCoreServices({
       db: opened.db,
       user: { id: 0, code: 'system', name: '系统', isAdmin: true, permissions: new Set() },
       moduleId: null,
       now: () => new Date(),
       modules: emptyModuleLookup,
     }).book.info();
+    await this.#opts.created?.(info);
+    return info;
   }
 
   #allMigrations(): MigrationSet[] {
@@ -622,4 +1116,27 @@ function toBookInfo(row: CoreDB['book_info']): BookInfo {
     baseCurrency: row.base_currency,
     createdAt: row.created_at,
   };
+}
+
+function assertRestoreDatabase(raw: Database.Database): void {
+  // Match the established backup validator; do not introduce a weaker restore route.
+  const unsupported = raw
+    .prepare(
+      "SELECT name FROM sqlite_schema WHERE type IN ('trigger','view') OR upper(sql) LIKE '%CREATE VIRTUAL TABLE%' LIMIT 1",
+    )
+    .get();
+  if (unsupported)
+    throw new BusinessError({
+      code: 'RESTORE_SCHEMA',
+      message: '备份包含本版本未支持的触发器、视图或虚拟表',
+    });
+  if (
+    raw.pragma('integrity_check', { simple: true }) !== 'ok' ||
+    (raw.pragma('foreign_key_check') as unknown[]).length
+  )
+    throw new BusinessError({ code: 'RESTORE_INTEGRITY', message: '备份 SQLite 完整性检查失败' });
+  const row = raw.prepare('SELECT book_id FROM book_info WHERE id=1').get() as
+    { book_id: string } | undefined;
+  if (!row || !BookStore.isValidId(row.book_id))
+    throw new BusinessError({ code: 'RESTORE_BOOK', message: '备份账套信息无效' });
 }

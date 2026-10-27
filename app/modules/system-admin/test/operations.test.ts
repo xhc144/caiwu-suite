@@ -322,7 +322,10 @@ describe('w_zh_zhjc 综合检查', () => {
   });
   it('w_zh_zhjc 断号具体定位，余额取数失败明确无法检查，审核凭证保持不变', async () => {
     const vs = await vouchers();
-    await app.svc.vouchers.setNumbers([{ id: vs[1]!.id, number: 3 }]);
+    {
+      const numberPlan = await app.svc.vouchers.previewNumbers([{ id: vs[1]!.id, number: 3 }]);
+      await app.svc.vouchers.setNumbers(numberPlan.updates, { plan: numberPlan, confirmed: true });
+    }
     const before = await app.svc.vouchers.get(vs[0]!.id);
     const checks = await api().checks();
     expect(checks.find((r) => r.category === '断号')?.message).toBe('缺号 2');

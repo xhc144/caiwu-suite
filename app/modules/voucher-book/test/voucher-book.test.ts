@@ -421,7 +421,12 @@ describe('w_pzedit_copy / w_pzedit_fc / w_pz_bhzl / 插入', () => {
   });
   it('w_pz_bhzl 稳定排序、作废参与，草稿不编号，前后映射入日志', async () => {
     const vs = await seed(1, 3);
-    await app.svc.vouchers.setNumbers(vs.map((v, i) => ({ id: v.id, number: (i + 1) * 2 })));
+    {
+      const numberPlan = await app.svc.vouchers.previewNumbers(
+        vs.map((v, i) => ({ id: v.id, number: (i + 1) * 2 })),
+      );
+      await app.svc.vouchers.setNumbers(numberPlan.updates, { plan: numberPlan, confirmed: true });
+    }
     await app.svc.vouchers.setVoided(vs[1]!.id, true);
     const draft = await app.svc.vouchers.create({ ...(await input()), draft: true });
     const before = await snapshot();
@@ -546,6 +551,11 @@ describe('w_pz_get 导入/导出', () => {
   });
   it('w_pz_get 空范围、无效日期、编号>10000、不存在/非末级科目、重复号逐凭证提示，无半批写入', async () => {
     const [v] = await seed();
+    await app.svc.voucherPolicy.set({
+      numbering: 'manual',
+      renumberAfterDelete: false,
+      allowModifyOthers: true,
+    });
     const data = await transfer(v!);
     data.vouchers = [
       { ...data.vouchers[0]!, key: 'bad-date', date: '2026-02-30' },
@@ -616,6 +626,11 @@ describe('w_pz_get 导入/导出', () => {
   });
   it('w_pz_get 已审核/过账/来源同号不覆盖；确认前出现新同号时整批回滚', async () => {
     const [v] = await seed();
+    await app.svc.voucherPolicy.set({
+      numbering: 'manual',
+      renumberAfterDelete: false,
+      allowModifyOthers: true,
+    });
     const data = await transfer(v!);
     data.vouchers = [
       { ...data.vouchers[0]!, key: 'a', number: 3 },
@@ -1032,3 +1047,96 @@ it('w_pz_get 预览后编码字典变更使确认失效，不把原科目悄悄�
   );
   expect(await snapshot()).toEqual(before);
 });
+
+it('w_pz_tjdel：共享删除后重排策略展示真实编号影响，取消和缺确认不写，确认同事务删除整理', async () => {
+  const values = await seed(1, 3);
+  await app.svc.voucherPolicy.set({
+    numbering: 'automatic',
+    renumberAfterDelete: true,
+    allowModifyOthers: true,
+  });
+  const p = await plan('delete', [values[1]!.id]);
+  expect(p.mappings.map((m) => [m.from, m.to])).toEqual([
+    [1, 1],
+    [3, 2],
+  ]);
+  const before = await snapshot();
+  await expect(
+    api.commit({ token: p.token, confirmed: false as never, numberingConfirmed: true }),
+  ).rejects.toThrow(/确认/);
+  await expect(api.commit({ token: p.token, confirmed: true })).rejects.toThrow(/编号变动/);
+  expect(await snapshot()).toEqual(before);
+  await api.commit({ token: p.token, confirmed: true, numberingConfirmed: true });
+  expect((await app.svc.vouchers.list()).items.map((v) => v.number)).toEqual([1, 2]);
+});
+
+it('w_pz_pzxsb：插入预览绑定编号策略与完整组，策略变化不执行，重新预览确认后自动编号继续可用', async () => {
+  const values = await seed(1, 3);
+  const p = await plan('insert', [values[1]!.id], { input: copiedInput(values[1]!) });
+  await app.svc.voucherPolicy.set({
+    numbering: 'automatic',
+    renumberAfterDelete: false,
+    allowModifyOthers: false,
+  });
+  const before = await snapshot();
+  await expect(
+    api.commit({ token: p.token, confirmed: true, numberingConfirmed: true }),
+  ).rejects.toThrow(/策略已变化|重新预览/);
+  expect(await snapshot()).toEqual(before);
+  const retry = await plan('insert', [values[1]!.id], { input: copiedInput(values[1]!) });
+  await api.commit({ token: retry.token, confirmed: true, numberingConfirmed: true });
+  expect((await app.svc.vouchers.create(await input())).number).toBe(5);
+});
+
+it.each(['json', 'xlsx'] as const)(
+  'w_pz_get：%s转出转入与复制保留共享零金额借贷侧和显式现金流方向',
+  async (format) => {
+    const quantity = (await app.svc.accounts.require('1403')).id;
+    const cf = (await app.svc.dimensions.getByCode('cashflow', 'CF01'))!.id;
+    const v = await app.svc.vouchers.create({
+      ...(await input()),
+      lines: [
+        {
+          accountId: quantity,
+          summary: '数量调整',
+          quantity: '2',
+          entrySide: 'credit',
+          debit: 0,
+          credit: 0,
+        },
+        {
+          accountId: (await app.svc.accounts.require('1001')).id,
+          summary: '流入',
+          debit: 10,
+          credit: 0,
+          dimensions: { cashflow: cf },
+          cashflowDirection: 'inflow',
+        },
+        {
+          accountId: (await app.svc.accounts.require('4001')).id,
+          summary: '结余',
+          debit: 0,
+          credit: 10,
+        },
+      ],
+    });
+    const exported = await api.export({ filter: { id: v.id }, format });
+    const p = await api.importPreview({
+      file: exported.file,
+      format,
+      targetDate: '2026-02-01',
+      numbering: 'auto',
+    });
+    expect(p).toMatchObject({ validCount: 1, errorCount: 0 });
+    const imported = await api.importCommit({ token: p.token, confirmed: true });
+    const got = (await app.svc.vouchers.get(imported.createdIds[0]!))!;
+    expect(got.lines[0]).toMatchObject({ entrySide: 'credit', quantity: '2' });
+    expect(got.lines[1]).toMatchObject({ cashflowDirection: 'inflow' });
+    const copy = await plan('copy', [v.id], { date: '2026-02-02', voucherTypeId: v.voucherTypeId });
+    const result = await api.commit({ token: copy.token, confirmed: true });
+    expect((await app.svc.vouchers.get(result.createdIds[0]!))!.lines[0]).toMatchObject({
+      entrySide: 'credit',
+      quantity: '2',
+    });
+  },
+);

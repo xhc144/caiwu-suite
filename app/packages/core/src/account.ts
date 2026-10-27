@@ -20,6 +20,10 @@ export interface AccountDimensionConfig {
 
 /** 科目（接口返回的形态）。 */
 export interface Account {
+  isContra?: boolean;
+  balanceNature?: 'debit' | 'credit' | 'both' | 'no-closing-balance' | null;
+  source?: string | null;
+  sourceVersion?: string | null;
   id: number;
   code: string;
   name: string;
@@ -48,6 +52,7 @@ export interface Account {
 }
 
 export interface DimensionItem {
+  revision?: number;
   id: number;
   typeId: DimensionTypeId;
   code: string;

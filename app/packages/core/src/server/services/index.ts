@@ -13,7 +13,15 @@ import {
 import { ledgerService } from './ledger';
 import { openingService } from './opening';
 import { userService } from './users';
+import { voucherPolicyService } from './voucher-policy';
 import { voucherService } from './vouchers';
+import type { InventoryService } from '../../inventory';
+import { currentServiceScope } from '../service-scope';
+import {
+  inventoryService,
+  withCoreServiceTransaction,
+  assertCoreServiceTransaction,
+} from './inventory';
 
 /**
  * 核心服务。模块的 router 里通过 ctx.svc 拿到，已经绑定当前账套、当前操作员和当前模块。
@@ -27,6 +35,7 @@ import { voucherService } from './vouchers';
  */
 export interface CoreServices {
   ctx: ServiceContext;
+  inventory: InventoryService;
   /** 当前账套的数据库（Kysely）。核心表可读；除凭证、分录外的核心表可以直接写。 */
   db: Kysely<CoreDB>;
   user: ServiceUser;
@@ -36,6 +45,7 @@ export interface CoreServices {
   accounts: ReturnType<typeof accountService>;
   dimensions: ReturnType<typeof dimensionService>;
   reference: ReturnType<typeof referenceService>;
+  voucherPolicy: ReturnType<typeof voucherPolicyService>;
   vouchers: ReturnType<typeof voucherService>;
   ledger: ReturnType<typeof ledgerService>;
   opening: ReturnType<typeof openingService>;
@@ -51,7 +61,11 @@ export interface CoreServices {
 }
 
 export function createCoreServices(ctx: ServiceContext): CoreServices {
-  return {
+  ctx = { ...ctx, scope: ctx.scope ?? currentServiceScope() };
+  const svc: CoreServices = {
+    get inventory() {
+      return inventoryService(svc);
+    },
     ctx,
     db: ctx.db,
     user: ctx.user,
@@ -61,6 +75,7 @@ export function createCoreServices(ctx: ServiceContext): CoreServices {
     accounts: accountService(ctx),
     dimensions: dimensionService(ctx),
     reference: referenceService(ctx),
+    voucherPolicy: voucherPolicyService(ctx),
     vouchers: voucherService(ctx),
     ledger: ledgerService(ctx),
     opening: openingService(ctx),
@@ -68,10 +83,15 @@ export function createCoreServices(ctx: ServiceContext): CoreServices {
     settings: settingsService(ctx),
     log: logService(ctx),
     permissions: permissionService(ctx),
-    tx<T>(fn: (svc: CoreServices) => Promise<T>): Promise<T> {
-      return withTransaction(ctx.db, (db) => fn(createCoreServices({ ...ctx, db })));
+    async tx<T>(fn: (svc: CoreServices) => Promise<T>): Promise<T> {
+      assertCoreServiceTransaction(svc);
+      return withTransaction(ctx.db, (db) => {
+        const transactionSvc = createCoreServices({ ...ctx, db });
+        return withCoreServiceTransaction(transactionSvc, () => fn(transactionSvc));
+      });
     },
   };
+  return svc;
 }
 
 export { accountService, dimensionService } from './accounts';
@@ -81,3 +101,5 @@ export { ledgerService } from './ledger';
 export { openingService, type OpeningBalance, type OpeningBalanceInput } from './opening';
 export { authenticateUser, loadServiceUser, userService, type CreateUserInput } from './users';
 export type { LogEntryInput } from './basic';
+
+export { voucherPolicyService, VoucherPolicySchema, type VoucherPolicy } from './voucher-policy';

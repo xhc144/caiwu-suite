@@ -69,14 +69,15 @@ export class AutomaticBackupController {
   #message(e: unknown) {
     return e instanceof Error ? e.message : '自动备份失败';
   }
-  async run(id: string) {
+  async run(id: string, options: { retryFailure?: boolean } = {}) {
     const s = this.#books.get(id);
     if (!s || s.stopped) return;
     if (s.running) return s.running;
     s.running = (async () => {
       try {
         const config = SettingsSchema.parse(await s.binding.settings());
-        if (!config.enabled) return;
+        // Disabling future schedules cannot discharge an already failed backup.
+        if (!config.enabled && !(options.retryFailure && s.lastFailure !== null)) return;
         const result = await s.binding.backup('automatic');
         if (result.status !== 'valid') throw new Error(result.reason || '自动备份未完成');
         s.lastSuccess = new Date(this.#clock.now()).toISOString();

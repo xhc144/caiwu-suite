@@ -84,6 +84,7 @@ test('w_zc_zc_1：跨年109个月分页与折叠不截断金额；Excel保留大
   test.setTimeout(60000);
   const book = await loginWithNewBook(page, general.request, { startMonth: 7 });
   await general.withBook(book.bookId, async (svc) => {
+    for (let year = 2027; year <= 2035; year++) await svc.periods.ensureYear(year);
     await svc.opening.upsert({
       year: 2026,
       accountId: (await svc.accounts.require('1001')).id,

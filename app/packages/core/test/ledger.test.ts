@@ -268,3 +268,87 @@ describe('分录明细', () => {
     expect(withPending.map((r) => r.status)).toEqual(['pending']);
   });
 });
+
+it.each([{ excludeClosing: true }, { excludeClosingKinds: ['pnl'] }])(
+  'w_zc_zc：%j只筛发生额，期初零且仅有结转的非零本币/外币/数量期末仍保留',
+  async (filter) => {
+    t = await createTestBook();
+    const v = await t.svc.vouchers.create({
+      voucherTypeId: (await t.svc.reference.voucherTypes())[0]!.id,
+      date: '2026-01-10',
+      closingKind: 'pnl',
+      lines: [
+        {
+          accountId: (await t.svc.accounts.require('1001')).id,
+          summary: '结转',
+          debit: 100,
+          credit: 0,
+        },
+        {
+          accountId: (await t.svc.accounts.require('4001')).id,
+          summary: '结转',
+          debit: 0,
+          credit: 100,
+        },
+        {
+          accountId: (await t.svc.accounts.require('100202')).id,
+          summary: '原币调整',
+          debit: 0,
+          credit: 0,
+          entrySide: 'debit',
+          currency: 'USD',
+          exchangeRate: '7.1',
+          fcAmount: 5,
+        },
+        {
+          accountId: (await t.svc.accounts.require('1403')).id,
+          summary: '数量调整',
+          debit: 0,
+          credit: 0,
+          entrySide: 'credit',
+          quantity: '3',
+        },
+      ],
+    });
+    await t.svc.vouchers.changeStatus({ ids: [v.id], to: 'audited' });
+    await t.svc.vouchers.changeStatus({ ids: [v.id], to: 'posted' });
+    const query = {
+      periodFrom: 202601,
+      periodTo: 202601,
+      includeZero: false,
+      rollup: false,
+      ...filter,
+    };
+    const balances = await t.svc.ledger.balances(query);
+    expect(row(balances, '1001')).toMatchObject({
+      opening: 0,
+      debit: 0,
+      credit: 0,
+      ytdDebit: 0,
+      ytdCredit: 0,
+      closing: 100,
+    });
+    expect(row(balances, '4001')).toMatchObject({ opening: 0, debit: 0, credit: 0, closing: -100 });
+    expect(row(balances, '1403')).toMatchObject({
+      opening: 0,
+      debit: 0,
+      credit: 0,
+      qtyDebit: '0',
+      qtyCredit: '0',
+      qtyClosing: '-3',
+    });
+    const foreign = await t.svc.ledger.balances({ ...query, currency: 'USD' });
+    expect(row(foreign, '100202')).toMatchObject({
+      opening: 0,
+      closing: 0,
+      fcDebit: 0,
+      fcCredit: 0,
+      fcClosing: 5,
+    });
+    expect(
+      (await t.svc.ledger.balances({ ...query, includeZero: true })).find(
+        (r) => r.accountCode === '1001',
+      ),
+    ).toEqual(row(balances, '1001'));
+  },
+);
