@@ -191,6 +191,13 @@ jobs:
           pnpm install --frozen-lockfile
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm exec playwright install chromium
+      - name: testkit 真实子进程输出与失败回收回归
+        id: testkit-shutdown
+        run: |
+          pnpm gen
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pnpm exec vitest run packages/testkit/test/local-server.test.ts
+          exit $LASTEXITCODE
       - name: 全仓检查
         id: check
         # 保留失败，独立构建/安装回归继续收集结果；末尾显式使 job 失败，不能掩盖 check。
@@ -203,6 +210,7 @@ jobs:
         run: |
           @(
             'install=${{ steps.install.outcome }}',
+            'testkit-shutdown=${{ steps.testkit-shutdown.outcome }}',
             'check=${{ steps.check.outcome }}'
           ) | Set-Content -Encoding utf8 "$env:RUNNER_TEMP/m21-check-steps.log"
       - name: 保存私有检查状态
