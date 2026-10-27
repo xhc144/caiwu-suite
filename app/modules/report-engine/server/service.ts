@@ -22,6 +22,16 @@ import {
 } from '../shared';
 import type { ReportTables } from './migrations';
 import {
+  boundTemplate,
+  createProfileBinding,
+  definitionFingerprint,
+  fingerprint,
+  profileError,
+  readProfileBinding,
+  validateSavedProfile,
+  type ProfileBinding,
+} from './profile';
+import {
   calculate,
   evaluate,
   finalize,
@@ -108,11 +118,22 @@ export function reportService(svc: CoreServices) {
     )
       fail('DUPLICATE', `报表编码 ${code} 已存在`, '请输入不同的最多三位数字编码。');
   };
-  const insert = async (t: ReportTemplate) => {
+  const insert = async (t: ReportTemplate, copiedBinding?: ProfileBinding | null) => {
     await uniqueCode(t.code);
+    const binding =
+      copiedBinding === undefined ? await createProfileBinding(svc, t) : copiedBinding;
+    const savedTemplate = boundTemplate(t, binding);
     const row = await db
       .insertInto('report_engine_template')
-      .values({ code: t.code, name: t.name, revision: 1, definition_json: JSON.stringify(t) })
+      .values({
+        code: t.code,
+        name: t.name,
+        revision: 1,
+        definition_json: JSON.stringify(savedTemplate),
+        profile_binding_json: binding
+          ? JSON.stringify({ ...binding, definitionRevision: 1 })
+          : null,
+      })
       .returning('id')
       .executeTakeFirstOrThrow();
     return get(row.id);
@@ -132,8 +153,8 @@ export function reportService(svc: CoreServices) {
       return svc.tx((tsvc) => reportService(tsvc).insertValidated(t));
     },
     // 内部方法只接收通过严格合同校验的模板，不提供独立路由。
-    async insertValidated(raw: ReportTemplate) {
-      return insert(validate(raw));
+    async insertValidated(raw: ReportTemplate, copiedBinding?: ProfileBinding | null) {
+      return insert(validate(raw), copiedBinding);
     },
     async importTemplate(raw: ReportTemplate) {
       const t = validate(raw);
@@ -143,11 +164,15 @@ export function reportService(svc: CoreServices) {
       return svc.tx(async (tsvc) => {
         const service = reportService(tsvc);
         const r = await service.get(sourceId);
-        return service.insertValidated({
-          ...r.template,
-          ...HeaderSchema.pick({ code: true, name: true }).parse(raw),
-          readOnly: false,
-        });
+        const binding = await readProfileBinding(tsvc, sourceId);
+        return service.insertValidated(
+          {
+            ...r.template,
+            ...HeaderSchema.pick({ code: true, name: true }).parse(raw),
+            readOnly: false,
+          },
+          binding,
+        );
       });
     },
     async save(id: number, expectedRevision: number, raw: ReportTemplate) {
@@ -155,6 +180,14 @@ export function reportService(svc: CoreServices) {
       return svc.tx(async (tsvc) => {
         const service = reportService(tsvc);
         const old = await service.assertEditable(id, expectedRevision);
+        const binding = await readProfileBinding(tsvc, id);
+        if (
+          fingerprint(old.template.profile) !== fingerprint(template.profile) ||
+          old.template.reportIdentity !== template.reportIdentity
+        )
+          profileError('保存不能删除、更换或静默改写原profile身份；请显式重新确认后引入新版本');
+        if (binding && definitionFingerprint(template) !== binding.definitionFingerprint)
+          profileError('已绑定模板不能借保存更改公式或审核而保留旧profile');
         // 即使调用者主动移除越界内容，也拒绝通过缩小尺寸悄悄删掉原定义。
         if (
           old.template.cells.some((c) => {
@@ -179,6 +212,9 @@ export function reportService(svc: CoreServices) {
             code: template.code,
             name: template.name,
             definition_json: JSON.stringify(template),
+            profile_binding_json: binding
+              ? JSON.stringify({ ...binding, definitionRevision: expectedRevision + 1 })
+              : null,
             revision: expectedRevision + 1,
           })
           .where('id', '=', id)
@@ -218,9 +254,62 @@ export function reportService(svc: CoreServices) {
         .executeTakeFirst();
       return r ? { ...(JSON.parse(r.result_json) as ReportSnapshot), id: r.id } : null;
     },
+    /** 导出检查与读取位于一个真实账套事务；任何HTTP调用均经过这里。 */
+    async exportSnapshot(
+      id: number,
+      period: number,
+      includeUnposted: boolean,
+    ): Promise<ReportSnapshot | null> {
+      return svc.tx(async (tsvc) => {
+        const service = reportService(tsvc);
+        const saved = await service.snapshot(id, period, includeUnposted);
+        if (!saved) return null;
+        await service.assertSnapshotCurrent(saved);
+        return saved;
+      });
+    },
+    async assertSnapshotCurrent(saved: ReportSnapshot): Promise<void> {
+      if (saved.checks.some((c) => c.status !== 'pass'))
+        fail(
+          'AUDIT',
+          '报表审核存在不通过或错误，禁止导出或回放成功结果',
+          '请修正来源和审核问题后重新生成；旧结果仍可查看。',
+        );
+      const dependencies = new Map(saved.dependencies.map((d) => [d.id, d.revision]));
+      dependencies.set(saved.reportId, saved.revision);
+      const proofs: NonNullable<ReportSnapshot['profileProofs']> = [];
+      for (const [id, revision] of dependencies) {
+        const current = await get(id);
+        if (current.revision !== revision)
+          fail('CONFLICT', '报表或依赖定义已更改，请重新生成后导出');
+        const proof = await validateSavedProfile(svc, current, saved);
+        if (proof) proofs.push(proof);
+      }
+      if (
+        fingerprint(proofs.sort((a, b) => a.reportId - b.reportId)) !==
+        fingerprint([...(saved.profileProofs ?? [])].sort((a, b) => a.reportId - b.reportId))
+      )
+        profileError('旧快照的profile或相关实际来源指纹不一致，请重新生成；旧快照仍保留');
+    },
     async generate(input: z.infer<typeof GenerateSchema>) {
       return svc.tx(async (tsvc) => {
         const tdb = tsvc.db.withTables<ReportTables>();
+        const service = reportService(tsvc);
+        const report = await service.get(input.id);
+        if (report.revision !== input.expectedRevision)
+          fail('CONFLICT', '报表定义已更改，请刷新后再生成');
+        await tsvc.periods.require(input.period);
+        const proofs = new Map<number, NonNullable<ReportSnapshot['profileProofs']>[number]>();
+        const checked = new Set<number>();
+        const verify = async (r: Report) => {
+          if (checked.has(r.id)) return;
+          if (report.template.profile && !r.template.profile)
+            profileError('已绑定切片不能依赖缺少profile的自定义报表');
+          const proof = await validateSavedProfile(tsvc, r, input);
+          if (proof) proofs.set(r.id, proof);
+          checked.add(r.id);
+        };
+        await verify(report);
         const requestJson = JSON.stringify({
           id: input.id,
           revision: input.expectedRevision,
@@ -235,18 +324,16 @@ export function reportService(svc: CoreServices) {
         if (replay) {
           if (replay.request_json !== requestJson)
             fail('REQUEST_REUSED', '本次请求编号已用于不同的生成操作，请重新生成');
+          const saved = { ...(JSON.parse(replay.result_json) as ReportSnapshot), id: replay.id };
+          await service.assertSnapshotCurrent(saved);
           return {
             kind: 'generated' as const,
-            snapshot: { ...(JSON.parse(replay.result_json) as ReportSnapshot), id: replay.id },
+            snapshot: saved,
           };
         }
-        const report = await reportService(tsvc).get(input.id);
-        if (report.revision !== input.expectedRevision)
-          fail('CONFLICT', '报表定义已更改，请刷新后再生成');
-        await tsvc.periods.require(input.period);
         if (!report.template.cells.some((c) => c.source.trim() !== ''))
           fail('EMPTY', '报表没有可生成的内容', '请先定义文本或取数公式并保存。');
-        const engine = await createEngine(tsvc, input.period, input.includeUnposted);
+        const engine = await createEngine(tsvc, input.period, input.includeUnposted, verify);
         const cells: ReportSnapshot['cells'] = [];
         for (const c of report.template.cells) {
           if (c.kind === 'text') {
@@ -291,6 +378,12 @@ export function reportService(svc: CoreServices) {
             });
           }
         }
+        if (report.template.profile && checks.some((c) => c.status !== 'pass'))
+          fail(
+            'AUDIT',
+            '已绑定报表切片审核不通过或错误，本次不写入新快照',
+            '请核对来源和分类后重算；上次成功结果仍保留。',
+          );
         // 先解析实际用到的取数/依赖/审核范围，再做唯一一次确认计数。
         // 否则表头已有未过账时会提前返回较小数量，确认后才发现未来期间。
         const unposted = await tsvc.vouchers.list({
@@ -321,6 +414,8 @@ export function reportService(svc: CoreServices) {
           includeUnposted: input.includeUnposted,
           unpostedCount: unposted.total,
           generatedAt: tsvc.ctx.now().toISOString(),
+          assurance: report.template.profile ? 'guarded-slice' : 'custom-trial',
+          profileProofs: [...proofs.values()],
           template: report.template,
           cells,
           checks,
@@ -346,7 +441,12 @@ export function reportService(svc: CoreServices) {
 }
 
 /** 所有定义、取数和依赖都使用调用方传入的同一个事务；不读取旧生成快照。 */
-async function createEngine(svc: CoreServices, period: number, includeUnposted: boolean) {
+async function createEngine(
+  svc: CoreServices,
+  period: number,
+  includeUnposted: boolean,
+  verify: (report: Report) => Promise<void>,
+) {
   const reports = await reportService(svc).list();
   const byCode = new Map(reports.map((r) => [r.template.code, r]));
   const used = new Map<number, Report>();
@@ -519,9 +619,10 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
     balances.set(key, total);
     return total;
   };
-  const requireReport = (code: string) => {
+  const requireReport = async (code: string) => {
     const r = byCode.get(code);
     if (!r) throw new FormulaError(`引用的报表 ${code} 不存在`);
+    await verify(r);
     used.set(r.id, r);
     return r;
   };
@@ -537,7 +638,7 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
     if (!parsedCode.success) throw new FormulaError(`报表编码 ${code} 不是最多三位数字`);
     code = parsedCode.data;
     address = address.toUpperCase();
-    const report = requireReport(code);
+    const report = await requireReport(code);
     const p = coordinates(address);
     if (p.row < 1 || p.col < 1 || p.row > report.template.rows || p.col > report.template.cols)
       throw new FormulaError(`报表${code}引用的单元格 ${address} 不存在`);

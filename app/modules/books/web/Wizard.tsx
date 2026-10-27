@@ -75,6 +75,10 @@ export default function Wizard({
 }) {
   const { modal } = App.useApp();
   const templates = useQuery(coreApi.books.templates.queryOptions());
+  const [open, setOpen] = useState(true);
+  const closing = useRef(false);
+  const cancellation = useRef<{ destroy: () => void } | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [step, setStep] = useState(0);
   const [form] = Form.useForm<WizardInput>();
   const values = Form.useWatch([], form) as WizardInput | undefined;
@@ -88,6 +92,14 @@ export default function Wizard({
   const selectedLocal = localTemplates.find((t) => t.id === selected?.id);
   const reviewWarning =
     selectedLocal?.regime === 'enterprise' ? templateReviewWarning(selectedLocal) : null;
+  useEffect(
+    () => () => {
+      const dialog = cancellation.current;
+      cancellation.current = null;
+      dialog?.destroy();
+    },
+    [],
+  );
   useEffect(() => {
     const available = templates.data;
     if (available?.length && !form.getFieldValue('templateId')) {
@@ -144,17 +156,30 @@ export default function Wizard({
       window.removeEventListener('popstate', pop, true);
     };
   }, [dirty, created]);
+  const finishClose = () => {
+    if (closing.current) return;
+    closing.current = true;
+    // 保留退场中的遮罩，吸收快速第二次点击；afterClose 再通知父组件卸载。
+    setOpen(false);
+  };
   const close = () => {
-    if (busy.current || checking) return;
-    if (dirty && !created)
-      modal.confirm({
+    if (closing.current || busy.current || checking || cancellation.current) return;
+    if (dirty && !created) {
+      setConfirming(true);
+      const dialog = modal.confirm({
         title: '放弃未提交的新建账套内容？',
         content: '取消后不会建立账套。',
         okText: '放弃创建',
         cancelText: '继续编辑',
-        onOk: onClose,
+        onOk: finishClose,
+        afterClose: () => {
+          if (cancellation.current !== dialog) return;
+          cancellation.current = null;
+          setConfirming(false);
+        },
       });
-    else onClose();
+      cancellation.current = dialog;
+    } else finishClose();
   };
   const verify = async (entry: { book: BookInfo; input: WizardInput }) => {
     setChecking(true);
@@ -170,7 +195,7 @@ export default function Wizard({
     }
   };
   const submit = async () => {
-    if (busy.current || created) return;
+    if (closing.current || cancellation.current || busy.current || created) return;
     busy.current = true;
     try {
       const input = WizardSchema.parse(await form.validateFields());
@@ -249,27 +274,42 @@ export default function Wizard({
   );
   return (
     <Modal
-      open
+      open={open}
       title="新建账套"
       width={900}
       onCancel={close}
+      afterClose={onClose}
+      keyboard={open && !confirming}
       maskClosable={false}
       footer={
         <Space>
-          <Button onClick={close} disabled={create.isPending || checking}>
+          <Button onClick={close} disabled={!open || confirming || create.isPending || checking}>
             取消
           </Button>
-          {step > 0 && !created && <Button onClick={() => setStep(step - 1)}>上一步</Button>}
-          {step < 4 && !created && <Button onClick={() => void next()}>下一步</Button>}
+          {step > 0 && !created && (
+            <Button disabled={!open || confirming} onClick={() => setStep(step - 1)}>
+              上一步
+            </Button>
+          )}
+          {step < 4 && !created && (
+            <Button disabled={!open || confirming} onClick={() => void next()}>
+              下一步
+            </Button>
+          )}
           {created ? (
-            <Button type="primary" loading={checking} onClick={() => void verify(created)}>
+            <Button
+              type="primary"
+              disabled={!open || confirming}
+              loading={checking}
+              onClick={() => void verify(created)}
+            >
               重试核对
             </Button>
           ) : (
             <Button
               type="primary"
               loading={create.isPending || checking}
-              disabled={!selected}
+              disabled={!open || confirming || !selected}
               onClick={() => void submit()}
             >
               创建
@@ -300,7 +340,7 @@ export default function Wizard({
       <Form
         form={form}
         layout="vertical"
-        disabled={!!created || create.isPending || checking}
+        disabled={!open || confirming || !!created || create.isPending || checking}
         onValuesChange={() => setDirty(true)}
         initialValues={{
           name: '',
