@@ -1,6 +1,6 @@
 import { Button, Input, Select, Space, Typography } from 'antd';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
   balanceSide,
   DIMENSION_TYPE_IDS,
@@ -13,7 +13,9 @@ import {
   type DimensionItem,
   type VoucherLineInput,
 } from '@caiwu/core';
-import { AccountSelect, MoneyInput } from '@caiwu/ui';
+import { AccountSelect } from '@caiwu/ui';
+import { EntryMoneyInput } from './EntryMoneyInput';
+import { AmountDraftContext, amountDraftKey } from './amount-drafts';
 import { useAccounts } from '@caiwu/web-kit';
 import { isEntryDate, foreignAmount, quantityAmount, applyExchangeRate } from '../shared';
 import { api } from './api';
@@ -245,7 +247,7 @@ export default function LineGrid(p: Props) {
                   )}
                 </td>
                 <td style={{ padding: 6, minWidth: 140 }}>
-                  <MoneyInput
+                  <EntryMoneyInput
                     aria-label={`第${i + 1}行借方`}
                     data-field="debit"
                     disabled={p.readonly}
@@ -254,7 +256,7 @@ export default function LineGrid(p: Props) {
                   />
                 </td>
                 <td style={{ padding: 6, minWidth: 140 }}>
-                  <MoneyInput
+                  <EntryMoneyInput
                     aria-label={`第${i + 1}行贷方`}
                     data-field="credit"
                     disabled={p.readonly}
@@ -459,6 +461,8 @@ export function LineDetails({
   onChange: (patch: Partial<VoucherLineInput>) => void;
 }) {
   const a = accounts.find((x) => x.id === line.accountId);
+  const amountDrafts = useContext(AmountDraftContext);
+  const foreignDraft = amountDrafts?.values.has(amountDraftKey(index + 1, 'fcAmount'));
   const [calculationError, setCalculationError] = useState('');
   const unsupportedDimensions = Object.entries(line.dimensions ?? {}).filter(
     ([type, value]) =>
@@ -467,7 +471,10 @@ export function LineDetails({
   );
   const obsoleteCurrency =
     !a?.currency &&
-    ((!!line.currency && line.currency !== 'CNY') || line.exchangeRate != null || !!line.fcAmount);
+    (foreignDraft ||
+      (!!line.currency && line.currency !== 'CNY') ||
+      line.exchangeRate != null ||
+      !!line.fcAmount);
   const obsoleteQuantity =
     !a?.quantityUnit &&
     [line.quantity, line.unitPrice].some(
@@ -565,7 +572,8 @@ export function LineDetails({
           <Button
             danger
             disabled={readonly}
-            onClick={() =>
+            onClick={() => {
+              if (obsoleteCurrency) amountDrafts?.clearField(index + 1, 'fcAmount');
               onChange({
                 dimensions: Object.fromEntries(
                   Object.entries(line.dimensions ?? {}).filter(
@@ -574,8 +582,8 @@ export function LineDetails({
                 ),
                 ...(obsoleteCurrency ? { currency: null, fcAmount: null, exchangeRate: null } : {}),
                 ...(obsoleteQuantity ? { quantity: null, unitPrice: null } : {}),
-              })
-            }
+              });
+            }}
           >
             清除当前科目未启用的信息
           </Button>
@@ -610,7 +618,7 @@ export function LineDetails({
         币种
         <Input aria-label={`第${index + 1}行币种`} value={line.currency ?? 'CNY'} disabled />
       </label>
-      {a?.currency && (
+      {(a?.currency || foreignDraft) && (
         <>
           <div style={{ color: '#666' }}>
             本位币须等于原币金额×汇率，四舍五入到分。手动修改本位币后仍会核验，不能用借贷找平替代折算。
@@ -618,7 +626,7 @@ export function LineDetails({
           {textField('汇率', 'exchangeRate')}
           <label>
             原币金额
-            <MoneyInput
+            <EntryMoneyInput
               aria-label={`第${index + 1}行原币金额`}
               data-field="fcAmount"
               value={line.fcAmount}

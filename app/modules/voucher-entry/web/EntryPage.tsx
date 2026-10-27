@@ -1,6 +1,6 @@
 import { Alert, Button, Drawer, Input, InputNumber, Modal, Select, Space, Spin, Tag } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router';
 import type { inferRouterOutputs } from '@trpc/server';
@@ -33,6 +33,7 @@ import LineGrid, { LineDetails } from './LineGrid';
 import PasteDialog from './PasteDialog';
 import CalculatorDialog from './CalculatorDialog';
 import { useSaveActivity } from './useSaveActivity';
+import { AmountDraftContext, amountDraftHint, useAmountDrafts } from './amount-drafts';
 
 type Bootstrap = inferRouterOutputs<EntryRouter>['bootstrap'];
 const inputOf = (v: Voucher): Entry => ({
@@ -271,6 +272,11 @@ function Editor({
     setError('');
     setStatus('等待自动保存');
   };
+  const amountDrafts = useAmountDrafts(() => change(live.current.data));
+  const hasChanges = useCallback(
+    () => live.current.version !== live.current.savedVersion || amountDrafts.values.size > 0,
+    [amountDrafts.values],
+  );
   const focus = (line: number, field: string) => {
     setActive(Math.max(0, line));
     setTimeout(() => {
@@ -282,9 +288,21 @@ function Editor({
       row?.scrollIntoView({ block: 'nearest' });
     }, 0);
   };
+  const rejectInvalidAmount = (automatic = false) => {
+    const invalid = amountDrafts.values.values().next().value;
+    if (!invalid) return false;
+    setError(amountDraftHint(invalid));
+    setStatus('金额格式有误，修正后再保存');
+    if (!automatic && tab.active) {
+      if (invalid.field === 'fcAmount') setDetails(true);
+      focus(invalid.line - 1, invalid.field);
+    }
+    return true;
+  };
   const save = (draft: boolean, automatic = false): Promise<boolean> => {
     const operation = async () => {
       if (readonly || !ready || pending.current) return false;
+      if (rejectInvalidAmount(automatic)) return false;
       // 排队期间前一次保存可能已清除 dirty；仅自动保存跳过，手动草稿仍须执行。
       if (automatic && live.current.version === live.current.savedVersion) return true;
       const snapshot = { ...live.current.data, draft };
@@ -330,6 +348,8 @@ function Editor({
           if (!acknowledgeCashflowUnknown) return false;
         }
       }
+      // 确认弹窗等待期间仍可能编辑，不能把新出现的非法文本作为旧金额提交。
+      if (rejectInvalidAmount(automatic)) return false;
       setStatus('保存中');
       startSaving();
       try {
@@ -411,25 +431,25 @@ function Editor({
       void tail.current.then(() => handlers.current.requestLeave(action));
       return;
     }
-    if (live.current.version !== live.current.savedVersion) setLeave(() => action);
+    if (hasChanges()) setLeave(() => action);
     else action();
   };
   useEffect(() => {
     const listener = (event: BeforeUnloadEvent) => {
-      if (live.current.version !== live.current.savedVersion || pending.current)
-        event.preventDefault();
+      if (hasChanges() || pending.current) event.preventDefault();
     };
     window.addEventListener('beforeunload', listener);
     return () => window.removeEventListener('beforeunload', listener);
-  }, [pending]);
+  }, [pending, hasChanges]);
   useUnsavedChanges({
     title: header?.displayNo ? `凭证 ${header.displayNo}` : '凭证录入',
-    dirty: ready && !readonly && (live.current.version !== live.current.savedVersion || saving),
+    dirty: ready && (hasChanges() || saving),
     version: live.current.version,
     save: () => saveRef.current(true),
     discard: async () => {
       await tail.current;
       const state = live.current;
+      amountDrafts.clear();
       state.data = state.savedData;
       state.version += 1;
       state.savedVersion = state.version;
@@ -440,18 +460,23 @@ function Editor({
     },
   });
   const insert = () => {
+    amountDrafts.remap((line) => (line > active + 1 ? line + 1 : line));
     const lines = [...live.current.data.lines];
     lines.splice(active + 1, 0, blankLine());
     change({ ...live.current.data, lines });
     focus(active + 1, 'summary');
   };
   const remove = () => {
+    amountDrafts.remap((line) =>
+      line === active + 1 ? null : line > active + 1 ? line - 1 : line,
+    );
     const lines = live.current.data.lines.filter((_, i) => i !== active);
     if (!lines.length) lines.push(blankLine());
     change({ ...live.current.data, lines });
     focus(Math.min(active, lines.length - 1), 'summary');
   };
   const balance = () => {
+    if (rejectInvalidAmount()) return;
     if (!moneyFocused.current) {
       notify.info('请先定位到当前行的借方或贷方金额格');
       return;
@@ -468,6 +493,7 @@ function Editor({
     }
   };
   const swap = () => {
+    if (rejectInvalidAmount()) return;
     if (moneyFocused.current) (document.activeElement as HTMLElement | null)?.blur();
     change({
       ...live.current.data,
@@ -478,9 +504,11 @@ function Editor({
     if (moneyFocused.current) focus(active, amountSide.current);
   };
   const balanceCopy = () => {
+    if (rejectInvalidAmount()) return;
     const lines = [...live.current.data.lines];
     const l = lines[active];
     if (!l) return;
+    amountDrafts.remap((line) => (line > active + 1 ? line + 1 : line));
     lines.splice(active + 1, 0, { ...l, dimensions: { ...l.dimensions }, debit: 0, credit: 0 });
     const side = l.debit ? 'credit' : 'debit';
     change({ ...live.current.data, lines: balanceCell(lines, active + 1, side) });
@@ -492,8 +520,7 @@ function Editor({
     if (!tab.active) return;
     let replaying = false;
     const guard = (event: MouseEvent) => {
-      if (replaying || (!pending.current && live.current.version === live.current.savedVersion))
-        return;
+      if (replaying || (!pending.current && !hasChanges())) return;
       const target = event.target as HTMLElement;
       if (frame.current?.contains(target)) return;
       const navigation = target.closest<HTMLElement>(
@@ -510,7 +537,7 @@ function Editor({
     };
     document.addEventListener('click', guard, true);
     return () => document.removeEventListener('click', guard, true);
-  }, [tab.active, pending]);
+  }, [tab.active, pending, hasChanges]);
   useEffect(() => {
     if (!tab.active) return;
     const listener = (e: KeyboardEvent) => {
@@ -674,12 +701,12 @@ function Editor({
   const totalDebit = data.lines.reduce((n, l) => n + (l.debit ?? 0), 0);
   const totalCredit = data.lines.reduce((n, l) => n + (l.credit ?? 0), 0);
   const saveAsTemplate = async () => {
-    if (!templateName) return;
+    if (!templateName || rejectInvalidAmount()) return;
     const unknown = await confirm(
       '保存模版',
       '模版将保留分录和辅助项，不携带凭证编号、来源和审核信息。现金流量方向未配置的行仍需人工核验。',
     );
-    if (!unknown) return;
+    if (!unknown || rejectInvalidAmount()) return;
     try {
       await saveTemplate.mutateAsync({
         ...templateName,
@@ -708,7 +735,7 @@ function Editor({
   });
   const displayMoney = (amount: number) =>
     Number.isSafeInteger(amount) ? formatMoney(amount) : '超出安全整数分范围';
-  return (
+  const content = (
     <div ref={frame}>
       <PageContainer
         title="凭证录入"
@@ -790,7 +817,10 @@ function Editor({
                         '恢复编辑缓冲',
                         `缓冲对应 revision ${b.voucherRevision ?? '未建凭证'}；当前服务端 revision ${header?.revision ?? '未建凭证'}。确认恢复？旧缓冲不会自动覆盖新版本。`,
                       ).then((ok) => {
-                        if (ok) change(b.data);
+                        if (ok) {
+                          amountDrafts.clear();
+                          change(b.data);
+                        }
                       });
                   })
               }
@@ -1067,6 +1097,7 @@ function Editor({
           <PasteDialog
             onCancel={() => setPaste(false)}
             onApply={(lines) => {
+              amountDrafts.clear();
               change({ ...data, lines });
               setPaste(false);
               focus(0, 'summary');
@@ -1089,6 +1120,7 @@ function Editor({
               !readonly && calculator.side
                 ? (cents) => {
                     const { line, side } = calculator;
+                    amountDrafts.clearField(line + 1, side!);
                     change({
                       ...live.current.data,
                       lines: live.current.data.lines.map((value, index) =>
@@ -1115,7 +1147,10 @@ function Editor({
             const requestedEpoch = ++templateEpoch.current;
             if (templateChoice)
               void queryClient
-                .fetchQuery({ ...api.template.queryOptions({ id: templateChoice }), staleTime: 0 })
+                .fetchQuery({
+                  ...api.template.queryOptions({ id: templateChoice }),
+                  staleTime: 0,
+                })
                 .then(async (t) => {
                   if (requestedEpoch !== templateEpoch.current) return;
                   if (
@@ -1126,6 +1161,7 @@ function Editor({
                   )
                     return;
                   if (requestedEpoch !== templateEpoch.current) return;
+                  amountDrafts.clear();
                   change({
                     ...live.current.data,
                     voucherTypeId: t.voucher_type_id,
@@ -1193,6 +1229,7 @@ function Editor({
                   flushSync(() => {
                     // 放弃只撤销尚未持久化的编辑；壳的离开保护仍会检查其它页面。
                     const state = live.current;
+                    amountDrafts.clear();
                     state.data = state.savedData;
                     state.version += 1;
                     state.savedVersion = state.version;
@@ -1211,7 +1248,7 @@ function Editor({
                 type="primary"
                 onClick={() =>
                   void save(true).then((ok) => {
-                    if (ok && live.current.version === live.current.savedVersion) {
+                    if (ok && !hasChanges()) {
                       const action = leave;
                       flushSync(() => setLeave(null));
                       action?.();
@@ -1229,4 +1266,5 @@ function Editor({
       </PageContainer>
     </div>
   );
+  return <AmountDraftContext.Provider value={amountDrafts}>{content}</AmountDraftContext.Provider>;
 }
