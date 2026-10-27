@@ -602,7 +602,18 @@ function Editor({
     };
     document.addEventListener('keydown', listener, true);
     return () => document.removeEventListener('keydown', listener, true);
-  }, [tab.active, tab, readonly, active, details, paste, templateOpen, templateName, leave, navigate]);
+  }, [
+    tab.active,
+    tab,
+    readonly,
+    active,
+    details,
+    paste,
+    templateOpen,
+    templateName,
+    leave,
+    navigate,
+  ]);
 
   const reset = async () => {
     if (
