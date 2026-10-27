@@ -142,6 +142,8 @@ export default function CalculationPage() {
           </Checkbox>
           <Button
             type="primary"
+            aria-label="重新试算"
+            aria-busy={preview.isFetching}
             loading={preview.isFetching}
             onClick={() => {
               setFilters({ id: 0 });
@@ -291,6 +293,10 @@ export default function CalculationPage() {
         title={publishTitle}
         open={!!publishIntent}
         okText="确认发布并锁定本月"
+        okButtonProps={{
+          'aria-label': '确认发布并锁定本月',
+          'aria-busy': publish.isPending,
+        }}
         cancelText="返回核对"
         confirmLoading={publish.isPending}
         cancelButtonProps={{ disabled: publish.isPending }}
