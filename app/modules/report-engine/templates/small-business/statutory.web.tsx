@@ -13,7 +13,7 @@ import {
   pnlRoles,
 } from './configuration';
 import { cashflowItems, cashflowLines } from './catalogue';
-import type { Statement } from './statements';
+import type { Amount, Statement } from './statements';
 
 export type AnalysisRow = {
   period: number;
@@ -873,11 +873,20 @@ export function SmallBusinessStatementView({
   orgName,
   period,
 }: {
-  statement: Statement;
+  statement: Statement & { returnedInvestmentAmounts?: [Amount, Amount] };
   comparisonNote?: string | null;
   orgName: string;
   period: number;
 }) {
+  const displayedRows = statement.rows.flatMap((row) => {
+    if (statement.code !== '301' || row.line !== 48 || !statement.returnedInvestment?.some(Boolean))
+      return [row];
+    const amounts: [Amount, Amount] = statement.returnedInvestmentAmounts ?? [
+      { value: statement.returnedInvestment[0], formula: '已归还投资减项', sources: [] },
+      { value: statement.returnedInvestment[1], formula: '已归还投资减项', sources: [] },
+    ];
+    return [row, { line: -48, label: '减：已归还投资', amounts }];
+  });
   return (
     <section>
       <h2>{statement.name}</h2>
@@ -904,12 +913,19 @@ export function SmallBusinessStatementView({
         ))}
       <Table
         rowKey="line"
-        dataSource={statement.rows}
+        dataSource={displayedRows}
         pagination={false}
         scroll={{ x: 700 }}
-        onRow={(row) => ({ id: `small-${statement.code}-${row.line}` })}
+        onRow={(row) => ({
+          id: `small-${statement.code}-${row.line === -48 ? 'returned-investment' : row.line}`,
+        })}
         columns={[
-          { title: '行次', dataIndex: 'line', width: 64 },
+          {
+            title: '行次',
+            dataIndex: 'line',
+            width: 64,
+            render: (line: number) => (line === -48 ? '' : line),
+          },
           { title: '项目', dataIndex: 'label', width: 360 },
           ...[0, 1].map((column) => ({
             title: statement.columns[column],
