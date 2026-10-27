@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { watch, writeFileSync, renameSync } from 'node:fs';
+import { writeFileSync, renameSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -82,24 +82,11 @@ if (role === 'child') {
     });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     let child;
-    let watcher;
+    let closed;
     let timer;
     let output = '';
     let errors = '';
     try {
-      const finished = new Promise((resolve, reject) => {
-        watcher = watch(dataDir, async (_event, name) => {
-          if (name !== 'grandchild.json') return;
-          // exit handler uses one synchronous write; rename/change may arrive before it returns.
-          try {
-            const value = JSON.parse(await readFile(path.join(dataDir, name), 'utf8'));
-            resolve(value);
-          } catch {
-            /* 下一次 change 事件继续读取。 */
-          }
-        });
-        timer = setTimeout(() => reject(new Error('stdio probe 超时')), 5_000);
-      });
       child = spawn(
         process.execPath,
         [self, 'child', candidate, String(server.address().port), dataDir],
@@ -107,7 +94,7 @@ if (role === 'child') {
           stdio: ['ignore', 'pipe', 'pipe'],
         },
       );
-      const closed = once(child, 'close');
+      closed = once(child, 'close');
       child.stdout.on('data', (chunk) => {
         output += chunk;
         record('parent.stdout.data', String(chunk));
@@ -122,8 +109,20 @@ if (role === 'child') {
         socket?.end('release');
       });
       child.once('close', (code, signal) => record('parent.child.close', { code, signal }));
-      const descendant = await finished;
-      await closed;
+      await Promise.race([
+        closed,
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('stdio probe 超时')), 5_000);
+        }),
+      ]);
+      // 孙进程 exit handler 先同步写记录，OS 才关闭继承句柄；stdio close 后直接读取。
+      // 不用 fs.watch：Node 24.19 / Windows 在该诊断上曾触发原生 fs-event assertion。
+      const descendant = await readFile(path.join(dataDir, 'grandchild.json'), 'utf8')
+        .then(JSON.parse)
+        .catch((error) => {
+          if (error.code === 'ENOENT') return [];
+          throw error;
+        });
       const result = {
         platform: process.platform,
         mode: candidate,
@@ -136,6 +135,18 @@ if (role === 'child') {
       if (candidate === 'detached') {
         assert.ok(output.includes('FINAL_STDIO'), JSON.stringify(result));
         assert.ok(errors.includes('FINAL_STDERR'), JSON.stringify(result));
+        assert.equal(descendant.find(({ event }) => event === 'grandchild.exit')?.detail, 0);
+        const exitedAt = events.findIndex(({ event }) => event === 'parent.child.exit');
+        const closedAt = events.findIndex(({ event }) => event === 'parent.child.close');
+        for (const marker of ['FINAL_STDIO', 'FINAL_STDERR']) {
+          const dataAt = events.findIndex(
+            ({ detail }) => typeof detail === 'string' && detail.includes(marker),
+          );
+          assert.ok(
+            exitedAt >= 0 && dataAt > exitedAt && closedAt > dataAt,
+            JSON.stringify(result),
+          );
+        }
       }
     } catch (error) {
       console.log(
@@ -144,10 +155,22 @@ if (role === 'child') {
       if (candidate === 'detached') process.exitCode = 1;
     } finally {
       clearTimeout(timer);
-      watcher?.close();
       socket?.destroy();
       if (child && child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
       await new Promise((resolve) => server.close(resolve));
+      // 先关闭本诊断独占的控制连接/监听器，使仍在启动的孙进程也会自行退出。
+      // 只对直接 spawn 返回的 ChildProcess 发信号，不按进程名或未经验证的 PID 清理。
+      let cleanupTimer;
+      try {
+        await Promise.race([
+          closed,
+          new Promise((_, reject) => {
+            cleanupTimer = setTimeout(() => reject(new Error('stdio probe 回收超时')), 2_000);
+          }),
+        ]);
+      } finally {
+        clearTimeout(cleanupTimer);
+      }
       await rm(dataDir, { recursive: true, force: true });
     }
   }
