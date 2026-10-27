@@ -90,8 +90,9 @@ describe('真实 Node 子进程退出（无 kill/send mock）', () => {
     server.child.once('exit', () => record('exit'));
     server.child.once('close', () => record('close'));
     server.child.stdout!.on('data', (chunk: Buffer) => {
+      const hadFinal = output.includes('FINAL_STDIO');
       output += chunk.toString();
-      if (chunk.toString().includes('FINAL_STDIO')) record('FINAL_STDIO');
+      if (!hadFinal && output.includes('FINAL_STDIO')) record('FINAL_STDIO');
     });
     await server.close();
     record('close.resolved');

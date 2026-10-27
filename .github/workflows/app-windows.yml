@@ -212,7 +212,16 @@ jobs:
         continue-on-error: true
         run: |
           $env:CI = '' # 仓库 Playwright 配置在 CI 默认重试一次，本任务要求零 retry。
-          pnpm check
+          pnpm check 2>&1 | ForEach-Object {
+            $testLine = "$_"
+            Write-Output $testLine
+            $failureTitle = [regex]::Replace($testLine, '\x1B\[[0-?]*[ -/]*[@-~]', '')
+            if ($failureTitle -match '^\s*\d+\)\s+\[[^\]]+\]\s+›') {
+              $failureTitle = $failureTitle.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+              Write-Output "::error title=Windows 全仓失败用例::$failureTitle"
+            }
+          }
+          exit $LASTEXITCODE
       - name: 保存去敏检查步骤状态
         if: always()
         run: |

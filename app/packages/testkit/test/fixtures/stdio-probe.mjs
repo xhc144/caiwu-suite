@@ -97,19 +97,32 @@ if (role === 'child') {
       );
       closed = once(child, 'close');
       child.stdout.on('data', (chunk) => {
+        const hadFinal = output.includes('FINAL_STDIO');
         output += chunk;
         record('parent.stdout.data', String(chunk));
+        if (!hadFinal && output.includes('FINAL_STDIO')) record('parent.stdout.final');
       });
       child.stderr.on('data', (chunk) => {
+        const hadFinal = errors.includes('FINAL_STDERR');
         errors += chunk;
         record('parent.stderr.data', String(chunk));
+        if (!hadFinal && errors.includes('FINAL_STDERR')) record('parent.stderr.final');
       });
+      child.stdout.once('close', () => record('parent.stdout.close'));
+      child.stderr.once('close', () => record('parent.stderr.close'));
       child.once('exit', (code, signal) => {
         record('parent.child.exit', { code, signal });
         exited = true;
         socket?.end('release');
       });
-      child.once('close', (code, signal) => record('parent.child.close', { code, signal }));
+      child.once('close', (code, signal) =>
+        record('parent.child.close', {
+          code,
+          signal,
+          stdoutClosed: child.stdout.closed,
+          stderrClosed: child.stderr.closed,
+        }),
+      );
       await Promise.race([
         closed,
         new Promise((_, reject) => {
@@ -154,10 +167,10 @@ if (role === 'child') {
         assert.equal(descendant.find(({ event }) => event === 'grandchild.exit')?.detail, 0);
         const exitedAt = events.findIndex(({ event }) => event === 'parent.child.exit');
         const closedAt = events.findIndex(({ event }) => event === 'parent.child.close');
-        for (const marker of ['FINAL_STDIO', 'FINAL_STDERR']) {
-          const dataAt = events.findIndex(
-            ({ detail }) => typeof detail === 'string' && detail.includes(marker),
-          );
+        assert.equal(events[closedAt].detail.stdoutClosed, true);
+        assert.equal(events[closedAt].detail.stderrClosed, true);
+        for (const stream of ['stdout', 'stderr']) {
+          const dataAt = events.findIndex(({ event }) => event === `parent.${stream}.final`);
           assert.ok(
             exitedAt >= 0 && dataAt > exitedAt && closedAt > dataAt,
             JSON.stringify(result),
