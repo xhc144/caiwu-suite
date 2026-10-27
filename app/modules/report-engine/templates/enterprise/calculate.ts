@@ -627,6 +627,46 @@ function isClosing(d: SourceData, e: SourceData['entries'][number]) {
     v.source.id.startsWith(`${e.period}:`)
   );
 }
+const OCI_TRANSFER_ROWS = ['benefitTransfer', 'ociTransfer'];
+function verifyOciTransfer(c: EnterpriseConfig, d: SourceData, lineId: number) {
+  const event = c.equityEvents.find((x) => x.lineId === lineId);
+  if (!event || !OCI_TRANSFER_ROWS.includes(event.row))
+    fail(
+      `其他综合收益分录${lineId}仅能由真实的设定受益计划或其他综合收益结转留存收益排除，不能归入投入或其他变动`,
+    );
+  if (c.oci.some((x) => x.lineId === lineId))
+    fail(`其他综合收益分录${lineId}同时配置了税后收益和内部结转，请明确真实性质`);
+  const entry = d.entries.find((x) => x.lineId === lineId)!,
+    events = c.equityEvents.filter(
+      (x) =>
+        x.row === event.row &&
+        d.entries.some((e) => e.lineId === x.lineId && e.voucherId === entry.voucherId),
+    );
+  for (const item of events) {
+    const e = d.entries.find((x) => x.lineId === item.lineId)!,
+      rule = c.rules.find((r) => r.accountId === e.accountId)!;
+    const col =
+      rule.kind === 'oci'
+        ? 'otherComprehensive'
+        : rule.kind === 'currentProfit' || rule.line === 'retainedEarnings'
+          ? 'retainedEarnings'
+          : undefined;
+    if (
+      !col ||
+      !D(item.liabilityAmount).isZero() ||
+      item.parts.some((x) => x.column !== col) ||
+      !item.parts.reduce((n, x) => n.plus(x.amount), D(0)).eq(D(e.credit).minus(e.debit))
+    )
+      fail(`凭证${entry.voucherId}其他综合收益内部结转分项与实际权益分录不一致`);
+  }
+  if (
+    !events
+      .flatMap((x) => x.parts)
+      .reduce((n, x) => n.plus(x.amount), D(0))
+      .isZero()
+  )
+    fail(`凭证${entry.voucherId}其他综合收益内部结转事项未配平`);
+}
 export function calculateProfit(c: EnterpriseConfig, d: SourceData, r: Range): Values {
   const v = empty(PROFIT);
   let discontinued = D(0);
@@ -646,7 +686,10 @@ export function calculateProfit(c: EnterpriseConfig, d: SourceData, r: Range): V
     }
     if (rule.kind === 'oci') {
       const internal = c.equityEvents.find((x) => x.lineId === e.lineId);
-      if (internal) continue;
+      if (internal) {
+        verifyOciTransfer(c, d, e.lineId);
+        continue;
+      }
       const f =
         c.oci.find((x) => x.lineId === e.lineId) ??
         fail(`${e.period}其他综合收益分录${e.lineId}缺少所得税分配及来源`);

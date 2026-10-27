@@ -273,3 +273,91 @@ it('w_bb_proc fast-check 权益内部结转的每个事项和总权益都守恒'
     }),
   );
 });
+it('w_bb_proc 独审P1回归：任何期间单边OCI内部结转及伪装投入都不能漏计税后收益', () => {
+  for (const scope of ['month', 'yearToDate', 'annual'] as const) {
+    const { c, d } = fixture();
+    c.scope = scope;
+    if (scope === 'month')
+      for (const period of [202512, 202412])
+        c.eps.push({
+          from: period,
+          to: period,
+          applicable: false,
+          preference: '0',
+          dilutions: [],
+          ...provenance,
+        });
+    extend(c, d, 8, '其他综合收益', 'otherComprehensive', 'oci');
+    const lines = journal(c, d, [
+      {
+        accountId: 1,
+        debit: 1000,
+        credit: 0,
+        cash: [{ line: 'otherOperatingReceipts', amount: '1000' }],
+      },
+      { accountId: 8, debit: 0, credit: 1000 },
+    ]);
+    c.equityEvents.push({
+      lineId: lines[1]!.lineId,
+      row: 'ociTransfer',
+      liabilityAmount: '0',
+      parts: [{ column: 'otherComprehensive', amount: '1000' }],
+      ...provenance,
+    });
+    expect(() => calculateEnterprise(c, d)).toThrow('未配平');
+    c.equityEvents[0]!.row = 'otherContributions';
+    expect(() => calculateEnterprise(c, d)).toThrow('不能归入投入');
+  }
+});
+it('w_bb_proc 真实OCI结转留存收益本月及年报均不重复计综合收益', () => {
+  for (const scope of ['month', 'yearToDate', 'annual'] as const) {
+    const { c, d } = fixture();
+    c.scope = scope;
+    if (scope === 'month')
+      for (const period of [202512, 202412])
+        c.eps.push({
+          from: period,
+          to: period,
+          applicable: false,
+          preference: '0',
+          dilutions: [],
+          ...provenance,
+        });
+    extend(c, d, 8, '其他综合收益', 'otherComprehensive', 'oci');
+    const first = journal(c, d, [
+      {
+        accountId: 1,
+        debit: 1000,
+        credit: 0,
+        cash: [{ line: 'otherOperatingReceipts', amount: '1000' }],
+      },
+      { accountId: 8, debit: 0, credit: 1000 },
+    ]);
+    c.oci.push({
+      lineId: first[1]!.lineId,
+      line: 'otherEquityFairValue',
+      gross: '1000',
+      tax: '0',
+      ...provenance,
+    });
+    journal(c, d, [
+      {
+        accountId: 8,
+        debit: 1000,
+        credit: 0,
+        event: { row: 'ociTransfer', column: 'otherComprehensive', amount: '-1000' },
+      },
+      {
+        accountId: 7,
+        debit: 0,
+        credit: 1000,
+        event: { row: 'ociTransfer', column: 'retainedEarnings', amount: '1000' },
+      },
+    ]);
+    const r = calculateEnterprise(c, d);
+    expect(r.profit.current.oci).toBe('1000');
+    expect(r.balance.current.otherComprehensive).toBe('0');
+    expect(r.balance.current.retainedEarnings).toBe('121000');
+    expect(r.checks.every((x) => x.difference === '0')).toBe(true);
+  }
+});
