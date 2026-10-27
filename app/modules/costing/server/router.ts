@@ -10,9 +10,11 @@ import {
   ReportSchema,
   SaveWorksheetSchema,
   VoucherPreviewSchema,
+  GenerateVoucherSchema,
+  CancelCostVoucherSchema,
 } from '../shared';
 import { costingService } from './service';
-import { generateVoucher, previewVoucher } from './vouchers';
+import { cancelCostVoucher, costVoucherState, generateVoucher, previewVoucher } from './vouchers';
 import { readInventory } from './inventory-read';
 
 const m = moduleKit(manifest);
@@ -57,7 +59,13 @@ export const costingRouter = m.router({
     .input(VoucherPreviewSchema)
     .query(({ ctx, input }) => previewVoucher(ctx.svc, input)),
   generateVoucher: voucher
-    .input(VoucherPreviewSchema)
+    .input(GenerateVoucherSchema)
     .mutation(({ ctx, input }) => generateVoucher(ctx.svc, input)),
+  costVoucherState: voucher
+    .input(z.object({ documentId: zId }))
+    .query(({ ctx, input }) => costVoucherState(ctx.svc, input.documentId)),
+  cancelCostVoucher: voucher
+    .input(CancelCostVoucherSchema)
+    .mutation(({ ctx, input }) => cancelCostVoucher(ctx.svc, input)),
 });
 export type CostingRouter = typeof costingRouter;

@@ -38,6 +38,21 @@ export const VoucherPreviewSchema = z.object({
   taxAccountId: zId.optional(),
   revenueAccountId: zId.optional(),
 });
+export const GenerateVoucherSchema = VoucherPreviewSchema.extend({
+  fingerprint: z.string().regex(/^[a-f0-9]{64}$/, '请先重新预览凭证'),
+  voucherTypeId: zId,
+  confirmed: z.boolean(),
+});
+export type GenerateVoucherInput = z.input<typeof GenerateVoucherSchema>;
+export const CancelCostVoucherSchema = z.object({
+  bookId: z.string().min(1),
+  documentId: zId,
+  documentRevision: z.number().int().positive(),
+  voucherId: zId,
+  voucherRevision: z.number().int().positive(),
+  confirmed: z.boolean(),
+});
+export type CancelCostVoucherInput = z.input<typeof CancelCostVoucherSchema>;
 
 export type CostRow = {
   warehouseId: number;

@@ -14,6 +14,7 @@ afterEach(async () => {
   await t.app.close();
 });
 const january = { period: 202601 };
+const generationOptions = { fingerprint: '0'.repeat(64), voucherTypeId: 1, confirmed: true };
 const readJanuary = () => readInventory(t.app.svcFor('costing'), 202601);
 async function seed() {
   await t.opening();
@@ -201,9 +202,9 @@ describe('w_cb_hz / w_cb_fgz：真实账套试算与反操作', () => {
       /权限/,
     );
     await expect(viewer.voucherDocuments()).rejects.toThrow(/权限/);
-    await expect(viewer.generateVoucher({ documentId: 1, purpose: 'receipt' })).rejects.toThrow(
-      /权限/,
-    );
+    await expect(
+      viewer.generateVoucher({ ...generationOptions, documentId: 1, purpose: 'receipt' }),
+    ).rejects.toThrow(/权限/);
     const none = caller(t.app, await t.app.addUser('none'));
     await expect(none.preview(january)).rejects.toThrow(/权限/);
     await expect(none.worksheets()).rejects.toThrow(/权限/);
@@ -234,7 +235,7 @@ describe('w_cb_pz / w_ck_ck1 / w_ck_rk1：实际单据凭证接口', () => {
     await expect(t.app.svc.vouchers.delete(voucher.id)).rejects.toThrow(/成本核算/);
     await expect(t.app.svcFor('costing').vouchers.delete(voucher.id)).rejects.toThrow(/审核/);
     await expect(
-      t.api.generateVoucher({ documentId: receipt.id, purpose: 'receipt' }),
+      t.api.generateVoucher({ ...generationOptions, documentId: receipt.id, purpose: 'receipt' }),
     ).rejects.toMatchObject({
       cause: { data: { code: 'COSTING_VOUCHER_NOT_IMPLEMENTED' } },
     });
@@ -276,6 +277,7 @@ describe('w_cb_pz / w_ck_ck1 / w_ck_rk1：实际单据凭证接口', () => {
     expect((await t.app.svc.vouchers.list()).total).toBe(0);
     await expect(
       t.api.generateVoucher({
+        ...generationOptions,
         documentId: receipt.id,
         purpose: 'receipt',
         taxAccountId: t.ids.inputTax,

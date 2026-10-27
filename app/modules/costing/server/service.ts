@@ -24,8 +24,8 @@ import { commitCalculation, cancelCalculation, listBatches } from './formal';
 export function voucherGenerationUnavailable(): never {
   throw new BusinessError({
     code: 'COSTING_VOUCHER_NOT_IMPLEMENTED',
-    message: '出入库凭证真实生成尚未实现，不能转入总账',
-    hint: '当前可正式发布成本核算并预览凭证；凭证生成、删除和重生成将在后续切片提供',
+    message: '入库和销售收入凭证真实生成尚未实现，不能转入总账',
+    hint: '当前可生成正式出库成本凭证；入库和销售收入用途仅提供预览',
   });
 }
 

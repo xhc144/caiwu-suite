@@ -3,7 +3,7 @@ import { defineManifest } from '@caiwu/core';
 export default defineManifest({
   id: 'costing',
   name: '成本核算',
-  description: '单月正式成本发布与撤销、收入成本利润及出入库凭证预览',
+  description: '单月正式成本发布与撤销、出库成本制证与撤销、收入成本利润',
   products: ['chengben'],
   dependsOn: ['inventory'],
   permissions: [
@@ -22,7 +22,7 @@ export default defineManifest({
     ...(['receipt', 'revenue', 'cost'] as const).map((type) => ({
       type,
       name: type === 'receipt' ? '入库凭证' : type === 'revenue' ? '销售收入凭证' : '出库成本凭证',
-      path: '/vouchers?id={id}',
+      path: `/vouchers?id={id}&purpose=${type}`,
     })),
   ],
 });

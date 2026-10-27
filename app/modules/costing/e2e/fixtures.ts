@@ -74,3 +74,23 @@ export async function cancelLatest(page: Page) {
   await page.getByRole('button', { name: '撤销正式核算', exact: true }).click();
   await page.getByRole('button', { name: '确认撤销', exact: true }).click();
 }
+
+export async function costVoucherPreview(page: Page, documentId: number) {
+  await page.goto(`/m/costing/vouchers?id=${documentId}&purpose=cost`);
+  await page.getByRole('button', { name: '预览凭证', exact: true }).click();
+  await expect(page.getByText('预览借方 10.00；贷方 10.00')).toBeVisible();
+  await page.getByRole('combobox', { name: '凭证类型', exact: true }).click();
+  await page
+    .locator('.ant-select-dropdown:visible .ant-select-item-option-content')
+    .first()
+    .click();
+}
+
+export async function confirmCostVoucher(page: Page) {
+  await page.getByRole('button', { name: '生成成本凭证', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '确认生成实际成本凭证', exact: true });
+  await expect(dialog).toContainText('自动编号并锁定成本用途');
+  await dialog.getByRole('button', { name: '确认生成待审核凭证', exact: true }).click();
+  await expect(page.getByText(/已生成成本凭证 .*金额 10.00，待审核/)).toBeVisible();
+  await expect(dialog).toBeHidden();
+}

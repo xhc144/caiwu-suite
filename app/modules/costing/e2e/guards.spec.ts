@@ -7,10 +7,18 @@ import { createCoreServices, loadServiceUser, type CoreServices } from '@caiwu/c
 import { sql } from '@caiwu/db';
 import { createRuntime } from '@caiwu/server-kit';
 import { voucherInputFromSpec } from '@caiwu/testkit';
+import { callApi } from '@caiwu/testkit/e2e';
 import { spawnLocalServer } from '@caiwu/testkit/local-server';
 import { serverModules } from '../../../.generated/server-modules';
 import { costingService } from '../server/service';
-import { seed, preview, confirmPublish, cancelLatest } from './fixtures';
+import {
+  seed,
+  preview,
+  confirmPublish,
+  cancelLatest,
+  costVoucherPreview,
+  confirmCostVoucher,
+} from './fixtures';
 
 type GuardApp = Awaited<ReturnType<typeof seed>> & {
   page: Page;
@@ -198,4 +206,88 @@ test('w_cb_pz：历史断链时成本未知', async ({ guarded: t }) => {
       .getByText('正式成本批次链与库存控制锚点不一致'),
   ).toBeVisible();
   expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202604 })).toEqual(source);
+});
+
+for (const status of ['audited', 'posted'] as const) {
+  test(`w_cb_pz：真实生成的${status === 'audited' ? '已审核' : '已过账'}凭证禁止撤销和覆盖`, async ({
+    guarded: t,
+  }) => {
+    await preview(t.page);
+    await confirmPublish(t.page);
+    await expect(t.page.getByText(/202601 正式成本核算已发布/)).toBeVisible();
+    await costVoucherPreview(t.page, t.issue.id);
+    await confirmCostVoucher(t.page);
+    const v = await t.withCore(async (svc) => {
+      const list = await svc.vouchers.list({
+        sourceModule: 'costing',
+        sourceType: 'cost',
+        sourceId: String(t.issue.id),
+      });
+      const id = list.items[0]!.id;
+      await svc.vouchers.changeStatus({ ids: [id], to: 'audited' });
+      if (status === 'posted') await svc.vouchers.changeStatus({ ids: [id], to: 'posted' });
+      return (await svc.vouchers.get(id))!;
+    });
+    const before = await t.get<InventorySnapshot>('costingSnapshot', { period: 202612 });
+    await t.page.reload();
+    await expect(
+      t.page.getByText(
+        `已有成本凭证 ${v.displayNo} · ${status === 'audited' ? '已审核' : '已过账'}`,
+      ),
+    ).toBeVisible();
+    await expect(t.page.getByRole('button', { name: '撤销成本凭证', exact: true })).toBeDisabled();
+    const doc = before.documents.find((d) => d.id === t.issue.id)!;
+    await expect(
+      callApi(
+        t.request,
+        'm.costing.cancelCostVoucher',
+        {
+          bookId: t.bookId,
+          documentId: doc.id,
+          documentRevision: doc.revision,
+          voucherId: v.id,
+          voucherRevision: v.revision,
+          confirmed: true,
+        },
+        { token: t.token, method: 'POST' },
+      ),
+    ).rejects.toThrow(/审核|过账/);
+    expect(await t.withCore((svc) => svc.vouchers.get(v.id))).toEqual(v);
+    expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202612 })).toEqual(before);
+  });
+}
+
+test('w_cb_pz：真实HTTP制证末步故障不留凭证和来源锁，移除合成故障后可明确重试', async ({
+  guarded: t,
+}) => {
+  await preview(t.page);
+  await confirmPublish(t.page);
+  await expect(t.page.getByText(/202601 正式成本核算已发布/)).toBeVisible();
+  await costVoucherPreview(t.page, t.issue.id);
+  const before = await t.get<InventorySnapshot>('costingSnapshot', { period: 202612 });
+  await t.withCore(async (svc) => {
+    await sql`CREATE TRIGGER costing_e2e_failure BEFORE INSERT ON operation_log WHEN NEW.action='costing.voucher.generate' BEGIN SELECT RAISE(ABORT,'合成制证故障'); END`.execute(
+      svc.db,
+    );
+  });
+  try {
+    await t.page.getByRole('button', { name: '生成成本凭证', exact: true }).click();
+    await t.page
+      .getByRole('dialog')
+      .getByRole('button', { name: '确认生成待审核凭证', exact: true })
+      .click();
+    await expect(t.page.getByRole('dialog').getByText(/合成制证故障/)).toBeVisible();
+    expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202612 })).toEqual(before);
+    expect(await t.withCore((svc) => svc.vouchers.list())).toMatchObject({ total: 0 });
+  } finally {
+    await t.withCore(async (svc) => {
+      await sql`DROP TRIGGER costing_e2e_failure`.execute(svc.db);
+    });
+  }
+  await t.page.getByRole('dialog').getByRole('button', { name: '返回核对', exact: true }).click();
+  await confirmCostVoucher(t.page);
+  expect(await t.withCore((svc) => svc.vouchers.list())).toMatchObject({ total: 1 });
+  expect(
+    (await t.get<InventorySnapshot>('costingSnapshot', { period: 202612 })).voucherSources,
+  ).toHaveLength(1);
 });
