@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "nonprofit-2026",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "民间非营利组织会计制度（2026）",
   "regime": "nonprofit",
-  "description": "覆盖56项一级科目；仅提供科目数据，未提供制度规定的明细核算、自动结转及法定报表。保留3101非限定性、3102限定性净资产；未实现限定性捐赠管理及首次执行转换。",
+  "description": "适用2026年1月1日起《民间非营利组织会计制度》；56项一级科目，1121/1141/2202/2203启用必填往来对象。未提供限定/非限定等规定明细、自动结转及法定报表；未实现限定性捐赠管理及首次执行转换。仅新建账套加载，不自动修改已有账套。",
   "order": 5,
   "status": "current",
   "codeScheme": "4-2-2",
@@ -127,10 +127,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号7；「1121 应收账款」科目说明PDF第64–65页",
-      "needsReview": false
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号7；「1121 应收账款」科目说明PDF第64–65页；PDF第65页第四项按债务人设置明细账，以必填客户/供应商辅助项记录往来对象（应用映射，未预设业务对象）",
+      "needsReview": false,
+      "partner": true
     },
     {
       "code": "1122",
@@ -166,10 +172,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号10；「1141 预付账款」科目说明PDF第68–69页",
-      "needsReview": false
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号10；「1141 预付账款」科目说明PDF第68–69页；PDF第69页第四项按供应单位设置明细账，以必填客户/供应商辅助项记录往来对象（应用映射，未预设业务对象）",
+      "needsReview": false,
+      "partner": true
     },
     {
       "code": "1201",
@@ -413,10 +425,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号29；「2202 应付账款」科目说明PDF第95–96页",
-      "needsReview": false
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号29；「2202 应付账款」科目说明PDF第95–96页；PDF第96页第三项按债权人设置明细账，以必填客户/供应商辅助项记录往来对象（应用映射，未预设业务对象）",
+      "needsReview": false,
+      "partner": true
     },
     {
       "code": "2203",
@@ -426,10 +444,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号30；「2203 预收账款」科目说明PDF第96–98页",
-      "needsReview": false
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号30；「2203 预收账款」科目说明PDF第96–98页；PDF第96页第三项按购货单位设置明细账，以必填客户/供应商辅助项记录往来对象（应用映射，未预设业务对象）",
+      "needsReview": false,
+      "partner": true
     },
     {
       "code": "2204",

@@ -3,10 +3,10 @@ import {
   BusinessError,
   CreateBookInputSchema,
   parseCodeScheme,
-  templateProblems,
   type AccountingTemplate,
   type BookSummary,
 } from '@caiwu/core';
+import { mapChart } from './chart-scheme';
 
 export const NamesSchema = z.object({
   name: z.string().trim().min(1, '账套名称不能为空').max(60, '账套名称最多60字'),
@@ -14,6 +14,7 @@ export const NamesSchema = z.object({
 });
 export const WizardSchema = CreateBookInputSchema.extend({
   ...NamesSchema.shape,
+  baseCurrency: z.literal('CNY', '请选择人民币本位币'),
   codeScheme: z.string().trim().min(1, '请设置科目级次'),
   adminCode: z
     .string()
@@ -26,12 +27,7 @@ export type WizardInput = z.input<typeof WizardSchema>;
 export function validateScheme(template: AccountingTemplate, text: string) {
   try {
     const scheme = parseCodeScheme(text);
-    const problems = templateProblems(template, scheme);
-    // 一级不能被解释为多段、也不能折叠原有上下级。
-    const original = parseCodeScheme(template.codeScheme);
-    if (scheme[0] !== original[0])
-      problems.unshift(`科目 ${template.accounts[0]!.code} 的一级编码需要 ${original[0]} 位`);
-    if (problems.length) throw new Error(problems.join('；'));
+    mapChart(template, text);
     return scheme;
   } catch (e) {
     throw new BusinessError({
