@@ -2,6 +2,37 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import ExcelJS from 'exceljs';
 
+async function confirmOpeningImport(page: Page) {
+  const confirmation = page.locator('.ant-popconfirm:visible').filter({
+    hasText: '张有效期初卡片及附属设备入库？所有行须通过校验。',
+  });
+  await expect(confirmation).toBeVisible();
+  // CI trace 中入场动画尚未结束时普通点击完成，却没有发出 importConfirm。
+  await expect
+    .poll(() =>
+      confirmation.evaluate(
+        (element) =>
+          getComputedStyle(element).transform === 'none' &&
+          !/ant-zoom-big-(appear|enter)/.test(element.getAttribute('class') ?? '') &&
+          !element
+            .getAnimations({ subtree: true })
+            .some((animation) => animation.playState === 'running'),
+      ),
+    )
+    .toBe(true);
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === '/trpc/m.fixed-assets.importConfirm',
+      { timeout: 5_000 },
+    ),
+    confirmation.getByRole('button', { name: '确认', exact: true }).click(),
+  ]);
+  expect(await response.finished()).toBeNull();
+  await expect(confirmation).not.toBeVisible();
+}
+
 async function references(request: APIRequestContext, token: string) {
   const accounts = await callApi<{ id: number; code: string }[]>(
     request,
@@ -91,7 +122,7 @@ test('W2-19 w_xt_kgzb_zc/w_zcgl_kp_fssb：真实双表Excel→逐行预览→原
   await expect(page.getByRole('row', { name: /0001 旧账设备/ })).toContainText('待导入');
   await expect(page.getByRole('row', { name: /000A 旧账硬盘/ })).toContainText('原始配件说明');
   await page.getByRole('button', { name: '确认期初入库', exact: true }).click();
-  await page.getByRole('button', { name: '确认', exact: true }).last().click();
+  await confirmOpeningImport(page);
   await expect(page.getByText('导入 1 张，跳过 0 张', { exact: true })).toBeVisible();
   const cards = await get<{ id: number; code: string }[]>('list');
   expect(cards.map((c) => c.code)).toEqual(['0001']);
@@ -118,13 +149,13 @@ test('W2-19 w_xt_kgzb_zc/w_zcgl_kp_fssb：真实双表Excel→逐行预览→原
   await page.getByLabel('选择期初 Excel').setInputFiles((await exportedFile.path())!);
   await expect(page.getByRole('row', { name: /0001 旧账设备/ })).toContainText('已存在，跳过');
   await page.getByRole('button', { name: '确认期初入库', exact: true }).click();
-  await page.getByRole('button', { name: '确认', exact: true }).last().click();
+  await confirmOpeningImport(page);
   await expect(page.getByText('导入 0 张，跳过 1 张', { exact: true })).toBeVisible();
   workbook.getWorksheet('附属设备')!.getRow(2).getCell(5).value = '0.3';
   await upload();
   await expect(page.getByRole('row', { name: /0001 旧账设备/ })).toContainText('禁止覆盖');
   await page.getByRole('button', { name: '确认期初入库', exact: true }).click();
-  await page.getByRole('button', { name: '确认', exact: true }).last().click();
+  await confirmOpeningImport(page);
   await expect(page.getByText('导入文件存在逐行错误', { exact: true })).toBeVisible();
   expect(await get('detail', { id: cards[0]!.id })).toEqual(old);
   await page.getByLabel('选择期初 Excel').setInputFiles([]);

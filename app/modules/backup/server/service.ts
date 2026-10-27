@@ -888,8 +888,18 @@ export function backupService(ctx: Context) {
               throw e;
             },
           );
+          for (const suffix of ['-wal', '-shm', '-journal']) {
+            const sidecar = await lstat(`${target}${suffix}`).then(
+              () => true,
+              (error: NodeJS.ErrnoException) => {
+                if (error.code === 'ENOENT') return false;
+                throw error;
+              },
+            );
+            if (sidecar) throw fail('COLLISION', '目标新 ID 已有数据库辅助文件，禁止发布或认领');
+          }
           if (existingStat) {
-            if (!existingStat.isFile() || existingStat.isSymbolicLink())
+            if (!existingStat.isFile() || existingStat.isSymbolicLink() || existingStat.nlink !== 1)
               throw fail('COLLISION', '目标新 ID 已被其他文件或符号链接占用，禁止覆盖');
             // 只对本计划已完成暂存的目标恢复登记，不能认领同名不相关文件。
             let existing: Database.Database | undefined;

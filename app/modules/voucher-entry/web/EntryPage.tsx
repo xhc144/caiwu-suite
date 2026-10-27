@@ -21,6 +21,7 @@ import {
 import {
   isEntryDate,
   balanceCell,
+  changeEntryDate,
   blankLine,
   monthDistance,
   type Entry,
@@ -30,6 +31,8 @@ import { api } from './api';
 import { confirm } from './dialogs';
 import LineGrid, { LineDetails } from './LineGrid';
 import PasteDialog from './PasteDialog';
+import CalculatorDialog from './CalculatorDialog';
+import { useSaveActivity } from './useSaveActivity';
 
 type Bootstrap = inferRouterOutputs<EntryRouter>['bootstrap'];
 const inputOf = (v: Voucher): Entry => ({
@@ -143,6 +146,10 @@ function Editor({
   const [active, setActive] = useState(0);
   const [details, setDetails] = useState(false);
   const [paste, setPaste] = useState(false);
+  const [calculator, setCalculator] = useState<{
+    line: number;
+    side: 'debit' | 'credit' | null;
+  } | null>(null);
   const [templateOpen, setTemplateOpen] = useState(false);
   const templateEpoch = useRef(0);
   useEffect(
@@ -168,7 +175,7 @@ function Editor({
   const frame = useRef<HTMLDivElement>(null);
   const amountSide = useRef<'debit' | 'credit'>('debit');
   const moneyFocused = useRef(false);
-  const pending = useRef(false);
+  const { pending, saving, startSaving, finishSaving } = useSaveActivity();
   const readonly =
     !ready ||
     !canEdit ||
@@ -275,9 +282,11 @@ function Editor({
       row?.scrollIntoView({ block: 'nearest' });
     }, 0);
   };
-  const save = (draft: boolean): Promise<boolean> => {
+  const save = (draft: boolean, automatic = false): Promise<boolean> => {
     const operation = async () => {
       if (readonly || !ready || pending.current) return false;
+      // 排队期间前一次保存可能已清除 dirty；仅自动保存跳过，手动草稿仍须执行。
+      if (automatic && live.current.version === live.current.savedVersion) return true;
       const snapshot = { ...live.current.data, draft };
       const version = live.current.version;
       const current = live.current.header;
@@ -322,7 +331,7 @@ function Editor({
         }
       }
       setStatus('保存中');
-      pending.current = true;
+      startSaving();
       try {
         const result = await persist.mutateAsync({
           key: editorKey,
@@ -381,7 +390,7 @@ function Editor({
         }
         return false;
       } finally {
-        pending.current = false;
+        finishSaving();
       }
     };
     const task = tail.current.then(operation, operation);
@@ -393,7 +402,7 @@ function Editor({
   useEffect(() => {
     if (!ready || readonly || !changed || leave) return;
     const timer = setTimeout(() => {
-      if (live.current.version !== live.current.savedVersion) void saveRef.current(true);
+      if (live.current.version !== live.current.savedVersion) void saveRef.current(true, true);
     }, 850);
     return () => clearTimeout(timer);
   }, [changed, ready, readonly, leave]);
@@ -412,11 +421,10 @@ function Editor({
     };
     window.addEventListener('beforeunload', listener);
     return () => window.removeEventListener('beforeunload', listener);
-  }, []);
+  }, [pending]);
   useUnsavedChanges({
     title: header?.displayNo ? `凭证 ${header.displayNo}` : '凭证录入',
-    dirty:
-      ready && !readonly && (live.current.version !== live.current.savedVersion || pending.current),
+    dirty: ready && !readonly && (live.current.version !== live.current.savedVersion || saving),
     version: live.current.version,
     save: () => saveRef.current(true),
     discard: async () => {
@@ -502,7 +510,7 @@ function Editor({
     };
     document.addEventListener('click', guard, true);
     return () => document.removeEventListener('click', guard, true);
-  }, [tab.active]);
+  }, [tab.active, pending]);
   useEffect(() => {
     if (!tab.active) return;
     const listener = (e: KeyboardEvent) => {
@@ -511,6 +519,7 @@ function Editor({
         e.keyCode === 229 ||
         details ||
         paste ||
+        calculator ||
         templateOpen ||
         templateName ||
         leave
@@ -550,6 +559,11 @@ function Editor({
         h.requestLeave(() => {
           void navigate(`/m/print-settings?voucherId=${live.current.header?.id ?? ''}`);
         });
+        return;
+      }
+      if (matchHotkey(e, 'F9')) {
+        stop();
+        setCalculator({ line: active, side: moneyFocused.current ? amountSide.current : null });
         return;
       }
       if (readonly) return;
@@ -609,6 +623,7 @@ function Editor({
     active,
     details,
     paste,
+    calculator,
     templateOpen,
     templateName,
     leave,
@@ -753,6 +768,16 @@ function Editor({
           </Button>
           <Button disabled={readonly} onClick={() => setPaste(true)}>
             Excel 粘贴
+          </Button>
+          <Button
+            onClick={() =>
+              setCalculator({
+                line: active,
+                side: moneyFocused.current ? amountSide.current : null,
+              })
+            }
+          >
+            计算器（F9）
           </Button>
           {header && (
             <Button
@@ -917,23 +942,7 @@ function Editor({
               disabled={readonly}
               value={data.date}
               placeholder="YYYY-MM-DD"
-              onChange={(e) =>
-                change({
-                  ...data,
-                  date: e.target.value,
-                  number:
-                    header?.period !==
-                    (isEntryDate(e.target.value) ? periodOfDate(e.target.value) : 0)
-                      ? null
-                      : data.number,
-                  lines:
-                    isEntryDate(e.target.value) &&
-                    isEntryDate(data.date) &&
-                    periodOfDate(e.target.value) !== periodOfDate(data.date)
-                      ? data.lines.map((l) => (l.currency ? { ...l, exchangeRate: null } : l))
-                      : data.lines,
-                })
-              }
+              onChange={(e) => change(changeEntryDate(live.current.data, e.target.value))}
             />
           </label>
           <label>
@@ -1062,6 +1071,35 @@ function Editor({
               setPaste(false);
               focus(0, 'summary');
             }}
+          />
+        )}
+        {calculator && (
+          <CalculatorDialog
+            onClose={() => {
+              const { line, side } = calculator;
+              setCalculator(null);
+              if (side) focus(line, side);
+            }}
+            target={
+              calculator.side
+                ? `第${calculator.line + 1}行${calculator.side === 'debit' ? '借方' : '贷方'}`
+                : undefined
+            }
+            onApply={
+              !readonly && calculator.side
+                ? (cents) => {
+                    const { line, side } = calculator;
+                    change({
+                      ...live.current.data,
+                      lines: live.current.data.lines.map((value, index) =>
+                        index === line ? { ...value, [side!]: cents } : value,
+                      ),
+                    });
+                    setCalculator(null);
+                    focus(line, side!);
+                  }
+                : undefined
+            }
           />
         )}
         <Modal

@@ -13,6 +13,7 @@ import {
   today,
   VoucherLineInputSchema,
   type VoucherLineInput,
+  type BalanceQuery,
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
@@ -291,7 +292,7 @@ export function entryService(svc: CoreServices) {
         last: index >= 0 && index < rows.length - 1 ? rows.at(-1)!.id : null,
       };
     },
-    async context(accountId: number, date: string) {
+    async context(accountId: number, date: string, dimensions: BalanceQuery['dimensions'] = {}) {
       requireView();
       const a = await svc.accounts.require(accountId);
       const period = periodOfDate(date);
@@ -303,11 +304,16 @@ export function entryService(svc: CoreServices) {
           includeUnposted: true,
           includeZero: true,
           rollup: false,
+          dimensions,
+          currency: a.currency ?? undefined,
         }),
         a.currency ? svc.reference.exchangeRate(a.currency, period) : Promise.resolve(null),
       ]);
+      const balance = balances.find((b) => b.accountId === accountId);
       return {
-        balance: balances.find((b) => b.accountId === accountId)?.closing ?? 0,
+        balance: balance?.closing ?? 0,
+        fcBalance: balance?.fcClosing ?? 0,
+        quantityBalance: balance?.qtyClosing ?? '0',
         period,
         includeUnposted: true,
         rate,

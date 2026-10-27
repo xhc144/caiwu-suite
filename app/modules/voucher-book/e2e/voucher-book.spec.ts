@@ -62,12 +62,15 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
     const reverse = (await t.app.svc.vouchers.list({ sourceModule: 'voucher-book' })).items[0]!;
     expect(reverse.reversalOfId).toBe(original.id);
     expect(reverse.debitTotal).toBe(-1);
+    expect(reverse.date).toBe('2026-02-01');
     expect(await t.app.svc.vouchers.get(original.id)).toEqual(original);
     const reverseRow = page
       .getByRole('row')
+      .filter({ hasText: '独立凭证1' })
       .filter({ has: page.getByRole('cell', { name: reverse.date, exact: true }) })
-      .filter({ has: page.getByRole('cell', { name: reverse.displayNo, exact: true }) });
-    await expect(reverseRow).toContainText('红字冲销');
+      .filter({ has: page.getByRole('cell', { name: reverse.displayNo, exact: true }) })
+      .filter({ has: page.getByText('红字冲销', { exact: true }) });
+    await expect(reverseRow).toHaveCount(1);
     await expect(reverseRow).toContainText('-0.01');
     await reverseRow.getByRole('button', { name: '浏览', exact: true }).click();
     dialog = page.getByRole('dialog', { name: '凭证浏览', exact: true });
@@ -78,15 +81,17 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
     await page
       .getByRole('row')
       .filter({ hasText: '独立凭证1' })
-      .first()
+      .filter({ has: page.getByRole('cell', { name: original.date, exact: true }) })
       .getByRole('button', { name: '浏览', exact: true })
       .click();
-    dialog = page.getByRole('dialog', { name: '凭证浏览', exact: true });
-    const reverseLink = dialog.getByRole('link', { name: /^查看冲销凭证/ });
+    const reverseLink = page
+      .getByRole('dialog', { name: '凭证浏览', exact: true })
+      .getByRole('link', {
+        name: `查看冲销凭证 · ${reverse.date} · -0.01`,
+        exact: true,
+      });
     await expect(reverseLink).toBeVisible();
     await expect(reverseLink).toHaveAttribute('href', `/m/voucher-book?id=${reverse.id}`);
-    await expect(reverseLink).toContainText(reverse.date);
-    await expect(reverseLink).toContainText('-0.01');
   } finally {
     await t.close();
   }

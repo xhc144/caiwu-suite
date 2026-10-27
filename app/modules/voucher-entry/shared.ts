@@ -42,6 +42,31 @@ export const EntrySchema = VoucherInputSchema.omit({
   })
   .strict();
 export type Entry = z.input<typeof EntrySchema>;
+/** 日期逐字编辑经过无效中间态时也清除旧期间汇率，保留原币和本币供核对。 */
+export function changeEntryDate(data: Entry, date: string): Entry {
+  const valid = isEntryDate(date);
+  const samePeriod =
+    valid && isEntryDate(data.date) && periodOfDate(date) === periodOfDate(data.date);
+  return {
+    ...data,
+    date,
+    number: samePeriod ? data.number : null,
+    lines: samePeriod
+      ? data.lines
+      : data.lines.map((line) => (line.currency ? { ...line, exchangeRate: null } : line)),
+  };
+}
+
+/** 带入期间汇率时同步折算；保留借贷侧和红字符号。 */
+export function applyExchangeRate(line: VoucherLineInput, rate: string): VoucherLineInput {
+  const patch = { ...line, exchangeRate: rate };
+  if (line.fcAmount == null) return patch;
+  const amount = foreignAmount(line.fcAmount, rate);
+  return {
+    ...patch,
+    ...(line.credit || line.entrySide === 'credit' ? { credit: amount } : { debit: amount }),
+  };
+}
 export const SaveSchema = z.object({
   key: z.string().min(1).max(100),
   id: z.number().int().positive().optional(),

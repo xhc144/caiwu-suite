@@ -43,6 +43,8 @@ jobs:
           cache-dependency-path: app/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      - name: Install PDF inspection tools
+        run: sudo apt-get install --yes --no-install-recommends poppler-utils
       - run: pnpm check
       - name: 上传 E2E 报告
         if: failure()

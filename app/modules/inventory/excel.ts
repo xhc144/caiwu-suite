@@ -1,11 +1,12 @@
-import { BusinessError } from '@caiwu/core';
+import { BusinessError, centsToYuan } from '@caiwu/core';
+import { openingCents } from './opening';
 
 export type InventoryImportKind = 'products' | 'opening' | 'document';
 type Column = {
   key: string;
   title: string;
   aliases?: readonly string[];
-  type?: 'taxBasis' | 'disabled' | 'id';
+  type?: 'taxBasis' | 'disabled' | 'id' | 'openingBasis' | 'cents';
   required?: boolean;
 };
 /** One column contract for the import guide, downloadable template and round-trip export. */
@@ -28,7 +29,9 @@ export const INVENTORY_IMPORT_COLUMNS: Record<InventoryImportKind, readonly Colu
   opening: [
     { key: 'productCode', title: '产品编号', required: true },
     { key: 'quantity', title: '数量', required: true },
-    { key: 'unitPrice', title: '单价（元）', aliases: ['单价'], required: true },
+    { key: 'valueBasis', title: '保存口径', type: 'openingBasis' },
+    { key: 'unitPrice', title: '单价（元）', aliases: ['单价'] },
+    { key: 'amountCents', title: '金额（元）', aliases: ['金额'], type: 'cents' },
   ],
   document: [
     { key: 'productCode', title: '产品编号', required: true },
@@ -60,9 +63,20 @@ export function requireImportKeys(kind: InventoryImportKind, row: Record<string,
   if (kind === 'document' && typeof row.priceIncludesTax !== 'boolean') {
     inputError('含税口径必须明确为“是”或“否”，不能留空或使用其他值');
   }
+  if (kind === 'opening' && row.amountCents !== undefined && row.valueBasis !== 'amount')
+    inputError('填写金额时必须明确选择“直接金额”口径，不能默认为数量×单价');
 }
 function readCell(column: Column, value: string | number | boolean | null): unknown {
   const s = String(value ?? '').trim();
+  if (column.type === 'openingBasis') {
+    if (s === '数量×单价' || s === 'unitPrice') return 'unitPrice';
+    if (s === '直接金额' || s === 'amount') return 'amount';
+    return inputError('保存口径必须明确填写“数量×单价”或“直接金额”');
+  }
+  if (column.type === 'cents') {
+    if (!s) return undefined;
+    return openingCents(s);
+  }
   if (column.type === 'taxBasis') {
     if (value === true || s === '是' || s === 'true') return true;
     if (value === false || s === '否' || s === 'false') return false;
@@ -123,7 +137,14 @@ export async function readInventoryXlsx(data: ArrayBuffer, kind: InventoryImport
       try {
         if (value != null && typeof value === 'object')
           inputError(`第 ${i + 1} 列含公式或复合单元格，请粘贴为纯值`);
-        out[column.key] = readCell(column, value as string | number | boolean | null);
+        const cell = readCell(column, value as string | number | boolean | null);
+        // An inactive opening input stays absent, never coerced to zero.
+        if (
+          kind === 'opening' &&
+          (cell === undefined || (column.key === 'unitPrice' && cell === ''))
+        )
+          continue;
+        out[column.key] = cell;
       } catch (e) {
         errors.push({ row: index, message: e instanceof Error ? e.message : '数据错误' });
       }
@@ -141,6 +162,13 @@ export function importExportColumns(kind: InventoryImportKind) {
       title: c.title,
       value: (row: Record<string, unknown>): string | number | null => {
         const value = row[c.key];
+        if (kind === 'opening') {
+          const basis = row.valueBasis ?? 'unitPrice';
+          if (c.type === 'openingBasis') return basis === 'amount' ? '直接金额' : '数量×单价';
+          if (c.key === 'unitPrice' && basis === 'amount') return null;
+          if (c.type === 'cents')
+            return basis === 'amount' && typeof value === 'number' ? centsToYuan(value) : null;
+        }
         if (c.type === 'taxBasis') return value === true ? '是' : value === false ? '否' : null;
         if (c.type === 'disabled') return value === true ? '停用' : value === false ? '启用' : null;
         return typeof value === 'string' || typeof value === 'number' ? value : null;

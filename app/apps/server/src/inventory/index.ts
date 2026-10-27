@@ -38,7 +38,7 @@ function removeDocument(
   });
 }
 export function withInventoryProvider<R extends ServerModule>(module: R): R {
-  if (module.manifest.id !== 'inventory') return module;
+  if (module.manifest.id !== 'inventory' || module.providers?.inventory) return module;
   const manifest = {
     ...module.manifest,
     permissions: [

@@ -53,4 +53,23 @@ describe('w_zjgl / w_zjgl_fb：打印实际查询结果', () => {
       /没有记录/,
     );
   });
+  it('w_zjgl_cx：明细及分布打印都保留实际应用的多条件，并转义条件文字', () => {
+    for (const kind of ['detail', 'distribution'] as const) {
+      const output = depreciationPrint(
+        result,
+        {
+          ...range,
+          conditions: [
+            { field: 'name', op: 'contains', value: '<script>&' },
+            { field: 'amount', op: 'gt', value: '1' },
+          ],
+        },
+        kind,
+      );
+      expect(output.html).toContain(
+        '全部同时满足：名称 含有 &lt;script&gt;&amp;；折旧额（整数分） 大于 1',
+      );
+      expect(output.html).not.toContain('<script>');
+    }
+  });
 });
