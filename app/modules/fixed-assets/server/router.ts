@@ -134,6 +134,7 @@ export const fixedAssetsRouter = m.router({
     .mutation(({ ctx, input }) => operations(ctx.svc).undoDisposal(input.id, input.confirm)),
   query: view.input(QuerySchema).query(({ ctx, input }) => operations(ctx.svc).query(input)),
   reports: view.input(ReportSchema).query(({ ctx, input }) => operations(ctx.svc).reports(input)),
+  exportOpening: view.query(({ ctx }) => operations(ctx.svc).exportOpening()),
   importPreview: p
     .meta({ permission: 'fixed-assets.import' })
     .input(z.object({ rows: z.array(ImportRowSchema).min(1).max(5000) }))

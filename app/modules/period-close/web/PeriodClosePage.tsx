@@ -56,6 +56,7 @@ export default function PeriodClosePage() {
   const [numberSecond, setNumberSecond] = useState(false);
   const [numberText, setNumberText] = useState('');
   const [annualPreview, setAnnualPreview] = useState<Output['yearEndPreview'] | null>(null);
+  const [rangePreview, setRangePreview] = useState<Output['closeRangePreview'] | null>(null);
   const [reversePlan, setReversePlan] = useState<Output['reverseYearPreview'] | null>(null);
   const [backup, setBackup] = useState<Output['backupReverseYear'] | null>(null);
   const [reverseText, setReverseText] = useState('');
@@ -74,6 +75,14 @@ export default function PeriodClosePage() {
   );
   const unpost = useMutation(api.unpost.mutationOptions({ onSuccess: done }));
   const close = useMutation(api.close.mutationOptions({ onSuccess: done }));
+  const closeRange = useMutation(
+    api.closeRange.mutationOptions({
+      onSuccess: (r) => {
+        setRangePreview(null);
+        done(r);
+      },
+    }),
+  );
   const reopen = useMutation(api.reopen.mutationOptions({ onSuccess: done }));
   const generate = useMutation(
     api.generate.mutationOptions({
@@ -156,11 +165,13 @@ export default function PeriodClosePage() {
     enabled: false,
   });
   const numberQuery = useQuery({ ...api.renumberPreview.queryOptions({ period }), enabled: false });
+  const rangeQuery = useQuery({ ...api.closeRangePreview.queryOptions(range), enabled: false });
   const busy =
     post.isPending ||
     unpost.isPending ||
     generate.isPending ||
     close.isPending ||
+    closeRange.isPending ||
     reopen.isPending ||
     renumber.isPending ||
     yearEnd.isPending ||
@@ -242,6 +253,14 @@ export default function PeriodClosePage() {
           >
             <Button disabled={busy}>反结账</Button>
           </Popconfirm>
+        )}
+        {canClose && (
+          <Button
+            disabled={busy}
+            onClick={() => void rangeQuery.refetch().then((r) => r.data && setRangePreview(r.data))}
+          >
+            连续结账预览
+          </Button>
         )}
         {canPost && canGenerate && canClose && (
           <Popconfirm
@@ -424,6 +443,15 @@ export default function PeriodClosePage() {
         title="结转设置与执行顺序"
         extra={canEdit && <Button onClick={() => setEditing('new')}>新增结转类型</Button>}
       >
+        <Button
+          disabled={busy}
+          onClick={() => {
+            setSelection(null);
+            setPreview(null);
+          }}
+        >
+          全选启用结转类型
+        </Button>
         <p style={{ color: 'var(--ant-color-text-secondary)' }}>
           损益科目按本账套类别识别，转入科目由用户显式设置；自定义按末级科目余额比例转出。编辑、删除、启停已有来源的类型须先合法撤销来源凭证。
         </p>
@@ -555,7 +583,9 @@ export default function PeriodClosePage() {
                     {byId.get(l.accountId!)?.code} {byId.get(l.accountId!)?.name} 借{' '}
                     {formatMoney(l.debit)} 贷 {formatMoney(l.credit)} {l.currency ?? ''}{' '}
                     {l.fcAmount != null ? formatMoney(l.fcAmount) : ''}{' '}
+                    {l.exchangeRate ? `汇率 ${l.exchangeRate}` : ''}{' '}
                     {l.quantity && l.quantity !== '0' ? `数量 ${l.quantity}` : ''}{' '}
+                    {l.unitPrice ? `本币单价 ${l.unitPrice}` : ''}{' '}
                     {Object.entries(l.dimensions ?? {})
                       .filter(([, id]) => id != null)
                       .map(
@@ -572,6 +602,45 @@ export default function PeriodClosePage() {
         <Checkbox checked={ordered} onChange={(e) => setOrdered(e.target.checked)}>
           已确认以上顺序、逐步更新后的基数和分录
         </Checkbox>
+      </Modal>
+      <Modal
+        open={!!rangePreview}
+        title="本年连续结账预览"
+        okText="确认连续结账"
+        cancelText="取消"
+        confirmLoading={closeRange.isPending}
+        okButtonProps={{ disabled: !rangePreview?.allPassed }}
+        onCancel={() => setRangePreview(null)}
+        onOk={() =>
+          rangePreview &&
+          closeRange.mutate({
+            from: rangePreview.from,
+            to: rangePreview.to,
+            previewToken: rangePreview.previewToken,
+            confirmed: true,
+          })
+        }
+      >
+        <p>
+          逐月检查全部通过才可结账；存在草稿或损益余额时请回到单月处理。中途失败整批回滚，不自动年结。
+        </p>
+        {rangePreview?.items.map((item) => (
+          <div key={item.period}>
+            <Tag color={item.ready ? 'success' : 'error'}>{formatPeriod(item.period)}</Tag>
+            {item.ready ? '通过' : item.problems.join('；')}
+            {!item.ready && (
+              <Button
+                type="link"
+                onClick={() => {
+                  setRangePreview(null);
+                  setFilters({ period: item.period });
+                }}
+              >
+                处理 {formatPeriod(item.period)}
+              </Button>
+            )}
+          </div>
+        ))}
       </Modal>
       <Modal
         open={!!numberPreview && !numberSecond}

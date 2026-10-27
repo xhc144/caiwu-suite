@@ -99,7 +99,13 @@ export const invoiceRouter = m.router({
     .query(({ ctx, input }) => invoiceService(ctx.svc).previewVoucher(input)),
   generate: procedure
     .meta({ permission: 'invoice.voucher' })
-    .input(PlanSchema.extend({ fingerprint: z.string().length(64), requestId: z.uuid() }))
+    .input(
+      PlanSchema.extend({
+        fingerprint: z.string().length(64),
+        requestId: z.uuid(),
+        newAccountsConfirmed: z.boolean().default(false),
+      }),
+    )
     .mutation(({ ctx, input }) => invoiceService(ctx.svc).generate(input)),
   groups: procedure
     .meta({ permission: 'invoice.view' })

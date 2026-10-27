@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { BusinessError } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { AuditSchema, type AuditInput } from '../shared';
-import { sumCents } from './amounts';
+import { exactCents, sumCents } from './amounts';
 
 /** 即使再导入表格软件，外部文字也不能成为公式。数值金额始终保留整数分。 */
 export function safeText(value: string): string {
@@ -100,12 +100,37 @@ export async function collectAudit(svc: CoreServices, raw: AuditInput) {
           'debit_total',
           'credit_total',
           'created_by',
+          'created_at',
+          'updated_by',
+          'updated_at',
           'audited_by',
+          'audited_at',
           'posted_by',
+          'posted_at',
+          'source_module',
+          'source_type',
+          'source_id',
+          'reversal_of_id',
+          'revision',
         ])
         .where('period', '>=', from)
         .where('period', '<=', to)
         .orderBy('period')
+        .orderBy('id')
+        .execute()
+    : [];
+  const operatorIds = [
+    ...new Set(
+      vouchers.flatMap((v) =>
+        [v.created_by, v.updated_by, v.audited_by, v.posted_by].filter((id) => id != null),
+      ),
+    ),
+  ];
+  const operators = operatorIds.length
+    ? await svc.db
+        .selectFrom('app_user')
+        .select(['id', 'code', 'name', 'disabled'])
+        .where('id', 'in', operatorIds)
         .orderBy('id')
         .execute()
     : [];
@@ -169,6 +194,19 @@ export async function collectAudit(svc: CoreServices, raw: AuditInput) {
         .orderBy('id')
         .execute()
     : [];
+  // 合计正确不代表每个被导出的金额字段合法；拒绝小数分和不安全整数，不能静默舍入。
+  for (const row of opening)
+    for (const value of [row.balance, row.ytd_debit, row.ytd_credit, row.fc_balance])
+      exactCents(value);
+  for (const row of vouchers) {
+    exactCents(row.debit_total);
+    exactCents(row.credit_total);
+  }
+  for (const row of lines) {
+    exactCents(row.debit);
+    exactCents(row.credit);
+    if (row.fc_amount != null) exactCents(row.fc_amount);
+  }
   const counts = {
     accounts: accounts.length,
     opening: opening.length,
@@ -179,6 +217,7 @@ export async function collectAudit(svc: CoreServices, raw: AuditInput) {
     exchangeRates: exchangeRates.length,
     periods: periods.length,
     dimensions: dimensions.length,
+    operators: operators.length,
   };
   const total = Object.values(counts).reduce((s, n) => s + n, 0);
   if (total > 200000)
@@ -188,9 +227,9 @@ export async function collectAudit(svc: CoreServices, raw: AuditInput) {
       hint: '分范围导出，或联系管理员安排大账套导出',
     });
   const data = {
-    format: '通用审计资料 v1',
+    format: '通用审计资料 v2',
     notice:
-      '金额单位为整数分，余额借正贷负；数量为 quantity_e6（百万分之一），汇率及单价为十进制字符串。包含所选年度全部状态及作废凭证。未按 GB/T 24589.1-2024 官方字段全文核对，不作标准合规声明。以单引号转义可能被表格软件当作公式的文字。',
+      '金额单位为整数分，余额借正贷负；数量为 quantity_e6（百万分之一），汇率及单价为十进制字符串。包含所选年度全部状态及作废凭证。操作员字典仅含所选凭证引用人员，姓名与停用标志取导出时现值，不代表制单时状态。未按 GB/T 24589.1-2024 官方字段全文核对，不作标准合规声明。以单引号转义可能被表格软件当作公式的文字。',
     book: {
       id: book.id,
       name: book.name,
@@ -217,6 +256,7 @@ export async function collectAudit(svc: CoreServices, raw: AuditInput) {
     exchangeRates,
     periods,
     dimensions,
+    operators,
   };
   return { data, digest: createHash('sha256').update(JSON.stringify(data)).digest('hex'), total };
 }

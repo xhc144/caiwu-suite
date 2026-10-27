@@ -25,6 +25,7 @@ export default function PrintPage() {
     voucherId: 0,
     ids: '',
     account: '1001',
+    accountScope: 'selected',
     kind: 'detail',
     order: 'range',
     numberFrom: 0,
@@ -36,7 +37,8 @@ export default function PrintPage() {
   });
   const [show, setShow] = useState(!!f.voucherId || !!f.ids || f.queried),
     [settingsOpen, setSettingsOpen] = useState(false),
-    [pause, setPause] = useState<'none' | 'page' | 'voucher'>('none');
+    [pause, setPause] = useState<'none' | 'page' | 'voucher'>('none'),
+    [accountPause, setAccountPause] = useState(false);
   const types = useVoucherTypes();
   const canVoucher = usePermission('print-settings.voucher.print'),
     canLedger = usePermission('print-settings.ledger.print'),
@@ -56,6 +58,7 @@ export default function PrintPage() {
     from: f.period || f.from,
     to: f.period || f.to,
     account: f.account,
+    accountScope: f.accountScope,
     kind: f.kind,
     includeUnposted: f.includeUnposted,
     printEmpty: f.printEmpty,
@@ -67,7 +70,7 @@ export default function PrintPage() {
     }),
   );
   const ledger = useQuery(
-    api.ledgerBook.queryOptions(
+    api.ledgerBatch.queryOptions(
       ledgerSelection.success
         ? ledgerSelection.data
         : { from: 202601, to: 202601, account: '1001', kind: 'detail' },
@@ -84,7 +87,7 @@ export default function PrintPage() {
           ...(pause === 'voucher' ? { perPage: 1 as const } : {}),
         });
       if (f.mode === 'ledger' && ledger.data)
-        view = buildLedgerBookView(ledger.data, settings.data.ledger);
+        view = buildLedgerBookView(ledger.data.models, settings.data.ledger);
       if (view) renderPrintDocument(viewToPrintJob(view));
       return { view };
     } catch (error) {
@@ -230,8 +233,25 @@ export default function PrintPage() {
                 </select>
               </label>
               <label>
+                打印科目选择
+                <select
+                  aria-label="打印科目选择"
+                  value={f.accountScope}
+                  onChange={(e) => {
+                    setShow(false);
+                    setF({ accountScope: e.target.value });
+                  }}
+                >
+                  <option value="selected">指定科目</option>
+                  <option value="all">所有科目</option>
+                  <option value="first">一级科目</option>
+                  <option value="leaf">明细科目</option>
+                </select>
+              </label>
+              <label>
                 科目编码（可用逗号选择多个）
                 <input
+                  disabled={f.accountScope !== 'selected'}
                   value={f.account}
                   onChange={(e) => {
                     setShow(false);
@@ -249,9 +269,23 @@ export default function PrintPage() {
                       setF({ [key]: e.target.checked });
                     }}
                   />
-                  {['含未过账', '打印无发生科目', '打印空科目（同时启用无发生）'][i]}
+                  {
+                    [
+                      '含未过账',
+                      '打印无发生科目（有期初数或累计数）',
+                      '打印空科目（同时启用无发生）',
+                    ][i]
+                  }
                 </label>
               ))}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={accountPause}
+                  onChange={(e) => setAccountPause(e.target.checked)}
+                />
+                每个科目打印前提示
+              </label>
             </>
           )}
           <Button
@@ -287,11 +321,17 @@ export default function PrintPage() {
         />
       )}
       {rendered.error && <Alert type="error" title={`无法渲染打印视图：${rendered.error}`} />}
+      {show && f.mode === 'ledger' && !!ledger.data?.skipped.length && (
+        <Alert
+          type="info"
+          title={`以下科目无符合条件的记录，已跳过：${ledger.data.skipped.join('、')}`}
+        />
+      )}
       {show && rendered.view && !error && (
         <Preview
           view={rendered.view}
           kind={f.mode === 'voucher' ? 'voucher' : 'ledger'}
-          pause={pause}
+          pause={f.mode === 'ledger' ? (accountPause ? 'account' : 'none') : pause}
           onClose={() => setShow(false)}
         />
       )}

@@ -17,6 +17,18 @@ export const openingDimensions = [
 ] as const;
 export type OpeningDimension = (typeof openingDimensions)[number]['id'];
 export const YearSchema = z.object({ year: z.number().int().min(1900).max(9999) });
+export const PrintSchema = YearSchema.extend({
+  currency: z.string().max(20).default(''),
+  quantity: z.boolean().default(false),
+  account: z.string().max(200).default(''),
+  dimension: z.enum(['', 'project', 'partner', 'department', 'person']).default(''),
+  item: z
+    .string()
+    .max(16)
+    .regex(/^(?:[1-9]\d*)?$/, '辅助档案条件无效')
+    .default(''),
+}).strict();
+export type OpeningScope = z.output<typeof PrintSchema>;
 const dims = z
   .object({
     project: zId.nullable().optional(),
@@ -106,6 +118,26 @@ export type SummaryRow = Account & {
   savedCount: number;
   children?: SummaryRow[];
 };
+/** 查询与打印使用相同的末级明细范围；停用科目仍显示历史期初。 */
+export function selectOpeningRows(accounts: Account[], rows: SavedRow[], scope: OpeningScope) {
+  const search = scope.account.toLowerCase();
+  return rows.filter((row) => {
+    const account = accounts.find((a) => a.id === row.accountId);
+    return (
+      account?.isLeaf &&
+      (!scope.quantity || !!account.quantityUnit) &&
+      (!scope.currency ||
+        (scope.currency === 'base' ? row.currency == null : row.currency === scope.currency)) &&
+      (!scope.dimension || row.dimensions[scope.dimension] != null) &&
+      (!scope.item ||
+        (!!scope.dimension && String(row.dimensions[scope.dimension]) === scope.item)) &&
+      (!search ||
+        `${account.code} ${account.name} ${account.fullName} ${account.pinyin}`
+          .toLowerCase()
+          .includes(search))
+    );
+  });
+}
 /** 只从末级明细汇总，不把已有父级行二次加入。树依赖真实 parentId。 */
 export function accountTree(accounts: Account[], rows: SavedRow[]): SummaryRow[] {
   const result = new Map<number, SummaryRow>();

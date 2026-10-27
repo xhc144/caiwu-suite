@@ -51,24 +51,29 @@ export default function SettingsEditor({
           纸张
           <select value={s.paper} onChange={(e) => change('paper', e.target.value)}>
             <option value="A4">A4</option>
+            <option value="A5">A5（148 × 210 毫米）</option>
+            <option value="B5">B5（ISO，176 × 250 毫米）</option>
             <option value="custom">凭证纸 / 自定义毫米</option>
           </select>
         </label>
         {number('widthMm', '自定义宽度（毫米）', 80, 600)}
         {number('heightMm', '自定义高度（毫米）', 80, 600)}
         {kind === 'voucher' && (
-          <label>
-            每页凭证张数
-            <select
-              aria-label="每页凭证张数"
-              value={s.perPage}
-              onChange={(e) => change('perPage', Number(e.target.value))}
-            >
-              {[1, 2, 3].map((n) => (
-                <option key={n}>{n}</option>
-              ))}
-            </select>
-          </label>
+          <>
+            <label>
+              每页凭证张数
+              <select
+                aria-label="每页凭证张数"
+                value={s.perPage}
+                onChange={(e) => change('perPage', Number(e.target.value))}
+              >
+                {[1, 2, 3].map((n) => (
+                  <option key={n}>{n}</option>
+                ))}
+              </select>
+            </label>
+            {number('voucherGapMm', '合并凭证间距（毫米）', 0, 50)}
+          </>
         )}
         {check('landscape', '横向打印')}
         {number('rows', '每页行数上限', 1, 100)}
