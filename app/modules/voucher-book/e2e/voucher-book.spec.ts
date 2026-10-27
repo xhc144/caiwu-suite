@@ -63,11 +63,17 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
     expect(reverse.reversalOfId).toBe(original.id);
     expect(reverse.debitTotal).toBe(-1);
     expect(await t.app.svc.vouchers.get(original.id)).toEqual(original);
-    const reverseRow = page.getByRole('row').filter({ hasText: `冲销 #${original.id}` });
+    const reverseRow = page
+      .getByRole('row')
+      .filter({ has: page.getByRole('cell', { name: reverse.date, exact: true }) })
+      .filter({ has: page.getByRole('cell', { name: reverse.displayNo, exact: true }) });
+    await expect(reverseRow).toContainText('红字冲销');
     await expect(reverseRow).toContainText('-0.01');
     await reverseRow.getByRole('button', { name: '浏览', exact: true }).click();
     dialog = page.getByRole('dialog', { name: '凭证浏览', exact: true });
-    await expect(dialog.getByRole('link', { name: `原凭证 #${original.id}` })).toBeVisible();
+    const originalLink = dialog.getByRole('link', { name: '查看原凭证', exact: true });
+    await expect(originalLink).toBeVisible();
+    await expect(originalLink).toHaveAttribute('href', `/m/voucher-book?id=${original.id}`);
     await dialog.getByRole('button', { name: '关闭' }).click();
     await page
       .getByRole('row')
@@ -75,9 +81,12 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
       .first()
       .getByRole('button', { name: '浏览', exact: true })
       .click();
-    await expect(page.getByRole('dialog', { name: '凭证浏览', exact: true })).toContainText(
-      `冲销凭证 #${reverse.id}`,
-    );
+    dialog = page.getByRole('dialog', { name: '凭证浏览', exact: true });
+    const reverseLink = dialog.getByRole('link', { name: /^查看冲销凭证/ });
+    await expect(reverseLink).toBeVisible();
+    await expect(reverseLink).toHaveAttribute('href', `/m/voucher-book?id=${reverse.id}`);
+    await expect(reverseLink).toContainText(reverse.date);
+    await expect(reverseLink).toContainText('-0.01');
   } finally {
     await t.close();
   }
