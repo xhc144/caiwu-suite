@@ -14,6 +14,11 @@ export const CancelWorksheetSchema = z.object({
   revision: z.number().int().positive(),
   confirmed: z.boolean(),
 });
+export const CommitCalculationSchema = SaveWorksheetSchema.extend({
+  requestKey: z.string().min(8).max(100),
+  confirmed: z.boolean(),
+});
+export const CancelCalculationSchema = CancelWorksheetSchema;
 export const ReportSchema = z
   .object({
     from: zDate,
@@ -58,6 +63,7 @@ export type CalculationResult = {
   period: number;
   method: 'monthly-weighted-average';
   status: 'preview';
+  adjustZeroQuantity: boolean;
   fingerprint: string;
   rows: CostRow[];
   lines: LineCost[];

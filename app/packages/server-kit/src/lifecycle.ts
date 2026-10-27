@@ -1,7 +1,7 @@
 import { ResourceGate, withRequestLeases } from '@caiwu/db';
 import { BusinessError } from '@caiwu/core';
 import type { BookMaintenancePlan, CoreServices, OpenBook } from '@caiwu/core/server';
-import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import { withServiceScope, createCoreServices, loadServiceUser } from '@caiwu/core/server';
 import type { AppRuntime } from './context';
 import type { ServerModule } from './module';
 
@@ -128,16 +128,19 @@ export class RuntimeLifecycle {
   ): Promise<T> {
     if (this.#state === 'failed' || this.#state === 'stopped') throw this.#requests.error('busy');
     if (!this.app.modules.lookup.manifest(moduleId)) throw new Error('系统服务必须绑定已登记模块');
-    return this.app.bookStore.withBook(bookId, (book) =>
-      fn(
-        createCoreServices({
-          db: book.db,
-          user: { id: 0, code: 'system', name: '系统', isAdmin: true, permissions: new Set() },
-          moduleId,
-          now: this.app.now,
-          modules: this.app.modules.lookup,
-        }),
-        book,
+    return withServiceScope(() =>
+      this.app.bookStore.withBook(bookId, (book) =>
+        fn(
+          createCoreServices({
+            db: book.db,
+            user: { id: 0, code: 'system', name: '系统', isAdmin: true, permissions: new Set() },
+            moduleId,
+            now: this.app.now,
+            modules: this.app.modules.lookup,
+            providers: this.app.modules.providers,
+          }),
+          book,
+        ),
       ),
     );
   }
@@ -170,6 +173,7 @@ export class RuntimeLifecycle {
           moduleId: null,
           now: this.app.now,
           modules: this.app.modules.lookup,
+          providers: this.app.modules.providers,
         });
         svc.permissions.require(input.permission);
         await input.authorize(svc);

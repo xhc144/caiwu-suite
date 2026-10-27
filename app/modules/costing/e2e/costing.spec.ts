@@ -39,8 +39,8 @@ test('W2-01 真实库存前置：试算→保存→取消；收入和凭证预�
   const receipt = await document('receipt', '10', '3');
   await document('issue', '5', '10');
   await page.goto('/m/costing/calculation');
-  await expect(page.getByRole('heading', { name: '成本试算', exact: true })).toBeVisible();
-  await expect(page.getByText('当前提供成本试算，正式核算尚未开放')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '成本核算', exact: true })).toBeVisible();
+  await expect(page.getByText('正式发布后，本月库存单据、期初和盘点将锁定')).toBeVisible();
   await page.getByRole('button', { name: '重新试算', exact: true }).click();
   const cost = page.getByRole('row').filter({ hasText: '试算产品' });
   await expect(cost).toContainText('10.00');
