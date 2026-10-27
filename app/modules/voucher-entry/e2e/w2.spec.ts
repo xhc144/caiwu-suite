@@ -163,6 +163,19 @@ test('w_pz_pzedit_b / w_pz_flxx1：逐字改月不沿用旧汇率，带入期间
   const local = await fixture();
   const { request, svc } = await setup(page, local);
   try {
+    // 红字借方是现金净减少，使用明确配置为流出的项目。
+    const cashflow = (await svc.dimensions.getByCode('cashflow', 'CF02'))!;
+    expect(typeof cashflow.revision).toBe('number');
+    await svc.dimensions.update(
+      cashflow.id,
+      {
+        code: cashflow.code,
+        name: cashflow.name,
+        attrs: { ...cashflow.attrs, cashflowDirection: 'outflow' },
+      },
+      { expectedRevision: cashflow.revision! },
+    );
+    expect((await svc.dimensions.get(cashflow.id))!.attrs.cashflowDirection).toBe('outflow');
     await svc.db
       .insertInto('exchange_rate')
       .values({ currency_code: 'USD', period: 202602, rate: '7.2' })
@@ -177,12 +190,22 @@ test('w_pz_pzedit_b / w_pz_flxx1：逐字改月不沿用旧汇率，带入期间
             currency: 'USD',
             rate: '7.1',
             fcAmount: -1000,
-            dims: { cashflow: 'CF01' },
+            dims: { cashflow: 'CF02' },
           },
           { account: '6001', credit: -7100 },
         ],
       },
     ]);
+    expect((await svc.vouchers.get(v!.id))!.lines[0]).toMatchObject({
+      debit: -7100,
+      fcAmount: -1000,
+      cashflowDirection: 'outflow',
+    });
+    expect(
+      await entryService(svc).context(v!.lines[0]!.accountId, '2026-01-10', {
+        cashflow: cashflow.id,
+      }),
+    ).toMatchObject({ balance: -7100, fcBalance: -1000 });
     await page.goto(`${local.url}/m/voucher-entry/edit?id=${v!.id}`);
     await expect(page.getByRole('status')).toContainText('已恢复');
     await expect(page.locator('[data-line="0"]')).toContainText('当前辅助组合');
@@ -233,6 +256,11 @@ test('w_pz_pzedit_b：首上下一末稳定移动，保存响应延迟不覆盖�
     await route.fulfill({ response });
   });
   try {
+    // 本例刻意按 3、1 的顺序造数，显式使用手工编号而不放宽自动编号规则。
+    const policy = await svc.voucherPolicy.get();
+    expect(policy.numbering).toBe('automatic');
+    await svc.voucherPolicy.set({ ...policy, numbering: 'manual' });
+    expect((await svc.voucherPolicy.get()).numbering).toBe('manual');
     const input = await voucherInputFromSpec(svc, {
       date: '2026-01-10',
       lines: [
@@ -242,7 +270,7 @@ test('w_pz_pzedit_b：首上下一末稳定移动，保存响应延迟不覆盖�
     });
     const a = await svc.vouchers.create({ ...input, number: 3 });
     const b = await svc.vouchers.create({ ...input, number: 1 });
-    const c = await svc.vouchers.create({ ...input, date: '2026-02-10' });
+    const c = await svc.vouchers.create({ ...input, date: '2026-02-10', number: 1 });
     await svc.vouchers.changeStatus({ ids: [c.id], to: 'audited' });
     await page.goto(`${local.url}/m/voucher-entry/edit?id=${b.id}`);
     await expect(page.getByRole('status')).toContainText('已恢复');
