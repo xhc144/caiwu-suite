@@ -23,7 +23,12 @@ export default function ListPage() {
   const canExport = usePermission('report-engine.export');
   const [editing, setEditing] = useState<Editing | null>(null);
   const [error, setError] = useState('');
-  const refresh = () => queryClient.invalidateQueries({ queryKey: api.list.queryKey() });
+  const refresh = async () => {
+    const selection = { queryKey: api.list.queryKey() };
+    // 首次查询还没有缓存数据时，invalidate不会取消在途请求，旧空列表会挡住写后刷新。
+    await queryClient.cancelQueries(selection);
+    await queryClient.invalidateQueries(selection);
+  };
   const remove = useMutation(api.remove.mutationOptions({ onSuccess: () => void refresh() }));
   const importing = useMutation(
     api.importTemplate.mutationOptions({
