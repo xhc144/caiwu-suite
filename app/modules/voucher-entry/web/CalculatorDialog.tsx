@@ -1,17 +1,27 @@
-import { Alert, Button, Input, Modal, Space } from 'antd';
-import { useState } from 'react';
+import { Alert, Button, Input, Modal, Space, type InputRef } from 'antd';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import { formatMoney } from '@caiwu/core';
 import { calculateMoney } from '../calculator';
 
+export type CalculatorDialogHandle = { focusExpression: () => void };
+
 export default function CalculatorDialog({
+  ref: focusRef,
   onClose,
   onApply,
   target,
 }: {
+  ref?: Ref<CalculatorDialogHandle>;
   onClose: () => void;
   onApply?: (cents: number) => void;
   target?: string;
 }) {
+  const input = useRef<InputRef>(null);
+  useImperativeHandle(focusRef, () => ({ focusExpression: () => input.current?.focus() }), []);
+  useEffect(() => {
+    // 在弹层焦点锁挂载后聚焦算式，F9 后可直接键盘输入。
+    input.current?.focus();
+  }, []);
   const [expression, setExpression] = useState('');
   const [result, setResult] = useState<number | null>(null);
   const [error, setError] = useState('');
@@ -33,6 +43,9 @@ export default function CalculatorDialog({
     <Modal
       title="简易计算器（F9）"
       open
+      afterOpenChange={(open) => {
+        if (open) input.current?.focus();
+      }}
       onCancel={onClose}
       footer={
         <Space>
@@ -53,10 +66,10 @@ export default function CalculatorDialog({
     >
       <p>支持 + − × ÷ 和括号，输入使用 + - * /。结果四舍五入到分。</p>
       <Input
+        ref={input}
         aria-label="计算器算式"
         value={expression}
         maxLength={200}
-        autoFocus
         onChange={(e) => change(e.target.value)}
         onPressEnter={compute}
       />
