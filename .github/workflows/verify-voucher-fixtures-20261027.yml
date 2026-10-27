@@ -1,4 +1,4 @@
-name: Verify voucher-book and fixed-assets UI regressions (2026-10-27)
+name: Probe PDF tools on official runner (2026-10-27)
 
 on:
   push:
@@ -11,49 +11,30 @@ permissions:
   contents: read
 
 concurrency:
-  group: verify-voucher-fixtures-20261027-quick-14b4772
+  group: probe-pdf-tools-20261027-fc98
   cancel-in-progress: false
 
 jobs:
-  verify:
+  probe:
     if: github.repository == 'xhc144/caiwu-suite' && github.ref == 'refs/heads/maintenance/verify-voucher-fixtures-20261027' && github.event_name == 'push'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: app
-    env:
-      CI: 'true'
-      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: 14b47720ab66a6dbd240767f91161f84bfdd3563
+          ref: fc98ed3d2a68e299e27e4fb888e57da97faa66fb
           persist-credentials: false
           submodules: false
           lfs: false
       - name: Confirm exact candidate checkout
-        run: test "$(git rev-parse HEAD)" = "14b47720ab66a6dbd240767f91161f84bfdd3563"
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10.28.0
-          package_json_file: app/package.json
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: app/pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm build:web
-      - name: Run voucher-book and fixed-assets UI regressions without retries
-        run: pnpm exec playwright test modules/voucher-book/e2e modules/fixed-assets/e2e --retries=0
-      - name: Upload failed UI evidence
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: voucher-book-fixed-assets-failures-${{ github.run_id }}
-          path: |
-            app/playwright-report
-            app/test-results
-          retention-days: 7
+        run: test "$(git rev-parse HEAD)" = "fc98ed3d2a68e299e27e4fb888e57da97faa66fb"
+      - name: Probe both PDF commands without installing anything
+        shell: bash
+        run: |
+          set +e
+          command -v pdfinfo
+          pdfinfo_status=$?
+          command -v pdftotext
+          pdftotext_status=$?
+          printf 'pdfinfo_exit=%s\npdftotext_exit=%s\n' "$pdfinfo_status" "$pdftotext_status"
+          test "$pdfinfo_status" -eq 0 && test "$pdftotext_status" -eq 0
