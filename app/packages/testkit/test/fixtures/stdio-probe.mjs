@@ -124,8 +124,19 @@ if (role === 'child') {
           if (error.code === 'ENOENT') return [];
           throw error;
         });
+      const childRecord = JSON.parse(await readFile(path.join(dataDir, 'child.json'), 'utf8'));
+      let grandchildExists = true;
+      try {
+        // 信号 0 只查询存活状态；绝不按这个 PID 发终止信号。
+        process.kill(childRecord.grandchild, 0);
+      } catch (error) {
+        if (error.code !== 'ESRCH') throw error;
+        grandchildExists = false;
+      }
       const result = {
         platform: process.platform,
+        child: childRecord,
+        grandchildExistsAfterClose: grandchildExists,
         mode: candidate,
         events,
         descendant,
@@ -133,6 +144,10 @@ if (role === 'child') {
         errors,
       };
       console.log(`::notice title=stdio-probe-${candidate}::${JSON.stringify(result)}`);
+      if (process.platform === 'win32' && candidate !== 'detached') {
+        assert.equal(output.includes('FINAL_STDIO'), false, JSON.stringify(result));
+        assert.equal(grandchildExists, false, JSON.stringify(result));
+      }
       if (candidate === 'detached') {
         assert.ok(output.includes('FINAL_STDIO'), JSON.stringify(result));
         assert.ok(errors.includes('FINAL_STDERR'), JSON.stringify(result));
@@ -153,7 +168,7 @@ if (role === 'child') {
       console.log(
         `::warning title=stdio-probe-${candidate}::${JSON.stringify({ platform: process.platform, mode: candidate, error: error.message, child: JSON.parse(await readFile(path.join(dataDir, 'child.json'), 'utf8')), events, output, errors })}`,
       );
-      if (candidate === 'detached') process.exitCode = 1;
+      process.exitCode = 1;
     } finally {
       clearTimeout(timer);
       socket?.destroy();
