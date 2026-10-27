@@ -1,9 +1,10 @@
 import Database from 'better-sqlite3';
-import { renameSync, symlinkSync, unlinkSync, existsSync } from 'node:fs';
+import { renameSync, symlinkSync, unlinkSync, existsSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
 import backup from '../../../modules/backup/server';
+import { packagePath, validatePackage } from '../../../modules/backup/server/files';
 import { createRuntime } from '@caiwu/server-kit';
 import { withAutomaticBackup } from '../src/automatic-backup';
 let app: TestApp;
@@ -204,5 +205,61 @@ it('w_autobak：onExit=false定时失败已记录时退出可重试，恢复后�
     });
   } finally {
     raw.close();
+  }
+});
+
+it('w_autobak：退出备份成功后宿主关闭失败，再次退出仍备份新的真实提交', async () => {
+  const callbacks = new Set<() => void>();
+  const module = withAutomaticBackup(backup, {
+    now: Date.now,
+    set: (fn) => {
+      callbacks.add(fn);
+      return fn;
+    },
+    clear: (id) => callbacks.delete(id as () => void),
+  });
+  app = await createTestApp({ modules: [module] });
+  const store = app.runtime.bookStore;
+  const file = store.pathOf(app.book.id);
+  vi.spyOn(store, 'dispose').mockRejectedValueOnce(new Error('SQLITE_IOERR: 宿主关闭失败'));
+  await expect(app.runtime.lifecycle.stop()).rejects.toThrow(/宿主关闭失败/);
+  expect(app.runtime.lifecycle.state).toBe('failed');
+  const prior = new Set(
+    (
+      store.open(app.book.id).raw.prepare('SELECT id FROM backup_item').all() as { id: string }[]
+    ).map((row) => row.id),
+  );
+  await app.svc.settings.set('after-host-failure', '关闭失败后的新提交');
+  await app.runtime.lifecycle.stop();
+  expect(app.runtime.lifecycle.state).toBe('stopped');
+  expect(callbacks.size).toBe(0);
+  const raw = new Database(file, { readonly: true });
+  let latest!: { id: string; directory: string };
+  try {
+    const rows = raw
+      .prepare("SELECT id,directory FROM backup_item WHERE kind='automatic' AND status='valid'")
+      .all() as { id: string; directory: string }[];
+    expect(rows).toHaveLength(3);
+    const added = rows.filter((row) => !prior.has(row.id));
+    expect(added).toHaveLength(1);
+    latest = added[0]!;
+  } finally {
+    raw.close();
+  }
+  const checked = await validatePackage(
+    packagePath(
+      path.join(app.runtime.dataDir, 'backups', app.book.id, latest.directory),
+      latest.id,
+    ),
+    app.runtime,
+  );
+  const snapshot = new Database(checked.snapshot, { readonly: true });
+  try {
+    expect(
+      snapshot.prepare("SELECT value FROM book_setting WHERE key='after-host-failure'").get(),
+    ).toEqual({ value: '"关闭失败后的新提交"' });
+  } finally {
+    snapshot.close();
+    rmSync(checked.snapshot, { force: true });
   }
 });

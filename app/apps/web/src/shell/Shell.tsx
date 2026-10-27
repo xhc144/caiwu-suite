@@ -312,7 +312,11 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
                 {me.data?.currentPeriod && <Tag>{formatPeriod(me.data.currentPeriod.period)}</Tag>}
               </div>
               <div className="cw-header-actions">
-                {activity.slow > 0 && <span role="status">正在加载或刷新，请稍候…</span>}
+                {activity.slow > 0 && (
+                  <span role="progressbar" aria-label="全局加载进度" aria-live="polite">
+                    正在加载或刷新，请稍候…
+                  </span>
+                )}
                 <Button onClick={onSearch}>搜索 Ctrl+K</Button>
                 <Button onClick={onShortcuts}>快捷键 ?</Button>
                 <Button onClick={onHelp}>帮助</Button>

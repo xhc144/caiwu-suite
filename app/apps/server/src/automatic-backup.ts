@@ -9,7 +9,6 @@ import {
 } from '@caiwu/server-kit';
 import { AutomaticBackupController } from '../../../modules/backup/server/controller';
 import { backupService } from '../../../modules/backup/server/service';
-import { SettingsSchema } from '../../../modules/backup/shared';
 
 /** A controller belongs to one server instance. Every operation reopens its own scoped lease. */
 export function withAutomaticBackup<R extends ServerModule>(
@@ -47,7 +46,6 @@ export function withAutomaticBackup<R extends ServerModule>(
   const attached = new Set<string>();
   const configurations = new Map<string, string>();
   const attaching = new Map<string, Promise<void>>();
-  let exitBackupsCompleted = false;
   const withService = <T>(
     app: AppRuntime,
     id: string,
@@ -100,23 +98,12 @@ export function withAutomaticBackup<R extends ServerModule>(
     const task = controller
       .attach(id, {
         settings: () => {
-          // All real settings and backups were already checked. Avoid a second database read
-          // inside the controller's irreversible shutdown cache.
-          if (exitBackupsCompleted)
-            return Promise.resolve({
-              ...SettingsSchema.parse(JSON.parse(configurations.get(id)!)),
-              onExit: false,
-            });
           return withService(app, id, async (ctx) => {
             const config = await backupService(ctx).settings();
             configurations.set(id, JSON.stringify(config));
             const skipStart = initialSettingsRead && !startNow;
             initialSettingsRead = false;
-            return exitBackupsCompleted
-              ? { ...config, onExit: false }
-              : skipStart
-                ? { ...config, onStart: false }
-                : config;
+            return skipStart ? { ...config, onStart: false } : config;
           });
         },
         backup: () =>
@@ -172,8 +159,8 @@ export function withAutomaticBackup<R extends ServerModule>(
             const config = await withService(ctx.app, id, (c) => backupService(c).settings());
             configurations.set(id, JSON.stringify(config));
             if (controller.status(id).running) await controller.run(id);
-            // A failed scheduled backup must complete a real successful retry before
-            // entering the controller's irreversible shutdown, even with onExit=false.
+            // A failed scheduled backup must complete a real successful retry,
+            // even with onExit=false.
             if ((config.enabled && config.onExit) || controller.status(id).lastFailure)
               await controller.run(id);
             const failure = controller.status(id).lastFailure;
@@ -185,18 +172,13 @@ export function withAutomaticBackup<R extends ServerModule>(
               });
           }
           await module.lifecycle?.stop?.(ctx);
-          exitBackupsCompleted = true;
-          const failures = await controller.shutdown();
-          if (failures.length)
-            throw new BusinessError({
-              code: 'AUTOMATIC_BACKUP_FAILED',
-              message: failures.map((f) => f.reason).join('；'),
-            });
-        } finally {
-          if (!exitBackupsCompleted) {
-            pausing = false;
-            for (const id of attached) await controller.reconfigure(id);
-          }
+          // Keep timers paused and jobs drained. Later host stop hooks or connection
+          // disposal may still fail, so do not irreversibly stop/cache the controller.
+          // A subsequent host attempt must read settings and back up new commits again.
+        } catch (error) {
+          pausing = false;
+          for (const id of attached) await controller.reconfigure(id);
+          throw error;
         }
       },
     },

@@ -430,6 +430,9 @@ export class BookStore {
     signal: AbortSignal,
     validate?: (book: OpenBook, signal: AbortSignal) => Promise<void>,
   ) {
+    // Capture the existing gate before changing the target. Poisoning admission
+    // after failed rollback must not depend on another filesystem lookup.
+    const gate = this.#gate(id);
     const ticket = this.#replacements.get(replacementId);
     if (
       !ticket ||
@@ -570,8 +573,8 @@ export class BookStore {
           // The replacement has been rejected and rollback is uncertain. Never admit
           // this database again merely because the exclusive callback has finished.
           this.#directory.quarantines.set(id, { protection, metadata: protectionMetadata! });
-          this.#gate(id).block();
-          const marker = `${this.pathOf(id)}.quarantine.json`;
+          gate.block();
+          const marker = `${book.file}.quarantine.json`;
           try {
             writeFileSync(
               marker,

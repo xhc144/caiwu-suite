@@ -70,15 +70,11 @@ test('w_retrieve_wait：超过300ms有中文加载，刷新保留旧内容，取
     await route.continue().catch(() => {});
   });
   await page.getByRole('button', { name: '刷新合成页面' }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: '正在加载或刷新，请稍候' }),
-  ).toBeVisible();
+  await expect(page.getByRole('progressbar', { name: '全局加载进度' })).toBeVisible();
   await expect(input).toHaveValue('刷新时保留');
   await page.getByRole('button', { name: '取消加载' }).click();
   release();
-  await expect(page.getByRole('status').filter({ hasText: '正在加载或刷新，请稍候' })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole('progressbar', { name: '全局加载进度' })).toHaveCount(0);
   await expect(input).toHaveValue('刷新时保留');
 });
 
