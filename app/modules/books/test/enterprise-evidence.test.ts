@@ -4,7 +4,7 @@ import fc from 'fast-check';
 import { parseTemplate } from '@caiwu/core';
 import { createCoreServices, loadServiceUser } from '@caiwu/core/server';
 import { createTestBook, seedVouchers, type TestBook } from '@caiwu/testkit';
-import legacy from '../templates/enterprise.json';
+import legacy from './fixtures/enterprise-review.json';
 import {
   EnterpriseChartEvidenceSchema,
   parseSourcedEnterpriseTemplate,

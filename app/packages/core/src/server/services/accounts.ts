@@ -3,7 +3,13 @@ import { withTransaction, type Selectable } from '@caiwu/db';
 import { BusinessError, notFound } from '../../errors';
 import { levelOfCode, parentCodeOf, formatCodeScheme, type CodeScheme } from '../../code-scheme';
 import { DIMENSION_TYPES, type DimensionTypeId } from '../../dimensions';
-import type { Account, AccountCategory, BalanceDirection, DimensionItem } from '../../account';
+import type {
+  Account,
+  AccountCategory,
+  AccountClosingRule,
+  BalanceDirection,
+  DimensionItem,
+} from '../../account';
 import type { CoreDB } from '../schema';
 import { pinyinInitials } from '../pinyin';
 import { nowIso, type ServiceContext } from '../context';
@@ -19,6 +25,7 @@ function toAccount(r: AccountRow, dims: Account['dimensions']): Account {
     code: r.code,
     isContra: r.is_contra === 1,
     balanceNature: r.balance_nature,
+    closingRule: r.closing_rule,
     sourceVersion: r.source_version,
     name: r.name,
     fullName: r.full_name,
@@ -43,6 +50,7 @@ function toAccount(r: AccountRow, dims: Account['dimensions']): Account {
 export interface CreateAccountInput {
   isContra?: boolean;
   balanceNature?: 'debit' | 'credit' | 'both' | 'no-closing-balance';
+  closingRule?: AccountClosingRule;
   source?: string;
   sourceVersion?: string;
   code: string;
@@ -86,7 +94,7 @@ export function accountService(ctx: ServiceContext) {
     async provenance(id: number) {
       const row = await ctx.db
         .selectFrom('account')
-        .select(['id', 'source', 'source_version', 'is_contra', 'balance_nature'])
+        .select(['id', 'source', 'source_version', 'is_contra', 'balance_nature', 'closing_rule'])
         .where('id', '=', id)
         .executeTakeFirst();
       if (!row) throw notFound('科目', id);
@@ -96,6 +104,7 @@ export function accountService(ctx: ServiceContext) {
         sourceVersion: row.source_version,
         isContra: row.is_contra === 1,
         balanceNature: row.balance_nature,
+        closingRule: row.closing_rule,
       };
     },
 
@@ -226,6 +235,8 @@ export function accountService(ctx: ServiceContext) {
           direction: input.direction ?? parent?.direction ?? category.direction,
           is_contra: input.isContra ? 1 : 0,
           balance_nature: input.balanceNature ?? null,
+          // 新增明细继承明确的上级用途，不能把6901的明细重新纳入普通损益。
+          closing_rule: input.closingRule ?? parent?.closingRule ?? null,
           source: input.source ?? null,
           source_version: input.sourceVersion ?? null,
           is_leaf: 1,

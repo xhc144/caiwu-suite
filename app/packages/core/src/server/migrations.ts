@@ -295,4 +295,11 @@ ALTER TABLE account ADD COLUMN source_version TEXT;
 ALTER TABLE dimension_item ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
 `,
   },
+  {
+    id: '0003_account_closing_rule',
+    // 只新增可空字段；旧科目不自动补语义，不改凭证、期初或余额。
+    sql: `
+ALTER TABLE account ADD COLUMN closing_rule TEXT CHECK(closing_rule IN ('none','profit','retained-earnings','year-retained-earnings','clearing','seasonal-allocation'));
+`,
+  },
 ]);

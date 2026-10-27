@@ -8,6 +8,7 @@ import {
   type CodeScheme,
 } from './code-scheme';
 import { DIMENSION_TYPE_IDS } from './dimensions';
+import { ACCOUNT_CLOSING_RULES } from './account';
 
 /**
  * 会计制度模板：新建账套时选择，决定科目表、科目类别、默认凭证类型。
@@ -49,6 +50,8 @@ const TemplateAccountSchema = z.object({
   sourceVersion: z.string().optional(),
   isContra: z.boolean().optional(),
   balanceNature: z.enum(['debit', 'credit', 'both', 'no-closing-balance']).optional(),
+  /** 与法定类别独立：例如6901属损益类，但应转未分配利润。 */
+  closingRule: z.enum(ACCOUNT_CLOSING_RULES).optional(),
   /** 还没有对照原文核实 */
   needsReview: z.boolean().optional(),
 });
