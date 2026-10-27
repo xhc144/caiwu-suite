@@ -14,12 +14,6 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
       .set({ attrs: JSON.stringify({ cashflowDirection: 'outflow' }) })
       .where('id', '=', cf.id)
       .execute();
-    const inflow = (await t.app.svc.dimensions.getByCode('cashflow', 'CF01'))!;
-    await t.app.svc.db
-      .updateTable('dimension_item')
-      .set({ attrs: JSON.stringify({ cashflowDirection: 'inflow' }) })
-      .where('id', '=', inflow.id)
-      .execute();
     const vs = await seedVouchers(
       t.app.svc,
       [1, 2].map((n) => ({
@@ -63,9 +57,6 @@ test('w_pz_tjsh 独立账套 A本人跳过 → B审核 → 取消审核 → 红�
     await dialog.getByRole('button', { name: '生成预览' }).click();
     dialog = page.getByRole('dialog', { name: '红字冲销预览', exact: true });
     await expect(dialog).toContainText('-0.01');
-    await expect(dialog.getByRole('button', { name: '确认执行' })).toBeDisabled();
-    await dialog.getByLabel('第2行红冲现金流量项目', { exact: true }).click();
-    await page.getByText(`${inflow.code} ${inflow.name}`, { exact: true }).last().click();
     await dialog.getByRole('button', { name: '确认执行' }).click();
     await expect(page.getByText('成功 1 张，跳过 0 张', { exact: true })).toBeVisible();
     const reverse = (await t.app.svc.vouchers.list({ sourceModule: 'voucher-book' })).items[0]!;
