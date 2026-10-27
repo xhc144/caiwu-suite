@@ -7,6 +7,7 @@ import { createRuntime, coreRouter, type AppRuntime } from '@caiwu/server-kit';
 import backupServer from '../server';
 import * as files from '../server/files';
 import { automaticStatus } from '../server/automatic';
+import { waitForJobs } from '../server/service';
 import { DEFAULT_SETTINGS } from '../shared';
 
 let app: AppRuntime;
@@ -98,9 +99,10 @@ it.each(['sqlite', 'validation', 'rotation'] as const)(
       const other = await coreRouter
         .createCaller({ app, token: null })
         .auth.login({ bookId: peer.id, userCode: 'admin', password: 'admin' });
-      expect(
-        (await backupServer.router.createCaller({ app, token: other.token }).overview()).book.id,
-      ).toBe(peer.id);
+      const peerApi = backupServer.router.createCaller({ app, token: other.token });
+      expect((await peerApi.overview()).book.id).toBe(peer.id);
+      // 只测 A 的作业门控；另一账套可登录配置，但不追加启动或退出备份。
+      await peerApi.saveSettings({ ...DEFAULT_SETTINGS, onStart: false, onExit: false });
     }
     // 服务在启动备份尚未结束时可保存设置；不靠默认禁用备份取得可用性。
     await api.saveSettings({ ...DEFAULT_SETTINGS, onExit: false });
@@ -155,6 +157,8 @@ it('w_autobak：后台启动失败可见且服务仍可用；修复后可建保�
   await expect
     .poll(async () => (await api.list()).find((row) => row.id === created.id)?.status)
     .toBe('valid');
+  // 包已有效之后仍有日志和临时文件收尾；等真实作业释放占用再预览恢复。
+  await waitForJobs(app, book.id);
   const plan = await api.preview({ id: created.id, purpose: 'overwrite' });
   const protection = await api.prepareOverwrite({ planId: plan.id });
   expect(protection.available).toBe(false);
