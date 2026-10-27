@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zId } from '@caiwu/core';
+import { BalanceQuerySchema, zId } from '@caiwu/core';
 import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import { EntrySchema, SaveSchema, TemplateSchema, pasteFields } from '../shared';
@@ -18,8 +18,16 @@ export const entryRouter = m.router({
     .input(z.object({ id: zId }))
     .query(({ ctx, input }) => entryService(ctx.svc).neighbors(input.id)),
   context: view
-    .input(z.object({ accountId: zId, date: EntrySchema.shape.date }))
-    .query(({ ctx, input }) => entryService(ctx.svc).context(input.accountId, input.date)),
+    .input(
+      z.object({
+        accountId: zId,
+        date: EntrySchema.shape.date,
+        dimensions: BalanceQuerySchema.shape.dimensions,
+      }),
+    )
+    .query(({ ctx, input }) =>
+      entryService(ctx.svc).context(input.accountId, input.date, input.dimensions),
+    ),
   numberHint: view
     .input(z.object({ date: EntrySchema.shape.date, type: zId }))
     .query(({ ctx, input }) => entryService(ctx.svc).numberHint(input.date, input.type)),
