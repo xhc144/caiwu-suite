@@ -362,3 +362,66 @@ for (const templateMode of [false, true]) {
     }
   });
 }
+
+test('w_calc / w_pz_pzedit_mb：入场时F9后直接键盘计算，重复Enter、重新开启和取消不改金额', async ({
+  page,
+}) => {
+  const local = await fixture();
+  const { request, service, template } = await setup(page, local);
+  try {
+    const id = await service.saveTemplate(template);
+    await page.goto(`${local.url}/m/voucher-entry/templates`);
+    await page.getByRole('button', { name: '编辑分录与名称', exact: true }).click();
+    const editor = page.getByRole('dialog', { name: '编辑凭证模版', exact: true });
+    const debit = editor.getByLabel('第1行借方', { exact: true });
+    const calc = page.getByRole('dialog', { name: '简易计算器（F9）', exact: true });
+    const expression = calc.getByLabel('计算器算式', { exact: true });
+    await debit.focus();
+    await page.keyboard.press('F9');
+    await expect(expression).toBeFocused();
+    await page.keyboard.type('(0.1 + 0.2) * 10');
+    // 等父层的真实入场结束，确认 Enter 仍发往算式，而非被重聚焦的关闭按钮。
+    await expect.poll(() => editor.evaluate((element) => element.getAnimations().length)).toBe(0);
+    await expect(expression).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(calc.getByRole('status')).toContainText('3.00');
+    await page.keyboard.press('Enter');
+    await expect(calc.getByRole('status')).toContainText('3.00');
+    await expect(debit).toHaveValue('71.00');
+    await calc.getByRole('button', { name: '填入第1行借方', exact: true }).click();
+    await expect(debit).toHaveValue('3.00');
+    await expect(debit).toBeFocused();
+
+    await page.keyboard.press('F9');
+    await expect(expression).toBeFocused();
+    await expect(expression).toHaveValue('');
+    await page.keyboard.type('1/0');
+    await page.keyboard.press('Enter');
+    await expect(calc.getByRole('alert')).toContainText('除数为零');
+    await page.keyboard.press('Escape');
+    await expect(calc).not.toBeVisible();
+    await expect(editor).toBeVisible();
+    await expect(debit).toHaveValue('3.00');
+
+    await debit.focus();
+    await page.keyboard.press('F9');
+    await expect(expression).toBeFocused();
+    await expect(expression).toHaveValue('');
+    await page.keyboard.type('-1.005');
+    await page.keyboard.press('Enter');
+    await expect(calc.getByRole('status')).toContainText('-1.01');
+    await calc.getByRole('button', { name: '填入第1行借方', exact: true }).click();
+    await expect(debit).toHaveValue('-1.01');
+    await editor.getByLabel('第2行贷方', { exact: true }).fill('-1.01');
+    await page.keyboard.press('Control+s');
+    await expect(editor).not.toBeVisible();
+    expect((await service.template(id)).lines.map((line) => [line.debit, line.credit])).toEqual([
+      [-101, 0],
+      [0, -101],
+    ]);
+    expect(await service.templates()).toHaveLength(1);
+  } finally {
+    await request.dispose();
+    await local.close();
+  }
+});
