@@ -175,3 +175,73 @@ it('w_bb_proc 业务组成前后年度取并集，新项目比较为真实零发
     0, 0, 0, 0, 0, 0, 480, 480,
   ]);
 });
+
+it('w_bb_proc 年度追溯可改变上年净资产和现金总额，真实次年年初逐明细承接并保留原年初', async () => {
+  await book.svc.opening.upsert({
+    year: 2027,
+    accountId: (await book.svc.accounts.require('1002')).id,
+    balance: 226580,
+  });
+  await book.svc.opening.upsert({
+    year: 2027,
+    accountId: (await book.svc.accounts.require('3101')).id,
+    balance: -312510,
+  });
+  current.resources[0]!.openingBalance = 312510;
+  for (const f of current.balanceFacts.filter((f) => f.key.startsWith('1002:'))) {
+    f.balance += 100;
+    f.allocations[0]!.amount += 100;
+  }
+  current.policyChangeReference = '合成追溯调整工作底稿及原始收款凭据';
+  current.comparison!.balanceAdjustments = [
+    {
+      at: 'closing',
+      key: '1002::',
+      originalBalance: 226480,
+      delta: 100,
+      basis: '合成上年银行收款追溯底稿',
+    },
+    {
+      at: 'closing',
+      key: '3101::',
+      originalBalance: -312410,
+      delta: -100,
+      basis: '合成上年非限定性净资产追溯底稿',
+    },
+  ];
+  current.comparison!.restatements = [
+    { code: '402', row: 'donations', period: 202612, amount: 100, basis: '合成原期间捐赠追溯依据' },
+    {
+      code: '403',
+      row: 'donations',
+      period: 202612,
+      amount: 100,
+      basis: '合成原期间现金收款追溯依据',
+    },
+  ];
+  const a = await generateNonprofit(book.svc, { ...next, code: '402' }, current, previous);
+  expect(a.statement.rows.find((r) => r.id === 'incomeTotal')!.values.slice(6)).toEqual([
+    54100, 54100,
+  ]);
+  expect(a.statement.rows.find((r) => r.id === 'netChange')!.values.slice(6)).toEqual([
+    20570, 20570,
+  ]);
+  const cf = await generateNonprofit(book.svc, { ...next, code: '403' }, current, previous);
+  expect(cf.statement.rows.find((r) => r.id === 'cashNet')!.values).toEqual([0, 26580]);
+  const bad = structuredClone(current);
+  bad.comparison!.balanceAdjustments![0]!.delta += 1;
+  await expect(
+    generateNonprofit(book.svc, { ...next, code: '402' }, bad, previous),
+  ).rejects.toThrow(/次年真实年初|借贷不平/);
+  const missing = structuredClone(current);
+  delete missing.comparison!.balanceAdjustments;
+  missing.comparison!.restatements = [];
+  await expect(
+    generateNonprofit(book.svc, { ...next, code: '402' }, missing, previous),
+  ).rejects.toThrow(/未列入追溯底稿/);
+  const noBasis = structuredClone(current);
+  delete noBasis.policyChangeReference;
+  await expect(
+    generateNonprofit(book.svc, { ...next, code: '402' }, noBasis, previous),
+  ).rejects.toThrow(/原始依据/);
+});

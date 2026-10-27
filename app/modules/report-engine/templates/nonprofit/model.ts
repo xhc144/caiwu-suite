@@ -320,6 +320,19 @@ export const ConfigurationSchema = z
     comparison: z
       .object({
         basis: reference,
+        balanceAdjustments: z
+          .array(
+            z
+              .object({
+                at: z.enum(['opening', 'closing']),
+                key: reference,
+                originalBalance: money,
+                delta: money,
+                basis: reference,
+              })
+              .strict(),
+          )
+          .optional(),
         restatements: z.array(
           z
             .object({

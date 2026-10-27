@@ -17,6 +17,7 @@ import { activityStatement, classifyActivity, classifyNetAssetEvents } from './a
 import { balanceStatement, balanceTargets } from './balance';
 import { cashflowStatement } from './cashflow';
 import { attachComparative } from './comparative';
+import { retrospectiveBridge } from './retrospective';
 import { validateResourceRollforward } from './resource-control';
 import { validatePnlClosings, validateAdjustmentClosings } from './closing-control';
 
@@ -153,7 +154,13 @@ export async function generateNonprofit(
       throw new Error('上年比较资料勾稽不一致，请定位并修正上年来源');
     if (c.cashPolicy !== pc.cashPolicy && !c.policyChangeReference)
       throw new Error('现金范围较上年发生变化，请提供会计政策变更依据');
-    attachComparative(statement, previous, c, pr);
+    attachComparative(
+      statement,
+      previous,
+      c,
+      pr,
+      retrospectiveBridge(s, ps, c, pc, statement, previous),
+    );
   }
   assertNonprofitChecks(statement);
   return { statement, binding };

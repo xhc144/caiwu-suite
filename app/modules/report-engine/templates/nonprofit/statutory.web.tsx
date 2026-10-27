@@ -261,6 +261,7 @@ export function NonprofitConfigurationPanel({
                 </label>
                 {c.year >= 2027 && (
                   <ComparativeConfigurationForm
+                    sources={sources}
                     initial={c.comparison}
                     periods={periods.filter((p) => Math.floor(p.period / 100) === c.year - 1)}
                     onSave={(comparison) => change({ ...c, comparison })}
@@ -1309,10 +1310,12 @@ function NetAssetEventForm({
 }
 
 function ComparativeConfigurationForm({
+  sources,
   initial,
   periods,
   onSave,
 }: {
+  sources: Sources;
   initial: Configuration['comparison'];
   periods: Props['periods'];
   onSave(c: NonNullable<Configuration['comparison']>): void;
@@ -1342,6 +1345,61 @@ function ComparativeConfigurationForm({
         <Form.Item name="basis" label="上年可比项目及口径核对依据" rules={[{ required: true }]}>
           <Input.TextArea />
         </Form.Item>
+        <Form.List name="balanceAdjustments">
+          {(fields, { add, remove }) => (
+            <>
+              <p>年度追溯底稿须逐科目及往来明细列出借贷平衡调整；期末调整须由次年真实年初承接。</p>
+              {fields.map((f) => (
+                <fieldset key={f.key}>
+                  <legend>追溯余额调整{f.name + 1}</legend>
+                  <Form.Item name={[f.name, 'at']} label="原时点" rules={[{ required: true }]}>
+                    <Select
+                      options={[
+                        { value: 'opening', label: '上年度年初' },
+                        { value: 'closing', label: '上年度期末' },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name={[f.name, 'key']}
+                    label="实际科目及往来明细"
+                    rules={[{ required: true }]}
+                  >
+                    <Select
+                      options={sources.balances.map((b) => ({
+                        value: balanceKey(b),
+                        label: `${b.accountCode} ${b.accountName} ${sources.dimensionNames[`partner:${b.dimensions.partner}`] ?? ''} ${sources.dimensionNames[`person:${b.dimensions.person}`] ?? ''}`,
+                      }))}
+                    />
+                  </Form.Item>
+                  <Form.Item
+                    name={[f.name, 'originalBalance']}
+                    label="上年原有符号余额（元）"
+                    rules={[{ required: true }]}
+                  >
+                    <MoneyInput />
+                  </Form.Item>
+                  <Form.Item
+                    name={[f.name, 'delta']}
+                    label="追溯有符号调整（元）"
+                    rules={[{ required: true }]}
+                  >
+                    <MoneyInput />
+                  </Form.Item>
+                  <Form.Item
+                    name={[f.name, 'basis']}
+                    label="逐明细追溯工作底稿及原始凭据"
+                    rules={[{ required: true }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                  <Button onClick={() => remove(f.name)}>移除此项余额调整</Button>
+                </fieldset>
+              ))}
+              <Button onClick={() => add({})}>增加年度追溯余额调整</Button>
+            </>
+          )}
+        </Form.List>
         <Form.List name="restatements">
           {(fields, { add, remove }) => (
             <>

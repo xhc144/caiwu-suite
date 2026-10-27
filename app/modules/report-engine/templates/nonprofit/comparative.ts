@@ -14,6 +14,7 @@ export function attachComparative(
   previous: Statement,
   c: Configuration,
   pr: StatementRequest,
+  retrospective = { netChangeDelta: 0, cashOpeningDelta: 0, cashClosingDelta: 0 },
 ) {
   const restatements = c.comparison!.restatements.filter((a) => a.code === current.code);
   if (current.code === '402') {
@@ -76,7 +77,7 @@ export function attachComparative(
         column: i === 0 ? '上年可比本期' : '上年可比累计',
         from,
         to: pr.to,
-        difference: exactSum([values.netChange, -priorNet]),
+        difference: exactSum([values.netChange, -priorNet, -retrospective.netChangeDelta]),
         sources: restatements.map((a) => a.basis),
       });
     } else {
@@ -125,7 +126,13 @@ export function attachComparative(
         column: '上年金额',
         from,
         to: pr.to,
-        difference: exactSum([previous.cashClosing!, -previous.cashOpening!, -values.cashNet]),
+        difference: exactSum([
+          previous.cashClosing!,
+          retrospective.cashClosingDelta,
+          -previous.cashOpening!,
+          -retrospective.cashOpeningDelta,
+          -values.cashNet,
+        ]),
         sources: restatements.map((a) => a.basis),
       });
     }
