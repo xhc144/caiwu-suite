@@ -504,3 +504,19 @@ it('w_bb_proc 随机现金拆分守恒和损益结转前后权益不变量', () 
     ),
   );
 });
+it('w_bb_proc 明细账联查按真实期间和辅助对象构造，空辅助项不发送null给目标路由', () => {
+  const d = domain();
+  const r = addBalance(d, 'receivable', 100, 7, '112201');
+  r.dimensions.project = null;
+  r.dimensions.department = null;
+  r.dimensions.person = null;
+  const s = balanceSheet(d),
+    closing = s.rows[3]!.amounts[0].sources[0]!,
+    opening = s.rows[3]!.amounts[1]!.sources[0]!;
+  const link = new URL(closing.toRoute, 'http://127.0.0.1');
+  expect(link.pathname).toBe('/m/ledgers/detail');
+  expect(link.searchParams.get('from')).toBe('202612');
+  expect(link.searchParams.get('to')).toBe('202612');
+  expect(JSON.parse(link.searchParams.get('dims')!)).toEqual({ partner: 7 });
+  expect(new URL(opening.toRoute, 'http://127.0.0.1').searchParams.get('from')).toBe('202601');
+});

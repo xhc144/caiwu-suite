@@ -74,7 +74,11 @@ export function source(
     account: row.accountCode,
     from: String(from),
     to: String(to),
-    dims: JSON.stringify(row.dimensions),
+    dims: JSON.stringify(
+      Object.fromEntries(
+        Object.entries(row.dimensions).filter(([, value]) => value !== null && value !== undefined),
+      ),
+    ),
   });
   return {
     account: row.accountCode,
