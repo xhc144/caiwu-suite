@@ -214,16 +214,21 @@ export async function generateVoucher(
     t.inventory.with(async (inv) => {
       const snapshot = await allInventory(t);
       const doc = document(snapshot, input.documentId);
-      const existing = await t.vouchers.list({
-        sourceModule: 'costing',
-        sourceType: 'cost',
-        sourceId: String(doc.id),
-        includeVoided: true,
-        limit: 1,
-      });
+      // 两个受库存桥认可的来源 owner 都检查；历史凭证即使丢失用途关联也不能再制一张。
+      const existing = await Promise.all(
+        ['costing', 'inventory'].map((sourceModule) =>
+          t.vouchers.list({
+            sourceModule,
+            sourceType: 'cost',
+            sourceId: String(doc.id),
+            includeVoided: true,
+            limit: 1,
+          }),
+        ),
+      );
       if (
         doc.voucherId !== null ||
-        existing.total ||
+        existing.some((v) => v.total > 0) ||
         snapshot.voucherSources.some((s) => s.document_id === doc.id && s.purpose === 'cost')
       )
         fail(

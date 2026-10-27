@@ -160,6 +160,9 @@ describe('w_cb_pz 正式出库成本制证与撤销：真实账套和 core 事�
     const regenerated = await t.api.generateVoucher(await payload(issue.id));
     expect(regenerated).toMatchObject({ debitTotal: 1000, status: 'pending' });
     expect((await snapshot()).voucherSources).toHaveLength(1);
+    const current = await state();
+    await expect(t.api.cancelCostVoucher(cancel)).rejects.toThrow(/版本/);
+    expect(await state()).toEqual(current);
   });
 
   it.each(['audited', 'posted'] as const)(
@@ -347,21 +350,24 @@ describe('w_cb_pz 正式出库成本制证与撤销：真实账套和 core 事�
     expect((await t.app.svc.vouchers.list()).total).toBe(0);
   });
 
-  it('w_cb_pz：历史凭证尚无来源关联时不覆盖、不孤立生成', async () => {
-    const { issue } = await seed();
-    const input = await payload(issue.id);
-    // 仅用公开 core API 构造有来源但未关联的历史凭证，验证重复保护覆盖断链来源。
-    const preview = await t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' });
-    await svc().vouchers.create({
-      date: preview.date,
-      voucherTypeId: input.voucherTypeId,
-      lines: preview.lines,
-      source: { type: 'cost', id: String(issue.id) },
-    });
-    const before = await state();
-    await expect(t.api.generateVoucher(input)).rejects.toThrow(/重复生成/);
-    expect(await state()).toEqual(before);
-  });
+  it.each(['costing', 'inventory'])(
+    'w_cb_pz：%s历史凭证尚无来源关联时不覆盖、不孤立生成',
+    async (owner) => {
+      const { issue } = await seed();
+      const input = await payload(issue.id);
+      // 仅用公开 core API 构造有来源但未关联的历史凭证，验证重复保护覆盖断链来源。
+      const preview = await t.api.previewVoucher({ documentId: issue.id, purpose: 'cost' });
+      await t.app.svcFor(owner).vouchers.create({
+        date: preview.date,
+        voucherTypeId: input.voucherTypeId,
+        lines: preview.lines,
+        source: { type: 'cost', id: String(issue.id) },
+      });
+      const before = await state();
+      await expect(t.api.generateVoucher(input)).rejects.toThrow(/重复生成/);
+      expect(await state()).toEqual(before);
+    },
+  );
 
   it('w_cb_pz：库存模块拥有的成本用途不能覆盖或由成本模块撤销', async () => {
     const { issue } = await seed();
