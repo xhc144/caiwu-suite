@@ -13,8 +13,8 @@ test('w_tzjl_1_new：重复打开取消、快速取消及确认退场后可继�
     const original = await createBook(request, { name: `${prefix}-原账套` });
     // 列表铺满向导后方，检测关闭时快速第二次点击是否穿透到账套行。
     for (let i = 0; i < 12; i++) await createBook(request, { name: `${prefix}-${i}` });
-    const originals = (await callApi<BookSummary[]>(request, 'core.books.list')).filter(
-      (book) => book.name.startsWith(prefix),
+    const originals = (await callApi<BookSummary[]>(request, 'core.books.list')).filter((book) =>
+      book.name.startsWith(prefix),
     );
     expect(originals).toHaveLength(13);
     const before = originals.find((book) => book.id === original.bookId);
