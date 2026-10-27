@@ -28,12 +28,12 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: 9796e26f590af1241219f1b30aed9e02e9d348ac
+          ref: a052ae553d6ccb9b55f567e07b26688eb683db2b
           persist-credentials: false
           submodules: false
           lfs: false
       - name: Confirm exact candidate checkout
-        run: test "$(git rev-parse HEAD)" = "9796e26f590af1241219f1b30aed9e02e9d348ac"
+        run: test "$(git rev-parse HEAD)" = "a052ae553d6ccb9b55f567e07b26688eb683db2b"
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.0
