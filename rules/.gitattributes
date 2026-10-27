@@ -1,2 +1,0 @@
-# Preserve official evidence bytes and original line endings for SHA-256 checks.
-sources/official/* binary

@@ -1,6 +1,0 @@
-<Project>
-  <PropertyGroup>
-    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
-    <NuGetLockFilePath>$(MSBuildThisFileDirectory)locks/$(DeliveryLockGraph)/$(MSBuildProjectName).packages.lock.json</NuGetLockFilePath>
-  </PropertyGroup>
-</Project>
