@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
-import { watch, writeFileSync } from 'node:fs';
+import { watch, writeFileSync, renameSync } from 'node:fs';
 import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
@@ -22,7 +22,12 @@ if (role === 'child') {
   const record = (event, detail) => trace.push({ event, detail, at: Date.now() });
   process.on('exit', (code) => {
     record('grandchild.exit', code);
-    writeFileSync(path.join(dir, 'grandchild.json'), JSON.stringify(trace));
+    writeFileSync(path.join(dir, 'grandchild.tmp'), JSON.stringify(trace));
+    renameSync(path.join(dir, 'grandchild.tmp'), path.join(dir, 'grandchild.json'));
+  });
+  process.on('uncaughtException', (error) => {
+    record('grandchild.uncaught', { code: error.code, message: error.message });
+    process.exit(3);
   });
   process.stdout.on('error', (error) => record('stdout.error', error.code));
   process.stderr.on('error', (error) => record('stderr.error', error.code));
@@ -65,6 +70,8 @@ if (role === 'child') {
     let child;
     let watcher;
     let timer;
+    let output = '';
+    let errors = '';
     try {
       const finished = new Promise((resolve, reject) => {
         watcher = watch(dataDir, async (_event, name) => {
@@ -87,8 +94,6 @@ if (role === 'child') {
         },
       );
       const closed = once(child, 'close');
-      let output = '';
-      let errors = '';
       child.stdout.on('data', (chunk) => {
         output += chunk;
         record('parent.stdout.data', String(chunk));
@@ -118,6 +123,9 @@ if (role === 'child') {
         assert.ok(output.includes('FINAL_STDIO'), JSON.stringify(result));
         assert.ok(errors.includes('FINAL_STDERR'), JSON.stringify(result));
       }
+    } catch (error) {
+      console.log(`::warning title=stdio-probe-${candidate}::${JSON.stringify({ platform: process.platform, mode: candidate, error: error.message, events, output, errors })}`);
+      if (candidate === 'handshake') process.exitCode = 1;
     } finally {
       clearTimeout(timer);
       watcher?.close();
