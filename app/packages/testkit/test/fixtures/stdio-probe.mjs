@@ -78,6 +78,7 @@ if (role === 'child') {
     let exited = false;
     server.on('connection', (connected) => {
       socket = connected;
+      socket.on('error', (error) => record('parent.control.error', error.code));
       if (exited) socket.end('release');
     });
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
