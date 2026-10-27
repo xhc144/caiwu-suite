@@ -57,7 +57,7 @@ export const ActivityClassifiedMappingSchema = z
         })
         .strict(),
     ),
-    /** 可逐笔复核的确认清单；提供时必须完整，不能只列部分有利分录。 */
+    /** 必须显式确认全部实际分录；空数组只适用于没有实际来源的账套，不能从叶子映射推断。 */
     recognitions: z
       .array(
         z
@@ -72,11 +72,14 @@ export const ActivityClassifiedMappingSchema = z
             classification: z.enum(['unrestricted', 'restricted']),
             resourceReference: reference,
             sourceReference: reference,
+            classificationBasis: z.union([
+              unrestrictedLeaf.omit({ account: true }),
+              restrictedLeaf.omit({ account: true }),
+            ]),
           })
           .strict(),
       )
-      .max(200000)
-      .optional(),
+      .max(200000),
   })
   .strict()
   .superRefine((v, ctx) => {
@@ -95,6 +98,7 @@ export const ActivityClassifiedMappingSchema = z
     }
   });
 export type ActivityClassifiedMapping = z.infer<typeof ActivityClassifiedMappingSchema>;
+export type ActivityRecognition = ActivityClassifiedMapping['recognitions'][number];
 
 /** 只补8项收入、7项费用的4列及两类小计；互转/调整/最终净变动没有可靠事件时保留待接入。 */
 export function activity402ClassifiedTemplate(raw: ActivityClassifiedMapping): ReportTemplate {

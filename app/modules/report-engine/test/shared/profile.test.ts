@@ -21,6 +21,7 @@ import { smallBusinessApp } from '../small-business/fixture';
 import {
   classifiedChart,
   classifiedMapping,
+  confirmClassifiedFixture,
   classifiedServer,
   seedClassifiedBook,
 } from '../nonprofit/activity-classified-fixture';
@@ -242,7 +243,9 @@ it('w_bb_proc 民非逐笔排他来源持久化，预检后向410101混入限定
   await seedClassifiedBook(t.svc);
   const api = t.call(classifiedServer);
   await checkActivityClassifiedSources(t.svc, 202602, classifiedMapping());
-  const r = await api.importTemplate(activity402ClassifiedTemplate(classifiedMapping()));
+  const r = await api.importTemplate(
+    activity402ClassifiedTemplate(await confirmClassifiedFixture(t.svc)),
+  );
   const first = await generate(r, 202602);
   if (first.kind !== 'generated') throw new Error('未生成');
   const binding = await readProfileBinding(t.svc, r.id);

@@ -31,6 +31,7 @@ import {
   ActivityClassifiedMappingSchema,
   activity402ClassifiedTemplate,
   checkActivityClassifiedSources,
+  type ActivityRecognition,
 } from '../templates/nonprofit/activity-classified';
 import {
   Cashflow403MappingSchema,
@@ -290,18 +291,7 @@ const accountMeaning = (a: Account) => ({
   isBank: a.isBank,
   cashflowRequired: a.cashflowRequired,
 });
-type Recognition = {
-  voucherId: number;
-  lineId: number;
-  revision: number;
-  period: number;
-  account: string;
-  debit: number;
-  credit: number;
-  classification: 'unrestricted' | 'restricted';
-  resourceReference: string;
-  sourceReference: string;
-};
+type Recognition = ActivityRecognition;
 async function recognitionManifest(
   svc: CoreServices,
   p: ReportProfile,
@@ -333,16 +323,21 @@ async function recognitionManifest(
         classification: leaf.classification,
         resourceReference: leaf.evidence.resourceReference,
         sourceReference: leaf.evidence.sourceReference,
+        classificationBasis: {
+          exclusiveResource: leaf.exclusiveResource,
+          evidence: leaf.evidence,
+          ...('recognitionReference' in leaf
+            ? { recognitionReference: leaf.recognitionReference }
+            : {}),
+        },
       };
     });
-  if (
-    m.recognitions &&
-    fingerprint([...m.recognitions].sort((a, b) => a.lineId - b.lineId)) !== fingerprint(actual)
-  )
+  if (fingerprint([...m.recognitions].sort((a, b) => a.lineId - b.lineId)) !== fingerprint(actual))
     profileError(
-      '逐笔确认清单与实际分录ID、金额、期间、来源版本或资源分类不一致；同末级混合分类尚不支持',
+      '完整逐笔确认清单与实际分录ID、金额、期间、来源版本、资源或分类依据不一致，须重新逐笔确认；同末级混合分类尚不支持',
     );
-  return actual;
+  // 保存用户明确提交并经逐行核对的确认，不能把来源冻结当作初始分类确认。
+  return [...m.recognitions].sort((a, b) => a.lineId - b.lineId);
 }
 export type ProfileBinding = {
   version: 1;

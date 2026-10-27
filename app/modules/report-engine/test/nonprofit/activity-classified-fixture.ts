@@ -27,6 +27,7 @@ export function classifiedMapping(period = 202602): ActivityClassifiedMapping {
   const totals = activityFixtureMapping(period);
   return {
     totals,
+    recognitions: [],
     groups: Object.fromEntries(
       Object.entries(totals.groups).map(([id, group]) => {
         const root = group.accounts[0]!;
@@ -67,6 +68,56 @@ export function classifiedMapping(period = 202602): ActivityClassifiedMapping {
       }),
     ) as ActivityClassifiedMapping['groups'],
   };
+}
+
+/** 仅供本合成科目表：01批次明确为U，02批次明确为R。读真实凭证身份与金额，
+ * 分类事实来自造数约定；不调用生产profile或其自动推断，也不用于真实账套。 */
+export async function confirmClassifiedFixture(
+  svc: CoreServices,
+  mapping = classifiedMapping(),
+): Promise<ActivityClassifiedMapping> {
+  const confirmed = structuredClone(mapping);
+  confirmed.recognitions = [];
+  const rows = await svc.db
+    .selectFrom('voucher_line as l')
+    .innerJoin('voucher as v', 'v.id', 'l.voucher_id')
+    .innerJoin('account as a', 'a.id', 'l.account_id')
+    .select(['l.id', 'l.voucher_id', 'v.revision', 'l.period', 'a.code', 'l.debit', 'l.credit'])
+    .where('v.status', '=', 'posted')
+    .where('v.voided', '=', 0)
+    .where('l.period', '>=', Math.floor(mapping.totals.period / 100) * 100 + 1)
+    .where('l.period', '<=', mapping.totals.period)
+    .where((eb) => eb.or([eb('v.closing_kind', 'is', null), eb('v.closing_kind', '!=', 'pnl')]))
+    .orderBy('l.id')
+    .execute();
+  for (const e of rows) {
+    const index = roots.findIndex((root) => e.code === `${root}01` || e.code === `${root}02`);
+    if (index === -1) continue; // 1122往来对方不属于本夹具收入费用。
+    const id = Object.keys(confirmed.groups)[index] as keyof typeof confirmed.groups;
+    const classification = e.code.endsWith('01') ? 'unrestricted' : 'restricted';
+    const leaf = confirmed.groups[id][classification][0]!;
+    confirmed.recognitions.push({
+      voucherId: e.voucher_id,
+      lineId: e.id,
+      revision: e.revision,
+      period: e.period,
+      account: e.code,
+      debit: e.debit,
+      credit: e.credit,
+      classification,
+      resourceReference: leaf.evidence.resourceReference,
+      sourceReference: leaf.evidence.sourceReference,
+      classificationBasis:
+        'recognitionReference' in leaf
+          ? {
+              exclusiveResource: true,
+              evidence: structuredClone(leaf.evidence),
+              recognitionReference: leaf.recognitionReference,
+            }
+          : { exclusiveResource: true, evidence: structuredClone(leaf.evidence) },
+    });
+  }
+  return confirmed;
 }
 
 /** 独立手算：每行依次为本月非限定/限定、累计非限定/限定，单位分。

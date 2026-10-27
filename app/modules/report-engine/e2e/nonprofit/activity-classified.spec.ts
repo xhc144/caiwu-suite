@@ -3,7 +3,10 @@ import ExcelJS from 'exceljs';
 import { callApi } from '@caiwu/testkit/e2e';
 import type { Report, ReportSnapshot } from '../../shared';
 import { activity402ClassifiedTemplate } from '../../templates/nonprofit/activity-classified';
-import { classifiedMapping } from '../../test/nonprofit/activity-classified-fixture';
+import {
+  classifiedMapping,
+  confirmClassifiedFixture,
+} from '../../test/nonprofit/activity-classified-fixture';
 import { test } from './fixture';
 
 // 浏览器侧独立列出手算值，不从模板公式或单测golden计算期望。
@@ -42,10 +45,14 @@ for (const kind of ['classified', 'classified-closed'] as const)
       (session) => sessionStorage.setItem('caiwu.session', JSON.stringify(session)),
       { token: login.token, bookId, user: login.user, book: login.book },
     );
+    let mapping = classifiedMapping();
+    await nonprofit.withCore(bookId, async (svc) => {
+      mapping = await confirmClassifiedFixture(svc);
+    });
     const report = await callApi<Report>(
       nonprofit.request,
       'm.report-engine.importTemplate',
-      activity402ClassifiedTemplate(classifiedMapping()),
+      activity402ClassifiedTemplate(mapping),
       { token: login.token, method: 'POST' },
     );
     await page.goto(`${nonprofit.baseURL}/m/report-engine/view?id=${report.id}&period=202602`);

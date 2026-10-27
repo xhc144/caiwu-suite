@@ -12,6 +12,7 @@ import {
   classifiedChart,
   classifiedGolden,
   classifiedMapping,
+  confirmClassifiedFixture,
   classifiedServer,
   closeClassifiedPnl,
   seedClassifiedBook,
@@ -33,7 +34,7 @@ afterEach(async () => {
 describe('民非 w_bb_get / w_bb_proc / w_bb_saveas：402实际末级分类切片', () => {
   it('15×4格及两类小计逐格等于独立手算；退款、自定义转账和负发生额保留，pnl前后相同且xlsx读回一致', async () => {
     await seedClassifiedBook(app.svc);
-    const mapping = classifiedMapping();
+    const mapping = await confirmClassifiedFixture(app.svc);
     await app.svc.tx((svc) => checkActivityClassifiedSources(svc, 202602, mapping));
     const api = app.call(classifiedServer);
     const template = activity402ClassifiedTemplate(mapping);
@@ -158,9 +159,10 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas：402实际末级分类切�
     const mapping = classifiedMapping();
     mapping.groups.donations.restricted[0]!.evidence.purpose!.releaseReference =
       '虚构提供者2月末撤销函，仅撤销尚未使用余额限制；不改变1–2月原确认分类';
-    await checkActivityClassifiedSources(app.svc, 202602, mapping);
+    const confirmed = await confirmClassifiedFixture(app.svc, mapping);
+    await checkActivityClassifiedSources(app.svc, 202602, confirmed);
     const api = app.call(classifiedServer);
-    const report = await api.importTemplate(activity402ClassifiedTemplate(mapping));
+    const report = await api.importTemplate(activity402ClassifiedTemplate(confirmed));
     const result = await api.generate({
       id: report.id,
       expectedRevision: 1,
@@ -325,7 +327,7 @@ describe('民非 w_bb_get / w_bb_proc / w_bb_saveas：402实际末级分类切�
             await checkActivityClassifiedSources(t.svc, 202602, classifiedMapping());
             const api = t.call(classifiedServer);
             const report = await api.importTemplate(
-              activity402ClassifiedTemplate(classifiedMapping()),
+              activity402ClassifiedTemplate(await confirmClassifiedFixture(t.svc)),
             );
             const out = await api.generate({
               id: report.id,

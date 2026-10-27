@@ -142,10 +142,22 @@ export default function ViewPage() {
         )}
         {canExport && (
           <>
-            <Button disabled={!s} loading={working} onClick={() => void exportOrPrint(false)}>
+            <Button
+              aria-label="导出 Excel"
+              aria-busy={working}
+              disabled={!s}
+              loading={working}
+              onClick={() => void exportOrPrint(false)}
+            >
               导出 Excel
             </Button>
-            <Button disabled={!s} loading={working} onClick={() => void exportOrPrint(true)}>
+            <Button
+              aria-label="打印"
+              aria-busy={working}
+              disabled={!s}
+              loading={working}
+              onClick={() => void exportOrPrint(true)}
+            >
               打印
             </Button>
           </>
