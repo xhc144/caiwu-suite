@@ -95,9 +95,14 @@ test('w_zw_fhye_1：真实保存待响应时重复点击只发一次，取消和
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
-  const requests: unknown[] = [];
+  const requests: { procedures: string[]; input: unknown }[] = [];
   await page.route('**/trpc/m.balances.saveSettings*', async (route) => {
-    requests.push(route.request().postDataJSON());
+    requests.push({
+      procedures: decodeURIComponent(new URL(route.request().url()).pathname)
+        .slice('/trpc/'.length)
+        .split(','),
+      input: route.request().postDataJSON(),
+    });
     await held;
     await route.continue();
   });
@@ -122,4 +127,11 @@ test('w_zw_fhye_1：真实保存待响应时重复点击只发一次，取消和
   );
   expect(metadata.settings).toEqual({ revision: 1, display: { level: -1, onlyActivity: false } });
   expect(requests).toHaveLength(1);
+  // 一个 HTTP 包仍可批处理多个 mutation，同时核对 procedure 和输入索引。
+  expect(requests).toEqual([
+    {
+      procedures: ['m.balances.saveSettings'],
+      input: { '0': { revision: 0, display: { level: -1, onlyActivity: false } } },
+    },
+  ]);
 });
