@@ -12,8 +12,6 @@ export default defineManifest({
     { id: 'inventory.audit-admin', name: '撤销他人仓库审核' },
     { id: 'inventory.negative-stock', name: '确认负库存例外' },
     { id: 'inventory.settings', name: '设置仓库参数' },
-    { id: 'inventory.costing', name: '正式库存核算和撤销' },
-    { id: 'inventory.voucher', name: '库存来源凭证关联和删除' },
   ],
   menu: [
     { group: 'inventory', title: '产品与仓库', path: '/master', permission: 'inventory.view' },
@@ -26,10 +24,5 @@ export default defineManifest({
     { group: 'inventory', title: '汇总与销售明细', path: '/reports', permission: 'inventory.view' },
     { group: 'inventory', title: '仓库设置', path: '/settings', permission: 'inventory.view' },
   ],
-  sources: [
-    { type: 'document', name: '仓库单据', path: '/receipts?id={id}' },
-    { type: 'receipt', name: '入库凭证来源', path: '/receipts?id={id}' },
-    { type: 'revenue', name: '销售收入凭证来源', path: '/issues?id={id}' },
-    { type: 'cost', name: '出库成本凭证来源', path: '/issues?id={id}' },
-  ],
+  sources: [{ type: 'document', name: '仓库单据', path: '/receipts?id={id}' }],
 });

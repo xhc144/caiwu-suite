@@ -8,5 +8,3 @@ export * from './templates';
 export * from './book-store';
 export * from './services';
 export * from './demo-data';
-export * from './inventory-provider';
-export { withServiceScope } from './service-scope';

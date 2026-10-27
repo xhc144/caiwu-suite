@@ -1,11 +1,4 @@
-import {
-  BusinessError,
-  isPeriod,
-  periodYear,
-  periodMonth,
-  type BalanceRow,
-  type DimensionTypeId,
-} from '@caiwu/core';
+import { BusinessError, periodYear, type BalanceRow, type DimensionTypeId } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { z } from 'zod';
 import {
@@ -21,16 +14,6 @@ import {
   type ReportTemplate,
 } from '../shared';
 import type { ReportTables } from './migrations';
-import {
-  boundTemplate,
-  createProfileBinding,
-  definitionFingerprint,
-  fingerprint,
-  profileError,
-  readProfileBinding,
-  validateSavedProfile,
-  type ProfileBinding,
-} from './profile';
 import {
   calculate,
   evaluate,
@@ -118,22 +101,11 @@ export function reportService(svc: CoreServices) {
     )
       fail('DUPLICATE', `报表编码 ${code} 已存在`, '请输入不同的最多三位数字编码。');
   };
-  const insert = async (t: ReportTemplate, copiedBinding?: ProfileBinding | null) => {
+  const insert = async (t: ReportTemplate) => {
     await uniqueCode(t.code);
-    const binding =
-      copiedBinding === undefined ? await createProfileBinding(svc, t) : copiedBinding;
-    const savedTemplate = boundTemplate(t, binding);
     const row = await db
       .insertInto('report_engine_template')
-      .values({
-        code: t.code,
-        name: t.name,
-        revision: 1,
-        definition_json: JSON.stringify(savedTemplate),
-        profile_binding_json: binding
-          ? JSON.stringify({ ...binding, definitionRevision: 1 })
-          : null,
-      })
+      .values({ code: t.code, name: t.name, revision: 1, definition_json: JSON.stringify(t) })
       .returning('id')
       .executeTakeFirstOrThrow();
     return get(row.id);
@@ -153,8 +125,8 @@ export function reportService(svc: CoreServices) {
       return svc.tx((tsvc) => reportService(tsvc).insertValidated(t));
     },
     // 内部方法只接收通过严格合同校验的模板，不提供独立路由。
-    async insertValidated(raw: ReportTemplate, copiedBinding?: ProfileBinding | null) {
-      return insert(validate(raw), copiedBinding);
+    async insertValidated(raw: ReportTemplate) {
+      return insert(validate(raw));
     },
     async importTemplate(raw: ReportTemplate) {
       const t = validate(raw);
@@ -164,15 +136,11 @@ export function reportService(svc: CoreServices) {
       return svc.tx(async (tsvc) => {
         const service = reportService(tsvc);
         const r = await service.get(sourceId);
-        const binding = await readProfileBinding(tsvc, sourceId);
-        return service.insertValidated(
-          {
-            ...r.template,
-            ...HeaderSchema.pick({ code: true, name: true }).parse(raw),
-            readOnly: false,
-          },
-          binding,
-        );
+        return service.insertValidated({
+          ...r.template,
+          ...HeaderSchema.pick({ code: true, name: true }).parse(raw),
+          readOnly: false,
+        });
       });
     },
     async save(id: number, expectedRevision: number, raw: ReportTemplate) {
@@ -180,14 +148,6 @@ export function reportService(svc: CoreServices) {
       return svc.tx(async (tsvc) => {
         const service = reportService(tsvc);
         const old = await service.assertEditable(id, expectedRevision);
-        const binding = await readProfileBinding(tsvc, id);
-        if (
-          fingerprint(old.template.profile) !== fingerprint(template.profile) ||
-          old.template.reportIdentity !== template.reportIdentity
-        )
-          profileError('保存不能删除、更换或静默改写原profile身份；请显式重新确认后引入新版本');
-        if (binding && definitionFingerprint(template) !== binding.definitionFingerprint)
-          profileError('已绑定模板不能借保存更改公式或审核而保留旧profile');
         // 即使调用者主动移除越界内容，也拒绝通过缩小尺寸悄悄删掉原定义。
         if (
           old.template.cells.some((c) => {
@@ -212,9 +172,6 @@ export function reportService(svc: CoreServices) {
             code: template.code,
             name: template.name,
             definition_json: JSON.stringify(template),
-            profile_binding_json: binding
-              ? JSON.stringify({ ...binding, definitionRevision: expectedRevision + 1 })
-              : null,
             revision: expectedRevision + 1,
           })
           .where('id', '=', id)
@@ -254,62 +211,9 @@ export function reportService(svc: CoreServices) {
         .executeTakeFirst();
       return r ? { ...(JSON.parse(r.result_json) as ReportSnapshot), id: r.id } : null;
     },
-    /** 导出检查与读取位于一个真实账套事务；任何HTTP调用均经过这里。 */
-    async exportSnapshot(
-      id: number,
-      period: number,
-      includeUnposted: boolean,
-    ): Promise<ReportSnapshot | null> {
-      return svc.tx(async (tsvc) => {
-        const service = reportService(tsvc);
-        const saved = await service.snapshot(id, period, includeUnposted);
-        if (!saved) return null;
-        await service.assertSnapshotCurrent(saved);
-        return saved;
-      });
-    },
-    async assertSnapshotCurrent(saved: ReportSnapshot): Promise<void> {
-      if (saved.checks.some((c) => c.status !== 'pass'))
-        fail(
-          'AUDIT',
-          '报表审核存在不通过或错误，禁止导出或回放成功结果',
-          '请修正来源和审核问题后重新生成；旧结果仍可查看。',
-        );
-      const dependencies = new Map(saved.dependencies.map((d) => [d.id, d.revision]));
-      dependencies.set(saved.reportId, saved.revision);
-      const proofs: NonNullable<ReportSnapshot['profileProofs']> = [];
-      for (const [id, revision] of dependencies) {
-        const current = await get(id);
-        if (current.revision !== revision)
-          fail('CONFLICT', '报表或依赖定义已更改，请重新生成后导出');
-        const proof = await validateSavedProfile(svc, current, saved);
-        if (proof) proofs.push(proof);
-      }
-      if (
-        fingerprint(proofs.sort((a, b) => a.reportId - b.reportId)) !==
-        fingerprint([...(saved.profileProofs ?? [])].sort((a, b) => a.reportId - b.reportId))
-      )
-        profileError('旧快照的profile或相关实际来源指纹不一致，请重新生成；旧快照仍保留');
-    },
     async generate(input: z.infer<typeof GenerateSchema>) {
       return svc.tx(async (tsvc) => {
         const tdb = tsvc.db.withTables<ReportTables>();
-        const service = reportService(tsvc);
-        const report = await service.get(input.id);
-        if (report.revision !== input.expectedRevision)
-          fail('CONFLICT', '报表定义已更改，请刷新后再生成');
-        await tsvc.periods.require(input.period);
-        const proofs = new Map<number, NonNullable<ReportSnapshot['profileProofs']>[number]>();
-        const checked = new Set<number>();
-        const verify = async (r: Report) => {
-          if (checked.has(r.id)) return;
-          if (report.template.profile && !r.template.profile)
-            profileError('已绑定切片不能依赖缺少profile的自定义报表');
-          const proof = await validateSavedProfile(tsvc, r, input);
-          if (proof) proofs.set(r.id, proof);
-          checked.add(r.id);
-        };
-        await verify(report);
         const requestJson = JSON.stringify({
           id: input.id,
           revision: input.expectedRevision,
@@ -324,16 +228,32 @@ export function reportService(svc: CoreServices) {
         if (replay) {
           if (replay.request_json !== requestJson)
             fail('REQUEST_REUSED', '本次请求编号已用于不同的生成操作，请重新生成');
-          const saved = { ...(JSON.parse(replay.result_json) as ReportSnapshot), id: replay.id };
-          await service.assertSnapshotCurrent(saved);
           return {
             kind: 'generated' as const,
-            snapshot: saved,
+            snapshot: { ...(JSON.parse(replay.result_json) as ReportSnapshot), id: replay.id },
           };
         }
+        const report = await reportService(tsvc).get(input.id);
+        if (report.revision !== input.expectedRevision)
+          fail('CONFLICT', '报表定义已更改，请刷新后再生成');
+        await tsvc.periods.require(input.period);
+        const unposted = await tsvc.vouchers.list({
+          periodTo: input.period,
+          statuses: ['draft', 'pending', 'audited'],
+          limit: 1,
+        });
+        if (unposted.total > 0 && !input.confirmUnposted)
+          return {
+            kind: 'confirmation' as const,
+            count: unposted.total,
+            links: [
+              { label: '待审核凭证', to: `/m/voucher-book?period=${input.period}&status=pending` },
+              { label: '已审核凭证', to: `/m/voucher-book?period=${input.period}&status=audited` },
+            ],
+          };
         if (!report.template.cells.some((c) => c.source.trim() !== ''))
           fail('EMPTY', '报表没有可生成的内容', '请先定义文本或取数公式并保存。');
-        const engine = await createEngine(tsvc, input.period, input.includeUnposted, verify);
+        const engine = await createEngine(tsvc, input.period, input.includeUnposted);
         const cells: ReportSnapshot['cells'] = [];
         for (const c of report.template.cells) {
           if (c.kind === 'text') {
@@ -378,34 +298,6 @@ export function reportService(svc: CoreServices) {
             });
           }
         }
-        if (report.template.profile && checks.some((c) => c.status !== 'pass'))
-          fail(
-            'AUDIT',
-            '已绑定报表切片审核不通过或错误，本次不写入新快照',
-            '请核对来源和分类后重算；上次成功结果仍保留。',
-          );
-        // 先解析实际用到的取数/依赖/审核范围，再做唯一一次确认计数。
-        // 否则表头已有未过账时会提前返回较小数量，确认后才发现未来期间。
-        const unposted = await tsvc.vouchers.list({
-          periodTo: engine.lastPeriod(),
-          statuses: ['draft', 'pending', 'audited'],
-          limit: 1,
-        });
-        if (unposted.total > 0 && !input.confirmUnposted)
-          return {
-            kind: 'confirmation' as const,
-            count: unposted.total,
-            links: [
-              {
-                label: '待审核凭证',
-                to: `/m/voucher-book?period=${engine.lastPeriod()}&status=pending`,
-              },
-              {
-                label: '已审核凭证',
-                to: `/m/voucher-book?period=${engine.lastPeriod()}&status=audited`,
-              },
-            ],
-          };
         const snapshot: ReportSnapshot = {
           id: 0,
           reportId: report.id,
@@ -414,8 +306,6 @@ export function reportService(svc: CoreServices) {
           includeUnposted: input.includeUnposted,
           unpostedCount: unposted.total,
           generatedAt: tsvc.ctx.now().toISOString(),
-          assurance: report.template.profile ? 'guarded-slice' : 'custom-trial',
-          profileProofs: [...proofs.values()],
           template: report.template,
           cells,
           checks,
@@ -441,12 +331,7 @@ export function reportService(svc: CoreServices) {
 }
 
 /** 所有定义、取数和依赖都使用调用方传入的同一个事务；不读取旧生成快照。 */
-async function createEngine(
-  svc: CoreServices,
-  period: number,
-  includeUnposted: boolean,
-  verify: (report: Report) => Promise<void>,
-) {
+async function createEngine(svc: CoreServices, period: number, includeUnposted: boolean) {
   const reports = await reportService(svc).list();
   const byCode = new Map(reports.map((r) => [r.template.code, r]));
   const used = new Map<number, Report>();
@@ -454,39 +339,6 @@ async function createEngine(
   const balances = new Map<string, Value>();
   const visiting = new Set<string>();
   let steps = 0;
-  let lastPeriod = period;
-  const availablePeriods = new Set((await svc.periods.list()).map((p) => p.period));
-  const bookInfo = await svc.book.info();
-  const requireRange = async (from: number, to: number) => {
-    if (from > to) throw new FormulaError('取数开始期间不能晚于结束期间');
-    await svc.periods.require(from);
-    await svc.periods.require(to);
-    const months =
-      (periodYear(to) - periodYear(from)) * 12 + periodMonth(to) - periodMonth(from) + 1;
-    if ([...availablePeriods].filter((p) => p >= from && p <= to).length !== months)
-      throw new FormulaError('取数范围内有尚未建立的期间，不能按零发生额计算');
-  };
-  const resolvePeriod = (selector: string | undefined) => {
-    const year = periodYear(period);
-    const selected =
-      selector === 'yearStart'
-        ? year * 100 + 1
-        : selector === 'previousYear' || selector === 'previousYearSameMonth'
-          ? period - 100
-          : selector === 'previousYearEnd'
-            ? (year - 1) * 100 + 12
-            : selector === 'previousMonth'
-              ? periodMonth(period) === 1
-                ? (year - 1) * 100 + 12
-                : period - 1
-              : selector === 'previousYearStart'
-                ? (year - 1) * 100 + 1
-                : !selector || selector === 'current'
-                  ? period
-                  : Number(selector);
-    if (!isPeriod(selected)) throw new FormulaError('取数期间超出有效范围');
-    return selected;
-  };
   const tick = () => {
     if (++steps > 100_000) throw new FormulaError('本次生成超过100000步，请减少引用或拆分报表');
   };
@@ -494,12 +346,6 @@ async function createEngine(
     const key = JSON.stringify(input);
     const old = balances.get(key);
     if (old) return old;
-    const from = resolvePeriod(input.options?.from);
-    const to = resolvePeriod(input.options?.to);
-    await requireRange(from, to);
-    if (['ytdDebit', 'ytdCredit'].includes(input.metric))
-      await requireRange(Math.max(bookInfo.startPeriod, periodYear(to) * 100 + 1), to);
-    lastPeriod = Math.max(lastPeriod, to);
     const account = await svc.accounts.require(input.account);
     const dimensions: Partial<Record<DimensionTypeId, number>> = {};
     if (input.dimension !== 'none') {
@@ -514,18 +360,16 @@ async function createEngine(
       throw new FormulaError(`币种 ${input.currency} 不存在`);
     let total = value(0, input.unit, input.currency);
     if (input.dimension === 'cashflow') {
-      const activityFrom = ['ytdDebit', 'ytdCredit'].includes(input.metric)
-        ? Math.max(bookInfo.startPeriod, periodYear(to) * 100 + 1)
-        : from;
+      const from = ['ytdDebit', 'ytdCredit'].includes(input.metric)
+        ? Math.max((await svc.book.info()).startPeriod, periodYear(period) * 100 + 1)
+        : period;
       const entries = await svc.ledger.entries({
-        periodFrom: activityFrom,
-        periodTo: to,
+        periodFrom: from,
+        periodTo: period,
         accountCode: input.account,
         dimensions,
         currency: input.unit === 'foreignCents' ? input.currency : undefined,
         includeUnposted,
-        excludeClosing: input.options?.closing === 'exclude',
-        excludeClosingKinds: input.options?.closing === 'excludePnl' ? ['pnl'] : undefined,
         limit: 200_000,
       });
       if (entries.length >= 200_000)
@@ -547,15 +391,12 @@ async function createEngine(
         }
     } else {
       const rows = await svc.ledger.balances({
-        periodFrom: from,
-        periodTo: to,
+        periodFrom: period,
+        periodTo: period,
         accountCodes: [input.account],
         dimensions,
         currency: input.unit === 'foreignCents' ? input.currency : undefined,
         includeUnposted,
-        excludeClosing: input.options?.closing === 'exclude',
-        excludeClosingKinds: input.options?.closing === 'excludePnl' ? ['pnl'] : undefined,
-        groupBy: input.options?.groupBy,
         rollup: false,
         includeZero: true,
       });
@@ -595,18 +436,7 @@ async function createEngine(
           throw new FormulaError('core不提供所选取数指标');
         if (typeof n === 'number' && !Number.isSafeInteger(n))
           throw new FormulaError('总账金额超出安全整数范围');
-        const amount = value(n).amount;
-        total.amount = total.amount.plus(
-          input.options?.side === 'debit'
-            ? amount.greaterThan(0)
-              ? amount
-              : 0
-            : input.options?.side === 'credit'
-              ? amount.lessThan(0)
-                ? amount.negated()
-                : 0
-              : amount,
-        );
+        total.amount = total.amount.plus(n);
       }
     }
     if (
@@ -619,10 +449,9 @@ async function createEngine(
     balances.set(key, total);
     return total;
   };
-  const requireReport = async (code: string) => {
+  const requireReport = (code: string) => {
     const r = byCode.get(code);
     if (!r) throw new FormulaError(`引用的报表 ${code} 不存在`);
-    await verify(r);
     used.set(r.id, r);
     return r;
   };
@@ -638,7 +467,7 @@ async function createEngine(
     if (!parsedCode.success) throw new FormulaError(`报表编码 ${code} 不是最多三位数字`);
     code = parsedCode.data;
     address = address.toUpperCase();
-    const report = await requireReport(code);
+    const report = requireReport(code);
     const p = coordinates(address);
     if (p.row < 1 || p.col < 1 || p.row > report.template.rows || p.col > report.template.cols)
       throw new FormulaError(`报表${code}引用的单元格 ${address} 不存在`);
@@ -657,9 +486,7 @@ async function createEngine(
           ? await evaluate(parseFormula(c.source), context(code))
           : value(c.source, c.unit, c.currency),
       );
-      // IF/MAX 的普通数值零可以采用单元格声明的单位；非零值仍严格检查。
-      if (v.empty || (v.unit === 'number' && v.amount.isZero()))
-        v = { ...v, unit: c.unit, currency: c.currency };
+      if (v.empty) v = { ...v, unit: c.unit, currency: c.currency };
       if (v.unit !== c.unit || (v.unit === 'foreignCents' && v.currency !== c.currency))
         throw new FormulaError(`${key} 的结果单位与单元格声明不一致，请调整单位`);
       cache.set(key, v);
@@ -674,6 +501,5 @@ async function createEngine(
       evaluate(parseFormula(source), context(code)).then(finalize),
     dependencies: () =>
       [...used.values()].map((r) => ({ id: r.id, code: r.template.code, revision: r.revision })),
-    lastPeriod: () => lastPeriod,
   };
 }

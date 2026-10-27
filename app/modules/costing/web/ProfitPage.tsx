@@ -125,7 +125,7 @@ export default function ProfitPage() {
               title={`不含税收入 ${formatMoney(report.data.totals.revenueCents)}；销售成本 ${report.data.totals.costCents == null ? (report.data.totals.unknownHistoryLines ? '历史成本未知' : '待成本核算') : formatMoney(report.data.totals.costCents)}；销售毛利 ${report.data.totals.grossProfitCents == null ? (report.data.totals.unknownHistoryLines ? '历史成本未知' : '待成本核算') : formatMoney(report.data.totals.grossProfitCents)}`}
               description={
                 report.data.totals.unknownHistoryLines
-                  ? '历史成本的有效批次链或来源头行证据不完整，相关成本和毛利暂不提供。'
+                  ? '历史月份尚无可核验的核算批次，相关成本和毛利暂不提供。'
                   : undefined
               }
             />

@@ -22,12 +22,6 @@ export function roundedRatio(numerator: bigint, denominator: bigint): bigint {
 export function quantity(e6: bigint): string {
   return new Decimal(e6.toString()).div(1_000_000).toFixed();
 }
-export function e6(value: string): number {
-  if (!/^-?\d+(\.\d{1,6})?$/.test(value)) fail('QUANTITY', '库存数量必须为最多六位小数');
-  const result = new Decimal(value).mul(1_000_000).toNumber();
-  integer(result, '库存数量');
-  return result;
-}
 export function unitCost(cents: bigint, e6: bigint): string {
   return e6 === 0n ? '0' : new Decimal(cents.toString()).mul(10000).div(e6.toString()).toFixed(12);
 }

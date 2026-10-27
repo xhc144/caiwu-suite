@@ -89,7 +89,6 @@ export async function createTestApp(opts: TestAppOptions = {}): Promise<TestApp>
       moduleId,
       now: runtime.now,
       modules: runtime.modules.lookup,
-      providers: runtime.modules.providers,
     });
   const svc = make(null);
   if (opts.seed !== false) await seedReferenceData(svc, book.startPeriod);

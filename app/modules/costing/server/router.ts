@@ -4,8 +4,6 @@ import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
   CalculationSchema,
-  CommitCalculationSchema,
-  CancelCalculationSchema,
   CancelWorksheetSchema,
   ReportSchema,
   SaveWorksheetSchema,
@@ -13,7 +11,7 @@ import {
 } from '../shared';
 import { costingService } from './service';
 import { generateVoucher, previewVoucher } from './vouchers';
-import { readInventory } from './inventory-read';
+import { inventoryReader } from './inventory-read';
 
 const m = moduleKit(manifest);
 const view = m.procedure.meta({ permission: 'costing.view' });
@@ -22,14 +20,13 @@ const calculation = m.procedure.meta({ permission: 'costing.calculate' });
 const voucher = m.procedure.meta({ permission: 'costing.voucher' });
 
 export const costingRouter = m.router({
-  voucherDocuments: voucher.query(({ ctx }) =>
-    ctx.svc.tx(async (t) => {
-      const through = Math.max(...(await t.periods.list()).map((p) => p.period));
-      const snapshot = await readInventory(t, through);
-      return snapshot.documents
-        .map(({ id, number, date, kind, category }) => ({ id, number, date, kind, category }))
-        .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
-    }),
+  voucherDocuments: voucher.query(async ({ ctx }) =>
+    (await inventoryReader(ctx.svc))
+      .selectFrom('inventory_document')
+      .select(['id', 'number', 'date', 'kind', 'category'])
+      .orderBy('date', 'desc')
+      .orderBy('id', 'desc')
+      .execute(),
   ),
   context: view.query(({ ctx }) => costingService(ctx.svc).context()),
   preview: view
@@ -45,13 +42,10 @@ export const costingRouter = m.router({
   cancelWorksheet: worksheet
     .input(CancelWorksheetSchema)
     .mutation(({ ctx, input }) => costingService(ctx.svc).cancelWorksheet(input)),
-  batches: view.query(({ ctx }) => costingService(ctx.svc).batches()),
   commit: calculation
-    .input(CommitCalculationSchema)
+    .input(CalculationSchema)
     .mutation(({ ctx, input }) => costingService(ctx.svc).commit(input)),
-  cancelCalculation: calculation
-    .input(CancelCalculationSchema)
-    .mutation(({ ctx, input }) => costingService(ctx.svc).cancelCalculation(input)),
+  cancelCalculation: calculation.mutation(({ ctx }) => costingService(ctx.svc).cancelCalculation()),
   profit: view.input(ReportSchema).query(({ ctx, input }) => costingService(ctx.svc).profit(input)),
   previewVoucher: voucher
     .input(VoucherPreviewSchema)

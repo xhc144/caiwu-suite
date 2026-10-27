@@ -6,29 +6,14 @@ import server from '../server';
 // 使用真实自动登记的库存服务造前置，不导入其它模块代码，不依赖其它页面。
 export const inventoryModule = serverModules.find((m) => m.manifest.id === 'inventory')!;
 type Document = { id: number; revision: number; number: string; lines: { id: number }[] };
-type StockFixture = {
-  balance: string;
-  issueCostCents: number | null;
-  balanceCents: number | null;
-};
-type CountFixture = {
-  revision: number;
-  rows: {
-    bookCents: number | null;
-    actualCents: number | null;
-    differenceCents: number | null;
-  }[];
-};
 type InventoryFixtures = {
-  stock(input: { warehouseId: number }): Promise<StockFixture[]>;
-  count(input: { warehouseId: number; period: number }): Promise<CountFixture>;
   saveWarehouse(input: { code: string; name: string }): Promise<number>;
   saveProduct(input: {
     code: string;
     name: string;
     inventoryAccountId: number;
     salesAccountId: number;
-  }): Promise<{ id: number }>;
+  }): Promise<number>;
   saveOpening(input: {
     warehouseId: number;
     revision: number;
@@ -59,7 +44,7 @@ type InventoryFixtures = {
     rows: { productCode: string; actual: string }[];
   }): Promise<unknown>;
 };
-export async function setup(options: { withProduct?: boolean } = {}) {
+export async function setup() {
   const app = await createTestApp({ modules: [inventoryModule, server], product: 'chengben' });
   const inventory = app.call(inventoryModule) as unknown as InventoryFixtures;
   const warehouseId = await inventory.saveWarehouse({ code: '01', name: '一仓' });
@@ -71,14 +56,12 @@ export async function setup(options: { withProduct?: boolean } = {}) {
     inputTax: (await app.svc.accounts.require('22210101')).id,
     outputTax: (await app.svc.accounts.require('22210102')).id,
   };
-  if (options.withProduct !== false) {
-    await inventory.saveProduct({
-      code: 'P1',
-      name: '试算产品',
-      inventoryAccountId: ids.stock,
-      salesAccountId: ids.sales,
-    });
-  }
+  await inventory.saveProduct({
+    code: 'P1',
+    name: '试算产品',
+    inventoryAccountId: ids.stock,
+    salesAccountId: ids.sales,
+  });
   const opening = (quantity = '10', unitPrice = '1') =>
     inventory.saveOpening({
       warehouseId,

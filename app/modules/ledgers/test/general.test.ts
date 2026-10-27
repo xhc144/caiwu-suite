@@ -332,14 +332,6 @@ describe('w_zc_zc/w_zc_zc_1 总分类账', () => {
     await expect(api.print({ ...query(), columns: GENERAL_COLUMNS })).rejects.toThrow(/安全整数/);
   });
   it('真实105笔凭证全额汇总；109个月展示分页/折叠不影响导出', async () => {
-    await expect(app.call(server).report(query({ periodTo: 203507 }))).rejects.toThrow(
-      /本年累计实际范围中有尚未建立的期间/,
-    );
-    // 展示完整109个月，先真实建立后续期间；不年结或另存期初，保留凭证跨年结转口径。
-    for (let year = 2027; year <= 2035; year++) await app.svc.periods.ensureYear(year);
-    expect(
-      (await app.svc.periods.list()).filter((p) => p.period >= 202607 && p.period <= 203507),
-    ).toHaveLength(109);
     await seedVouchers(
       app.svc,
       Array.from({ length: 105 }, (_, i) => ({

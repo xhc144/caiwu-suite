@@ -718,22 +718,13 @@ describe('w_pz_plxg / w_pz_get 补充事务与完整范围', () => {
   });
   it('w_pzedit_fc 两个并发反冲预览只能执行一个；重新预览明确提示再次冲销', async () => {
     const [v] = await seed();
-    const itemId = await setCashDirection('CF01', 'inflow');
     const args = { date: '2026-02-01', voucherTypeId: v!.voucherTypeId };
     const p = await plan('reverse', [v!.id], args),
       second = await plan('reverse', [v!.id], args);
-    await api.commit({
-      token: p.token,
-      confirmed: true,
-      cashflowMappings: [{ lineNo: 2, itemId }],
-    });
-    await expect(
-      api.commit({
-        token: second.token,
-        confirmed: true,
-        cashflowMappings: [{ lineNo: 2, itemId }],
-      }),
-    ).rejects.toThrow(/冲销关系已变更/);
+    await api.commit({ token: p.token, confirmed: true });
+    await expect(api.commit({ token: second.token, confirmed: true })).rejects.toThrow(
+      /冲销关系已变更/,
+    );
     expect((await plan('reverse', [v!.id], args)).warnings.join()).toMatch(
       /已有 1 张冲销.*再次冲销/,
     );
@@ -939,38 +930,19 @@ describe('w_pz_get / w_pz_tjsh 细项回归', () => {
     const normalized = (v: Voucher) => v.lines.map(({ id: _id, ...line }) => line);
     expect(normalized(copy)).toEqual(normalized(v));
   });
-  it('w_pzedit_fc 红冲预览显式选反向项目，原方向拒绝；成功后仍须跨人审核', async () => {
+  it('w_pz_tjsh 红字同向负数冲减原现金流方向，仍须跨人审核', async () => {
     const cf = await setCashDirection('CF02', 'outflow');
-    const inflow = await setCashDirection('CF01', 'inflow');
     const base = await input();
     base.lines[1]!.dimensions = { cashflow: cf };
     const v = await app.svc.vouchers.create(base);
     const p = await plan('reverse', [v.id], { date: '2026-02-01', voucherTypeId: v.voucherTypeId });
-    const before = await snapshot();
-    await expect(api.commit({ token: p.token, confirmed: true })).rejects.toThrow(/尚未选择/);
-    await expect(
-      api.commit({
-        token: p.token,
-        confirmed: true,
-        cashflowMappings: [{ lineNo: 2, itemId: cf }],
-      }),
-    ).rejects.toThrow(/方向冲突/);
-    expect(await snapshot()).toEqual(before);
-    const r = await api.commit({
-      token: p.token,
-      confirmed: true,
-      cashflowMappings: [{ lineNo: 2, itemId: inflow }],
-    });
-    const mine = await plan('audit', r.createdIds);
-    expect(mine.eligibleCount).toBe(0);
-    expect(mine.rows[0]!.reasons.join()).toContain('制单人与审核人相同');
+    const r = await api.commit({ token: p.token, confirmed: true });
     const b = await auditor();
     const audit = await b.preview.audit({ action: 'audit', selection: { ids: r.createdIds } });
     expect(audit).toMatchObject({ eligibleCount: 1, skippedCount: 0 });
     expect(audit.rows[0]!.warnings).toEqual([]);
     await b.commit({ token: audit.token, confirmed: true });
     expect((await app.svc.vouchers.get(r.createdIds[0]!))!.auditedBy!.name).toBe('B');
-    expect(await app.svc.vouchers.get(v.id)).toEqual(v);
   });
   it('w_pz_tjsh 预览后撤回权限不能继续审核', async () => {
     const [v] = await seed();
