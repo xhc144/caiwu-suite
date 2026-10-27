@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { BusinessError, type BalanceRow, type EntryRow } from '@caiwu/core';
+import { BusinessError, type BalanceRow, type EntryRow, type VoucherFilter } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
   ConfigurationSchema,
@@ -237,18 +237,19 @@ export async function prepareSmallBusiness(
     closingKinds.set(id, v.closingKind);
     voucherRevisions.push([v.id, v.revision, v.status, v.closingKind]);
   }
-  const unposted = await svc.vouchers.list({
-    periodFrom: comparison?.from ?? scopes[0].from,
-    periodTo: input.period,
+  const unpostedRange = {
+    periodFrom: Math.min(...scopes.flatMap((scope) => (scope ? [scope.from] : []))),
+    periodTo: Math.max(...scopes.flatMap((scope) => (scope ? [scope.to] : []))),
     statuses: ['draft', 'pending', 'audited'],
+  } satisfies VoucherFilter;
+  const unposted = await svc.vouchers.list({
+    ...unpostedRange,
     limit: 10000,
   });
   const unpostedHeaders = [...unposted.items];
   for (let offset = unpostedHeaders.length; offset < unposted.total; offset += 10000) {
     const page = await svc.vouchers.list({
-      periodFrom: comparison?.from ?? scopes[0].from,
-      periodTo: input.period,
-      statuses: ['draft', 'pending', 'audited'],
+      ...unpostedRange,
       limit: 10000,
       offset,
     });
@@ -261,8 +262,8 @@ export async function prepareSmallBusiness(
       hint: '可先查看相关凭证，或确认以仅已过账口径继续生成。',
       details: {
         count: unposted.total,
-        from: comparison?.from ?? scopes[0].from,
-        to: input.period,
+        from: unpostedRange.periodFrom,
+        to: unpostedRange.periodTo,
         confirmation: 'confirmUnposted',
       },
       actions: [
@@ -271,7 +272,7 @@ export async function prepareSmallBusiness(
         { status: 'audited', label: '已审核凭证' },
       ].map((v) => ({
         label: `查看${v.label}`,
-        to: `/m/voucher-book?period=${Math.max(comparison?.from ?? scopes[0].from, book.startPeriod)}&periodTo=${input.period}&status=${v.status}`,
+        to: `/m/voucher-book?period=${unpostedRange.periodFrom}&periodTo=${unpostedRange.periodTo}&status=${v.status}`,
       })),
     });
   const data: DomainData = {
@@ -341,6 +342,7 @@ export async function prepareSmallBusiness(
     voucherRevisions,
     periods,
     historyRows,
+    unpostedRange,
     unpostedHeaders,
   });
   return {

@@ -139,3 +139,50 @@ it('w_bb_proc 首年无上年和上年比较数据缺失区分', async () => {
   expect(p.comparisonNote).toContain('首个会计年度');
   expect(p.statements[1].rows.every((r) => r.amounts[1] === null)).toBe(true);
 });
+it('w_bb_proc 月报累计必须确认此前月份全部未过账；本月已过账不掩盖前月草稿、待审核及已审核', async () => {
+  const result = await completeCoreBook();
+  app = result.app;
+  const { svc } = result;
+  const before = await svc.tx((t) => prepareSmallBusiness(t, { period: 202602, mode: 'monthly' }));
+  assertSmallBusinessOutput(before);
+  for (const status of ['draft', 'pending', 'audited'] as const)
+    await seedVouchers(svc, [
+      {
+        date: '2026-01-10',
+        status,
+        lines: [
+          { account: '1001', debit: 100 },
+          { account: '5001', credit: 100 },
+        ],
+      },
+    ]);
+  let failure: unknown;
+  try {
+    await svc.tx((t) => prepareSmallBusiness(t, { period: 202602, mode: 'monthly' }));
+  } catch (error) {
+    failure = error;
+  }
+  expect(failure).toMatchObject({
+    data: { code: 'SMALL_REPORT_UNPOSTED', details: { count: 3, from: 202601, to: 202602 } },
+  });
+  const actions = (failure as { data: { actions: { to: string }[] } }).data.actions;
+  expect(actions).toHaveLength(3);
+  const statuses = actions.map((action) => {
+    const url = new URL(action.to, 'http://127.0.0.1');
+    expect(url.pathname).toBe('/m/voucher-book');
+    expect(url.searchParams.get('period')).toBe('202601');
+    expect(url.searchParams.get('periodTo')).toBe('202602');
+    return url.searchParams.get('status');
+  });
+  expect(statuses).toEqual(['draft', 'pending', 'audited']);
+  const confirmed = await svc.tx((t) =>
+    prepareSmallBusiness(t, { period: 202602, mode: 'monthly', confirmUnposted: true }),
+  );
+  assertSmallBusinessOutput(confirmed);
+  expect(confirmed.unpostedCount).toBe(3);
+  expect(
+    confirmed.statements.map((s) => s.rows.map((r) => r.amounts.map((a) => a?.value))),
+  ).toEqual(before.statements.map((s) => s.rows.map((r) => r.amounts.map((a) => a?.value))));
+  expect(confirmed.sourceBinding).not.toBe(before.sourceBinding);
+  expect(() => assertSameSource(before, confirmed)).toThrow(/已改变/);
+}, 20000);
