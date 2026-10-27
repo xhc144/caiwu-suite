@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { zDate, zId } from '@caiwu/core';
+import { zCents, zDate, zId } from '@caiwu/core';
 const text = z.string().trim().max(200);
 export const decimal = z
   .string()
@@ -60,13 +60,35 @@ export const DocumentSchema = z.object({
   sourceId: zId.nullable().default(null),
   negativeConfirmation: z.string().optional(),
 });
+export const OpeningRowSchema = z
+  .object({
+    productCode: text.min(1, '产品编号不能为空'),
+    quantity: decimal,
+    valueBasis: z.enum(['unitPrice', 'amount']).default('unitPrice'),
+    unitPrice: decimal.optional(),
+    amountCents: zCents.nonnegative('期初金额不能为负数').optional(),
+  })
+  .strict()
+  .superRefine((row, ctx) => {
+    const amount = row.valueBasis === 'amount';
+    if ((amount ? row.amountCents : row.unitPrice) === undefined)
+      ctx.addIssue({
+        code: 'custom',
+        path: [amount ? 'amountCents' : 'unitPrice'],
+        message: amount ? '直接金额口径必须填写整数分金额' : '数量×单价口径必须填写单价',
+      });
+    if ((amount ? row.unitPrice : row.amountCents) !== undefined)
+      ctx.addIssue({
+        code: 'custom',
+        message: '只能提交所选口径的输入，不能同时提交单价和金额或静默覆盖',
+      });
+  });
+export type OpeningRowInput = z.input<typeof OpeningRowSchema>;
 export const OpeningSchema = z.object({
   warehouseId: zId,
   revision: z.number().int().nonnegative(),
   confirmReplace: z.boolean().default(false),
-  rows: z
-    .array(z.object({ productCode: text.min(1), quantity: decimal, unitPrice: decimal }))
-    .max(1000),
+  rows: z.array(OpeningRowSchema).max(1000),
 });
 export const FilterSchema = z
   .object({

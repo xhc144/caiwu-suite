@@ -1,9 +1,10 @@
 import { createHmac, randomBytes } from 'node:crypto';
 import { z } from 'zod';
-import { BusinessError, zId } from '@caiwu/core';
+import { BusinessError, sumCents, zId } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { DocumentSchema, OpeningSchema, ProductSchema } from '../shared';
 import { requireImportKeys } from '../excel';
+import { openingValue } from '../opening';
 import { fail, inventoryService } from './service';
 const key = randomBytes(32);
 export const ImportSchema = z.object({
@@ -83,7 +84,9 @@ export async function importInventory(
           const r = OpeningSchema.shape.rows.element.parse(row);
           if (seen.has(r.productCode)) fail('DUPLICATE', `产品 ${r.productCode} 在文件中重复`);
           seen.add(r.productCode);
-          await s.product(r.productCode, i + 1);
+          const product = await s.product(r.productCode, i + 1);
+          if (product.disabled) fail('DISABLED', `产品 ${product.code} 已停用`);
+          openingValue(r);
           rows.push(r);
         }
       } catch (e) {
@@ -97,6 +100,12 @@ export async function importInventory(
       if (old.revision !== v.revision) fail('REVISION', '期初已变化，请重新预览');
       if (old.rows.length && !v.overwrite)
         errors.push({ row: 0, message: '已有期初数据，需明确确认覆盖完整仓库期初' });
+      if (!errors.length) {
+        const total = sumCents(
+          rows.map((r) => openingValue(OpeningSchema.shape.rows.element.parse(r)).amountCents),
+        );
+        amounts = { netCents: total, taxCents: 0, grossCents: total };
+      }
     }
     if (v.kind === 'document') {
       if (!v.document) fail('DOCUMENT', '请先填写单据头');

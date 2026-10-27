@@ -29,6 +29,7 @@ import {
 } from '../shared';
 import type { z } from 'zod';
 import { priceLine } from '../math';
+import { openingValue } from '../opening';
 import type { InventoryTables } from './migrations';
 const secret = randomBytes(32);
 const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
@@ -667,6 +668,7 @@ export function inventoryService(svc: CoreServices) {
               'o.quantity_e6',
               'o.unit_price as unitPrice',
               'o.amount_cents as amountCents',
+              'o.value_basis as valueBasis',
             ])
             .where('o.warehouse_id', '=', warehouseId)
             .execute()
@@ -695,12 +697,14 @@ export function inventoryService(svc: CoreServices) {
           if (p.disabled) fail('DISABLED', `产品 ${p.code} 已停用`);
           if (seen.has(p.id)) fail('DUPLICATE', `第 ${i + 1} 行产品 ${p.code} 重复`);
           seen.add(p.id);
+          const value = openingValue(r);
           rows.push({
             warehouse_id: v.warehouseId,
             product_id: p.id,
             quantity_e6: e6(r.quantity),
-            unit_price: r.unitPrice,
-            amount_cents: multiplyToCents(r.quantity, r.unitPrice),
+            unit_price: value.unitPrice,
+            amount_cents: value.amountCents,
+            value_basis: value.valueBasis,
             calculation_status: 'uncalculated',
             calculation_batch: null,
             calculation_period: null,

@@ -103,6 +103,10 @@ CREATE TABLE inventory_voucher_source (
 );
 `,
   },
+  {
+    id: '0004_opening_value_basis',
+    sql: `ALTER TABLE inventory_opening ADD COLUMN value_basis TEXT NOT NULL DEFAULT 'unitPrice' CHECK(value_basis IN ('unitPrice','amount'));`,
+  },
 ]);
 type Id = { id: Generated<number> };
 export type InventoryTables = {
@@ -181,6 +185,7 @@ export type InventoryTables = {
     quantity_e6: number;
     unit_price: string;
     amount_cents: number;
+    value_basis: 'unitPrice' | 'amount';
     calculation_status: string;
     calculation_batch: string | null;
     calculation_period: number | null;
