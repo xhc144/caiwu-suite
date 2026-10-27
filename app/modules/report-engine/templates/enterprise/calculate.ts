@@ -250,6 +250,23 @@ function validate(c: EnterpriseConfig, d: SourceData) {
       for (const role of roles)
         if (
           !c.rules.some((r) => r.line === line && r.role === role) &&
+          !c.facts
+            .filter((f) => f.period === p && f.basis === 'closing')
+            .some((f) => {
+              const source = (d.balances[p] ?? []).find((x) => balanceBucket(x) === f.bucket);
+              if (!source || c.rules.find((r) => r.accountId === source.accountId)?.role !== role)
+                return false;
+              return (f.segments?.length ? f.segments : [f]).some(
+                (part) =>
+                  part.allowanceFor &&
+                  (d.balances[p] ?? []).some(
+                    (target) =>
+                      (part.allowanceFor === balanceBucket(target) ||
+                        part.allowanceFor!.startsWith(balanceBucket(target) + '#')) &&
+                      c.rules.find((r) => r.accountId === target.accountId)?.line === line,
+                  ),
+              );
+            }) &&
           !c.absentRoles.some((a) => a.period === p && a.line === line && a.role === role)
         )
           fail(
@@ -372,9 +389,9 @@ export function calculateBalance(
   for (const { row, f: preparedFact } of classified) {
     let effectiveFact = preparedFact;
     const getFact = () => effectiveFact ?? fact(c, balanceBucket(row), p, field);
-    const r =
-        c.rules.find((r) => r.accountId === row.accountId) ?? fail(`遗漏科目${row.accountCode}`),
-      n = D(row[field]);
+    let r =
+      c.rules.find((r) => r.accountId === row.accountId) ?? fail(`遗漏科目${row.accountCode}`);
+    const n = D(row[field]);
     if (r.kind === 'pnl') continue;
     if (
       ['allowance', 'financing'].includes(r.role) &&
@@ -392,8 +409,9 @@ export function calculateBalance(
         fail(`${p}备抵或融资费用${row.accountCode}必须唯一绑定对应明细分项`);
       const target = candidates[0]!,
         targetRule = c.rules.find((x) => x.accountId === target.row.accountId)!;
-      if (targetRule.line !== r.line || targetRule.role !== 'gross')
+      if (targetRule.role !== 'gross' || !(NET_ROLES[targetRule.line] ?? []).includes(r.role))
         fail('备抵与其对应项目或组成角色不一致');
+      r = { ...r, line: targetRule.line, kind: targetRule.kind };
       const targetFact = target.f ?? fact(c, balanceBucket(target.row), p, field);
       for (const key of [
         'current',

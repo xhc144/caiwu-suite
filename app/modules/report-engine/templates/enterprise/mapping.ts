@@ -3,6 +3,7 @@ import { ASSETS, LIABILITIES_EQUITY, PROFIT, CASHFLOW } from './lines';
 import type { EnterpriseConfig, SourceData } from './model';
 type Rule = EnterpriseConfig['rules'][number];
 const names: Record<string, Partial<Rule> & Pick<Rule, 'line'>> = {
+  坏账准备: { line: 'accountsReceivable', kind: 'receivable', role: 'allowance' },
   库存现金: { line: 'cash' },
   银行存款: { line: 'cash' },
   其他货币资金: { line: 'cash' },
@@ -134,6 +135,14 @@ export function suggestEnterpriseRules(accounts: readonly Account[]) {
           : names[current.name];
       if (binding) break;
       current = accounts.find((a) => a.id === current!.parentId);
+    }
+    if (binding && ['depreciation', 'amortization', 'allowance'].includes(binding.role ?? '')) {
+      const context = account.fullName.includes('投资性房地产')
+        ? 'investmentProperty'
+        : account.fullName.includes('使用权资产')
+          ? 'rightOfUseAssets'
+          : undefined;
+      if (context) binding = { ...binding, line: context, kind: 'balance' };
     }
     if (binding)
       suggestions.push({

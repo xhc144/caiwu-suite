@@ -749,3 +749,44 @@ it('w_bb_proc 非流动税费借方不得机械冒充递延所得税资产', () 
   expect(b.otherNoncurrentAssets).toBe('1000');
   expect(b.deferredTaxAssets).toBe('0');
 });
+it('w_bb_proc 同一坏账准备科目按真实对象跨项目分配，不需为报表改账务科目', () => {
+  const { c, d } = fixture();
+  addAccount(
+    c,
+    d,
+    account(9, '应收账款'),
+    { accountId: 9, line: 'accountsReceivable', kind: 'receivable', role: 'gross' },
+    1000,
+  );
+  const first = balanceBucket(d.balances[202512]!.at(-1)!);
+  c.facts.push({ period: 202512, basis: 'closing', bucket: first, current: true, ...provenance });
+  addAccount(
+    c,
+    d,
+    account(10, '其他应收款'),
+    { accountId: 10, line: 'otherReceivables', kind: 'receivable', role: 'gross' },
+    500,
+  );
+  const second = balanceBucket(d.balances[202512]!.at(-1)!);
+  c.facts.push({ period: 202512, basis: 'closing', bucket: second, current: true, ...provenance });
+  addAccount(
+    c,
+    d,
+    account(11, '坏账准备', 'asset', 'credit'),
+    { accountId: 11, line: 'accountsReceivable', kind: 'receivable', role: 'allowance' },
+    -150,
+  );
+  c.facts.push({
+    period: 202512,
+    basis: 'closing',
+    bucket: balanceBucket(d.balances[202512]!.at(-1)!),
+    segments: [
+      { key: '应收账款减值', amount: '-100', allowanceFor: first, ...provenance },
+      { key: '其他应收款减值', amount: '-50', allowanceFor: second, ...provenance },
+    ],
+    ...provenance,
+  });
+  const b = calculateBalance(c, d, 202512);
+  expect(b.accountsReceivable).toBe('900');
+  expect(b.otherReceivables).toBe('450');
+});

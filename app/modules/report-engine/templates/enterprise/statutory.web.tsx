@@ -394,6 +394,23 @@ export function EnterpriseConfiguration({
             children: (
               <Space orientation="vertical" style={{ width: '100%' }}>
                 {factItems.map(({ period, row, rule, basis }) => {
+                  const targets = (source.balances[period] ?? []).flatMap((x) => {
+                    const item = c.facts.find(
+                      (f) =>
+                        f.period === period && f.basis === basis && f.bucket === balanceBucket(x),
+                    );
+                    return item?.segments?.length
+                      ? item.segments.map((part) => ({
+                          value: balanceBucket(x) + '#' + part.key,
+                          label: `${x.accountCode} ${x.accountName} · ${part.key}`,
+                        }))
+                      : [
+                          {
+                            value: balanceBucket(x),
+                            label: `${x.accountCode} ${x.accountName} · 往来${x.dimensions.partner ?? '无'} 项目${x.dimensions.project ?? '无'}`,
+                          },
+                        ];
+                  });
                   const bucket = balanceBucket(row),
                     f = c.facts.find(
                       (f) => f.period === period && f.bucket === bucket && f.basis === basis,
@@ -504,6 +521,7 @@ export function EnterpriseConfiguration({
                       <Provenance value={f ?? sourceEmpty} onChange={patch} />
                       <FactSegments
                         fact={f ?? { period, bucket, basis, ...sourceEmpty }}
+                        targets={targets}
                         onChange={patch}
                       />
                       {rule.kind === 'equityInstrument' && (

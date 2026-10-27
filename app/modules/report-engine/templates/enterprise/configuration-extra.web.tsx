@@ -59,8 +59,10 @@ export function AmountEditor({
 export function FactSegments({
   fact,
   onChange,
+  targets = [],
 }: {
   fact: ClassificationFact;
+  targets?: { value: string; label: string }[];
   onChange(v: Partial<ClassificationFact>): void;
 }) {
   return (
@@ -156,11 +158,13 @@ export function FactSegments({
                   if (v) patch({ duePeriod: v });
                 }}
               />
-              <Input
+              <Select
+                options={targets}
+                style={{ width: 300 }}
                 aria-label="分项对应备抵明细"
                 placeholder="对应明细编号"
                 value={s.allowanceFor ?? ''}
-                onChange={(e) => patch({ allowanceFor: e.target.value })}
+                onChange={(allowanceFor) => patch({ allowanceFor })}
               />
               <Button
                 onClick={() => onChange({ segments: fact.segments!.filter((_, j) => i !== j) })}
