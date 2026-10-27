@@ -3,6 +3,7 @@ import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import type { Settings } from '../shared';
 import { seedBalanceCases } from '../test/fixtures';
 import { test } from './fixture';
+import { chooseSettingsClose } from './settings-dialog';
 
 for (const [path, title] of [
   ['/m/balances', '汇总余额表'],
@@ -21,9 +22,7 @@ for (const [path, title] of [
     await expect(drawer).toBeVisible();
     await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
     await drawer.getByRole('button', { name: '取消', exact: true }).click();
-    const abandon = page.getByRole('dialog', { name: '展示设置尚未保存', exact: true });
-    await expect(abandon).toBeVisible();
-    await abandon.getByRole('button', { name: '继续编辑', exact: true }).click();
+    await chooseSettingsClose(page, '继续编辑');
     await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
     await expect(tab).toHaveAttribute('aria-selected', 'true');
 
@@ -50,7 +49,7 @@ for (const [path, title] of [
     expect(metadata.settings.display.level).toBe(1);
 
     await drawer.getByRole('button', { name: '取消', exact: true }).click();
-    await abandon.getByRole('button', { name: '放弃修改', exact: true }).click();
+    await chooseSettingsClose(page, '放弃修改');
     await expect(drawer).toHaveCount(0);
     expect(await page.evaluate((key) => sessionStorage.getItem(key), storageKey)).toBeNull();
     await page.keyboard.press('Control+F4');

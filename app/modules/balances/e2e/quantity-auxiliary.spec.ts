@@ -2,7 +2,9 @@ import { expect, type Page } from '@playwright/test';
 import ExcelJS from 'exceljs';
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import { seedAuxiliaryQuantityCases } from '../test/fixtures';
+import type { Settings } from '../shared';
 import { test } from './fixture';
+import { chooseSettingsClose } from './settings-dialog';
 
 async function workbook(page: Page) {
   const downloaded = page.waitForEvent('download');
@@ -186,14 +188,14 @@ for (const [path, windowName] of [
     page,
     localServer,
   }) => {
-    const { token } = await loginWithNewBook(page, localServer.request);
+    const { bookId, token } = await loginWithNewBook(page, localServer.request);
     await page.goto(`${localServer.url}/m/balances${path}`);
     await page.getByRole('button', { name: '展示设置', exact: true }).click();
     const drawer = page.getByRole('dialog', { name: '展示设置', exact: true });
     await drawer.getByLabel('默认显示级次').selectOption('-1');
     await drawer.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.getByText('放弃本次修改并关闭？余额查询结果不会被修改。')).toBeVisible();
-    await page.getByRole('button', { name: '继续编辑', exact: true }).click();
+    await chooseSettingsClose(page, '继续编辑');
     await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
     await callApi(
       localServer.request,
@@ -201,14 +203,42 @@ for (const [path, windowName] of [
       { revision: 0, display: { level: 2, onlyActivity: true } },
       { token, method: 'POST' },
     );
+    const failedSave = page.waitForResponse(
+      (response) =>
+        response.url().includes('m.balances.saveSettings') &&
+        response.request().method() === 'POST',
+    );
     await drawer.getByRole('button', { name: '保存设置', exact: true }).click();
+    const response = await failedSave;
+    expect(response.status()).toBe(400);
+    expect(await response.json()).toMatchObject([
+      { error: { data: { business: { code: 'BALANCES_SETTINGS_STALE' } } } },
+    ]);
     await expect(drawer).toContainText('展示设置已被其他窗口保存，本次没有覆盖');
     await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
+    expect(
+      JSON.parse(
+        (await page.evaluate(
+          (key) => sessionStorage.getItem(key),
+          `balances.settingsDraft.${bookId}`,
+        ))!,
+      ),
+    ).toMatchObject({ base: { revision: 0 }, display: { level: -1 } });
     await drawer.getByRole('button', { name: '取消', exact: true }).click();
-    await page.getByRole('button', { name: '放弃修改', exact: true }).click();
+    await chooseSettingsClose(page, '放弃修改');
     await expect(drawer).toHaveCount(0);
     await page.getByRole('button', { name: '展示设置', exact: true }).click();
     await expect(drawer.getByLabel('默认显示级次')).toHaveValue('2');
     await expect(drawer.getByRole('checkbox', { name: '默认只显示有发生额' })).toBeChecked();
+    const metadata = await callApi<{ settings: Settings }>(
+      localServer.request,
+      'm.balances.metadata',
+      undefined,
+      { token, method: 'GET' },
+    );
+    expect(metadata.settings).toEqual({
+      revision: 1,
+      display: { level: 2, onlyActivity: true },
+    });
   });
 }

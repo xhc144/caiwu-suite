@@ -9,6 +9,7 @@ import {
   seedForeignRedActivityCase,
 } from '../test/fixtures';
 import { test } from './fixture';
+import { chooseSettingsClose } from './settings-dialog';
 
 test('w_zw_ye：真实账套查询、状态口径、树、合计、URL 恢复、Excel 与明细地址', async ({
   page,
@@ -270,7 +271,7 @@ test('w_zw_ye_1/w_zw_wbye_1：取消放弃确认、真实过期保存失败保�
   const drawer = page.getByRole('dialog', { name: '展示设置', exact: true });
   await drawer.getByLabel('默认显示级次').selectOption('-1');
   await drawer.getByRole('button', { name: '取消', exact: true }).click();
-  await page.getByRole('button', { name: '继续编辑', exact: true }).click();
+  await chooseSettingsClose(page, '继续编辑');
   await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
   // Ctrl+F4 关闭的是工作区标签；M20 会正确拦住未保存的设置。
   // 真正刷新页面并确认离开，验证草稿恢复，同时保留离开保护。
@@ -301,7 +302,7 @@ test('w_zw_ye_1/w_zw_wbye_1：取消放弃确认、真实过期保存失败保�
   );
   expect(metadata.settings.display).toEqual({ level: 2, onlyActivity: true });
   await drawer.getByRole('button', { name: '取消', exact: true }).click();
-  await page.getByRole('button', { name: '放弃修改', exact: true }).click();
+  await chooseSettingsClose(page, '放弃修改');
   await page.reload();
   await page.getByRole('button', { name: '展示设置', exact: true }).click();
   await drawer.getByLabel('默认显示级次').selectOption('-1');
