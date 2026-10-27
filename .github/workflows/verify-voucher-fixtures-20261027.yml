@@ -1,0 +1,59 @@
+name: Verify two voucher UI fixtures (2026-10-27)
+
+on:
+  push:
+    branches:
+      - maintenance/verify-voucher-fixtures-20261027
+    paths:
+      - .github/workflows/verify-voucher-fixtures-20261027.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-voucher-fixtures-20261027
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'xhc144/caiwu-suite' && github.ref == 'refs/heads/maintenance/verify-voucher-fixtures-20261027' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    env:
+      CI: 'true'
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 9796e26f590af1241219f1b30aed9e02e9d348ac
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Confirm exact candidate checkout
+        run: test "$(git rev-parse HEAD)" = "9796e26f590af1241219f1b30aed9e02e9d348ac"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+          package_json_file: app/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm build:web
+      - name: Run the two real UI regressions without retries
+        run: pnpm exec playwright test modules/voucher-entry/e2e/w2.spec.ts --grep '逐字改月|首上下一末' --retries=0
+      - name: Upload failed UI evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voucher-fixture-failures-${{ github.run_id }}
+          path: |
+            app/playwright-report
+            app/test-results
+          retention-days: 7
