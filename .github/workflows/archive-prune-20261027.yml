@@ -1,0 +1,218 @@
+name: Archive and prune frozen branches (2026-10-27)
+on:
+  push:
+    branches:
+      - maintenance/archive-prune-20261027-caiwu
+    paths:
+      - .github/workflows/archive-prune-20261027.yml
+permissions: {}
+concurrency:
+  group: archive-prune-20261027
+  cancel-in-progress: false
+jobs:
+  prune:
+    if: github.repository == 'xhc144/caiwu-suite' && github.ref == 'refs/heads/maintenance/archive-prune-20261027-caiwu' && github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 1
+          persist-credentials: true
+          show-progress: false
+          submodules: false
+          lfs: false
+      - name: Archive exact heads, then delete with leases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import subprocess
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+          
+          REPOSITORY = "xhc144/caiwu-suite"
+          MAINTENANCE_BRANCH = "maintenance/archive-prune-20261027-caiwu"
+          ARCHIVE_PREFIX = "archive/2026-10-27/"
+          ARCHIVE_RECEIPT_SHA256 = "c864f5684df6384f36cec837f29e7d3aaf94d39093fad0ce77db1425266bc7d3"
+          FROZEN = [('codex/original-data-compatibility-20261025', '11a8d77689ca9a6408fe493e7c1fcc10519db4a6'), ('codex/original-ui-contract-20261025', '8de73d52f7031d24b684e56b951cf20766acae2c'), ('codex/original-upgrade-engineering-path', '3ba29a0444893ef63e2195cb031bd0dcc1d4667b'), ('codex/parity-assets-20261026', 'e2510500b8599c8d8b9dafb59aabe780a068ec92'), ('codex/parity-books-20261026', '72832a80392af2d6e7ee2cc35a2a3184d6de2b17'), ('codex/parity-cashier-20261026', '5fe65fecc03a5ecc2764303a3c6f15469e7c59bd'), ('codex/parity-compat-20261026', 'e0cd0b1b42090b844602d319b0bf828f20ae53c1'), ('codex/parity-integration-20261026', '8d82abae32c9ed6a25518b38bfe46d94cad0d529'), ('codex/parity-integration-candidate-20261026', 'b5019c9e990aaa1e0df43fac1e28b97087c466f1'), ('codex/parity-inventory-20261026', '509fd1bc5b8ff278694fd9550e21a5e3cf8ba8ba'), ('codex/parity-invoices-20261026', '9b2f17260f4baf5b3566ef2be5c0dcee06cbb303'), ('codex/parity-ledger-20261026', '6779e41f8433f5f683b55ae3f95a6c496afc53a3'), ('codex/parity-payroll-20261026', '412e22aab5902482bcd39d641731a864caf0f7be'), ('codex/parity-regimes-20261026', '1f817bc42bd5e28de09b99c73daec8ad6a92eb1f'), ('codex/parity-reports-20261026', '89b4c6e7320a3187876615605104d8ce44114294'), ('codex/parity-shell-20261026', '605945cc5ecc192353b98d2d93aab60c55af59fa'), ('codex/wave1-m18-backup', '845d043d543dd3f4e62e70c6d02b4fe4ea477f56')]
+          
+          
+          class Halt(Exception):
+              def __init__(self, code, branch="-", sha="-"):
+                  self.code, self.branch, self.sha = code, branch, sha
+          
+          
+          def emit(code, branch, sha):
+              print(code, branch, sha, flush=True)
+          
+          
+          def git(*args, branch="-", sha="-"):
+              result = subprocess.run(["git", *args], capture_output=True, text=True)
+              if result.returncode:
+                  raise Halt("GIT_REJECTED", branch, sha)
+              return result.stdout
+          
+          
+          def api(path):
+              request = urllib.request.Request(
+                  "https://api.github.com/repos/" + REPOSITORY + ("/" + path if path else ""),
+                  headers={
+                      "Authorization": "Bearer " + os.environ["GH_TOKEN"],
+                      "Accept": "application/vnd.github+json",
+                      "X-GitHub-Api-Version": "2022-11-28",
+                      "User-Agent": "frozen-branch-archive-prune",
+                  },
+              )
+              try:
+                  with urllib.request.urlopen(request, timeout=30) as response:
+                      return json.load(response)
+              except (urllib.error.URLError, json.JSONDecodeError):
+                  raise Halt("API_REJECTED") from None
+          
+          
+          def remote_ref(ref):
+              lines = git("ls-remote", "--refs", "origin", ref).splitlines()
+              if not lines:
+                  return None
+              if len(lines) != 1:
+                  raise Halt("AMBIGUOUS_REF")
+              sha, actual = lines[0].split("\t")
+              if actual != ref or not re.fullmatch(r"[0-9a-f]{40}", sha):
+                  raise Halt("INVALID_REF")
+              return sha
+          
+          
+          def open_pr_refs():
+              refs = set()
+              page = 1
+              while True:
+                  pulls = api("pulls?state=open&per_page=100&page=" + str(page))
+                  if not isinstance(pulls, list):
+                      raise Halt("INVALID_PR_RESPONSE")
+                  for pull in pulls:
+                      refs.add(pull["base"]["ref"])
+                      # Conservative: matching fork head names also prevent deletion.
+                      refs.add(pull["head"]["ref"])
+                  if len(pulls) < 100:
+                      return refs
+                  page += 1
+          
+          
+          def check_candidate(branch, sha):
+              tag = "refs/tags/" + ARCHIVE_PREFIX + branch
+              actual = remote_ref("refs/heads/" + branch)
+              if actual is None:
+                  if remote_ref(tag) == sha:
+                      return False
+                  raise Halt("MISSING_UNARCHIVED", branch, sha)
+              if actual != sha:
+                  raise Halt("HEAD_CHANGED", branch, sha)
+              default = api("")["default_branch"]
+              if branch in {"main", "master", "integration", default}:
+                  raise Halt("DEFAULT_OR_INTEGRATION", branch, sha)
+              metadata = api("branches/" + urllib.parse.quote(branch, safe=""))
+              if metadata.get("protected") is not False:
+                  raise Halt("PROTECTED_OR_UNKNOWN", branch, sha)
+              if metadata.get("commit", {}).get("sha") != sha:
+                  raise Halt("API_HEAD_CHANGED", branch, sha)
+              if branch in open_pr_refs():
+                  raise Halt("OPEN_PR", branch, sha)
+              return True
+          
+          
+          def validate_targets(targets):
+              names = [branch for branch, _ in targets]
+              if len(set(names)) != len(names):
+                  raise Halt("DUPLICATE_TARGET")
+              for branch, sha in targets:
+                  if not re.fullmatch(r"[0-9a-f]{40}", sha):
+                      raise Halt("INVALID_SHA", branch, "-")
+                  git("check-ref-format", "refs/heads/" + branch, branch=branch, sha=sha)
+                  git("check-ref-format", "refs/tags/" + ARCHIVE_PREFIX + branch, branch=branch, sha=sha)
+          
+          
+          def archive_target(branch, sha):
+              tag = "refs/tags/" + ARCHIVE_PREFIX + branch
+              existing = remote_ref(tag)
+              if existing not in (None, sha):
+                  raise Halt("ARCHIVE_TAG_COLLISION", branch, sha)
+              if existing is None:
+                  # Obtain only an existing remote source ref; no invented objects.
+                  git("fetch", "--no-tags", "origin", "refs/heads/" + branch, branch=branch, sha=sha)
+                  git("cat-file", "-e", sha + "^{commit}", branch=branch, sha=sha)
+                  # Empty lease means the archive tag must not already exist.
+                  git("push", "--porcelain", "--force-with-lease=" + tag + ":", "origin", sha + ":" + tag,
+                      branch=branch, sha=sha)
+              if remote_ref(tag) != sha:
+                  raise Halt("ARCHIVE_VERIFY_FAILED", branch, sha)
+              emit("ARCHIVED", branch, sha)
+          
+          
+          def prune(targets):
+              validate_targets(targets)
+              # Preflight every target before the first remote mutation.
+              for branch, sha in targets:
+                  check_candidate(branch, sha)
+                  emit("PREFLIGHT", branch, sha)
+              # Preserve and verify all archive refs before deleting any branch.
+              for branch, sha in targets:
+                  archive_target(branch, sha)
+              for branch, sha in targets:
+                  present = check_candidate(branch, sha)
+                  if remote_ref("refs/tags/" + ARCHIVE_PREFIX + branch) != sha:
+                      raise Halt("ARCHIVE_LOST", branch, sha)
+                  if present:
+                      ref = "refs/heads/" + branch
+                      git("push", "--porcelain", "--force-with-lease=" + ref + ":" + sha,
+                          "origin", ":" + ref, branch=branch, sha=sha)
+                  if remote_ref("refs/heads/" + branch) is not None:
+                      raise Halt("DELETE_VERIFY_FAILED", branch, sha)
+                  emit("DELETED", branch, sha)
+              # Independent final readback, including the maintenance branch itself.
+              for branch, sha in targets:
+                  if remote_ref("refs/tags/" + ARCHIVE_PREFIX + branch) != sha:
+                      raise Halt("FINAL_ARCHIVE_FAILED", branch, sha)
+                  if remote_ref("refs/heads/" + branch) is not None:
+                      raise Halt("FINAL_REF_EXISTS", branch, sha)
+                  emit("VERIFIED", branch, sha)
+          
+          
+          def main():
+              head = os.environ.get("GITHUB_SHA", "")
+              if (os.environ.get("GITHUB_REPOSITORY") != REPOSITORY
+                      or os.environ.get("GITHUB_EVENT_NAME") != "push"
+                      or os.environ.get("GITHUB_REF") != "refs/heads/" + MAINTENANCE_BRANCH
+                      or os.environ.get("GITHUB_REF_PROTECTED") != "false"
+                      or not re.fullmatch(r"[0-9a-f]{40}", head)):
+                  raise Halt("WRONG_EVENT_OR_REF")
+              event_path = os.environ["GITHUB_EVENT_PATH"]
+              with open(event_path, encoding="utf-8") as stream:
+                  event = json.load(stream)
+              if event.get("deleted") or event.get("after") != head:
+                  raise Halt("WRONG_PUSH_SHA", MAINTENANCE_BRANCH, head)
+              # The final, run-bound target archives and removes this one-use branch.
+              targets = list(FROZEN) + [(MAINTENANCE_BRANCH, head)]
+              prune(targets)
+          
+          
+          if __name__ == "__main__":
+              try:
+                  main()
+              except Halt as error:
+                  emit(error.code, error.branch, error.sha)
+                  sys.exit(1)
+              except Exception:
+                  # Never leak HTTP auth, environment values or raw git diagnostics.
+                  emit("UNEXPECTED_FAILURE", "-", "-")
+                  sys.exit(1)
+          PY
