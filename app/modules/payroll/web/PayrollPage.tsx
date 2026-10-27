@@ -868,9 +868,6 @@ const SalaryContent = memo(function SalaryContent({
             )}
             {canCalculate && !b.vouchers.length && !b.closed && (
               <Button
-                aria-label="计算工资"
-                aria-busy={calculate.isPending}
-                disabled={calculate.isPending}
                 loading={calculate.isPending}
                 onClick={() => calculate.mutate({ id: b.id, revision: b.revision })}
               >

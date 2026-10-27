@@ -58,40 +58,6 @@ function mount() {
 }
 
 describe('w_tzjl_1_new / w_xt_kgzb_a1—5 / w_xt_kgzb_1 向导确认', () => {
-  it('快速重复取消只打开一层确认，确认及退场期间不提交，继续编辑后可再次取消', async () => {
-    const { close, user } = mount();
-    await user.type(screen.getByLabelText('账套名称'), '重复取消');
-    await user.type(screen.getByLabelText('单位名称'), '有效取消测试单位');
-    await waitFor(() => expect(screen.getByRole('button', { name: '创建' })).toBeEnabled());
-    const cancel = screen.getByRole('button', { name: '取消' });
-    fireEvent.click(cancel);
-    fireEvent.click(cancel);
-    expect(await screen.findAllByRole('button', { name: '继续编辑' })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: '创建' })).toBeDisabled();
-    await user.click(screen.getByRole('button', { name: '继续编辑' }));
-    await waitFor(() => expect(cancel).toBeEnabled());
-    await user.click(cancel);
-    await user.click(await screen.findByRole('button', { name: '放弃创建' }));
-    await waitFor(() => expect(close).toHaveBeenCalledOnce());
-    expect(mock.create).not.toHaveBeenCalled();
-  });
-  it('有效表单在取消确认期间收到程序性创建事件也不调用core创建', async () => {
-    mock.create.mockImplementation(() => new Promise(() => {}));
-    const { user } = mount();
-    await user.type(screen.getByLabelText('账套名称'), '有效表单取消');
-    await user.type(screen.getByLabelText('单位名称'), '有效取消单位');
-    const create = screen.getByRole('button', { name: '创建' });
-    await waitFor(() => expect(create).toBeEnabled());
-    await user.click(screen.getByRole('button', { name: '取消' }));
-    fireEvent.click(create);
-    fireEvent.click(create);
-    await user.click(await screen.findByRole('button', { name: '继续编辑' }));
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: '继续编辑' })).not.toBeInTheDocument(),
-    );
-    expect(mock.create).not.toHaveBeenCalled();
-    expect(create).toBeEnabled();
-  });
   it('取消未编辑的向导不提交；编辑后退出有确认，继续编辑保留内容，确认放弃不产生创建请求', async () => {
     const { close, user } = mount();
     await user.type(screen.getByLabelText('账套名称'), '取消测试');

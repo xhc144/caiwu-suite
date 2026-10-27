@@ -1,7 +1,7 @@
 import type { AnyTRPCRouter } from '@trpc/server';
 import { orderByDependencies, type MigrationSet } from '@caiwu/db';
 import type { ModuleManifest } from '@caiwu/core';
-import type { CoreServiceProviders, ModuleLookup } from '@caiwu/core/server';
+import type { ModuleLookup } from '@caiwu/core/server';
 import type { ServerModule } from './module';
 
 interface ProcedureDefLike {
@@ -27,14 +27,12 @@ export function listProcedures(
 export class ModuleRegistry {
   readonly modules: readonly ServerModule[];
   readonly lookup: ModuleLookup;
-  readonly providers: CoreServiceProviders;
 
   constructor(
     modules: readonly ServerModule[],
     opts: { expectedIds?: Record<number, string> } = {},
   ) {
     const ids = new Set<string>();
-    const providers: { inventory?: CoreServiceProviders['inventory'] } = {};
     modules.forEach((m, i) => {
       const expected = opts.expectedIds?.[i];
       if (expected && expected !== m.manifest.id) {
@@ -45,12 +43,6 @@ export class ModuleRegistry {
       if (ids.has(m.manifest.id)) throw new Error(`模块 id "${m.manifest.id}" 重复`);
       ids.add(m.manifest.id);
       validateRouter(m);
-      if (m.providers?.inventory) {
-        if (m.manifest.id !== 'inventory') throw new Error('只有库存模块可以注册库存成本服务');
-        if (typeof m.providers.inventory !== 'function')
-          throw new Error('库存成本服务必须注册无状态工厂');
-        providers.inventory = m.providers.inventory;
-      }
       for (const mig of m.migrations) {
         if (!new RegExp(`(?:CREATE TABLE|ALTER TABLE)`, 'i').test(mig.sql)) continue;
         const prefix = m.manifest.id.replace(/-/g, '_');
@@ -65,7 +57,6 @@ export class ModuleRegistry {
         }
       }
     });
-    this.providers = Object.freeze(providers);
     const ordered = orderByDependencies(
       modules.map((m) => ({ id: m.manifest.id, dependsOn: m.manifest.dependsOn, m })),
     );

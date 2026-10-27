@@ -142,22 +142,10 @@ export default function ViewPage() {
         )}
         {canExport && (
           <>
-            <Button
-              aria-label="导出 Excel"
-              aria-busy={working}
-              disabled={!s}
-              loading={working}
-              onClick={() => void exportOrPrint(false)}
-            >
+            <Button disabled={!s} loading={working} onClick={() => void exportOrPrint(false)}>
               导出 Excel
             </Button>
-            <Button
-              aria-label="打印"
-              aria-busy={working}
-              disabled={!s}
-              loading={working}
-              onClick={() => void exportOrPrint(true)}
-            >
+            <Button disabled={!s} loading={working} onClick={() => void exportOrPrint(true)}>
               打印
             </Button>
           </>
@@ -165,13 +153,6 @@ export default function ViewPage() {
         <Tag color={filters.includeUnposted ? 'orange' : 'blue'}>
           {filters.includeUnposted ? '含待审核和已审核（不含草稿/作废）' : '仅已过账'}
         </Tag>
-        {s && (
-          <Tag color="orange">
-            {s.assurance === 'guarded-slice'
-              ? '已绑定来源的局部切片，非完整法定报表'
-              : '非正式自定义试算，无可信法定绑定'}
-          </Tag>
-        )}
       </Space>
       {(report.isError || snapshot.isError || generate.isError || exportError) && (
         <Alert

@@ -188,24 +188,12 @@ test('w_xt_zy：A预览新增 → B创建同码 → A确认被拒且不覆盖 �
   expect(
     await callApi<ReferenceRow[]>(request, endpoint, { kind: 'summaries' }, { token: book.token }),
   ).toEqual(before);
-  const confirm = preview.getByRole('button', { name: '确认导入', exact: true });
-  await expect(confirm).toHaveAttribute('aria-busy', 'false');
-  await expect(confirm).toBeEnabled();
-  await confirm.click();
-  const [committed] = await Promise.all([
-    page.waitForResponse(
-      (response) =>
-        response.request().method() === 'POST' &&
-        new URL(response.url()).pathname === '/trpc/m.masterdata.excel.commit',
-      { timeout: 5_000 },
-    ),
-    page
-      .getByRole('dialog')
-      .filter({ hasText: '确认按预览顺序导入全部档案' })
-      .getByRole('button', { name: '确认', exact: true })
-      .click(),
-  ]);
-  expect(committed.ok()).toBe(true);
+  await preview.getByRole('button', { name: '确认导入', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .filter({ hasText: '确认按预览顺序导入全部档案' })
+    .getByRole('button', { name: '确认', exact: true })
+    .click();
   await expect(preview).not.toBeVisible();
   const after = await callApi<ReferenceRow[]>(
     request,

@@ -1,8 +1,6 @@
 import type { Kysely } from '@caiwu/db';
 import type { ModuleManifest } from '../manifest';
 import type { CoreDB } from './schema';
-import type { CoreServiceProviders } from './inventory-provider';
-import type { ServiceScope } from './service-scope';
 
 export interface ServiceUser {
   id: number;
@@ -34,8 +32,6 @@ export interface ServiceContext {
   moduleId: string | null;
   now: () => Date;
   modules: ModuleLookup;
-  providers?: CoreServiceProviders;
-  scope?: ServiceScope;
 }
 
 export function nowIso(ctx: Pick<ServiceContext, 'now'>): string {

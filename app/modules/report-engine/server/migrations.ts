@@ -23,10 +23,6 @@ CREATE TABLE report_engine_snapshot (
 CREATE INDEX report_engine_snapshot_selection ON report_engine_snapshot(report_id, period, include_unposted, id);
 `,
   },
-  {
-    id: '0002_profile_binding',
-    sql: `ALTER TABLE report_engine_template ADD COLUMN profile_binding_json TEXT;`,
-  },
 ]);
 export type ReportTables = {
   report_engine_template: {
@@ -35,7 +31,6 @@ export type ReportTables = {
     name: string;
     revision: number;
     definition_json: string;
-    profile_binding_json: string | null;
   };
   report_engine_snapshot: {
     id: Generated<number>;

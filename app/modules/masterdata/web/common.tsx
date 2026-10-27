@@ -220,9 +220,7 @@ export function ExcelActions({
             </Button>
             <Button
               type="primary"
-              aria-label="确认导入"
-              aria-busy={apply.isPending}
-              disabled={!preview?.valid || apply.isPending}
+              disabled={!preview?.valid}
               loading={apply.isPending}
               onClick={() =>
                 run(
