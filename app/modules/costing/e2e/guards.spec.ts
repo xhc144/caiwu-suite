@@ -148,14 +148,28 @@ test('w_cb_pz：历史断链时成本未知', async ({ guarded: t }) => {
   await preview(t.page, 202602);
   await confirmPublish(t.page);
   await expect(t.page.getByText(/202602 正式成本核算已发布/)).toBeVisible();
+  await preview(t.page, 202603);
+  await confirmPublish(t.page);
+  await expect(t.page.getByText(/202603 正式成本核算已发布/)).toBeVisible();
   const latest = (await t.batches())[0]!;
+  const february = (await t.batches())[1]!;
   await t.withCore(async (svc) => {
-    await sql`UPDATE inventory_costing_batch SET previous_batch_id=NULL WHERE id=${latest.inventory_batch_id}`.execute(
+    // 3月→2月保持正确，只破坏更早的2月→1月，必须核对从锚点至启用月的全链。
+    await sql`UPDATE inventory_costing_batch SET previous_batch_id=NULL WHERE id=${february.inventory_batch_id}`.execute(
       svc.db,
     );
   });
-  const source = await t.get<InventorySnapshot>('costingSnapshot', { period: 202603 });
+  const source = await t.get<InventorySnapshot>('costingSnapshot', { period: 202604 });
   expect(source.periodOpeningReady).toBe(true);
+  expect(source.control.costBatch).toBe(latest.inventory_batch_id);
+  expect(source.batches.find((b) => b.id === latest.inventory_batch_id)).toMatchObject({
+    period: 202603,
+    previous_batch_id: february.inventory_batch_id,
+  });
+  expect(source.batches.find((b) => b.id === february.inventory_batch_id)).toMatchObject({
+    period: 202602,
+    previous_batch_id: null,
+  });
   await t.page.goto('/m/costing/profit');
   await t.page.getByRole('button', { name: '查询销售明细', exact: true }).click();
   await expect(
@@ -172,8 +186,8 @@ test('w_cb_pz：历史断链时成本未知', async ({ guarded: t }) => {
   await t.page.goto('/m/costing/calculation');
   await expect(t.page.getByText('正式批次链与控制锚点不一致，请核对历史核算记录')).toBeVisible();
   await expect(t.page.getByRole('button', { name: '撤销正式核算', exact: true })).toHaveCount(0);
-  await t.page.getByRole('spinbutton', { name: '核算年月', exact: true }).fill('202603');
+  await t.page.getByRole('spinbutton', { name: '核算年月', exact: true }).fill('202604');
   await t.page.getByRole('button', { name: '重新试算', exact: true }).click();
   await expect(t.page.getByText('正式成本批次链与库存控制锚点不一致')).toBeVisible();
-  expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202603 })).toEqual(source);
+  expect(await t.get<InventorySnapshot>('costingSnapshot', { period: 202604 })).toEqual(source);
 });

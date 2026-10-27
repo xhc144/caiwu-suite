@@ -479,6 +479,108 @@ describe('w_cb_fgz 正式撤销和历史成本链', () => {
     expect((await t.api.batches()).filter((b) => b.status === 'calculated')).toHaveLength(1);
   });
 
+  it('w_cb_hz/w_cb_fgz：末两期承接正常仍核对三个月全链，重复发布也不能绕过断链', async () => {
+    await seed();
+    const januaryInput = input(await t.api.preview(january));
+    const januaryBatch = await t.api.commit(januaryInput);
+    await t.document('issue', '2', '20', { date: '2026-02-10' });
+    const february = await publish(202602);
+    const marchIssue = await t.document('issue', '1', '20', { date: '2026-03-10' });
+    const march = await publish(202603);
+    const ready = await snapshot(202604);
+    expect(ready.periodOpeningReady).toBe(true);
+    expect(ready.periodOpening).toEqual([
+      expect.objectContaining({
+        quantity: '12',
+        amountCents: 2400,
+        sourceBatchId: march.inventoryBatchId,
+      }),
+    ]);
+    expect(ready.batches).toEqual([
+      expect.objectContaining({
+        id: januaryBatch.inventoryBatchId,
+        period: 202601,
+        previous_batch_id: null,
+      }),
+      expect.objectContaining({
+        id: february.inventoryBatchId,
+        period: 202602,
+        previous_batch_id: januaryBatch.inventoryBatchId,
+      }),
+      expect.objectContaining({
+        id: march.inventoryBatchId,
+        period: 202603,
+        previous_batch_id: february.inventoryBatchId,
+      }),
+    ]);
+    expect((await t.api.profit({ from: '2026-01-01', to: '2026-03-31' })).totals).toMatchObject({
+      costCents: 1600,
+      unknownHistoryLines: 0,
+    });
+    const active = await state();
+    expect(await t.api.commit(januaryInput)).toEqual(januaryBatch);
+    expect(await state()).toEqual(active);
+    // 仅破坏合成测试的更早历史；3月→2月仍正确，不能只验证最近的相邻期。
+    await sql`UPDATE inventory_costing_batch SET previous_batch_id=NULL WHERE id=${february.inventoryBatchId}`.execute(
+      t.app.svc.db,
+    );
+    const broken = await snapshot(202604);
+    expect(broken.control).toEqual(ready.control);
+    expect(broken.periodOpeningReady).toBe(true);
+    expect(broken.previousBatchId).toBe(march.inventoryBatchId);
+    expect(broken.batches.find((b) => b.id === march.inventoryBatchId)).toMatchObject({
+      period: 202603,
+      previous_batch_id: february.inventoryBatchId,
+    });
+    const before = await state();
+    await expect(t.api.commit(januaryInput)).rejects.toThrow(/批次链/);
+    await expect(t.api.preview({ period: 202604 })).rejects.toThrow(/批次链/);
+    await expect(
+      t.api.commit({
+        period: 202604,
+        fingerprint: broken.fingerprint,
+        requestKey: randomUUID(),
+        confirmed: true,
+      }),
+    ).rejects.toThrow(/批次链/);
+    await expect(
+      t.api.cancelCalculation({ id: march.id, revision: march.revision, confirmed: true }),
+    ).rejects.toThrow(/批次链/);
+    await expect(
+      t.api.previewVoucher({ documentId: marchIssue.id, purpose: 'cost' }),
+    ).rejects.toThrow(/历史成本未知/);
+    expect((await t.api.profit({ from: '2026-01-01', to: '2026-03-31' })).totals).toMatchObject({
+      costCents: null,
+      grossProfitCents: null,
+      unknownHistoryLines: 3,
+    });
+    expect(await state()).toEqual(before);
+    // 恢复合成前置后仍须从3月、2月、1月依次撤销，原业务单据保留。
+    await sql`UPDATE inventory_costing_batch SET previous_batch_id=${januaryBatch.inventoryBatchId} WHERE id=${february.inventoryBatchId}`.execute(
+      t.app.svc.db,
+    );
+    expect((await t.api.preview({ period: 202604 })).rows[0]).toMatchObject({
+      openingQuantity: '12',
+      openingCents: 2400,
+      closingCents: 2400,
+    });
+    for (const batch of [march, february, januaryBatch]) {
+      await t.api.cancelCalculation({ id: batch.id, revision: batch.revision, confirmed: true });
+    }
+    expect((await snapshot()).control).toMatchObject({
+      costBatch: null,
+      costPeriod: null,
+      openingLocked: false,
+    });
+    expect((await snapshot(202604)).periodOpeningReady).toBe(false);
+    expect((await t.api.batches()).map((b) => b.status)).toEqual([
+      'cancelled',
+      'cancelled',
+      'cancelled',
+    ]);
+    expect((await t.app.svc.vouchers.list()).total).toBe(0);
+  });
+
   it('w_cb_hz：相邻月存在但正式链断裂时拒绝', async () => {
     const { issue } = await seed();
     await publish();
