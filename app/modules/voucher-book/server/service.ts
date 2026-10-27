@@ -48,6 +48,39 @@ export function sourceUrl(svc: CoreServices, v: Voucher): string | null {
     `/m/${encodeURIComponent(v.source.module)}`
   );
 }
+export async function dimensionLabels(svc: CoreServices, v: Voucher) {
+  const ids = [
+    ...new Set(
+      v.lines.flatMap((line) =>
+        Object.values(line.dimensions).filter((id): id is number => id != null),
+      ),
+    ),
+  ];
+  const items = ids.length
+    ? await svc.db
+        .selectFrom('dimension_item')
+        .select(['id', 'code', 'name'])
+        .where('id', 'in', ids)
+        .execute()
+    : [];
+  const labels = new Map(items.map((item) => [item.id, `${item.code} ${item.name}`]));
+  const types: Record<string, string> = {
+    project: '项目',
+    partner: '客供',
+    department: '部门',
+    person: '个人',
+    cashflow: '现金流量',
+  };
+  return Object.fromEntries(
+    v.lines.map((line) => [
+      line.id,
+      Object.entries(line.dimensions)
+        .filter(([, id]) => id != null)
+        .map(([type, id]) => `${types[type] ?? '辅助项'}：${labels.get(id!) ?? '档案已不存在'}`)
+        .join(' / '),
+    ]),
+  );
+}
 export async function readonlyReasons(svc: CoreServices, v: Voucher) {
   const reasons: string[] = [];
   if (!(await svc.permissions.has('voucher-entry.edit')))
@@ -55,7 +88,7 @@ export async function readonlyReasons(svc: CoreServices, v: Voucher) {
   if (v.status === 'audited' || v.status === 'posted')
     reasons.push(`${VOUCHER_STATUS_LABELS[v.status]}，请到期间处理或取消审核后再修改`);
   if (v.voided) reasons.push('凭证已作废');
-  if (v.source) reasons.push(`由 ${v.source.module} 生成，请在来源页面处理`);
+  if (v.source) reasons.push('由来源单据生成，请在来源页面处理');
   if ((await svc.periods.require(v.period)).status === 'closed') reasons.push('所属期间已结账');
   return reasons;
 }
@@ -170,6 +203,7 @@ export async function list(svc: CoreServices, raw: BookFilter) {
       items.push({
         ...v,
         readonlyReasons: await readonlyReasons(t, v),
+        dimensionLabels: await dimensionLabels(t, v),
         sourceUrl: sourceUrl(t, v),
       });
     }
@@ -186,6 +220,7 @@ export async function detail(svc: CoreServices, id: number) {
   return {
     ...v,
     readonlyReasons: await readonlyReasons(svc, v),
+    dimensionLabels: await dimensionLabels(svc, v),
     sourceUrl: sourceUrl(svc, v),
     reversals,
   };
@@ -219,10 +254,12 @@ export async function cashflowCheck(svc: CoreServices, v: Voucher) {
     const parsed = DirectionSchema.safeParse(item.attrs);
     if (!parsed.success) {
       if ('cashflowDirection' in item.attrs) {
-        errors.push(`${prefix} 现金流量方向元数据非法，请到基础档案修正`);
+        errors.push(`${prefix} 现金流量方向设置无效，请到基础档案修正`);
         continue;
       }
-      warnings.push(`${prefix} 项目 ${item.code} 没有方向元数据，无法核验，请核对后确认`);
+      warnings.push(
+        `${prefix} 项目 ${item.code} 尚未设置现金流量方向，无法核验，请到基础档案核对后确认`,
+      );
       continue;
     }
     const direction = parsed.data.cashflowDirection;
@@ -348,7 +385,7 @@ async function rowPreview(
   )
     reasons.push('所属期间已结账，请去期间处理');
   if (modifying && v.source && v.source.module !== 'voucher-book')
-    reasons.push(`其它模块来源 ${v.source.module}，请到来源单据处理`);
+    reasons.push('凭证由其他业务生成，请到来源单据处理');
   if (action === 'audit') {
     if (v.createdBy.id === svc.user.id) reasons.push('制单人与审核人相同，请更换用户后审核');
     if (v.status !== 'pending')
@@ -497,7 +534,7 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
       const all = await group(t, first.period, first.voucherTypeId);
       groups.push({ period: first.period, type: first.voucherTypeId, hash: digest(all) });
       if (all.some((v) => v.source && v.source.module !== 'voucher-book'))
-        fail('SOURCE', '编号调整范围含其它模块来源凭证，请先在来源模块核对编号');
+        fail('SOURCE', '编号调整范围含其他业务生成的凭证，请先打开来源核对编号');
       if (input.action === 'renumber') mappings.push(...numberMapping(all, input.byDate));
       else {
         if (!input.input) fail('INPUT', '插入必须提供完整平衡分录，请填写插入内容');
@@ -595,7 +632,7 @@ export async function preview(svc: CoreServices, raw: PreviewInput): Promise<Pre
         );
         if (input.compactAfter) {
           if (remaining.some((x) => x.source && x.source.module !== 'voucher-book'))
-            fail('SOURCE', '删除后整理范围含其它模块来源凭证，不能在这里改号');
+            fail('SOURCE', '删除后整理范围含其他业务生成的凭证，请先打开来源核对编号');
           mappings.push(...numberMapping(remaining, false));
         }
       }
@@ -835,7 +872,7 @@ export async function summary(svc: CoreServices, input: SummaryInput) {
           total.fcCredit + (l.fcAmount ?? 0),
         ].every(Number.isSafeInteger)
       )
-        fail('AMOUNT_RANGE', '汇总金额超过安全整数范围，请缩小查询区间');
+        fail('AMOUNT_RANGE', '汇总金额超过可准确计算的范围，请缩小查询区间');
       total.debit += l.debit;
       total.credit += l.credit;
       if (input.foreign) {
@@ -913,7 +950,7 @@ export function checkedInput(raw: VoucherInput): VoucherInput {
     debit += BigInt(l.debit);
     credit += BigInt(l.credit);
     if (debit > max || debit < -max || credit > max || credit < -max)
-      fail('AMOUNT_RANGE', '凭证合计超过安全整数分范围，请拆分凭证');
+      fail('AMOUNT_RANGE', '凭证合计超过可准确计算的范围，请拆分凭证');
   }
   return input;
 }

@@ -116,7 +116,7 @@ export function FeatureMap() {
                   </Button>
                 ) : (
                   <Tag key={title}>
-                    {title} · {loaded ? '当前无可用入口' : '模块未加载'}
+                    {title} · {loaded ? '当前无可用入口' : '功能尚未启用'}
                   </Tag>
                 );
               })}

@@ -65,6 +65,13 @@ beforeEach(async () => {
 afterEach(async () => app.close());
 
 describe('w_main1 工作台', () => {
+  it('功能搜索返回中文分组，不显示内部组名', async () => {
+    const result = await app.call(workbench).search({ term: '凭证查询' });
+    expect(result.results.find((row) => row.category === '功能')).toMatchObject({
+      title: '凭证查询',
+      detail: '功能 · 凭证',
+    });
+  });
   it('按实际状态计数，排除草稿和作废，切期间并读取真实结账状态', async () => {
     const vouchers = await seedVouchers(app.svc, [
       specs('pending'),

@@ -2,11 +2,18 @@ import { z } from 'zod';
 import { VoucherInputSchema, VoucherFilterSchema, zCents, zDate, zId, zPeriod } from '@caiwu/core';
 
 export const ConditionSchema = z
-  .object({
-    field: z.enum(['date', 'number', 'amount', 'summary', 'creator']),
-    operator: z.enum(['eq', 'ne', 'gte', 'lte', 'contains', 'notContains']),
-    value: z.string().min(1),
-  })
+  .object(
+    {
+      field: z.enum(['date', 'number', 'amount', 'summary', 'creator'], {
+        error: '请选择有效的综合查询字段',
+      }),
+      operator: z.enum(['eq', 'ne', 'gte', 'lte', 'contains', 'notContains'], {
+        error: '请选择有效的查询比较方式',
+      }),
+      value: z.string({ error: '请填写查询值' }).min(1, '请填写查询值'),
+    },
+    { error: '综合查询条件格式有误，请重新选择' },
+  )
   .superRefine((v, ctx) => {
     const character = v.field === 'summary' || v.field === 'creator';
     if (!character && ['contains', 'notContains'].includes(v.operator))
@@ -17,13 +24,16 @@ export const ConditionSchema = z
       ['number', 'amount'].includes(v.field) &&
       (!/^-?\d+$/.test(v.value) || !Number.isSafeInteger(Number(v.value)))
     )
-      ctx.addIssue({ code: 'custom', message: '编号和金额（分）必须是安全整数' });
+      ctx.addIssue({ code: 'custom', message: '编号或金额查询条件无效，请核对数值' });
   });
 export const BookFilterSchema = VoucherFilterSchema.extend({
   id: zId.optional(),
   amountFrom: zCents.optional(),
   amountTo: zCents.optional(),
-  conditions: z.array(ConditionSchema).max(20).default([]),
+  conditions: z
+    .array(ConditionSchema, { error: '综合查询条件格式有误，请清空后重新选择' })
+    .max(20, '综合查询最多支持20个条件')
+    .default([]),
   limit: z.number().int().min(1).max(200).default(30),
 }).superRefine((f, ctx) => {
   for (const [a, b] of [
