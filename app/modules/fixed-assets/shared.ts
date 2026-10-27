@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Decimal, zCents, zCode, zDate, zDecimal, zId, zPeriod } from '@caiwu/core';
+import { Decimal, isValidDate, zCents, zCode, zDate, zDecimal, zId, zPeriod } from '@caiwu/core';
 
 export const MasterKind = z.enum(['category', 'purpose', 'status', 'reason']);
 export const masterLabels = {
@@ -99,6 +99,40 @@ export const DepreciationConfirm = z.object({
   confirm: z.literal(true),
   skipMissing: z.boolean().default(false),
 });
+export const queryFields = {
+  code: { label: '编码', type: 'text' },
+  name: { label: '名称', type: 'text' },
+  amount: { label: '折旧额（整数分）', type: 'number' },
+  useDate: { label: '使用日期', type: 'date' },
+} as const;
+export const queryOperators = { eq: '等于', contains: '含有', gt: '大于', lt: '小于' } as const;
+export const QueryConditionSchema = z
+  .object({
+    field: z.enum(['code', 'name', 'amount', 'useDate']),
+    op: z.enum(['eq', 'contains', 'gt', 'lt']),
+    value: z.string().min(1, '条件值不能为空').max(500, '条件值不能超过 500 字'),
+  })
+  .strict();
+export type QueryCondition = z.infer<typeof QueryConditionSchema>;
+export const MAX_QUERY_CONDITIONS = 20;
+
+/** 页面与服务端共用条件语义；字段、操作符仍由白名单 schema 验证。 */
+export function queryConditionProblem(c: QueryCondition) {
+  if (!c.value.trim())
+    return { code: 'QUERY_VALUE', message: '条件值不能为空', hint: '填写条件值或删除该条件' };
+  if (c.op === 'contains' && queryFields[c.field].type !== 'text')
+    return {
+      code: 'QUERY_OPERATOR',
+      message: `${c.field === 'amount' ? '金额' : '日期'}不能使用「含有」操作符`,
+      hint: '请选择等于、大于或小于',
+    };
+  if (c.field === 'amount' && (!/^\d+$/.test(c.value) || !Number.isSafeInteger(Number(c.value))))
+    return { code: 'QUERY_NUMBER', message: '金额条件必须为整数分', hint: '例如 100 元填 10000' };
+  if (c.field === 'useDate' && !isValidDate(c.value))
+    return { code: 'QUERY_DATE', message: '日期条件格式应为 YYYY-MM-DD', hint: '请填写真实日期' };
+  return null;
+}
+
 export const QuerySchema = z
   .object({
     from: zPeriod,
@@ -108,16 +142,7 @@ export const QuerySchema = z
     departmentId: zId.optional(),
     categoryId: zId.optional(),
     purposeId: zId.optional(),
-    conditions: z
-      .array(
-        z.object({
-          field: z.enum(['code', 'name', 'amount', 'useDate']),
-          op: z.enum(['eq', 'contains', 'gt', 'lt']),
-          value: z.string().min(1),
-        }),
-      )
-      .max(20)
-      .default([]),
+    conditions: z.array(QueryConditionSchema).max(MAX_QUERY_CONDITIONS).default([]),
     departmentLevel: z.enum(['detail', 'top']).default('detail'),
     categoryLevel: z.enum(['detail', 'top']).default('detail'),
   })
