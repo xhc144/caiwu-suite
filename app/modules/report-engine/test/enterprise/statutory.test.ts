@@ -451,7 +451,7 @@ describe('企业2019附件2四表', () => {
       calculateCashflow(c, d, { from: 202401, to: 202412, label: '本年' }, [], 'current'),
     ).toThrow('未分类');
   });
-  it('w_bb_proc 非账务现金范围变化独立调节且核实当日余额', () => {
+  it('w_bb_proc 无账务转账的现金质押按真实用途列筹资并核实当日余额', () => {
     const { c, d } = fixture();
     const policy = c.cashPolicies.find((p) => p.period === 202512 && p.basis === 'closing')!;
     policy.accounts = [];
@@ -462,6 +462,9 @@ describe('企业2019附件2四表', () => {
       accountId: 1,
       amount: '-220000',
       kind: 'restriction',
+      parts: [
+        { line: 'otherFinancingPayments', amount: '-220000', purpose: '非金融企业短期借款质押' },
+      ],
       ...provenance,
     });
     const checks: Parameters<typeof calculateCashflow>[3] = [];
@@ -476,7 +479,9 @@ describe('企业2019附件2四表', () => {
     expect(r.actualCashClosing).toBe('0');
     expect(r.cashClosing).toBe('0');
     expect(r.cashOpening).toBe('160000');
-    expect(r.cashIncrease).toBe('60000');
+    expect(r.otherFinancingPayments).toBe('220000');
+    expect(r.financingNet).toBe('-220000');
+    expect(r.cashIncrease).toBe('-160000');
     expect(r.exchangeEffect).toBe('0');
     expect(checks[0]?.difference).toBe('0');
     c.cashScopeChanges[0]!.amount = '-219999';
@@ -502,6 +507,13 @@ describe('企业2019附件2四表', () => {
         accountId: 1,
         amount: restriction ? '-215000' : '160000',
         kind: restriction ? 'restriction' : 'release',
+        parts: [
+          {
+            line: restriction ? 'otherFinancingPayments' : 'otherFinancingReceipts',
+            amount: restriction ? '-215000' : '160000',
+            purpose: '非金融企业短借质押及解除',
+          },
+        ],
         ...provenance,
       });
       if (restriction)
@@ -517,7 +529,8 @@ describe('企业2019附件2四表', () => {
         'current',
       );
       expect(r.cashOpening).toBe(restriction ? '160000' : '0');
-      expect(r.cashIncrease).toBe(restriction ? '55000' : '60000');
+      expect(r.cashIncrease).toBe(restriction ? '-160000' : '220000');
+      expect(r.financingNet).toBe(restriction ? '-215000' : '160000');
       expect(r.cashScopeChange).toBe(restriction ? '-215000' : '160000');
       expect(r.cashClosing).toBe(restriction ? '0' : '220000');
       expect(r.cashClosing).toBe(r.actualCashClosing);
@@ -546,6 +559,9 @@ describe('企业2019附件2四表', () => {
       accountId: 1,
       amount: '-160000',
       kind: 'restriction',
+      parts: [
+        { line: 'otherFinancingPayments', amount: '-160000', purpose: '非金融企业短期借款质押' },
+      ],
       ...provenance,
     });
     const result = calculateCashflow(
@@ -558,6 +574,8 @@ describe('企业2019附件2四表', () => {
     expect(result.cashOpening).toBe('160000');
     expect(result.cashScopeChange).toBe('-160000');
     expect(result.cashClosing).toBe('0');
+    expect(result.cashIncrease).toBe('-160000');
+    expect(result.financingNet).toBe('-160000');
   });
   it('w_bb_proc 比较期持续及终止经营有据重分类不得被账务分部覆盖', () => {
     const { c, d } = fixture();
@@ -593,6 +611,126 @@ describe('企业2019附件2四表', () => {
         (check) => check.row === '净利润＝持续经营＋终止经营' && check.column === 'previous',
       )?.difference,
     ).toBe('-10000');
+  });
+  it('w_bb_proc 限制及解除必须有活动、用途和守恒分配，不能用汇兑或政策调节绕过', () => {
+    const { c, d } = fixture();
+    const policy = c.cashPolicies.find((p) => p.period === 202512 && p.basis === 'closing')!;
+    policy.accounts = [];
+    policy.restrictedAccounts = [1];
+    c.cashScopeChanges.push({
+      period: 202512,
+      date: '2025-12-31',
+      accountId: 1,
+      amount: '-220000',
+      kind: 'restriction',
+      ...provenance,
+    });
+    const change = c.cashScopeChanges[0]!,
+      calculate = () => calculateEnterprise(c, d);
+    expect(calculate).toThrow('缺少活动分类及用途依据');
+    change.parts = [{ line: 'exchangeEffect', amount: '-220000', purpose: '真实短借质押' }];
+    expect(calculate).toThrow('不能列作汇率影响或表外调节');
+    change.parts[0]!.line = 'otherFinancingPayments';
+    change.parts[0]!.amount = '-219999';
+    expect(calculate).toThrow('活动分配与实际金额不一致');
+    change.parts[0]!.amount = '-220000';
+    change.parts[0]!.line = 'otherFinancingReceipts';
+    expect(calculate).toThrow('收付方向或用途依据无效');
+    change.parts[0]!.line = 'otherFinancingPayments';
+    change.kind = 'policy';
+    expect(calculate).toThrow('纯政策追溯不能作为期中现金范围调节');
+    change.kind = 'restriction';
+    change.parts[0]!.purpose = '';
+    expect(calculate).toThrow();
+  });
+  it('w_bb_proc 按用途拆分三类活动并保持正式五六项及比较期首尾勾稽', () => {
+    const { c, d } = fixture();
+    const previousEnd = c.cashPolicies.find((p) => p.period === 202412 && p.basis === 'closing')!,
+      currentStart = c.cashPolicies.find((p) => p.period === 202501 && p.basis === 'opening')!;
+    for (const policy of [previousEnd, currentStart]) {
+      policy.accounts = [];
+      policy.restrictedAccounts = [1];
+    }
+    c.cashScopeChanges.push(
+      {
+        period: 202412,
+        date: '2024-12-31',
+        accountId: 1,
+        amount: '-160000',
+        kind: 'restriction',
+        parts: [
+          { line: 'otherOperatingPayments', amount: '-30000', purpose: '经营履约保证金限制' },
+          { line: 'otherInvestingPayments', amount: '-50000', purpose: '长期资产投资保证金限制' },
+          { line: 'otherFinancingPayments', amount: '-80000', purpose: '非金融企业借款质押' },
+        ],
+        ...provenance,
+      },
+      {
+        period: 202501,
+        date: '2025-01-01',
+        accountId: 1,
+        amount: '160000',
+        kind: 'release',
+        parts: [
+          { line: 'otherOperatingReceipts', amount: '30000', purpose: '经营履约保证金解除' },
+          { line: 'otherInvestingReceipts', amount: '50000', purpose: '长期资产投资保证金解除' },
+          { line: 'otherFinancingReceipts', amount: '80000', purpose: '非金融企业借款质押解除' },
+        ],
+        ...provenance,
+      },
+    );
+    const result = calculateEnterprise(c, d);
+    expect(result.cashflow.previous.operatingNet).toBe('30000');
+    expect(result.cashflow.previous.investingNet).toBe('-50000');
+    expect(result.cashflow.previous.financingNet).toBe('-80000');
+    expect(result.cashflow.previous.cashOpening).toBe('100000');
+    expect(result.cashflow.previous.cashIncrease).toBe('-100000');
+    expect(result.cashflow.previous.cashClosing).toBe('0');
+    expect(result.cashflow.current.operatingNet).toBe('90000');
+    expect(result.cashflow.current.investingNet).toBe('50000');
+    expect(result.cashflow.current.financingNet).toBe('80000');
+    expect(result.cashflow.current.cashOpening).toBe('0');
+    expect(result.cashflow.current.cashIncrease).toBe('220000');
+    expect(result.cashflow.current.cashClosing).toBe('220000');
+    expect(result.cashflow.current.exchangeEffect).toBe('0');
+    expect(result.cashflow.previous.exchangeEffect).toBe('0');
+    expect(result.checks.every((check) => check.difference === '0')).toBe(true);
+  });
+  it('w_bb_proc 纯政策追溯按同一范围重列期初和比较期，不虚构期中现金收付', () => {
+    const { c, d } = fixture();
+    const deposit = account(8, '按新政策追溯纳入的短期存款');
+    for (const period of d.periods) {
+      d.balances[period]!.push({
+        ...d.balances[period]![0]!,
+        accountId: deposit.id,
+        accountCode: deposit.code,
+        accountName: deposit.name,
+        opening: 10000,
+        closing: 10000,
+      });
+      for (const policy of c.cashPolicies.filter((p) => p.period === period)) {
+        policy.accounts.push(deposit.id);
+        policy.source = '合成政策变更决定：同一政策追溯覆盖比较期及本期期初期末';
+        policy.version = '2';
+      }
+    }
+    d.accounts.push(deposit);
+    const previous = calculateCashflow(
+        c,
+        d,
+        { from: 202401, to: 202412, label: '上年' },
+        [],
+        'previous',
+      ),
+      current = calculateCashflow(c, d, { from: 202501, to: 202512, label: '本年' }, [], 'current');
+    expect(previous.cashOpening).toBe('110000');
+    expect(previous.cashClosing).toBe('170000');
+    expect(current.cashOpening).toBe('170000');
+    expect(current.cashClosing).toBe('230000');
+    expect(previous.cashIncrease).toBe('60000');
+    expect(current.cashIncrease).toBe('60000');
+    expect(previous.cashScopeChange).toBe('0');
+    expect(current.cashScopeChange).toBe('0');
   });
   it('w_bb_proc 固定资产净额不重复扣减、缺备抵拒绝', () => {
     const { c, d } = fixture();

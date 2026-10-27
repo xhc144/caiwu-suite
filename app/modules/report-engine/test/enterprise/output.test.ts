@@ -37,6 +37,9 @@ it('w_bb_saveas 现金范围变化后正式第六项及分部追溯调整按实�
     accountId: 1,
     amount: '-220000',
     kind: 'restriction',
+    parts: [
+      { line: 'otherFinancingPayments', amount: '-220000', purpose: '非金融企业短期借款质押' },
+    ],
     ...provenance,
   });
   for (const [row, amount] of [
@@ -56,9 +59,11 @@ it('w_bb_saveas 现金范围变化后正式第六项及分部追溯调整按实�
     cashRows = pages.filter((p) => p.title.startsWith('现金流量表')).flatMap((p) => p.rows),
     profitRows = pages.filter((p) => p.title.startsWith('利润表')).flatMap((p) => p.rows),
     closing = cashRows.find((row) => row[0]!.value === '六、期末现金及现金等价物余额')!,
-    scope = cashRows.find((row) => row[0]!.value === '现金范围非账务变化调节（单独披露）')!;
+    scope = cashRows.find((row) => row[0]!.value === '其中：限制及解除现金流（已计入上述活动）')!,
+    increase = cashRows.find((row) => row[0]!.value === '五、现金及现金等价物净增加额')!;
   expect(closing.slice(1).map((cell) => cell.value)).toEqual(['0', '160000']);
   expect(scope.slice(1).map((cell) => cell.value)).toEqual(['-220000', '0']);
+  expect(increase.slice(1).map((cell) => cell.value)).toEqual(['-160000', '60000']);
   expect(cashRows.some((row) => row[0]!.value === '实际期末现金及现金等价物')).toBe(false);
   expect(
     profitRows.find((row) => row[0]!.value.startsWith('（一）持续经营净利润'))![2]!.value,

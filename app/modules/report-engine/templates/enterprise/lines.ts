@@ -357,9 +357,5 @@ export const CASHFLOW: Line[] = [
     'exchangeEffect',
   ]),
   line('cashOpening', '加：期初现金及现金等价物余额', 16),
-  total('cashClosing', '六、期末现金及现金等价物余额', 16, [
-    'cashIncrease',
-    'cashOpening',
-    'cashScopeChange',
-  ]),
+  total('cashClosing', '六、期末现金及现金等价物余额', 16, ['cashIncrease', 'cashOpening']),
 ];

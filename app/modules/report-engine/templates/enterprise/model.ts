@@ -209,6 +209,17 @@ export const EnterpriseConfigSchema = z
           accountId: zId,
           amount,
           kind: z.enum(['restriction', 'release', 'policy']),
+          parts: z
+            .array(
+              z
+                .object({
+                  line: z.string().min(1),
+                  amount,
+                  purpose: z.string().trim().min(2),
+                })
+                .strict(),
+            )
+            .optional(),
           ...evidence.shape,
         })
         .strict(),
@@ -323,6 +334,8 @@ const FIELD_LABELS: Record<string, string> = {
   cashPolicies: '现金范围',
   cashAllocations: '现金分配',
   cashScopeChanges: '现金范围变化',
+  parts: '分项资料',
+  purpose: '活动用途依据',
   equityEvents: '权益事件',
   adjustments: '追溯调整',
   oci: '其他综合收益',

@@ -862,6 +862,10 @@ export function calculateCashflow(
   const seen = new Set<string>();
   let scopeChange = D(0);
   for (const change of changes) {
+    if (change.kind === 'policy')
+      fail(
+        `${change.date}纯政策追溯不能作为期中现金范围调节，请按同一政策重列期初、期末及比较期间现金范围和逐笔分类并保存依据；真实限制或解除限制请选择对应性质及活动项目`,
+      );
     const key = `${change.date}:${change.accountId}`;
     if (seen.has(key)) fail('同日同账户现金范围变化重复');
     seen.add(key);
@@ -888,6 +892,25 @@ export function calculateCashflow(
       );
     if ((change.kind === 'release' && removed) || (change.kind === 'restriction' && !removed))
       fail('现金范围变化类型与实际范围方向不一致');
+    // 证监会《监管规则适用指引——会计类第1号》1-25二：原现金质押退出、解除后重新符合定义均产生现金流量。
+    // 行业和实际用途由有据分项确认；现金范围内转换仍由逐笔分录的内部划转规则处理。
+    if (!change.parts?.length)
+      fail(
+        `${change.date}现金${removed ? '限制' : '解除限制'}缺少活动分类及用途依据，请补充经营、投资或筹资现金流项目`,
+      );
+    if (!change.parts.reduce((sum, part) => sum.plus(part.amount), D(0)).eq(expected))
+      fail(`${change.date}现金限制或解除限制的活动分配与实际金额不一致`);
+    for (const part of change.parts) {
+      if (
+        !(removed ? paymentLines : receiptLines).has(part.line) ||
+        part.purpose.trim().length < 2 ||
+        (!D(part.amount).isZero() && D(part.amount).isNegative() !== expected.isNegative())
+      )
+        fail(
+          `${change.date}现金限制或解除限制的活动项目、收付方向或用途依据无效，不能列作汇率影响或表外调节`,
+        );
+      add(v, part.line, removed ? D(part.amount).neg() : part.amount);
+    }
     if (removed) membership.delete(change.accountId);
     else membership.add(change.accountId);
     scopeChange = scopeChange.plus(expected);
@@ -947,13 +970,27 @@ export function calculateCashflow(
   check(
     checks,
     'cashflow',
-    '期末现金及现金等价物（含现金范围变化调节）',
+    '六、期末现金及现金等价物余额',
     column,
     r.to,
     v.cashClosing!,
     sourceClosing,
     '核实逐笔现金分类、受限资金及政策变化',
-    entries.map((e) => `分录${e.lineId}`),
+    [
+      ...entries.map((e) => `分录${e.lineId}`),
+      ...changes.map((x) => `${x.date}账户${x.accountId}现金范围：${x.source}`),
+    ],
+  );
+  check(
+    checks,
+    'cashflow',
+    '五、现金及现金等价物净增加额＝期末减期初',
+    column,
+    r.to,
+    v.cashIncrease!,
+    sourceClosing.minus(v.cashOpening!),
+    '核实三类活动、限制及解除限制的实际用途分类和汇率影响',
+    changes.map((x) => `${x.date}账户${x.accountId}：${x.source}`),
   );
   return v;
 }

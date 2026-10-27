@@ -74,7 +74,7 @@ export function enterprisePages(r: EnterpriseResult): OutputPage[] {
     ]);
     if (name === '现金流量表')
       rows.push([
-        cell('现金范围非账务变化调节（单独披露）'),
+        cell('其中：限制及解除现金流（已计入上述活动）'),
         cell(r.cashflow.current.cashScopeChange!, true),
         cell(r.cashflow.previous.cashScopeChange!, true),
       ]);
