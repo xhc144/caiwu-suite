@@ -121,6 +121,7 @@ export type NonprofitGeneration = {
     request: StatementRequest;
     current: string;
     previous?: string;
+    previousPeriods?: { to: number; fingerprint: string }[];
   };
 };
 /** 接线方必须在公共 generate 的现有事务内调用；任何失败发生于快照写入之前。 */
@@ -131,8 +132,9 @@ export async function generateNonprofit(
   previousConfiguration?: unknown,
 ): Promise<NonprofitGeneration> {
   const r = RequestSchema.parse(raw),
-    s = await readNonprofitSources(svc, r),
-    c = validateConfiguration(configuration, s);
+    parsed = ConfigurationSchema.parse(configuration),
+    s = await readNonprofitSources(svc, r, parsed),
+    c = validateConfiguration(parsed, s);
   const statement = build(s, c, r);
   const binding: NonprofitGeneration['binding'] = {
     version: 1,
@@ -146,10 +148,41 @@ export async function generateNonprofit(
     if (!c.comparison) throw new Error('缺少上年项目可比口径和必要重列依据');
     if (!previousConfiguration) throw new Error('缺少上年度真实来源和逐笔分类资料');
     const pr = RequestSchema.parse({ ...r, from: r.from - 100, to: r.to - 100, comparison: false });
-    const ps = await readNonprofitSources(svc, pr),
-      pc = validateConfiguration(previousConfiguration, ps),
+    const priorConfiguration = ConfigurationSchema.parse(previousConfiguration);
+    const ps = await readNonprofitSources(svc, pr, priorConfiguration),
+      pc = validateConfiguration(priorConfiguration, ps),
       previous = build(ps, pc, pr);
     binding.previous = sourceFingerprint(ps, pc);
+    const needed = [
+      ...new Set([
+        Math.floor(pr.to / 100) * 100 + 12,
+        ...(pr.from % 100 > 1 ? [pr.from - 1] : []),
+        ...(c.comparison.balanceAdjustments ?? []).flatMap((x) => (x.period ? [x.period] : [])),
+        ...(c.comparison.retrospectivePeriods ?? [])
+          .filter((x) => x.at === 'closing')
+          .map((x) => x.period),
+      ]),
+    ].filter((p) => p !== ps.to);
+    const previousPeriods = await Promise.all(
+      needed.map((to) =>
+        readNonprofitSources(
+          svc,
+          {
+            ...pr,
+            code: '401',
+            kind: 'interim',
+            from: Math.floor(pr.to / 100) * 100 + 1,
+            to,
+          },
+          pc,
+        ),
+      ),
+    );
+    if (previousPeriods.length)
+      binding.previousPeriods = previousPeriods.map((s) => ({
+        to: s.to,
+        fingerprint: sourceFingerprint(s, pc),
+      }));
     if (previous.checks.some((x) => x.difference !== 0))
       throw new Error('上年比较资料勾稽不一致，请定位并修正上年来源');
     if (c.cashPolicy !== pc.cashPolicy && !c.policyChangeReference)
@@ -159,7 +192,8 @@ export async function generateNonprofit(
       previous,
       c,
       pr,
-      retrospectiveBridge(s, ps, c, pc, statement, previous),
+      retrospectiveBridge(s, ps, c, pc, statement, previous, previousPeriods),
+      r.code === '402' ? classifyActivity(ps, pc) : undefined,
     );
   }
   assertNonprofitChecks(statement);

@@ -1,4 +1,5 @@
 import { cashflowRows } from './forms';
+import type { ClassifiedAmount } from './activity';
 import {
   exactSum,
   incomeIds,
@@ -14,7 +15,13 @@ export function attachComparative(
   previous: Statement,
   c: Configuration,
   pr: StatementRequest,
-  retrospective = { netChangeDelta: 0, cashOpeningDelta: 0, cashClosingDelta: 0 },
+  retrospective: {
+    netChangeDelta: number;
+    netChangeYtdDelta?: number;
+    cashOpeningDelta: number;
+    cashClosingDelta: number;
+  } = { netChangeDelta: 0, cashOpeningDelta: 0, cashClosingDelta: 0 },
+  priorActivity?: ClassifiedAmount[],
 ) {
   const restatements = c.comparison!.restatements.filter((a) => a.code === current.code);
   if (current.code === '402') {
@@ -43,6 +50,24 @@ export function attachComparative(
     if (!primitives.has(a.row) || Math.floor(a.period / 100) !== Math.floor(pr.to / 100))
       throw new Error('比较重列须指向上年度真实发生期间及明细项目，不能直接填写小计或互转合计');
   }
+  if (current.code === '402') {
+    for (const p of new Set(restatements.map((a) => a.period))) {
+      const changes = restatements.filter((a) => a.period === p);
+      current.checks.push({
+        name: '比较重列原期间业务组成调整与母项一致',
+        row: '业务活动成本',
+        column: '上年原发生期间',
+        from: p,
+        to: p,
+        difference: exactSum(
+          changes.map((a) =>
+            a.row.startsWith('detail:') ? a.amount : a.row === 'activityCost' ? -a.amount : 0,
+          ),
+        ),
+        sources: changes.map((a) => a.basis),
+      });
+    }
+  }
   if (current.code === '402') current.columns.push('上年可比本期·合计', '上年可比累计·合计');
   const ranges = current.code === '402' ? [pr.from, Math.floor(pr.to / 100) * 100 + 1] : [pr.from];
   for (const [i, from] of ranges.entries()) {
@@ -59,6 +84,50 @@ export function attachComparative(
       ]);
     }
     if (current.code === '402') {
+      const check = (name: string, row: string, difference: number) =>
+        current.checks.push({
+          name,
+          row,
+          column: i === 0 ? '上年可比本期' : '上年可比累计',
+          from,
+          to: pr.to,
+          difference,
+          sources: restatements.map((a) => a.basis),
+        });
+      check(
+        '比较重列后业务组成与业务活动成本一致',
+        '业务活动成本',
+        exactSum([
+          ...current.rows.filter((r) => r.id.startsWith('detail:')).map((r) => values[r.id]!),
+          -values.activityCost!,
+        ]),
+      );
+      // 组成是成本的完整分解；其中项是母项的子集，不能再次加到费用合计。
+      // 退款可能使子项超过母项净额，边界取真实正、负发生额，不用净额绝对值。
+      for (const [child, parent, label] of [
+        ['charitableTrust', 'activityCost', '设立慈善信托支出'],
+        ['fundraisingCost', 'fundraising', '募捐成本'],
+      ] as const) {
+        const original = priorActivity
+          ? priorActivity
+              .filter((a) => a.row === parent && a.period >= from && a.period <= pr.to)
+              .map((a) => a.amount)
+          : [Number(previous.rows.find((r) => r.id === parent)!.values[i === 0 ? 2 : 5])];
+        const amounts = [
+          ...original,
+          ...restatements
+            .filter((a) => a.row === parent && a.period >= from && a.period <= pr.to)
+            .map((a) => a.amount),
+        ];
+        const lower = exactSum(amounts.filter((n) => n < 0));
+        const upper = exactSum(amounts.filter((n) => n > 0));
+        const n = values[child]!;
+        check(
+          `比较重列后${label}与母项范围一致`,
+          label,
+          n < lower ? exactSum([n, -lower]) : n > upper ? exactSum([n, -upper]) : 0,
+        );
+      }
       values.incomeTotal = exactSum(incomeIds.map((id) => values[id]!));
       values.expenseTotal = exactSum(expenseIds.map((id) => values[id]!));
       values.netChange = exactSum([
@@ -77,7 +146,13 @@ export function attachComparative(
         column: i === 0 ? '上年可比本期' : '上年可比累计',
         from,
         to: pr.to,
-        difference: exactSum([values.netChange, -priorNet, -retrospective.netChangeDelta]),
+        difference: exactSum([
+          values.netChange,
+          -priorNet,
+          -(i === 1
+            ? (retrospective.netChangeYtdDelta ?? retrospective.netChangeDelta)
+            : retrospective.netChangeDelta),
+        ]),
         sources: restatements.map((a) => a.basis),
       });
     } else {
