@@ -101,6 +101,8 @@ export type BalanceQuery = z.input<typeof BalanceQuerySchema>;
  * 任一余额/YTD 实际覆盖期间未建立时不返回确定数值，抛期间缺失业务错误。
  */
 export interface BalanceRow {
+  /** Quantity rows are never aggregated across units. */
+  quantityUnit?: string | null;
   accountId: number;
   accountCode: string;
   accountName: string;

@@ -4,16 +4,23 @@ import { createTestBook, voucherInputFromSpec, type TestBook } from '@caiwu/test
 let book: TestBook;
 beforeEach(async () => {
   book = await createTestBook();
+  await book.svc.voucherPolicy.set({
+    numbering: 'manual',
+    renumberAfterDelete: false,
+    allowModifyOthers: true,
+  });
 });
 afterEach(async () => book.close());
-const raw = () =>
-  voucherInputFromSpec(book.svc, {
+const raw = async () => ({
+  ...(await voucherInputFromSpec(book.svc, {
     date: '2026-01-05',
     lines: [
       { account: '1001', debit: 103 },
       { account: '6001', credit: 103 },
     ],
-  });
+  })),
+  number: await book.svc.vouchers.nextNumber(202601, 1),
+});
 
 describe('w_pz_pzxsb 来源凭证编号保护（PR111 反例）', () => {
   it.each(['pending', 'audited', 'posted'] as const)(
@@ -50,7 +57,8 @@ describe('w_pz_pzxsb 来源凭证编号保护（PR111 反例）', () => {
     ).rejects.toThrow('不能在这里');
     expect(await book.svc.vouchers.get(manual.id)).toEqual(manual);
     expect(await book.svc.vouchers.get(sourced.id)).toEqual(sourced);
-    await book.svc.vouchers.setNumbers([{ id: manual.id, number: 2 }]);
+    const plan = await book.svc.vouchers.previewNumbers([{ id: manual.id, number: 2 }]);
+    await book.svc.vouchers.setNumbers(plan.updates, { plan, confirmed: true });
     expect((await book.svc.vouchers.get(manual.id))!.number).toBe(2);
   });
 
@@ -64,7 +72,8 @@ describe('w_pz_pzxsb 来源凭证编号保护（PR111 反例）', () => {
     await expect(
       book.forModule('voucher-book').vouchers.setNumbers([{ id: v.id, number: 8 }]),
     ).rejects.toThrow('不能在这里');
-    await owner.vouchers.setNumbers([{ id: v.id, number: 8 }]);
+    const plan = await owner.vouchers.previewNumbers([{ id: v.id, number: 8 }]);
+    await owner.vouchers.setNumbers(plan.updates, { plan, confirmed: true });
     expect((await book.svc.vouchers.get(v.id))!.number).toBe(8);
   });
 });

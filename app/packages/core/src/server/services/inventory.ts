@@ -200,9 +200,14 @@ export function inventoryService(svc: CoreServices): InventoryService {
   };
   return Object.freeze({
     async snapshot(period: number) {
-      const result = await provider().snapshot(period);
-      assertBound();
-      return result;
+      try {
+        const result = await provider().snapshot(period);
+        assertBound();
+        return result;
+      } catch (error) {
+        if (transaction?.active) recordBridgeFailure(transaction, error);
+        throw error;
+      }
     },
     with<T>(run: (inventory: InventoryCostingCapability) => Promise<T>): Promise<T> {
       return registerInventoryWith(svc, async () => {
@@ -220,22 +225,23 @@ export function inventoryService(svc: CoreServices): InventoryService {
             const guard =
               <A extends unknown[], R>(method: (...args: A) => Promise<R>) =>
               async (...args: A): Promise<R> => {
-                assertBound();
-                if (!callback.active || callbacks.getStore() !== callback)
-                  fail(
-                    'INVENTORY_SCOPE_EXPIRED',
-                    '库存能力的回调作用域已结束',
-                    '请在当前 inventory.with 回调内完成操作',
-                  );
-                const result = method(...args);
-                pending.add(result);
+                let result: Promise<R> | undefined;
                 try {
+                  assertBound();
+                  if (!callback.active || callbacks.getStore() !== callback)
+                    fail(
+                      'INVENTORY_SCOPE_EXPIRED',
+                      '库存能力的回调作用域已结束',
+                      '请在当前 inventory.with 回调内完成操作',
+                    );
+                  result = method(...args);
+                  pending.add(result);
                   return await result;
                 } catch (error) {
                   if (transaction) recordBridgeFailure(transaction, error);
                   throw error;
                 } finally {
-                  pending.delete(result);
+                  if (result) pending.delete(result);
                 }
               };
             const capability: InventoryCostingCapability = Object.freeze({

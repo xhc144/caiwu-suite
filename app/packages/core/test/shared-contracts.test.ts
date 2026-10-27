@@ -291,7 +291,7 @@ it('w_xt_kgzb：4-2-2与4-3-3确定性建账，备抵/余额性质和来源版�
     },
     parseCodeScheme('4-3-3'),
   );
-  expect(await book.svc.accounts.get(created.id)).toMatchObject({
+  expect(await book.svc.accounts.provenance(created.id)).toMatchObject({
     isContra: true,
     balanceNature: 'both',
     source: '合成来源',
@@ -332,4 +332,196 @@ it('w_bb_proc：排除损益结转仅影响发生额，余额保留完整结转�
     closingDebit: 123,
     closingCredit: 0,
   });
+});
+
+it('w_pz_pzedit/w_pz_bhzl：自动显式号只接受当前预测号；重排取消/过期/日志失败均不写', async () => {
+  book = await createTestBook();
+  const input = await voucherInputFromSpec(book.svc, base);
+  await expect(book.svc.vouchers.create({ ...input, number: 7 })).rejects.toThrow(/自动编号/);
+  const first = await book.svc.vouchers.create({ ...input, number: 1 });
+  expect(first.number).toBe(1);
+  const second = await book.svc.vouchers.create(input);
+  expect(second.number).toBe(2);
+  await expect(
+    book.svc.vouchers.update(
+      first.id,
+      { ...input, number: 7 },
+      { expectedRevision: first.revision },
+    ),
+  ).rejects.toThrow(/自动编号/);
+  await expect(
+    book.svc.vouchers.update(
+      first.id,
+      { ...input, number: 3 },
+      { expectedRevision: first.revision },
+    ),
+  ).rejects.toThrow(/普通保存不能改号/);
+  expect((await book.svc.vouchers.get(first.id))!.number).toBe(1);
+  const updates = [
+    { id: first.id, number: 2 },
+    { id: second.id, number: 1 },
+  ];
+  const plan = await book.svc.vouchers.previewNumbers(updates);
+  await expect(book.svc.vouchers.setNumbers(updates)).rejects.toThrow(/确认/);
+  await expect(book.svc.vouchers.setNumbers(updates, { plan, confirmed: false })).rejects.toThrow(
+    /确认/,
+  );
+  await expect(
+    book.svc.vouchers.setNumbers(updates, { plan: { ...plan, expiresAt: 0 }, confirmed: true }),
+  ).rejects.toThrow(/重新预览/);
+  book.book.raw.exec(
+    "CREATE TRIGGER fail_renumber_log BEFORE INSERT ON operation_log WHEN NEW.action='voucher.renumber' BEGIN SELECT RAISE(ABORT,'重排日志失败'); END",
+  );
+  await expect(book.svc.vouchers.setNumbers(updates, { plan, confirmed: true })).rejects.toThrow(
+    /重排日志失败/,
+  );
+  expect((await book.svc.vouchers.get(first.id))!.number).toBe(1);
+  expect((await book.svc.vouchers.get(second.id))!.number).toBe(2);
+  book.book.raw.exec('DROP TRIGGER fail_renumber_log');
+  await book.svc.vouchers.setNumbers(updates, { plan, confirmed: true });
+  expect((await book.svc.vouchers.get(first.id))!.number).toBe(2);
+  expect((await book.svc.vouchers.get(second.id))!.number).toBe(1);
+});
+
+it('w_zc_zc/w_xjll：比较期间同快照取数，现金流缺期间和启用前不可补零', async () => {
+  book = await createTestBook();
+  await seedVouchers(book.svc, [{ ...base, status: 'posted' }]);
+  const compared = await book.svc.ledger.compare({
+    current: { periodFrom: 202601, periodTo: 202601, accountCodes: ['1001'] },
+    comparison: { periodFrom: 202602, periodTo: 202602, accountCodes: ['1001'] },
+  });
+  expect(compared.current[0]).toMatchObject({ debit: 123, closing: 123 });
+  expect(compared.comparison[0]).toMatchObject({ opening: 123, debit: 0, closing: 123 });
+  await expect(book.svc.ledger.cashflow({ periodFrom: 202512, periodTo: 202601 })).rejects.toThrow(
+    /早于启用/,
+  );
+  await book.svc.db.deleteFrom('period').where('period', '=', 202602).execute();
+  await expect(
+    book.svc.ledger.cashflow({ periodFrom: 202601, periodTo: 202602 }),
+  ).rejects.toMatchObject({
+    data: { code: 'LEDGER_PERIOD_MISSING', details: { missingPeriods: [202602] } },
+  });
+  await expect(
+    book.svc.ledger.compare({
+      current: { periodFrom: 202601, periodTo: 202601 },
+      comparison: { periodFrom: 202602, periodTo: 202602 },
+    }),
+  ).rejects.toThrow(/2026年02月/);
+});
+
+it('w_pz_pzedit/w_xjll：非现金科目不能替内部转移凑平；不同单位数量不混加', async () => {
+  book = await createTestBook();
+  const cf = (await book.svc.dimensions.getByCode('cashflow', 'CF01'))!;
+  await book.svc.dimensions.update(
+    cf.id,
+    { code: cf.code, name: cf.name, attrs: { cashflowDirection: 'internal' } },
+    { expectedRevision: cf.revision! },
+  );
+  const input = await voucherInputFromSpec(book.svc, base);
+  await expect(
+    book.svc.vouchers.create({
+      ...input,
+      lines: input.lines.map((line) => ({
+        ...line,
+        dimensions: { cashflow: cf.id },
+        cashflowDirection: 'internal',
+      })),
+    }),
+  ).rejects.toThrow(/非现金银行科目/);
+  const scheme = parseCodeScheme('4-2-2');
+  const kg = await book.svc.accounts.create(
+    { code: '140301', name: '千克产品', quantityUnit: '千克' },
+    scheme,
+  );
+  const box = await book.svc.accounts.create(
+    { code: '140302', name: '箱产品', quantityUnit: '箱' },
+    scheme,
+  );
+  const v = await book.svc.vouchers.create({
+    voucherTypeId: input.voucherTypeId,
+    date: '2026-01-10',
+    lines: [
+      {
+        summary: '千克调增',
+        accountId: kg.id,
+        debit: 0,
+        credit: 0,
+        entrySide: 'debit',
+        quantity: '2',
+      },
+      {
+        summary: '箱数调减',
+        accountId: box.id,
+        debit: 0,
+        credit: 0,
+        entrySide: 'credit',
+        quantity: '3',
+      },
+    ],
+  });
+  await book.svc.vouchers.changeStatus({ ids: [v.id], to: 'audited' });
+  await book.svc.vouchers.changeStatus({ ids: [v.id], to: 'posted' });
+  await expect(
+    book.svc.ledger.balances({ periodFrom: 202601, periodTo: 202601, accountCodes: ['1403'] }),
+  ).rejects.toThrow(/不能混加数量/);
+  const byKg = await book.svc.ledger.quantityBalances({
+    periodFrom: 202601,
+    periodTo: 202601,
+    accountCodes: ['1403'],
+    quantityUnit: '千克',
+  });
+  const byBox = await book.svc.ledger.quantityBalances({
+    periodFrom: 202601,
+    periodTo: 202601,
+    accountCodes: ['1403'],
+    quantityUnit: '箱',
+  });
+  expect(byKg.find((row) => row.accountCode === '1403')).toMatchObject({
+    quantityUnit: '千克',
+    qtyClosing: '2',
+  });
+  expect(byBox.find((row) => row.accountCode === '1403')).toMatchObject({
+    quantityUnit: '箱',
+    qtyClosing: '-3',
+  });
+});
+
+it('w_pz_bhzl/w_pz_tjdel/w_gz_bmwh：确认计划绑定运行实例、账套及期限，客户端不能改期续用', async () => {
+  book = await createTestBook();
+  const [a, b] = await seedVouchers(book.svc, [base, base]);
+  const updates = [
+    { id: a!.id, number: 2 },
+    { id: b!.id, number: 1 },
+  ];
+  const numbers = await book.svc.vouchers.previewNumbers(updates);
+  const otherRuntime = createCoreServices({ ...book.svc.ctx, providers: {} });
+  await expect(
+    otherRuntime.vouchers.setNumbers(updates, { plan: numbers, confirmed: true }),
+  ).rejects.toThrow(/重新预览/);
+  await expect(
+    book.svc.vouchers.setNumbers(updates, {
+      plan: { ...numbers, expiresAt: numbers.expiresAt - 1 },
+      confirmed: true,
+    }),
+  ).rejects.toThrow(/重新预览/);
+  const deletion = await book.svc.vouchers.previewDelete([a!.id]);
+  await expect(
+    book.svc.vouchers.deleteBatch({ ...deletion, expiresAt: deletion.expiresAt - 1 }, true),
+  ).rejects.toThrow(/重新预览/);
+  await expect(otherRuntime.vouchers.deleteBatch(deletion, true)).rejects.toThrow(/重新预览/);
+  const department = await book.svc.dimensions.create({
+    type: 'department',
+    code: '99',
+    name: '待删部门',
+  });
+  const plan = await book.svc.dimensions.previewDelete(department.id);
+  await expect(otherRuntime.dimensions.delete(plan, true)).rejects.toThrow(/重新预览/);
+  await expect(
+    book.svc.dimensions.delete({ ...plan, expiresAt: plan.expiresAt - 1 }, true),
+  ).rejects.toThrow(/重新预览/);
+  expect((await book.svc.vouchers.get(a!.id))!.number).toBe(1);
+  expect((await book.svc.vouchers.get(b!.id))!.number).toBe(2);
+  expect(await book.svc.dimensions.get(department.id)).toBeTruthy();
+  await book.svc.dimensions.delete(plan, true);
+  expect(await book.svc.dimensions.get(department.id)).toBeNull();
 });

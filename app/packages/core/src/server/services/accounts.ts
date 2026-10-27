@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { confirmationFingerprint } from '../confirmation';
 import { withTransaction, type Selectable } from '@caiwu/db';
 import { BusinessError, notFound } from '../../errors';
 import { levelOfCode, parentCodeOf, formatCodeScheme, type CodeScheme } from '../../code-scheme';
@@ -19,7 +19,6 @@ function toAccount(r: AccountRow, dims: Account['dimensions']): Account {
     code: r.code,
     isContra: r.is_contra === 1,
     balanceNature: r.balance_nature,
-    source: r.source,
     sourceVersion: r.source_version,
     name: r.name,
     fullName: r.full_name,
@@ -83,6 +82,23 @@ export function accountService(ctx: ServiceContext) {
   };
 
   const self = {
+    /** Native template provenance is separate from the stable account picker shape. */
+    async provenance(id: number) {
+      const row = await ctx.db
+        .selectFrom('account')
+        .select(['id', 'source', 'source_version', 'is_contra', 'balance_nature'])
+        .where('id', '=', id)
+        .executeTakeFirst();
+      if (!row) throw notFound('科目', id);
+      return {
+        accountId: row.id,
+        source: row.source,
+        sourceVersion: row.source_version,
+        isContra: row.is_contra === 1,
+        balanceNature: row.balance_nature,
+      };
+    },
+
     /** 全部科目（按编码排序），含辅助核算配置。 */
     async list(opts: { includeDisabled?: boolean } = {}): Promise<Account[]> {
       let q = ctx.db.selectFrom('account').selectAll().orderBy('code');
@@ -289,7 +305,6 @@ export function dimensionService(ctx: ServiceContext) {
           ? 'fixed-assets.edit'
           : 'masterdata.dimensions.edit',
     );
-  const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   const validateParent = async (
     parentId: number | null | undefined,
     type: DimensionTypeId,
@@ -532,7 +547,11 @@ export function dimensionService(ctx: ServiceContext) {
         revision: item.revision!,
         expiresAt,
         references,
-        fingerprint: hash({ item, references, userId: ctx.user.id, expiresAt }),
+        fingerprint: await confirmationFingerprint(ctx, 'dimension.delete', {
+          item,
+          references,
+          expiresAt,
+        }),
       };
     },
     async delete(
@@ -550,10 +569,14 @@ export function dimensionService(ctx: ServiceContext) {
       if (!item) throw notFound('辅助档案', plan.id);
       const references = await self.references(plan.id);
       if (
-        plan.expiresAt < ctx.now().getTime() ||
+        plan.expiresAt <= ctx.now().getTime() ||
+        plan.expiresAt > ctx.now().getTime() + 300_000 ||
         item.revision !== plan.revision ||
-        hash({ item, references, userId: ctx.user.id, expiresAt: plan.expiresAt }) !==
-          plan.fingerprint
+        (await confirmationFingerprint(ctx, 'dimension.delete', {
+          item,
+          references,
+          expiresAt: plan.expiresAt,
+        })) !== plan.fingerprint
       )
         throw new BusinessError({
           code: 'DIMENSION_STALE',

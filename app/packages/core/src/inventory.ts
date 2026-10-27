@@ -53,12 +53,22 @@ export const CostingCommitSchema = z.object({
     )
     .max(100000),
 });
+const voucherDeletion = z.object({
+  confirmed: z.boolean(),
+  plan: z.object({
+    ids: z.array(zId).min(1).max(9999),
+    fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+    expiresAt: z.number().int().positive(),
+  }),
+});
 export const CostingCancelSchema = z.object({
+  voucherDeletion: voucherDeletion.optional(),
   bookId: z.string().min(1),
   batchId: z.string().min(1),
   expectedRevision: z.number().int().positive(),
 });
 export const VoucherSourceSchema = z.object({
+  voucherDeletion: voucherDeletion.optional(),
   bookId: z.string().min(1),
   documentId: zId,
   purpose: z.enum(['receipt', 'revenue', 'cost']),

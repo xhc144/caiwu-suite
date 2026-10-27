@@ -257,3 +257,75 @@ it('w_cb_fgz：只能取消最后正式批次，恢复控制锚点与正式成�
   expect(restored.control).toMatchObject({ costBatch: null, costPeriod: null });
   expect(restored.movements.find((l) => l.documentId === issue.id)!.outboundCostCents).toBeNull();
 });
+
+it('w_cb_fgz/w_cb_pz：取消成本的删除后重排须预览确认；晚日志失败恢复成本、来源、凭证与编号', async () => {
+  const { payload, issue } = await setup();
+  const svc = app.svcFor('costing');
+  const linked = await svc.tx((t) =>
+    t.inventory.with(async (inv) => {
+      const batch = await inv.commitCosting(payload);
+      const snapshot = await inv.snapshot(202601);
+      const voucher = await createCostVoucher(t, issue.id);
+      const link = await inv.lockVoucherSource({
+        bookId: app.book.id,
+        documentId: issue.id,
+        purpose: 'cost',
+        expectedRevision: snapshot.documents.find((d) => d.id === issue.id)!.revision,
+        voucherId: voucher.id,
+      });
+      return { batch, voucher, link };
+    }),
+  );
+  const other = await svc.vouchers.create(
+    await voucherInputFromSpec(svc, {
+      date: '2026-01-10',
+      lines: [
+        { account: '1001', debit: 100 },
+        { account: '6001', credit: 100 },
+      ],
+    }),
+  );
+  await svc.voucherPolicy.set({
+    numbering: 'automatic',
+    renumberAfterDelete: true,
+    allowModifyOthers: true,
+  });
+  const cancel = { bookId: app.book.id, batchId: linked.batch.batchId, expectedRevision: 1 };
+  await expect(svc.tx((t) => t.inventory.with((inv) => inv.cancelCosting(cancel)))).rejects.toThrow(
+    /预览/,
+  );
+  const plan = await svc.vouchers.previewDelete([linked.voucher.id]);
+  expect(plan.impacts).toEqual([{ id: other.id, oldNumber: 2, number: 1 }]);
+  await expect(
+    svc.tx((t) =>
+      t.inventory.with((inv) =>
+        inv.cancelCosting({ ...cancel, voucherDeletion: { plan, confirmed: false } }),
+      ),
+    ),
+  ).rejects.toThrow(/确认/);
+  app.runtime.bookStore
+    .open(app.book.id)
+    .raw.exec(
+      "CREATE TRIGGER fail_cancel BEFORE INSERT ON operation_log WHEN NEW.action='inventory.costing.cancel' BEGIN SELECT RAISE(ABORT,'取消日志失败'); END",
+    );
+  await expect(
+    svc.tx((t) =>
+      t.inventory.with((inv) =>
+        inv.cancelCosting({ ...cancel, voucherDeletion: { plan, confirmed: true } }),
+      ),
+    ),
+  ).rejects.toThrow(/取消日志失败/);
+  expect((await svc.inventory.snapshot(202601)).batches[0]!.status).toBe('calculated');
+  expect((await svc.inventory.snapshot(202601)).voucherSources).toHaveLength(1);
+  expect((await svc.vouchers.get(linked.voucher.id))!.number).toBe(1);
+  expect((await svc.vouchers.get(other.id))!.number).toBe(2);
+  app.runtime.bookStore.open(app.book.id).raw.exec('DROP TRIGGER fail_cancel');
+  await svc.tx((t) =>
+    t.inventory.with((inv) =>
+      inv.cancelCosting({ ...cancel, voucherDeletion: { plan, confirmed: true } }),
+    ),
+  );
+  expect(await svc.vouchers.get(linked.voucher.id)).toBeNull();
+  expect((await svc.vouchers.get(other.id))!.number).toBe(1);
+  expect((await svc.inventory.snapshot(202601)).control.costBatch).toBeNull();
+});

@@ -1,7 +1,12 @@
 import { ResourceGate, withRequestLeases } from '@caiwu/db';
 import { BusinessError } from '@caiwu/core';
 import type { BookMaintenancePlan, CoreServices, OpenBook } from '@caiwu/core/server';
-import { withServiceScope, createCoreServices, loadServiceUser } from '@caiwu/core/server';
+import {
+  withServiceScope,
+  createCoreServices,
+  loadServiceUser,
+  authenticateUser,
+} from '@caiwu/core/server';
 import type { AppRuntime } from './context';
 import type { ServerModule } from './module';
 
@@ -169,13 +174,14 @@ export class RuntimeLifecycle {
   }
 
   /**
-   * 不新增公共路由。模块仍须声明 mutation 权限并在 authorize 中复核目标密码/确认计划。
+   * 不新增公共路由。模块仍须声明 mutation 权限。覆盖由 core 复核目标名称及管理员密码，authorize 可补充模块计划。
    * 升级当前请求后旧 svc 不可再用；排空后撤销目标全部会话，成功或失败均须重新登录。
    */
   async maintainBook<T>(input: {
     token: string;
     bookId: string;
     permission: string;
+    confirmation?: { bookId: string; bookName: string; password: string };
     authorize: (svc: CoreServices) => Promise<void>;
     plan: Omit<BookMaintenancePlan<T>, 'onQuiesced'>;
   }): Promise<T | undefined> {
@@ -204,6 +210,21 @@ export class RuntimeLifecycle {
             code: 'FORBIDDEN',
             message: '覆盖恢复须由目标账套当前管理员确认',
           });
+        if (input.plan.kind === 'replace' && input.plan.replacementId) {
+          const confirmation = input.confirmation;
+          const info = await svc.book.info();
+          if (
+            !confirmation ||
+            confirmation.bookId !== info.id ||
+            confirmation.bookName !== info.name ||
+            !(await authenticateUser(book.db, user.code, confirmation.password))
+          )
+            throw new BusinessError({
+              code: 'RESTORE_CONFIRM_FAILED',
+              message: `覆盖账套「${info.name}」前须准确输入账套名称并复核当前管理员密码`,
+              hint: '请重新核对覆盖目标及管理员密码；原账套尚未覆盖',
+            });
+        }
         await input.authorize(svc);
       });
       if (this.app.sessions.get(input.token) !== session)

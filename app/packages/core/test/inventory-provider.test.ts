@@ -260,3 +260,39 @@ it('普通嵌套tx捕获错误的既有语义保持，不将所有嵌套事务�
   expect(await book.forModule('costing').settings.get('ordinary-outer', null)).toBe('kept');
   expect(await book.forModule('costing').settings.get('ordinary-inner', null)).toBe('kept');
 });
+
+it('w_cb_hz：捕获快照失败或同步能力错误，也不能提交此前库存事务写入', async () => {
+  book = await createTestBook({
+    providers: {
+      inventory: () => ({
+        snapshot: async () => {
+          throw new Error('库存快照失败');
+        },
+        with: (run) =>
+          run({
+            ...capability,
+            snapshot: () => {
+              throw new Error('同步能力失败');
+            },
+          }),
+      }),
+    },
+  });
+  const svc = book.forModule('costing');
+  await expect(
+    svc.tx(async (t) => {
+      await t.settings.set('before-snapshot', '不得留下');
+      await t.inventory.snapshot(202601).catch(() => undefined);
+    }),
+  ).rejects.toThrow('库存快照失败');
+  expect(await svc.settings.get('before-snapshot', null)).toBeNull();
+  await expect(
+    svc.tx(async (t) => {
+      await t.inventory.with(async (inv) => {
+        await t.settings.set('before-sync-error', '不得留下');
+        await inv.snapshot(202601).catch(() => undefined);
+      });
+    }),
+  ).rejects.toThrow('同步能力失败');
+  expect(await svc.settings.get('before-sync-error', null)).toBeNull();
+});

@@ -105,6 +105,9 @@ export const coreRouter = t.router({
   }),
 
   accounts: t.router({
+    provenance: authedProcedure
+      .input(z.object({ id: zId }))
+      .query(({ ctx, input }) => ctx.svc.accounts.provenance(input.id)),
     list: authedProcedure.query(({ ctx }) => ctx.svc.accounts.list()),
     categories: authedProcedure.query(({ ctx }) => ctx.svc.accounts.categories()),
   }),
@@ -163,6 +166,9 @@ export const coreRouter = t.router({
   }),
 
   ledger: t.router({
+    compare: authedProcedure
+      .input(z.object({ current: BalanceQuerySchema, comparison: BalanceQuerySchema }))
+      .query(({ ctx, input }) => ctx.svc.ledger.compare(input)),
     cashflow: authedProcedure
       .input(EntryFilterSchema)
       .query(({ ctx, input }) => ctx.svc.ledger.cashflow(input)),

@@ -1,4 +1,4 @@
-import { sql } from '@caiwu/db';
+import { sql, withTransaction } from '@caiwu/db';
 import { BusinessError } from '../../errors';
 import {
   DIMENSION_TYPES,
@@ -153,13 +153,48 @@ export function ledgerService(ctx: ServiceContext) {
      * 分录明细：按日期、凭证类型、编号、行号排序。默认只含已过账凭证，作废凭证不含。
      * 明细账、日记账、往来对账都基于它。
      */
-    async entries(raw: EntryFilter): Promise<EntryRow[]> {
+    async entries(raw: EntryFilter, requireComplete = false): Promise<EntryRow[]> {
       const f = EntryFilterSchema.parse(raw);
       if (f.periodFrom > f.periodTo)
         throw new BusinessError({
           code: 'PERIOD_RANGE_INVALID',
           message: '开始期间不能晚于结束期间',
         });
+      if (requireComplete) {
+        const book = await bookService(ctx).info();
+        if (f.periodFrom < book.startPeriod)
+          throw new BusinessError({
+            code: 'PERIOD_BEFORE_START',
+            message: `${formatPeriod(f.periodFrom)}早于启用期间${formatPeriod(book.startPeriod)}，无法返回完整现金流量`,
+          });
+        const present = new Set(
+          (
+            await ctx.db
+              .selectFrom('period')
+              .select('period')
+              .where('period', '>=', f.periodFrom)
+              .where('period', '<=', f.periodTo)
+              .execute()
+          ).map((row) => row.period),
+        );
+        const missing: number[] = [];
+        for (let year = periodYear(f.periodFrom); year <= periodYear(f.periodTo); year++)
+          for (
+            let month = year === periodYear(f.periodFrom) ? periodMonth(f.periodFrom) : 1;
+            month <= (year === periodYear(f.periodTo) ? periodMonth(f.periodTo) : 12);
+            month++
+          ) {
+            const period = makePeriod(year, month);
+            if (!present.has(period)) missing.push(period);
+          }
+        if (missing.length)
+          throw new BusinessError({
+            code: 'LEDGER_PERIOD_MISSING',
+            message: `现金流量查询缺少${missing.slice(0, 24).map(formatPeriod).join('、')}等${missing.length}个期间，不能按零计算`,
+            details: { missingPeriods: missing },
+            actions: [{ label: '去期末处理', to: '/m/period-close' }],
+          });
+      }
       const statuses = f.includeUnposted ? UNPOSTED_COUNTED_STATUSES : DEFAULT_COUNTED_STATUSES;
       let q = ctx.db
         .selectFrom('voucher_line as l')
@@ -211,8 +246,14 @@ export function ledgerService(ctx: ServiceContext) {
         .orderBy('t.id')
         .orderBy('v.number')
         .orderBy('l.line_no')
-        .limit(f.limit)
+        .limit(f.limit + (requireComplete ? 1 : 0))
         .execute();
+      if (requireComplete && rows.length > f.limit)
+        throw new BusinessError({
+          code: 'LEDGER_QUERY_TOO_LARGE',
+          message: `现金流量查询超过 ${f.limit} 条分录，不能截断汇总`,
+          hint: '请缩短期间范围或按辅助对象分别查询',
+        });
       return rows.map((r) => ({
         voucherId: r.voucher_id,
         lineId: r.id,
@@ -284,12 +325,26 @@ export function ledgerService(ctx: ServiceContext) {
         periodMonth(q.periodTo) -
         periodMonth(requiredFrom) +
         1;
-      if (!ytdComplete || coveredPeriods.length !== coveredMonths)
+      if (!ytdComplete || coveredPeriods.length !== coveredMonths) {
+        const covered = new Set(coveredPeriods.map((row) => row.period));
+        const missing: number[] = [];
+        for (let year = periodYear(requiredFrom); year <= targetYear; year++)
+          for (
+            let month = year === periodYear(requiredFrom) ? periodMonth(requiredFrom) : 1;
+            month <= (year === targetYear ? periodMonth(q.periodTo) : 12);
+            month++
+          ) {
+            const period = makePeriod(year, month);
+            if (!covered.has(period)) missing.push(period);
+          }
         throw new BusinessError({
           code: ytdComplete ? 'LEDGER_BALANCE_PERIOD_MISSING' : 'LEDGER_YTD_PERIOD_MISSING',
-          message: `${ytdComplete ? '余额承接' : '本年累计'}实际范围中有尚未建立的期间，不能按零发生额计算`,
+          message: `${ytdComplete ? '余额承接' : '本年累计'}缺少期间：${missing.slice(0, 24).map(formatPeriod).join('、')}${missing.length > 24 ? `等${missing.length}个期间` : ''}，不能按零发生额计算`,
+          details: { missingPeriods: missing },
           hint: '请补齐实际覆盖范围内的期间后重新查询；首启用年从启用期间累计，余额从已存期初锚点承接',
+          actions: [{ label: '去期末处理', to: '/m/period-close' }],
         });
+      }
       const baseCurrency = q.currency ? book.baseCurrency : null;
       const all = await accounts.list();
       const byId = new Map(all.map((a) => [a.id, a]));
@@ -475,6 +530,7 @@ export function ledgerService(ctx: ServiceContext) {
 
       // 3. 汇总到上级科目
       const totals = new Map<string, Accum>();
+      const quantityUnits = new Map<string, Set<string>>();
       const addInto = (target: Accum, src: Accum) => {
         target.balanceDebit += src.balanceDebit;
         target.balanceCredit += src.balanceCredit;
@@ -503,6 +559,20 @@ export function ledgerService(ctx: ServiceContext) {
           let t = totals.get(k);
           if (!t) totals.set(k, (t = emptyAccum(account.id, a.dims)));
           addInto(t, a);
+          const unit = byId.get(a.accountId)?.quantityUnit;
+          if (
+            unit &&
+            (a.qtyOpening !== 0n ||
+              a.qtyDebit !== 0n ||
+              a.qtyCredit !== 0n ||
+              a.qtyYtdDebit !== 0n ||
+              a.qtyYtdCredit !== 0n ||
+              a.qtyBalanceDelta !== 0n)
+          ) {
+            let units = quantityUnits.get(k);
+            if (!units) quantityUnits.set(k, (units = new Set()));
+            units.add(unit);
+          }
           if (!q.rollup || account.parentId == null) break;
           account = byId.get(account.parentId);
         }
@@ -519,6 +589,14 @@ export function ledgerService(ctx: ServiceContext) {
       for (const t of totals.values()) {
         const account = byId.get(t.accountId);
         if (!account || !accountMatches(account, q)) continue;
+        const units = quantityUnits.get(keyOf(t.accountId, t.dims));
+        if (units && units.size > 1)
+          throw new BusinessError({
+            code: 'LEDGER_QUANTITY_UNIT_REQUIRED',
+            message: `科目 ${account.code} ${account.fullName} 包含${[...units].join('、')}，不能混加数量`,
+            hint: '请按数量单位分别查询 quantityBalances，或选择末级科目',
+            details: { accountId: account.id, units: [...units] },
+          });
         const closing = t.opening + t.balanceDebit - t.balanceCredit;
         const isZero =
           t.opening === 0n &&
@@ -532,6 +610,7 @@ export function ledgerService(ctx: ServiceContext) {
           t.qtyCredit === 0n;
         if (isZero && !q.includeZero) continue;
         rows.push({
+          quantityUnit: units?.values().next().value ?? account.quantityUnit,
           accountId: account.id,
           accountCode: account.code,
           accountName: account.fullName,
@@ -587,6 +666,18 @@ export function ledgerService(ctx: ServiceContext) {
       return rows;
     },
 
+    /** Both periods are read in the same SQLite snapshot; missing periods remain errors. */
+    async compare(input: {
+      current: BalanceQuery;
+      comparison: BalanceQuery;
+    }): Promise<{ current: BalanceRow[]; comparison: BalanceRow[] }> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => ledgerService({ ...ctx, db }).compare(input));
+      return {
+        current: await self.balances(input.current),
+        comparison: await self.balances(input.comparison),
+      };
+    },
     /** Debit/credit balances are split at the leaf and auxiliary-object level before any account rollup. */
     async balanceSides(raw: BalanceQuery) {
       const rows = await self.balances({
@@ -603,11 +694,16 @@ export function ledgerService(ctx: ServiceContext) {
       }));
     },
     async quantityBalances(raw: BalanceQuery & { quantityUnit: string }) {
+      if (!raw.quantityUnit?.trim())
+        throw new BusinessError({
+          code: 'LEDGER_QUANTITY_UNIT_REQUIRED',
+          message: '数量余额必须选择数量单位，不能跨单位混加',
+        });
       return self.balances(raw);
     },
     /** Historical NULL direction stays unallocated even when the current project has direction metadata. */
     async cashflow(raw: EntryFilter) {
-      const entries = await self.entries(raw);
+      const entries = await self.entries({ ...raw, limit: 200_000 }, true);
       const accounts = new Map((await accountService(ctx).list()).map((a) => [a.id, a]));
       const rows = entries.filter((row) => {
         const account = accounts.get(row.accountId);

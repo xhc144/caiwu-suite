@@ -43,6 +43,11 @@ test('w_pz_pzedit：鼠标、Tab和程序focus金额全选，1000替换0.00', as
   await input.click();
   await page.keyboard.type('1000');
   await expect(page.getByTestId('fixture-money')).toHaveText('100000');
+  await page.getByLabel('模拟保存冲突').focus();
+  await page.keyboard.press('Tab');
+  await expect(input).toBeFocused();
+  await page.keyboard.type('42');
+  await expect(page.getByTestId('fixture-money')).toHaveText('4200');
   await page.getByRole('button', { name: '聚焦金额' }).click();
   await page.keyboard.type('-12.5');
   await expect(page.getByTestId('fixture-money')).toHaveText('-1250');
@@ -75,4 +80,26 @@ test('w_retrieve_wait：超过300ms有中文加载，刷新保留旧内容，取
     0,
   );
   await expect(input).toHaveValue('刷新时保留');
+});
+
+test('w_frame：20标签拒绝第21个，首个未保存页面及内容完整保留', async ({ page, request }) => {
+  await loginWithNewBook(page, request);
+  await page.goto('/m/example/shared/a');
+  const active = () => page.getByRole('tabpanel').filter({ visible: true });
+  await active().getByLabel('合成文本', { exact: true }).fill('第一个标签不能被淘汰');
+  for (let count = 3; count <= 20; count++) {
+    await active().getByRole('button', { name: '打开合成标签' }).click();
+    await expect(page.getByRole('tab')).toHaveCount(count);
+  }
+  await active().getByRole('button', { name: '打开合成标签' }).click();
+  const dialog = page.getByRole('dialog', { name: '标签数量已达上限' });
+  await expect(dialog).toContainText('现有页面已保留');
+  await expect(page.getByRole('tab')).toHaveCount(20);
+  await dialog.getByRole('button', { name: '知道了' }).click();
+  await active().getByRole('button', { name: '打开甲编辑页', exact: true }).click();
+  await expect(page).toHaveURL(/\/m\/example\/shared\/a$/);
+  await expect(page.getByRole('tab')).toHaveCount(20);
+  await expect(active().getByLabel('合成文本', { exact: true })).toHaveValue(
+    '第一个标签不能被淘汰',
+  );
 });

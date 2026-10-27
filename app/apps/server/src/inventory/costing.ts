@@ -587,22 +587,41 @@ export function inventoryCosting(svc: CoreServices) {
         if (!v || v.status === 'audited' || v.status === 'posted')
           fail('COST_VOUCHER_LOCK', '关联凭证缺失、已审核或过账，不能取消成本核算');
       }
-      for (const link of links.filter((l) => l.purpose === 'cost')) {
+      const costLinks = links.filter((l) => l.purpose === 'cost');
+      const deferredDeletion =
+        costLinks.length && (await svc.voucherPolicy.get()).renumberAfterDelete
+          ? new Set<number>()
+          : undefined;
+      if (
+        deferredDeletion &&
+        (!input.voucherDeletion?.confirmed ||
+          JSON.stringify([...input.voucherDeletion.plan.ids].sort((a, b) => a - b)) !==
+            JSON.stringify(costLinks.map((link) => link.voucher_id).sort((a, b) => a - b)))
+      )
+        fail(
+          'VOUCHER_DELETE_CONFIRM',
+          '取消成本核算将删除并重排关联凭证，请先预览全部成本凭证的编号影响并明确确认',
+        );
+      for (const link of costLinks) {
         const d = docs.find((d) => d.id === link.document_id)!;
-        await self.releaseVoucherSource({
-          bookId: input.bookId,
-          documentId: d.id,
-          purpose: 'cost',
-          expectedRevision: (
-            await db
-              .selectFrom('inventory_document')
-              .select('revision')
-              .where('id', '=', d.id)
-              .executeTakeFirstOrThrow()
-          ).revision,
-          voucherId: link.voucher_id,
-        });
+        await self.releaseVoucherSource(
+          {
+            bookId: input.bookId,
+            documentId: d.id,
+            purpose: 'cost',
+            expectedRevision: (
+              await db
+                .selectFrom('inventory_document')
+                .select('revision')
+                .where('id', '=', d.id)
+                .executeTakeFirstOrThrow()
+            ).revision,
+            voucherId: link.voucher_id,
+          },
+          deferredDeletion,
+        );
       }
+      if (deferredDeletion) await svc.vouchers.deleteBatch(input.voucherDeletion!.plan, true);
       const before = JSON.parse(batch.before_json) as Before;
       for (const d of before.documents)
         await db
@@ -786,7 +805,7 @@ export function inventoryCosting(svc: CoreServices) {
         purpose: input.purpose,
       };
     },
-    async releaseVoucherSource(raw: VoucherSourceInput) {
+    async releaseVoucherSource(raw: VoucherSourceInput, deferredDeletion?: Set<number>) {
       permission('voucher');
       const input = VoucherSourceSchema.parse(raw);
       await checkBook(input.bookId);
@@ -810,12 +829,26 @@ export function inventoryCosting(svc: CoreServices) {
         v.source.id !== String(d.id)
       )
         fail('VOUCHER_LOCKED', '关联凭证已审核、过账、作废或来源不一致，不能释放');
+      const renumber = (await svc.voucherPolicy.get()).renumberAfterDelete;
+      if (
+        !deferredDeletion &&
+        renumber &&
+        (!input.voucherDeletion?.confirmed ||
+          input.voucherDeletion.plan.ids.length !== 1 ||
+          input.voucherDeletion.plan.ids[0] !== v.id)
+      )
+        fail(
+          'VOUCHER_DELETE_CONFIRM',
+          '释放来源将删除并重排凭证，请先预览该凭证的编号影响并明确确认',
+        );
       await db
         .deleteFrom('inventory_voucher_source')
         .where('document_id', '=', d.id)
         .where('purpose', '=', input.purpose)
         .execute();
-      await svc.vouchers.delete(v.id, { expectedRevision: v.revision });
+      if (deferredDeletion) deferredDeletion.add(v.id);
+      else if (renumber) await svc.vouchers.deleteBatch(input.voucherDeletion!.plan, true);
+      else await svc.vouchers.delete(v.id, { expectedRevision: v.revision });
       await db
         .updateTable('inventory_document')
         .set({ revision: sql`revision+1` })

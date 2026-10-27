@@ -9,6 +9,7 @@ import {
 } from '@caiwu/server-kit';
 import { AutomaticBackupController } from '../../../modules/backup/server/controller';
 import { backupService } from '../../../modules/backup/server/service';
+import { SettingsSchema } from '../../../modules/backup/shared';
 
 /** A controller belongs to one server instance. Every operation reopens its own scoped lease. */
 export function withAutomaticBackup<R extends ServerModule>(
@@ -65,18 +66,33 @@ export function withAutomaticBackup<R extends ServerModule>(
         });
       }),
     );
-  const attach = (app: AppRuntime, id: string): Promise<void> => {
+  const attach = (app: AppRuntime, id: string, startNow = true): Promise<void> => {
     if (attached.has(id)) return Promise.resolve();
     const existing = attaching.get(id);
     if (existing) return existing;
+    let initialSettingsRead = true;
     const task = controller
       .attach(id, {
-        settings: () =>
-          withService(app, id, async (ctx) => {
+        settings: () => {
+          // All real settings and backups were already checked. Avoid a second database read
+          // inside the controller's irreversible shutdown cache.
+          if (exitBackupsCompleted)
+            return Promise.resolve({
+              ...SettingsSchema.parse(JSON.parse(configurations.get(id)!)),
+              onExit: false,
+            });
+          return withService(app, id, async (ctx) => {
             const config = await backupService(ctx).settings();
             configurations.set(id, JSON.stringify(config));
-            return exitBackupsCompleted ? { ...config, onExit: false } : config;
-          }),
+            const skipStart = initialSettingsRead && !startNow;
+            initialSettingsRead = false;
+            return exitBackupsCompleted
+              ? { ...config, onExit: false }
+              : skipStart
+                ? { ...config, onStart: false }
+                : config;
+          });
+        },
         backup: () =>
           withService(app, id, (ctx) =>
             backupService(ctx).create(
@@ -115,7 +131,7 @@ export function withAutomaticBackup<R extends ServerModule>(
         await discover(ctx.app);
       },
       bookCreated: async (ctx) => {
-        await attach(ctx.app, ctx.bookId);
+        await attach(ctx.app, ctx.bookId, false);
       },
       afterRequest: async (ctx) => {
         if (ctx.procedure?.endsWith('saveSettings')) await discover(ctx.app);

@@ -120,14 +120,14 @@ router 里的 `ctx.svc` 已经绑定当前账套、当前操作员和当前模�
 |---|---|
 | `svc.vouchers.create(input)` | 新增凭证。正式保存会完整校验并分配编号，状态为待审核；`draft: true` 存草稿 |
 | `svc.vouchers.update(id, input, { expectedRevision })` | 修改（只能改草稿或待审核的凭证，乐观锁） |
-| `svc.vouchers.delete(id)` / `setVoided(id, bool)` / `setNumbers([...])` | 删除 / 作废 / 改编号（断号整理） |
+| `svc.vouchers.delete(id)` / `setVoided(id, bool)` / `previewNumbers([...])` / `setNumbers(plan.updates, {plan,confirmed:true})` | 删除 / 作废 / 预览后确认改编号；审核及过账锁仍生效 |
 | `svc.vouchers.changeStatus({ ids, to })` | 审核、取消审核、过账、反过账的唯一入口。全部成功或全部不变。"制单人不能审核"这类业务规则由调用方先检查 |
 | `svc.vouchers.get(id)` / `list(filter)` | 读取 |
 | `svc.ledger.balances(query)` | 余额：期初、借、贷、期末、本年累计、外币、数量；可按辅助核算展开、按币种过滤、汇总到上级 |
 | `svc.ledger.entries(filter)` | 分录明细（明细账、日记账用） |
 | `svc.ledger.trialBalance(from, to)` | 试算平衡 |
 | `svc.opening.list(year)` / `upsert(...)` / `replaceYear(year, rows)` | 期初余额（年结时用 replaceYear 写新年度的年初数） |
-| `svc.accounts.list()` / `get` / `getByCode` / `require` / `create(input, scheme)` / `categories()` | 科目 |
+| `svc.accounts.provenance(id)` / `svc.accounts.list()` / `get` / `getByCode` / `require` / `create(input, scheme)` / `categories()` | 科目 |
 | `svc.dimensions.items(type)` / `get` / `getByCode` / `create` | 辅助核算项（项目、客供、部门、个人、现金流量项目） |
 | `svc.periods.list()` / `current()` / `require(p)` / `assertOpen(p, action)` / `setStatus(p, s)` / `ensureYear(y)` | 会计期间 |
 | `svc.reference.voucherTypes()` / `currencies()` / `exchangeRate(c, p)` / `settlementMethods()` / `summaries()` | 基础资料 |
@@ -136,16 +136,17 @@ router 里的 `ctx.svc` 已经绑定当前账套、当前操作员和当前模�
 | `svc.permissions.has(p)` / `require(p)` | 权限 |
 | `svc.users.*` | 操作员（最小实现） |
 | `svc.tx(async (svc2) => {...})` | 事务。**回调里只能用传进来的 svc2**，用外面的 svc 会报错（否则会卡死） |
-| `svc.inventory.snapshot(period)` / `svc.tx(t => t.inventory.with(async i => { ... }))` | 真实库存快照及事务能力；`i.commitCosting`/`cancelCosting`、`lockVoucherSource`/`releaseVoucherSource`。释放同时删除未审核凭证，调用方不得预删。单据写入用 `i.saveDocument`/`removeDocument`；能力不得逃逸回调 |
+| `svc.inventory.snapshot(period)` / `svc.tx(t => t.inventory.with(async i => { ... }))` | 真实库存快照及事务能力；`i.commitCosting`/`cancelCosting`、`lockVoucherSource`/`releaseVoucherSource`。释放同时删除未审核凭证，调用方不得预删。删除后重排启用时，取消成本/释放须传 `voucherDeletion:{plan:await t.vouchers.previewDelete(ids),confirmed:true}`，先向用户展示编号影响。单据写入用 `i.saveDocument`/`removeDocument`；能力不得逃逸回调 |
 | `svc.periods.assertWritable({ period, oldPeriod?, mode, action })` / `dependencies(input)` | 普通业务、期初、年结、逆年结分别用 `business/opening/year-close/year-reopen`；写事务内复检启用、月结、年结及期初锁。宿主通过 `providers.periodDependencies` 注册模块依赖，阻止项含处理入口 |
-| `svc.voucherPolicy.get()` / `set({numbering,renumberAfterDelete,allowModifyOthers})` | 全账套共享凭证策略；修改须管理员，策略和日志同事务。手工编号必须提供正整数，草稿不占号 |
-| `svc.vouchers.previewDelete(ids)` / `deleteBatch(plan, true)` | 删除与重排先预览，再明确确认；正式事务复核完整影响集合、来源、制单人及版本 |
+| `svc.voucherPolicy.get()` / `set({numbering,renumberAfterDelete,allowModifyOthers})` | 全账套共享凭证策略；修改须管理员，策略和日志同事务。自动显式号只接受当前下一个号或本单原号；手工编号必须提供正整数，草稿不占号 |
+| `svc.vouchers.previewDelete(ids)` / `deleteBatch(plan, true)` | 删除与重排先预览，再明确确认；计划签名绑定运行实例、账套、用户、模块及期限，正式事务复核完整影响集合、来源、制单人及版本 |
 | `svc.dimensions.update(id,input,{expectedRevision})` / `setDisabled` / `references` / `previewDelete` / `delete(plan,true)` | 稳定档案ID、层级与引用检查、确认删除及日志同事务；宿主通过 `providers.dimensionReferences` 注册工资、资产等模块引用 |
-| `svc.ledger.cashflow(filter)` / `balanceSides(query)` / `quantityBalances({...query,quantityUnit})` | 现金流方向、未分配差额及逐凭证内部配平；末级辅助对象借贷余额分列；数量按单位查询。启用前外币/数量累计缺来源时返回空值和原因 |
+| `svc.ledger.compare({current,comparison})` / `cashflow(filter)` / `balanceSides(query)` / `quantityBalances({...query,quantityUnit})` | 同一快照比较两段期间；现金流方向、未分配差额及逐凭证内部配平，聚合不静默截断；末级辅助对象借贷余额分列；数量按单位查询。启用前外币/数量累计缺来源时返回空值和原因 |
 | `VoucherLineInput.entrySide` / `cashflowDirection` | 零本币但非零外币/数量分录须明确借贷侧；现金流为 `inflow/outflow/internal/null`，历史空方向不推断；`normalizeRows` 保留原编辑行号并忽略真正空行 |
-| `runtime.bookStore.prepareReplacement({bookId,bytes,length,sha256,expectedRevision,expiresAt})` | 校验并迁移受管恢复暂存，`expectedRevision` 由 `revision(bookId)` 取得；随后 `lifecycle.maintainBook` 用 `kind:'replace',replacementId` 执行。目标管理员须在 `authorize` 复核口令和确认文字；完整保护备份保留，替换失败回滚，成功重新登录 |
+| `runtime.bookStore.prepareReplacement({bookId,bytes,length,sha256,expectedRevision,expiresAt})` | 校验并迁移受管恢复暂存，`expectedRevision` 由 `revision(bookId)` 取得；随后 `lifecycle.maintainBook` 用 `kind:'replace',replacementId` 执行。`maintainBook.confirmation` 须传 `{bookId,bookName,password}`，core 在排空前后复核目标名称及当前管理员密码；`authorize` 补充模块计划；完整保护备份保留，替换失败回滚，成功重新登录 |
 | `useUnsavedChanges({title,dirty,version,save,discard})`（web-kit） | 按当前账套和标签注册；内容版本变化使旧离开确认失效。关闭、关闭所有、同标签路由离开和切账统一异步保存；保留标签间切换不确认 |
 | `useRequestActivity()` / `useSubmission()`（web-kit） | 请求超过300ms显示加载，并发/取消/失败归零；提交使用 `submit(async()=>...)` 合并重复点击；服务端继续执行完整校验 |
+| `runtime.bookStore.create({...input,requestKey})` | 同一不透明请求编号在并发和重启后只建一套；内容或管理员口令不一致则拒绝，失败可用原编号重试；只存非口令内容摘要 |
 | `mapTemplateScheme(template, scheme)` | 从模板原生级次逐段映射新账套科目编码，保留父链、备抵、余额性质及来源版本，不改写已有账套 |
 | `svc.db.withTables<MyTables>()` | 访问本模块的表（Kysely） |
 
