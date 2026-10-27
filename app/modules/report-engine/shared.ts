@@ -286,3 +286,61 @@ export function emptyTemplate(raw: z.input<typeof HeaderSchema>): ReportTemplate
     },
   });
 }
+
+/** 法定定义和普通单元格模板有独立身份，复制和引入不得转换为普通模板。 */
+export const StatutoryScopeSchema = z.enum(['month', 'yearToDate', 'annual']);
+export const StatutoryDefinitionSchema = z
+  .object({
+    definitionId: z.string().min(1).max(100),
+    definitionRevision: z.number().int().positive(),
+    reportKey: z.string().min(1).max(80),
+  })
+  .strict();
+export const StatutoryHeaderSchema = HeaderSchema.pick({ code: true, name: true });
+export const StatutorySaveSchema = StatutoryDefinitionSchema.extend({
+  ...StatutoryHeaderSchema.shape,
+  id: zId.optional(),
+  expectedRevision: z.number().int().positive().optional(),
+  configuration: z.json(),
+})
+  .strict()
+  .refine((v) => (v.id === undefined) === (v.expectedRevision === undefined), {
+    message: '修改报表时必须提供当前版本',
+  });
+export const StatutoryGenerateSchema = IdentitySchema.extend({
+  period: zPeriod,
+  requestId: z.string().uuid(),
+  confirmUnposted: z.boolean().default(false),
+}).strict();
+export const StatutoryImportSchema = StatutoryDefinitionSchema.extend({
+  schemaVersion: z.literal(1),
+  kind: z.literal('statutory-report'),
+  bookId: z.string().min(1),
+  ...StatutoryHeaderSchema.shape,
+  configuration: z.json(),
+}).strict();
+export type StatutoryProfile = z.infer<typeof StatutoryDefinitionSchema> & {
+  id: number;
+  revision: number;
+  code: string;
+  name: string;
+  bookId: string;
+  configuration: z.infer<ReturnType<typeof z.json>>;
+  sourceDigest: string;
+};
+export type StatutorySnapshot = {
+  id: number;
+  profile: StatutoryProfile;
+  period: number;
+  generatedAt: string;
+  unpostedCount: number;
+  result: unknown;
+};
+export type StatutoryPrintJob = {
+  title: string;
+  html: string;
+  css?: string;
+  pageSize?: 'A4' | 'A5' | 'B5' | { widthMm: number; heightMm: number };
+  orientation?: 'portrait' | 'landscape';
+  marginMm?: number;
+};

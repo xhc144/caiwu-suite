@@ -3,7 +3,7 @@ import { defineManifest } from '@caiwu/core';
 export default defineManifest({
   id: 'report-engine',
   name: '报表管理',
-  description: '定义单元格报表，从真实总账生成并保存期间结果。',
+  description: '配置法定报表或自定义报表，从真实总账生成、保存、导出和打印期间结果。',
   products: 'all',
   permissions: [
     { id: 'report-engine.view', name: '查看报表' },

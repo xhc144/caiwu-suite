@@ -2,7 +2,19 @@ import { z } from 'zod';
 import { zId, zPeriod } from '@caiwu/core';
 import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
-import { GenerateSchema, HeaderSchema, IdentitySchema, ReportTemplateSchema } from '../shared';
+import {
+  GenerateSchema,
+  HeaderSchema,
+  IdentitySchema,
+  ReportTemplateSchema,
+  StatutoryDefinitionSchema,
+  StatutoryGenerateSchema,
+  StatutoryHeaderSchema,
+  StatutoryImportSchema,
+  StatutorySaveSchema,
+  StatutoryScopeSchema,
+} from '../shared';
+import { statutoryService } from './statutory-service';
 import { reportService } from './service';
 import { parseFormula } from './formula';
 import { workbookBase64 } from './export';
@@ -12,6 +24,61 @@ const selection = z
   .object({ id: zId, period: zPeriod, includeUnposted: z.boolean().default(false) })
   .strict();
 export const reportRouter = m.router({
+  statutory: m.router({
+    catalog: m.procedure
+      .meta({ permission: 'report-engine.view' })
+      .query(({ ctx }) => statutoryService(ctx.svc).catalog()),
+    list: m.procedure
+      .meta({ permission: 'report-engine.view' })
+      .query(({ ctx }) => statutoryService(ctx.svc).list()),
+    get: m.procedure
+      .meta({ permission: 'report-engine.view' })
+      .input(z.object({ id: zId }).strict())
+      .query(({ ctx, input }) => statutoryService(ctx.svc).get(input.id)),
+    editor: m.procedure
+      .meta({ permission: 'report-engine.view' })
+      .input(
+        StatutoryDefinitionSchema.extend({
+          id: zId.optional(),
+          period: zPeriod,
+          scope: StatutoryScopeSchema,
+          options: z.json().optional(),
+        }).strict(),
+      )
+      .query(({ ctx, input }) => statutoryService(ctx.svc).editor(input)),
+    save: m.procedure
+      .meta({ permission: 'report-engine.edit' })
+      .input(StatutorySaveSchema)
+      .mutation(({ ctx, input }) => statutoryService(ctx.svc).save(input)),
+    copy: m.procedure
+      .meta({ permission: 'report-engine.edit' })
+      .input(IdentitySchema.extend(StatutoryHeaderSchema.shape).strict())
+      .mutation(({ ctx, input }) =>
+        statutoryService(ctx.svc).copy(input.id, input.expectedRevision, input),
+      ),
+    importTemplate: m.procedure
+      .meta({ permission: 'report-engine.edit' })
+      .input(StatutoryImportSchema)
+      .mutation(({ ctx, input }) => statutoryService(ctx.svc).importTemplate(input)),
+    exportTemplate: m.procedure
+      .meta({ permission: 'report-engine.export' })
+      .input(z.object({ id: zId }).strict())
+      .query(({ ctx, input }) => statutoryService(ctx.svc).exportTemplate(input.id)),
+    generate: m.procedure
+      .meta({ permission: 'report-engine.generate' })
+      .input(StatutoryGenerateSchema)
+      .mutation(({ ctx, input }) => statutoryService(ctx.svc).generate(input)),
+    snapshot: m.procedure
+      .meta({ permission: 'report-engine.view' })
+      .input(z.object({ id: zId, period: zPeriod }).strict())
+      .query(({ ctx, input }) => statutoryService(ctx.svc).snapshot(input.id, input.period)),
+    output: m.procedure
+      .meta({ permission: 'report-engine.export' })
+      .input(z.object({ id: zId, period: zPeriod, format: z.enum(['xlsx', 'print']) }).strict())
+      .query(({ ctx, input }) =>
+        statutoryService(ctx.svc).output(input.id, input.period, input.format),
+      ),
+  }),
   list: m.procedure
     .meta({ permission: 'report-engine.view' })
     .input(
