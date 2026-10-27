@@ -1048,7 +1048,11 @@ function Editor({
         )}
         {calculator && (
           <CalculatorDialog
-            onClose={() => setCalculator(null)}
+            onClose={() => {
+              const { line, side } = calculator;
+              setCalculator(null);
+              if (side) focus(line, side);
+            }}
             target={
               calculator.side
                 ? `第${calculator.line + 1}行${calculator.side === 'debit' ? '借方' : '贷方'}`

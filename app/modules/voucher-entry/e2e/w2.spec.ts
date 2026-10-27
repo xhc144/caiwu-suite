@@ -365,11 +365,33 @@ for (const templateMode of [false, true]) {
 
 test('w_calc / w_pz_pzedit_mb：入场时F9后直接键盘计算，重复Enter、重新开启和取消不改金额', async ({
   page,
-}) => {
+}, testInfo) => {
   const local = await fixture();
   const { request, service, template } = await setup(page, local);
   try {
     const id = await service.saveTemplate(template);
+    await page.addInitScript(() => {
+      document.addEventListener(
+        'keydown',
+        (event) => {
+          if (event.key !== 'F9') return;
+          const target = event.target as HTMLElement;
+          const dialog = target.closest('[role="dialog"]');
+          document.documentElement.dataset.calculatorF9 = JSON.stringify({
+            time: performance.now(),
+            trusted: event.isTrusted,
+            target: target.getAttribute('aria-label'),
+            animations: (dialog?.getAnimations() ?? []).map((animation) => ({
+              name: animation instanceof CSSAnimation ? animation.animationName : null,
+              playState: animation.playState,
+              currentTime: animation.currentTime,
+              progress: animation.effect?.getComputedTiming().progress,
+            })),
+          });
+        },
+        true,
+      );
+    });
     await page.goto(`${local.url}/m/voucher-entry/templates`);
     await page.getByRole('button', { name: '编辑分录与名称', exact: true }).click();
     const editor = page.getByRole('dialog', { name: '编辑凭证模版', exact: true });
@@ -377,7 +399,49 @@ test('w_calc / w_pz_pzedit_mb：入场时F9后直接键盘计算，重复Enter�
     const calc = page.getByRole('dialog', { name: '简易计算器（F9）', exact: true });
     const expression = calc.getByLabel('计算器算式', { exact: true });
     await debit.focus();
+    // 在自然入场第一帧就绪后派发真实键盘；事件监听器核验实际派发时仍在入场。
+    await page.waitForFunction(() => {
+      const dialog = document
+        .querySelector('input[aria-label="第1行借方"]')
+        ?.closest('[role="dialog"]');
+      return dialog?.getAnimations().some((animation) => {
+        const progress = animation.effect?.getComputedTiming().progress;
+        return (
+          animation.playState === 'running' && progress != null && progress > 0 && progress < 0.5
+        );
+      });
+    });
     await page.keyboard.press('F9');
+    const trigger = await page.evaluate(
+      () =>
+        JSON.parse(document.documentElement.dataset.calculatorF9 ?? 'null') as {
+          time: number;
+          trusted: boolean;
+          target: string;
+          animations: {
+            name: string | null;
+            playState: string;
+            currentTime: number;
+            progress: number;
+          }[];
+        } | null,
+    );
+    await testInfo.attach('calculator-f9-natural-entry', {
+      body: JSON.stringify(trigger, null, 2),
+      contentType: 'application/json',
+    });
+    console.log('[calculator-f9-natural-entry]', JSON.stringify(trigger));
+    expect(trigger?.trusted).toBe(true);
+    expect(trigger?.target).toBe('第1行借方');
+    expect(
+      trigger?.animations.some(
+        (animation) =>
+          animation.name?.includes('antZoomIn') &&
+          animation.playState === 'running' &&
+          animation.progress > 0 &&
+          animation.progress < 1,
+      ),
+    ).toBe(true);
     await expect(expression).toBeFocused();
     await page.keyboard.type('(0.1 + 0.2) * 10');
     // 等父层的真实入场结束，确认 Enter 仍发往算式，而非被重聚焦的关闭按钮。
@@ -402,8 +466,8 @@ test('w_calc / w_pz_pzedit_mb：入场时F9后直接键盘计算，重复Enter�
     await expect(calc).not.toBeVisible();
     await expect(editor).toBeVisible();
     await expect(debit).toHaveValue('3.00');
+    await expect(debit).toBeFocused();
 
-    await debit.focus();
     await page.keyboard.press('F9');
     await expect(expression).toBeFocused();
     await expect(expression).toHaveValue('');
@@ -412,6 +476,7 @@ test('w_calc / w_pz_pzedit_mb：入场时F9后直接键盘计算，重复Enter�
     await expect(calc.getByRole('status')).toContainText('-1.01');
     await calc.getByRole('button', { name: '填入第1行借方', exact: true }).click();
     await expect(debit).toHaveValue('-1.01');
+    await expect(debit).toBeFocused();
     await editor.getByLabel('第2行贷方', { exact: true }).fill('-1.01');
     await page.keyboard.press('Control+s');
     await expect(editor).not.toBeVisible();
@@ -420,6 +485,52 @@ test('w_calc / w_pz_pzedit_mb：入场时F9后直接键盘计算，重复Enter�
       [0, -101],
     ]);
     expect(await service.templates()).toHaveLength(1);
+  } finally {
+    await request.dispose();
+    await local.close();
+  }
+});
+
+test('w_calc / w_pz_pzedit_b：取消有效结果后返回原贷方格，直接F9重开并回填保留焦点', async ({
+  page,
+}) => {
+  const local = await fixture();
+  const { request, svc } = await setup(page, local);
+  try {
+    const { id } = await svc.vouchers.create(
+      await voucherInputFromSpec(svc, {
+        date: '2026-01-10',
+        lines: [
+          { account: '6603', debit: 7100 },
+          { account: '6001', credit: 7100 },
+        ],
+      }),
+    );
+    await page.goto(`${local.url}/m/voucher-entry/edit?id=${id}`);
+    await expect(page.getByRole('status')).toContainText('已恢复');
+    const credit = page.getByLabel('第2行贷方', { exact: true });
+    const calc = page.getByRole('dialog', { name: '简易计算器（F9）', exact: true });
+    const expression = calc.getByLabel('计算器算式', { exact: true });
+    await credit.focus();
+    await page.keyboard.press('F9');
+    await expect(expression).toBeFocused();
+    await page.keyboard.type('5/2');
+    await page.keyboard.press('Enter');
+    await expect(calc.getByRole('status')).toContainText('2.50');
+    await calc.getByRole('button', { name: '返回', exact: true }).click();
+    await expect(calc).not.toBeVisible();
+    await expect(credit).toHaveValue('71.00');
+    await expect(credit).toBeFocused();
+    expect((await svc.vouchers.get(id))!.lines[1]!.credit).toBe(7100);
+    await page.keyboard.press('F9');
+    await expect(expression).toBeFocused();
+    await expect(expression).toHaveValue('');
+    await page.keyboard.type('1.005');
+    await page.keyboard.press('Enter');
+    await expect(calc.getByRole('status')).toContainText('1.01');
+    await calc.getByRole('button', { name: '填入第2行贷方', exact: true }).click();
+    await expect(credit).toHaveValue('1.01');
+    await expect(credit).toBeFocused();
   } finally {
     await request.dispose();
     await local.close();
