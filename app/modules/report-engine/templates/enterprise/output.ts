@@ -73,18 +73,11 @@ export function enterprisePages(r: EnterpriseResult): OutputPage[] {
       ),
     ]);
     if (name === '现金流量表')
-      rows.push(
-        [
-          cell('现金范围非账务变化调节（单独披露）'),
-          cell(r.cashflow.current.cashScopeChange!, true),
-          cell(r.cashflow.previous.cashScopeChange!, true),
-        ],
-        [
-          cell('实际期末现金及现金等价物'),
-          cell(r.cashflow.current.actualCashClosing!, true),
-          cell(r.cashflow.previous.actualCashClosing!, true),
-        ],
-      );
+      rows.push([
+        cell('现金范围非账务变化调节（单独披露）'),
+        cell(r.cashflow.current.cashScopeChange!, true),
+        cell(r.cashflow.previous.cashScopeChange!, true),
+      ]);
     for (const [i, part] of chunks(rows, 22).entries())
       pages.push({
         ...base,

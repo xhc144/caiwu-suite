@@ -720,8 +720,8 @@ export function calculateProfit(c: EnterpriseConfig, d: SourceData, r: Range): V
   }
   adjusted(c, 'profit', r.to, v, PROFIT);
   totals(v, PROFIT);
-  v.discontinuedProfit = discontinued.toFixed();
-  v.continuingProfit = D(v.netProfit!).minus(discontinued).toFixed();
+  v.discontinuedProfit = discontinued.plus(v.discontinuedProfit!).toFixed();
+  v.continuingProfit = D(v.netProfit!).minus(discontinued).plus(v.continuingProfit!).toFixed();
   const eps =
     c.eps.find((x) => x.from === r.from && x.to === r.to) ??
     fail(`${r.from}至${r.to}缺少每股收益适用依据`);
@@ -833,6 +833,18 @@ export function calculateCashflow(
       ...start.restrictedAccounts,
       ...end.restrictedAccounts,
     ]);
+  const previousPeriod = r.from % 100 === 1 ? makePeriod(periodYear(r.from) - 1, 12) : r.from - 1,
+    previousPolicy = c.cashPolicies.find(
+      (p) => p.period === previousPeriod && p.basis === 'closing',
+    );
+  if (
+    previousPolicy &&
+    [...previousPolicy.accounts].sort((a, b) => a - b).join(',') !==
+      [...start.accounts].sort((a, b) => a - b).join(',')
+  )
+    fail(
+      `${r.from}期初现金范围与上期期末不一致，请沿用已确认范围，将首日限制、解除限制或政策变化单独记录并核实金额`,
+    );
   const openRows = d.balances[r.from] ?? fail(`缺少${r.from}期初余额`),
     closeRows = d.balances[r.to] ?? fail(`缺少${r.to}期末余额`);
   v.cashOpening = openRows
@@ -929,8 +941,8 @@ export function calculateCashflow(
       fail(`凭证${voucherId}现金内部划转未配对抵销`);
   }
   adjusted(c, 'cashflow', r.to, v, CASHFLOW);
-  totals(v, CASHFLOW);
   v.cashScopeChange = scopeChange.toFixed();
+  totals(v, CASHFLOW);
   v.actualCashClosing = sourceClosing.toFixed();
   check(
     checks,
@@ -938,7 +950,7 @@ export function calculateCashflow(
     '期末现金及现金等价物（含现金范围变化调节）',
     column,
     r.to,
-    D(v.cashClosing!).plus(scopeChange),
+    v.cashClosing!,
     sourceClosing,
     '核实逐笔现金分类、受限资金及政策变化',
     entries.map((e) => `分录${e.lineId}`),

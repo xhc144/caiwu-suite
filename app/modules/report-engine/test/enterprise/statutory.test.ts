@@ -474,11 +474,125 @@ describe('企业2019附件2四表', () => {
     );
     expect(r.cashScopeChange).toBe('-220000');
     expect(r.actualCashClosing).toBe('0');
+    expect(r.cashClosing).toBe('0');
+    expect(r.cashOpening).toBe('160000');
+    expect(r.cashIncrease).toBe('60000');
+    expect(r.exchangeEffect).toBe('0');
     expect(checks[0]?.difference).toBe('0');
     c.cashScopeChanges[0]!.amount = '-219999';
     expect(() =>
       calculateCashflow(c, d, { from: 202501, to: 202512, label: '本年' }, [], 'current'),
     ).toThrow('当日账面');
+  });
+  it('w_bb_proc 首日限制及解除限制均以实际期末现金列报，范围变化不计汇兑', () => {
+    for (const restriction of [true, false]) {
+      const { c, d } = fixture();
+      for (const policy of c.cashPolicies) {
+        if (
+          (restriction && policy.period === 202512 && policy.basis === 'closing') ||
+          (!restriction && policy.period <= 202501)
+        ) {
+          policy.accounts = [];
+          policy.restrictedAccounts = [1];
+        }
+      }
+      c.cashScopeChanges.push({
+        period: restriction ? 202512 : 202501,
+        date: restriction ? '2025-12-01' : '2025-01-01',
+        accountId: 1,
+        amount: restriction ? '-215000' : '160000',
+        kind: restriction ? 'restriction' : 'release',
+        ...provenance,
+      });
+      if (restriction)
+        for (const allocation of c.cashAllocations)
+          if (d.entries.some((e) => e.lineId === allocation.lineId && e.period === 202512))
+            allocation.parts = [{ line: 'excluded', amount: allocation.parts[0]!.amount }];
+      const checks: Parameters<typeof calculateCashflow>[3] = [];
+      const r = calculateCashflow(
+        c,
+        d,
+        { from: 202501, to: 202512, label: '本年' },
+        checks,
+        'current',
+      );
+      expect(r.cashOpening).toBe(restriction ? '160000' : '0');
+      expect(r.cashIncrease).toBe(restriction ? '55000' : '60000');
+      expect(r.cashScopeChange).toBe(restriction ? '-215000' : '160000');
+      expect(r.cashClosing).toBe(restriction ? '0' : '220000');
+      expect(r.cashClosing).toBe(r.actualCashClosing);
+      expect(r.exchangeEffect).toBe('0');
+      expect(checks.every((check) => check.difference === '0')).toBe(true);
+    }
+  });
+  it('w_bb_proc 已确认上期期末范围不能在期初静默切换，首日变化须单独记录', () => {
+    const { c, d } = fixture();
+    for (const policy of c.cashPolicies.filter((p) => p.period >= 202501)) {
+      policy.accounts = [];
+      policy.restrictedAccounts = [1];
+    }
+    for (const allocation of c.cashAllocations)
+      if (d.entries.some((e) => e.lineId === allocation.lineId && e.period >= 202501))
+        allocation.parts = [{ line: 'excluded', amount: allocation.parts[0]!.amount }];
+    expect(() =>
+      calculateCashflow(c, d, { from: 202501, to: 202512, label: '本年' }, [], 'current'),
+    ).toThrow('期初现金范围与上期期末不一致');
+    const opening = c.cashPolicies.find((p) => p.period === 202501 && p.basis === 'opening')!;
+    opening.accounts = [1];
+    opening.restrictedAccounts = [];
+    c.cashScopeChanges.push({
+      period: 202501,
+      date: '2025-01-01',
+      accountId: 1,
+      amount: '-160000',
+      kind: 'restriction',
+      ...provenance,
+    });
+    const result = calculateCashflow(
+      c,
+      d,
+      { from: 202501, to: 202512, label: '本年' },
+      [],
+      'current',
+    );
+    expect(result.cashOpening).toBe('160000');
+    expect(result.cashScopeChange).toBe('-160000');
+    expect(result.cashClosing).toBe('0');
+  });
+  it('w_bb_proc 比较期持续及终止经营有据重分类不得被账务分部覆盖', () => {
+    const { c, d } = fixture();
+    c.adjustments.push(
+      {
+        period: 202412,
+        statement: 'profit',
+        row: 'discontinuedProfit',
+        amount: '10000',
+        kind: 'policy',
+        ...provenance,
+      },
+      {
+        period: 202412,
+        statement: 'profit',
+        row: 'continuingProfit',
+        amount: '-10000',
+        kind: 'policy',
+        ...provenance,
+      },
+    );
+    const result = calculateEnterprise(c, d);
+    expect(result.profit.previous.discontinuedProfit).toBe('10000');
+    expect(result.profit.previous.continuingProfit).toBe('50000');
+    expect(result.profit.previous.netProfit).toBe('60000');
+    expect(result.profit.current.discontinuedProfit).toBe('0');
+    expect(result.profit.current.continuingProfit).toBe('60000');
+    expect(result.checks.every((check) => check.difference === '0')).toBe(true);
+    c.adjustments.pop();
+    const invalid = calculateEnterprise(c, d);
+    expect(
+      invalid.checks.find(
+        (check) => check.row === '净利润＝持续经营＋终止经营' && check.column === 'previous',
+      )?.difference,
+    ).toBe('-10000');
   });
   it('w_bb_proc 固定资产净额不重复扣减、缺备抵拒绝', () => {
     const { c, d } = fixture();
