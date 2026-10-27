@@ -106,11 +106,17 @@ export function printService(svc: CoreServices) {
       const opening = b?.opening ?? 0,
         debit = b?.debit ?? 0,
         credit = b?.credit ?? 0;
-      if (!entries.length && !(input.printNoActivity && (opening !== 0 || input.printEmpty)))
-        throw fail(
-          '无记录，无法预览/打印',
-          '如需无发生科目，请勾选打印无发生；零余额科目还需勾选打印空科目',
-        );
+      const hasOpeningOrCumulative =
+        opening !== 0 || (b?.ytdDebit ?? 0) !== 0 || (b?.ytdCredit ?? 0) !== 0;
+      if (
+        !entries.length &&
+        !(input.printNoActivity && (hasOpeningOrCumulative || input.printEmpty))
+      )
+        throw new BusinessError({
+          code: 'PRINT_NO_ACTIVITY',
+          message: '无记录，无法预览/打印',
+          hint: '如需有期初数或累计数的科目，请勾选打印无发生；空科目还需勾选打印空科目',
+        });
       const info = await svc.book.info();
       let balance = opening;
       const counterpart = new Map<number, string>();
@@ -197,13 +203,43 @@ export function printService(svc: CoreServices) {
       };
     },
     async ledgerBook(input: LedgerSelection) {
+      return (await self.ledgerBatch(input)).models;
+    },
+    async ledgerBatch(input: LedgerSelection) {
       svc.permissions.require('print-settings.ledger.print');
-      const codes = [...new Set(input.account.split(',').map((x) => x.trim()))];
-      if (codes.length > 50 || codes.some((c) => !c))
-        throw fail('请填写 1 至 50 个科目编码，以逗号分隔');
-      const models = [];
-      for (const account of codes) models.push(await self.ledger({ ...input, account }));
-      return models;
+      const scope = input.accountScope ?? 'selected';
+      const models: Awaited<ReturnType<typeof self.ledger>>[] = [];
+      const skipped: string[] = [];
+      await svc.tx(async (snapshot) => {
+        const codes =
+          scope === 'selected'
+            ? [...new Set(input.account.split(',').map((x) => x.trim()))]
+            : (await snapshot.accounts.list())
+                .filter(
+                  (a) =>
+                    (scope === 'all' || (scope === 'first' ? a.level === 1 : a.isLeaf)) &&
+                    (input.kind !== 'cash' || a.isCash) &&
+                    (input.kind !== 'bank' || a.isBank),
+                )
+                .map((a) => a.code);
+        if (scope === 'selected' && (codes.length > 50 || codes.some((c) => !c)))
+          throw fail('请填写 1 至 50 个科目编码，以逗号分隔');
+        for (const account of codes) {
+          try {
+            models.push(await printService(snapshot).ledger({ ...input, account }));
+          } catch (error) {
+            if (!(error instanceof BusinessError) || error.data.code !== 'PRINT_NO_ACTIVITY')
+              throw error;
+            skipped.push(account);
+          }
+        }
+      });
+      if (!models.length)
+        throw fail(
+          '所选科目均无符合条件的记录，无法预览/打印',
+          '调整期间、科目范围或无发生科目选项后重试',
+        );
+      return { models, skipped };
     },
     async formats() {
       return (

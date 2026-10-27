@@ -22,6 +22,7 @@ import { parseTemplate, productName, type BookInfo } from '@caiwu/core';
 import small from '../templates/small-business.json';
 import enterprise from '../templates/enterprise.json';
 import { validateScheme, WizardSchema, type WizardInput } from '../shared';
+import { templateReviewWarning } from '../enterprise-evidence';
 
 const localTemplates = [small, enterprise].map((t) => parseTemplate(t));
 
@@ -84,6 +85,9 @@ export default function Wizard({
   const [checking, setChecking] = useState(false);
   const create = useMutation(coreApi.books.create.mutationOptions());
   const selected = templates.data?.find((t) => t.id === values?.templateId);
+  const selectedLocal = localTemplates.find((t) => t.id === selected?.id);
+  const reviewWarning =
+    selectedLocal?.regime === 'enterprise' ? templateReviewWarning(selectedLocal) : null;
   useEffect(() => {
     const available = templates.data;
     if (available?.length && !form.getFieldValue('templateId')) {
@@ -285,6 +289,7 @@ export default function Wizard({
         逐步填写，或在下方复核全部默认参数后直接创建。取消不会产生半成品。
       </Typography.Paragraph>
       {failure && <Alert type="error" title={failure} showIcon />}
+      {reviewWarning && <Alert type="warning" title={reviewWarning} showIcon />}
       {templates.isError && (
         <Alert
           type="error"

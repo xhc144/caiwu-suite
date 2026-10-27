@@ -186,8 +186,10 @@ test('w_preview_zc：多页账簿承前过次不重复累计，PDF 实际分页�
   await page.getByLabel('奇偶页分次打印（手动翻面）').check();
   await page.getByRole('button', { name: '打印全部', exact: true }).click();
   await expect(page.getByRole('dialog', { name: /现在打印奇页/ })).toBeVisible();
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
   await page.getByRole('dialog').getByRole('button', { name: '继续打印', exact: true }).click();
   await expect(page.getByRole('dialog', { name: /请翻面，现在打印偶页/ })).toBeVisible();
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
   await page
     .getByRole('dialog', { name: /请翻面，现在打印偶页/ })
     .getByRole('button', { name: '取消后续', exact: true })
@@ -391,3 +393,279 @@ test('w_pz_prn_1 实际字体检查失败时拦截 bridge、显示原因并清�
   await expect(page.locator('.cw-print-check')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'PDF', exact: true })).toBeEnabled();
 });
+
+test('w_print_2_zw：独立造数后明细科目连续打印，跳过空科目并取消下一科目', async ({
+  page,
+  request,
+}) => {
+  const book = await loginWithNewBook(page, request);
+  await seedBook(
+    book.bookId,
+    Array.from({ length: 5 }, (_, i) => simple(i + 1)),
+  );
+  const settings = structuredClone(defaultSettings);
+  settings.ledger.rows = 2;
+  settings.ledger.startPage = 7;
+  await callApi(request, 'm.print-settings.saveSettings', settings, { token: book.token });
+  await page.addInitScript(() => {
+    const target = window as unknown as { __printJobs: string[]; caiwuDesktop: unknown };
+    target.__printJobs = [];
+    target.caiwuDesktop = {
+      print: async (html: string) => {
+        target.__printJobs.push(html);
+      },
+      printToPdf: async () => null,
+    };
+  });
+  await page.goto('/m/print-settings/preview?mode=ledger&accountScope=leaf&queried=1');
+  await expect(page.getByTestId('page-count')).toHaveText('共 6 页');
+  await expect(page.getByText(/以下科目无符合条件的记录，已跳过/)).toBeVisible();
+  await page.getByLabel('每个科目打印前提示', { exact: true }).check();
+  await page.getByRole('button', { name: '打印全部', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('1001 库存现金');
+  // 确认框的祖先进场动画可能在按钮自身稳定后仍移动命中区域。
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
+  await page.getByRole('button', { name: '继续打印', exact: true }).click();
+  await expect(page.getByRole('dialog')).toContainText('6603 财务费用');
+  await expect(page.getByRole('dialog')).not.toHaveClass(/ant-zoom-(appear|enter)/);
+  await page.getByRole('button', { name: '取消后续', exact: true }).click();
+  await expect(page.getByText('已停止后续打印，已提交 3 页', { exact: true })).toBeVisible();
+  const jobs = await page.evaluate(
+    () => (window as unknown as { __printJobs: string[] }).__printJobs,
+  );
+  expect(jobs).toHaveLength(1);
+  expect(jobs[0]!.match(/class="print-sheet"/g)).toHaveLength(3);
+  expect(jobs[0]).toContain('1001 库存现金');
+  expect(jobs[0]).not.toContain('科目：6603');
+  await expect(page.locator('.cw-print-check')).toHaveCount(0);
+  await page.getByLabel('打印科目选择', { exact: true }).selectOption('first');
+  await expect(page.getByLabel('科目编码（可用逗号选择多个）', { exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '查询并预览', exact: true }).click();
+  await expect(page.getByTestId('page-count')).toHaveText('共 6 页');
+});
+
+test('w_preview_zc A3+B2：逐科目双面保留空白背槽，取消后恢复不重印正面，PDF保留纸槽', async ({
+  page,
+  request,
+}) => {
+  const book = await loginWithNewBook(page, request);
+  await seedBook(
+    book.bookId,
+    [
+      ...Array.from({ length: 3 }, (_, i) => ({ account: '1001', summary: `双面A${i + 1}` })),
+      ...Array.from({ length: 2 }, (_, i) => ({ account: '100201', summary: `双面B${i + 1}` })),
+    ].map((x) => ({
+      date: '2026-01-05',
+      status: 'posted' as const,
+      summary: x.summary,
+      lines: [
+        { account: x.account, debit: 100 },
+        { account: '6603', credit: 100 },
+      ],
+    })),
+  );
+  const settings = structuredClone(defaultSettings);
+  settings.ledger.rows = 1;
+  settings.ledger.continuousPage = false;
+  await callApi(request, 'm.print-settings.saveSettings', settings, { token: book.token });
+  await page.addInitScript(() => {
+    const target = window as unknown as {
+      __duplexJobs: string[];
+      __duplexPdf: string;
+      caiwuDesktop: unknown;
+    };
+    target.__duplexJobs = [];
+    target.caiwuDesktop = {
+      print: async (html: string) => {
+        target.__duplexJobs.push(html);
+      },
+      printToPdf: async (html: string) => {
+        target.__duplexPdf = html;
+        return null;
+      },
+    };
+  });
+  await page.goto('/m/print-settings/preview?mode=ledger&account=1001,100201&queried=1');
+  await expect(page.getByTestId('page-count')).toHaveText('共 5 页');
+  await page.getByLabel('奇偶页分次打印（手动翻面）', { exact: true }).check();
+  const answer = async (text: string, proceed: boolean) => {
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText(text);
+    await expect(dialog).not.toHaveClass(/ant-zoom-(appear|enter)/);
+    await dialog
+      .getByRole('button', { name: proceed ? '继续打印' : '取消后续', exact: true })
+      .click();
+  };
+  await page.getByRole('button', { name: '打印全部', exact: true }).click();
+  await answer('1001 库存现金', true);
+  await answer('请翻面', false);
+  await expect(page.getByRole('button', { name: '打印全部', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: '恢复后续双面作业', exact: true }).click();
+  await answer('含 1 个空白', true);
+  await answer('100201', false);
+  await page.getByRole('button', { name: '恢复后续双面作业', exact: true }).click();
+  await answer('现在打印奇页账册', true);
+  await answer('请翻面', true);
+  await expect(page.getByRole('button', { name: '恢复后续双面作业', exact: true })).toHaveCount(0);
+  const jobs = await page.evaluate(
+    () => (window as unknown as { __duplexJobs: string[] }).__duplexJobs,
+  );
+  expect(
+    jobs.map((html) => [...html.matchAll(/data-duplex-source="([^"]+)"/g)].map((m) => m[1])),
+  ).toEqual([['1', '3'], ['2', 'blank'], ['4'], ['5']]);
+  await page.getByRole('button', { name: 'PDF', exact: true }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(() => (window as unknown as { __duplexPdf?: string }).__duplexPdf ?? ''),
+    )
+    .toContain('data-duplex-source="blank"');
+  const pdf = await page.evaluate(() => (window as unknown as { __duplexPdf: string }).__duplexPdf);
+  expect([...pdf.matchAll(/data-duplex-source="([^"]+)"/g)].map((m) => m[1])).toEqual([
+    '1',
+    '2',
+    '3',
+    'blank',
+    '4',
+    '5',
+  ]);
+});
+
+for (const acceptedBeforeFailure of [false, true]) {
+  test(`w_preview_zc A3+B2：取消→恢复→B背面异常（接收端已接收=${acceptedBeforeFailure}）→阻断旧恢复点与再次操作`, async ({
+    page,
+    request,
+  }) => {
+    const book = await loginWithNewBook(page, request);
+    await seedBook(
+      book.bookId,
+      [
+        ...Array.from({ length: 3 }, (_, i) => ({ account: '1001', summary: `异常A${i + 1}` })),
+        ...Array.from({ length: 2 }, (_, i) => ({ account: '100201', summary: `异常B${i + 1}` })),
+      ].map((x) => ({
+        date: '2026-01-05',
+        status: 'posted' as const,
+        summary: x.summary,
+        lines: [
+          { account: x.account, debit: 100 },
+          { account: '6603', credit: 100 },
+        ],
+      })),
+    );
+    const settings = structuredClone(defaultSettings);
+    settings.ledger.rows = 1;
+    settings.ledger.continuousPage = false;
+    await callApi(request, 'm.print-settings.saveSettings', settings, { token: book.token });
+    await page.addInitScript((acceptedBeforeFailure) => {
+      const target = window as unknown as {
+        __duplexAttempts: string[];
+        __duplexAccepted: string[];
+        caiwuDesktop: unknown;
+      };
+      target.__duplexAttempts = [];
+      target.__duplexAccepted = [];
+      target.caiwuDesktop = {
+        print: async (html: string) => {
+          target.__duplexAttempts.push(html);
+          if (target.__duplexAttempts.length === 4) {
+            if (acceptedBeforeFailure) target.__duplexAccepted.push(html);
+            throw new Error('投递连接中断');
+          }
+          target.__duplexAccepted.push(html);
+        },
+      };
+    }, acceptedBeforeFailure);
+    const submissions = () =>
+      page.evaluate(() => {
+        const target = window as unknown as {
+          __duplexAttempts: string[];
+          __duplexAccepted: string[];
+        };
+        const slots = (html: string) =>
+          [...html.matchAll(/data-duplex-source="([^"]+)"/g)].map((m) => m[1]);
+        return {
+          attempts: target.__duplexAttempts.map(slots),
+          accepted: target.__duplexAccepted.map(slots),
+        };
+      });
+    const answer = async (text: string, proceed: boolean) => {
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toContainText(text);
+      await expect(dialog).not.toHaveClass(/ant-zoom-(appear|enter)/);
+      await dialog
+        .getByRole('button', { name: proceed ? '继续打印' : '取消后续', exact: true })
+        .click();
+    };
+    await page.goto('/m/print-settings/preview?mode=ledger&account=1001,100201&queried=1');
+    await expect(page.getByTestId('page-count')).toHaveText('共 5 页');
+    await page.getByLabel('奇偶页分次打印（手动翻面）', { exact: true }).check();
+    await page.getByRole('button', { name: '打印全部', exact: true }).click();
+    await answer('1001 库存现金', true);
+    await answer('请翻面', false);
+    expect((await submissions()).attempts).toEqual([['1', '3']]);
+    await page.getByRole('button', { name: '恢复后续双面作业', exact: true }).click();
+    await answer('含 1 个空白', true);
+    await answer('100201', true);
+    await answer('请翻面', true);
+    await expect(page.getByRole('button', { name: '关闭预览', exact: true })).toBeEnabled();
+    // 若异常后仍暴露旧恢复点，实际再次操作它，捕获 A 背面和 B 正面的重复投递。
+    const oldResume = page.getByRole('button', { name: '恢复后续双面作业', exact: true });
+    if (await oldResume.count()) {
+      await oldResume.click();
+      await answer('含 1 个空白', true);
+      await answer('100201', true);
+      await answer('请翻面', false);
+    }
+    expect((await submissions()).attempts).toEqual([['1', '3'], ['2', 'blank'], ['4'], ['5']]);
+    const blocked = page
+      .getByRole('region', { name: '打印预览', exact: true })
+      .getByRole('alert')
+      .filter({ hasText: '已作废恢复点' });
+    await expect(blocked).toContainText('投递结果不确定');
+    await expect(blocked).toContainText('100201');
+    await expect(blocked).toContainText('背面');
+    await expect(blocked).toContainText('此前 3 步投递已返回成功');
+    await expect(blocked).toContainText('系统打印队列与实际纸叠');
+    await expect(page.getByRole('button', { name: '恢复后续双面作业', exact: true })).toHaveCount(
+      0,
+    );
+    await expect(page.getByText(/双面作业已暂停，恢复点仅在当前预览有效/)).toHaveCount(0);
+    for (const name of ['打印全部', '打印本页', '打印所选范围', 'PDF'])
+      await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
+    await page.keyboard.press('Control+p');
+    await page.keyboard.press('Shift+p');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(await submissions()).toEqual({
+      attempts: [['1', '3'], ['2', 'blank'], ['4'], ['5']],
+      accepted: acceptedBeforeFailure
+        ? [['1', '3'], ['2', 'blank'], ['4'], ['5']]
+        : [['1', '3'], ['2', 'blank'], ['4']],
+    });
+    const screenshot = test.info().outputPath('duplex-blocked.png');
+    await page.screenshot({ path: screenshot });
+    await test.info().attach('双面投递异常后阻断', { path: screenshot, contentType: 'image/png' });
+    const restart = page.getByRole('button', { name: '核对后新建双面作业', exact: true });
+    await restart.click();
+    const check = page.getByRole('dialog');
+    await expect(check).toContainText('旧恢复点已作废');
+    await expect(check).toContainText('新作业会从正面开始');
+    await expect(check).not.toHaveClass(/ant-zoom-(appear|enter)/);
+    await check.getByRole('button', { name: '继续核对', exact: true }).click();
+    await expect(blocked).toBeVisible();
+    await restart.click();
+    await expect(check).not.toHaveClass(/ant-zoom-(appear|enter)/);
+    await check.getByRole('button', { name: '已核对，允许新建', exact: true }).click();
+    await expect(blocked).toHaveCount(0);
+    expect((await submissions()).attempts).toHaveLength(4);
+    await page.getByRole('button', { name: '打印全部', exact: true }).click();
+    await answer('放入新纸', true);
+    await answer('请翻面', false);
+    await expect(page.getByRole('button', { name: '恢复后续双面作业', exact: true })).toBeEnabled();
+    expect((await submissions()).attempts).toEqual([
+      ['1', '3'],
+      ['2', 'blank'],
+      ['4'],
+      ['5'],
+      ['1', '3'],
+    ]);
+  });
+}

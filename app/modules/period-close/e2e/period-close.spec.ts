@@ -2,6 +2,9 @@ import { seedVouchers } from '@caiwu/testkit';
 import periodCloseServer from '../server';
 import { test, expect } from './fixture';
 
+// 本模块在 CI 和本地都只执行一次，失败必须保留。
+test.describe.configure({ retries: 0 });
+
 test('独立账套真实主流程：过账 → 浏览器结转预览生成 → 夹具用户B审核 → 过账 → 结账 → 反结账', async ({
   page,
   local,

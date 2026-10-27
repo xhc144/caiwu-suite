@@ -238,6 +238,52 @@ describe('w_main1 工作台', () => {
       ),
     ).toBe(true);
   });
+  it('w_main1 合并档案菜单的摘要读取权限与真实分类路由一致', async () => {
+    const manifest = defineManifest({
+      id: 'masterdata',
+      name: '合并基础档案',
+      products: 'all',
+      permissions: [{ id: 'masterdata.view', name: '查看档案' }],
+      menu: [
+        {
+          group: 'master',
+          title: '凭证类型、结算、外币与摘要',
+          path: '/reference',
+          permission: 'masterdata.view',
+        },
+      ],
+    });
+    const merged = await createTestApp({
+      modules: [
+        workbench,
+        defineServerModule(manifest, { router: moduleKit(manifest).router({}) }),
+      ],
+    });
+    try {
+      const reader = merged.call(
+        workbench,
+        await merged.addUser('reader', {
+          permissions: ['workbench.search', 'masterdata.view'],
+        }),
+      );
+      const summary = (await reader.search({ term: 'tqbyj' })).results.find(
+        (r) => r.category === '摘要',
+      );
+      expect(summary?.title).toBe('提取备用金');
+      const target = new URL(summary!.to, 'http://local');
+      expect(target.pathname).toBe('/m/masterdata/reference');
+      expect(target.searchParams.get('kind')).toBe('summaries');
+      expect(target.searchParams.get('keyword')).toBe('提取备用金');
+      const denied = merged.call(
+        workbench,
+        await merged.addUser('denied', { permissions: ['workbench.search'] }),
+      );
+      expect((await denied.search({ term: 'tqbyj' })).results).toEqual([]);
+      expect((await denied.search({ term: 'tqbyj' })).denied).toContain('摘要');
+    } finally {
+      await merged.close();
+    }
+  });
   it('产品切换保存、日志和重登；失败与日志写入失败均保留原产品', async () => {
     const api = app.call(workbench);
     const originalAccounts = await app.svc.accounts.list();

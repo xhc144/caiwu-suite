@@ -17,6 +17,8 @@ function MappingFields({
 }) {
   const form = Form.useFormInstance<Settings>();
   const id = Form.useWatch([role, 'accountId'], form) as number | undefined;
+  const settlementMode = Form.useWatch('settlementMode', form);
+  const byName = role === 'settlement' && settlementMode === 'partnerName';
   const { byId } = useAccounts();
   const a = id ? byId.get(id) : null;
   return (
@@ -24,9 +26,13 @@ function MappingFields({
       <Form.Item
         label={`${label}科目`}
         name={[role, 'accountId']}
-        rules={[{ required: true, message: '请选择末级科目' }]}
+        rules={[{ required: true, message: byName ? '请选择往来上级科目' : '请选择末级科目' }]}
       >
-        <AccountSelect filter={(a) => !a.currency && !a.quantityUnit} />
+        <AccountSelect
+          leafOnly={!byName}
+          filter={(a) => !a.currency && !a.quantityUnit && (!byName || !a.isLeaf)}
+          onChange={() => form.setFieldValue([role, 'dimensions'], {})}
+        />
       </Form.Item>
       {DIMENSION_TYPES.filter(
         (dt) =>
@@ -57,6 +63,7 @@ function SettingsForm({ direction, initial }: { direction: Direction; initial: S
         initial ?? {
           direction,
           expectedRevision: 0,
+          settlementMode: 'unified',
           business: { dimensions: {} },
           tax: { dimensions: {} },
           settlement: { dimensions: {} },
@@ -90,6 +97,15 @@ function SettingsForm({ direction, initial }: { direction: Direction; initial: S
       </Form.Item>
       <MappingFields role="business" label={direction === 'input' ? '材料/费用' : '收入'} />
       <MappingFields role="tax" label={direction === 'input' ? '进项税' : '销项税'} />
+      <Form.Item name="settlementMode" label="往来科目匹配方式">
+        <Select
+          onChange={() => form.setFieldValue('settlement', { dimensions: {} })}
+          options={[
+            { value: 'unified', label: '全部使用统一末级结算科目' },
+            { value: 'partnerName', label: '按客供名称精确匹配下级科目，缺少时确认新增' },
+          ]}
+        />
+      </Form.Item>
       <MappingFields role="settlement" label={direction === 'input' ? '应付/结算' : '应收/结算'} />
       <MappingFields role="nonDeductible" label="非抵扣税额成本/费用" />
       <Button type="primary" htmlType="submit" loading={save.isPending} disabled={!can}>
@@ -119,8 +135,8 @@ export default function SettingsPage() {
       <Alert
         type="info"
         showIcon
-        title="统一末级科目模式；红字使用原借贷方向的负数分录"
-        description="统一映射中的辅助项将应用于该方向本次制证的所有发票，请核对所选范围。不同客供可分次调整配置后制证。不根据税率判断纳税人或抵扣资格。本版尚不支持按客供自动建下级、外币及数量科目映射。修改映射不改历史来源凭证；比对读取当前税科目，变更后请核对历史差异。"
+        title="红字使用原借贷方向的负数分录；往来科目可按名称匹配"
+        description="按名称匹配须选择已有下级的结算上级科目，只匹配该科目下名称完全相同且唯一的科目，缺少时在制证预览中核对并确认新增；不自动新增客供辅助档案。统一辅助项仍应用于本次所选全部发票。外币及数量科目暂不支持。不根据税率认定纳税人或抵扣资格。修改映射不改历史来源凭证；比对读取当前税科目，变更后请核对历史差异。"
         style={{ marginBottom: 16 }}
       />
       <QueryError error={query.error} retry={query.refetch} />

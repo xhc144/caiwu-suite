@@ -178,6 +178,9 @@ test('w_fx_zl：真实三笔应收→部分回款→FIFO分桶核对→改区间
   const drawer = page.getByRole('dialog', { name: 'FIFO 核销明细' });
   await expect(drawer).toContainText('2026-01-15');
   await expect(drawer).toContainText('2026-03-01');
+  await expect(drawer).toContainText('原始业务日期');
+  await expect(drawer).toContainText('业务日期缺失，取凭证日期');
+  await expect(drawer).toContainText('原始到期日 / 逾期天数');
   const voucherHref = await drawer.getByRole('link').first().getAttribute('href');
   expect(voucherHref).toMatch(/^\/m\/voucher-entry\/edit\?id=\d+$/);
 });

@@ -15,6 +15,7 @@ import {
   allVouchers,
   fail,
   noLaterRun,
+  rules,
   runs,
   tables,
   transferPreview,
@@ -369,6 +370,66 @@ export async function reopen(
       detail: { periods: selected.map((p) => p.period) },
     });
     return { message: `已反结账 ${selected.length} 个月，余额及当年期初保持不变` };
+  });
+}
+
+/** 连续结账只办理全部严格通过的同年范围；特殊确认仍回到单月逐项处理。 */
+export async function closeRangePreview(svc: CoreServices, from: number, to: number) {
+  if (periodYear(from) !== periodYear(to))
+    fail('CROSS_YEAR_CLOSE', '连续结账仅支持同一年度', '先完成本年度，再预览年结建立下一年度');
+  const range = await validateRange(svc, from, to, true);
+  const periods = await svc.periods.list();
+  const earliest = periods.find((p) => p.status === 'open')?.period;
+  if (earliest !== from)
+    fail('CLOSE_ORDER', `连续结账须从最早开放期间 ${earliest ?? '（无）'} 开始`, '调整操作范围');
+  const items = [];
+  for (const period of range) {
+    const check = await checkPeriod(svc, period);
+    const problems = check.items
+      .filter((i) => i.id !== 'sequence' && !i.pass)
+      .map((i) => `${i.title}：${i.detail}`);
+    if (check.drafts.length)
+      problems.push(`另有 ${check.drafts.length} 张草稿，请回到单月明确确认后办理`);
+    items.push({ period, ready: !problems.length, problems });
+  }
+  if (items.every((i) => i.ready)) await verifyPostedRuns(svc, from, to);
+  // 核心凭证 revision 覆盖分录修改；期初、科目、期间和本模块来源快照另行纳入。
+  const previewToken = digest([
+    from,
+    to,
+    items,
+    await allVouchers(svc, from, to),
+    await svc.opening.list(periodYear(from)),
+    await svc.accounts.list(),
+    periods,
+    await runs(svc),
+    await rules(svc),
+  ]);
+  return { from, to, items, allPassed: items.every((i) => i.ready), previewToken };
+}
+
+export async function closeRange(
+  svc: CoreServices,
+  input: { from: number; to: number; confirmed: boolean; previewToken: string },
+) {
+  if (!input.confirmed) fail('CONFIRM', '请确认连续结账的逐月检查结果', '取消不会修改账套');
+  return svc.tx(async (t) => {
+    const preview = await closeRangePreview(t, input.from, input.to);
+    if (preview.previewToken !== input.previewToken)
+      fail('PREVIEW_CHANGED', '连续结账预览已变化', '重新预览并确认逐月检查结果');
+    if (!preview.allPassed)
+      fail(
+        'CLOSE_RANGE_BLOCKED',
+        '连续结账范围内仍有未处理事项',
+        '按预览中的期间处理后再预览',
+        undefined,
+        {
+          periods: preview.items.filter((i) => !i.ready),
+        },
+      );
+    for (const item of preview.items)
+      await closePeriod(t, { period: item.period, confirmed: true });
+    return { message: `已连续结账 ${input.from}—${input.to} 共 ${preview.items.length} 个月` };
   });
 }
 export async function renumberPreview(svc: CoreServices, period: number) {

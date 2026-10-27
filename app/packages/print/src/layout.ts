@@ -1,5 +1,5 @@
 export type PrintLayout = {
-  paper: 'A4' | 'custom';
+  paper: 'A4' | 'A5' | 'B5' | 'custom';
   widthMm: number;
   heightMm: number;
   landscape: boolean;
@@ -22,6 +22,8 @@ export type PrintLayout = {
   continuousPage: boolean;
   quantityDecimals: number;
   color: boolean;
+  /** 合并凭证槽位的间距，旧调用方缺省为零。 */
+  voucherGapMm?: number;
 };
 
 export const defaultLayout: PrintLayout = {
@@ -48,10 +50,11 @@ export const defaultLayout: PrintLayout = {
   continuousPage: true,
   quantityDecimals: 2,
   color: false,
+  voucherGapMm: 0,
 };
 
 export function layoutGeometry(s: PrintLayout) {
-  if (!['A4', 'custom'].includes(s.paper) || !['serif', 'sans-serif'].includes(s.font))
+  if (!['A4', 'A5', 'B5', 'custom'].includes(s.paper) || !['serif', 'sans-serif'].includes(s.font))
     throw new Error('纸张或字体类型无效');
   const range = (v: number, min: number, max: number, name: string, integer = false) => {
     if (!Number.isFinite(v) || v < min || v > max || (integer && !Number.isInteger(v)))
@@ -69,12 +72,23 @@ export function layoutGeometry(s: PrintLayout) {
   range(s.copies, 1, 99, '份数', true);
   range(s.startPage, 1, 999999, '开始页码', true);
   range(s.quantityDecimals, 0, 6, '数量小数位', true);
-  const base = s.paper === 'A4' ? [210, 297] : [s.widthMm, s.heightMm];
+  range(s.voucherGapMm ?? 0, 0, 50, '合并凭证间距');
+  const base =
+    s.paper === 'A4'
+      ? [210, 297]
+      : s.paper === 'A5'
+        ? [148, 210]
+        : s.paper === 'B5'
+          ? [176, 250]
+          : [s.widthMm, s.heightMm];
   const width = base[s.landscape ? 1 : 0]!;
   const height = base[s.landscape ? 0 : 1]!;
   const contentWidth = width - s.margins.left - s.margins.right;
   const contentHeight = height - s.margins.top - s.margins.bottom - 1;
-  if (contentWidth < 60 || contentHeight / s.perPage < 45)
+  if (
+    contentWidth < 60 ||
+    (contentHeight - (s.voucherGapMm ?? 0) * (s.perPage - 1)) / s.perPage < 45
+  )
     throw new Error('可打印区域过小，请减少边距或每页张数');
   if (
     s.offsetX < -s.margins.left ||

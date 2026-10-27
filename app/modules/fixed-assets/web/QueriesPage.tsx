@@ -4,7 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Button, Checkbox, Form, Input, InputNumber, Select, Space } from 'antd';
 import { DataTable, DimensionSelect, PageContainer } from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
-import { useRequiredSession } from '@caiwu/web-kit';
+import { notify, useRequiredSession } from '@caiwu/web-kit';
+import { printHtml } from '@caiwu/print';
+import { depreciationPrint } from './query-print';
 import { api } from './api';
 import { Confirm, MasterSelect } from './common';
 export default function QueriesPage() {
@@ -62,6 +64,14 @@ export default function QueriesPage() {
   };
   const q = useQuery(api.query.queryOptions(input));
   const cards = useQuery(api.list.queryOptions({ includeDisposed: true }));
+  const print = async (kind: 'detail' | 'distribution') => {
+    if (!q.data || q.isFetching || q.isError) return;
+    try {
+      await printHtml(depreciationPrint(q.data, input, kind));
+    } catch (error) {
+      notify.error(error instanceof Error ? error.message : '打印失败，请重试');
+    }
+  };
   return (
     <PageContainer title="折旧查询与分布">
       <Form
@@ -140,6 +150,18 @@ export default function QueriesPage() {
         </Button>
       </Form>
       <Space>
+        <Button
+          disabled={!q.data?.rows.length || q.isFetching || q.isError}
+          onClick={() => void print('detail')}
+        >
+          打印折旧明细
+        </Button>
+        <Button
+          disabled={!q.data?.distribution.length || q.isFetching || q.isError}
+          onClick={() => void print('distribution')}
+        >
+          打印折旧分布表
+        </Button>
         <Confirm
           title="确认将当前列宽格式保存在本机？"
           onConfirm={() => {

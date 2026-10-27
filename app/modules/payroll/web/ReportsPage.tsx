@@ -15,7 +15,7 @@ import {
   type ExcelColumn,
 } from '@caiwu/ui';
 import { escapeHtml, printHtml } from '@caiwu/print';
-import { ReportInputSchema } from '../shared';
+import { CASH_DENOMINATIONS, ReportInputSchema } from '../shared';
 import { api } from './api';
 import { usePayrollFilters } from './filters';
 type Filters = {
@@ -26,6 +26,8 @@ type Filters = {
   persons: string;
   columns: string;
   kind: string;
+  cashField: string;
+  denominations: string;
   run: number;
 };
 export default function ReportsPage() {
@@ -37,6 +39,8 @@ export default function ReportsPage() {
     persons: '',
     columns: 'gross,deductions,taxAmount,net',
     kind: 'table',
+    cashField: 'net',
+    denominations: CASH_DENOMINATIONS.join(','),
     run: 0,
   });
   const text = JSON.stringify(values),
@@ -58,14 +62,20 @@ const ReportContent = memo(function ReportContent({
   const category = categories.data?.find(
     (c) => c.id === (filters.category || categories.data?.[0]?.id),
   );
+  const selectedDenominations =
+    filters.denominations === 'none'
+      ? []
+      : filters.denominations.split(',').filter(Boolean).map(Number);
   const candidate = {
     categoryId: category?.id ?? 1,
     from: filters.from,
     to: filters.to,
     departmentId: filters.department || undefined,
     employeeIds: filters.persons.split(',').filter(Boolean).map(Number),
-    columns: filters.columns.split(',').filter(Boolean),
+    columns: filters.columns === '[]' ? [] : filters.columns.split(',').filter(Boolean),
     kind: filters.kind,
+    cashField: filters.cashField,
+    denominations: filters.kind === 'cash' ? selectedDenominations : CASH_DENOMINATIONS,
   };
   const parsed = ReportInputSchema.safeParse(candidate),
     input = parsed.success ? parsed.data : { ...candidate, kind: 'table' as const };
@@ -107,6 +117,7 @@ const ReportContent = memo(function ReportContent({
     const cols: ExcelColumn<Row>[] = [
       { title: '人员 / 部门', value: (r) => r.label },
       { title: '期间', value: (r) => r.period },
+      ...(fresh.cashColumn ? [{ title: '票面工资栏目', value: () => fresh.cashColumn!.name }] : []),
       ...fresh.columns.map((c) => ({
         title: c.name,
         money: true,
@@ -150,8 +161,15 @@ const ReportContent = memo(function ReportContent({
           category: category?.id,
           employeeIds: candidate.employeeIds,
           selectedColumns: candidate.columns,
+          selectedDenominations,
         }}
-        onSearch={(v: Filters & { employeeIds: number[]; selectedColumns: string[] }) =>
+        onSearch={(
+          v: Filters & {
+            employeeIds: number[];
+            selectedColumns: string[];
+            selectedDenominations: number[];
+          },
+        ) =>
           update({
             category: v.category,
             from: v.from,
@@ -159,7 +177,9 @@ const ReportContent = memo(function ReportContent({
             department: v.department,
             kind: v.kind,
             persons: (v.employeeIds ?? []).join(','),
-            columns: (v.selectedColumns ?? []).join(','),
+            columns: (v.selectedColumns ?? []).join(',') || '[]',
+            cashField: v.cashField ?? filters.cashField,
+            denominations: (v.selectedDenominations ?? selectedDenominations).join(',') || 'none',
             run: Date.now(),
           })
         }
@@ -216,6 +236,37 @@ const ReportContent = memo(function ReportContent({
             ]}
           />
         </Form.Item>
+        <Form.Item noStyle shouldUpdate={(previous, next) => previous.kind !== next.kind}>
+          {({ getFieldValue }) =>
+            getFieldValue('kind') === 'cash' && (
+              <>
+                <Form.Item name="cashField" label="票面工资栏目">
+                  <Select
+                    style={{ width: 180 }}
+                    options={[
+                      { value: 'net', label: '实发' },
+                      { value: 'gross', label: '应发' },
+                      { value: 'deductions', label: '扣款' },
+                      { value: 'taxAmount', label: '个税' },
+                      ...(category?.fields ?? []).map((f) => ({ value: f.key, label: f.name })),
+                    ]}
+                  />
+                </Form.Item>
+                <Form.Item name="selectedDenominations" label="票面面额">
+                  <Select
+                    mode="multiple"
+                    aria-label="票面面额"
+                    style={{ minWidth: 280 }}
+                    options={CASH_DENOMINATIONS.map((unit) => ({
+                      value: unit,
+                      label: `${formatMoney(unit)}元`,
+                    }))}
+                  />
+                </Form.Item>
+              </>
+            )
+          }
+        </Form.Item>
       </FilterBar>
       {filters.run > 0 && !parsed.success && (
         <Alert type="error" title={parsed.error.issues.map((i) => i.message).join('；')} />
@@ -223,10 +274,10 @@ const ReportContent = memo(function ReportContent({
       {q.error && <Alert type="error" title={q.error.message} />}
       {canExport && (
         <Space>
-          <Button disabled={!data} onClick={() => void output(false)}>
+          <Button disabled={!data || !parsed.success} onClick={() => void output(false)}>
             导出报表 Excel
           </Button>
-          <Button disabled={!data} onClick={() => void output(true)}>
+          <Button disabled={!data || !parsed.success} onClick={() => void output(true)}>
             打印报表
           </Button>
         </Space>
@@ -258,7 +309,7 @@ const ReportContent = memo(function ReportContent({
       {filters.kind === 'cash' && (
         <Alert
           type="info"
-          title="票面逐人分解后合并，面额数量×面额＋余款＝实发；负实发会阻止计算。此表不执行取现或银行发薪。"
+          title={`票面工资栏目：${data?.cashColumn?.name ?? '待查询'}。逐人逐期分解后合并，面额数量×面额＋余款＝所选栏目金额；负金额会阻止计算。此表不执行取现或银行发薪。`}
         />
       )}
     </PageContainer>

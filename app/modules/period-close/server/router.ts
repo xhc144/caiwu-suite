@@ -4,6 +4,7 @@ import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
   CloseSchema,
+  CloseRangeSchema,
   GenerateSchema,
   PeriodSchema,
   RangeSchema,
@@ -82,6 +83,14 @@ export const periodCloseRouter = m.router({
     .meta({ permission: 'period-close.close' })
     .input(CloseSchema)
     .mutation(({ ctx, input }) => service.closePeriod(ctx.svc, input)),
+  closeRangePreview: m.procedure
+    .meta({ permission: 'period-close.view' })
+    .input(RangeSchema)
+    .query(({ ctx, input }) => service.closeRangePreview(ctx.svc, input.from, input.to)),
+  closeRange: m.procedure
+    .meta({ permission: 'period-close.close' })
+    .input(CloseRangeSchema)
+    .mutation(({ ctx, input }) => service.closeRange(ctx.svc, input)),
   reopen: m.procedure
     .meta({ permission: 'period-close.reopen' })
     .input(ReopenSchema)
