@@ -273,6 +273,94 @@ it('w_bb_proc fast-check 权益内部结转的每个事项和总权益都守恒'
     }),
   );
 });
+it('w_bb_proc 金融工具投入按本分录明细及期末分类，允许不同明细使用相同工具编号', () => {
+  const { c, d } = fixture(),
+    debt = extend(c, d, 8, '应付债券', 'bondsPayable', 'equityInstrument'),
+    equity = extend(c, d, 9, '其他权益工具', 'otherEquity', 'equityInstrument');
+  for (const rows of Object.values(d.balances))
+    rows.find((row) => row.accountId === equity.id)!.dimensions = { partner: 2 };
+  const otherParty = balance(equity, 0, 0, { partner: 1 });
+  d.balances[202512]!.push(otherParty);
+  const part = (classification: 'equity' | 'liability', amount = '0') => ({
+    id: '局部工具编号1',
+    classification,
+    instrument: 'preferred' as const,
+    amount,
+    current: false,
+    duePeriod: 202812,
+    ...provenance,
+  });
+  // 另一个科目、同科目的另一往来对象，以及本明细期初均有同名的负债工具。
+  // 本次投入属于对象乙的期末权益工具，不受这些独立明细的分类影响。
+  c.facts.push(
+    {
+      period: 202512,
+      basis: 'closing',
+      bucket: balanceBucket(otherParty),
+      parts: [part('liability')],
+      ...provenance,
+    },
+    {
+      period: 202512,
+      basis: 'opening',
+      bucket: balanceBucket(balance(equity, 0, 0, { partner: 2 })),
+      parts: [part('liability')],
+      ...provenance,
+    },
+  );
+  for (const [period, basis] of [
+    [202312, 'closing'],
+    [202401, 'opening'],
+    [202412, 'closing'],
+    [202501, 'opening'],
+    [202512, 'closing'],
+  ] as const) {
+    c.facts.push({
+      period,
+      basis,
+      bucket: balanceBucket(balance(debt, 0, 0)),
+      parts: [part('liability')],
+      ...provenance,
+    });
+    c.facts.push({
+      period,
+      basis,
+      bucket: balanceBucket(balance(equity, 0, 0, { partner: 2 })),
+      parts: [part('equity', period === 202512 ? '-1000' : '0')],
+      ...provenance,
+    });
+  }
+  const entries = journal(c, d, [
+    {
+      accountId: 1,
+      debit: 1000,
+      credit: 0,
+      cash: [{ line: 'capitalReceipts', amount: '1000' }],
+    },
+    { accountId: equity.id, debit: 0, credit: 1000 },
+  ]);
+  entries[1]!.dimensions = { partner: 2 };
+  c.equityEvents.push({
+    lineId: entries[1]!.lineId,
+    row: 'instrumentContributions',
+    liabilityAmount: '0',
+    parts: [{ column: 'equityPreferred', amount: '1000', instrumentId: '局部工具编号1' }],
+    ...provenance,
+  });
+  const result = calculateEnterprise(c, d);
+  expect(result.equity.current.instrumentContributions!.equityPreferred).toBe('1000');
+  expect(result.equity.current.closing!.equityPreferred).toBe('1000');
+  expect(result.balance.current.bondsPayable).toBe('0');
+  expect(result.checks.every((check) => check.difference === '0')).toBe(true);
+  const actualFact = c.facts.find(
+    (fact) =>
+      fact.period === 202512 &&
+      fact.basis === 'closing' &&
+      fact.bucket === balanceBucket(entries[1]!),
+  )!;
+  actualFact.parts![0]!.id = '另一实际工具编号';
+  expect(() => calculateEnterprise(c, d)).toThrow('工具不存在或分类为负债');
+});
 it('w_bb_proc 独审P1回归：任何期间单边OCI内部结转及伪装投入都不能漏计税后收益', () => {
   for (const scope of ['month', 'yearToDate', 'annual'] as const) {
     const { c, d } = fixture();

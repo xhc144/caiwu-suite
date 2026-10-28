@@ -13,7 +13,7 @@ import {
   type EnterpriseConfig,
   type SourceData,
 } from './model';
-import { calculateEnterprise, enterpriseRanges } from './calculate';
+import { calculateEnterprise, enterpriseRanges, enterpriseComparison } from './calculate';
 import { suggestEnterpriseRules, suggestEnterpriseCashProjects } from './mapping';
 export const enterpriseDescriptors = [
   { key: 'balance', code: '201', name: '资产负债表', annualOnly: false },
@@ -49,17 +49,23 @@ export async function readEnterpriseSources(
     categories = await svc.accounts.categories(),
     periods = await svc.periods.list(),
     ranges = enterpriseRanges(c),
-    y = periodYear(c.period);
+    y = periodYear(c.period),
+    comparison = enterpriseComparison(c, book.startPeriod);
   if (book.regime !== 'enterprise') problem('当前账套不适用企业准则报表');
   const needed = new Set([
     c.period,
-    ranges.balancePrevious,
     ranges.current.from,
-    ranges.previous.from,
-    ranges.previous.to,
+    ...(comparison.balance === 'available' ? [ranges.balancePrevious] : []),
+    ...(comparison.flow === 'available' ? [ranges.previous.from, ranges.previous.to] : []),
   ]);
-  if (c.scope === 'annual') needed.add(makePeriod(y - 2, 12));
-  for (const range of [ranges.current, ranges.previous])
+  if (c.scope === 'annual' && makePeriod(y - 2, 12) >= book.startPeriod)
+    needed.add(makePeriod(y - 2, 12));
+  if (ranges.current.from < book.startPeriod)
+    problem('本期范围早于账套启用期间，无法生成完整本期金额；请选择完整的本月范围');
+  for (const range of [
+    ranges.current,
+    ...(comparison.flow === 'available' ? [ranges.previous] : []),
+  ])
     for (const p of periodRange(range.from, range.to)) await svc.periods.require(p);
   const balances: SourceData['balances'] = {};
   for (const p of needed) {
@@ -161,13 +167,12 @@ export async function generateEnterprise(
   assertContext(svc);
   await svc.permissions.require('report-engine.generate');
   const { configuration, source } = await verifyEnterprise(
-      svc,
-      input.configuration,
-      input.sourceDigest,
-      input.period,
-    ),
-    ranges = enterpriseRanges(configuration);
-  const from = Math.min(source.startPeriod, ranges.previous.from),
+    svc,
+    input.configuration,
+    input.sourceDigest,
+    input.period,
+  );
+  const from = source.startPeriod,
     pending = await svc.vouchers.list({
       periodFrom: from,
       periodTo: input.period,

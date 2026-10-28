@@ -309,6 +309,12 @@ export type EnterpriseResult = {
   period: number;
   scope: EnterpriseConfig['scope'];
   orgName: string;
+  /** 旧快照无此字段时沿用原有比较数；新生成结果明确区分真实比较数与无来源。 */
+  comparison?: {
+    balance: 'available' | 'unavailable';
+    flow: 'available' | 'unavailable';
+    reason: string | null;
+  };
   balance: { current: Values; previous: Values };
   profit: { current: Values; previous: Values };
   cashflow: { current: Values; previous: Values };

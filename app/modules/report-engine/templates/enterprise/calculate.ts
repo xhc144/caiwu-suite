@@ -66,6 +66,19 @@ export function enterpriseRanges(c: EnterpriseConfig): {
     balancePrevious: makePeriod(y - 1, 12),
   };
 }
+export function enterpriseComparison(c: EnterpriseConfig, startPeriod: number) {
+  const ranges = enterpriseRanges(c);
+  const balance = ranges.balancePrevious >= startPeriod ? 'available' : 'unavailable';
+  const flow = ranges.previous.from >= startPeriod ? 'available' : 'unavailable';
+  return {
+    balance,
+    flow,
+    reason:
+      balance === 'unavailable' || flow === 'unavailable'
+        ? `账套于${startPeriod}启用，启用前或不完整的比较来源未提供，相关比较金额不适用；不按零填列。`
+        : null,
+  } as const;
+}
 const costLines = new Set([
   'cost',
   'taxes',
@@ -164,7 +177,15 @@ const inRange = (p: number, r: Range) => p >= r.from && p <= r.to;
 function validate(c: EnterpriseConfig, d: SourceData) {
   if (d.regime !== 'enterprise') fail('当前账套不是企业会计准则账套');
   const ranges = enterpriseRanges(c),
-    first = periodStartDate(ranges.previous.from);
+    comparison = enterpriseComparison(c, d.startPeriod),
+    first = [
+      periodStartDate(ranges.current.from),
+      ...(comparison.flow === 'available' ? [periodStartDate(ranges.previous.from)] : []),
+      ...(comparison.balance === 'available' ? [periodEndDate(ranges.balancePrevious)] : []),
+      ...(c.scope === 'annual' && makePeriod(periodYear(c.period) - 2, 12) >= d.startPeriod
+        ? [periodEndDate(makePeriod(periodYear(c.period) - 2, 12))]
+        : []),
+    ].sort()[0]!;
   if ([c.adoption.financial, c.adoption.revenue, c.adoption.lease].some((date) => date > first))
     fail(
       '比较期间尚未同时执行新金融、新收入及新租赁准则，请提供对应衔接格式；不能用附件2替代未重列的附件1比较数',
@@ -182,7 +203,7 @@ function validate(c: EnterpriseConfig, d: SourceData) {
     (c.adoption.cas30_2026 && c.adoption.cas30_2026 <= periodEndDate(c.period))
   )
     fail('账套已采用2026列报准则，本格式仅适用2019附件2，请选择匹配版本');
-  for (const r of [ranges.current, ranges.previous])
+  for (const r of [ranges.current, ...(comparison.flow === 'available' ? [ranges.previous] : [])])
     for (const p of periodRange(r.from, r.to)) {
       if (p < d.startPeriod) fail(`${p}早于账套启用期间，未知累计数不能代替完整比较数`);
       if (!d.periods.includes(p)) fail(`缺少会计期间${p}`);
@@ -243,7 +264,7 @@ function validate(c: EnterpriseConfig, d: SourceData) {
       ranges.balancePrevious,
       ...(c.scope === 'annual' ? [makePeriod(periodYear(c.period) - 2, 12)] : []),
     ]),
-  ]) {
+  ].filter((p) => p >= d.startPeriod)) {
     if (!d.balances[p]) fail(`缺少报告日${p}余额来源`);
     for (const [line, roles] of Object.entries(NET_ROLES)) {
       if (!c.rules.some((r) => r.line === line && r.role === 'gross')) continue;
@@ -1012,8 +1033,17 @@ export function calculateEquity(
     prior = makePeriod(y - 1, 12),
     opening = calculateBalance(c, d, makePeriod(y, 1), 'opening'),
     closing = calculateBalance(c, d, r.to),
-    previous = calculateBalance(c, d, prior),
+    previous = prior >= d.startPeriod ? calculateBalance(c, d, prior) : opening,
     m: Matrix = {};
+  if (
+    prior < d.startPeriod &&
+    c.adjustments.some(
+      (a) => a.statement === 'equity' && a.period === makePeriod(y, 1) && !D(a.amount).isZero(),
+    )
+  )
+    fail(
+      '无上年年末来源时，年初权益以真实期初为准；请先核实并录入完整前期调整来源，不能推算上年金额',
+    );
   for (const line of EQUITY)
     m[line.key] = Object.fromEntries([...EQUITY_COLUMNS, 'total'].map((k) => [k, '0']));
   for (const k of EQUITY_COLUMNS) m.previousClosing![k] = previous[k] ?? '0';
@@ -1057,7 +1087,13 @@ export function calculateEquity(
       if (rule.kind === 'equityInstrument') {
         if (!part.instrumentId) fail(`权益分录${e.lineId}必须绑定具体金融工具`);
         const f = c.facts
-          .filter((x) => x.period === r.to && x.parts)
+          .filter(
+            (x) =>
+              x.period === r.to &&
+              x.basis === 'closing' &&
+              x.bucket === balanceBucket(e) &&
+              x.parts,
+          )
           .flatMap((x) => x.parts!)
           .find((x) => x.id === part.instrumentId);
         if (!f || f.classification !== 'equity') fail(`权益分录${e.lineId}工具不存在或分类为负债`);
@@ -1156,39 +1192,55 @@ export function calculateEquity(
     closing.equityTotal!,
     '核实各权益列及库存股减项',
   );
+  if (prior < d.startPeriod)
+    m.previousClosing = Object.fromEntries([...EQUITY_COLUMNS, 'total'].map((k) => [k, '不适用']));
   return m;
 }
 export function calculateEnterprise(raw: EnterpriseConfig, d: SourceData) {
   const c = parseEnterpriseConfiguration(raw);
   validate(c, d);
   const ranges = enterpriseRanges(c),
+    comparison = enterpriseComparison(c, d.startPeriod),
     checks: Check[] = [];
+  const unavailable = (lines: Line[]) =>
+    Object.fromEntries(lines.filter((l) => !l.section).map((l) => [l.key, '不适用']));
   const balance = {
     current: calculateBalance(c, d, c.period),
-    previous: calculateBalance(c, d, ranges.balancePrevious),
+    previous:
+      comparison.balance === 'available'
+        ? calculateBalance(c, d, ranges.balancePrevious)
+        : { ...unavailable(balanceLines), equityOther: '不适用' },
   };
   const profit = {
     current: calculateProfit(c, d, ranges.current),
-    previous: calculateProfit(c, d, ranges.previous),
+    previous:
+      comparison.flow === 'available'
+        ? calculateProfit(c, d, ranges.previous)
+        : unavailable(PROFIT),
   };
   const cashflow = {
     current: calculateCashflow(c, d, ranges.current, checks, 'current'),
-    previous: calculateCashflow(c, d, ranges.previous, checks, 'previous'),
+    previous:
+      comparison.flow === 'available'
+        ? calculateCashflow(c, d, ranges.previous, checks, 'previous')
+        : { ...unavailable(CASHFLOW), cashScopeChange: '不适用', actualCashClosing: '不适用' },
   };
   for (const column of ['current', 'previous'] as const) {
     const p = column === 'current' ? c.period : ranges.balancePrevious,
       b = balance[column];
-    check(
-      checks,
-      'balance',
-      '资产总计＝负债和所有者权益总计',
-      column,
-      p,
-      b.assetsTotal!,
-      b.liabilitiesEquityTotal!,
-      '核实明细方向、备抵、期限和未结转损益',
-      c.rules.map((r) => `科目${r.accountId}`),
-    );
+    if (column === 'current' || comparison.balance === 'available')
+      check(
+        checks,
+        'balance',
+        '资产总计＝负债和所有者权益总计',
+        column,
+        p,
+        b.assetsTotal!,
+        b.liabilitiesEquityTotal!,
+        '核实明细方向、备抵、期限和未结转损益',
+        c.rules.map((r) => `科目${r.accountId}`),
+      );
+    if (column === 'previous' && comparison.flow === 'unavailable') continue;
     const range = ranges[column];
     const closed = d.entries
       .filter((e) => inRange(e.period, range) && isClosing(d, e))
@@ -1233,7 +1285,15 @@ export function calculateEnterprise(raw: EnterpriseConfig, d: SourceData) {
     c.scope === 'annual'
       ? {
           current: calculateEquity(c, d, ranges.current, profit.current, checks, 'current'),
-          previous: calculateEquity(c, d, ranges.previous, profit.previous, checks, 'previous'),
+          previous:
+            comparison.flow === 'available'
+              ? calculateEquity(c, d, ranges.previous, profit.previous, checks, 'previous')
+              : Object.fromEntries(
+                  EQUITY.map((l) => [
+                    l.key,
+                    Object.fromEntries([...EQUITY_COLUMNS, 'total'].map((k) => [k, '不适用'])),
+                  ]),
+                ),
         }
       : { current: {}, previous: {} };
   return {
@@ -1241,6 +1301,7 @@ export function calculateEnterprise(raw: EnterpriseConfig, d: SourceData) {
     period: c.period,
     scope: c.scope,
     orgName: d.orgName,
+    comparison,
     balance,
     profit,
     cashflow,
