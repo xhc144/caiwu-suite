@@ -7,7 +7,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ExcelJS from 'exceljs';
+import { seedVouchers } from '@caiwu/testkit';
 import { completeCoreBook } from '../../test/small-business/core-fixture';
+import { smallBusinessApp } from '../../test/small-business/fixture';
 import {
   fixedYearBook,
   yearOpening,
@@ -20,9 +22,14 @@ import {
   assertSmallBusinessOutput,
   smallBusinessConfigurationData,
   saveConfiguration,
+  loadConfiguration,
 } from '../../templates/small-business/statutory.server';
 import { statementPrintJob, statementWorkbook } from '../../templates/small-business/output';
-import type { Configuration } from '../../templates/small-business/configuration';
+import {
+  rowKey,
+  entrySignature,
+  type Configuration,
+} from '../../templates/small-business/configuration';
 
 let temporary: string, bundle: string;
 test.beforeAll(async () => {
@@ -195,6 +202,183 @@ test('w_bb_get 本域配置组件可修复现金范围日期并持久保存（�
     await svc.tx((t) => saveConfiguration(t, saved as Configuration, saved.revision));
     const again = await smallBusinessConfigurationData(svc, 202612);
     expect(again.configuration.cashScope.find((s) => s.account === '1001')!.to).toBe('2028-12-31');
+  } finally {
+    await app.close();
+  }
+});
+
+test('w_bb_get/proc 复合转账在界面选择内部转存并保存出表，现金流只保留手续费', async ({ page }) => {
+  const app = await smallBusinessApp();
+  const svc = app.svcFor('report-engine');
+  try {
+    for (const [code, balance] of [
+      ['1001', 200000],
+      ['3001', -200000],
+    ] as const)
+      await svc.opening.upsert({
+        year: 2026,
+        accountId: (await svc.accounts.require(code)).id,
+        balance,
+      });
+    const config = await loadConfiguration(svc);
+    config.details['5603'] = { line: null, reason: '银行转存手续费，不属于利息' };
+    config.cashScope = ['1001', '100201', '1012'].map((account) => ({
+      account,
+      from: '2026-01-01',
+      to: '2026-12-31',
+      available: account !== '1012',
+      reason: account === '1012' ? '受限资金' : '可随时支付',
+    }));
+    for (const period of [202512, 202601])
+      config.facts.push({
+        period,
+        key: rowKey({ accountCode: '3001', dimensions: {} }),
+        balance: -200000,
+        allocations: [{ role: 'capital', amount: -200000 }],
+        reason: '合成企业实缴资本',
+      });
+    await svc.tx((t) => saveConfiguration(t, config, config.revision));
+    const prepared = await svc.tx((t) =>
+      prepareSmallBusiness(t, { period: 202601, mode: 'monthly' }),
+    );
+    assertSmallBusinessOutput(prepared);
+    const [oldTransfer] = await seedVouchers(svc, [
+      {
+        date: '2026-01-04',
+        status: 'posted',
+        summary: '旧纯现金转存',
+        lines: [
+          { account: '100201', debit: 20000 },
+          { account: '1001', credit: 20000 },
+        ],
+      },
+    ]);
+    const oldEntries = await svc.ledger.entries({ periodFrom: 202601, periodTo: 202601 });
+    const oldConfig = await loadConfiguration(svc);
+    for (const entry of oldEntries)
+      oldConfig.cashAllocations[String(entry.lineId)] = {
+        signature: entrySignature(entry, oldEntries),
+        reason: '旧版人工外部项目分类',
+        parts: [
+          { line: entry.accountCode === '100201' ? 1 : 11, amount: entry.debit - entry.credit },
+        ],
+      };
+    await svc.tx((t) => saveConfiguration(t, oldConfig, oldConfig.revision));
+    await expect(
+      svc.tx((t) => prepareSmallBusiness(t, { period: 202601, mode: 'monthly' })),
+    ).rejects.toThrow(/请全部归入内部转存/);
+    await seedVouchers(svc, [
+      {
+        date: '2026-01-05',
+        status: 'posted',
+        summary: '银行转存及手续费',
+        lines: [
+          { account: '100201', debit: 99500 },
+          { account: '5603', debit: 500 },
+          { account: '1001', credit: 100000 },
+        ],
+      },
+    ]);
+    const configurationData = await smallBusinessConfigurationData(svc, 202601);
+    await page.setContent('<html lang="zh-CN"><body><div id="root"></div></body></html>');
+    await page.addScriptTag({ path: bundle });
+    await page.evaluate((data) => window.mountSmallBusiness(data, 'configuration'), {
+      prepared: { ...prepared, configuration: configurationData.configuration },
+      workbooks: [],
+      jobs: [],
+      configurationData,
+    });
+    await page.getByRole('tab', { name: '现金分录分类', exact: true }).click();
+    const cashEntries = configurationData.entries.filter((entry) =>
+      ['1001', '100201'].includes(entry.accountCode),
+    );
+    expect(cashEntries).toHaveLength(4);
+    const chooseProject = async (lineId: number, part: number, label: string) => {
+      const project = page.getByLabel(`分录${lineId}项目${part}`, { exact: true });
+      await project.focus();
+      await project.press('ArrowDown');
+      const listId = await project.getAttribute('aria-controls');
+      expect(listId).not.toBeNull();
+      const dropdown = page
+        .locator(`[id="${listId}"]`)
+        .locator(
+          'xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " ant-select-dropdown ")]',
+        );
+      await expect(dropdown).toBeVisible();
+      const activeOption = dropdown.locator('.ant-select-item-option-active');
+      for (let step = 0; step < 18; step++) {
+        if ((await activeOption.textContent()) === label) break;
+        await project.press('ArrowUp');
+      }
+      await expect(activeOption).toHaveText(label);
+      await project.press('Enter');
+    };
+    for (const entry of cashEntries) {
+      const isOldTransfer = entry.voucherId === oldTransfer!.id;
+      const row = page
+        .getByLabel(`分录${entry.lineId}分类依据`, { exact: true })
+        .locator('xpath=ancestor::tr');
+      if (!isOldTransfer)
+        await row.getByRole('button', { name: '增加项目分配', exact: true }).click();
+      await chooseProject(entry.lineId, 1, '内部转存');
+      await row
+        .getByLabel('现金分配金额（元，流入为正流出为负）', { exact: true })
+        .first()
+        .fill(`${entry.accountCode === '100201' ? '' : '-'}${isOldTransfer ? '200' : '995'}`);
+      if (!isOldTransfer && entry.accountCode === '1001') {
+        await row.getByRole('button', { name: '增加项目分配', exact: true }).click();
+        await chooseProject(entry.lineId, 2, '支付其他与经营活动有关的现金');
+        await row
+          .getByLabel('现金分配金额（元，流入为正流出为负）', { exact: true })
+          .nth(1)
+          .fill('-5');
+      }
+      await page
+        .getByLabel(`分录${entry.lineId}分类依据`, { exact: true })
+        .fill(
+          isOldTransfer ? '修正旧纯转存为内部项目200元' : '账户内部转存995元，另付银行手续费5元',
+        );
+    }
+    await page.getByRole('button', { name: '保存配置', exact: true }).click();
+    const saved = await page.evaluate(() => window.smallSavedConfiguration!);
+    const incoming = cashEntries.find(
+      (entry) => entry.accountCode === '100201' && entry.voucherId !== oldTransfer!.id,
+    )!;
+    const outgoing = cashEntries.find(
+      (entry) => entry.accountCode === '1001' && entry.voucherId !== oldTransfer!.id,
+    )!;
+    for (const entry of oldEntries)
+      expect(saved.cashAllocations[String(entry.lineId)]!.parts).toEqual([
+        { line: 0, amount: entry.debit - entry.credit },
+      ]);
+    expect(saved.cashAllocations[String(incoming.lineId)]!.parts).toEqual([
+      { line: 0, amount: 99500 },
+    ]);
+    expect(saved.cashAllocations[String(outgoing.lineId)]!.parts).toEqual([
+      { line: 0, amount: -99500 },
+      { line: 6, amount: -500 },
+    ]);
+    await svc.tx((t) => saveConfiguration(t, saved as Configuration, saved.revision));
+    const persisted = await loadConfiguration(svc);
+    expect(persisted.cashAllocations).toEqual(saved.cashAllocations);
+    const result = await svc.tx((t) =>
+      prepareSmallBusiness(t, { period: 202601, mode: 'monthly' }),
+    );
+    assertSmallBusinessOutput(result);
+    for (const column of [0, 1])
+      expect(result.statements[2].rows.map((row) => row.amounts[column]?.value)).toEqual([
+        0, 0, 0, 0, 0, 500, -500, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -500, 200000, 199500,
+      ]);
+    await page.setContent('<html lang="zh-CN"><body><div id="root"></div></body></html>');
+    await page.evaluate((data) => window.mountSmallBusiness(data), {
+      prepared: result,
+      workbooks: [],
+      jobs: [],
+    });
+    await page.getByRole('button', { name: '小企业现金流量表', exact: true }).click();
+    await expect(page.locator('#small-303-1 [data-cents="0"]')).toHaveCount(2);
+    await expect(page.locator('#small-303-6 [data-cents="500"]')).toHaveCount(2);
+    await expect(page.locator('#small-303-20 [data-cents="-500"]')).toHaveCount(2);
   } finally {
     await app.close();
   }

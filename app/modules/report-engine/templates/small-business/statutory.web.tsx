@@ -15,6 +15,11 @@ import {
 import { cashflowItems, cashflowLines } from './catalogue';
 import type { Amount, Statement } from './statements';
 
+const cashAllocationOptions = [
+  { value: 0, label: '内部转存' },
+  ...cashflowItems.map((item) => ({ value: item.line, label: cashflowLines[item.line - 1]! })),
+];
+
 export type AnalysisRow = {
   period: number;
   row: BalanceRow;
@@ -124,7 +129,7 @@ export function SmallBusinessConfiguration({
       });
     const options =
       kind === 'cash'
-        ? cashflowItems.map((x) => ({ value: x.line, label: cashflowLines[x.line - 1]! }))
+        ? cashAllocationOptions
         : [
             ...Object.entries(incomeDetails)
               .filter(([, d]) => d.role === mapped.get(e.accountCode))
@@ -770,10 +775,7 @@ export function SmallBusinessConfiguration({
                           aria-label={`分录${e.lineId}项目${i + 1}`}
                           style={{ width: 260 }}
                           value={p.line}
-                          options={cashflowItems.map((x) => ({
-                            value: x.line,
-                            label: cashflowLines[x.line - 1]!,
-                          }))}
+                          options={cashAllocationOptions}
                           onChange={(line) =>
                             set(old.parts.map((x, j) => (j === i ? { ...x, line } : x)))
                           }
