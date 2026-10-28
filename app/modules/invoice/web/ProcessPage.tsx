@@ -1,16 +1,36 @@
-import { today, periodOfDate } from '@caiwu/core';
+import { BusinessError, today, periodOfDate } from '@caiwu/core';
 import { useInvoiceFilters } from './useInvoiceFilters';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { Alert, Button, Card, Checkbox, Form, Input, Popconfirm, Select, Space } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Form,
+  Input,
+  InputNumber,
+  Popconfirm,
+  Select,
+  Space,
+} from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { coreApi, queryClient, showError, usePermission, useVoucherTypes } from '@caiwu/web-kit';
+import {
+  coreApi,
+  queryClient,
+  showError,
+  usePermission,
+  useUnsavedChanges,
+  useVoucherTypes,
+} from '@caiwu/web-kit';
 import { DataTable, FilterBar, MoneyText, PageContainer, PeriodPicker } from '@caiwu/ui';
 import type { Direction, PlanInput } from '../shared';
 import type { InvoiceRouter } from '../server/router';
 import type { inferRouterOutputs } from '@trpc/server';
 import { api } from './api';
 import { invoiceColumns, Nav, QueryError } from './common';
+import AllocationFields from './AllocationFields';
+import RevokeButton from './RevokeButton';
 type Plan = inferRouterOutputs<InvoiceRouter>['previewVoucher'];
 export default function ProcessPage() {
   const [filters, setFilters] = useInvoiceFilters({
@@ -30,12 +50,16 @@ export default function ProcessPage() {
   const [loading, setLoading] = useState(false);
   const [requestId, setRequestId] = useState('');
   const [newAccountsConfirmed, setNewAccountsConfirmed] = useState(false);
+  const [regenerateConfirmed, setRegenerateConfirmed] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [editVersion, setEditVersion] = useState(0);
   const previewGeneration = useRef(0);
   const discardPreview = useCallback(() => {
     previewGeneration.current++;
     setPlan(null);
     setRequestId('');
     setNewAccountsConfirmed(false);
+    setRegenerateConfirmed(false);
     setLoading(false);
   }, []);
   useEffect(() => {
@@ -47,9 +71,17 @@ export default function ProcessPage() {
     },
     [],
   );
-  const [form] = Form.useForm<{ date: string; voucherTypeId: number; mode: PlanInput['mode'] }>();
+  const [form] = Form.useForm<Omit<PlanInput, 'selection'>>();
+  const regenerate = Form.useWatch('regenerate', form) as boolean | undefined;
   const can = usePermission('invoice.voucher');
   const canCreateAccounts = usePermission('invoice.account');
+  const draft = useQuery({ ...api.processDraft.queryOptions(), enabled: can });
+  const saveDraft = useMutation(
+    api.saveProcessDraft.mutationOptions({
+      onSuccess: () =>
+        void queryClient.invalidateQueries({ queryKey: api.processDraft.queryKey() }),
+    }),
+  );
   const refresh = () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: api.list.queryKey() }),
@@ -62,6 +94,9 @@ export default function ProcessPage() {
       onSuccess: () => {
         discardPreview();
         setSelected([]);
+        setDirty(false);
+        form.setFieldValue('allocations', []);
+        void queryClient.invalidateQueries({ queryKey: api.processDraft.queryKey() });
         void refresh();
       },
     }),
@@ -70,10 +105,52 @@ export default function ProcessPage() {
   const selection = (list.data ?? [])
     .filter((r) => selected.includes(r.id))
     .map((r) => ({ id: r.id, revision: r.revision }));
-  async function preview(v: { date: string; voucherTypeId: number; mode: PlanInput['mode'] }) {
+  const busy = generate.isPending || revoke.isPending || saveDraft.isPending;
+  const markDirty = () => {
+    setDirty(true);
+    setEditVersion((v) => v + 1);
+    discardPreview();
+  };
+  const persistDraft = async () => {
+    await saveDraft.mutateAsync({
+      direction,
+      period: filters.period,
+      selected: selected.map(Number),
+      values: form.getFieldsValue(),
+    });
+    setDirty(false);
+  };
+  const restoreDraft = () => {
+    const d = draft.data;
+    if (!d || busy) return;
+    setFilters({ direction: d.direction, period: d.period });
+    setSelected(d.selected);
+    form.resetFields();
+    form.setFieldsValue(d.values);
+    setDirty(false);
+    discardPreview();
+  };
+  useUnsavedChanges({
+    title: '发票制证输入',
+    dirty,
+    version: editVersion,
+    save: async () => {
+      if (busy) return false;
+      await persistDraft();
+      return true;
+    },
+    discard: () => {
+      form.resetFields();
+      setSelected([]);
+      setDirty(false);
+      discardPreview();
+    },
+  });
+  async function preview(v: Omit<PlanInput, 'selection'>) {
     const generation = ++previewGeneration.current;
     setPlan(null);
     setNewAccountsConfirmed(false);
+    setRegenerateConfirmed(false);
     setLoading(true);
     try {
       const p = await queryClient.fetchQuery({
@@ -95,9 +172,22 @@ export default function ProcessPage() {
       <FilterBar
         initialValues={{ direction, period: filters.period }}
         onSearch={(v) => {
+          if (busy) return;
+          if (dirty) {
+            showError(
+              new BusinessError({
+                code: 'INVOICE_UNSAVED',
+                message: '制证输入尚未保存，不能切换查询范围',
+                hint: '先保存制证输入，或点击“放弃制证输入”后再查询',
+              }),
+            );
+            return;
+          }
           setFilters(v);
           discardPreview();
           setSelected([]);
+          form.setFieldValue('allocations', []);
+          setDirty(false);
         }}
       >
         <Form.Item label="方向" name="direction">
@@ -115,10 +205,33 @@ export default function ProcessPage() {
       </FilterBar>
       <Alert
         type="info"
-        title="红字按原借贷方向记负数；凭证号由 core 分配"
-        description="月汇总为所选同月份发票生成一张凭证；撤销将同时回退该凭证全部发票，已审核/过账凭证不能撤销。转出库单尚未实现，当前仅支持生成来源凭证。"
+        title="红字按原借贷方向记负数；凭证按账套编号方式保存"
+        description="已转出库的销项票在此生成收入凭证，销售成本另行核算。月汇总为所选同月份发票生成一张凭证；全部重新生成须选择原汇总凭证的全部来源发票。已审核或过账凭证不能重新生成；撤销收入凭证保留出库单。"
       />
       <QueryError error={list.error} retry={list.refetch} />
+      <QueryError error={draft.error} retry={draft.refetch} />
+      {draft.data && (
+        <Alert
+          type="info"
+          title="有已保存的制证输入"
+          action={
+            <Popconfirm
+              title="恢复已保存输入并放弃当前未保存的修改？"
+              disabled={!dirty || busy}
+              onConfirm={restoreDraft}
+            >
+              <Button
+                disabled={busy}
+                onClick={() => {
+                  if (!dirty) restoreDraft();
+                }}
+              >
+                恢复制证输入
+              </Button>
+            </Popconfirm>
+          }
+        />
+      )}
       <DataTable
         tableId="invoice-process"
         rowKey="id"
@@ -129,10 +242,21 @@ export default function ProcessPage() {
           selectedRowKeys: selected,
           onChange: (keys) => {
             setSelected(keys);
-            discardPreview();
+            form.setFieldValue(
+              'allocations',
+              (form.getFieldValue('allocations') as PlanInput['allocations'])?.filter((a) =>
+                keys.includes(a.invoiceId),
+              ) ?? [],
+            );
+            markDirty();
           },
           getCheckboxProps: (r) => ({
-            disabled: r.state !== 'audited' || r.invoiceStatus !== 'normal',
+            disabled:
+              busy ||
+              (r.state !== 'audited' &&
+                r.state !== 'issued' &&
+                !(regenerate && r.state === 'generated')) ||
+              r.invoiceStatus !== 'normal',
           }),
         }}
       />
@@ -141,8 +265,23 @@ export default function ProcessPage() {
           name="invoice-process-voucher"
           form={form}
           layout="inline"
-          initialValues={{ mode: 'monthly', date: today() }}
-          onValuesChange={discardPreview}
+          disabled={busy}
+          initialValues={{ mode: 'monthly', date: today(), regenerate: false, allocations: [] }}
+          onValuesChange={(changed) => {
+            if (changed.regenerate === false) {
+              const available = (list.data ?? [])
+                .filter((r) => r.state === 'audited' || r.state === 'issued')
+                .map((r) => r.id);
+              setSelected((keys) => keys.filter((id) => available.includes(Number(id))));
+              form.setFieldValue(
+                'allocations',
+                (form.getFieldValue('allocations') as PlanInput['allocations'])?.filter((a) =>
+                  available.includes(a.invoiceId),
+                ) ?? [],
+              );
+            }
+            markDirty();
+          }}
           onFinish={(v) => void preview(v)}
           style={{ margin: '20px 0' }}
         >
@@ -166,6 +305,19 @@ export default function ProcessPage() {
               ]}
             />
           </Form.Item>
+          <Form.Item
+            name="firstNumber"
+            label="手工起始凭证号"
+            getValueFromEvent={(value) => value ?? undefined}
+          >
+            <InputNumber min={1} precision={0} placeholder="自动编号留空" />
+          </Form.Item>
+          <Form.Item name="regenerate" valuePropName="checked">
+            <Checkbox>全部重新生成（包含已制证发票）</Checkbox>
+          </Form.Item>
+          <Form.Item name="allocations" style={{ width: '100%' }}>
+            <AllocationFields selection={selection} />
+          </Form.Item>
           <Button
             htmlType="submit"
             aria-label="预览分录"
@@ -175,6 +327,26 @@ export default function ProcessPage() {
           >
             预览分录
           </Button>
+          <Button
+            onClick={() => {
+              void persistDraft().catch(() => undefined);
+            }}
+            loading={saveDraft.isPending}
+            disabled={busy || !dirty}
+          >
+            保存制证输入
+          </Button>
+          <Popconfirm
+            title="放弃尚未保存的制证输入？"
+            onConfirm={() => {
+              form.resetFields();
+              setSelected([]);
+              setDirty(false);
+              discardPreview();
+            }}
+          >
+            <Button disabled={busy || !dirty}>放弃制证输入</Button>
+          </Popconfirm>
         </Form>
       )}
       {plan && (
@@ -192,6 +364,32 @@ export default function ProcessPage() {
             {plan.settings.inputTaxTreatment === 'separate' ? '单列税科目' : '计入非抵扣成本/费用'}
             。凭证日期 {plan.date}，发票月份 {plan.period}。
           </p>
+          {plan.replacements.length > 0 && (
+            <Card size="small" title="将整体撤销并重新生成">
+              <ul>
+                {plan.replacements.map((r) => (
+                  <li key={r.groupId}>
+                    {r.displayNo}，来源发票 {r.members.map((m) => m.id).join('、')}
+                  </li>
+                ))}
+              </ul>
+              {plan.deletionPlan?.impacts
+                .filter((i) => i.oldNumber !== i.number)
+                .map((i) => (
+                  <p key={i.id}>
+                    凭证 #{i.id} 编号 {i.oldNumber} → {i.number}
+                  </p>
+                ))}
+              <Checkbox
+                checked={regenerateConfirmed}
+                disabled={busy}
+                onChange={(e) => setRegenerateConfirmed(e.target.checked)}
+              >
+                已核对原凭证与编号影响，确认撤销并重新生成
+              </Checkbox>
+              <p>撤销与新凭证一起保存；任一步失败均保留原凭证和发票关联。</p>
+            </Card>
+          )}
           {plan.newAccounts.length > 0 && (
             <Card size="small" title="拟新增往来下级科目（尚未保存）">
               <p>
@@ -206,7 +404,7 @@ export default function ProcessPage() {
               </ul>
               <Checkbox
                 checked={newAccountsConfirmed}
-                disabled={!canCreateAccounts}
+                disabled={!canCreateAccounts || busy}
                 onChange={(e) => setNewAccountsConfirmed(e.target.checked)}
               >
                 已核对并同意新增以上科目
@@ -235,6 +433,17 @@ export default function ProcessPage() {
                   },
                   { key: 'debit', title: '借方', dataIndex: 'debit', money: true, width: 130 },
                   { key: 'credit', title: '贷方', dataIndex: 'credit', money: true, width: 130 },
+                  { key: 'currency', title: '币种', dataIndex: 'currency', width: 90 },
+                  {
+                    key: 'fcAmount',
+                    title: '原币金额',
+                    dataIndex: 'fcAmount',
+                    money: true,
+                    width: 130,
+                  },
+                  { key: 'exchangeRate', title: '汇率', dataIndex: 'exchangeRate', width: 100 },
+                  { key: 'quantity', title: '数量', dataIndex: 'quantity', width: 100 },
+                  { key: 'unitPrice', title: '单价', dataIndex: 'unitPrice', width: 120 },
                 ]}
               />
               <Space>
@@ -253,6 +462,11 @@ export default function ProcessPage() {
                 fingerprint: plan.fingerprint,
                 requestId,
                 newAccountsConfirmed,
+                regenerate: plan.regenerate,
+                regenerateConfirmed,
+                allocations: plan.allocations,
+                firstNumber: plan.firstNumber,
+                deletionPlan: plan.deletionPlan ?? undefined,
               })
             }
           >
@@ -260,7 +474,9 @@ export default function ProcessPage() {
               type="primary"
               loading={generate.isPending}
               disabled={
-                plan.newAccounts.length > 0 && (!canCreateAccounts || !newAccountsConfirmed)
+                generate.isPending ||
+                (plan.newAccounts.length > 0 && (!canCreateAccounts || !newAccountsConfirmed)) ||
+                (plan.replacements.length > 0 && !regenerateConfirmed)
               }
             >
               确认生成凭证
@@ -291,20 +507,12 @@ export default function ProcessPage() {
                   去凭证处理
                 </Link>
                 {can && g.voucher.status === 'pending' && (
-                  <Popconfirm
-                    title={`整体撤销此凭证及全部 ${g.detail.ids.length} 张发票关联？`}
-                    onConfirm={() =>
-                      revoke.mutate({
-                        id: g.id,
-                        expectedRevision: g.voucher!.revision,
-                        confirmed: true,
-                      })
-                    }
-                  >
-                    <Button danger loading={revoke.isPending}>
-                      整体撤销
-                    </Button>
-                  </Popconfirm>
+                  <RevokeButton
+                    id={g.id}
+                    expectedRevision={g.voucher.revision}
+                    pending={revoke.isPending}
+                    onConfirm={revoke.mutateAsync}
+                  />
                 )}
               </>
             ) : (

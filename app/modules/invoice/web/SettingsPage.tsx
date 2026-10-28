@@ -30,7 +30,7 @@ function MappingFields({
       >
         <AccountSelect
           leafOnly={!byName}
-          filter={(a) => !a.currency && !a.quantityUnit && (!byName || !a.isLeaf)}
+          filter={(a) => !byName || !a.isLeaf}
           onChange={() => form.setFieldValue([role, 'dimensions'], {})}
         />
       </Form.Item>
@@ -136,7 +136,7 @@ export default function SettingsPage() {
         type="info"
         showIcon
         title="红字使用原借贷方向的负数分录；往来科目可按名称匹配"
-        description="按名称匹配须选择已有下级的结算上级科目，只匹配该科目下名称完全相同且唯一的科目，缺少时在制证预览中核对并确认新增；不自动新增客供辅助档案。统一辅助项仍应用于本次所选全部发票。外币及数量科目暂不支持。不根据税率认定纳税人或抵扣资格。修改映射不改历史来源凭证；比对读取当前税科目，变更后请核对历史差异。"
+        description="按名称匹配须选择已有下级的结算上级科目，只匹配名称完全相同且唯一的下级，缺少时在制证预览中确认新增。外币科目在制证时逐票填写原币金额与汇率；数量科目按同单位商品汇总，也可逐票填写。修改映射不改历史来源凭证；比对读取当前税科目，变更后请核对历史差异。"
         style={{ marginBottom: 16 }}
       />
       <QueryError error={query.error} retry={query.refetch} />

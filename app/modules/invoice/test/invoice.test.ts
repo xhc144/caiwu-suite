@@ -230,7 +230,7 @@ describe('w_fp_lr_1/_2 录入和状态保护', () => {
   });
 });
 describe('w_fp_sz/_2 / w_fp_pz 配置和来源凭证', () => {
-  it('末级映射、缺科目、必需辅助、外币/数量模式拒绝；参数乐观锁', async () => {
+  it('末级映射、缺科目、必需辅助、数量映射可保存；参数乐观锁', async () => {
     const api = caller(),
       cfg = await mapping(app.svc);
     expect(
@@ -247,15 +247,12 @@ describe('w_fp_sz/_2 / w_fp_pz 配置和来源凭证', () => {
     expect(
       await code(api.saveSettings({ ...cfg, business: { ...cfg.business, dimensions: {} } })),
     ).toBe('INVOICE_DIMENSION');
+    const quantityAccount = (await app.svc.accounts.require('1403')).id;
     expect(
-      await code(
-        api.saveSettings({
-          ...cfg,
-          business: { accountId: (await app.svc.accounts.require('1403')).id, dimensions: {} },
-        }),
-      ),
-    ).toBe('INVOICE_ACCOUNT_MODE');
-    await api.saveSettings(cfg);
+      await api.saveSettings({ ...cfg, business: { accountId: quantityAccount, dimensions: {} } }),
+    ).toBe(1);
+    expect((await api.settings({ direction: 'input' }))?.business.accountId).toBe(quantityAccount);
+    await api.saveSettings({ ...cfg, expectedRevision: 1 });
     expect(await code(api.saveSettings(cfg))).toBe('INVOICE_STALE');
   });
   it('5票汇总来源凭证：独立借贷期望、幂等与重复生成保护、pending/posted比对', async () => {
@@ -317,7 +314,10 @@ describe('w_fp_sz/_2 / w_fp_pz 配置和来源凭证', () => {
       await code(api.revoke({ id: g.id, expectedRevision: v.revision, confirmed: true })),
     ).toBe('INVOICE_CLOSED');
     await api.reopen({ period: 202602, expectedRevision: 1, confirmed: true });
-    await api.revoke({ id: g.id, expectedRevision: v.revision, confirmed: true });
+    await api.revoke({
+      ...(await api.previewRevoke({ id: g.id, expectedRevision: v.revision })),
+      confirmed: true,
+    });
     expect(await app.svc.vouchers.get(v.id)).toBeNull();
     const rows = await api.list({});
     expect(rows.every((r) => r.state === 'audited' && r.groupId === null)).toBe(true);

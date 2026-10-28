@@ -1,19 +1,21 @@
 import { Alert, Button, Space } from 'antd';
 import { Link } from 'react-router';
 import { formatMoney } from '@caiwu/core';
-import { queryClient } from '@caiwu/web-kit';
+import { queryClient, useSession } from '@caiwu/web-kit';
 import { exportToExcel, type DataColumn } from '@caiwu/ui';
 import { escapeHtml, printHtml } from '@caiwu/print';
 import type { Invoice, InvoiceFilter } from '../shared';
 import { api } from './api';
 
 export function Nav() {
+  const session = useSession();
   return (
     <Space wrap style={{ marginBottom: 16 }}>
       {[
         ['input', '进项发票'],
         ['output', '销项发票'],
         ['process', '发票处理'],
+        ...(session?.book.product === 'chengben' ? [['issue', '发票转出库']] : []),
         ['vat', '增值税比对'],
         ['settings', '参数设置'],
         ['summary', '发票汇总'],
@@ -55,15 +57,20 @@ export const invoiceColumns: DataColumn<Invoice>[] = [
   {
     key: 'state',
     title: '处理状态',
-    width: 100,
-    render: (_, r) => ({ draft: '草稿', audited: '已审核', generated: '已制证' })[r.state],
+    width: 160,
+    render: (_, r) =>
+      r.state === 'generated' && r.inventoryDocumentId != null
+        ? '已转出库、已制证'
+        : { draft: '草稿', audited: '已审核', generated: '已制证', issued: '已转出库' }[r.state],
   },
   {
     key: 'voucher',
     title: '凭证',
     width: 170,
     render: (_, r) =>
-      r.voucherId ? (
+      r.inventoryDocumentId ? (
+        <Link to={`/m/inventory/issues?id=${r.inventoryDocumentId}`}>出库单 {r.issueNumber}</Link>
+      ) : r.voucherId ? (
         <Link to={`/m/voucher-entry/edit?id=${r.voucherId}`}>
           {r.voucherNo} {r.voucherStatus}
         </Link>
