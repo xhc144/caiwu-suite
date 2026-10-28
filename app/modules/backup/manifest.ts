@@ -3,7 +3,7 @@ import { defineManifest } from '@caiwu/core';
 export default defineManifest({
   id: 'backup',
   name: '备份恢复',
-  description: '完整 SQLite 在线备份、可携带包校验及恢复副本',
+  description: '完整账套备份、可携带包校验、新账套及覆盖恢复',
   products: 'all',
   permissions: [
     { id: 'backup.view', name: '查看备份目录' },

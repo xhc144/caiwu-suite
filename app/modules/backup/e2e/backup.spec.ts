@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import { DEFAULT_SETTINGS } from '../shared';
 
-test('w_bf → w_hf 阶段 E2E：真实备份、修改设置、安全新副本、重新登录并核对', async ({
+test('w_bf → w_hf 新副本恢复：真实备份、修改设置、安全新副本、重新登录并核对', async ({
   page,
   request,
 }) => {
@@ -16,7 +16,7 @@ test('w_bf → w_hf 阶段 E2E：真实备份、修改设置、安全新副本�
   await page.goto('/m/backup/');
   await expect(page.getByRole('heading', { name: '备份恢复' })).toBeVisible();
   await expect(
-    page.getByText('启动 / 正常退出 / 定时未接入；配置已保存，尚未全程生效'),
+    page.getByText('已启用自动备份：本地服务按启动、定时和正常退出设置执行'),
   ).toBeVisible();
   await page.getByLabel('备份名称', { exact: true }).fill('阶段完整备份');
   await page.getByRole('button', { name: '开始备份', exact: true }).click();
@@ -37,7 +37,12 @@ test('w_bf → w_hf 阶段 E2E：真实备份、修改设置、安全新副本�
   await page.getByLabel('副本名称', { exact: true }).fill('阶段恢复副本');
   await row.getByRole('button', { name: '恢复预览', exact: true }).click();
   await expect(page.getByText(original.bookName, { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('202601 / 202601', { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole('row')
+      .filter({ has: page.getByText('启用 / 当前期间', { exact: true }) })
+      .getByText('202601 / 202601', { exact: true }),
+  ).toBeVisible();
   await page.getByLabel('恢复确认文字', { exact: true }).fill('恢复副本 阶段恢复副本');
   await page.getByLabel('管理员密码', { exact: true }).fill('admin');
   const restoreResponse = page.waitForResponse(
@@ -66,7 +71,7 @@ test('w_bf → w_hf 阶段 E2E：真实备份、修改设置、安全新副本�
   await expect(page).toHaveURL(/\/home$/);
   await page.getByRole('menuitem', { name: '备份恢复', exact: true }).click();
   await expect(page.getByRole('heading', { name: '备份恢复' })).toBeVisible();
-  await expect(page.getByLabel('定时间隔 / 分钟（未接入）')).toHaveValue('15');
+  await expect(page.getByLabel('定时间隔 / 分钟')).toHaveValue('15');
   const fresh = await callApi<{ token: string }>(request, 'core.auth.login', {
     bookId: original.bookId,
     userCode: 'admin',
@@ -143,6 +148,3 @@ test('w_tzjl_get_all：浏览器多包逐个预检，坏包逐项显示原因，
     page.getByRole('row').filter({ has: page.getByText('重复包.caiwubak', { exact: true }) }),
   ).toContainText('重复来源 ID');
 });
-
-// 原定覆盖 E2E 仍是完整目标；W0 缺独占维护锁/排空，禁止用在线换文件使其通过。
-test.skip('w_hf 原定覆盖 E2E：备份→改数据→pre-restore→覆盖原账套→重登→核对回退及保护备份', async () => {});

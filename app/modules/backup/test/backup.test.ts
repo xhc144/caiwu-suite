@@ -420,7 +420,7 @@ describe('w_hf / w_tzjl_get 校验和确认', () => {
     expect(await app.svc.accounts.list()).toEqual(before);
     expect(await app.runtime.bookStore.list()).toHaveLength(1);
   });
-  it('w_hf：覆盖先做完整 pre-restore，修改目标后确认失效；无维护锁永不换文件', async () => {
+  it('w_hf：覆盖先做完整保护备份和受管暂存，修改目标后确认失效', async () => {
     const row = await create();
     const plan = await api.preview({ id: row.id, purpose: 'overwrite' });
     expect(
@@ -435,13 +435,11 @@ describe('w_hf / w_tzjl_get 校验和确认', () => {
     expect((await api.prepareOverwrite({ planId: plan.id })).protectionId).toBe(
       protection.protectionId,
     );
-    expect(protection.available).toBe(false);
+    expect(protection.available).toBe(true);
+    expect(Date.parse(protection.expiresAt)).toBeGreaterThan(Date.now());
     expect((await api.list()).find((r) => r.id === protection.protectionId)?.kind).toBe(
       'pre-restore',
     );
-    expect(
-      await code(api.restore({ planId: plan.id, text: plan.confirmation, password: 'admin' })),
-    ).toBe('BACKUP_MAINTENANCE_REQUIRED');
     await app.svcFor('backup').settings.set('revision', 'changed');
     expect(
       await code(api.restore({ planId: plan.id, text: plan.confirmation, password: 'admin' })),
@@ -529,7 +527,7 @@ describe('w_hf / w_tzjl_get 校验和确认', () => {
 describe('w_autobak 控制器与保留规则', () => {
   it('w_autobak：默认开启；空目录、路径、无效间隔/份数被拒绝，失败保留旧配置', async () => {
     expect((await api.overview()).config.enabled).toBe(true);
-    expect((await api.overview()).runtimeStatus).toContain('未接入');
+    expect((await api.overview()).runtimeStatus).toContain('已启用自动备份');
     expect((await api.overview()).nextAt).toBeNull();
     for (const patch of [
       { directory: '' },

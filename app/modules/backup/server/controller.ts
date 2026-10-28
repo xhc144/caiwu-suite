@@ -26,7 +26,7 @@ const systemClock: Clock = {
   set: (fn, ms) => setTimeout(fn, ms),
   clear: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
 };
-/** 可接入 runtime 的控制器。W0 没有模块生命周期，当前未自动实例化或从页面启动。 */
+/** 由服务宿主统一持有的自动备份控制器；页面只保存设置，不启动第二套调度。 */
 export class AutomaticBackupController {
   readonly #clock: Clock;
   readonly #books = new Map<string, Entry>();
