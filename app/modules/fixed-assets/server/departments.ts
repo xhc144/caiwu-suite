@@ -7,11 +7,16 @@ export const assetDepartmentReferences: NonNullable<
   CoreServiceProviders['dimensionReferences']
 >[number] = async (ctx, id) => {
   const db = ctx.db.withTables<FixedAssetsTables>();
-  const [cards, lines] = await Promise.all([
+  const [cards, transfers, lines] = await Promise.all([
     db
       .selectFrom('fixed_assets_card')
       .select((eb) => eb.fn.countAll<number>().as('count'))
       .where('department_id', '=', id)
+      .executeTakeFirstOrThrow(),
+    db
+      .selectFrom('fixed_assets_transfer')
+      .select((eb) => eb.fn.countAll<number>().as('count'))
+      .where((eb) => eb.or([eb('from_department_id', '=', id), eb('to_department_id', '=', id)]))
       .executeTakeFirstOrThrow(),
     db
       .selectFrom('fixed_assets_line')
@@ -22,6 +27,11 @@ export const assetDepartmentReferences: NonNullable<
   return [
     { category: '资产卡片', count: cards.count, to: '/m/fixed-assets/cards?includeDisposed=true' },
     { category: '资产折旧记录', count: lines.count, to: '/m/fixed-assets/queries' },
+    {
+      category: '资产转移记录',
+      count: transfers.count,
+      to: '/m/fixed-assets/cards?includeDisposed=true',
+    },
   ].filter((reference) => reference.count > 0);
 };
 

@@ -7,6 +7,8 @@ import { notify } from '@caiwu/web-kit';
 import { api } from './api';
 import { Confirm, refresh } from './common';
 import { useAssetDraft } from './useAssetDraft';
+import { batchFieldLabels, type BatchSchema } from '../shared';
+import type { z } from 'zod';
 export default function BatchPage() {
   const [initial] = useUrlFilters({ keyword: '', field: 'model', value: '' });
   const [f, setF] = useState(initial);
@@ -14,7 +16,7 @@ export default function BatchPage() {
   const [show, setShow] = useState(false);
   const input = {
     filter: { keyword: f.keyword },
-    field: f.field as 'model' | 'unit' | 'lifeMonths' | 'acquired' | 'padCode',
+    field: f.field as z.input<typeof BatchSchema>['field'],
     value: f.value,
   };
   const preview = useQuery({ ...api.batchPreview.queryOptions(input), enabled: show && !!f.value });
@@ -61,13 +63,7 @@ export default function BatchPage() {
         <Form.Item name="field" label="修改字段">
           <Select
             style={{ width: 180 }}
-            options={[
-              { value: 'model', label: '规格型号' },
-              { value: 'unit', label: '单位' },
-              { value: 'lifeMonths', label: '使用年限（月）' },
-              { value: 'acquired', label: '购置日期' },
-              { value: 'padCode', label: '编号补零长度' },
-            ]}
+            options={Object.entries(batchFieldLabels).map(([value, label]) => ({ value, label }))}
           />
         </Form.Item>
         <Form.Item name="value" label="新值" rules={[{ required: true }]}>
@@ -82,15 +78,7 @@ export default function BatchPage() {
         <>
           <p>
             确认字段：
-            {f.field === 'padCode'
-              ? '编号补零长度'
-              : f.field === 'lifeMonths'
-                ? '使用年限（月）'
-                : f.field === 'acquired'
-                  ? '购置日期'
-                  : f.field === 'unit'
-                    ? '单位'
-                    : '规格型号'}
+            {batchFieldLabels[input.field]}
             ；输入值：{f.value}
           </p>
           <DataTable
@@ -114,7 +102,7 @@ export default function BatchPage() {
       )}
       <Alert
         type="info"
-        title="按使用日期重算累计折旧尚未开放。请通过期初导入填写已核对的累计数；已有历史记录不能批量覆盖。"
+        title="按使用日期重算累计折旧请在固定资产台账点击“累计折旧重算”，核对差额后保存；重算保留可撤回的原数快照。"
       />
     </PageContainer>
   );

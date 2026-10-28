@@ -38,6 +38,13 @@ export const CardSchema = z
     code: zCode,
     name: z.string().trim().min(1, '设备名称必填').max(100),
     reference: z.string().max(100).default(''),
+    manufacturer: z.string().max(100).default(''),
+    installation: z.string().max(200).default(''),
+    manufactured: zDate.nullable().default(null),
+    machineCode: z.string().max(100).default(''),
+    custodian: z.string().max(100).default(''),
+    currencyCode: z.string().trim().min(1).max(10).default('CNY'),
+    foreignOriginal: quantitySchema.default('0'),
     categoryId: zId,
     statusId: zId,
     purposeId: zId,
@@ -104,31 +111,138 @@ export const queryFields = {
   name: { label: '名称', type: 'text' },
   amount: { label: '折旧额（元）', type: 'number' },
   useDate: { label: '使用日期', type: 'date' },
+  reference: { label: '参考编号', type: 'text' },
+  model: { label: '规格型号', type: 'text' },
+  manufacturer: { label: '制造厂', type: 'text' },
+  installation: { label: '当前安装地点', type: 'text' },
+  machineCode: { label: '本机编号', type: 'text' },
+  custodian: { label: '当前保管人', type: 'text' },
+  acquired: { label: '购置日期', type: 'date' },
+  manufactured: { label: '制造日期', type: 'date' },
+  original: { label: '该月原值（元）', type: 'number' },
+  residual: { label: '该月残值（元）', type: 'number' },
+  depreciation: { label: '月初累计折旧（元）', type: 'number' },
+  months: { label: '月初累计月数', type: 'integer' },
+  lifeMonths: { label: '使用年限（月）', type: 'integer' },
+  period: { label: '折旧月份', type: 'integer' },
+  quantity: { label: '当前数量', type: 'decimal' },
+  work: { label: '本月工作量', type: 'decimal' },
+  totalWork: { label: '总工作量', type: 'decimal' },
+  method: { label: '折旧方法码', type: 'text' },
+  currencyCode: { label: '币种', type: 'text' },
+  foreignOriginal: { label: '外币原值（原币金额）', type: 'decimal' },
+  department: { label: '部门名称', type: 'text' },
+  category: { label: '类别名称', type: 'text' },
+  purpose: { label: '用途名称', type: 'text' },
+  status: { label: '当前状态名称', type: 'text' },
 } as const;
-export const queryOperators = { eq: '等于', contains: '含有', gt: '大于', lt: '小于' } as const;
+export const queryOperators = {
+  eq: '等于',
+  contains: '含有',
+  gt: '大于',
+  lt: '小于',
+  ne: '不等于',
+  notContains: '不含有',
+  gte: '大于等于',
+  lte: '小于等于',
+} as const;
 export const QueryConditionSchema = z
   .object({
-    field: z.enum(['code', 'name', 'amount', 'useDate']),
-    op: z.enum(['eq', 'contains', 'gt', 'lt']),
+    field: z.enum([
+      'code',
+      'name',
+      'amount',
+      'useDate',
+      'reference',
+      'model',
+      'manufacturer',
+      'installation',
+      'machineCode',
+      'custodian',
+      'acquired',
+      'manufactured',
+      'original',
+      'residual',
+      'depreciation',
+      'months',
+      'lifeMonths',
+      'period',
+      'quantity',
+      'work',
+      'totalWork',
+      'method',
+      'currencyCode',
+      'foreignOriginal',
+      'department',
+      'category',
+      'purpose',
+      'status',
+    ]),
+    op: z.enum(['eq', 'contains', 'gt', 'lt', 'ne', 'notContains', 'gte', 'lte']),
     value: z.string().min(1, '条件值不能为空').max(500, '条件值不能超过 500 字'),
   })
   .strict();
 export type QueryCondition = z.infer<typeof QueryConditionSchema>;
 export const MAX_QUERY_CONDITIONS = 20;
+export const queryDisplayLabels = {
+  period: '月份',
+  code: '编号',
+  name: '设备',
+  department: '部门',
+  category: '类别',
+  purpose: '用途',
+  work: '月工作量',
+  amount: '折旧额',
+  issue: '跳过或说明',
+  reference: '参考编号',
+  model: '规格型号',
+  method: '折旧方法码',
+  useDate: '使用日期',
+  acquired: '购置日期',
+  original: '该月原值',
+  residual: '该月预计残值',
+  depreciation: '月初累计折旧',
+  months: '月初累计月数',
+  lifeMonths: '使用年限（月）',
+  quantity: '当前数量',
+  totalWork: '总工作量',
+  manufacturer: '制造厂',
+  installation: '当前安装地点',
+  machineCode: '本机编号',
+  custodian: '当前保管人',
+  currencyCode: '币种',
+  foreignOriginal: '外币原值',
+  manufactured: '制造日期',
+} as const;
+export const queryMoneyColumns = ['amount', 'original', 'residual', 'depreciation'] as const;
 
 /** 页面与服务端共用条件语义；字段、操作符仍由白名单 schema 验证。 */
 export function queryConditionProblem(c: QueryCondition) {
   if (!c.value.trim())
     return { code: 'QUERY_VALUE', message: '条件值不能为空', hint: '填写条件值或删除该条件' };
-  if (c.op === 'contains' && queryFields[c.field].type !== 'text')
+  if ((c.op === 'contains' || c.op === 'notContains') && queryFields[c.field].type !== 'text')
     return {
       code: 'QUERY_OPERATOR',
-      message: `${c.field === 'amount' ? '金额' : '日期'}不能使用「含有」操作符`,
+      message: `${queryFields[c.field].type === 'number' ? '金额' : queryFields[c.field].type === 'date' ? '日期' : '数值'}不能使用「${queryOperators[c.op]}」操作符`,
       hint: '请选择等于、大于或小于',
     };
-  if (c.field === 'amount' && (!/^\d+$/.test(c.value) || !Number.isSafeInteger(Number(c.value))))
+  if (
+    queryFields[c.field].type === 'number' &&
+    (!/^\d+$/.test(c.value) || !Number.isSafeInteger(Number(c.value)))
+  )
     return { code: 'QUERY_NUMBER', message: '金额条件必须为整数分', hint: '例如 100 元填 10000' };
-  if (c.field === 'useDate' && !isValidDate(c.value))
+  if (
+    queryFields[c.field].type === 'integer' &&
+    (!/^\d+$/.test(c.value) || !Number.isSafeInteger(Number(c.value)))
+  )
+    return { code: 'QUERY_NUMBER', message: '数量条件必须为非负整数', hint: '请核对月份或月数' };
+  if (queryFields[c.field].type === 'decimal' && !quantitySchema.safeParse(c.value).success)
+    return {
+      code: 'QUERY_NUMBER',
+      message: '数量或工作量必须为非负数，最多六位小数',
+      hint: '请修正数量条件',
+    };
+  if (queryFields[c.field].type === 'date' && !isValidDate(c.value))
     return { code: 'QUERY_DATE', message: '日期条件格式应为 YYYY-MM-DD', hint: '请填写真实日期' };
   return null;
 }
@@ -143,6 +257,40 @@ export const QuerySchema = z
     categoryId: zId.optional(),
     purposeId: zId.optional(),
     conditions: z.array(QueryConditionSchema).max(MAX_QUERY_CONDITIONS).default([]),
+    expression: z.string().max(500).default(''),
+    displayColumns: z
+      .array(z.enum(Object.keys(queryDisplayLabels) as (keyof typeof queryDisplayLabels)[]))
+      .min(1)
+      .max(Object.keys(queryDisplayLabels).length)
+      .refine((v) => new Set(v).size === v.length, '显示列不能重复')
+      .default([
+        'period',
+        'code',
+        'name',
+        'department',
+        'category',
+        'purpose',
+        'work',
+        'amount',
+        'issue',
+      ]),
+    sortField: z
+      .enum(Object.keys(queryDisplayLabels) as (keyof typeof queryDisplayLabels)[])
+      .default('period'),
+    sortDirection: z.enum(['asc', 'desc']).default('asc'),
+    sorts: z
+      .array(
+        z
+          .object({
+            field: z.enum(Object.keys(queryDisplayLabels) as (keyof typeof queryDisplayLabels)[]),
+            direction: z.enum(['asc', 'desc']),
+          })
+          .strict(),
+      )
+      .max(5)
+      .refine((rows) => new Set(rows.map((r) => r.field)).size === rows.length, '排序字段不能重复')
+      .default([]),
+    hideRepeated: z.boolean().default(false),
     departmentLevel: z.enum(['detail', 'top']).default('detail'),
     categoryLevel: z.enum(['detail', 'top']).default('detail'),
   })
@@ -186,7 +334,65 @@ export const ReportSchema = z.object({
 });
 export const BatchSchema = z.object({
   filter: CardFilter,
-  field: z.enum(['model', 'unit', 'lifeMonths', 'acquired', 'padCode']),
+  field: z.enum([
+    'model',
+    'unit',
+    'lifeMonths',
+    'acquired',
+    'padCode',
+    'name',
+    'reference',
+    'manufacturer',
+    'machineCode',
+    'manufactured',
+  ]),
   value: z.string().min(1).max(500),
 });
+export const batchFieldLabels = {
+  model: '规格型号',
+  unit: '单位',
+  lifeMonths: '使用年限（月）',
+  acquired: '购置日期',
+  padCode: '编号补零长度',
+  name: '设备名称',
+  reference: '参考编号',
+  manufacturer: '制造厂',
+  machineCode: '本机编号',
+  manufactured: '制造日期',
+} as const;
+export const ListEditSchema = z
+  .object({
+    name: z.string().trim().min(1, '设备名称必填').max(100),
+    model: z.string().max(500),
+    unit: z.string().max(20),
+    reference: z.string().max(100),
+    manufacturer: z.string().max(100),
+    machineCode: z.string().max(100),
+  })
+  .partial()
+  .strict();
 export const ImportRowSchema = z.object({ row: z.number().int().positive(), data: z.unknown() });
+
+export const AssetPrintSettingsSchema = z
+  .object({
+    version: z.literal(1).default(1),
+    labelTitle: z.string().trim().min(1).max(40).default('固定资产标签'),
+    labelFields: z
+      .array(z.enum(['code', 'name', 'department', 'category', 'date', 'description', 'reference']))
+      .min(2)
+      .max(7)
+      .refine(
+        (v) => new Set(v).size === v.length && v.includes('code') && v.includes('name'),
+        '标签字段不能重复且必须包含编号和名称',
+      )
+      .default(['code', 'name', 'department', 'category']),
+    labelFont: z.number().int().min(6).max(12).default(9),
+    labelBorder: z.boolean().default(false),
+    pageSize: z.enum(['A4', 'B5']).default('A4'),
+    rowsPerPage: z.number().int().min(5).max(30).default(18),
+    color: z.enum(['monochrome', 'color']).default('monochrome'),
+    scale: z.number().int().min(50).max(100).default(100),
+    ruler: z.boolean().default(false),
+  })
+  .strict();
+export type AssetPrintSettings = z.output<typeof AssetPrintSettingsSchema>;
