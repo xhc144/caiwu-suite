@@ -1,0 +1,492 @@
+{
+  "schemaVersion": 1,
+  "id": "individual-business-1997",
+  "version": "1.0.0",
+  "name": "个体工商户会计制度（复式账）",
+  "regime": "individual-business",
+  "description": "按财会字〔1997〕19号预置25项一级科目、存货常用分类、两类待处理损失及本年经营所得/应弥补的亏损明细，适用于执行该制度的复式账个体工商户；应收及预收款项按往来对象核算。保留原文“营业税金”等科目名称，不预设税率、不自动计算应税所得；具体税种、业务品种、费用项目及亏损发生年度下级按实际增设。税后列支费用转留存利润，与应税所得分别核算。仅新建账套加载，不自动修改已有账套；不含简易账、法定报表及自动年度亏损弥补。",
+  "order": 29,
+  "status": "current",
+  "codeScheme": "3-2-2",
+  "categories": [
+    {
+      "id": "asset",
+      "name": "资产",
+      "direction": "debit",
+      "isPnl": false
+    },
+    {
+      "id": "liability",
+      "name": "负债",
+      "direction": "credit",
+      "isPnl": false
+    },
+    {
+      "id": "owner-equity",
+      "name": "业主权益",
+      "direction": "credit",
+      "isPnl": false
+    },
+    {
+      "id": "cost",
+      "name": "成本",
+      "direction": "debit",
+      "isPnl": false
+    },
+    {
+      "id": "pnl",
+      "name": "损益",
+      "direction": "debit",
+      "isPnl": true
+    }
+  ],
+  "accounts": [
+    {
+      "code": "101",
+      "name": "现金",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第101号科目现金使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "cash": true
+    },
+    {
+      "code": "102",
+      "name": "银行存款",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第102号科目银行存款使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "bank": true
+    },
+    {
+      "code": "111",
+      "name": "应收款项",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第111号科目应收款项使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向；第111号科目第六项应按债务人设明细账，应用映射为必填往来对象，预收款项亦在此科目核算",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "balanceNature": "both",
+      "closingRule": "none",
+      "partner": true
+    },
+    {
+      "code": "121",
+      "name": "存货",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第121号科目存货使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none"
+    },
+    {
+      "code": "12101",
+      "name": "材料",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第121号科目说明第一项库存材料（包括设备维修、劳动保护及办公材料）（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；12101 材料，原文未规定明细数字编码，采用应用默认编码；存货前四项为按原文范围预设的常用分类",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "12102",
+      "name": "商品",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第121号科目说明第一项库存商品（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；12102 商品，原文未规定明细数字编码，采用应用默认编码；存货前四项为按原文范围预设的常用分类",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "12103",
+      "name": "产成品",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第121号科目说明第一项库存产成品（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；12103 产成品，原文未规定明细数字编码，采用应用默认编码；存货前四项为按原文范围预设的常用分类",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "12104",
+      "name": "半成品",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第121号科目说明第一项库存半成品（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；12104 半成品，原文未规定明细数字编码，采用应用默认编码；存货前四项为按原文范围预设的常用分类",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "12105",
+      "name": "低值易耗品",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第121号科目说明第一、五项可单设低值易耗品明细科目（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；12105 低值易耗品，原文未规定明细数字编码，采用应用默认编码；存货前四项为按原文范围预设的常用分类",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "131",
+      "name": "待摊费用",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第131号科目待摊费用使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none"
+    },
+    {
+      "code": "141",
+      "name": "待处理财产损失",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第141号科目待处理财产损失使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none"
+    },
+    {
+      "code": "14101",
+      "name": "待处理存货损失",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第141号科目说明第二项第1项规定明细（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；14101 待处理存货损失，原文未规定明细数字编码，采用应用默认编码；存货前四项为按原文范围预设的常用分类",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "14102",
+      "name": "待处理固定资产损失",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第141号科目说明第二项第2项规定明细（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；14102 待处理固定资产损失，原文未规定明细数字编码，采用应用默认编码；存货前四项为按原文范围预设的常用分类",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "151",
+      "name": "固定资产",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第151号科目固定资产使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none"
+    },
+    {
+      "code": "152",
+      "name": "累计折旧",
+      "category": "asset",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第152号科目累计折旧使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "credit",
+      "closingRule": "none",
+      "isContra": true
+    },
+    {
+      "code": "153",
+      "name": "固定资产清理",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第153号科目固定资产清理使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both",
+      "closingRule": "none"
+    },
+    {
+      "code": "154",
+      "name": "在建工程",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第154号科目在建工程使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none"
+    },
+    {
+      "code": "161",
+      "name": "无形资产",
+      "category": "asset",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第161号科目无形资产使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none"
+    },
+    {
+      "code": "201",
+      "name": "借入款项",
+      "category": "liability",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第201号科目借入款项使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "credit",
+      "closingRule": "none"
+    },
+    {
+      "code": "211",
+      "name": "应付款项",
+      "category": "liability",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第211号科目应付款项使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both",
+      "closingRule": "none"
+    },
+    {
+      "code": "212",
+      "name": "应付工资",
+      "category": "liability",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第212号科目应付工资使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "credit",
+      "closingRule": "none"
+    },
+    {
+      "code": "213",
+      "name": "应交税金",
+      "category": "liability",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第213号科目应交税金使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both",
+      "closingRule": "none"
+    },
+    {
+      "code": "301",
+      "name": "业主投资",
+      "category": "owner-equity",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第301号科目业主投资使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "credit",
+      "closingRule": "none"
+    },
+    {
+      "code": "311",
+      "name": "本年应税所得",
+      "category": "owner-equity",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第311号科目本年应税所得使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both",
+      "closingRule": "none"
+    },
+    {
+      "code": "31101",
+      "name": "本年经营所得",
+      "category": "owner-equity",
+      "direction": "credit",
+      "balanceNature": "both",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第311号科目第二项规定两明细（官方目录https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html；完整条文通过京财会〔1997〕1162号原文转载https://www.shui5.cn/article/2b/33893$10.html核对）；31101 本年经营所得，明细数字编码采用应用默认编码；应弥补亏损按实际发生年度继续设置下级，不预造年度或金额",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "31102",
+      "name": "应弥补的亏损",
+      "category": "owner-equity",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [],
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）2第311号科目第二项规定两明细（官方目录https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html；完整条文通过京财会〔1997〕1162号原文转载https://www.shui5.cn/article/2b/33893$10.html核对）；31102 应弥补的亏损，明细数字编码采用应用默认编码；应弥补亏损按实际发生年度继续设置下级，不预造年度或金额",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false
+    },
+    {
+      "code": "312",
+      "name": "留存利润",
+      "category": "owner-equity",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第312号科目留存利润使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both",
+      "closingRule": "none"
+    },
+    {
+      "code": "401",
+      "name": "生产成本",
+      "category": "cost",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第401号科目生产成本使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "none"
+    },
+    {
+      "code": "501",
+      "name": "营业收入",
+      "category": "pnl",
+      "direction": "credit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第501号科目营业收入使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "credit",
+      "closingRule": "profit"
+    },
+    {
+      "code": "502",
+      "name": "营业成本",
+      "category": "pnl",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第502号科目营业成本使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "profit"
+    },
+    {
+      "code": "503",
+      "name": "营业税金",
+      "category": "pnl",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第503号科目营业税金使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "profit"
+    },
+    {
+      "code": "504",
+      "name": "营业费用",
+      "category": "pnl",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第504号科目营业费用使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "profit"
+    },
+    {
+      "code": "511",
+      "name": "营业外收支",
+      "category": "pnl",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第511号科目营业外收支使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both",
+      "closingRule": "profit"
+    },
+    {
+      "code": "521",
+      "name": "税后列支费用",
+      "category": "pnl",
+      "direction": "debit",
+      "source": "财会字〔1997〕19号《个体工商户会计制度（试行）》二（一）1会计科目表、2第521号科目税后列支费用使用说明（https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html）；余额方向为应用默认显示方向；二（二）会计报表留存利润表编制说明第3项：税后列支费用转入留存利润，不计入本年应税所得",
+      "sourceVersion": "财会字〔1997〕19号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit",
+      "closingRule": "retained-earnings"
+    }
+  ],
+  "voucherTypes": [
+    {
+      "code": "记",
+      "name": "记账凭证"
+    }
+  ],
+  "currencies": [],
+  "reports": [],
+  "sources": [
+    {
+      "title": "财政部、国家税务总局《个体工商户会计制度（试行）》（财会字〔1997〕19号）",
+      "file": "https://fgk.mof.gov.cn/ui/src/views/law_html/82901.html",
+      "note": "财政部法规库列为有效；二（一）会计科目表共25项，使用说明第111、121、141号科目；二（二）会计报表留存利润表编制说明第3项。HTML按章节及科目定位；明细数字编码为应用默认。"
+    },
+    {
+      "title": "国家税务总局《个体工商户建账管理暂行办法》（2018年修正）",
+      "file": "https://fgk.chinatax.gov.cn/zcfgk/c100011/c5195238/content.html",
+      "note": "现行第九条规定设置复式账的个体工商户按《个体工商户会计制度（试行）》进行财务会计核算；模板不把已变更的税收比例作为会计制度预设。"
+    },
+    {
+      "title": "京财会〔1997〕1162号所转发财会字〔1997〕19号原文转载（税屋）",
+      "file": "https://www.shui5.cn/article/2b/33893$10.html",
+      "note": "第311号科目第二项：“本年经营所得”“应弥补的亏损”两明细；续第11页按亏损发生年度设下级。用于核对原正式制度条文，不是新法规或法规现行性的独立依据。官方法规库已核有效性，整页抓取受限，未声称取得官方全文。"
+    },
+    {
+      "title": "国家税务总局《个体工商户个人所得税计税办法》（2018年修正）",
+      "file": "https://fgk.chinatax.gov.cn/zcfgk/c100011/c5196330/5196330/files/8928948941428b3369268bb3a6df_1.0.pdf",
+      "note": "PDF第2页第七条规定收入减成本、费用、税金、损失、其他支出及允许弥补以前年度亏损计算应税所得；PDF第4页第十五条不准税前扣除项目、第5页第十七条亏损结转弥补。仅核实核算边界，本模板不自动计算税额或判断扣除资格。"
+    }
+  ]
+}

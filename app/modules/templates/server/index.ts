@@ -5,10 +5,12 @@ import farmer from '../templates/farmer-cooperative-2023.json' with { type: 'jso
 import rural from '../templates/rural-collective-2024.json' with { type: 'json' };
 import union from '../templates/trade-union-2022.json' with { type: 'json' };
 import grassroots from '../templates/grassroots-trade-union-2022.json' with { type: 'json' };
+import schoolCanteen from '../templates/school-canteen-anhui-2021.json' with { type: 'json' };
+import individual from '../templates/individual-business-1997.json' with { type: 'json' };
 
 const m = moduleKit(manifest);
 
 export default defineServerModule(manifest, {
   router: m.router({}),
-  templates: [nonprofit, farmer, rural, union, grassroots],
+  templates: [nonprofit, farmer, rural, union, grassroots, schoolCanteen, individual],
 });

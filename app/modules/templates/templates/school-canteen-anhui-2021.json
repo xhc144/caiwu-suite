@@ -1,0 +1,780 @@
+{
+  "schemaVersion": 1,
+  "id": "school-canteen-anhui-2021",
+  "version": "1.0.0",
+  "name": "安徽营养改善计划学校食堂（2021）",
+  "regime": "school-canteen-anhui",
+  "description": "适用于安徽省各级人民政府批准实施学生营养改善计划的中小学校食堂，按皖教秘〔2021〕215号自2021年1月1日起试行。包含15项一级科目、原文8项二级科目以及营养餐收入、伙食费用、库存物品和往来类别明细；原文未统一规定的明细数字编码采用4-2-2应用默认，可按同位一级编码选择4-3-3。往来按真实债务人或债权单位（个人）设置必填对象，不预设实际对象。营养餐不设置人工费、水电费、燃料费和低值易耗品明细；固定资产按规定转入学校管理，不在食堂账内增设。仅新建账套加载；未提供营养餐与非营养餐分轨自动结转、IC卡导入、学校报表合并及配套报表。",
+  "order": 28,
+  "status": "current",
+  "codeScheme": "4-2-2",
+  "categories": [
+    {
+      "id": "asset",
+      "name": "资产",
+      "direction": "debit",
+      "isPnl": false
+    },
+    {
+      "id": "liability",
+      "name": "负债",
+      "direction": "credit",
+      "isPnl": false
+    },
+    {
+      "id": "net-assets",
+      "name": "净资产",
+      "direction": "credit",
+      "isPnl": false
+    },
+    {
+      "id": "revenue",
+      "name": "收入",
+      "direction": "credit",
+      "isPnl": true
+    },
+    {
+      "id": "expense",
+      "name": "费用",
+      "direction": "debit",
+      "isPnl": true
+    }
+  ],
+  "accounts": [
+    {
+      "code": "1001",
+      "name": "库存现金",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；1001 库存现金",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "cash": true,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "1002",
+      "name": "银行存款",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；1002 银行存款",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "bank": true,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "1218",
+      "name": "其他应收款",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；1218 其他应收款；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "121801",
+      "name": "营养餐拨款",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分4401第三项（三）及第六部分例13；121801 营养餐拨款；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "121802",
+      "name": "备用金",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1218第一、二项；121802 备用金；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "121899",
+      "name": "其他应收款",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1218第二项；未单列类别的其他应收及暂付款；121899 其他应收款；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "1302",
+      "name": "库存物品",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；1302 库存物品",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130201",
+      "name": "粮食",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130201 粮食；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130202",
+      "name": "食用油",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130202 食用油；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130203",
+      "name": "蔬菜",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130203 蔬菜；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130204",
+      "name": "肉（豆）制品",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130204 肉（豆）制品；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130205",
+      "name": "水产品",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130205 水产品；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130206",
+      "name": "蛋奶类",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130206 蛋奶类；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130207",
+      "name": "调料",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130207 调料；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130208",
+      "name": "燃料",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130208 燃料；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "130209",
+      "name": "其他材料",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分1302第二项（可按九类进行明细核算）；130209 其他材料；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "debit"
+    },
+    {
+      "code": "1902",
+      "name": "待处置财产损溢",
+      "category": "asset",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；1902 待处置财产损溢",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both"
+    },
+    {
+      "code": "2302",
+      "name": "应付账款",
+      "category": "liability",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；2302 应付账款；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "2305",
+      "name": "预收伙食费",
+      "category": "liability",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；2305 预收伙食费",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "credit"
+    },
+    {
+      "code": "2307",
+      "name": "其他应付款",
+      "category": "liability",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；2307 其他应付款；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "230701",
+      "name": "营养餐拨款",
+      "category": "liability",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分2307第二、三项；230701 营养餐拨款；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "230799",
+      "name": "其他应付暂收款",
+      "category": "liability",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分2307第二、三项；230799 其他应付暂收款；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码；债务人/债权单位（或个人）按必填往来对象辅助核算，类别由下级科目区分（应用映射）",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
+      "partner": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "3001",
+      "name": "累计盈余",
+      "category": "net-assets",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；3001 累计盈余",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both"
+    },
+    {
+      "code": "300101",
+      "name": "营养餐累计盈余",
+      "category": "net-assets",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；300101 营养餐累计盈余",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both"
+    },
+    {
+      "code": "300102",
+      "name": "非营养餐累计盈余",
+      "category": "net-assets",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；300102 非营养餐累计盈余",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both"
+    },
+    {
+      "code": "3301",
+      "name": "本期盈余",
+      "category": "net-assets",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；3301 本期盈余",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both"
+    },
+    {
+      "code": "330101",
+      "name": "营养餐本期盈余",
+      "category": "net-assets",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；330101 营养餐本期盈余",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both"
+    },
+    {
+      "code": "330102",
+      "name": "非营养餐本期盈余",
+      "category": "net-assets",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；330102 非营养餐本期盈余",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "both"
+    },
+    {
+      "code": "4201",
+      "name": "上级补助收入",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；4201 上级补助收入",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "4401",
+      "name": "伙食收入",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；4401 伙食收入",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "440101",
+      "name": "营养餐收入",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；440101 营养餐收入",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "44010101",
+      "name": "学生餐费",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分4401第二项；44010101 学生餐费；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "44010102",
+      "name": "陪餐餐费",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分4401第二项；44010102 陪餐餐费；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "44010103",
+      "name": "教职工就餐费",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分4401第二项；44010103 教职工就餐费；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "440102",
+      "name": "非营养餐收入",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；440102 非营养餐收入",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "4609",
+      "name": "其他收入",
+      "category": "revenue",
+      "direction": "credit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；4609 其他收入",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "5201",
+      "name": "伙食费用",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；5201 伙食费用",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "520101",
+      "name": "营养餐费用",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；520101 营养餐费用",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010101",
+      "name": "粮食",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010101 粮食；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010102",
+      "name": "食用油",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010102 食用油；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010103",
+      "name": "蔬菜",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010103 蔬菜；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010104",
+      "name": "肉（豆）制品",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010104 肉（豆）制品；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010105",
+      "name": "水产品",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010105 水产品；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010106",
+      "name": "蛋奶类",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010106 蛋奶类；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010107",
+      "name": "调料",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010107 调料；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010112",
+      "name": "其他",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010112 其他；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "520102",
+      "name": "非营养餐费用",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；520102 非营养餐费用",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010201",
+      "name": "粮食",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010201 粮食；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010202",
+      "name": "食用油",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010202 食用油；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010203",
+      "name": "蔬菜",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010203 蔬菜；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010204",
+      "name": "肉（豆）制品",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010204 肉（豆）制品；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010205",
+      "name": "水产品",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010205 水产品；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010206",
+      "name": "蛋奶类",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010206 蛋奶类；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010207",
+      "name": "调料",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010207 调料；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010208",
+      "name": "人工费",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010208 人工费；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010209",
+      "name": "水电费",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010209 水电费；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010210",
+      "name": "燃料费",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010210 燃料费；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010211",
+      "name": "低值易耗品",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010211 低值易耗品；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52010212",
+      "name": "其他",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第三部分5201第二、三项（营养餐不使用人工费、水电费、燃料费、低值易耗品）；52010212 其他；原文规定名称/分类，未统一规定该明细数字编码，本模板按4-2-2设置应用默认编码",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "5901",
+      "name": "其他费用",
+      "category": "expense",
+      "direction": "debit",
+      "source": "《安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）》（皖教秘〔2021〕215号，https://www.ahhuoshan.gov.cn/public/6597371/38574245.html），第二部分会计科目名称和编号；5901 其他费用",
+      "sourceVersion": "皖教秘〔2021〕215号",
+      "needsReview": false,
+      "dimensions": [],
+      "balanceNature": "no-closing-balance"
+    }
+  ],
+  "voucherTypes": [
+    {
+      "code": "记",
+      "name": "记账凭证"
+    }
+  ],
+  "currencies": [],
+  "sources": [
+    {
+      "title": "安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）",
+      "file": "https://www.ahhuoshan.gov.cn/public/6597371/38574245.html",
+      "note": "安徽省教育厅2021年6月21日印发，皖教秘〔2021〕215号；第一部分第二、五、六、七、八、十一项，第二部分科目表，第三部分各科目使用说明。霍山县教育局2026年4月16日公开页标注有效、无废止时间。"
+    },
+    {
+      "title": "皖教秘〔2021〕215号现行公开信息",
+      "file": "https://www.huoqiu.gov.cn/public/6601561/38672802.html",
+      "note": "霍邱县新店镇2026年5月26日公开页标注有效；用于核对正式文号及适用版本。"
+    },
+    {
+      "title": "安徽省教育厅关于印发安徽省农村义务教育学生营养改善计划学校食堂会计核算办法（试行）的通知（皖教秘〔2021〕215号）",
+      "file": "https://www.huoqiu.gov.cn/group3/M00/29/81/wKgSG2HKx_iARApoAJnYiW5S_LY757.pdf",
+      "note": "官方21页附件第1页文号；霍邱县政府公开页 https://www.huoqiu.gov.cn/public/6601561/38672802.html 标注有效。完整核算办法第2部分科目表及第3部分科目使用说明。"
+    }
+  ],
+  "reports": []
+}

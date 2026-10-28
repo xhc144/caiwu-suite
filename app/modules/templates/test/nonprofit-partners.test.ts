@@ -21,9 +21,9 @@ const setup = () =>
 
 it('w_xt_kgzb_a2：2026适用版本与四项原文定位明确，不把全部明细宣称为完成', () => {
   const template = parseTemplate(templatesServer.templates[0]);
-  expect(template.version).toBe('1.1.0');
+  expect(template.version).toBe('1.2.0');
   expect(template.description).toContain('2026年1月1日');
-  expect(template.description).toContain('未提供限定/非限定等规定明细');
+  expect(template.description).toContain('限定/非限定');
   expect(template.description).toContain('不自动修改已有账套');
   expect(template.accounts.filter((a) => a.partner).map((a) => a.code)).toEqual(
     partnerAccounts.map((a) => a.code),
@@ -131,7 +131,7 @@ it('w_xt_kgzb_3：错误类型/不存在/停用/非末级对象被拒绝，草�
       date: '2026-01-05',
       lines: [
         { account: '1121', debit: 101 },
-        { account: '4301', credit: 101 },
+        { account: '430101', credit: 101 },
       ],
     });
     const withParty = (id?: number): VoucherInput => ({
@@ -171,7 +171,7 @@ it('w_xt_kgzb_3：事务后段SQLite失败不留凭证/分录，重试有效输�
       date: '2026-01-05',
       lines: [
         { account: '1121', debit: 101, dims: { partner: 'D01' } },
-        { account: '4301', credit: 101 },
+        { account: '430101', credit: 101 },
       ],
     });
     const db = app.runtime.bookStore.open(app.book.id).raw;
@@ -204,7 +204,7 @@ it('w_xt_kgzb_3：两个往来对象的整数分汇总与科目余额一致（fa
                 date: '2026-01-05',
                 lines: [
                   { account: '1121', debit: amount, dims: { partner: index % 2 ? 'B' : 'A' } },
-                  { account: '4301', credit: amount },
+                  { account: '430101', credit: amount },
                 ],
               });
               ids.push((await app.svc.vouchers.create(raw)).id);
@@ -269,7 +269,7 @@ it('w_xt_kgzb_3：模板字段不绕过权限/来源锁；账套覆盖拒绝并�
       date: '2026-01-05',
       lines: [
         { account: '1121', debit: 101 },
-        { account: '4301', credit: 101 },
+        { account: '430101', credit: 101 },
       ],
     });
     const party = await app.svc.dimensions.create({ type: 'partner', code: 'A', name: '测试对象' });
@@ -311,13 +311,15 @@ it('w_xt_kgzb_3：模板字段不绕过权限/来源锁；账套覆盖拒绝并�
   }
 });
 
-it('w_xt_kgzb_3：升级模板并重新打开旧账不改旧辅助配置，新账才加载1.1.0', async () => {
+it('w_xt_kgzb_3：升级模板并重新打开旧账不改旧辅助配置，新账才加载1.2.0', async () => {
   // 合成1.0.0的辅助配置；不读取真实账套，也不复制旧用户数据。
   const current = parseTemplate(templatesServer.templates[0]);
   const legacy = {
     ...current,
     version: '1.0.0',
-    accounts: current.accounts.map((a) => ({ ...a, partner: false, dimensions: [] })),
+    accounts: current.accounts
+      .filter((a) => a.code.length === 4)
+      .map((a) => ({ ...a, partner: false, dimensions: [] })),
   };
   const legacyModule = defineServerModule(templatesServer.manifest, {
     router: templatesServer.router,

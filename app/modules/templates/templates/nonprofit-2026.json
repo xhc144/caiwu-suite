@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "nonprofit-2026",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "name": "民间非营利组织会计制度（2026）",
   "regime": "nonprofit",
-  "description": "适用2026年1月1日起《民间非营利组织会计制度》；56项一级科目，1121/1141/2202/2203启用必填往来对象。未提供限定/非限定等规定明细、自动结转及法定报表；未实现限定性捐赠管理及首次执行转换。仅新建账套加载，不自动修改已有账套。",
+  "description": "适用2026年1月1日起《民间非营利组织会计制度》；56项一级科目及规定的限定/非限定、以前年度净资产调整、货币资金、短期及长期债权投资、职工薪酬和税费明细，1121/1141/2202/2203启用必填往来对象。明细编码为应用默认，可按本单位业务细分；慈善信托支出和募捐成本分别置于限定/非限定费用下。增值税默认小规模纳税人明细，一般纳税人请在应交增值税下增设制度第98页规定的专栏。未预设真实业务对象；不含自动结转、限定性捐赠管理、首次执行转换及法定报表。仅新建账套加载，不自动修改已有账套。",
   "order": 5,
   "status": "current",
   "codeScheme": "4-2-2",
@@ -81,6 +81,83 @@
       "needsReview": false
     },
     {
+      "code": "100901",
+      "name": "外埠存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页第九项；「100901 外埠存款」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "100902",
+      "name": "银行汇票",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页第九项；「100902 银行汇票」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "100903",
+      "name": "银行本票",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页第九项；「100903 银行本票」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "100904",
+      "name": "信用卡存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页第九项；「100904 信用卡存款」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "100905",
+      "name": "信用证保证金存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页第九项；「100905 信用证保证金存款」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "100906",
+      "name": "存出投资款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页第九项；「100906 存出投资款」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "100907",
+      "name": "非银行支付机构网络支付款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页第九项；「100907 非银行支付机构网络支付款」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
       "code": "1101",
       "name": "短期投资",
       "category": "asset",
@@ -94,6 +171,39 @@
       "needsReview": false
     },
     {
+      "code": "110101",
+      "name": "委托贷款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页「1101 短期投资」第一项；「110101 委托贷款」：明细编码为应用默认，分类名称依据原文。按原文存在委托贷款且作为短期投资核算时单设明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "110102",
+      "name": "委托投资",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页「1101 短期投资」第一项；「110102 委托投资」：明细编码为应用默认，分类名称依据原文。按原文存在委托投资（包括委托理财）且作为短期投资核算时单设明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "110199",
+      "name": "其他短期投资",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第59页「1101 短期投资」第一项；「110199 其他短期投资」：名称及明细编码为应用默认补充。应用补充末级项，用于委托贷款/委托投资以外的短期投资；按实际投资种类可继续细分。本项名称和编码均非原文规定。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
       "code": "1102",
       "name": "短期投资跌价准备",
       "category": "asset",
@@ -104,7 +214,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号5；「1102 短期投资跌价准备」科目说明PDF第61–62页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "isContra": true
     },
     {
       "code": "1111",
@@ -162,7 +273,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号9；「1131 坏账准备」科目说明PDF第67–68页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "isContra": true
     },
     {
       "code": "1141",
@@ -207,7 +319,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号12；「1202 存货跌价准备」科目说明PDF第71–72页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "isContra": true
     },
     {
       "code": "1301",
@@ -249,6 +362,87 @@
       "needsReview": false
     },
     {
+      "code": "140201",
+      "name": "债券投资",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第75页第二项；「140201 债券投资」：名称/分类依据原文，明细编码为应用默认。按原文可选分类预置。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "14020101",
+      "name": "面值",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第75页第二项第（一）款；「14020101 面值」：名称/分类依据原文，明细编码为应用默认。债券投资的子项。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "14020102",
+      "name": "溢价或折价",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第75页第二项第（一）款；「14020102 溢价或折价」：名称/分类依据原文，明细编码为应用默认。债券投资的子项。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "14020103",
+      "name": "债券费用",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第75页第二项第（一）款；「14020103 债券费用」：名称/分类依据原文，明细编码为应用默认。债券投资的子项。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "14020104",
+      "name": "应收利息",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第75页第二项第（一）款；「14020104 应收利息」：名称/分类依据原文，明细编码为应用默认。债券投资的子项。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "debit"
+    },
+    {
+      "code": "140202",
+      "name": "可转换公司债券",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第75页第二项；「140202 可转换公司债券」：名称/分类依据原文，明细编码为应用默认。按原文可选分类预置。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "140203",
+      "name": "其他债权投资",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第75页第二项；「140203 其他债权投资」：名称/分类依据原文，明细编码为应用默认。按原文可选分类预置。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
       "code": "1403",
       "name": "其他长期投资",
       "category": "asset",
@@ -272,7 +466,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号17；「1421 长期投资减值准备」科目说明PDF第79–80页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "isContra": true
     },
     {
       "code": "1501",
@@ -298,7 +493,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号19；「1502 累计折旧」科目说明PDF第83–85页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "isContra": true
     },
     {
       "code": "1505",
@@ -337,7 +533,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号22；「1509 固定资产清理」科目说明PDF第88–90页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "both"
     },
     {
       "code": "1601",
@@ -363,7 +560,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第47页序号24；「1602 累计摊销」科目说明PDF第91–92页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "isContra": true
     },
     {
       "code": "1701",
@@ -469,6 +667,72 @@
       "needsReview": false
     },
     {
+      "code": "220401",
+      "name": "职工工资",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第97页第一、三项；「220401 职工工资」：名称/分类依据原文，明细编码为应用默认。按原文薪酬组成内容设置；职工类别按单位实际继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220402",
+      "name": "职工福利费",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第97页第一、三项；「220402 职工福利费」：名称/分类依据原文，明细编码为应用默认。按原文薪酬组成内容设置；职工类别按单位实际继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220403",
+      "name": "津贴补贴",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第97页第一、三项；「220403 津贴补贴」：名称/分类依据原文，明细编码为应用默认。按原文薪酬组成内容设置；职工类别按单位实际继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220404",
+      "name": "奖金",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第97页第一、三项；「220404 奖金」：名称/分类依据原文，明细编码为应用默认。按原文薪酬组成内容设置；职工类别按单位实际继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220405",
+      "name": "社会保险费",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第97页第一、三项；「220405 社会保险费」：名称/分类依据原文，明细编码为应用默认。按原文薪酬组成内容设置；职工类别按单位实际继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220406",
+      "name": "住房公积金",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第97页第一、三项；「220406 住房公积金」：名称/分类依据原文，明细编码为应用默认。按原文薪酬组成内容设置；职工类别按单位实际继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
       "code": "2206",
       "name": "应交税费",
       "category": "liability",
@@ -479,6 +743,72 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号32；「2206 应交税费」科目说明PDF第98–99页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
+      "needsReview": false
+    },
+    {
+      "code": "220601",
+      "name": "应交增值税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第98页第一至三项；「220601 应交增值税」：名称/分类依据原文，明细编码为应用默认。应交增值税默认小规模纳税人不分专栏；一般纳税人须增设进项税额、销项税额、出口退税、进项税额转出、已交税金专栏。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220602",
+      "name": "城市维护建设税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第98页第一至三项；「220602 城市维护建设税」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220603",
+      "name": "教育费附加",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第98页第一至三项；「220603 教育费附加」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220604",
+      "name": "企业所得税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第98页第一至三项；「220604 企业所得税」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220605",
+      "name": "房产税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第98页第一至三项；「220605 房产税」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false
+    },
+    {
+      "code": "220606",
+      "name": "个人所得税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第98页第一至三项；「220606 个人所得税」：名称/分类依据原文，明细编码为应用默认。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
       "needsReview": false
     },
     {
@@ -596,7 +926,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号41；「3201 以前年度净资产调整」科目说明PDF第106–107页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "320101",
+      "name": "非限定性净资产",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第106页第一项；「320101 非限定性净资产」：名称/分类依据原文，明细编码为应用默认。按第107页第二项期末分别转入对应净资产。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "320102",
+      "name": "限定性净资产",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第106页第一项；「320102 限定性净资产」：名称/分类依据原文，明细编码为应用默认。按第107页第二项期末分别转入对应净资产。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4101",
@@ -609,7 +964,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号42；「4101 捐赠收入」科目说明PDF第107–108页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "410101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第107页本科目限定性分类说明；「410101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "410102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第107页本科目限定性分类说明；「410102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4201",
@@ -622,7 +1002,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号43；「4201 会费收入」科目说明PDF第108–109页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "420101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第109页本科目限定性分类说明；「420101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "420102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第109页本科目限定性分类说明；「420102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4301",
@@ -635,7 +1040,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号44；「4301 提供服务收入」科目说明PDF第109–111页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "430101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第110页本科目限定性分类说明；「430101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "430102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第110页本科目限定性分类说明；「430102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4401",
@@ -648,7 +1078,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号45；「4401 政府补助收入」科目说明PDF第111–112页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "440101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第111页本科目限定性分类说明；「440101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "440102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第111页本科目限定性分类说明；「440102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4501",
@@ -661,7 +1116,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号46；「4501 商品销售收入」科目说明PDF第112–114页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "450101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第112页本科目限定性分类说明；「450101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "450102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第112页本科目限定性分类说明；「450102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4601",
@@ -674,7 +1154,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号47；「4601 投资收益」科目说明PDF第114–116页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "460101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第114页本科目限定性分类说明；「460101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "460102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第114页本科目限定性分类说明；「460102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4701",
@@ -687,7 +1192,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号48；「4701 总部拨款收入」科目说明PDF第116–117页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "470101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第117页本科目限定性分类说明；「470101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "470102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第117页本科目限定性分类说明；「470102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "4901",
@@ -700,7 +1230,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号49；「4901 其他收入」科目说明PDF第117–119页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "490101",
+      "name": "非限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第118页本科目限定性分类说明；「490101 非限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "490102",
+      "name": "限定性收入",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第118页本科目限定性分类说明；「490102 限定性收入」：名称/分类依据原文，明细编码为应用默认。存在限定性业务时使用限定性明细；未限定业务使用非限定性明细。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "5101",
@@ -713,7 +1268,80 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第48页序号50；「5101 业务活动成本」科目说明PDF第119–120页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "510101",
+      "name": "非限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第119页本科目限定性分类说明；「510101 非限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "51010101",
+      "name": "设立慈善信托支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第119页第一项；「51010101 设立慈善信托支出」：名称/分类依据原文，明细编码为应用默认。在非限定性费用/限定性费用下分别设置，以同时保留资金限制和专门支出分类。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "51010199",
+      "name": "其他业务活动成本",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第119页第一项及费用范围说明；「51010199 其他业务活动成本」：本项名称和明细编码为应用默认补充，并非原文规定的科目名称或编码。应用补充末级项，用于上述专门支出以外的本类费用；按实际业务可继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "510102",
+      "name": "限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第119页本科目限定性分类说明；「510102 限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "51010201",
+      "name": "设立慈善信托支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第119页第一项；「51010201 设立慈善信托支出」：名称/分类依据原文，明细编码为应用默认。在非限定性费用/限定性费用下分别设置，以同时保留资金限制和专门支出分类。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "51010299",
+      "name": "其他业务活动成本",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第119页第一项及费用范围说明；「51010299 其他业务活动成本」：本项名称和明细编码为应用默认补充，并非原文规定的科目名称或编码。应用补充末级项，用于上述专门支出以外的本类费用；按实际业务可继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "5201",
@@ -726,7 +1354,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第49页序号51；「5201 税金及附加」科目说明PDF第120–121页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "520101",
+      "name": "非限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第120页本科目限定性分类说明；「520101 非限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "520102",
+      "name": "限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第120页本科目限定性分类说明；「520102 限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "5301",
@@ -739,7 +1392,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第49页序号52；「5301 管理费用」科目说明PDF第121–122页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "530101",
+      "name": "非限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第121页本科目限定性分类说明；「530101 非限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "530102",
+      "name": "限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第121页本科目限定性分类说明；「530102 限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "5401",
@@ -752,7 +1430,80 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第49页序号53；「5401 筹资费用」科目说明PDF第122–124页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "540101",
+      "name": "非限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第123页本科目限定性分类说明；「540101 非限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "54010101",
+      "name": "募捐成本",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第123页第一项；「54010101 募捐成本」：名称/分类依据原文，明细编码为应用默认。在非限定性费用/限定性费用下分别设置，以同时保留资金限制和专门支出分类。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "54010199",
+      "name": "其他筹资费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第123页第一项及费用范围说明；「54010199 其他筹资费用」：本项名称和明细编码为应用默认补充，并非原文规定的科目名称或编码。应用补充末级项，用于上述专门支出以外的本类费用；按实际业务可继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "540102",
+      "name": "限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第123页本科目限定性分类说明；「540102 限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "54010201",
+      "name": "募捐成本",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第123页第一项；「54010201 募捐成本」：名称/分类依据原文，明细编码为应用默认。在非限定性费用/限定性费用下分别设置，以同时保留资金限制和专门支出分类。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "54010299",
+      "name": "其他筹资费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第123页第一项及费用范围说明；「54010299 其他筹资费用」：本项名称和明细编码为应用默认补充，并非原文规定的科目名称或编码。应用补充末级项，用于上述专门支出以外的本类费用；按实际业务可继续细分。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "5501",
@@ -765,7 +1516,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第49页序号54；「5501 资产减值损失」科目说明PDF第124–125页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "550101",
+      "name": "非限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第124页本科目限定性分类说明；「550101 非限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "550102",
+      "name": "限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第124页本科目限定性分类说明；「550102 限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "5601",
@@ -778,7 +1554,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第49页序号55；「5601 所得税费用」科目说明PDF第124–125页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "5901",
@@ -791,7 +1568,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第49页序号56；「5901 其他费用」科目说明PDF第125–126页",
-      "needsReview": false
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "590101",
+      "name": "非限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第125页本科目限定性分类说明；「590101 非限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "590102",
+      "name": "限定性费用",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "民间非营利组织会计制度.pdf（rules/sources/official/nonprofit-2026.pdf），PDF第125页本科目限定性分类说明；「590102 限定性费用」：名称/分类依据原文，明细编码为应用默认。按是否存在限定分别核算。",
+      "sourceVersion": "2026年施行制度 / 模板1.2.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     }
   ],
   "voucherTypes": [
@@ -805,7 +1607,7 @@
     {
       "title": "民间非营利组织会计制度（2026年施行）",
       "file": "rules/sources/official/nonprofit-2026.pdf",
-      "note": "一级表PDF第47–49页及逐科目说明；对照仓库原PDF核读；旧rules/packages格式不作为运行时依赖。"
+      "note": "一级表PDF第47–49页及逐科目说明；固定明细：59、75、97、98、106–126页。明细名称/分类依原文，二三级编码为应用默认；费用采用限定性在先、专门支出在后的树形分类。增值税默认小规模纳税人；一般纳税人需按第98页补专栏。"
     }
   ],
   "reports": []

@@ -3,6 +3,7 @@ import {
   AccountingTemplateSchema,
   DIMENSION_TYPE_IDS,
   levelOfCode,
+  mapTemplateScheme,
   parentCodeOf,
   parseCodeScheme,
   parseTemplate,
@@ -22,23 +23,25 @@ describe.each(expectedTemplates)('w_xt_kgzb_a2 行业选择：$id', (expected) =
     expect(AccountingTemplateSchema.safeParse(template).success).toBe(true);
     expect(templateProblems(template)).toEqual([]);
     expect(template.regime).toBe(expected.regime);
-    expect(template.codeScheme).toBe(`${expected.width}-2-2`);
+    expect(parseCodeScheme(template.codeScheme)[0]).toBe(expected.width);
     const scheme = parseCodeScheme(template.codeScheme);
     const codes = new Set(template.accounts.map((a) => a.code));
     expect(codes.size).toBe(template.accounts.length);
     for (const a of template.accounts) {
-      expect(levelOfCode(a.code, scheme)).toBe(1);
-      expect(parentCodeOf(a.code, scheme)).toBeNull();
+      expect(levelOfCode(a.code, scheme)).toBeGreaterThanOrEqual(1);
+      const parent = parentCodeOf(a.code, scheme);
+      if (parent) expect(codes.has(parent)).toBe(true);
       expect(template.categories.some((c) => c.id === a.category)).toBe(true);
       if (a.currency) {
         expect(['CNY', ...template.currencies.map((c) => c.code)]).toContain(a.currency);
       }
       for (const dim of a.dimensions) expect(DIMENSION_TYPE_IDS).toContain(dim.type);
     }
-    for (const a of template.accounts) {
-      const required = expected.partnerCodes?.includes(a.code) ?? false;
-      expect(a.partner ?? false).toBe(required);
-      expect(a.dimensions).toEqual(required ? [{ type: 'partner', required: true }] : []);
+    // 四项既有往来规则保留；其余制度新增的辅助项由各自原文测试核对。
+    for (const code of expected.partnerCodes ?? []) {
+      const account = template.accounts.find((a) => a.code === code)!;
+      expect(account.partner).toBe(true);
+      expect(account.dimensions).toContainEqual({ type: 'partner', required: true });
     }
     expect(template.currencies).toEqual([]);
     expect(template.reports).toEqual([]);
@@ -47,17 +50,22 @@ describe.each(expectedTemplates)('w_xt_kgzb_a2 行业选择：$id', (expected) =
       template.voucherTypes.length,
     );
     // 级次是参数；一级宽度不变时，4-3-3 / 3-3-3 不需要复制模板。
-    expect(templateProblems(template, parseCodeScheme(`${expected.width}-3-3`))).toEqual([]);
+    const widerScheme = parseCodeScheme(template.codeScheme).map((n, i) => (i === 0 ? n : 3));
+    const wider = mapTemplateScheme(template, widerScheme);
+    expect(templateProblems(wider, widerScheme)).toEqual([]);
+    expect(wider.accounts).toHaveLength(template.accounts.length);
   });
 
   it('逐项匹配独立原文期望表、余额方向及损益属性（含备抵例外）', () => {
     expect(
-      template.accounts.map((a) => ({
-        code: a.code,
-        name: a.name,
-        categoryId: a.category,
-        direction: a.direction,
-      })),
+      template.accounts
+        .filter((a) => a.code.length === expected.width)
+        .map((a) => ({
+          code: a.code,
+          name: a.name,
+          categoryId: a.category,
+          direction: a.direction,
+        })),
     ).toEqual(expectedAccounts(expected));
     expect(template.categories).toEqual(expected.categories);
     expect(template.accounts.filter((a) => a.cash).map((a) => a.code)).toEqual([
@@ -74,7 +82,7 @@ describe.each(expectedTemplates)('w_xt_kgzb_a2 行业选择：$id', (expected) =
     }
   });
 
-  it('逐科目来源非空，所有未核项明确待核且不使用旧 schema 字段', () => {
+  it('逐科目来源非空、核对标记明确且不使用旧 schema 字段', () => {
     expect(template.sources.length).toBeGreaterThan(0);
     for (const source of template.sources) {
       expect(source.title.length).toBeGreaterThan(0);
@@ -87,7 +95,8 @@ describe.each(expectedTemplates)('w_xt_kgzb_a2 行业选择：$id', (expected) =
       expect(a.source).toContain('.pdf');
       expect(a.source).toMatch(/PDF第\d+/);
       expect(a.needsReview).toBe(expected.reviewCodes.includes(a.code));
-      expect(a.source?.includes('待核')).toBe(a.needsReview);
+      // “待核销基建支出”是制度正式科目名，不是待核对标记。
+      expect(/待核(?!销)/.test(a.source ?? '')).toBe(a.needsReview);
     }
     const raw = templatesServer.templates.find((t) => (t as { id: string }).id === expected.id) as {
       accounts: Record<string, unknown>[];
@@ -107,6 +116,10 @@ describe.each(expectedTemplates)('w_xt_kgzb_a2 行业选择：$id', (expected) =
       'disabled',
       'source',
       'needsReview',
+      'sourceVersion',
+      'isContra',
+      'balanceNature',
+      'closingRule',
     ]);
     for (const a of raw.accounts) {
       expect(Object.keys(a).every((key) => fields.has(key))).toBe(true);
@@ -124,7 +137,7 @@ describe.each(expectedTemplates)('w_xt_kgzb_a2 行业选择：$id', (expected) =
 it('民非56项与原PDF集合一致，净资产不作为损益，限定与非限定分别保留', () => {
   const nonprofit = templates[0]!;
   expect(expectedAccounts(expectedTemplates[0]!)).toHaveLength(56);
-  expect(nonprofit.accounts).toHaveLength(56);
+  expect(nonprofit.accounts.filter((a) => a.code.length === 4)).toHaveLength(56);
   expect(nonprofit.categories.find((c) => c.id === 'net-assets')?.isPnl).toBe(false);
   for (const code of ['3101', '3102', '3201']) {
     expect(nonprofit.accounts.find((a) => a.code === code)?.category).toBe('net-assets');
@@ -136,8 +149,8 @@ it('民非56项与原PDF集合一致，净资产不作为损益，限定与非�
 it('工会适用范围独立：县级以上45项、基层主要表24项；不混入表外科目', () => {
   const union = templates.find((t) => t.id === 'trade-union-2022')!;
   const grassroots = templates.find((t) => t.id === 'grassroots-trade-union-2022')!;
-  expect(union.accounts).toHaveLength(45);
-  expect(grassroots.accounts).toHaveLength(24);
+  expect(union.accounts.filter((a) => a.code.length === 3)).toHaveLength(45);
+  expect(grassroots.accounts.filter((a) => a.code.length === 3)).toHaveLength(24);
   for (const code of ['401', '405', '501']) {
     expect(grassroots.accounts.some((a) => a.code === code)).toBe(true);
     expect(union.accounts.some((a) => a.code === code)).toBe(false);
@@ -148,11 +161,11 @@ it('工会适用范围独立：县级以上45项、基层主要表24项；不混
   }
 });
 
-it('正式模式注册五套模板，无菜单、写接口或迁移；全局重复ID拒绝', () => {
+it('正式模式注册所有制度模板，无菜单、写接口或迁移；全局重复ID拒绝', () => {
   const modules = new ModuleRegistry([templatesServer]);
   const registry = new TemplateRegistry({ devMode: false });
   for (const entry of modules.templates()) registry.register(entry.source, entry.templates);
-  expect(registry.list().map((t) => t.id)).toEqual(expectedTemplates.map((t) => t.id));
+  expect(registry.list().map((t) => t.id)).toEqual(templates.map((t) => t.id));
   for (const expected of expectedTemplates) {
     expect(registry.get(expected.id).devOnly).toBe(false);
   }
