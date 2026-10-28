@@ -187,6 +187,18 @@ const cashExpected: Record<string, [number, number]> = {
   cashNet: [149840, 172800],
 };
 async function monthlyChecks(year: 2026 | 2027, c: Configuration, previous?: Configuration) {
+  const cashRequest: StatementRequest = {
+    ...annual,
+    code: '403',
+    from: year * 100 + 1,
+    to: year * 100 + 12,
+  };
+  const { statement: cashBeforeClosing } = await generateNonprofit(
+    book.svc,
+    cashRequest,
+    await configurationAt(book.svc, c, cashRequest),
+    previous,
+  );
   for (let month = 1; month <= 12; month++) {
     const request: StatementRequest = {
       ...annual,
@@ -224,10 +236,25 @@ async function monthlyChecks(year: 2026 | 2027, c: Configuration, previous?: Con
       expect(statement.checks.every((x) => x.difference === 0)).toBe(true);
     }
   }
+  return cashBeforeClosing;
 }
-async function annualChecks(year: 2026 | 2027, c: Configuration, previous?: Configuration) {
+async function annualChecks(
+  year: 2026 | 2027,
+  c: Configuration,
+  cashBeforeClosing: Statement,
+  previous?: Configuration,
+) {
   const request = { ...annual, from: year * 100 + 1, to: year * 100 + 12 };
   const scoped = await configurationAt(book.svc, c, request);
+  const { statement: balance } = await generateNonprofit(
+    book.svc,
+    { ...request, code: '401' },
+    scoped,
+    previous,
+  );
+  expect(balance.period.kind).toBe('annual');
+  expect(amounts(balance), `${year}年度401逐行`).toEqual(balanceExpected(year, 12));
+  expect(balance.checks.every((x) => x.difference === 0)).toBe(true);
   const expected = activityExpected(year, 12, true);
   if (previous) {
     const old = activityExpected(2026, 12, true);
@@ -255,13 +282,17 @@ async function annualChecks(year: 2026 | 2027, c: Configuration, previous?: Conf
   expect(statement.cashOpening).toBe(year === 2026 ? 300000 : 449840);
   expect(statement.cashClosing).toBe(year === 2026 ? 449840 : 622640);
   expect(statement.checks.every((x) => x.difference === 0)).toBe(true);
+  expect(amounts(statement), `${year}年度403损益结转前后逐行`).toEqual(amounts(cashBeforeClosing));
+  expect(statement.cashOpening).toBe(cashBeforeClosing.cashOpening);
+  expect(statement.cashClosing).toBe(cashBeforeClosing.cashClosing);
+  expect(cashBeforeClosing.checks.every((x) => x.difference === 0)).toBe(true);
 }
 
 it('w_bb_proc 2026固定账套十二个月：401全部两栏、402全部六栏，逐月结转前后及403每行手算', async () => {
   book = await createTestBook({ templateId: chart.id, templates: [chart], seed: false });
   const c = await seedAnnualLedger(book.svc, 2026);
-  await monthlyChecks(2026, c);
-  await annualChecks(2026, c);
+  const cashBeforeClosing = await monthlyChecks(2026, c);
+  await annualChecks(2026, c, cashBeforeClosing);
 }, 60000);
 
 it('w_bb_proc 2027固定账套十二个月：全部本期/累计/上年可比行及年度现金比较，年初逐明细承接', async () => {
@@ -283,6 +314,6 @@ it('w_bb_proc 2027固定账套十二个月：全部本期/累计/上年可比行
       .map((b) => ({ accountId: b.accountId, dimensions: b.dimensions, balance: b.closing })),
   );
   const c = await seedAnnualLedger(book.svc, 2027);
-  await monthlyChecks(2027, c, previous);
-  await annualChecks(2027, c, previous);
+  const cashBeforeClosing = await monthlyChecks(2027, c, previous);
+  await annualChecks(2027, c, cashBeforeClosing, previous);
 }, 60000);
