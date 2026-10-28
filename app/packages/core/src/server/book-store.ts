@@ -110,7 +110,7 @@ const directories = new Map<string, DirectoryState>();
 
 /**
  * 账套文件的管理：列出、新建、打开（缓存连接并执行迁移）、关闭。
- * 一个账套 = 一个 SQLite 文件。close/pathOf 不授权移动文件；删除、覆盖当前仍不支持。
+ * 一个账套 = 一个 SQLite 文件。覆盖只能经受管恢复票据和独占维护；close/pathOf 不授权移动文件。
  */
 export class BookStore {
   readonly booksDir: string;
@@ -313,14 +313,24 @@ export class BookStore {
   /** Stage verified bytes under a managed UUID. The ticket binds target contents and expires. */
   async prepareReplacement(input: {
     bookId: string;
+    /** 已校验备份元数据中的源账套 ID；省略时只接受目标账套自己的备份。 */
+    sourceBookId?: string;
     bytes: Uint8Array;
     length: number;
     sha256: string;
     expectedRevision: string;
     expiresAt: number;
   }) {
-    return this.withBook(input.bookId, async () => {
-      if (input.expiresAt <= Date.now() || input.expiresAt > Date.now() + 300_000)
+    return this.withBook(input.bookId, async (book) => {
+      assertRestoreDatabase(book.raw, input.bookId);
+      const sourceBookId = input.sourceBookId ?? input.bookId;
+      if (!BookStore.isValidId(sourceBookId))
+        throw new BusinessError({ code: 'RESTORE_BOOK', message: '备份源账套编号无效' });
+      if (
+        !Number.isFinite(input.expiresAt) ||
+        input.expiresAt <= Date.now() ||
+        input.expiresAt > Date.now() + 300_000
+      )
         throw new BusinessError({
           code: 'RESTORE_PLAN_EXPIRED',
           message: '恢复确认已过期，请重新预览',
@@ -348,7 +358,7 @@ export class BookStore {
       try {
         source = new Database(file, { fileMustExist: true });
         source.pragma('trusted_schema = OFF');
-        assertRestoreDatabase(source);
+        assertRestoreDatabase(source, sourceBookId);
         const known = new Map(
           this.#allMigrations().flatMap((set) =>
             set.migrations.map(
@@ -371,10 +381,11 @@ export class BookStore {
               message: `备份迁移 ${row.scope}/${row.id} 与当前程序不兼容`,
             });
         runMigrations(source, this.#allMigrations());
+        assertRestoreDatabase(source, sourceBookId);
         source.prepare('UPDATE book_info SET book_id=? WHERE id=1').run(input.bookId);
         source.pragma('wal_checkpoint(TRUNCATE)');
         source.pragma('journal_mode = DELETE');
-        assertRestoreDatabase(source);
+        assertRestoreDatabase(source, input.bookId);
         source.close();
         source = undefined;
         const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
@@ -444,6 +455,7 @@ export class BookStore {
         code: 'RESTORE_PLAN_EXPIRED',
         message: '恢复计划不存在、已使用或过期，请重新预览',
       });
+    assertRestoreDatabase(book.raw, id);
     if (this.revision(id) !== ticket.expectedRevision)
       throw new BusinessError({
         code: 'RESTORE_TARGET_CHANGED',
@@ -463,10 +475,7 @@ export class BookStore {
       });
     ticket.status = 'applying';
     const protectionId = randomUUID();
-    const protection = path.join(
-      this.#managedDirectory('core-protection', id),
-      `${protectionId}.caiwu`,
-    );
+    let protection = '';
     let replaced = false;
     let protectionMetadata: { length: number; sha256: string } | undefined;
     const verify = (file: string, expected: { length: number; sha256: string }) => {
@@ -507,7 +516,7 @@ export class BookStore {
         });
       const source = new Database(from, { readonly: true, fileMustExist: true });
       try {
-        assertRestoreDatabase(source);
+        assertRestoreDatabase(source, id);
         await source.backup(to, {
           progress: () => {
             abort?.throwIfAborted();
@@ -520,6 +529,10 @@ export class BookStore {
     };
     try {
       signal.throwIfAborted();
+      protection = path.join(
+        this.#managedDirectory('core-protection', id),
+        `${protectionId}.caiwu`,
+      );
       await book.raw.backup(protection, {
         progress: () => {
           signal.throwIfAborted();
@@ -528,7 +541,7 @@ export class BookStore {
       });
       const backup = new Database(protection, { readonly: true, fileMustExist: true });
       try {
-        assertRestoreDatabase(backup);
+        assertRestoreDatabase(backup, id);
       } finally {
         backup.close();
       }
@@ -556,9 +569,10 @@ export class BookStore {
       replaced = true;
       await copy(ticket.file, this.pathOf(id), signal);
       const reopened = this.open(id);
-      assertRestoreDatabase(reopened.raw);
+      assertRestoreDatabase(reopened.raw, id);
       await validate?.(reopened, signal);
       signal.throwIfAborted();
+      assertRestoreDatabase(reopened.raw, id);
       ticket.status = 'done';
       rmSync(ticket.file, { force: true });
     } catch (error) {
@@ -568,7 +582,7 @@ export class BookStore {
           await this.#closeConnections(id);
           await copy(protection, this.pathOf(id));
           const restored = this.open(id);
-          assertRestoreDatabase(restored.raw);
+          assertRestoreDatabase(restored.raw, id);
         } catch (rollbackError) {
           // The replacement has been rejected and rollback is uncertain. Never admit
           // this database again merely because the exclusive callback has finished.
@@ -632,7 +646,7 @@ export class BookStore {
           });
         const source = new Database(quarantine.protection, { readonly: true, fileMustExist: true });
         try {
-          assertRestoreDatabase(source);
+          assertRestoreDatabase(source, id);
           const info = source.prepare('SELECT book_id, name FROM book_info WHERE id=1').get() as {
             book_id: string;
             name: string;
@@ -663,9 +677,9 @@ export class BookStore {
           await source.backup(this.pathOf(id));
           const restored = new Database(this.pathOf(id), { fileMustExist: true });
           try {
-            assertRestoreDatabase(restored);
+            assertRestoreDatabase(restored, id);
             runMigrations(restored, this.#allMigrations());
-            assertRestoreDatabase(restored);
+            assertRestoreDatabase(restored, id);
           } finally {
             restored.close();
           }
@@ -1119,7 +1133,7 @@ function toBookInfo(row: CoreDB['book_info']): BookInfo {
   };
 }
 
-function assertRestoreDatabase(raw: Database.Database): void {
+function assertRestoreDatabase(raw: Database.Database, expectedBookId: string): void {
   // Match the established backup validator; do not introduce a weaker restore route.
   const unsupported = raw
     .prepare(
@@ -1140,4 +1154,10 @@ function assertRestoreDatabase(raw: Database.Database): void {
     { book_id: string } | undefined;
   if (!row || !BookStore.isValidId(row.book_id))
     throw new BusinessError({ code: 'RESTORE_BOOK', message: '备份账套信息无效' });
+  if (row.book_id !== expectedBookId)
+    throw new BusinessError({
+      code: 'RESTORE_BOOK_MISMATCH',
+      message: '账套文件身份与确认的源账套或目标账套不符，恢复未完成',
+      hint: '请重新核对备份来源及目标账套，保留原账套和保护备份',
+    });
 }

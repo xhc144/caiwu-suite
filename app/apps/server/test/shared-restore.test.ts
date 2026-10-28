@@ -216,14 +216,23 @@ it.each([
       return result;
     });
   }
-  if (phase === '保护备份校验后变化')
-    vi.spyOn(current.raw, 'pragma').mockImplementationOnce(() => {
-      const directory = path.join(app.runtime.dataDir, 'core-protection', app.book.id);
-      const file = readdirSync(directory).find((name) => name.endsWith('.caiwu'))!;
-      writeFileSync(path.join(directory, file), '校验后损坏');
-      return [{ busy: 0 }];
+  if (phase === '保护备份校验后变化') {
+    const original = current.raw.pragma.bind(current.raw);
+    vi.spyOn(current.raw, 'pragma').mockImplementation((query, options) => {
+      if (query === 'wal_checkpoint(TRUNCATE)') {
+        const directory = path.join(app.runtime.dataDir, 'core-protection', app.book.id);
+        const file = readdirSync(directory).find((name) => name.endsWith('.caiwu'))!;
+        writeFileSync(path.join(directory, file), '校验后损坏');
+      }
+      return original(query, options);
     });
-  if (phase === '检查点占用') vi.spyOn(current.raw, 'pragma').mockReturnValueOnce([{ busy: 1 }]);
+  }
+  if (phase === '检查点占用') {
+    const original = current.raw.pragma.bind(current.raw);
+    vi.spyOn(current.raw, 'pragma').mockImplementation((query, options) =>
+      query === 'wal_checkpoint(TRUNCATE)' ? [{ busy: 1 }] : original(query, options),
+    );
+  }
   if (phase === '替换复制') {
     const original = Database.prototype.backup;
     let injected = false;
