@@ -20,12 +20,14 @@ import {
   useRequiredSession,
   useUnsavedChanges,
   useSubmission,
+  type UnsavedSave,
 } from '@caiwu/web-kit';
 import { DataTable, FilterBar, PageContainer, useUrlFilters, type DataColumn } from '@caiwu/ui';
 import type { UserRow } from '../shared';
 import { api } from './api';
 import { flushSync } from 'react-dom';
 import { goToLogin } from './session';
+import { useSessionChange } from './unsaved';
 
 const EMPTY_PERMISSIONS: string[] = [];
 type Editing = { mode: 'new' | 'edit' | 'permissions' | 'reset'; user?: UserRow };
@@ -135,9 +137,11 @@ function UserDrawer({
   const [form] = Form.useForm();
   const [confirm, holder] = useAdminConfirm();
   const [dirty, setDirty] = useState(false);
+  const [, setDraftVersion] = useState(0);
   const version = useRef(0);
   const markDirty = () => {
     version.current++;
+    setDraftVersion(version.current);
     setDirty(true);
   };
   const [permissions, setPermissions] = useState<string[] | null>(null);
@@ -175,6 +179,8 @@ function UserDrawer({
     ),
   );
   const busy = create.isPending || update.isPending || setGrant.isPending || reset.isPending;
+  const self = user?.id === s.user.id;
+  const [coordinate, leaveHolder] = useSessionChange();
   const close = async () => {
     if (
       dirty &&
@@ -187,21 +193,13 @@ function UserDrawer({
       return;
     onClose();
   };
-  const submit = () =>
-    submission.submit(async () => {
+  const submit: UnsavedSave = (context) => {
+    if (self && !context) return coordinate(submit).then((result) => result.allowed);
+    return submission.submit(async () => {
       if (busy || (mode === 'permissions' && (grant.isError || modules.isError))) return false;
       const savingVersion = version.current;
       const v = await form.validateFields();
-      if (mode === 'new')
-        await create.mutateAsync({
-          code: v.code,
-          name: v.name,
-          password: v.password,
-          confirmPassword: v.confirmPassword,
-          isAdmin: v.isAdmin ?? false,
-          permissions: [],
-        });
-      else if (user) {
+      if (user) {
         if (mode === 'edit') {
           if (
             v.disabled &&
@@ -212,12 +210,6 @@ function UserDrawer({
             }))
           )
             return false;
-          await update.mutateAsync({
-            id: user.id,
-            name: v.name,
-            disabled: v.disabled,
-            confirmCode: user.code,
-          });
         }
         if (mode === 'permissions') {
           if (
@@ -229,12 +221,6 @@ function UserDrawer({
             }))
           )
             return false;
-          await setGrant.mutateAsync({
-            id: user.id,
-            permissions: selected,
-            isAdmin: isAdmin ?? grant.data?.isAdmin ?? false,
-            confirmCode: user.code,
-          });
         }
         if (mode === 'reset') {
           if (
@@ -245,28 +231,60 @@ function UserDrawer({
             }))
           )
             return false;
-          await reset.mutateAsync({
-            id: user.id,
-            confirmCode: user.code,
-            password: v.password,
-            confirmPassword: v.confirmPassword,
-          });
-        }
-        if (user.id === s.user.id) {
-          flushSync(() => setDirty(false));
-          await goToLogin(s.bookId);
-          return true;
         }
       }
       if (savingVersion !== version.current) return false;
-      setDirty(false);
-      onSaved();
-      return true;
+      const persist = async () => {
+        if (mode === 'new')
+          await create.mutateAsync({
+            code: v.code,
+            name: v.name,
+            password: v.password,
+            confirmPassword: v.confirmPassword,
+            isAdmin: v.isAdmin ?? false,
+            permissions: [],
+          });
+        else if (user) {
+          if (mode === 'edit')
+            await update.mutateAsync({
+              id: user.id,
+              name: v.name,
+              disabled: v.disabled,
+              confirmCode: user.code,
+            });
+          if (mode === 'permissions')
+            await setGrant.mutateAsync({
+              id: user.id,
+              permissions: selected,
+              isAdmin: isAdmin ?? grant.data?.isAdmin ?? false,
+              confirmCode: user.code,
+            });
+          if (mode === 'reset')
+            await reset.mutateAsync({
+              id: user.id,
+              confirmCode: user.code,
+              password: v.password,
+              confirmPassword: v.confirmPassword,
+            });
+        }
+        if (self && context) {
+          flushSync(() => setDirty(false));
+          context.afterLeave(() => goToLogin(s.bookId));
+          return { sessionRevoked: true } as const;
+        }
+        if (savingVersion !== version.current) return false;
+        setDirty(false);
+        onSaved();
+        return true;
+      };
+      return self && context ? context.commit(persist) : persist();
     });
+  };
   useUnsavedChanges({
     title: '用户管理',
     dirty,
     version: version.current,
+    savePhase: self ? 'session' : undefined,
     save: submit,
     discard: () => {
       setDirty(false);
@@ -306,6 +324,7 @@ function UserDrawer({
       }
     >
       {holder}
+      {leaveHolder}
       <Form
         form={form}
         layout="vertical"
@@ -437,6 +456,7 @@ function UserDrawer({
               <Alert type="error" title="权限资料读取失败，请关闭后重新打开；本次不能保存。" />
             )}
             <Tree
+              disabled={busy || submission.isSubmitting}
               checkable
               defaultExpandAll
               key={modules.data?.length ?? 0}

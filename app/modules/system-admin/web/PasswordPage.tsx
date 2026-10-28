@@ -1,11 +1,17 @@
 import { Alert, Button, Form, Input } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 import { PageContainer } from '@caiwu/ui';
-import { useRequiredSession, useUnsavedChanges, useSubmission } from '@caiwu/web-kit';
+import {
+  useRequiredSession,
+  useUnsavedChanges,
+  useSubmission,
+  type UnsavedSave,
+} from '@caiwu/web-kit';
 import { useRef, useState } from 'react';
 import { api } from './api';
 import { flushSync } from 'react-dom';
 import { goToLogin } from './session';
+import { useSessionChange } from './unsaved';
 
 export default function PasswordPage() {
   const session = useRequiredSession();
@@ -13,23 +19,29 @@ export default function PasswordPage() {
   const change = useMutation(api.changePassword.mutationOptions());
   const [form] = Form.useForm();
   const [dirty, setDirty] = useState(false);
+  const [, setDraftVersion] = useState(0);
   const revision = useRef(0);
-  const save = () =>
-    submission.submit(async () => {
+  const [coordinate, leaveHolder] = useSessionChange();
+  const save: UnsavedSave = (context) => {
+    if (!context) return coordinate(save).then((result) => result.allowed);
+    return submission.submit(async () => {
       if (change.isPending) return false;
       const version = revision.current;
       const v = await form.validateFields();
-      await change.mutateAsync({ ...v, oldPassword: v.oldPassword ?? '' });
-      // Successful password changes revoke this session immediately.
       if (version !== revision.current) return false;
-      flushSync(() => setDirty(false));
-      await goToLogin(session.bookId);
-      return true;
+      return context.commit(async () => {
+        await change.mutateAsync({ ...v, oldPassword: v.oldPassword ?? '' });
+        flushSync(() => setDirty(false));
+        context.afterLeave(() => goToLogin(session.bookId));
+        return { sessionRevoked: true };
+      });
     });
+  };
   useUnsavedChanges({
     title: '自改密码',
     dirty,
     version: revision.current,
+    savePhase: 'session',
     save,
     discard: () => {
       form.resetFields();
@@ -41,6 +53,7 @@ export default function PasswordPage() {
       title="自改密码"
       subtitle={`当前用户：${session.user.name}（${session.user.code}）`}
     >
+      {leaveHolder}
       <Alert
         type="info"
         showIcon
@@ -53,6 +66,7 @@ export default function PasswordPage() {
         disabled={change.isPending || submission.isSubmitting}
         onValuesChange={() => {
           revision.current++;
+          setDraftVersion(revision.current);
           setDirty(true);
         }}
         onFinish={() => void save()}

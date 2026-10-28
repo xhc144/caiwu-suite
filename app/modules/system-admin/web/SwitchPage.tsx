@@ -1,16 +1,16 @@
 import { useAdminConfirm } from './confirm';
 import { Button, Typography } from 'antd';
 import { useMutation } from '@tanstack/react-query';
-import { coreApi, useRequiredSession } from '@caiwu/web-kit';
+import { coreApi, useRequiredSession, showError } from '@caiwu/web-kit';
 import { PageContainer } from '@caiwu/ui';
 import { api } from './api';
 import { goToLogin } from './session';
-import { useSessionLeave } from './unsaved';
+import { useSessionLeaveResult } from './unsaved';
 
 export default function SwitchPage() {
   const s = useRequiredSession();
   const [confirm, holder] = useAdminConfirm();
-  const [leave, leaveHolder] = useSessionLeave();
+  const [leave, leaveHolder] = useSessionLeaveResult();
   const change = useMutation(api.switchUser.mutationOptions());
   const logout = useMutation(coreApi.auth.logout.mutationOptions({ meta: { silent: true } }));
   return (
@@ -31,7 +31,9 @@ export default function SwitchPage() {
             }))
           )
             return;
-          if (!(await leave())) return;
+          const result = await leave();
+          if (result.error instanceof Error) showError(result.error);
+          if (!result.allowed || result.sessionRevoked) return;
           await change.mutateAsync({ confirmed: true });
           // 模块服务已经撤销会话；仍调用 core logout，以复用既有退出协议。
           try {

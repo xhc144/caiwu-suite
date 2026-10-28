@@ -310,6 +310,7 @@ function ResetEditor({
         </Space>
         {activePlan.current && (
           <Button
+            aria-label="取消初始化预览"
             style={{ marginLeft: 8 }}
             onClick={() => void cancelPreview().catch(() => undefined)}
             loading={cancel.isPending}
