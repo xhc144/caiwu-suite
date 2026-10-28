@@ -875,8 +875,8 @@ export function backupService(ctx: Context) {
             if (checked.digest !== plan.digest) throw fail('CHANGED', '备份在预览后发生变化');
             const bytes = await readFile(checked.snapshot);
             if (
-              bytes.length !== checked.metadata.length ||
-              createHash('sha256').update(bytes).digest('hex') !== checked.metadata.sha256
+              bytes.length !== checked.snapshotLength ||
+              createHash('sha256').update(bytes).digest('hex') !== checked.snapshotSha256
             )
               throw fail('CHANGED', '已校验快照在暂存前发生变化，覆盖未执行');
             const localRows = await db
@@ -899,8 +899,8 @@ export function backupService(ctx: Context) {
               sourceBookId: checked.metadata.book.id,
               bookId: ctx.book.id,
               bytes,
-              length: checked.metadata.length,
-              sha256: checked.metadata.sha256,
+              length: checked.snapshotLength,
+              sha256: checked.snapshotSha256,
               expectedRevision: revision,
               expiresAt,
             };
