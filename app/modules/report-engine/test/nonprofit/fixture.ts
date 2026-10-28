@@ -116,7 +116,11 @@ export function blankConfiguration(bookId: string, year = 2026): Configuration {
     cashPolicy: '合成现金范围政策，受托款项不属于本组织现金',
   });
 }
-export async function seedFullYear(svc: CoreServices, year = 2026) {
+export async function seedFullYear(
+  svc: CoreServices,
+  year = 2026,
+  factors: readonly number[] = Array<number>(12).fill(1),
+) {
   const p1 = await svc.dimensions.create({ type: 'partner', code: 'A', name: '合成对象甲' }),
     p2 = await svc.dimensions.create({ type: 'partner', code: 'B', name: '合成对象乙' });
   const opening: [string, number, number?][] = [
@@ -177,33 +181,7 @@ export async function seedFullYear(svc: CoreServices, year = 2026) {
       dimensions: partner ? { partner } : undefined,
     });
   }
-  for (let month = 1; month <= 12; month++) {
-    const date = `${year}-${String(month).padStart(2, '0')}-05`;
-    for (const [account, amount] of income)
-      await seedVouchers(svc, [
-        {
-          date,
-          status: 'posted',
-          summary: '合成每月收入',
-          lines: [
-            { account: '1002', debit: amount },
-            { account, credit: amount },
-          ],
-        },
-      ]);
-    for (const [account, amount] of expenses)
-      await seedVouchers(svc, [
-        {
-          date,
-          status: 'posted',
-          summary: '合成每月费用',
-          lines: [
-            { account, debit: amount },
-            { account: account === '5501' ? '1102' : '1002', credit: amount },
-          ],
-        },
-      ]);
-  }
+  await seedBusinessYear(svc, year, factors);
   const create = async (
     date: string,
     lines: { account: string; debit?: number; credit?: number }[],
@@ -229,6 +207,40 @@ export async function seedFullYear(svc: CoreServices, year = 2026) {
     { account: '3101', credit: 80 },
   ]);
   return { release, impose, adjustment, capital };
+}
+export async function seedBusinessYear(
+  svc: CoreServices,
+  year: number,
+  factors: readonly number[],
+) {
+  if (factors.length !== 12) throw new Error('固定账套须提供十二个月的业务倍数');
+  for (const [i, factor] of factors.entries()) {
+    const date = `${year}-${String(i + 1).padStart(2, '0')}-05`;
+    for (const [account, amount] of income)
+      await seedVouchers(svc, [
+        {
+          date,
+          status: 'posted',
+          summary: '合成每月收入',
+          lines: [
+            { account: '1002', debit: amount * factor },
+            { account, credit: amount * factor },
+          ],
+        },
+      ]);
+    for (const [account, amount] of expenses)
+      await seedVouchers(svc, [
+        {
+          date,
+          status: 'posted',
+          summary: '合成每月费用',
+          lines: [
+            { account, debit: amount * factor },
+            { account: account === '5501' ? '1102' : '1002', credit: amount * factor },
+          ],
+        },
+      ]);
+  }
 }
 function event(
   v: Voucher,
@@ -260,7 +272,7 @@ function event(
 }
 export async function confirmFixture(
   svc: CoreServices,
-  v: Awaited<ReturnType<typeof seedFullYear>>,
+  v: Awaited<ReturnType<typeof seedFullYear>> | undefined,
   year = 2026,
 ): Promise<Configuration> {
   const sources = await readNonprofitSources(svc, {
@@ -269,28 +281,36 @@ export async function confirmFixture(
     to: year * 100 + 12,
   });
   const c = blankConfiguration(sources.book.id, year);
-  c.events = [
-    {
-      ...event(v.release, 'release', 'R', 50),
-      restriction: {
-        ...c.resources[1]!.restriction!,
-        purpose: { description: '合成教学项目', releaseReference: '提供者书面解除全部用途限制' },
-      },
-    },
-    {
-      ...event(v.impose, 'restriction', 'U', 30),
-      restriction: {
-        authority: 'lawOrRegulation',
-        issuer: '合成外部提供者',
-        sourceReference: '合成新增具体限制',
-        resourceReference: 'U',
-        specificClause: '后续特定用途限制',
-        purpose: { description: '合成专项用途' },
-      },
-    },
-    { ...event(v.adjustment, 'priorAdjustment', 'U', 70), originalPeriod: (year - 1) * 100 + 12 },
-    event(v.capital, 'directCapital', 'U', 80),
-  ];
+  c.events = v
+    ? [
+        {
+          ...event(v.release, 'release', 'R', 50),
+          restriction: {
+            ...c.resources[1]!.restriction!,
+            purpose: {
+              description: '合成教学项目',
+              releaseReference: '提供者书面解除全部用途限制',
+            },
+          },
+        },
+        {
+          ...event(v.impose, 'restriction', 'U', 30),
+          restriction: {
+            authority: 'lawOrRegulation',
+            issuer: '合成外部提供者',
+            sourceReference: '合成新增具体限制',
+            resourceReference: 'U',
+            specificClause: '后续特定用途限制',
+            purpose: { description: '合成专项用途' },
+          },
+        },
+        {
+          ...event(v.adjustment, 'priorAdjustment', 'U', 70),
+          originalPeriod: (year - 1) * 100 + 12,
+        },
+        event(v.capital, 'directCapital', 'U', 80),
+      ]
+    : [];
   for (const e of sources.entries) {
     const row = mappedRow(e.accountCode, c.mappings);
     if (
