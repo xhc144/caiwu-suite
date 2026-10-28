@@ -1,6 +1,8 @@
 import { test, expect } from './fixture';
 import { bankBook, documents, recordThree } from './scenarios';
 
+test.use({ cashierHost: 'without-reset-protection' });
+
 // 此用例验证未提供保护备份能力的宿主：服务端必须报错，不能退化成直接清空。
 test('w_cn_xtcsh 宿主保护备份未接入时真实页面显示失败且账户、期初、单据全部保留', async ({
   cashier,
