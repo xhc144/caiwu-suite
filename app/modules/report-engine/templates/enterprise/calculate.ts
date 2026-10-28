@@ -1057,7 +1057,13 @@ export function calculateEquity(
       if (rule.kind === 'equityInstrument') {
         if (!part.instrumentId) fail(`权益分录${e.lineId}必须绑定具体金融工具`);
         const f = c.facts
-          .filter((x) => x.period === r.to && x.parts)
+          .filter(
+            (x) =>
+              x.period === r.to &&
+              x.basis === 'closing' &&
+              x.bucket === balanceBucket(e) &&
+              x.parts,
+          )
           .flatMap((x) => x.parts!)
           .find((x) => x.id === part.instrumentId);
         if (!f || f.classification !== 'equity') fail(`权益分录${e.lineId}工具不存在或分类为负债`);
