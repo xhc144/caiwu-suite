@@ -125,6 +125,7 @@ export default function DocumentExchange({
         }}
       />
       <Button
+        aria-label="多单文件转出"
         disabled={!selected.length || submission.isSubmitting}
         loading={submission.isSubmitting}
         onClick={() =>
@@ -160,6 +161,7 @@ export default function DocumentExchange({
               返回（保留文件）
             </Button>
             <Button
+              aria-label="预览全部单据"
               disabled={busy || file === undefined}
               loading={preview.isPending}
               onClick={() => {
@@ -170,6 +172,7 @@ export default function DocumentExchange({
               预览全部单据
             </Button>
             <Button
+              aria-label="确认整批转入"
               type="primary"
               disabled={
                 busy ||

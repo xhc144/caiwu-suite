@@ -122,3 +122,19 @@ export async function assertContractReceipt(svc: CoreServices, input: DocumentIn
   }
   return fulfillment;
 }
+
+/** 关联恢复或撤销后检查真实履约，失败由调用方的同一事务整体回滚。 */
+export async function assertContractWithinPlan(
+  svc: CoreServices,
+  id: number,
+  action: '多单转入' | '撤销反冲',
+) {
+  const fulfillment = await contractFulfillment(svc, id);
+  const exceeded = fulfillment.rows.find((row) => e6(row.remaining) < 0);
+  if (exceeded)
+    fail(
+      'CONTRACT_EXCEEDED',
+      `${action}会使产品 ${exceeded.productCode} 的合同累计入库超过计划数量 ${exceeded.planned}`,
+      '合同额度可能已被后续入库使用；请先处理后续合同入库，恢复足够额度后重试',
+    );
+}

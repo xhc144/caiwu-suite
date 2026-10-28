@@ -20,7 +20,7 @@ import type { DocumentInput } from '../shared';
 import type { InventoryTables } from './migrations';
 import { e6, fail, inventoryService, quantity } from './service';
 import { priceLine } from '../math';
-import { contractFulfillment } from './contracts';
+import { assertContractWithinPlan, contractFulfillment } from './contracts';
 
 const secret = randomBytes(32);
 type Relations = z.infer<typeof ExchangeRelationsSchema>;
@@ -423,6 +423,10 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
     const context = await s.context();
     const periods = await t.periods.list();
     const inputs = new Map<string, DocumentInput>();
+    const reversalByKey = new Map(
+      relations.reversals.map((relation, index) => [relation.reversalKey, { relation, index }]),
+    );
+    const reversedKeys = new Set(relations.reversals.map((r) => r.originalKey));
     const sources = new Map<
       string,
       { imported?: string; id?: number; type: 'contract' | 'document' }
@@ -510,22 +514,26 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
           sources.set(d.key, { type: 'contract', id: contract.id });
           input.sourceType = 'contract';
           input.sourceId = contract.id;
-          const fulfillment = await contractFulfillment(t, contract.id);
-          const requested = new Map(contractRequests.get(contract.id));
-          for (const line of d.lines) {
-            const total = (requested.get(line.productCode) ?? 0n) + BigInt(e6(line.quantity));
-            const remaining = fulfillment.rows.find(
-              (r) => r.productCode === line.productCode,
-            )?.remaining;
-            if (remaining == null || total > BigInt(e6(remaining)))
-              fail(
-                'CONTRACT_EXCEEDED',
-                `来源合同 ${contract.number} 的产品 ${line.productCode} 整批入库超过未入库数量 ${remaining ?? '0'}`,
-                '请核对本文件全部合同入库单，减少数量后重新预览',
-              );
-            requested.set(line.productCode, total);
+          // 完整反冲对保留真实头行，但原入库不再占用合同履约额度。
+          // 关联校验失败时整批仍拒绝；单张原入库继续通过 prepare 的全部校验。
+          if (!reversedKeys.has(d.key)) {
+            const fulfillment = await contractFulfillment(t, contract.id);
+            const requested = new Map(contractRequests.get(contract.id));
+            for (const line of d.lines) {
+              const total = (requested.get(line.productCode) ?? 0n) + BigInt(e6(line.quantity));
+              const remaining = fulfillment.rows.find(
+                (r) => r.productCode === line.productCode,
+              )?.remaining;
+              if (remaining == null || total > BigInt(e6(remaining)))
+                fail(
+                  'CONTRACT_EXCEEDED',
+                  `来源合同 ${contract.number} 的产品 ${line.productCode} 整批入库超过未入库数量 ${remaining ?? '0'}`,
+                  '请核对本文件全部合同入库单，减少数量后重新预览',
+                );
+              requested.set(line.productCode, total);
+            }
+            contractRequests.set(contract.id, requested);
           }
-          contractRequests.set(contract.id, requested);
         } else if (d.source?.type === 'document') {
           const imported = identities.get(exchangeIdentity(d.source));
           if (imported) {
@@ -572,6 +580,26 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
         errors.push({ document: i + 1, message: errorText(error) });
       }
     }
+    // 普通单据仍先入后出；合同反冲逐对恢复额度后，后续合同入库才能保存。
+    const contractReversals = new Map<number, Relations['reversals']>();
+    for (const relation of relations.reversals) {
+      const source = sources.get(relation.originalKey);
+      if (source?.type === 'contract') {
+        const pairs = contractReversals.get(source.id!) ?? [];
+        pairs.push(relation);
+        contractReversals.set(source.id!, pairs);
+      }
+    }
+    const predecessors = new Map<string, string[]>();
+    for (const pairs of contractReversals.values())
+      for (let i = 1; i < pairs.length; i++)
+        predecessors.set(pairs[i]!.originalKey, [pairs[i - 1]!.reversalKey]);
+    for (const [key, source] of sources)
+      if (source.type === 'contract' && !reversedKeys.has(key))
+        predecessors.set(
+          key,
+          (contractReversals.get(source.id!) ?? []).map((r) => r.reversalKey),
+        );
     const pending = [...file.documents].sort(
       (a, b) => Number(a.kind === 'issue') - Number(b.kind === 'issue'),
     );
@@ -579,7 +607,9 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
     const visited = new Set<string>();
     while (pending.length) {
       const index = pending.findIndex(
-        (d) => !sources.get(d.key)?.imported || visited.has(sources.get(d.key)!.imported!),
+        (d) =>
+          (!sources.get(d.key)?.imported || visited.has(sources.get(d.key)!.imported!)) &&
+          (predecessors.get(d.key) ?? []).every((key) => visited.has(key)),
       );
       if (index < 0) {
         errors.push({ document: 0, message: '文件中的单据来源形成循环，不能转入' });
@@ -668,6 +698,27 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
       if (p.shortages.length && v.allowNegative) input.negativeConfirmation = p.confirmation;
       const saved = await t.inventory.with((inventory) => inventory.saveDocument(input));
       importedIds.set(d.key, saved.id);
+      const reversal = reversalByKey.get(d.key);
+      if (reversal) {
+        const { relation, index } = reversal;
+        const originalId = importedIds.get(relation.originalKey)!;
+        await db
+          .insertInto('inventory_reversal')
+          .values({
+            original_document_id: originalId,
+            reversal_document_id: saved.id,
+            request_key: `${v.requestKey}:reversal:${index + 1}`,
+            payload_hash: digest({ hash, relation }),
+            created_by: t.user.id,
+            created_at: t.ctx.now().toISOString(),
+          })
+          .execute();
+        await db
+          .updateTable('inventory_document')
+          .set({ revision: sql`revision+1` })
+          .where('id', '=', originalId)
+          .execute();
+      }
     }
     for (const [i, relation] of relations.transfers.entries()) {
       await db
@@ -684,25 +735,10 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
         })
         .execute();
     }
-    for (const [i, relation] of relations.reversals.entries()) {
-      const originalId = importedIds.get(relation.originalKey)!;
-      await db
-        .insertInto('inventory_reversal')
-        .values({
-          original_document_id: originalId,
-          reversal_document_id: importedIds.get(relation.reversalKey)!,
-          request_key: `${v.requestKey}:reversal:${i + 1}`,
-          payload_hash: digest({ hash, relation }),
-          created_by: t.user.id,
-          created_at: t.ctx.now().toISOString(),
-        })
-        .execute();
-      await db
-        .updateTable('inventory_document')
-        .set({ revision: sql`revision+1` })
-        .where('id', '=', originalId)
-        .execute();
-    }
+    for (const id of new Set(
+      [...sources.values()].filter((s) => s.type === 'contract').map((s) => s.id!),
+    ))
+      await assertContractWithinPlan(t, id, '多单转入');
     savedIds.push(...file.documents.map((d) => importedIds.get(d.key)!));
     await t.settings.set(requestSetting, {
       hash,

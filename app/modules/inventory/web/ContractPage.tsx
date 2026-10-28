@@ -254,7 +254,7 @@ export default function ContractPage() {
           <>
             <Alert
               type="info"
-              title={`合同 ${fulfillment.data.contract.number}：来源入库按已保存数量累计；整单反冲后恢复未入库数量，删除反冲单后恢复原履约。`}
+              title={`合同 ${fulfillment.data.contract.number}：来源入库按已保存数量累计；整单反冲后恢复未入库数量，删除反冲单后恢复原履约。恢复额度已被后续入库使用时，须先处理后续入库才能撤销反冲。`}
             />
             {can && (
               <Space wrap>

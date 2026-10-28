@@ -31,7 +31,7 @@ import type { z } from 'zod';
 import { priceLine } from '../math';
 import { openingValue } from '../opening';
 import type { InventoryTables } from './migrations';
-import { assertContractReceipt, contractFulfillment } from './contracts';
+import { assertContractReceipt, assertContractWithinPlan, contractFulfillment } from './contracts';
 const secret = randomBytes(32);
 const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 export function fail(code: string, message: string, hint = '请检查当前数据后重试'): never {
@@ -1118,12 +1118,16 @@ export function inventoryService(svc: CoreServices) {
           .where('reversal_document_id', '=', r.id)
           .executeTakeFirst();
         await tdb.deleteFrom('inventory_document').where('id', '=', r.id).execute();
-        if (reversal)
+        if (reversal) {
+          const original = await s.document(reversal.original_document_id);
+          if (original.source_type === 'contract' && original.source_id != null)
+            await assertContractWithinPlan(t, original.source_id, '撤销反冲');
           await tdb
             .updateTable('inventory_document')
             .set({ revision: sql`revision+1` })
             .where('id', '=', reversal.original_document_id)
             .execute();
+        }
         await s.bump();
         await t.log.write({
           action: 'inventory.document.delete',
