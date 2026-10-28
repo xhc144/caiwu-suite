@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "rural-collective-2024",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "农村集体经济组织会计制度（2024）",
   "regime": "rural-collective",
-  "description": "覆盖42项一级科目；仅提供科目数据，未提供制度规定的明细核算、自动结转及法定报表。",
+  "description": "42项一级科目及收益分配、经营收入、待处理财产损溢、工资劳务、税费和管理费用常用明细。原文未指定的明细数字为应用默认编码；成员与非成员通过独立往来档案区分，人员、工程和专项资金按真实辅助对象核算。资本不预造成员份额，公积公益金不预造资金来源。其他资产类别、品名与实际业务明细由用户继续设置；仅新建账套加载，不自动修改旧账，不含自动结转与报表。",
   "order": 7,
   "status": "current",
   "codeScheme": "3-2-2",
@@ -52,7 +52,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号1；「101 库存现金」科目说明PDF第26–27页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "102",
@@ -65,7 +66,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号2；「102 银行存款」科目说明PDF第27–28页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "111",
@@ -78,7 +80,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号3；「111 短期投资」科目说明PDF第28–29页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "112",
@@ -88,10 +91,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号4；「112 应收款」科目说明PDF第28–29页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号4；「112 应收款」科目说明PDF第28–29页；PDF第29页明细核算要求：与非成员单位或个人的应收暂付款，使用客户/供应商辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "113",
@@ -101,10 +111,18 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号5；「113 内部往来」科目说明PDF第29–31页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号5；「113 内部往来」科目说明PDF第29–31页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向；PDF第30–31页明细核算要求：按本集体成员分别核算，成员使用独立往来档案；双向余额不互相抵销，使用客户/供应商辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true,
+      "balanceNature": "both"
     },
     {
       "code": "121",
@@ -117,7 +135,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号6；「121 库存物资」科目说明PDF第31–32页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "131",
@@ -130,7 +149,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号7；「131 消耗性生物资产」科目说明PDF第32–36页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "132",
@@ -143,7 +163,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号8；「132 生产性生物资产」科目说明PDF第36–39页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "133",
@@ -156,7 +177,10 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号9；「133 生产性生物资产累计折旧」科目说明PDF第39–40页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "isContra": true,
+      "balanceNature": "credit"
     },
     {
       "code": "134",
@@ -169,7 +193,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号10；「134 公益性生物资产」科目说明PDF第40–42页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "141",
@@ -182,7 +207,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第24页序号11；「141 长期投资」科目说明PDF第42–43页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "151",
@@ -195,7 +221,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号12；「151 固定资产」科目说明PDF第43–47页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "152",
@@ -208,7 +235,10 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号13；「152 累计折旧」科目说明PDF第47–48页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "isContra": true,
+      "balanceNature": "credit"
     },
     {
       "code": "153",
@@ -218,10 +248,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号14；「153 在建工程」科目说明PDF第48–50页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号14；「153 在建工程」科目说明PDF第48–50页；PDF第50页明细核算要求：按实际工程项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "154",
@@ -234,7 +270,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号15；「154 固定资产清理」科目说明PDF第50–51页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "161",
@@ -247,7 +284,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号16；「161 无形资产」科目说明PDF第51–53页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "162",
@@ -260,7 +298,10 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号17；「162 累计摊销」科目说明PDF第53–54页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "isContra": true,
+      "balanceNature": "credit"
     },
     {
       "code": "171",
@@ -270,10 +311,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号18；「171 长期待摊费用」科目说明PDF第54–55页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号18；「171 长期待摊费用」科目说明PDF第54–55页；PDF第55页明细核算要求：按实际支出项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "181",
@@ -286,7 +333,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号19；「181 待处理财产损溢」科目说明PDF第55–56页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "18101",
+      "name": "待处理流动资产损溢",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第55–56页；「181 待处理财产损溢」科目使用说明及明细核算「18101 待处理流动资产损溢」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "18102",
+      "name": "待处理非流动资产损溢",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第55–56页；「181 待处理财产损溢」科目使用说明及明细核算「18102 待处理非流动资产损溢」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
     },
     {
       "code": "201",
@@ -296,10 +368,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号20；「201 短期借款」科目说明PDF第56–57页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号20；「201 短期借款」科目说明PDF第56–57页；PDF第57页明细核算要求：按借款单位或个人，使用客户/供应商辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "211",
@@ -309,10 +388,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号21；「211 应付款」科目说明PDF第57–58页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号21；「211 应付款」科目说明PDF第57–58页；PDF第58页明细核算要求：按非成员单位或个人，使用客户/供应商辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "212",
@@ -322,9 +408,95 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号22；「212 应付工资」科目说明PDF第58–59页",
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号22；「212 应付工资」科目说明PDF第58–59页；PDF第59页明细核算要求：按应付工资对象，使用个人辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "21201",
+      "name": "工资",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第58–59页；「212 应付工资」科目使用说明及明细核算「21201 工资」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21202",
+      "name": "奖金",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第58–59页；「212 应付工资」科目使用说明及明细核算「21202 奖金」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21203",
+      "name": "津贴",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第58–59页；「212 应付工资」科目使用说明及明细核算「21203 津贴」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21204",
+      "name": "补助",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第58–59页；「212 应付工资」科目使用说明及明细核算「21204 补助」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21205",
+      "name": "社会保险费",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第58–59页；「212 应付工资」科目使用说明及明细核算「21205 社会保险费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -335,9 +507,79 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号23；「213 应付劳务费」科目说明PDF第59–60页",
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号23；「213 应付劳务费」科目说明PDF第59–60页；PDF第59页明细核算要求：按应付劳务费对象，使用个人辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "21301",
+      "name": "劳务费",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第59页；「213 应付劳务费」科目使用说明及明细核算「21301 劳务费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21302",
+      "name": "奖金",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第59页；「213 应付劳务费」科目使用说明及明细核算「21302 奖金」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21303",
+      "name": "津贴",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第59页；「213 应付劳务费」科目使用说明及明细核算「21303 津贴」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21304",
+      "name": "补助",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第59页；「213 应付劳务费」科目使用说明及明细核算「21304 补助」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -351,7 +593,152 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号24；「214 应交税费」科目说明PDF第60–61页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "21401",
+      "name": "应交增值税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21401 应交增值税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21402",
+      "name": "应交个人所得税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21402 应交个人所得税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21403",
+      "name": "应交所得税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75、77页；「214 应交税费」科目使用说明及明细核算「21403 应交所得税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21404",
+      "name": "应交消费税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21404 应交消费税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21405",
+      "name": "应交城市维护建设税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21405 应交城市维护建设税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21406",
+      "name": "应交资源税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21406 应交资源税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21407",
+      "name": "应交房产税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21407 应交房产税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21408",
+      "name": "应交城镇土地使用税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21408 应交城镇土地使用税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21409",
+      "name": "应交车船税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21409 应交车船税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21410",
+      "name": "应交印花税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21410 应交印花税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21411",
+      "name": "应交教育费附加",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21411 应交教育费附加」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21412",
+      "name": "应交地方教育附加",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第60、74–75页；「214 应交税费」科目使用说明及明细核算「21412 应交地方教育附加」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
     },
     {
       "code": "221",
@@ -361,10 +748,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号25；「221 长期借款及应付款」科目说明PDF第61–63页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号25；「221 长期借款及应付款」科目说明PDF第61–63页；PDF第61页明细核算要求：按借款及应付款单位或个人，使用客户/供应商辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "231",
@@ -374,10 +768,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号26；「231 一事一议资金」科目说明PDF第61–63页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号26；「231 一事一议资金」科目说明PDF第61–63页；PDF第62–63页明细核算要求：按一事一议实际项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "241",
@@ -387,10 +787,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号27；「241 专项应付款」科目说明PDF第63–64页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号27；「241 专项应付款」科目说明PDF第63–64页；PDF第64页明细核算要求：按政府补助资金实际项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "301",
@@ -403,7 +809,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号28；「301 资本」科目说明PDF第64–65页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "311",
@@ -416,7 +823,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号29；「311 公积公益金」科目说明PDF第65–68页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "321",
@@ -429,7 +837,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号30；「321 本年收益」科目说明PDF第68–70页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "322",
@@ -442,7 +851,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号31；「322 收益分配」科目说明PDF第68–70页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "32201",
+      "name": "各项分配",
+      "category": "equity",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第69–70页；「322 收益分配」科目使用说明及明细核算「32201 各项分配」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "32202",
+      "name": "未分配收益",
+      "category": "equity",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第69–70页；「322 收益分配」科目使用说明及明细核算「32202 未分配收益」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
     },
     {
       "code": "401",
@@ -452,10 +886,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号32；「401 生产（劳务）成本」科目说明PDF第70–71页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号32；「401 生产（劳务）成本」科目说明PDF第70–71页；PDF第70页明细核算要求：按生产及劳务实际成本核算对象，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "501",
@@ -465,9 +905,79 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号33；「501 经营收入」科目说明PDF第71–72页",
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号33；「501 经营收入」科目说明PDF第71–72页；PDF第71页明细核算要求：按实际经营项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "50101",
+      "name": "销售收入",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第71页；「501 经营收入」科目使用说明及明细核算「50101 销售收入」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50102",
+      "name": "劳务收入",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第71页；「501 经营收入」科目使用说明及明细核算「50102 劳务收入」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50103",
+      "name": "出租收入",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第71页；「501 经营收入」科目使用说明及明细核算「50103 出租收入」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50104",
+      "name": "发包收入",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第71页；「501 经营收入」科目使用说明及明细核算「50104 发包收入」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -478,10 +988,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号34；「502 投资收益」科目说明PDF第72–73页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号34；「502 投资收益」科目说明PDF第72–73页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向；PDF第72页明细核算要求：按实际投资项目，投资种类继续设置明细，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "503",
@@ -494,7 +1010,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号35；「503 补助收入」科目说明PDF第72–73页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "504",
@@ -507,7 +1024,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号36；「504 其他收入」科目说明PDF第73–74页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "511",
@@ -517,10 +1035,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号37；「511 经营支出」科目说明PDF第74–75页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第25页序号37；「511 经营支出」科目说明PDF第74–75页；PDF第74页明细核算要求：按实际经营项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "512",
@@ -533,6 +1057,106 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第26页序号38；「512 税金及附加」科目说明PDF第74–75页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "51201",
+      "name": "消费税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51201 消费税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51202",
+      "name": "城市维护建设税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51202 城市维护建设税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51203",
+      "name": "资源税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51203 资源税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51204",
+      "name": "房产税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51204 房产税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51205",
+      "name": "城镇土地使用税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51205 城镇土地使用税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51206",
+      "name": "车船税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51206 车船税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51207",
+      "name": "印花税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51207 印花税」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51208",
+      "name": "教育费附加",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51208 教育费附加」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51209",
+      "name": "地方教育附加",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第74–75页；「512 税金及附加」科目使用说明及明细核算「51209 地方教育附加」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -546,6 +1170,117 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第26页序号39；「513 管理费用」科目说明PDF第75–76页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "51301",
+      "name": "工资",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51301 工资」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51302",
+      "name": "办公费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51302 办公费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51303",
+      "name": "差旅费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51303 差旅费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51304",
+      "name": "管理用固定资产修理费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51304 管理用固定资产修理费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51305",
+      "name": "管理用固定资产折旧",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51305 管理用固定资产折旧」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51306",
+      "name": "管理用无形资产摊销",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51306 管理用无形资产摊销」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51307",
+      "name": "聘请中介机构费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51307 聘请中介机构费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51308",
+      "name": "咨询费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51308 咨询费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51309",
+      "name": "诉讼费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51309 诉讼费」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51310",
+      "name": "村级组织和村务运转支出",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第75页；「513 管理费用」科目使用说明及明细核算「51310 村级组织和村务运转支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -556,10 +1291,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第26页序号40；「514 公益支出」科目说明PDF第76–77页",
-      "needsReview": false
+      "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第26页序号40；「514 公益支出」科目说明PDF第76–77页；PDF第76页明细核算要求：按实际公益支出项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "515",
@@ -572,7 +1313,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第26页序号41；「515 其他支出」科目说明PDF第76–77页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "521",
@@ -585,7 +1327,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农村集体经济组织会计制度.pdf（https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf），PDF第26页序号42；「521 所得税费用」科目说明PDF第77–77页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     }
   ],
   "voucherTypes": [
@@ -600,6 +1343,11 @@
       "title": "农村集体经济组织会计制度（财会〔2023〕14号，2024年施行）",
       "file": "https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf",
       "note": "一级表PDF第24–26页及逐科目说明；财政部发布附件，在线核读；不在本模块复制原PDF。"
+    },
+    {
+      "title": "农村集体经济组织会计制度规定明细及核算对象",
+      "file": "https://czj.sh.gov.cn/cmsres/02/0211a9b419b94be68b944d073edbc109/e3e653b1f7460f8423f1d4d8b0869307.pdf",
+      "note": "本次按科目使用说明设置明细；原文未指定的子编码是应用默认，项目和单位个人由用户建立真实档案。"
     }
   ],
   "reports": []

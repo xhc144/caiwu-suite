@@ -77,7 +77,7 @@ export const expectedTemplates: ExpectedTemplate[] = [
     categories: agriculturalCategories,
     creditAssets: ['143', '152', '162'],
     creditPnl: ['501', '502', '511'],
-    reviewCodes: ['109', '122'],
+    reviewCodes: [],
     groups: {
       asset: `101库存现金 102银行存款 109其他货币资金 113应收款 114成员往来
 121产品物资 122包装物 124委托加工物资 125委托代销商品 127受托代购商品

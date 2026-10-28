@@ -2,11 +2,12 @@ import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseCodeScheme, parseTemplate, type AccountingTemplate } from '@caiwu/core';
+import { mapTemplateScheme, parseCodeScheme, parseTemplate } from '@caiwu/core';
 import { createRuntime, defineServerModule } from '@caiwu/server-kit';
 import { createTestApp } from '@caiwu/testkit';
 import templatesServer from '../server';
 import { expectedAccounts, expectedTemplates } from './expected-accounts';
+import { loadedAccountSnapshot, integrationModules } from './template-fixtures';
 
 const templates = templatesServer.templates.map((raw) => parseTemplate(raw));
 const input = (templateId: string, name = '制度加载测试') => ({
@@ -19,46 +20,27 @@ const input = (templateId: string, name = '制度加载测试') => ({
   adminPassword: 'admin',
 });
 
-function loadedAccounts(template: AccountingTemplate) {
-  return template.accounts.map((a) => ({
-    code: a.code,
-    name: a.name,
-    fullName: a.name,
-    parentId: null,
-    level: 1,
-    categoryId: a.category,
-    direction: a.direction ?? template.categories.find((c) => c.id === a.category)!.direction,
-    isLeaf: true,
-    disabled: a.disabled ?? false,
-    isCash: a.cash ?? false,
-    isBank: a.bank ?? false,
-    cashflowRequired: a.cashflow ?? false,
-    isPartner: a.partner ?? false,
-    currency: a.currency ?? null,
-    quantityUnit: a.quantityUnit ?? null,
-    dimensions: a.dimensions.map((d) => ({ ...d, defaultItemId: null })),
-  }));
-}
-
 describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite', (expected) => {
   it('确认的制度和级次落库，完整读取科目、类别、方向；重复建账不重复加载', async () => {
     const app = await createTestApp({
-      modules: [templatesServer],
+      modules: [...integrationModules],
       templateId: expected.id,
       seed: false,
     });
     try {
       const template = templates.find((t) => t.id === expected.id)!;
       const rows = await app.svc.accounts.list();
-      expect(rows).toMatchObject(loadedAccounts(template));
+      expect(rows).toMatchObject(loadedAccountSnapshot(template, rows));
       expect(rows).toHaveLength(template.accounts.length);
       expect(
-        rows.map(({ code, name, categoryId, direction }) => ({
-          code,
-          name,
-          categoryId,
-          direction,
-        })),
+        rows
+          .filter((row) => row.level === 1)
+          .map(({ code, name, categoryId, direction }) => ({
+            code,
+            name,
+            categoryId,
+            direction,
+          })),
       ).toEqual(expectedAccounts(expected));
       expect(await app.core().accounts.list()).toEqual(rows);
       expect(await app.svc.accounts.categories()).toEqual(
@@ -85,7 +67,7 @@ describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite',
         .core(null)
         .auth.login({ bookId: second.id, userCode: 'admin', password: 'admin' });
       const secondRows = await app.core(token).accounts.list();
-      expect(secondRows).toMatchObject(loadedAccounts(template));
+      expect(secondRows).toMatchObject(loadedAccountSnapshot(template, secondRows));
       expect(secondRows).toHaveLength(template.accounts.length);
       expect(new Set(secondRows.map((a) => a.code)).size).toBe(template.accounts.length);
       expect(await app.svc.accounts.list()).toEqual(rows);
@@ -99,7 +81,7 @@ describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite',
 
   it('w_xt_kgzb_a2 阻止未选择制度；w_xt_kgzb_1 阻止错误级次，不留半成品', async () => {
     const app = await createTestApp({
-      modules: [templatesServer],
+      modules: [...integrationModules],
       templateId: expected.id,
       seed: false,
     });
@@ -173,7 +155,7 @@ it('w_xt_kgzb_3：事务加载到最后科目失败时回滚、清理 .creating�
 
 it('w_xt_kgzb_a2：切换制度和令牌不串科目，级次按账套参数加载', async () => {
   const app = await createTestApp({
-    modules: [templatesServer],
+    modules: [...integrationModules],
     templateId: 'nonprofit-2026',
     seed: false,
   });
@@ -185,7 +167,12 @@ it('w_xt_kgzb_a2：切换制度和令牌不串科目，级次按账套参数加�
     const { token } = await app
       .core(null)
       .auth.login({ bookId: book.id, userCode: 'admin', password: 'admin' });
-    expect(await app.core(token).accounts.list()).toHaveLength(42);
+    const rural = templates.find((t) => t.id === 'rural-collective-2024')!;
+    const mapped = mapTemplateScheme(rural, parseCodeScheme('3-3-3'));
+    const ruralRows = await app.core(token).accounts.list();
+    expect(ruralRows).toHaveLength(mapped.accounts.length);
+    expect(ruralRows.filter((a) => a.level === 1)).toHaveLength(42);
+    expect(ruralRows).toMatchObject(loadedAccountSnapshot(mapped, ruralRows));
     expect((await app.core(token).accounts.list()).some((a) => a.code === '1506')).toBe(false);
     expect((await app.core(token).auth.me()).book.codeScheme).toEqual([3, 3, 3]);
     expect(await app.core().accounts.list()).toEqual(original);

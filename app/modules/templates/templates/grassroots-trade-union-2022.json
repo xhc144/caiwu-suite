@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "grassroots-trade-union-2022",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "基层工会会计制度（2022）",
   "regime": "grassroots-trade-union",
-  "description": "按2022施行《工会会计制度》基层工会主要表24项一级科目建账；未提供制度规定的明细核算、自动结转及法定报表。表外科目可按实际需要参照县级以上表，本模板未自动增设。",
+  "description": "基层工会主要表24项一级科目及适用的资产基金、工会资金结转结余、补助收入、支出规定明细；支出区分基本支出和项目支出。保留原文规定明细编号，其余明细数字为应用默认编码。项目支出须先建立真实项目，往来须建立真实单位或个人档案；预算支出经济分类、支出功能分类及按资产类别/品名的个性明细须按实际业务继续设置。仅新建账套加载，不自动修改旧账，不含自动结转与报表。",
   "order": 9,
   "status": "current",
   "codeScheme": "3-2-2",
@@ -52,7 +52,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号1；「101 库存现金」科目说明PDF第30–31页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "102",
@@ -65,7 +66,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号2；「102 银行存款」科目说明PDF第31–33页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "131",
@@ -78,6 +80,29 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号3；「131 应收上级经费」科目说明PDF第35–36页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "13101",
+      "name": "应收上级补助",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第35页；「131 应收上级经费」科目使用说明及明细核算「13101 应收上级补助」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "13102",
+      "name": "应收上级转拨经费",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第35页；「131 应收上级经费」科目使用说明及明细核算「13102 应收上级转拨经费」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -88,10 +113,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号4；「135 其他应收款」科目说明PDF第36–37页",
-      "needsReview": false
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号4；「135 其他应收款」科目说明PDF第36–37页；PDF第36页明细核算要求：按债务单位或个人；款项类别由实际业务继续设置，使用客户/供应商辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "141",
@@ -104,7 +136,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号5；「141 库存物品」科目说明PDF第37–39页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "162",
@@ -117,7 +150,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号6；「162 固定资产」科目说明PDF第48–51页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "163",
@@ -130,7 +164,10 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号7；「163 累计折旧」科目说明PDF第51–52页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "isContra": true,
+      "balanceNature": "credit"
     },
     {
       "code": "182",
@@ -143,7 +180,32 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号8；「182 待处理财产损溢」科目说明PDF第55–57页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "18201",
+      "name": "待处理财产价值",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第55页；「182 待处理财产损溢」科目使用说明及明细核算「18201 待处理财产价值」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "18202",
+      "name": "处理净收入",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第55页；「182 待处理财产损溢」科目使用说明及明细核算「18202 处理净收入」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
     },
     {
       "code": "211",
@@ -156,7 +218,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号9；「211 应付上级经费」科目说明PDF第59–60页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "215",
@@ -166,10 +229,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号10；「215 其他应付款」科目说明PDF第60–61页",
-      "needsReview": false
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号10；「215 其他应付款」科目说明PDF第60–61页；PDF第61页明细核算要求：按对方单位或个人，使用客户/供应商辅助档案记录实际对象，未预置虚构对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "301",
@@ -182,6 +252,29 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号11；「301 资产基金」科目说明PDF第62–63页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "30101",
+      "name": "库存物品",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第28、62页；「301 资产基金」科目使用说明及明细核算「30101 库存物品」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "30104",
+      "name": "固定资产",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第28、62页；「301 资产基金」科目使用说明及明细核算「30104 固定资产」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -195,6 +288,51 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号12；「321 工会资金结转」科目说明PDF第64–65页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "32101",
+      "name": "年初余额调整",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第64–65页；「321 工会资金结转」科目使用说明及明细核算「32101 年初余额调整」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "32102",
+      "name": "单位内部调剂",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第64–65页；「321 工会资金结转」科目使用说明及明细核算「32102 单位内部调剂」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "32103",
+      "name": "本年收支结转",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第64–65页；「321 工会资金结转」科目使用说明及明细核算「32103 本年收支结转」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "32104",
+      "name": "累计结转",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第64–65页；「321 工会资金结转」科目使用说明及明细核算「32104 累计结转」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -208,6 +346,62 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号13；「322 工会资金结余」科目说明PDF第65–67页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "32201",
+      "name": "年初余额调整",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第65–67页；「322 工会资金结余」科目使用说明及明细核算「32201 年初余额调整」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "32202",
+      "name": "单位内部调剂",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第65–67页；「322 工会资金结余」科目使用说明及明细核算「32202 单位内部调剂」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "32203",
+      "name": "本年收支结转",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第65–67页；「322 工会资金结余」科目使用说明及明细核算「32203 本年收支结转」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "32204",
+      "name": "结转转入",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第65–67页；「322 工会资金结余」科目使用说明及明细核算「32204 结转转入」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "32205",
+      "name": "累计结余",
+      "category": "net-assets",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第65–67页；「322 工会资金结余」科目使用说明及明细核算「32205 累计结余」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -221,7 +415,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第25页序号14；「401 会费收入」科目说明PDF第71–72页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "402",
@@ -234,7 +429,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号15；「402 拨缴经费收入」科目说明PDF第71–72页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "403",
@@ -247,6 +443,34 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号16；「403 上级补助收入」科目说明PDF第72–73页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "40301",
+      "name": "一般性转移支付补助",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第73页；「403 上级补助收入」科目使用说明及明细核算「40301 一般性转移支付补助」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "40302",
+      "name": "专项转移支付补助",
+      "category": "revenue",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第73页；「403 上级补助收入」科目使用说明及明细核算「40302 专项转移支付补助」；明细名称和编号采用原文；PDF第73页明细核算要求：专项转移支付补助按实际项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -260,7 +484,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号17；「405 行政补助收入」科目说明PDF第75–76页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "408",
@@ -273,7 +498,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号18；「408 其他收入」科目说明PDF第77–78页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "501",
@@ -286,6 +512,235 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号19；「501 职工活动支出」科目说明PDF第79–80页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "50101",
+      "name": "职工教育支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第79–81页；「501 职工活动支出」科目使用说明及明细核算「50101 职工教育支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010101",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50101 职工教育支出」科目使用说明及明细核算「5010101 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010102",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50101 职工教育支出」科目使用说明及明细核算「5010102 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50102",
+      "name": "文体活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第79–81页；「501 职工活动支出」科目使用说明及明细核算「50102 文体活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010201",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50102 文体活动支出」科目使用说明及明细核算「5010201 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010202",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50102 文体活动支出」科目使用说明及明细核算「5010202 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50103",
+      "name": "宣传活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第79–81页；「501 职工活动支出」科目使用说明及明细核算「50103 宣传活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010301",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50103 宣传活动支出」科目使用说明及明细核算「5010301 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010302",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50103 宣传活动支出」科目使用说明及明细核算「5010302 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50104",
+      "name": "劳模职工疗休养支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第79–81页；「501 职工活动支出」科目使用说明及明细核算「50104 劳模职工疗休养支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010401",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50104 劳模职工疗休养支出」科目使用说明及明细核算「5010401 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010402",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50104 劳模职工疗休养支出」科目使用说明及明细核算「5010402 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50105",
+      "name": "会员活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第79–81页；「501 职工活动支出」科目使用说明及明细核算「50105 会员活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010501",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50105 会员活动支出」科目使用说明及明细核算「5010501 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010502",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50105 会员活动支出」科目使用说明及明细核算「5010502 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50106",
+      "name": "其他活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第79–81页；「501 职工活动支出」科目使用说明及明细核算「50106 其他活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010601",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50106 其他活动支出」科目使用说明及明细核算「5010601 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5010602",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50106 其他活动支出」科目使用说明及明细核算「5010602 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -299,6 +754,197 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号20；「503 职工服务支出」科目说明PDF第81–82页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "50301",
+      "name": "劳动和技能竞赛活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第81–82页；「503 职工服务支出」科目使用说明及明细核算「50301 劳动和技能竞赛活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030101",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50301 劳动和技能竞赛活动支出」科目使用说明及明细核算「5030101 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030102",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50301 劳动和技能竞赛活动支出」科目使用说明及明细核算「5030102 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50302",
+      "name": "建家活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第81–82页；「503 职工服务支出」科目使用说明及明细核算「50302 建家活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030201",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50302 建家活动支出」科目使用说明及明细核算「5030201 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030202",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50302 建家活动支出」科目使用说明及明细核算「5030202 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50303",
+      "name": "职工创新活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第81–82页；「503 职工服务支出」科目使用说明及明细核算「50303 职工创新活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030301",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50303 职工创新活动支出」科目使用说明及明细核算「5030301 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030302",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50303 职工创新活动支出」科目使用说明及明细核算「5030302 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50304",
+      "name": "职工书屋活动支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第81–82页；「503 职工服务支出」科目使用说明及明细核算「50304 职工书屋活动支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030401",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50304 职工书屋活动支出」科目使用说明及明细核算「5030401 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030402",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50304 职工书屋活动支出」科目使用说明及明细核算「5030402 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50305",
+      "name": "其他服务支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第81–82页；「503 职工服务支出」科目使用说明及明细核算「50305 其他服务支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030501",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50305 其他服务支出」科目使用说明及明细核算「5030501 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5030502",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50305 其他服务支出」科目使用说明及明细核算「5030502 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -312,6 +958,235 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号21；「504 维权支出」科目说明PDF第82–84页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "50401",
+      "name": "劳动关系协调支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第82–83页；「504 维权支出」科目使用说明及明细核算「50401 劳动关系协调支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040101",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50401 劳动关系协调支出」科目使用说明及明细核算「5040101 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040102",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50401 劳动关系协调支出」科目使用说明及明细核算「5040102 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50402",
+      "name": "劳动保护支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第82–83页；「504 维权支出」科目使用说明及明细核算「50402 劳动保护支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040201",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50402 劳动保护支出」科目使用说明及明细核算「5040201 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040202",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50402 劳动保护支出」科目使用说明及明细核算「5040202 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50403",
+      "name": "法律援助支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第82–83页；「504 维权支出」科目使用说明及明细核算「50403 法律援助支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040301",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50403 法律援助支出」科目使用说明及明细核算「5040301 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040302",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50403 法律援助支出」科目使用说明及明细核算「5040302 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50404",
+      "name": "困难职工帮扶支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第82–83页；「504 维权支出」科目使用说明及明细核算「50404 困难职工帮扶支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040401",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50404 困难职工帮扶支出」科目使用说明及明细核算「5040401 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040402",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50404 困难职工帮扶支出」科目使用说明及明细核算「5040402 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50405",
+      "name": "送温暖支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第82–83页；「504 维权支出」科目使用说明及明细核算「50405 送温暖支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040501",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50405 送温暖支出」科目使用说明及明细核算「5040501 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040502",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50405 送温暖支出」科目使用说明及明细核算「5040502 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50406",
+      "name": "其他维权支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第82–83页；「504 维权支出」科目使用说明及明细核算「50406 其他维权支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040601",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50406 其他维权支出」科目使用说明及明细核算「5040601 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5040602",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50406 其他维权支出」科目使用说明及明细核算「5040602 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -325,6 +1200,159 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号22；「505 业务支出」科目说明PDF第84–85页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "50501",
+      "name": "培训支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第84页；「505 业务支出」科目使用说明及明细核算「50501 培训支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050101",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50501 培训支出」科目使用说明及明细核算「5050101 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050102",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50501 培训支出」科目使用说明及明细核算「5050102 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50502",
+      "name": "会议支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第84页；「505 业务支出」科目使用说明及明细核算「50502 会议支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050201",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50502 会议支出」科目使用说明及明细核算「5050201 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050202",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50502 会议支出」科目使用说明及明细核算「5050202 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50503",
+      "name": "专项业务支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第84页；「505 业务支出」科目使用说明及明细核算「50503 专项业务支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050301",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50503 专项业务支出」科目使用说明及明细核算「5050301 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050302",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50503 专项业务支出」科目使用说明及明细核算「5050302 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50504",
+      "name": "其他业务支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第84页；「505 业务支出」科目使用说明及明细核算「50504 其他业务支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050401",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50504 其他业务支出」科目使用说明及明细核算「5050401 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5050402",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50504 其他业务支出」科目使用说明及明细核算「5050402 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -338,6 +1366,273 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号23；「507 资本性支出」科目说明PDF第86–88页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "50701",
+      "name": "房屋建筑物购建",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第86–87页；「507 资本性支出」科目使用说明及明细核算「50701 房屋建筑物购建」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070101",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50701 房屋建筑物购建」科目使用说明及明细核算「5070101 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070102",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50701 房屋建筑物购建」科目使用说明及明细核算「5070102 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50702",
+      "name": "办公设备购置",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第86–87页；「507 资本性支出」科目使用说明及明细核算「50702 办公设备购置」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070201",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50702 办公设备购置」科目使用说明及明细核算「5070201 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070202",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50702 办公设备购置」科目使用说明及明细核算「5070202 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50703",
+      "name": "专用设备购置",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第86–87页；「507 资本性支出」科目使用说明及明细核算「50703 专用设备购置」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070301",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50703 专用设备购置」科目使用说明及明细核算「5070301 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070302",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50703 专用设备购置」科目使用说明及明细核算「5070302 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50704",
+      "name": "交通工具购置",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第86–87页；「507 资本性支出」科目使用说明及明细核算「50704 交通工具购置」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070401",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50704 交通工具购置」科目使用说明及明细核算「5070401 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070402",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50704 交通工具购置」科目使用说明及明细核算「5070402 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50705",
+      "name": "大型修缮",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第86–87页；「507 资本性支出」科目使用说明及明细核算「50705 大型修缮」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070501",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50705 大型修缮」科目使用说明及明细核算「5070501 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070502",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50705 大型修缮」科目使用说明及明细核算「5070502 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50706",
+      "name": "信息网络购建",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第86–87页；「507 资本性支出」科目使用说明及明细核算「50706 信息网络购建」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070601",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50706 信息网络购建」科目使用说明及明细核算「5070601 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070602",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50706 信息网络购建」科目使用说明及明细核算「5070602 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "50707",
+      "name": "其他资本性支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第86–87页；「507 资本性支出」科目使用说明及明细核算「50707 其他资本性支出」；明细名称和编号采用原文",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070701",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50707 其他资本性支出」科目使用说明及明细核算「5070701 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "5070702",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「50707 其他资本性支出」科目使用说明及明细核算「5070702 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -351,6 +1646,34 @@
       "dimensions": [],
       "disabled": false,
       "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第26页序号24；「510 其他支出」科目说明PDF第89–90页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "51001",
+      "name": "基本支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「510 其他支出」科目使用说明及明细核算「51001 基本支出」；名称据原文列明核算内容设置，末段数字为应用默认编码",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "51002",
+      "name": "项目支出",
+      "category": "expense",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "disabled": false,
+      "source": "工会会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf），PDF第23页；「510 其他支出」科目使用说明及明细核算「51002 项目支出」；名称据原文列明核算内容设置，末段数字为应用默认编码；PDF第23页明细核算要求：项目支出按具体项目，使用项目辅助档案记录实际对象，未预置虚构对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     }
   ],
@@ -366,6 +1689,11 @@
       "title": "工会会计制度（财会〔2021〕7号，2022年施行）",
       "file": "https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf",
       "note": "一级表PDF第25–26页及逐科目说明；财政部发布附件，在线核读；不在本模块复制原PDF。基层和县级以上为同一制度的两套适用科目表，不是两份独立法规。"
+    },
+    {
+      "title": "工会会计制度规定明细及核算对象",
+      "file": "https://kjs.mof.gov.cn/zhengcefabu/202104/P020210421580786767424.pdf",
+      "note": "本次按科目使用说明设置明细；原文未指定的子编码是应用默认，项目和单位个人由用户建立真实档案。"
     }
   ],
   "reports": []

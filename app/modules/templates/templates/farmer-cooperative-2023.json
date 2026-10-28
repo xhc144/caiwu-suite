@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "id": "farmer-cooperative-2023",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "name": "农民专业合作社会计制度（2023）",
   "regime": "farmer-cooperative",
-  "description": "覆盖48项一级科目；仅提供科目数据，未提供制度规定的明细核算、自动结转及法定报表。另含表注可增设的109、122，二者余额方向与适用细节待核，已逐项标记needsReview。",
+  "description": "适用2023年1月1日起《农民专业合作社会计制度》。保留48项一级科目及表注可增设的109、122，提供盈余分配、税费、工资劳务费、扶贫资产分类及常用收支明细。成员和非成员对象共用客户/供应商档案，工资劳务费按个人、项目业务按项目辅助核算；建账后须自行建立真实对象及具体资产品种、群别、银行账户、资本公积来源和盈余公积用途。明细编码及未统一列名的分类名称为应用默认，可按本社业务增设。仅新建账套加载，不自动修改已有账套；不包含自动结转、成员权益备查簿和法定报表。",
   "order": 6,
   "status": "current",
   "codeScheme": "3-2-2",
@@ -52,7 +52,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号1；「101 库存现金」科目说明PDF第25–26页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "102",
@@ -65,7 +66,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号2；「102 银行存款」科目说明PDF第26–27页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "109",
@@ -77,8 +79,69 @@
       "cashflow": false,
       "dimensions": [],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页表下注：可增设「109 其他货币资金」；名称编码已核，余额方向为按资产性质选取的应用默认借方，正式科目说明与适用细节待核",
-      "needsReview": true
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页表下注：可增设「109 其他货币资金」，用于表注列示的各类其他货币资金；按制度第十五条、第十七条列示资产性质设置借方余额显示，不改变实际借贷记录",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "10901",
+      "name": "外埠存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页「109 其他货币资金」表下注列示的其他货币资金类型；「10901 外埠存款」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "10902",
+      "name": "银行汇票存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页「109 其他货币资金」表下注列示的其他货币资金类型；「10902 银行汇票存款」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "10903",
+      "name": "银行本票存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页「109 其他货币资金」表下注列示的其他货币资金类型；「10903 银行本票存款」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "10904",
+      "name": "信用卡存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页「109 其他货币资金」表下注列示的其他货币资金类型；「10904 信用卡存款」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "10905",
+      "name": "信用证保证金存款",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页「109 其他货币资金」表下注列示的其他货币资金类型；「10905 信用证保证金存款」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "10906",
+      "name": "第三方支付平台账户余额",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页「109 其他货币资金」表下注列示的其他货币资金类型；「10906 第三方支付平台账户余额」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
     },
     {
       "code": "113",
@@ -88,10 +151,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号3；「113 应收款」科目说明PDF第27–28页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号3；「113 应收款」科目说明PDF第27–28页；PDF第27页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "114",
@@ -101,10 +171,18 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号4；「114 成员往来」科目说明PDF第28–29页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号4；「114 成员往来」科目说明PDF第28–29页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向；PDF第28页第五、六项按成员核算并分别反映各成员借贷余额；应用映射为必填partner辅助项，不预设成员",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "balanceNature": "both",
+      "partner": true
     },
     {
       "code": "121",
@@ -117,7 +195,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号5；「121 产品物资」科目说明PDF第29–30页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "122",
@@ -129,8 +208,9 @@
       "cashflow": false,
       "dimensions": [],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页表下注：可增设「122 包装物」；名称编码已核，余额方向为按资产性质选取的应用默认借方，正式科目说明与适用细节待核",
-      "needsReview": true
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页表下注：可增设「122 包装物」，用于大量使用且需要单独核算的包装物；按制度第十五条、第十七条列示资产性质设置借方余额显示，不改变实际借贷记录",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "124",
@@ -140,10 +220,21 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        },
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号6；「124 委托加工物资」科目说明PDF第30–31页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号6；「124 委托加工物资」科目说明PDF第30–31页；PDF第31页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象；PDF第31页按合同、工程、支出或经营/投资项目核算，应用映射为必填project辅助项，不预设实际项目",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "125",
@@ -153,10 +244,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号7；「125 委托代销商品」科目说明PDF第31–32页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号7；「125 委托代销商品」科目说明PDF第31–32页；PDF第31页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "127",
@@ -166,10 +264,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号8；「127 受托代购商品」科目说明PDF第32–33页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号8；「127 受托代购商品」科目说明PDF第32–33页；PDF第32页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "128",
@@ -179,10 +284,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号9；「128 受托代销商品」科目说明PDF第32–33页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号9；「128 受托代销商品」科目说明PDF第32–33页；PDF第33页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "131",
@@ -195,6 +307,37 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号10；「131 对外投资」科目说明PDF第33–35页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "13101",
+      "name": "联合社投资",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第33页「131 对外投资」第一项列示的投资对象，名称归并为应用默认分类；「13101 联合社投资」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体投资项目通过项目辅助核算，投资品种可按本社实际增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "13102",
+      "name": "其他单位投资",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第33页「131 对外投资」第一项列示的投资对象，名称归并为应用默认分类；「13102 其他单位投资」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体投资项目通过项目辅助核算，投资品种可按本社实际增设",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -208,6 +351,27 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号11；「141 消耗性生物资产」科目说明PDF第35–39页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "14101",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第38页「141 消耗性生物资产」第九项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14101 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "14102",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第38页「141 消耗性生物资产」第九项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14102 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -221,6 +385,37 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号12；「142 生产性生物资产」科目说明PDF第39–42页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "14201",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "department",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第42页「142 生产性生物资产」第七项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14201 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别及项目须按实际业务在下级科目中增设；生产性生物资产及其折旧所属部门用必填department辅助项记录",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "14202",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "department",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第42页「142 生产性生物资产」第七项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14202 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别及项目须按实际业务在下级科目中增设；生产性生物资产及其折旧所属部门用必填department辅助项记录",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -234,7 +429,44 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号13；「143 生产性生物资产累计折旧」科目说明PDF第42–43页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "isContra": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "14301",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "department",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第42页「143 生产性生物资产累计折旧」第三项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14301 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别及项目须按实际业务在下级科目中增设；生产性生物资产及其折旧所属部门用必填department辅助项记录",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "isContra": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "14302",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "department",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第42页「143 生产性生物资产累计折旧」第三项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14302 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别及项目须按实际业务在下级科目中增设；生产性生物资产及其折旧所属部门用必填department辅助项记录",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "isContra": true,
+      "balanceNature": "credit"
     },
     {
       "code": "144",
@@ -247,6 +479,27 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第23页序号14；「144 公益性生物资产」科目说明PDF第43–45页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "14401",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第44页「144 公益性生物资产」第四项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14401 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "14402",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第44页「144 公益性生物资产」第四项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「14402 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -260,6 +513,27 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号15；「151 固定资产」科目说明PDF第45–48页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "15101",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第48页「151 固定资产」第八项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「15101 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "15102",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第48页「151 固定资产」第八项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「15102 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -273,7 +547,34 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号16；「152 累计折旧」科目说明PDF第48–49页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "isContra": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "15201",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第49页「152 累计折旧」第六项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「15201 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "isContra": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "15202",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第49页「152 累计折旧」第六项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「15202 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "isContra": true,
+      "balanceNature": "credit"
     },
     {
       "code": "153",
@@ -283,9 +584,45 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号17；「153 在建工程」科目说明PDF第49–51页",
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号17；「153 在建工程」科目说明PDF第49–51页；PDF第51页按合同、工程、支出或经营/投资项目核算，应用映射为必填project辅助项，不预设实际项目",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "15301",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第51页「153 在建工程」第七项要求区分是否属于扶贫项目资产；「15301 扶贫项目资产」的明细编码及两分类名称为应用默认，依据PDF第23页明细科目可自行设置的规定；工程项目使用必填project辅助项",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "15302",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第51页「153 在建工程」第七项要求区分是否属于扶贫项目资产；「15302 非扶贫项目资产」的明细编码及两分类名称为应用默认，依据PDF第23页明细科目可自行设置的规定；工程项目使用必填project辅助项",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -299,7 +636,31 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号18；「154 固定资产清理」科目说明PDF第51–52页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "balanceNature": "both"
+    },
+    {
+      "code": "15401",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第52页「154 固定资产清理」第四项要求区分是否属于扶贫项目资产；「15401 扶贫项目资产」的明细编码及两分类名称为应用默认，依据PDF第23页明细科目可自行设置的规定；被清理的具体固定资产须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "15402",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第52页「154 固定资产清理」第四项要求区分是否属于扶贫项目资产；「15402 非扶贫项目资产」的明细编码及两分类名称为应用默认，依据PDF第23页明细科目可自行设置的规定；被清理的具体固定资产须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
     },
     {
       "code": "161",
@@ -312,6 +673,27 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号19；「161 无形资产」科目说明PDF第52–54页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "16101",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第54页「161 无形资产」第五项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「16101 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "16102",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第54页「161 无形资产」第五项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「16102 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -325,7 +707,34 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号20；「162 累计摊销」科目说明PDF第54–55页；备抵资产，正常贷方余额",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "isContra": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "16201",
+      "name": "扶贫项目资产",
+      "category": "asset",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第55页「162 累计摊销」第六项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「16201 扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "isContra": true,
+      "balanceNature": "credit"
+    },
+    {
+      "code": "16202",
+      "name": "非扶贫项目资产",
+      "category": "asset",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第55页「162 累计摊销」第六项要求区分是否属于扶贫项目资产；两分类名称为应用默认；「16202 非扶贫项目资产」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体资产种类、群别或项目须按实际业务在下级科目中增设",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "isContra": true,
+      "balanceNature": "credit"
     },
     {
       "code": "171",
@@ -335,10 +744,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号21；「171 长期待摊费用」科目说明PDF第55–57页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号21；「171 长期待摊费用」科目说明PDF第55–57页；PDF第55页按合同、工程、支出或经营/投资项目核算，应用映射为必填project辅助项，不预设实际项目",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "181",
@@ -351,7 +766,33 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号22；「181 待处理财产损溢」科目说明PDF第55–57页；可借可贷或结转后无余额，应用默认借方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "balanceNature": "both"
+    },
+    {
+      "code": "18101",
+      "name": "待处理流动资产损溢",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第57页「181 待处理财产损溢」第四、五项规定的两类明细；期末处理完毕应无余额；「18101 待处理流动资产损溢」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both",
+      "closingRule": "clearing"
+    },
+    {
+      "code": "18102",
+      "name": "待处理非流动资产损溢",
+      "category": "asset",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第57页「181 待处理财产损溢」第四、五项规定的两类明细；期末处理完毕应无余额；「18102 待处理非流动资产损溢」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both",
+      "closingRule": "clearing"
     },
     {
       "code": "201",
@@ -361,10 +802,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号23；「201 短期借款」科目说明PDF第57–58页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号23；「201 短期借款」科目说明PDF第57–58页；PDF第58页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "211",
@@ -374,10 +822,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号24；「211 应付款」科目说明PDF第58–59页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号24；「211 应付款」科目说明PDF第58–59页；PDF第58页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "212",
@@ -387,9 +842,90 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号25；「212 应付工资」科目说明PDF第59–60页",
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号25；「212 应付工资」科目说明PDF第59–60页；人员及组成内容分别使用必填person辅助项及下级科目，具体人员类别按本社档案分组设置",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "21201",
+      "name": "工资",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第59页「212 应付工资」第一、五项工资组成内容及按职工姓名明细核算；「21201 工资」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实职工，职工类别可用个人档案分组或继续增设明细，不预设职工",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21202",
+      "name": "奖金",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第59页「212 应付工资」第一、五项工资组成内容及按职工姓名明细核算；「21202 奖金」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实职工，职工类别可用个人档案分组或继续增设明细，不预设职工",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21203",
+      "name": "津贴",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第59页「212 应付工资」第一、五项工资组成内容及按职工姓名明细核算；「21203 津贴」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实职工，职工类别可用个人档案分组或继续增设明细，不预设职工",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21204",
+      "name": "补助",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第59页「212 应付工资」第一、五项工资组成内容及按职工姓名明细核算；「21204 补助」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实职工，职工类别可用个人档案分组或继续增设明细，不预设职工",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21205",
+      "name": "社会保险费",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第59页「212 应付工资」第一、五项工资组成内容及按职工姓名明细核算；「21205 社会保险费」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实职工，职工类别可用个人档案分组或继续增设明细，不预设职工",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -400,9 +936,75 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号26；「213 应付劳务费」科目说明PDF第59–60页",
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号26；「213 应付劳务费」科目说明PDF第59–60页；人员及组成内容分别使用必填person辅助项及下级科目，具体人员类别按本社档案分组设置",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "21301",
+      "name": "劳务费",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60页「213 应付劳务费」第一、四项劳务费组成内容及按临时工作人员姓名明细核算；「21301 劳务费」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实临时工作人员，人员类别可用个人档案分组或继续增设明细，不预设人员",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21302",
+      "name": "奖金",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60页「213 应付劳务费」第一、四项劳务费组成内容及按临时工作人员姓名明细核算；「21302 奖金」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实临时工作人员，人员类别可用个人档案分组或继续增设明细，不预设人员",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21303",
+      "name": "津贴",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60页「213 应付劳务费」第一、四项劳务费组成内容及按临时工作人员姓名明细核算；「21303 津贴」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实临时工作人员，人员类别可用个人档案分组或继续增设明细，不预设人员",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "21304",
+      "name": "补助",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [
+        {
+          "type": "person",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60页「213 应付劳务费」第一、四项劳务费组成内容及按临时工作人员姓名明细核算；「21304 补助」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；个人辅助项记录真实临时工作人员，人员类别可用个人档案分组或继续增设明细，不预设人员",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -416,7 +1018,141 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号27；「214 应交税费」科目说明PDF第60–62页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "balanceNature": "both"
+    },
+    {
+      "code": "21401",
+      "name": "应交增值税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21401 应交增值税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21402",
+      "name": "应交企业所得税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21402 应交企业所得税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21403",
+      "name": "应交消费税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21403 应交消费税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21404",
+      "name": "应交城市维护建设税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21404 应交城市维护建设税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21405",
+      "name": "应交资源税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21405 应交资源税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21406",
+      "name": "应交房产税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21406 应交房产税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21407",
+      "name": "应交土地使用税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21407 应交土地使用税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21408",
+      "name": "应交车船使用税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21408 应交车船使用税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21409",
+      "name": "应交印花税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21409 应交印花税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21410",
+      "name": "应交教育费附加",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21410 应交教育费附加」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21411",
+      "name": "应交地方教育费附加",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21411 应交地方教育费附加」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
+    },
+    {
+      "code": "21412",
+      "name": "应交个人所得税",
+      "category": "liability",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第60–62页「214 应交税费」第一至六项按应缴纳税费项目核算；科目名称以应交前缀统一显示；「21412 应交个人所得税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；增值税具体专栏应按本社纳税人身份和国家统一增值税会计处理规定继续增设；本模板不预置税率",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both"
     },
     {
       "code": "215",
@@ -426,10 +1162,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号28；「215 应付利息」科目说明PDF第62–63页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号28；「215 应付利息」科目说明PDF第62–63页；PDF第62页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "221",
@@ -439,10 +1182,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号29；「221 应付盈余返还」科目说明PDF第62–63页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号29；「221 应付盈余返还」科目说明PDF第62–63页；PDF第63页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "222",
@@ -452,10 +1202,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号30；「222 应付剩余盈余」科目说明PDF第63–64页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号30；「222 应付剩余盈余」科目说明PDF第63–64页；PDF第64页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "231",
@@ -465,10 +1222,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号31；「231 长期借款」科目说明PDF第64–66页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号31；「231 长期借款」科目说明PDF第64–66页；PDF第64页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "235",
@@ -478,10 +1242,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号32；「235 专项应付款」科目说明PDF第64–66页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号32；「235 专项应付款」科目说明PDF第64–66页；PDF第66页按合同、工程、支出或经营/投资项目核算，应用映射为必填project辅助项，不预设实际项目",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "301",
@@ -491,10 +1261,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "partner",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号33；「301 股金」科目说明PDF第66–67页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号33；「301 股金」科目说明PDF第66–67页；PDF第67页按单位、个人、成员或受托/委托对象明细核算，应用映射为必填partner辅助项；个人及机构成员均在客户/供应商档案建档，不预设实际对象",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "partner": true
     },
     {
       "code": "311",
@@ -507,6 +1284,27 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号34；「311 专项基金」科目说明PDF第67–69页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "31101",
+      "name": "国家财政直接补助",
+      "category": "equity",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第67–69页「311 专项基金」第一至六项要求按专项基金来源设置明细，来源名称为应用默认分类；「31101 国家财政直接补助」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "31102",
+      "name": "他人捐赠",
+      "category": "equity",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第67–69页「311 专项基金」第一至六项要求按专项基金来源设置明细，来源名称为应用默认分类；「31102 他人捐赠」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -520,7 +1318,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号35；「321 资本公积」科目说明PDF第69–70页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "322",
@@ -533,7 +1332,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号36；「322 盈余公积」科目说明PDF第70–71页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "331",
@@ -546,7 +1346,9 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号37；「331 本年盈余」科目说明PDF第70–71页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "balanceNature": "both"
     },
     {
       "code": "332",
@@ -559,7 +1361,68 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号38；「332 盈余分配」科目说明PDF第71–73页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "balanceNature": "both"
+    },
+    {
+      "code": "33201",
+      "name": "各项分配",
+      "category": "equity",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第71–72页「332 盈余分配」第一项明确设置两个二级科目；第三至八项按分配用途核算；「33201 各项分配」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "3320101",
+      "name": "提取盈余公积",
+      "category": "equity",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第72页「33201 各项分配」第三至五项列示的分配用途；第七项年度终了转入未分配盈余；「3320101 提取盈余公积」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；用途名称按原文归并为应用默认三级明细，年末各项分配转入未分配盈余",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance",
+      "closingRule": "clearing"
+    },
+    {
+      "code": "3320102",
+      "name": "盈余返还",
+      "category": "equity",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第72页「33201 各项分配」第三至五项列示的分配用途；第七项年度终了转入未分配盈余；「3320102 盈余返还」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；用途名称按原文归并为应用默认三级明细，年末各项分配转入未分配盈余",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance",
+      "closingRule": "clearing"
+    },
+    {
+      "code": "3320103",
+      "name": "剩余盈余分配",
+      "category": "equity",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第72页「33201 各项分配」第三至五项列示的分配用途；第七项年度终了转入未分配盈余；「3320103 剩余盈余分配」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；用途名称按原文归并为应用默认三级明细，年末各项分配转入未分配盈余",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance",
+      "closingRule": "clearing"
+    },
+    {
+      "code": "33202",
+      "name": "未分配盈余",
+      "category": "equity",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第71–72页「332 盈余分配」第一项明确设置两个二级科目；第三至八项按分配用途核算；「33202 未分配盈余」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "both",
+      "closingRule": "retained-earnings"
     },
     {
       "code": "401",
@@ -572,6 +1435,37 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第24页序号39；「401 生产成本」科目说明PDF第73–74页",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "40101",
+      "name": "生产费用",
+      "category": "cost",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第73页「401 生产成本」第一、二、五项生产费用和服务成本种类，名称为应用默认分类；「40101 生产费用」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体成本核算对象和成本项目应按实际业务继续增设，项目辅助项不预设真实对象",
+      "sourceVersion": "1.1.0",
+      "needsReview": false
+    },
+    {
+      "code": "40102",
+      "name": "服务成本",
+      "category": "cost",
+      "direction": "debit",
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第73页「401 生产成本」第一、二、五项生产费用和服务成本种类，名称为应用默认分类；「40102 服务成本」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；具体成本核算对象和成本项目应按实际业务继续增设，项目辅助项不预设真实对象",
+      "sourceVersion": "1.1.0",
       "needsReview": false
     },
     {
@@ -582,10 +1476,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号40；「501 经营收入」科目说明PDF第73–74页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号40；「501 经营收入」科目说明PDF第73–74页；PDF第74页按合同、工程、支出或经营/投资项目核算，应用映射为必填project辅助项，不预设实际项目",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "502",
@@ -598,7 +1498,41 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号41；「502 其他收入」科目说明PDF第74–75页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "50201",
+      "name": "资产盘盈收益",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第74页「502 其他收入」第一、三项按其他收入来源明细，名称归并为应用默认分类；「50201 资产盘盈收益」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "50202",
+      "name": "无法支付的应付款项",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第74页「502 其他收入」第一、三项按其他收入来源明细，名称归并为应用默认分类；「50202 无法支付的应付款项」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "50203",
+      "name": "其他来源收入",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第74页「502 其他收入」第一、三项按其他收入来源明细，名称归并为应用默认分类；「50203 其他来源收入」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "511",
@@ -608,10 +1542,17 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号42；「511 投资收益」科目说明PDF第75–76页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号42；「511 投资收益」科目说明PDF第75–76页；可借可贷或结转后无余额，应用默认贷方用于显示，不限制实际余额方向；PDF第75页按合同、工程、支出或经营/投资项目核算，应用映射为必填project辅助项，不预设实际项目",
+      "needsReview": false,
+      "sourceVersion": "1.1.0",
+      "balanceNature": "both"
     },
     {
       "code": "521",
@@ -621,10 +1562,16 @@
       "cash": false,
       "bank": false,
       "cashflow": false,
-      "dimensions": [],
+      "dimensions": [
+        {
+          "type": "project",
+          "required": true
+        }
+      ],
       "disabled": false,
-      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号43；「521 经营支出」科目说明PDF第75–76页",
-      "needsReview": false
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号43；「521 经营支出」科目说明PDF第75–76页；PDF第76页按合同、工程、支出或经营/投资项目核算，应用映射为必填project辅助项，不预设实际项目",
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     },
     {
       "code": "522",
@@ -637,7 +1584,107 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号44；「522 税金及附加」科目说明PDF第76–77页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "52201",
+      "name": "消费税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52201 消费税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52202",
+      "name": "城市维护建设税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52202 城市维护建设税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52203",
+      "name": "资源税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52203 资源税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52204",
+      "name": "房产税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52204 房产税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52205",
+      "name": "土地使用税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52205 土地使用税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52206",
+      "name": "车船使用税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52206 车船使用税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52207",
+      "name": "印花税",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52207 印花税」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52208",
+      "name": "教育费附加",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52208 教育费附加」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52209",
+      "name": "地方教育费附加",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第76页「522 税金及附加」第一、三项列示的税费种类；「52209 地方教育费附加」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "523",
@@ -650,7 +1697,74 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号45；「523 管理费用」科目说明PDF第77–78页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "52301",
+      "name": "管理人员工资",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77页「523 管理费用」第一、三项列示的管理费用项目，名称按原文归并为应用默认分类；「52301 管理人员工资」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52302",
+      "name": "办公费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77页「523 管理费用」第一、三项列示的管理费用项目，名称按原文归并为应用默认分类；「52302 办公费」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52303",
+      "name": "差旅费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77页「523 管理费用」第一、三项列示的管理费用项目，名称按原文归并为应用默认分类；「52303 差旅费」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52304",
+      "name": "业务招待费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77页「523 管理费用」第一、三项列示的管理费用项目，名称按原文归并为应用默认分类；「52304 业务招待费」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52305",
+      "name": "管理用固定资产折旧",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77页「523 管理费用」第一、三项列示的管理费用项目，名称按原文归并为应用默认分类；「52305 管理用固定资产折旧」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52306",
+      "name": "无形资产摊销",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77页「523 管理费用」第一、三项列示的管理费用项目，名称按原文归并为应用默认分类；「52306 无形资产摊销」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "524",
@@ -663,7 +1777,41 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号46；「524 财务费用」科目说明PDF第77–78页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "52401",
+      "name": "利息费用",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77–78页「524 财务费用」第一至四项列示的财务费用项目；利息收入冲减财务费用；「52401 利息费用」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52402",
+      "name": "利息收入",
+      "category": "pnl",
+      "direction": "credit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77–78页「524 财务费用」第一至四项列示的财务费用项目；利息收入冲减财务费用；「52402 利息收入」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定；第三项以贷方冲减财务费用，默认贷方显示",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52403",
+      "name": "银行相关手续费",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第77–78页「524 财务费用」第一至四项列示的财务费用项目；利息收入冲减财务费用；「52403 银行相关手续费」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "529",
@@ -676,7 +1824,96 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号47；「529 其他支出」科目说明PDF第78–79页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
+    },
+    {
+      "code": "52901",
+      "name": "生物资产死亡毁损损失",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52901 生物资产死亡毁损损失」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52902",
+      "name": "固定资产及产品物资盘亏损失",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52902 固定资产及产品物资盘亏损失」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52903",
+      "name": "防灾抢险支出",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52903 防灾抢险支出」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52904",
+      "name": "安全生产支出",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52904 安全生产支出」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52905",
+      "name": "环境保护支出",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52905 环境保护支出」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52906",
+      "name": "罚款支出",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52906 罚款支出」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52907",
+      "name": "捐赠支出",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52907 捐赠支出」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
+    },
+    {
+      "code": "52908",
+      "name": "无法收回应收款项损失",
+      "category": "pnl",
+      "direction": "debit",
+      "dimensions": [],
+      "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第78页「529 其他支出」第一、三项列示的其他支出项目，名称按原文归并为应用默认分类；「52908 无法收回应收款项损失」的明细编码为应用默认，依据PDF第23页明细科目可自行设置的规定",
+      "sourceVersion": "1.1.0",
+      "needsReview": false,
+      "balanceNature": "no-closing-balance"
     },
     {
       "code": "531",
@@ -689,7 +1926,8 @@
       "dimensions": [],
       "disabled": false,
       "source": "农民专业合作社会计制度.pdf（https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf），PDF第25页序号48；「531 所得税费用」科目说明PDF第78–79页",
-      "needsReview": false
+      "needsReview": false,
+      "sourceVersion": "1.1.0"
     }
   ],
   "voucherTypes": [
@@ -703,7 +1941,7 @@
     {
       "title": "农民专业合作社会计制度（财会〔2021〕37号，2023年施行）",
       "file": "https://kjs.mof.gov.cn/zhengcefabu/202201/P020220114622034357239.pdf",
-      "note": "一级表PDF第23–25页及逐科目说明；财政部发布附件，在线核读；不在本模块复制原PDF。109、122为表注可增设项，名称编码已核，其余适用细节待核。"
+      "note": "一级表PDF第23–25页及逐科目说明；109、122按第25页表注增设并按资产性质默认借方；规定明细及按原文列示业务归并的常用分类见各科目来源。二、三级编码为应用默认（PDF第23页允许自行设置明细科目）；来源版本1.1.0。"
     }
   ],
   "reports": []

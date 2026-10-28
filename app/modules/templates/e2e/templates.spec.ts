@@ -3,6 +3,10 @@ import { expect, test } from '@playwright/test';
 import type { Account, AccountCategory, BookInfo, CurrentUser, TemplateSummary } from '@caiwu/core';
 import { callApi } from '@caiwu/testkit/e2e';
 import { expectedAccounts, expectedTemplates } from '../test/expected-accounts';
+import { parseCodeScheme } from '@caiwu/core';
+import { loadedAccountSnapshot, registeredTemplates } from '../test/template-fixtures';
+
+const templates = registeredTemplates().filter((template) => template.status === 'current');
 
 const newBookInput = (templateId: string) => ({
   name: `M02-${templateId}-${randomUUID().slice(0, 8)}`,
@@ -22,31 +26,32 @@ const accountSnapshot = (rows: Account[]) =>
     direction,
   }));
 
-test('w_xt_kgzb_a2 / w_xt_kgzb_1 / w_xt_kgzb_3：HTTP列出五套 → 逐套建账登录 → 全科目核对 → 切换不串数据', async ({
+test('w_xt_kgzb_a2 / w_xt_kgzb_1 / w_xt_kgzb_3：HTTP列出制度 → 逐套建账登录 → 全科目与父链核对 → 切换不串数据', async ({
   request,
 }) => {
   const summaries = await callApi<TemplateSummary[]>(request, 'core.books.templates', undefined, {
     method: 'GET',
   });
   let previous: { token: string; rows: Account[]; bookId: string } | undefined;
-  for (const expected of expectedTemplates) {
-    const summary = summaries.find((t) => t.id === expected.id)!;
+  for (const template of templates) {
+    const expected = expectedTemplates.find((t) => t.id === template.id);
+    const summary = summaries.find((t) => t.id === template.id)!;
     expect(summary).toMatchObject({
-      id: expected.id,
-      regime: expected.regime,
+      id: template.id,
+      regime: template.regime,
       devOnly: false,
       status: 'current',
-      codeScheme: `${expected.width}-2-2`,
-      accountCount: expectedAccounts(expected).length,
+      codeScheme: template.codeScheme,
+      accountCount: template.accounts.length,
     });
-    if (expected.reviewCodes.length) expect(summary.description).toContain('待核');
+    expect(summary.description).toBe(template.description);
     // 使用指定制度的核心建账接口；该接口不运行demo种子，不使用固定demo模板的helper。
-    const book = await callApi<BookInfo>(request, 'core.books.create', newBookInput(expected.id));
+    const book = await callApi<BookInfo>(request, 'core.books.create', newBookInput(template.id));
     expect(book).toMatchObject({
-      templateId: expected.id,
-      regime: expected.regime,
+      templateId: template.id,
+      regime: template.regime,
       baseCurrency: 'CNY',
-      codeScheme: [expected.width, 2, 2],
+      codeScheme: parseCodeScheme(template.codeScheme),
     });
     const login = await callApi<Login>(request, 'core.auth.login', {
       bookId: book.id,
@@ -56,29 +61,27 @@ test('w_xt_kgzb_a2 / w_xt_kgzb_1 / w_xt_kgzb_3：HTTP列出五套 → 逐套建�
     const rows = await callApi<Account[]>(request, 'core.accounts.list', undefined, {
       token: login.token,
     });
-    expect(accountSnapshot(rows)).toEqual(expectedAccounts(expected));
-    expect(rows.every((a) => a.level === 1 && a.parentId === null && a.isLeaf)).toBe(true);
-    expect(rows.filter((a) => a.isCash).map((a) => a.code)).toEqual([
-      expected.width === 4 ? '1001' : '101',
-    ]);
-    expect(rows.filter((a) => a.isBank).map((a) => a.code)).toEqual([
-      expected.width === 4 ? '1002' : '102',
-    ]);
-    expect(rows.every((a) => a.currency === null)).toBe(true);
-    for (const a of rows) {
-      const required = expected.partnerCodes?.includes(a.code) ?? false;
-      expect(a.isPartner).toBe(required);
-      expect(a.dimensions).toEqual(
-        required ? [{ type: 'partner', required: true, defaultItemId: null }] : [],
+    expect(rows).toHaveLength(template.accounts.length);
+    expect(rows).toMatchObject(loadedAccountSnapshot(template, rows));
+    if (expected) {
+      expect(accountSnapshot(rows.filter((a) => a.level === 1))).toEqual(
+        expectedAccounts(expected),
       );
+      expect(rows.filter((a) => a.isCash).map((a) => a.code)).toEqual([
+        expected.width === 4 ? '1001' : '101',
+      ]);
+      expect(rows.filter((a) => a.isBank).map((a) => a.code)).toEqual([
+        expected.width === 4 ? '1002' : '102',
+      ]);
     }
+    expect(rows.every((a) => a.currency === null)).toBe(true);
     const categories = await callApi<AccountCategory[]>(
       request,
       'core.accounts.categories',
       undefined,
       { token: login.token },
     );
-    expect(categories).toEqual(expected.categories.map((c, sort) => ({ ...c, sort })));
+    expect(categories).toEqual(template.categories.map((c, sort) => ({ ...c, sort })));
     const me = await callApi<{ user: CurrentUser; book: BookInfo }>(
       request,
       'core.auth.me',
@@ -137,7 +140,7 @@ test('w_xt_kgzb_1 信息确认：真实账套选择/登录壳打开民非账，�
     const rows = await callApi<Account[]>(request, 'core.accounts.list', undefined, {
       token: session.token,
     });
-    expect(accountSnapshot(rows)).toEqual(
+    expect(accountSnapshot(rows.filter((a) => a.level === 1))).toEqual(
       expectedAccounts(expectedTemplates.find((t) => t.id === book.templateId)!),
     );
     if (index === 0) {
@@ -184,7 +187,7 @@ for (const codeScheme of ['4-2-2', '4-3-3']) {
     await wizard.getByRole('radio', { name: /民间非营利组织会计制度/ }).check();
     await expect(wizard).toContainText('适用2026年1月1日');
     await expect(wizard).toContainText('1121/1141/2202/2203启用必填往来对象');
-    await expect(wizard).toContainText('未提供限定/非限定等规定明细');
+    await expect(wizard).toContainText('限定/非限定');
     await wizard.getByRole('button', { name: '下一步' }).click();
     await wizard.getByLabel('科目级次', { exact: true }).fill(codeScheme);
     await wizard.getByRole('button', { name: '下一步' }).click();
@@ -206,7 +209,8 @@ for (const codeScheme of ['4-2-2', '4-3-3']) {
     const rows = await callApi<Account[]>(request, 'core.accounts.list', undefined, {
       token: session.token,
     });
-    expect(rows).toHaveLength(56);
+    expect(rows).toHaveLength(templates.find((t) => t.id === 'nonprofit-2026')!.accounts.length);
+    expect(rows.filter((a) => a.level === 1)).toHaveLength(56);
     expect(rows.filter((a) => a.isPartner).map((a) => a.code)).toEqual([
       '1121',
       '1141',
@@ -237,5 +241,73 @@ for (const codeScheme of ['4-2-2', '4-3-3']) {
     expect(
       (await callApi<BookInfo[]>(request, 'core.books.list')).filter((b) => b.name === name),
     ).toHaveLength(1);
+  });
+}
+
+for (const example of [
+  { id: 'trade-union-2022', selection: /^工会会计制度/, code: '503010102', name: '项目支出' },
+  {
+    id: 'school-canteen-anhui-2021',
+    selection: /^安徽营养改善计划学校食堂/,
+    code: '52010101',
+    name: '粮食',
+  },
+  {
+    id: 'individual-business-1997',
+    selection: /^个体工商户会计制度/,
+    code: '14101',
+    name: '待处理存货损失',
+  },
+]) {
+  test(`w_xt_kgzb_a2 / a3：真实向导选择${example.id}并保留制度默认级次及末级明细`, async ({
+    page,
+    request,
+  }) => {
+    const template = templates.find((t) => t.id === example.id)!;
+    const name = `制度明细-${example.id}-${randomUUID().slice(0, 8)}`;
+    await page.goto('/');
+    await page.getByRole('button', { name: '新建账套', exact: true }).click();
+    const wizard = page.getByRole('dialog', { name: '新建账套', exact: true });
+    await wizard.getByLabel('账套名称', { exact: true }).fill(name);
+    await wizard.getByLabel('单位名称', { exact: true }).fill('合成制度验证单位');
+    await wizard.getByLabel('管理员密码').fill('template-details');
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await wizard.getByRole('radio', { name: example.selection }).check();
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await expect(wizard.getByLabel('科目级次', { exact: true })).toHaveValue(template.codeScheme);
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await wizard.getByLabel('启用年份', { exact: true }).fill('2026');
+    await wizard.getByRole('button', { name: '下一步' }).click();
+    await expect(wizard).toContainText('最终复核');
+    await wizard.getByRole('button', { name: '创建', exact: true }).click();
+    await expect(page).toHaveURL(/\/login\//);
+    const bookId = page.url().split('/').at(-1)!;
+    await page.getByLabel('密码', { exact: true }).fill('template-details');
+    await page.getByRole('button', { name: '登录', exact: true }).click();
+    await expect(page).toHaveURL('/home');
+    const session = await page.evaluate(
+      () => JSON.parse(sessionStorage.getItem('caiwu.session')!) as { token: string },
+    );
+    const rows = await callApi<Account[]>(request, 'core.accounts.list', undefined, {
+      token: session.token,
+    });
+    expect(rows).toHaveLength(template.accounts.length);
+    expect(rows).toMatchObject(loadedAccountSnapshot(template, rows));
+    expect(rows.find((a) => a.code === example.code)).toMatchObject({
+      name: example.name,
+      isLeaf: true,
+    });
+    const me = await callApi<{ book: BookInfo }>(request, 'core.auth.me', undefined, {
+      token: session.token,
+    });
+    expect(me.book).toMatchObject({
+      id: bookId,
+      templateId: template.id,
+      codeScheme: parseCodeScheme(template.codeScheme),
+    });
+    await page.reload();
+    expect(
+      await callApi(request, 'core.accounts.list', undefined, { token: session.token }),
+    ).toEqual(rows);
   });
 }
