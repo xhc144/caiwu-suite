@@ -130,3 +130,28 @@ it('w_pass：afterLeave拒绝时释放锁并保留原错误，已撤销的当前
   expect(screen.getByText('请重新登录')).toBeVisible();
   expect(screen.queryByLabelText('旧会话编辑')).not.toBeInTheDocument();
 });
+
+it('w_pass：异步收尾意外产生脏页并失败时保留注册稿，不能兜底清会话静默丢稿', async () => {
+  sessionStore.set({ bookId: 'book', token: 'old-token' } as SessionState);
+  const error = new Error('收尾失败');
+  const result = await unsavedPages.saveSessionChange('book', '密码', vi.fn(), async (context) =>
+    context!.commit(async () => {
+      context!.afterLeave(async () => {
+        unsavedPages.register({
+          bookId: 'book',
+          tabKey: '意外草稿',
+          title: '意外草稿',
+          dirty: true,
+          version: 1,
+          save: async () => false,
+        });
+        throw error;
+      });
+      return { sessionRevoked: true };
+    }),
+  );
+  expect(result).toEqual({ allowed: false, sessionRevoked: true, error });
+  expect(sessionStore.get()?.token).toBe('old-token');
+  expect(unsavedPages.dirty('book').map((page) => page.title)).toEqual(['意外草稿']);
+  expect(unsavedPages.isSessionCommitPending('book')).toBe(false);
+});

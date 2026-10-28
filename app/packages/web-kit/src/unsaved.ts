@@ -262,10 +262,11 @@ export class UnsavedRegistry {
           finished = result(false, error);
         }
         try {
-          // A failed redirect must not leave an already revoked token editable.
+          // Only a clean workspace may be torn down after a failed redirect.
           if (
             finished.sessionRevoked &&
             !finished.allowed &&
+            this.dirty(bookId).length === 0 &&
             startingSession?.bookId === bookId &&
             sessionStore.get()?.token === startingSession.token
           )
