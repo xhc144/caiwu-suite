@@ -1,6 +1,6 @@
 import { periodRange } from '@caiwu/core';
 import type { CalculationResult, CostRow } from '../shared';
-import type { InventorySnapshot } from './inventory-read';
+import { quantityE6, type InventorySnapshot } from './inventory-read';
 import { calculatePool, fail, integer, quantity, safe } from './math';
 
 export function calculate(
@@ -11,24 +11,36 @@ export function calculate(
   const rows: CostRow[] = [];
   const lines: CalculationResult['lines'] = [];
   const documentMap = new Map(snapshot.documents.map((d) => [d.id, d]));
+  const formalOpening = snapshot.sharedSnapshot.periodOpeningReady && period > snapshot.startPeriod;
+  const openingRows = formalOpening
+    ? snapshot.sharedSnapshot.periodOpening.map((o) => ({
+        warehouse_id: o.warehouseId,
+        product_id: o.productId,
+        quantity_e6: quantityE6(o.quantity),
+        amount_cents: o.amountCents,
+      }))
+    : snapshot.opening;
   const keys = new Map<string, { warehouseId: number; productId: number }>();
   const addKey = (warehouseId: number, productId: number) =>
     keys.set(`${warehouseId}:${productId}`, { warehouseId, productId });
-  for (const o of snapshot.opening) addKey(o.warehouse_id, o.product_id);
+  for (const o of openingRows) addKey(o.warehouse_id, o.product_id);
   for (const l of snapshot.lines)
-    addKey(documentMap.get(l.document_id)!.warehouse_id, l.product_id);
-  for (const l of snapshot.countLines)
-    addKey(snapshot.counts.find((c) => c.id === l.count_id)!.warehouse_id, l.product_id);
+    if (!formalOpening || documentMap.get(l.document_id)!.period === period)
+      addKey(documentMap.get(l.document_id)!.warehouse_id, l.product_id);
+  for (const l of snapshot.countLines) {
+    const count = snapshot.counts.find((c) => c.id === l.count_id)!;
+    if (!formalOpening || count.period === period) addKey(count.warehouse_id, l.product_id);
+  }
   for (const { warehouseId, productId } of keys.values()) {
     const product = snapshot.products.find((p) => p.id === productId);
     if (!product || !snapshot.warehouses.some((w) => w.id === warehouseId))
       fail('SOURCE', '库存来源缺少产品或仓库档案');
-    const opening = snapshot.opening.find(
+    const opening = openingRows.find(
       (o) => o.warehouse_id === warehouseId && o.product_id === productId,
     );
     let openingQ = opening?.quantity_e6 ?? 0;
     let openingA = opening?.amount_cents ?? 0;
-    for (const p of periodRange(snapshot.startPeriod, period)) {
+    for (const p of periodRange(formalOpening ? period : snapshot.startPeriod, period)) {
       const current = snapshot.lines
         .filter((l) => {
           const d = documentMap.get(l.document_id)!;
