@@ -144,6 +144,14 @@ async function unsafeNumericWorkbook() {
   return zip(entries);
 }
 
+/** The first EOCD covers the second archive as its comment; JSZip selects the last EOCD. */
+function archiveInComment(first: Buffer, second: Buffer) {
+  const outer = Buffer.from(first);
+  expect(second.length + 1).toBeLessThan(65536);
+  outer.writeUInt16LE(second.length + 1, outer.length - 2);
+  return Buffer.concat([outer, second, Buffer.from([0])]);
+}
+
 async function coreSnapshot(app: TestApp) {
   return {
     accounts: await app.svc.db.selectFrom('account').selectAll().orderBy('id').execute(),
@@ -156,6 +164,59 @@ async function coreSnapshot(app: TestApp) {
 }
 
 describe('w_bb_saveas ZIP实际解压限额与结构检查', () => {
+  test('双EOCD注释不能把已校验的小归档替换成精度有损工作簿', async () => {
+    const second = await unsafeNumericWorkbook();
+    const bytes = archiveInComment(zip([{ name: 'safe.bin', data: 'a' }]), second);
+    const decoded = new ExcelJS.Workbook();
+    await decoded.xlsx.load(Uint8Array.from(bytes).buffer);
+    // 两侧同样丢一分，仍然平衡，证明下游实际选择的是第二个归档。
+    expect(decoded.worksheets[0]!.getCell('F2').value).toBe(90071992547409.9);
+    expect(decoded.worksheets[0]!.getCell('G3').value).toBe(90071992547409.9);
+    await expect(validateWorkbookZip(second)).rejects.toThrow('精确位数');
+    await expect(validateWorkbookZip(bytes)).rejects.toThrow();
+    const getter = vi.spyOn(ExcelJS.Workbook.prototype, 'xlsx', 'get');
+    try {
+      const parsed = await parseImportFile({
+        name: '双目录.xlsx',
+        contentBase64: bytes.toString('base64'),
+      });
+      expect(parsed.sheets).toEqual([]);
+      expect(parsed.issues.some((issue) => issue.severity === 'error')).toBe(true);
+      expect(getter).not.toHaveBeenCalled();
+    } finally {
+      getter.mockRestore();
+    }
+  });
+
+  test('双EOCD不能绕过小解压预算，合成第二归档只展开128KiB', async () => {
+    const second = zip([
+      ...workbookEntries(await amountWorkbook(42)),
+      { name: 'payload.bin', data: Buffer.alloc(128 * 1024, 65) },
+    ]);
+    const bytes = archiveInComment(zip([{ name: 'safe.bin', data: 'a' }]), second);
+    expect(bytes.length).toBeLessThan(16384);
+    const decoded = new ExcelJS.Workbook();
+    await decoded.xlsx.load(Uint8Array.from(bytes).buffer);
+    expect(decoded.worksheets[0]!.getCell('F2').value).toBe(42);
+    await expect(validateWorkbookZip(second, 64)).rejects.toThrow();
+    await expect(validateWorkbookZip(bytes, 64)).rejects.toThrow();
+  });
+
+  test('普通ZIP注释、注释内尾签名及前缀均明确拒绝', async () => {
+    const plain = zip([{ name: 'safe.bin', data: 'a' }]);
+    const commented = Buffer.from(plain);
+    commented.writeUInt16LE(3, commented.length - 2);
+    await expect(
+      validateWorkbookZip(Buffer.concat([commented, Buffer.from('abc')])),
+    ).rejects.toThrow();
+    await expect(
+      validateWorkbookZip(Buffer.concat([plain, Buffer.from('PK\u0005\u0006')])),
+    ).rejects.toThrow();
+    await expect(
+      validateWorkbookZip(Buffer.concat([Buffer.from('prefix'), plain])),
+    ).rejects.toThrow();
+  });
+
   test('存储及deflate条目按实际总字节恰好到边界可通过，超一字节拒绝', async () => {
     const bytes = zip([
       { name: 'first.bin', data: 'abcd', method: 0 },

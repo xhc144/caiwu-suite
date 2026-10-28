@@ -42,17 +42,15 @@ function checkExtra(bytes: Buffer, start: number, length: number) {
 function entriesOf(bytes: Buffer, maxExpandedBytes: number): Entry[] {
   if (bytes.length < 22) throw new Error('文件不是完整的 Excel 工作簿，请重新另存为 .xlsx');
   if (bytes.length > MAX_BYTES) throw new Error('工作簿超过8 MB，请分批导入');
-  let end = -1;
-  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
-    if (
-      bytes.readUInt32LE(i) === 0x06054b50 &&
-      i + 22 + bytes.readUInt16LE(i + 20) === bytes.length
-    ) {
-      end = i;
-      break;
-    }
-  }
-  if (end < 0) throw new Error('文件不是完整的 Excel 工作簿，请重新另存为 .xlsx');
+  // JSZip 从最后一个 EOCD 签名开始读取，并不要求注释恰好到 EOF。
+  // 只接受无注释且在 EOF 的同一 EOCD，防止注释内嵌归档让两次解析选中不同数据。
+  const end = bytes.length - 22;
+  if (
+    bytes.readUInt32LE(end) !== 0x06054b50 ||
+    bytes.readUInt16LE(end + 20) !== 0 ||
+    bytes.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06])) !== end
+  )
+    throw new Error('文件不是完整的 Excel 工作簿或含压缩注释、歧义目录，请重新另存为普通 .xlsx');
   const count = bytes.readUInt16LE(end + 10),
     size = bytes.readUInt32LE(end + 12),
     offset = bytes.readUInt32LE(end + 16);
