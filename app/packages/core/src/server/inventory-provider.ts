@@ -4,6 +4,8 @@ import type {
   InvoiceIssueInput,
   InvoiceIssuePlan,
   InvoiceIssueSaveInput,
+  InvoiceIssueReferencesInput,
+  InvoiceIssueReferences,
 } from '../inventory';
 import type { ServiceContext } from './context';
 import type { CoreServices } from './services';
@@ -12,6 +14,8 @@ import type { CoreServices } from './services';
 export interface InventoryProvider {
   snapshot(period: number): Promise<InventorySnapshot>;
   with<T>(run: (inventory: InventoryCostingCapability) => Promise<T>): Promise<T>;
+  /** 只读目录；科目未配置时保留 null，原单版本须每次读取最新值。 */
+  invoiceIssueReferences?(input: InvoiceIssueReferencesInput): Promise<InvoiceIssueReferences>;
   /** 可选扩展，旧 provider 不必提供；实现必须复核来源、权限、期间、版本、库存及确认。 */
   previewInvoiceIssue?(input: InvoiceIssueInput): Promise<InvoiceIssuePlan>;
   /** 绑定原始 invoice svc，必须在当前 core 事务中执行，不得伪装成 inventory/costing。 */

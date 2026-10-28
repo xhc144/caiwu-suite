@@ -13,6 +13,7 @@ import type {
   VoucherSourceInput,
   InvoiceIssueInput,
   InvoiceIssueSaveInput,
+  InvoiceIssueReferencesInput,
 } from '../../inventory';
 import { assertServiceScope } from '../service-scope';
 import type { CoreServices } from './index';
@@ -226,6 +227,20 @@ export function inventoryService(svc: CoreServices): InventoryService {
     return factory(svc);
   };
   return Object.freeze({
+    async invoiceIssueReferences(input: InvoiceIssueReferencesInput) {
+      try {
+        assertInvoice();
+        svc.permissions.require('invoice.voucher');
+        const inventory = provider(true);
+        if (typeof inventory.invoiceIssueReferences !== 'function') missingInvoiceProvider();
+        const result = await inventory.invoiceIssueReferences!(input);
+        assertInvoice();
+        return result;
+      } catch (error) {
+        if (transaction?.active) recordBridgeFailure(transaction, error);
+        throw error;
+      }
+    },
     async previewInvoiceIssue(input: InvoiceIssueInput) {
       try {
         assertInvoice();

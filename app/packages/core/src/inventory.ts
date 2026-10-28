@@ -291,6 +291,25 @@ export interface InvoiceIssueInput {
   }[];
 }
 
+export interface InvoiceIssueReferencesInput {
+  invoiceId?: number;
+}
+
+export interface InvoiceIssueReferences {
+  warehouses: { id: number; code: string; name: string }[];
+  products: {
+    id: number;
+    code: string;
+    name: string;
+    specification: string;
+    unit: string;
+    inventoryAccountId: number | null;
+    salesAccountId: number | null;
+    disabled: boolean;
+  }[];
+  originalDocument: { id: number; revision: number; number: string; date: string } | null;
+}
+
 export interface InvoiceIssuePlan {
   fingerprint: string;
   expiresAt: number;
@@ -319,6 +338,8 @@ export interface InventoryCapability extends InventoryCostingCapability {
 
 export interface InventoryService {
   snapshot(period: number): Promise<InventorySnapshot>;
+  /** 仅 invoice 身份及 invoice.voucher 权限；provider 每次读取最新目录及原单版本，不缓存。 */
+  invoiceIssueReferences(input: InvoiceIssueReferencesInput): Promise<InvoiceIssueReferences>;
   /** 仅 invoice 身份。红字退货未支持，明确拒绝，不转换为正向出库。 */
   previewInvoiceIssue(input: InvoiceIssueInput): Promise<InvoiceIssuePlan>;
   /** 必须在 svc.tx 回调中使用，传入能力在 with 回调结束时撤销。 */
