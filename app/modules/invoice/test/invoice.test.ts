@@ -314,7 +314,10 @@ describe('w_fp_sz/_2 / w_fp_pz 配置和来源凭证', () => {
       await code(api.revoke({ id: g.id, expectedRevision: v.revision, confirmed: true })),
     ).toBe('INVOICE_CLOSED');
     await api.reopen({ period: 202602, expectedRevision: 1, confirmed: true });
-    await api.revoke({ id: g.id, expectedRevision: v.revision, confirmed: true });
+    await api.revoke({
+      ...(await api.previewRevoke({ id: g.id, expectedRevision: v.revision })),
+      confirmed: true,
+    });
     expect(await app.svc.vouchers.get(v.id)).toBeNull();
     const rows = await api.list({});
     expect(rows.every((r) => r.state === 'audited' && r.groupId === null)).toBe(true);

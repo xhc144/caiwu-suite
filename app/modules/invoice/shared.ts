@@ -104,6 +104,16 @@ export const DeletionPlanSchema = z.object({
   expiresAt: z.number().int().positive(),
   fingerprint: z.string().length(64),
 });
+export const RevokeTargetSchema = z.object({
+  id: zId,
+  expectedRevision: z.number().int().positive(),
+});
+export const RevokeSchema = RevokeTargetSchema.extend({
+  confirmed: z.boolean(),
+  fingerprint: z.string().length(64).optional(),
+  deletionPlan: DeletionPlanSchema.optional(),
+});
+export type RevokeInput = z.infer<typeof RevokeSchema>;
 export const PlanSchema = z.object({
   selection: SelectionSchema,
   date: zDate,

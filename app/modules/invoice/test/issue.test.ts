@@ -490,70 +490,80 @@ describe('w_fp_pz_ckd 发票转出库（本模块；库存为显式契约夹具�
         .execute(),
     ).toHaveLength(1);
   });
-  it('w_fp_pz：已出库与未出库票可汇总收入，撤销失败全回滚，成功分别恢复出库和审核状态', async () => {
-    const { api, options } = await setup();
-    await fixtureTable();
-    const fixture = contractFixture();
-    await fixture.service().save(await request(fixture, options));
-    const ordinaryId = await api.save({
-      data: single({
-        direction: 'output',
-        number: 'ORDINARY-INCOME',
-        date: '2026-02-05',
-        confirmDate: null,
-      }),
-    });
-    await api.audit({ selection: [{ id: ordinaryId, revision: 1 }], to: 'audited' });
-    const input = {
-      selection: (await api.list({})).map(({ id, revision }) => ({ id, revision })),
-      date: '2026-02-28',
-      voucherTypeId: 1,
-      mode: 'monthly' as const,
-    };
-    const preview = await api.previewVoucher(input);
-    expect(preview.groups[0]).toMatchObject({ debit: 22301, credit: 22301 });
-    const generateInput = { ...input, fingerprint: preview.fingerprint, requestId: randomUUID() };
-    const [group] = await api.generate(generateInput);
-    expect(await api.generate(generateInput)).toEqual([group]);
-    const voucher = (await app.svc.vouchers.get(group!.voucher_id!))!;
-    expect((await api.list({})).every((row) => row.state === 'generated')).toBe(true);
-    await sql`CREATE TRIGGER invoice_test_revenue_revoke_fail BEFORE INSERT ON operation_log WHEN NEW.action='invoice.revoke' BEGIN SELECT RAISE(ABORT,'合成收入撤销日志失败'); END`.execute(
-      app.svc.db,
-    );
-    const revokeInput = { id: group!.id, expectedRevision: voucher.revision, confirmed: true };
-    await expect(api.revoke(revokeInput)).rejects.toThrow(/合成收入撤销日志失败/);
-    expect(await app.svc.vouchers.get(voucher.id)).not.toBeNull();
-    expect((await api.list({})).every((row) => row.groupId === group!.id)).toBe(true);
-    await sql`DROP TRIGGER invoice_test_revenue_revoke_fail`.execute(app.svc.db);
-    await api.revoke(revokeInput);
-    const rows = await api.list({});
-    expect(rows.find((row) => row.id === options.invoiceId)).toMatchObject({
-      state: 'issued',
-      groupId: null,
-      inventoryDocumentId: 200,
-    });
-    expect(rows.find((row) => row.id === ordinaryId)).toMatchObject({
-      state: 'audited',
-      groupId: null,
-      inventoryDocumentId: null,
-    });
-    expect(fixture.calls).toHaveLength(1);
-    await expect(
-      api.audit({
-        selection: [
-          {
-            id: options.invoiceId,
-            revision: rows.find((row) => row.id === options.invoiceId)!.revision,
-          },
-        ],
-        to: 'draft',
-      }),
-    ).rejects.toThrow(/已后续处理/);
-    const retry = { ...input, selection: rows.map(({ id, revision }) => ({ id, revision })) };
-    const next = await api.previewVoucher(retry);
-    await api.generate({ ...retry, fingerprint: next.fingerprint, requestId: randomUUID() });
-    expect((await app.svc.vouchers.list({})).total).toBe(1);
-  });
+  it.each([false, true])(
+    'w_fp_pz：删除重排 %s，混合收入撤销失败全回滚，成功恢复出库和审核状态',
+    async (renumberAfterDelete) => {
+      await app.svc.voucherPolicy.set({
+        ...(await app.svc.voucherPolicy.get()),
+        renumberAfterDelete,
+      });
+      const { api, options } = await setup();
+      await fixtureTable();
+      const fixture = contractFixture();
+      await fixture.service().save(await request(fixture, options));
+      const ordinaryId = await api.save({
+        data: single({
+          direction: 'output',
+          number: 'ORDINARY-INCOME',
+          date: '2026-02-05',
+          confirmDate: null,
+        }),
+      });
+      await api.audit({ selection: [{ id: ordinaryId, revision: 1 }], to: 'audited' });
+      const input = {
+        selection: (await api.list({})).map(({ id, revision }) => ({ id, revision })),
+        date: '2026-02-28',
+        voucherTypeId: 1,
+        mode: 'monthly' as const,
+      };
+      const preview = await api.previewVoucher(input);
+      expect(preview.groups[0]).toMatchObject({ debit: 22301, credit: 22301 });
+      const generateInput = { ...input, fingerprint: preview.fingerprint, requestId: randomUUID() };
+      const [group] = await api.generate(generateInput);
+      expect(await api.generate(generateInput)).toEqual([group]);
+      const voucher = (await app.svc.vouchers.get(group!.voucher_id!))!;
+      expect((await api.list({})).every((row) => row.state === 'generated')).toBe(true);
+      await sql`CREATE TRIGGER invoice_test_revenue_revoke_fail BEFORE INSERT ON operation_log WHEN NEW.action='invoice.revoke' BEGIN SELECT RAISE(ABORT,'合成收入撤销日志失败'); END`.execute(
+        app.svc.db,
+      );
+      const revokeInput = {
+        ...(await api.previewRevoke({ id: group!.id, expectedRevision: voucher.revision })),
+        confirmed: true,
+      };
+      await expect(api.revoke(revokeInput)).rejects.toThrow(/合成收入撤销日志失败/);
+      expect(await app.svc.vouchers.get(voucher.id)).not.toBeNull();
+      expect((await api.list({})).every((row) => row.groupId === group!.id)).toBe(true);
+      await sql`DROP TRIGGER invoice_test_revenue_revoke_fail`.execute(app.svc.db);
+      await api.revoke(revokeInput);
+      const rows = await api.list({});
+      expect(rows.find((row) => row.id === options.invoiceId)).toMatchObject({
+        state: 'issued',
+        groupId: null,
+        inventoryDocumentId: 200,
+      });
+      expect(rows.find((row) => row.id === ordinaryId)).toMatchObject({
+        state: 'audited',
+        groupId: null,
+        inventoryDocumentId: null,
+      });
+      expect(fixture.calls).toHaveLength(1);
+      await expect(
+        api.audit({
+          selection: [
+            {
+              id: options.invoiceId,
+              revision: rows.find((row) => row.id === options.invoiceId)!.revision,
+            },
+          ],
+          to: 'draft',
+        }),
+      ).rejects.toThrow(/已后续处理/);
+      const retry = { ...input, selection: rows.map(({ id, revision }) => ({ id, revision })) };
+      const next = await api.previewVoucher(retry);
+      await api.generate({ ...retry, fingerprint: next.fingerprint, requestId: randomUUID() });
+      expect((await app.svc.vouchers.list({})).total).toBe(1);
+    },
+  );
   it('w_fp_pz：已出库票收入保存失败不留凭证，状态与出库关联一起保留', async () => {
     const { api, options } = await setup();
     await fixtureTable();

@@ -30,6 +30,7 @@ import type { inferRouterOutputs } from '@trpc/server';
 import { api } from './api';
 import { invoiceColumns, Nav, QueryError } from './common';
 import AllocationFields from './AllocationFields';
+import RevokeButton from './RevokeButton';
 type Plan = inferRouterOutputs<InvoiceRouter>['previewVoucher'];
 export default function ProcessPage() {
   const [filters, setFilters] = useInvoiceFilters({
@@ -506,20 +507,12 @@ export default function ProcessPage() {
                   去凭证处理
                 </Link>
                 {can && g.voucher.status === 'pending' && (
-                  <Popconfirm
-                    title={`整体撤销此凭证及全部 ${g.detail.ids.length} 张发票关联？`}
-                    onConfirm={() =>
-                      revoke.mutate({
-                        id: g.id,
-                        expectedRevision: g.voucher!.revision,
-                        confirmed: true,
-                      })
-                    }
-                  >
-                    <Button danger loading={revoke.isPending}>
-                      整体撤销
-                    </Button>
-                  </Popconfirm>
+                  <RevokeButton
+                    id={g.id}
+                    expectedRevision={g.voucher.revision}
+                    pending={revoke.isPending}
+                    onConfirm={revoke.mutateAsync}
+                  />
                 )}
               </>
             ) : (

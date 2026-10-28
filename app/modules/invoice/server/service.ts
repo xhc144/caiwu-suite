@@ -28,6 +28,7 @@ import {
   type Settings,
   type VoucherRole,
   type ProcessDraft,
+  type RevokeInput,
 } from '../shared';
 import type { InvoiceTables } from './migrations';
 import { parseWorkbook } from './import';
@@ -411,6 +412,63 @@ export function invoiceService(svc: CoreServices) {
       result.push({ r, d });
     }
     return result;
+  };
+  const revokeContext = async (
+    input: { id: number; expectedRevision: number },
+    expiresAt?: number,
+  ) => {
+    const group = await db
+      .selectFrom('invoice_group')
+      .selectAll()
+      .where('id', '=', input.id)
+      .executeTakeFirst();
+    if (!group || !group.voucher_id || group.revoked) problem('SOURCE', '来源批次已撤销或不存在');
+    const voucher = await svc.vouchers.get(group.voucher_id);
+    if (
+      !voucher ||
+      voucher.source?.module !== 'invoice' ||
+      voucher.source.type !== 'generation' ||
+      voucher.source.id !== String(group.id)
+    )
+      problem('SOURCE', '凭证来源与发票批次不一致');
+    const docs = await db
+      .selectFrom('invoice_document')
+      .selectAll()
+      .where('group_id', '=', group.id)
+      .orderBy('id')
+      .execute();
+    const ids = (JSON.parse(group.data) as { ids: number[] }).ids;
+    if (
+      !docs.length ||
+      docs.length !== ids.length ||
+      docs.some((r) => r.state !== 'generated' || !ids.includes(r.id))
+    )
+      problem('SOURCE', '来源批次与发票关联不完整，不能整体撤销');
+    for (const r of docs) await assertDates(JSON.parse(r.data) as InvoiceData);
+    const deletionPlan = await svc.vouchers.previewDelete([voucher.id], expiresAt);
+    if (voucher.revision !== input.expectedRevision)
+      throw new BusinessError({ code: 'VOUCHER_STALE', message: '凭证版本已变化，请重新预览撤销' });
+    const issues = await db
+      .selectFrom('invoice_issue')
+      .selectAll()
+      .where('invoice_id', 'in', ids)
+      .orderBy('id')
+      .execute();
+    const lines = await db
+      .selectFrom('invoice_line')
+      .selectAll()
+      .where('document_id', 'in', ids)
+      .orderBy('document_id')
+      .orderBy('line_no')
+      .execute();
+    return {
+      group,
+      voucher,
+      docs,
+      issues,
+      deletionPlan,
+      fingerprint: hash({ group, docs, lines, issues, deletionPlan }),
+    };
   };
   const self = {
     async list(filter: InvoiceFilter = {}): Promise<Invoice[]> {
@@ -1298,55 +1356,65 @@ export function invoiceService(svc: CoreServices) {
         });
       return out;
     },
-    async revoke(input: { id: number; expectedRevision: number; confirmed: boolean }) {
+    async previewRevoke(input: { id: number; expectedRevision: number }) {
+      const context = await revokeContext(input);
+      const impacts = await Promise.all(
+        context.deletionPlan.impacts.map(async (impact) => {
+          const v = await svc.vouchers.get(impact.id);
+          if (!v) problem('STALE', '编号影响中的凭证已变化，请重新预览撤销');
+          return { ...impact, displayNo: v.displayNo, period: v.period };
+        }),
+      );
+      return {
+        ...input,
+        fingerprint: context.fingerprint,
+        deletionPlan: context.deletionPlan,
+        voucherNo: context.voucher.displayNo,
+        invoices: context.docs.map((r) => ({
+          id: r.id,
+          number: r.number,
+          state: context.issues.some((i) => i.invoice_id === r.id) ? 'issued' : 'audited',
+        })),
+        impacts,
+      };
+    },
+    async revoke(input: RevokeInput): Promise<void> {
       if (!input.confirmed) problem('CONFIRM', '撤销整张来源凭证前必须确认');
-      await svc.tx(async (tsvc) => {
-        const t = invoiceService(tsvc);
-        const tdb = tsvc.db.withTables<InvoiceTables>();
-        const g = await tdb
-          .selectFrom('invoice_group')
-          .selectAll()
-          .where('id', '=', input.id)
+      if (!svc.db.isTransaction) return svc.tx((tsvc) => invoiceService(tsvc).revoke(input));
+      const context = await revokeContext(input, input.deletionPlan?.expiresAt);
+      if (!input.deletionPlan || !input.fingerprint)
+        problem('CONFIRM', '请先预览撤销，核对来源发票及编号影响后明确确认');
+      if (
+        context.fingerprint !== input.fingerprint ||
+        input.deletionPlan.fingerprint !== context.deletionPlan.fingerprint ||
+        input.deletionPlan.ids.length !== 1 ||
+        input.deletionPlan.ids[0] !== context.voucher.id
+      )
+        problem('STALE', '撤销预览后发票、来源或编号影响已变化，请重新预览');
+      await svc.vouchers.deleteBatch(input.deletionPlan, true);
+      const { group: g, voucher: v, docs } = context;
+      await db
+        .updateTable('invoice_group')
+        .set({ voucher_id: null, revoked: 1 })
+        .where('id', '=', g.id)
+        .execute();
+      for (const r of docs) {
+        const issue = await db
+          .selectFrom('invoice_issue')
+          .select('id')
+          .where('invoice_id', '=', r.id)
           .executeTakeFirst();
-        if (!g || !g.voucher_id || g.revoked) problem('SOURCE', '来源批次已撤销或不存在');
-        const v = await tsvc.vouchers.get(g.voucher_id);
-        if (
-          !v ||
-          v.source?.module !== 'invoice' ||
-          v.source.type !== 'generation' ||
-          v.source.id !== String(g.id)
-        )
-          problem('SOURCE', '凭证来源与发票批次不一致');
-        const docs = await tdb
-          .selectFrom('invoice_document')
-          .selectAll()
-          .where('group_id', '=', g.id)
+        await db
+          .updateTable('invoice_document')
+          .set({ group_id: null, state: issue ? 'issued' : 'audited', revision: r.revision + 1 })
+          .where('id', '=', r.id)
           .execute();
-        for (const r of docs) await t.assertDates(JSON.parse(r.data) as InvoiceData);
-        await tsvc.vouchers.delete(v.id, { expectedRevision: input.expectedRevision });
-        await tdb
-          .updateTable('invoice_group')
-          .set({ voucher_id: null, revoked: 1 })
-          .where('id', '=', g.id)
-          .execute();
-        for (const r of docs) {
-          const issue = await tdb
-            .selectFrom('invoice_issue')
-            .select('id')
-            .where('invoice_id', '=', r.id)
-            .executeTakeFirst();
-          await tdb
-            .updateTable('invoice_document')
-            .set({ group_id: null, state: issue ? 'issued' : 'audited', revision: r.revision + 1 })
-            .where('id', '=', r.id)
-            .execute();
-        }
-        await tsvc.log.write({
-          action: 'invoice.revoke',
-          summary: `整体撤销发票凭证 ${v.displayNo}`,
-          targetType: 'invoice_group',
-          targetId: g.id,
-        });
+      }
+      await svc.log.write({
+        action: 'invoice.revoke',
+        summary: `整体撤销发票凭证 ${v.displayNo}`,
+        targetType: 'invoice_group',
+        targetId: g.id,
       });
     },
     async periods() {

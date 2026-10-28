@@ -16,6 +16,8 @@ import {
   IssueOptionsSchema,
   IssueSaveSchema,
   IssueDraftSchema,
+  RevokeTargetSchema,
+  RevokeSchema,
 } from '../shared';
 import { invoiceService } from './service';
 import { invoiceIssueService } from './issue-service';
@@ -164,11 +166,13 @@ export const invoiceRouter = m.router({
     .meta({ permission: 'invoice.view' })
     .input(z.object({ id: zId.optional() }))
     .query(({ ctx, input }) => invoiceService(ctx.svc).groups(input.id)),
+  previewRevoke: procedure
+    .meta({ permission: 'invoice.voucher' })
+    .input(RevokeTargetSchema)
+    .query(({ ctx, input }) => invoiceService(ctx.svc).previewRevoke(input)),
   revoke: procedure
     .meta({ permission: 'invoice.voucher' })
-    .input(
-      z.object({ id: zId, expectedRevision: z.number().int().positive(), confirmed: z.boolean() }),
-    )
+    .input(RevokeSchema)
     .mutation(({ ctx, input }) => invoiceService(ctx.svc).revoke(input)),
   vat: procedure
     .meta({ permission: 'invoice.view' })

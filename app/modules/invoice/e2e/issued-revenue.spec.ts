@@ -9,6 +9,7 @@ import { test, expect } from './isolated';
 
 type RevenuePlan = Awaited<ReturnType<ReturnType<typeof invoiceService>['previewVoucher']>>;
 type DeletePlan = NonNullable<RevenuePlan['deletionPlan']>;
+type RevokePlan = Awaited<ReturnType<ReturnType<typeof invoiceService>['previewRevoke']>>;
 type IssuePlan = Awaited<ReturnType<ReturnType<typeof invoiceIssueService>['preview']>>;
 type Group = { id: number; voucher_id: number | null };
 type CostPlan = { fingerprint: string; expectedRevision: number; debitCents: number };
@@ -188,6 +189,27 @@ test('w_fp_pz/w_fp_pz_ckd：真实出库→唯一收入→独立成本→撤销�
     get('m.costing.previewVoucher', { documentId: issue.id, purpose: 'revenue' }),
   ).rejects.toThrow(/发票/);
 
+  // 重排会改到成本来源凭证时仍须拒绝，invoice 不能越过其他模块来源锁。
+  await post('core.voucherPolicy.set', {
+    numbering: 'automatic',
+    renumberAfterDelete: true,
+    allowModifyOthers: false,
+  });
+  const beforeLockedRevoke = await vouchers();
+  await expect(
+    get('m.invoice.previewRevoke', {
+      id: (await invoice()).groupId,
+      expectedRevision: original.revision,
+    }),
+  ).rejects.toThrow(/由「.*」生成/);
+  expect(await vouchers()).toEqual(beforeLockedRevoke);
+  expect(await stock()).toBe('8');
+  await post('core.voucherPolicy.set', {
+    numbering: 'automatic',
+    renumberAfterDelete: false,
+    allowModifyOthers: false,
+  });
+
   // 收入重建与撤销都不删库存、成本或解除发票审核。
   const rebuilt = (await generate(true))[0]!;
   expect(rebuilt.voucher_id).not.toBe(firstIncome);
@@ -195,11 +217,11 @@ test('w_fp_pz/w_fp_pz_ckd：真实出库→唯一收入→独立成本→撤销�
   expect((await vouchers()).items.some((v) => v.id === costVoucher.id)).toBe(true);
   expect(await stock()).toBe('8');
   const rebuiltVoucher = await get<Voucher>('core.vouchers.get', { id: rebuilt.voucher_id });
-  await post('m.invoice.revoke', {
+  const revocation = await get<RevokePlan>('m.invoice.previewRevoke', {
     id: rebuilt.id,
     expectedRevision: rebuiltVoucher.revision,
-    confirmed: true,
   });
+  await post('m.invoice.revoke', { ...revocation, confirmed: true });
   expect(await invoice()).toMatchObject({
     state: 'issued',
     groupId: null,
