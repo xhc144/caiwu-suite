@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Input, InputNumber, Select, Space, Tabs } from 'antd';
 import Decimal from 'decimal.js';
 import { ASSETS, LIABILITIES_EQUITY, PROFIT, CASHFLOW } from './lines';
@@ -90,14 +90,51 @@ function Provenance({
   );
 }
 const sourceEmpty = { source: '', version: '1' };
+const snapshot = (value: unknown) => JSON.stringify(value);
+/** 接收换期来源时仅更新未被编辑的字段；冲突保留当前草稿，由原有离开确认明确放弃。 */
+function rebaseDraft(
+  before: unknown,
+  current: unknown,
+  incoming: unknown,
+  conflict: { found: boolean },
+): unknown {
+  if (snapshot(current) === snapshot(before)) return incoming;
+  if (snapshot(incoming) === snapshot(before) || snapshot(current) === snapshot(incoming))
+    return current;
+  if (
+    before &&
+    current &&
+    incoming &&
+    typeof before === 'object' &&
+    typeof current === 'object' &&
+    typeof incoming === 'object' &&
+    !Array.isArray(before) &&
+    !Array.isArray(current) &&
+    !Array.isArray(incoming)
+  ) {
+    const a = before as Record<string, unknown>,
+      b = current as Record<string, unknown>,
+      c = incoming as Record<string, unknown>;
+    return Object.fromEntries(
+      [...new Set([...Object.keys(a), ...Object.keys(b), ...Object.keys(c)])].map((key) => [
+        key,
+        rebaseDraft(a[key], b[key], c[key], conflict),
+      ]),
+    );
+  }
+  if (Array.isArray(before) && Array.isArray(current) && Array.isArray(incoming))
+    conflict.found = true;
+  return current;
+}
 /** 公共页面提供读取、保存及事务绑定回调；本组件不新建路由或第二套配置存储。 */
 export function EnterpriseConfiguration({
   initial,
-  source,
+  source: incomingSource,
   onSave,
   onPeriodChange,
   onDirtyChange,
   onSaveReady,
+  onDraftChange,
 }: {
   initial: EnterpriseConfig;
   source: SourceData;
@@ -105,19 +142,117 @@ export function EnterpriseConfiguration({
   onPeriodChange?(period: number, scope: EnterpriseConfig['scope']): void;
   onDirtyChange?(dirty: boolean): void;
   onSaveReady?(save: () => Promise<void>): void;
+  onDraftChange?(c: EnterpriseConfig): void;
 }) {
   const [c, set] = useState(initial),
     [error, setError] = useState(''),
-    [saving, setSaving] = useState(false);
+    [saving, setSaving] = useState(false),
+    [acceptedSource, setAcceptedSource] = useState(incomingSource),
+    [pendingConfiguration, setPendingConfiguration] = useState<{
+      configuration: EnterpriseConfig;
+      source: SourceData;
+    } | null>(null);
   const draft = useRef(c);
+  const accepted = useRef(initial);
+  const savedDraft = useRef(snapshot(initial));
+  const dirty = useRef(false);
+  const contextBlocked = useRef(false);
+  const generation = useRef(0);
+  const activeBook = useRef(incomingSource.bookId);
+  const sourceContextMatches =
+    incomingSource.bookId === activeBook.current &&
+    initial.period === accepted.current.period &&
+    initial.scope === accepted.current.scope;
+  const source = sourceContextMatches ? incomingSource : acceptedSource;
+  const callbacks = useRef({ onSave, onPeriodChange, onDirtyChange, onDraftChange });
+  callbacks.current = { onSave, onPeriodChange, onDirtyChange, onDraftChange };
+  const incoming = snapshot(initial);
+  const received = useRef({ incoming, bookId: incomingSource.bookId });
+  const requested = useRef<{ bookId: string; value: EnterpriseConfig } | null>(null);
   const inFlight = useRef<Promise<void> | null>(null);
+  const invalidateSave = useCallback(() => {
+    generation.current++;
+  }, []);
   const replace = (next: EnterpriseConfig) => {
+    if (snapshot(next) === snapshot(draft.current)) return;
     draft.current = next;
+    dirty.current = snapshot(next) !== savedDraft.current;
     set(next);
-    onDirtyChange?.(true);
+    callbacks.current.onDraftChange?.(next);
+    callbacks.current.onDirtyChange?.(dirty.current);
   };
   const change = <K extends keyof EnterpriseConfig>(key: K, value: EnterpriseConfig[K]) =>
     replace({ ...draft.current, [key]: value });
+  const requestPeriod = (period: number, scope: EnterpriseConfig['scope']) => {
+    replace({ ...draft.current, period, scope });
+    requested.current = { bookId: activeBook.current, value: draft.current };
+    callbacks.current.onPeriodChange?.(period, scope);
+  };
+  const acceptIncoming = useCallback(
+    (configuration: EnterpriseConfig, data: SourceData, next: EnterpriseConfig) => {
+      if (!dirty.current) savedDraft.current = snapshot(next);
+      generation.current++;
+      activeBook.current = data.bookId;
+      setAcceptedSource(data);
+      accepted.current = configuration;
+      draft.current = next;
+      contextBlocked.current = false;
+      requested.current = null;
+      set(next);
+      setError('');
+      setPendingConfiguration(null);
+      callbacks.current.onDraftChange?.(next);
+    },
+    [],
+  );
+  useLayoutEffect(() => {
+    if (sourceContextMatches) setAcceptedSource(incomingSource);
+    const previous = received.current;
+    if (previous.incoming === incoming && previous.bookId === incomingSource.bookId) return;
+    received.current = { incoming, bookId: incomingSource.bookId };
+    const pending = requested.current;
+    const expected =
+      pending &&
+      pending.bookId === incomingSource.bookId &&
+      pending.value.period === initial.period &&
+      pending.value.scope === initial.scope &&
+      draft.current.period === initial.period &&
+      draft.current.scope === initial.scope;
+    if (dirty.current && !expected) {
+      if (
+        incomingSource.bookId !== activeBook.current ||
+        initial.period !== draft.current.period ||
+        initial.scope !== draft.current.scope
+      ) {
+        generation.current++;
+        contextBlocked.current = true;
+        setError('当前配置有未保存的修改，请先保存或明确放弃，再切换账套、报表或期间。');
+      } else if (contextBlocked.current) {
+        contextBlocked.current = false;
+        setError('');
+        setPendingConfiguration(null);
+      }
+      return;
+    }
+    const conflict = { found: false };
+    const next = expected
+      ? (rebaseDraft(accepted.current, draft.current, initial, conflict) as EnterpriseConfig)
+      : initial;
+    if (conflict.found) {
+      generation.current++;
+      contextBlocked.current = true;
+      setPendingConfiguration({ configuration: initial, source: incomingSource });
+      setError(
+        '所选期间的分类明细与未保存草稿冲突。请保留草稿返回原期间，或明确放弃冲突草稿后使用所选期间配置。',
+      );
+      return;
+    }
+    acceptIncoming(initial, incomingSource, next);
+  }, [incoming, initial, incomingSource, sourceContextMatches, acceptIncoming]);
+  useLayoutEffect(() => {
+    callbacks.current.onDraftChange?.(draft.current);
+    return invalidateSave;
+  }, [invalidateSave]);
   const accountOptions = source.accounts
     .filter((a) => a.isLeaf)
     .map((a) => ({ value: a.id, label: `${a.code} ${a.fullName}` }));
@@ -193,15 +328,23 @@ export function EnterpriseConfiguration({
             ].includes(r.line)),
       ) && !source.vouchers.some((v) => v.id === e.voucherId && v.closingKind === 'pnl'),
   );
-  const save = async () => {
+  const save = useCallback(async () => {
     if (inFlight.current) return inFlight.current;
     const submitted = draft.current;
+    const submittedGeneration = generation.current;
     const run = (async () => {
       setError('');
       setSaving(true);
       try {
-        await onSave(parseEnterpriseConfiguration(submitted));
-        if (draft.current === submitted) onDirtyChange?.(false);
+        if (contextBlocked.current)
+          throw new Error('请先保存或明确放弃原报告草稿，再重新读取所选报告配置。');
+        await callbacks.current.onSave(parseEnterpriseConfiguration(submitted));
+        if (generation.current === submittedGeneration) savedDraft.current = snapshot(submitted);
+        if (draft.current === submitted && generation.current === submittedGeneration) {
+          dirty.current = false;
+          accepted.current = submitted;
+          callbacks.current.onDirtyChange?.(false);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : '保存失败，请核实必填项目');
         throw e;
@@ -215,10 +358,10 @@ export function EnterpriseConfiguration({
     } finally {
       inFlight.current = null;
     }
-  };
+  }, []);
   useLayoutEffect(() => {
     onSaveReady?.(save);
-  });
+  }, [onSaveReady, save]);
   const sourceLink = (id: number) => `/m/voucher-entry/edit?id=${id}`;
   return (
     <div style={{ maxWidth: '100%' }}>
@@ -230,8 +373,7 @@ export function EnterpriseConfiguration({
             value={c.period}
             options={source.periods.map((p) => ({ value: p, label: String(p) }))}
             onChange={(p) => {
-              change('period', p);
-              onPeriodChange?.(p, c.scope);
+              requestPeriod(p, draft.current.scope);
             }}
           />
         </label>
@@ -246,16 +388,46 @@ export function EnterpriseConfiguration({
               ['annual', '完整年度及上年度'],
             ])}
             onChange={(scope) => {
-              change('scope', scope);
-              onPeriodChange?.(c.period, scope);
+              requestPeriod(draft.current.period, scope);
             }}
           />
         </label>
-        <Button type="primary" loading={saving} onClick={() => void save().catch(() => {})}>
+        <Button
+          type="primary"
+          loading={saving}
+          disabled={!!pendingConfiguration}
+          onClick={() => void save().catch(() => {})}
+        >
           保存并确认来源
         </Button>
       </Space>
       {error && <Alert type="error" showIcon title={error} />}
+      {pendingConfiguration && (
+        <Space wrap>
+          <Button
+            onClick={() => {
+              contextBlocked.current = false;
+              setPendingConfiguration(null);
+              setError('');
+              requestPeriod(accepted.current.period, accepted.current.scope);
+            }}
+          >
+            保留草稿，返回原期间
+          </Button>
+          <Button
+            danger
+            onClick={() => {
+              const { configuration, source } = pendingConfiguration;
+              dirty.current = true;
+              acceptIncoming(configuration, source, configuration);
+              callbacks.current.onDirtyChange?.(true);
+              callbacks.current.onPeriodChange?.(configuration.period, configuration.scope);
+            }}
+          >
+            放弃冲突草稿，使用所选期间配置
+          </Button>
+        </Space>
+      )}
       <Alert
         type="info"
         title="期间或来源变化后需重新确认；正式报表仅取已过账数据。资产负债表比较日为上年12月，流量表按所选同期范围。"
