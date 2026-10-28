@@ -219,3 +219,65 @@ test('w_zcgl_kp：首保存回包前继续编辑保留新内容，再保存更�
     release();
   }
 });
+
+test('w_zcgl_kp：修改卡片和操作草稿内按Alt+N不替换编辑器或丢失输入', async ({ page, request }) => {
+  const { token } = await loginWithNewBook(page, request, { product: 'minfei' });
+  const p = await prepare(request, token);
+  const id = await p.post<number>('save', {
+    data: {
+      code: 'HOTKEY',
+      name: '快捷键原卡片',
+      categoryId: p.categoryId,
+      purposeId: p.purposeId,
+      statusId: p.statusId,
+      departmentId: p.departmentId,
+      acquired: '2026-01-01',
+      useDate: '2026-01-01',
+      original: 10000,
+      rate: '0',
+      method: '1',
+      lifeMonths: 60,
+    },
+  });
+  await page.goto('/m/fixed-assets/cards');
+  const row = page.getByRole('row', { name: /HOTKEY/ });
+  await row.getByRole('button', { name: '修改', exact: true }).click();
+  const editor = page.getByRole('dialog', { name: '修改资产卡片', exact: true });
+  await editor.getByLabel('设备名称', { exact: true }).fill('Alt+N后保留的卡片草稿');
+  await editor.getByRole('button', { name: '增加附属设备', exact: true }).click();
+  await editor.getByLabel('附属编号').fill('HOT-A');
+  await editor.getByLabel('附属名称').fill('Alt+N后保留的附属草稿');
+  await editor.getByLabel('附属名称').press('Alt+n');
+  await expect(editor).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '新增资产卡片', exact: true })).toHaveCount(0);
+  await expect(editor.getByLabel('设备名称', { exact: true })).toHaveValue('Alt+N后保留的卡片草稿');
+  await expect(editor.getByLabel('附属名称')).toHaveValue('Alt+N后保留的附属草稿');
+  await editor.getByRole('button', { name: '取消', exact: true }).click();
+  const guard = page.getByRole('dialog', { name: '有未保存内容', exact: true });
+  await expect(guard).toBeVisible();
+  await guard.getByRole('button', { name: '保存并关闭', exact: true }).click();
+  await expect(editor).toBeHidden();
+  const saved = await p.get<{
+    card: { id: number; name: string };
+    accessories: { name: string }[];
+  }>('m.fixed-assets.detail', { id });
+  expect(saved.card).toMatchObject({ id, name: 'Alt+N后保留的卡片草稿' });
+  expect(saved.accessories).toMatchObject([{ name: 'Alt+N后保留的附属草稿' }]);
+
+  await row.getByRole('button', { name: '原值调整', exact: true }).click();
+  const operation = page.getByRole('dialog', { name: '原值调整与查询', exact: true });
+  await operation.getByLabel('调整说明', { exact: true }).fill('操作草稿也应保留');
+  await operation.getByLabel('调整说明', { exact: true }).press('Alt+n');
+  await expect(operation).toBeVisible();
+  await expect(operation.getByLabel('调整说明', { exact: true })).toHaveValue('操作草稿也应保留');
+  await expect(page.getByRole('dialog', { name: '新增资产卡片', exact: true })).toHaveCount(0);
+  await operation.getByRole('button', { name: /close|关闭/i }).click();
+  await page
+    .getByRole('dialog', { name: '有未保存内容', exact: true })
+    .getByRole('button', { name: '放弃修改并关闭', exact: true })
+    .click();
+  await expect(operation).toBeHidden();
+
+  await page.getByLabel('编码/名称', { exact: true }).press('Alt+n');
+  await expect(page.getByRole('dialog', { name: '新增资产卡片', exact: true })).toBeVisible();
+});

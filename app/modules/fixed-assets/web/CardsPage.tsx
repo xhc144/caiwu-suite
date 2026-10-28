@@ -74,7 +74,11 @@ export default function CardsPage() {
   const missing = ['category', 'status', 'purpose'].filter(
     (k) => !(masters.data ?? []).some((m) => m.kind === k && !m.disabled),
   );
-  useHotkey('Alt+N', () => can && setEdit({}));
+  const openNewCard = () => {
+    if (!can || edit || operation) return;
+    setEdit({});
+  };
+  useHotkey('Alt+N', openNewCard);
   const columns: DataColumn<Card>[] = [
     { key: 'code', title: '设备编号', dataIndex: 'code', width: 140 },
     { key: 'name', title: '设备名称', dataIndex: 'name', width: 180 },
@@ -141,7 +145,7 @@ export default function CardsPage() {
       title="固定资产台账"
       extra={
         can && (
-          <Button type="primary" onClick={() => setEdit({})}>
+          <Button type="primary" onClick={openNewCard}>
             新增资产
           </Button>
         )
