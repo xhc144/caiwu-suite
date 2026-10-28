@@ -5,11 +5,49 @@ import {
   makePeriod,
   nextPeriod,
   periodYear,
+  sumCents,
   type Account,
   type BalanceRow,
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { LedgerQuery, LedgerReport, LedgerRow } from '../shared';
+
+const MONEY_FIELDS = ['opening', 'debit', 'credit', 'closing', 'ytdDebit', 'ytdCredit'] as const;
+type MoneyBalance = Pick<BalanceRow, (typeof MONEY_FIELDS)[number]>;
+
+/** core 逐科目余额已计算期间与累计；这里只汇总本币整分，不读取、混加任何数量。 */
+function amountsByRoot(
+  rows: BalanceRow[],
+  roots: Account[],
+  owner: Map<number, number>,
+): Map<number, MoneyBalance> {
+  const grouped = new Map(roots.map((root) => [root.id, [] as BalanceRow[]]));
+  for (const row of rows) {
+    const root = owner.get(row.accountId);
+    if (root != null) grouped.get(root)?.push(row);
+  }
+  return new Map(
+    [...grouped].map(([id, children]) => {
+      const result = {} as MoneyBalance;
+      for (const field of MONEY_FIELDS) {
+        try {
+          result[field] = sumCents(children.map((child) => child[field]));
+        } catch {
+          throw amountRange();
+        }
+      }
+      return [id, result];
+    }),
+  );
+}
+
+function amountRange() {
+  return new BusinessError({
+    code: 'LEDGERS_AMOUNT_RANGE',
+    message: '总账金额超出安全整数范围',
+    hint: '请缩小科目或期间范围后重新查询。',
+  });
+}
 
 /** 范围边缘可能只覆盖父科目的一部分，只有完整覆盖的父科目才能代替下级。 */
 function rootsInRange(all: Account[], q: LedgerQuery): Account[] {
@@ -74,7 +112,17 @@ export async function buildGeneralReport(
     scope: `${input.includeUnposted ? '包含未过账（待审核、已审核、已过账）' : '仅已过账'}；草稿和作废凭证始终排除；${input.currency || '全部币种'}，金额均为本位币；各科目根含完整下级，父子不重复列计；启用期间 ${formatPeriod(book.startPeriod)}，启用前月额、余额未知，本年累计含启用前累计且只计一次；展开月份查看累计及期末，导出和打印包含全部展开行`,
   };
   if (!selected.length) return report;
-  const monthly = new Map<number, Map<number, BalanceRow>>();
+  const selectedIds = new Set(selected.map((a) => a.id));
+  const byId = new Map(accounts.map((a) => [a.id, a]));
+  const owner = new Map<number, number>();
+  for (const account of accounts) {
+    let root: Account | undefined = account;
+    while (root && !selectedIds.has(root.id)) {
+      root = root.parentId == null ? undefined : byId.get(root.parentId);
+    }
+    if (root) owner.set(account.id, root.id);
+  }
+  const monthly = new Map<number, Map<number, MoneyBalance>>();
   for (const p of periods) {
     if (p < book.startPeriod) continue;
     const rows = await svc.ledger.balances({
@@ -84,10 +132,10 @@ export async function buildGeneralReport(
       dimensions: input.dimensions,
       currency: input.currency || undefined,
       includeUnposted: input.includeUnposted,
-      rollup: true,
+      rollup: false,
       includeZero: true,
     });
-    monthly.set(p, new Map(rows.map((b) => [b.accountId, b])));
+    monthly.set(p, amountsByRoot(rows, selected, owner));
   }
   for (const a of selected) {
     // 零本期、非零累计仍保留；未知历史不能据此判定为零。
@@ -95,7 +143,8 @@ export async function buildGeneralReport(
       const b = m.get(a.id);
       return b && [b.opening, b.debit, b.credit, b.closing, b.ytdDebit, b.ytdCredit].some(Boolean);
     });
-    if (!active && !(input.account && input.periodFrom < book.startPeriod)) continue;
+    if (!input.includeZero && !active && !(input.account && input.periodFrom < book.startPeriod))
+      continue;
     const add = (
       p: number,
       kind: LedgerRow['kind'],

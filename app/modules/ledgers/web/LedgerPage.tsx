@@ -13,7 +13,7 @@ import {
   Spin,
   Typography,
 } from 'antd';
-import { DIMENSION_TYPES, type DimensionValues } from '@caiwu/core';
+import { DIMENSION_TYPES, type DimensionValues, type DimensionTypeId } from '@caiwu/core';
 import {
   coreApi,
   notify,
@@ -22,6 +22,7 @@ import {
   useAccounts,
   useCurrentPeriod,
   usePermission,
+  useUnsavedChanges,
 } from '@caiwu/web-kit';
 import {
   AccountSelect,
@@ -34,9 +35,11 @@ import {
   type DataColumn,
 } from '@caiwu/ui';
 import { printHtml } from '@caiwu/print';
-import { displayColumns, generalTableRows } from '../presentation';
+import { displayColumns, generalTableRows, reportColumns } from '../presentation';
 import {
   COLUMN_IDS,
+  KindSchema,
+  QuerySchema,
   defaultColumns,
   parseLedgerUrl,
   TITLES,
@@ -48,6 +51,9 @@ import {
 import { api } from './api';
 import { useLedgerFilters } from './filters';
 import './ledger.css';
+import { MultiColumnDrawer } from './MultiColumnDrawer';
+import PrintDrawer from './PrintDrawer';
+import { VatMappingDrawer } from './VatMappingDrawer';
 
 type Filters = {
   from: number;
@@ -57,18 +63,18 @@ type Filters = {
   dimensions: DimensionValues;
   currency: string;
   includeUnposted: boolean;
+  includeZero: boolean;
+  dimensionType: DimensionTypeId;
+  multiMode: 'auto' | 'custom';
+  valueMode: 'base' | 'quantity' | 'foreign' | 'quantity-foreign';
+  groupAuxiliary: boolean;
 };
 
 export default function LedgerPage() {
   const location = useLocation();
   const current = useCurrentPeriod();
-  const kind: LedgerKind = location.pathname.endsWith('/general')
-    ? 'general'
-    : location.pathname.endsWith('/cash')
-      ? 'cash'
-      : location.pathname.endsWith('/bank')
-        ? 'bank'
-        : 'detail';
+  const routeKind = KindSchema.safeParse(location.pathname.split('/').at(-1));
+  const kind: LedgerKind = routeKind.success ? routeKind.data : 'detail';
   if (!current)
     return (
       <Spin tip="正在读取会计期间">
@@ -84,7 +90,7 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
   const [url, setUrl] = useLedgerFilters();
   const parsed = parseLedgerUrl(url, current, kind);
   const input = parsed.query;
-  const fallback = {
+  const fallback = QuerySchema.parse({
     kind,
     periodFrom: current,
     periodTo: current,
@@ -93,7 +99,7 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
     dimensions: {},
     currency: '',
     includeUnposted: false,
-  };
+  });
   const list = useQuery({ ...api.report.queryOptions(input ?? fallback), enabled: !!input });
   const format = useQuery(api.format.queryOptions({ kind }));
   const currencies = useQuery(coreApi.reference.currencies.queryOptions());
@@ -103,13 +109,21 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
   const resetting = useRef(false);
   const [expanded, setExpanded] = useState<readonly Key[]>([]);
   const [editing, setEditing] = useState(false);
+  const [multiEditing, setMultiEditing] = useState(false);
+  const [vatEditing, setVatEditing] = useState(false);
+  const [printEditing, setPrintEditing] = useState(false);
+  const [batchExporting, setBatchExporting] = useState(false);
+  const isMulti = kind === 'multi' || kind === 'auxiliary-multi';
+  const isAuxiliary = kind === 'auxiliary' || kind === 'auxiliary-multi';
   const [output, setOutput] = useState<'export' | 'print' | null>(null);
   const [modal, modalContext] = Modal.useModal();
-  const columns = displayColumns(kind, format.data?.columns ?? defaultColumns(kind));
+  const columns = list.data
+    ? reportColumns(list.data, format.data?.columns ?? defaultColumns(kind))
+    : displayColumns(kind, format.data?.columns ?? defaultColumns(kind));
   const tableColumns: DataColumn<LedgerRow>[] = columns.map((c) => ({
     key: c.id,
     title: c.label,
-    dataIndex: c.id,
+    dataIndex: COLUMN_IDS.includes(c.id as ColumnId) ? c.id : ['values', c.id],
     money: c.money,
     width: c.id === 'summary' || c.id === 'account' ? 230 : c.id === 'date' ? 150 : 130,
     ...(c.id === 'voucherNo'
@@ -138,6 +152,11 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
       dims: '',
       currency: '',
       includeUnposted: '',
+      includeZero: '',
+      dimensionType: '',
+      multiMode: '',
+      valueMode: '',
+      groupAuxiliary: '',
     });
   const runOutput = async (mode: 'export' | 'print') => {
     if (!input || output) return;
@@ -213,6 +232,11 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
           dimensions: input?.dimensions ?? {},
           currency: url.currency,
           includeUnposted: input?.includeUnposted ?? false,
+          includeZero: input?.includeZero ?? false,
+          dimensionType: input?.dimensionType ?? 'partner',
+          multiMode: input?.multiMode ?? 'auto',
+          valueMode: input?.valueMode ?? 'base',
+          groupAuxiliary: input?.groupAuxiliary ?? false,
         }}
         onSearch={(v) => {
           if (resetting.current) {
@@ -231,6 +255,11 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             dims: Object.keys(dimensions).length ? JSON.stringify(dimensions) : '',
             currency: v.currency ?? '',
             includeUnposted: v.includeUnposted ? '1' : '0',
+            includeZero: v.includeZero ? '1' : '0',
+            dimensionType: v.dimensionType ?? 'partner',
+            multiMode: v.multiMode ?? 'auto',
+            valueMode: v.valueMode ?? 'base',
+            groupAuxiliary: v.groupAuxiliary ? '1' : '0',
           });
         }}
       >
@@ -245,23 +274,21 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             leafOnly={false}
             includeDisabled
             allowClear
-            filter={(a) =>
-              kind === 'detail' || kind === 'general' || (kind === 'cash' ? a.isCash : a.isBank)
-            }
+            filter={(a) => (kind === 'cash' ? a.isCash : kind === 'bank' ? a.isBank : true)}
             style={{ width: 220 }}
           />
         </Form.Item>
-        <Form.Item name="accountTo" label="范围止">
-          <AccountSelect
-            leafOnly={false}
-            includeDisabled
-            allowClear
-            filter={(a) =>
-              kind === 'detail' || kind === 'general' || (kind === 'cash' ? a.isCash : a.isBank)
-            }
-            style={{ width: 220 }}
-          />
-        </Form.Item>
+        {!isMulti && (
+          <Form.Item name="accountTo" label="范围止">
+            <AccountSelect
+              leafOnly={false}
+              includeDisabled
+              allowClear
+              filter={(a) => (kind === 'cash' ? a.isCash : kind === 'bank' ? a.isBank : true)}
+              style={{ width: 220 }}
+            />
+          </Form.Item>
+        )}
         <Form.Item name="currency" label="币种">
           <Select
             allowClear
@@ -273,11 +300,54 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             }))}
           />
         </Form.Item>
+        {(isAuxiliary ||
+          ['quantity', 'foreign', 'quantity-foreign', 'cash', 'bank'].includes(kind)) && (
+          <>
+            <Form.Item name="dimensionType" label="辅助类型">
+              <Select
+                style={{ width: 170 }}
+                options={DIMENSION_TYPES.map((dt) => ({ value: dt.id, label: dt.name }))}
+              />
+            </Form.Item>
+            {!isAuxiliary && (
+              <Form.Item name="groupAuxiliary" valuePropName="checked">
+                <Checkbox>按辅助对象分别成账</Checkbox>
+              </Form.Item>
+            )}
+          </>
+        )}
+        {['auxiliary', 'cash', 'bank'].includes(kind) && (
+          <Form.Item name="valueMode" label="账簿格式">
+            <Select
+              style={{ width: 200 }}
+              options={[
+                { value: 'base', label: '三栏金额' },
+                { value: 'quantity', label: '数量金额' },
+                { value: 'foreign', label: '复币金额' },
+                { value: 'quantity-foreign', label: '数量复币' },
+              ]}
+            />
+          </Form.Item>
+        )}
+        {isMulti && (
+          <Form.Item name="multiMode" label="栏目方式">
+            <Select
+              style={{ width: 190 }}
+              options={[
+                { value: 'auto', label: '下级科目自动分栏' },
+                { value: 'custom', label: '自定义栏目' },
+              ]}
+            />
+          </Form.Item>
+        )}
         {DIMENSION_TYPES.map((dt) => (
           <Form.Item key={dt.id} name={['dimensions', dt.id]} label={dt.name}>
             <DimensionSelect type={dt.id} includeDisabled style={{ width: 180 }} />
           </Form.Item>
         ))}
+        <Form.Item name="includeZero" valuePropName="checked">
+          <Checkbox>显示无发生科目</Checkbox>
+        </Form.Item>
         <Form.Item name="includeUnposted" valuePropName="checked">
           <Checkbox>包含未过账凭证</Checkbox>
         </Form.Item>
@@ -325,6 +395,17 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             导出 Excel
           </Button>
         )}
+        {canExport && (
+          <Button
+            disabled={!input || list.isFetching || output != null}
+            onClick={() => {
+              setBatchExporting(true);
+              setPrintEditing(true);
+            }}
+          >
+            批量转出选择
+          </Button>
+        )}
         {canPrint && (
           <Button
             onClick={() => void runOutput('print')}
@@ -332,6 +413,25 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
             disabled={!input || list.isFetching || output != null}
           >
             打印
+          </Button>
+        )}
+        {canPrint && (
+          <Button
+            onClick={() => {
+              setBatchExporting(false);
+              setPrintEditing(true);
+            }}
+            disabled={!input || list.isFetching || output != null}
+          >
+            连续打印与套打
+          </Button>
+        )}
+        {kind === 'vat' && canConfig && (
+          <Button onClick={() => setVatEditing(true)}>增值税明细账设置</Button>
+        )}
+        {isMulti && canConfig && (
+          <Button onClick={() => setMultiEditing(true)} disabled={!input?.account}>
+            设置多栏栏目
           </Button>
         )}
         {kind === 'general' && (
@@ -394,9 +494,39 @@ function LedgerContent({ kind, current }: { kind: LedgerKind; current: number })
           },
         })}
       />
+      {vatEditing && (
+        <VatMappingDrawer
+          open
+          onClose={() => setVatEditing(false)}
+          onSaved={() => void list.refetch()}
+        />
+      )}
+      {printEditing && input && (
+        <PrintDrawer
+          mode={batchExporting ? 'export' : 'print'}
+          open
+          report={list.data}
+          onClose={() => setPrintEditing(false)}
+          query={input}
+          columns={format.data?.columns ?? defaultColumns(kind)}
+          onReport={(report) => queryClient.setQueryData(api.report.queryKey(input), report)}
+        />
+      )}
+      {multiEditing && input?.account && (kind === 'multi' || kind === 'auxiliary-multi') && (
+        <MultiColumnDrawer
+          open
+          onClose={() => setMultiEditing(false)}
+          kind={kind}
+          account={input.account}
+          onSaved={() => {
+            setUrl({ multiMode: 'custom' });
+            void list.refetch();
+          }}
+        />
+      )}
       {format.data && (
         <FormatDrawer
-          key={`${editing}-${format.data.revision}`}
+          key={String(editing)}
           open={editing}
           onClose={() => setEditing(false)}
           kind={kind}
@@ -411,7 +541,7 @@ function FormatDrawer({
   open,
   onClose,
   kind,
-  format,
+  format: loadedFormat,
   onSaved,
 }: {
   open: boolean;
@@ -420,6 +550,7 @@ function FormatDrawer({
   format: LedgerFormat;
   onSaved: () => void;
 }) {
+  const [format] = useState(loadedFormat);
   const [selected, setSelected] = useState<ColumnId[]>(format.columns);
   const save = useMutation(
     api.saveFormat.mutationOptions({
@@ -430,15 +561,39 @@ function FormatDrawer({
       },
     }),
   );
+  useUnsavedChanges({
+    title: `${TITLES[kind]}显示格式`,
+    dirty: open && JSON.stringify(selected) !== JSON.stringify(format.columns),
+    version: JSON.stringify(selected),
+    save: async () => {
+      if (!selected.length || save.isPending) return false;
+      try {
+        await save.mutateAsync({
+          kind,
+          columns: selected,
+          expectedRevision: format.revision,
+          confirmed: true,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    discard: () => setSelected(format.columns),
+  });
   return (
     <Drawer
       title="保存账簿显示格式"
       open={open}
-      onClose={onClose}
+      onClose={() => {
+        if (!save.isPending) onClose();
+      }}
       destroyOnHidden
       footer={
         <Space>
-          <Button onClick={onClose}>取消</Button>
+          <Button disabled={save.isPending} onClick={onClose}>
+            取消
+          </Button>
           <Button
             type="primary"
             disabled={!selected.length}
@@ -461,6 +616,7 @@ function FormatDrawer({
         勾选实际显示、导出和打印的列。确认保存后应用到账套；列宽在本机自动记忆。
       </Typography.Paragraph>
       <Checkbox.Group
+        disabled={save.isPending}
         value={selected}
         options={displayColumns(kind, [...COLUMN_IDS]).map((c) => ({
           value: c.id,
