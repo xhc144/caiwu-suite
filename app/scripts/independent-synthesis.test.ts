@@ -596,3 +596,186 @@ describe('独立合成验收：原发票至唯一收入、成本及撤销重排'
     expect((await t.app.svc.vouchers.list()).total).toBe(3);
   });
 });
+
+function permutations<T>(values: T[]): T[][] {
+  return values.length === 0
+    ? [[]]
+    : values.flatMap((value, i) =>
+        permutations(values.filter((_, j) => i !== j)).map((rest) => [value, ...rest]),
+      );
+}
+
+describe('独立9253追加验收：全部选择顺序和有界真实导入', () => {
+  it.each(permutations([0, 1, 2, 3]).map((order) => [order.join(','), order] as const))(
+    '四单选择顺序[%s]：24种文件均由无负库存权限操作员导入，关系完整且库存0',
+    async (_label, order) => {
+      const source = await fixture();
+      const target = await fixture();
+      const { first, reversal, second } = await source.history();
+      const issue = await source.inv<Doc>('saveDocument', source.document('issue', 'O', '10'));
+      const docs = [first, second!, issue, reversal];
+      const file = await source.inv('exportDocuments', { ids: order.map((i) => docs[i]!.id) });
+      const token = await target.app.addUser('permutation-import', {
+        permissions: ['inventory.view', 'inventory.edit', 'inventory.import'],
+      });
+      const input = { file, requestKey: randomUUID() };
+      const before = await target.snapshot();
+      const plan = await target.inv<ImportPreview>('importDocumentsPreview', input, token);
+      expect(plan.errors).toEqual([]);
+      expect(plan.shortages).toEqual([]);
+      expect(await target.snapshot()).toEqual(before);
+      const saved = await target.inv<{ savedIds: number[] }>(
+        'importDocuments',
+        { ...input, confirmation: plan.confirmation },
+        token,
+      );
+      expect(saved.savedIds).toHaveLength(4);
+      expect(await target.inv('exportDocuments', { ids: saved.savedIds })).toEqual(file);
+      expect(await target.stock()).toBe('0');
+      expect(await target.fulfillment()).toMatchObject({ received: '10', remaining: '0' });
+    },
+  );
+
+  async function opening(t: Awaited<ReturnType<typeof fixture>>, quantity: string) {
+    const old = await t.inv<{ revision: number }>('opening', { warehouseId: t.warehouseId });
+    await t.inv('saveOpening', {
+      warehouseId: t.warehouseId,
+      revision: old.revision,
+      confirmReplace: true,
+      rows: [{ productCode: 'CHECK-P', quantity, unitPrice: '2.5' }],
+    });
+  }
+  async function loan(
+    t: Awaited<ReturnType<typeof fixture>>,
+    number: string,
+    quantity: string,
+    parent?: number,
+  ) {
+    return t.inv<Doc>('saveDocument', {
+      ...t.document('issue', number, quantity),
+      ...(parent == null ? {} : { sourceType: 'document', sourceId: parent }),
+    });
+  }
+  async function refund(t: Awaited<ReturnType<typeof fixture>>, issued: Doc, number: string) {
+    return t.inv<Doc>('reverseDocument', {
+      id: issued.id,
+      revision: issued.revision,
+      requestKey: randomUUID(),
+      number,
+      date: '2026-01-13',
+      accountId: t.ids.cash,
+      unitPrices: ['2.5'],
+      confirmed: true,
+    });
+  }
+
+  it.each([false, true])(
+    '52单真实领用退回，最后一对需要2=%s：合法链完整保存，无解链权限拒绝且整库不变',
+    async (needsTwo) => {
+      const source = await fixture();
+      const target = await fixture();
+      await opening(source, '2');
+      await opening(target, '1');
+      const ids: number[] = [];
+      for (let i = 0; i < 26; i++) {
+        const issue = await loan(source, `INDEPENDENT-LOAN-${i}`, needsTwo && i === 25 ? '2' : '1');
+        const returned = await refund(source, issue, `INDEPENDENT-RETURN-${i}`);
+        ids.push(issue.id, returned.id);
+      }
+      const file = await source.inv<{ documents: { lines: unknown[] }[] }>('exportDocuments', {
+        ids,
+      });
+      expect(file.documents).toHaveLength(52);
+      expect(file.documents.reduce((n, d) => n + d.lines.length, 0)).toBe(52);
+      const input = { file: JSON.parse(JSON.stringify(file)), requestKey: randomUUID() };
+      const token = await target.app.addUser('check_52_import', {
+        permissions: ['inventory.view', 'inventory.edit', 'inventory.import'],
+      });
+      const before = await target.snapshot();
+      const started = performance.now();
+      const plan = await target.inv<ImportPreview>('importDocumentsPreview', input, token);
+      const previewMs = performance.now() - started;
+      console.info(JSON.stringify({ acceptance: 'independent-52', needsTwo, previewMs }));
+      expect(previewMs).toBeLessThan(1000);
+      expect(plan.errors).toEqual([]);
+      expect(await target.snapshot()).toEqual(before);
+      if (needsTwo) {
+        expect(plan.shortages).toEqual([
+          expect.objectContaining({
+            number: 'INDEPENDENT-LOAN-25',
+            current: '1',
+            requested: '2',
+            difference: '1',
+          }),
+        ]);
+        await expect(
+          target.inv(
+            'importDocuments',
+            {
+              ...input,
+              confirmation: plan.confirmation,
+            },
+            token,
+          ),
+        ).rejects.toThrow(/权限/);
+        expect(await target.snapshot()).toEqual(before);
+      } else {
+        expect(plan.shortages).toEqual([]);
+        const saved = await target.inv<{ savedIds: number[] }>(
+          'importDocuments',
+          {
+            ...input,
+            confirmation: plan.confirmation,
+          },
+          token,
+        );
+        expect(saved.savedIds).toHaveLength(52);
+        expect(await target.inv('exportDocuments', { ids: saved.savedIds })).toEqual(file);
+        expect(await target.stock()).toBe('1');
+      }
+    },
+  );
+
+  it('56单复杂周转：原100ms/10000状态预算终止明确报未完成，预览/保存/允许负库存均零写入', async () => {
+    const source = await fixture();
+    const target = await fixture();
+    await opening(source, '4');
+    await opening(target, '4');
+    const ids: number[] = [];
+    for (let i = 0; i < 25; i++) {
+      const issue = await loan(source, `BUDGET-LOAN-${i}`, '1');
+      const returned = await refund(source, issue, `BUDGET-RETURN-${i}`);
+      ids.push(issue.id, returned.id);
+    }
+    for (const prefix of ['A', 'B']) {
+      const first = await loan(source, `${prefix}0`, '1');
+      const second = await loan(source, `${prefix}1`, '2', first.id);
+      const returned = await refund(source, second, `${prefix}R`);
+      ids.push(first.id, second.id, returned.id);
+    }
+    const file = await source.inv<{ documents: unknown[] }>('exportDocuments', { ids });
+    expect(file.documents).toHaveLength(56);
+    const input = { file, requestKey: randomUUID() };
+    const previouslyFeasible = await target.inv<ImportPreview>('importDocumentsPreview', input);
+    expect(previouslyFeasible.errors).toEqual([]);
+    expect(previouslyFeasible.shortages).toEqual([]);
+    await opening(target, '3');
+    const before = await target.snapshot();
+    for (const mode of ['preview', 'save', 'save-allow-negative'] as const) {
+      const started = performance.now();
+      const operation =
+        mode === 'preview'
+          ? target.inv('importDocumentsPreview', input)
+          : target.inv('importDocuments', {
+              ...input,
+              confirmation: previouslyFeasible.confirmation,
+              allowNegative: mode === 'save-allow-negative',
+            });
+      await expect(operation).rejects.toThrow(/自动排序预检尚未完成，未保存任何数据/);
+      const elapsedMs = performance.now() - started;
+      console.info(JSON.stringify({ acceptance: 'independent-budget', mode, elapsedMs }));
+      expect(elapsedMs).toBeLessThan(1000);
+      expect(await target.snapshot()).toEqual(before);
+    }
+  });
+});
