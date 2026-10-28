@@ -277,6 +277,14 @@ it('w_frame：save收到上下文；旧式递归leave迅速拒绝，不等待自
 
 it('w_frame：重复确认只弹一次，不同范围不能借用确认；确认异常保留错误并释放锁', async () => {
   const registry = new UnsavedRegistry();
+  const noConfirmation = vi.fn();
+  expect(
+    await Promise.all([
+      registry.leave('book', undefined, noConfirmation),
+      registry.leave('book', undefined, noConfirmation),
+    ]),
+  ).toEqual([true, true]);
+  expect(noConfirmation).not.toHaveBeenCalled();
   registry.register(page('草稿'));
   let finish!: (choice: 'cancel') => void;
   const confirm = vi.fn(

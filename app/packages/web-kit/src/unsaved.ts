@@ -121,6 +121,7 @@ export class UnsavedRegistry {
       const scope =
         direct || selected.some((page) => page.savePhase === 'session') ? undefined : keys;
       const pages = this.dirty(bookId, scope);
+      if (!pages.length && !direct) return result(true);
       const versions = new Map(pages.map((page) => [page, page.version]));
       const updates = new Map(pages.map((page) => [page, this.unversionedUpdates.get(page) ?? 0]));
       const phases = new Map(pages.map((page) => [page, page.savePhase]));
