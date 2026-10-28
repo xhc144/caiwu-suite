@@ -30,6 +30,8 @@ export function enterprisePages(r: EnterpriseResult): OutputPage[] {
     throw new Error('报表存在勾稽差额，请核实后重新生成再导出或打印');
   const pages: OutputPage[] = [],
     base = { orgName: r.orgName, landscape: false };
+  const periodLabel = (value: string) =>
+    r.comparison?.reason ? `${value}；${r.comparison.reason}` : value;
   const chunks = <T>(rows: T[], size: number) =>
     Array.from({ length: Math.ceil(rows.length / size) }, (_, i) =>
       rows.slice(i * size, (i + 1) * size),
@@ -51,8 +53,15 @@ export function enterprisePages(r: EnterpriseResult): OutputPage[] {
     pages.push({
       ...base,
       title: `资产负债表 · ${i + 1}`,
-      period: `${r.period}期末；比较日${r.ranges.balancePrevious}`,
-      headers: ['资产', '期末余额', '上年年末余额', '负债和所有者权益', '期末余额', '上年年末余额'],
+      period: periodLabel(`${r.period}期末；比较日${r.ranges.balancePrevious}`),
+      headers: [
+        '资产',
+        '期末余额',
+        r.comparison?.balance === 'unavailable' ? '上年年末余额（无来源）' : '上年年末余额',
+        '负债和所有者权益',
+        '期末余额',
+        r.comparison?.balance === 'unavailable' ? '上年年末余额（无来源）' : '上年年末余额',
+      ],
       rows,
     });
   for (const [name, lines, values] of [
@@ -82,8 +91,16 @@ export function enterprisePages(r: EnterpriseResult): OutputPage[] {
       pages.push({
         ...base,
         title: `${name} · ${i + 1}`,
-        period: `${r.ranges.current.from}—${r.ranges.current.to}；比较${r.ranges.previous.from}—${r.ranges.previous.to}`,
-        headers: ['项目', r.ranges.current.label, r.ranges.previous.label],
+        period: periodLabel(
+          `${r.ranges.current.from}—${r.ranges.current.to}；比较${r.ranges.previous.from}—${r.ranges.previous.to}`,
+        ),
+        headers: [
+          '项目',
+          r.ranges.current.label,
+          r.comparison?.flow === 'unavailable'
+            ? `${r.ranges.previous.label}（无完整比较来源）`
+            : r.ranges.previous.label,
+        ],
         rows: part,
       });
   }
@@ -95,7 +112,7 @@ export function enterprisePages(r: EnterpriseResult): OutputPage[] {
           ...base,
           landscape: true,
           title: `所有者权益变动表 · ${col === 'current' ? '本年' : '上年'}金额 · 第${i + 1}组`,
-          period: `${Math.floor(r.ranges[col].to / 100)}年度`,
+          period: periodLabel(`${Math.floor(r.ranges[col].to / 100)}年度`),
           headers: ['项目', ...group.map((k) => EQUITY_LABELS[keys.indexOf(k)]!)],
           rows: EQUITY.map((l) => [
             cell(l.label, false, !!l.total),

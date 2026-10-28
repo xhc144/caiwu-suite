@@ -280,13 +280,13 @@ describe('企业2019附件2四表', () => {
       r.checks.find((x) => x.statement === 'cashflow' && x.column === 'previous')?.period,
     ).toBe(202406);
   });
-  it('w_bb_proc 年报必须完整年度、缺期及未知启用前比较拒绝', () => {
+  it('w_bb_proc 年报必须完整年度、已启用范围缺期及本期早于启用仍拒绝', () => {
     const { c, d } = fixture();
     expect(() => enterpriseRanges({ ...c, period: 202511 })).toThrow('12月');
     d.periods = d.periods.filter((p) => p !== 202406);
     expect(() => calculateEnterprise(c, d)).toThrow('缺少会计期间');
     d.periods.push(202406);
-    d.startPeriod = 202501;
+    d.startPeriod = 202507;
     expect(() => calculateEnterprise(c, d)).toThrow('早于账套启用');
   });
   it('w_bb_get 标准名称匹配、不猜编码、未知科目准确提示', () => {
