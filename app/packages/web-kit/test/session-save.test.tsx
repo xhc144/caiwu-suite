@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { useRef, useState } from 'react';
 import { sessionStore, type SessionState } from '../src/session';
 import { TabContext, useTab } from '../src/tabs';
+import { SessionCommitBoundary } from '../src/session-commit';
 import {
   unsavedPages,
   useUnsavedChanges,
@@ -21,9 +22,13 @@ afterEach(() => {
 function mountWorkspace({
   savePrint = async () => true,
   validatePassword = async () => {},
+  passwordResponse = async () => true,
+  beforeLogin = async () => {},
 }: {
   savePrint?: () => Promise<boolean>;
   validatePassword?: () => Promise<void>;
+  passwordResponse?: () => Promise<boolean>;
+  beforeLogin?: () => Promise<void>;
 } = {}) {
   sessionStore.set({ bookId: 'book', token: 'old-token' } as SessionState);
   const events: string[] = [];
@@ -45,7 +50,8 @@ function mountWorkspace({
         setPages(dirty.map((page) => page.title));
         choice.current = resolve;
       });
-    const navigateToLogin = () => {
+    const navigateToLogin = async () => {
+      await beforeLogin();
       events.push('登录');
       setLoggedIn(false);
     };
@@ -55,7 +61,7 @@ function mountWorkspace({
       if (outcome.allowed && !outcome.sessionRevoked) switchRequest();
     };
     return (
-      <>
+      <SessionCommitBoundary bookId="book">
         <button onClick={() => void leave()}>切换用户</button>
         <button onClick={() => void leave(['password'])}>关闭密码页</button>
         {loggedIn ? (
@@ -92,7 +98,7 @@ function mountWorkspace({
           {result ? `${result.allowed}/${result.sessionRevoked}` : ''}
         </output>
         {result?.error instanceof Error && <p role="alert">{result.error.message}</p>}
-      </>
+      </SessionCommitBoundary>
     );
   }
   function Password({
@@ -117,6 +123,7 @@ function mountWorkspace({
       await validatePassword();
       return context.commit(async () => {
         changePassword(snapshot);
+        if (!(await passwordResponse())) return false;
         events.push('改密');
         setSaved(snapshot);
         context.afterLeave(onLogin);
@@ -227,6 +234,83 @@ it('w_pass：直接提交取消保留两页；其他页保存期间继续编辑�
     '登录',
   ]);
 });
+
+it('w_pass：凭据响应挂起期间，原clean页不能新增编辑或提交，延迟跳登录完成才结束保护', async () => {
+  let respond!: (success: boolean) => void;
+  let finishLogin!: () => void;
+  const response = vi.fn(
+    () =>
+      new Promise<boolean>((resolve) => {
+        respond = resolve;
+      }),
+  );
+  const beforeLogin = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finishLogin = resolve;
+      }),
+  );
+  const { changePassword, events } = mountWorkspace({ passwordResponse: response, beforeLogin });
+  fireEvent.click(screen.getByRole('button', { name: '切换用户' }));
+  fireEvent.click(await screen.findByRole('button', { name: '保存并继续' }));
+  await waitFor(() => expect(changePassword).toHaveBeenCalledOnce());
+  expect(screen.getByRole('status', { name: '正在保存登录信息' })).toBeVisible();
+  fireEvent.change(screen.getByLabelText('打印草稿'), {
+    target: { value: '请求飞行期间的新编辑' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: '保存新密码' }));
+  expect(screen.getByLabelText('打印草稿')).toHaveValue('另一标签的打印草稿');
+  expect(changePassword).toHaveBeenCalledOnce();
+  await act(async () => {
+    respond(true);
+  });
+  await waitFor(() => expect(beforeLogin).toHaveBeenCalledOnce());
+  expect(unsavedPages.isSessionCommitPending('book')).toBe(true);
+  expect(await unsavedPages.saveSessionChange('book', 'password', vi.fn(), vi.fn())).toMatchObject({
+    allowed: false,
+  });
+  fireEvent.change(screen.getByLabelText('打印草稿'), {
+    target: { value: '延迟登录期间的新编辑' },
+  });
+  expect(screen.getByLabelText('打印草稿')).toHaveValue('另一标签的打印草稿');
+  await act(async () => {
+    finishLogin();
+  });
+  expect(events).toEqual(['保存打印：另一标签的打印草稿', '改密', '登录']);
+  expect(screen.getByLabelText('协调结果')).toHaveTextContent('true/true');
+  expect(unsavedPages.isSessionCommitPending('book')).toBe(false);
+});
+
+it.each(['false', 'reject'] as const)(
+  'w_pass：凭据响应%s释放同账套交互保护，保留草稿并允许继续编辑',
+  async (failure) => {
+    let respond!: () => void;
+    const error = new Error('改密请求失败');
+    const passwordResponse = () =>
+      new Promise<boolean>((resolve, reject) => {
+        respond = () => {
+          if (failure === 'reject') reject(error);
+          else resolve(false);
+        };
+      });
+    const { changePassword, events } = mountWorkspace({ passwordResponse });
+    fireEvent.click(screen.getByRole('button', { name: '切换用户' }));
+    fireEvent.click(await screen.findByRole('button', { name: '保存并继续' }));
+    await waitFor(() => expect(changePassword).toHaveBeenCalledOnce());
+    expect(screen.getByRole('status', { name: '正在保存登录信息' })).toBeVisible();
+    await act(async () => {
+      respond();
+    });
+    expect(screen.queryByRole('status', { name: '正在保存登录信息' })).not.toBeInTheDocument();
+    expect(unsavedPages.isSessionCommitPending('book')).toBe(false);
+    expect(screen.getByLabelText('新密码')).toHaveValue('new-password');
+    expect(events).toEqual(['保存打印：另一标签的打印草稿']);
+    if (failure === 'reject') expect(screen.getByRole('alert')).toHaveTextContent(error.message);
+    fireEvent.change(screen.getByLabelText('打印草稿'), { target: { value: '失败后继续编辑' } });
+    expect(screen.getByLabelText('打印草稿')).toHaveValue('失败后继续编辑');
+    expect(sessionStore.get()?.token).toBe('old-token');
+  },
+);
 
 it('w_pass：其他页真实保存异常显示原错误，保留输入、会话和标签', async () => {
   const { changePassword, events } = mountWorkspace({

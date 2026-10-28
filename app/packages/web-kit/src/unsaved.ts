@@ -1,7 +1,7 @@
-import { useLayoutEffect, useReducer, useRef } from 'react';
+import { useLayoutEffect, useReducer, useRef, useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { useTab } from './tabs';
-import { useRequiredSession } from './session';
+import { sessionStore, useRequiredSession } from './session';
 
 export type UnsavedSaveResult = boolean | void | { sessionRevoked: true };
 export type UnsavedSaveContext = {
@@ -31,13 +31,29 @@ export type UnsavedPage = {
 };
 export type LeaveChoice = 'save' | 'discard' | 'cancel';
 export type ConfirmLeave = (pages: readonly UnsavedPage[]) => Promise<LeaveChoice>;
+type PendingLeave = { key: string; promise: Promise<LeaveResult>; saving: boolean };
 export class UnsavedRegistry {
   readonly pages = new Map<symbol, UnsavedPage>();
-  private confirmation?: Promise<LeaveResult>;
-  private confirmationKey?: string;
-  private saving = false;
+  private confirmations = new Map<string, PendingLeave>();
+  private sessionCommits = new Set<string>();
+  private commitListeners = new Set<() => void>();
   private unversionedUpdates = new WeakMap<UnsavedPage, number>();
   private settlements = new WeakMap<UnsavedPage, () => void>();
+  isSessionCommitPending = (bookId: string): boolean => this.sessionCommits.has(bookId);
+  subscribeSessionCommits = (listener: () => void): (() => void) => {
+    this.commitListeners.add(listener);
+    return () => {
+      this.commitListeners.delete(listener);
+    };
+  };
+  private setSessionCommitPending(bookId: string, pending: boolean) {
+    // The renderer must apply inert and its event gate before the request starts.
+    flushSync(() => {
+      if (pending) this.sessionCommits.add(bookId);
+      else this.sessionCommits.delete(bookId);
+      for (const listener of this.commitListeners) listener();
+    });
+  }
   register(page: UnsavedPage, settle?: () => void) {
     const id = Symbol();
     this.pages.set(id, page);
@@ -105,10 +121,21 @@ export class UnsavedRegistry {
   ): Promise<LeaveResult> {
     // A save callback awaiting its own leave promise deadlocks. Only duplicate
     // confirmation requests may join; callbacks receive an explicit context.
-    if (this.confirmation)
-      return this.confirmationKey === key && !this.saving
-        ? this.confirmation
+    const existing = this.confirmations.get(bookId);
+    if (existing)
+      return existing.key === key && !existing.saving
+        ? existing.promise
         : Promise.resolve({ allowed: false, sessionRevoked: false });
+    // An asynchronous afterLeave still owns the old session until it finishes.
+    if (this.isSessionCommitPending(bookId))
+      return Promise.resolve({ allowed: false, sessionRevoked: false });
+    let complete!: (outcome: LeaveResult) => void;
+    const confirmation = new Promise<LeaveResult>((resolve) => {
+      complete = resolve;
+    });
+    const operation: PendingLeave = { key, promise: confirmation, saving: false };
+    let commitLocked = false;
+    const startingSession = sessionStore.get();
     let sessionRevoked = false;
     const afterLeave: (() => Promise<void> | void)[] = [];
     const result = (allowed: boolean, error?: unknown): LeaveResult => ({
@@ -130,7 +157,7 @@ export class UnsavedRegistry {
       const confirmPages = direct ? pages.filter((page) => page !== sessionPage) : pages;
       const choice = confirmPages.length ? await confirm(confirmPages) : 'save';
       if (choice === 'cancel') return result(false);
-      this.saving = true;
+      operation.saving = true;
       // Once one request revokes the token, a second such save cannot be made safely.
       if (
         (direct || choice === 'save') &&
@@ -163,6 +190,10 @@ export class UnsavedRegistry {
           commit: async (action) => {
             if (!active || phase !== 'session' || committed || !canCommit()) return false;
             committed = true;
+            commitLocked = true;
+            this.setSessionCommitPending(bookId, true);
+            // Applying the renderer gate may flush a pending content update.
+            if (!canCommit()) return false;
             const saved = await action();
             if (typeof saved === 'object' && saved.sessionRevoked) sessionRevoked = true;
             return saved;
@@ -216,33 +247,50 @@ export class UnsavedRegistry {
       }
       return result(!changed() && this.dirty(bookId, scope).every((page) => discarded.has(page)));
     };
-    this.confirmationKey = key;
     // Install the lock before invoking even a synchronous confirmation callback.
-    let complete!: (outcome: LeaveResult) => void;
-    const confirmation = new Promise<LeaveResult>((resolve) => {
-      complete = resolve;
-    });
-    this.confirmation = confirmation;
+    this.confirmations.set(bookId, operation);
     void run()
       .catch((error: unknown) => result(false, error))
       .then(async (outcome) => {
-        this.confirmation = undefined;
-        this.confirmationKey = undefined;
-        this.saving = false;
-        if (outcome.allowed && outcome.sessionRevoked) {
-          try {
+        this.confirmations.delete(bookId);
+        let finished = outcome;
+        try {
+          if (outcome.allowed && outcome.sessionRevoked) {
             for (const action of afterLeave) await action();
-          } catch (error) {
-            complete(result(false, error));
-            return;
+          }
+        } catch (error) {
+          finished = result(false, error);
+        }
+        try {
+          // A failed redirect must not leave an already revoked token editable.
+          if (
+            finished.sessionRevoked &&
+            !finished.allowed &&
+            startingSession?.bookId === bookId &&
+            sessionStore.get()?.token === startingSession.token
+          )
+            sessionStore.set(null);
+        } catch (error) {
+          finished = result(false, finished.error ?? error);
+        } finally {
+          try {
+            if (commitLocked) this.setSessionCommitPending(bookId, false);
+          } finally {
+            complete(finished);
           }
         }
-        complete(outcome);
       });
     return confirmation;
   }
 }
 export const unsavedPages = new UnsavedRegistry();
+export function useSessionCommitPending(bookId: string): boolean {
+  return useSyncExternalStore(
+    unsavedPages.subscribeSessionCommits,
+    () => unsavedPages.isSessionCommitPending(bookId),
+    () => false,
+  );
+}
 export function useUnsavedChanges(input: Omit<UnsavedPage, 'bookId' | 'tabKey'>) {
   const [, refresh] = useReducer((value: number) => value + 1, 0);
   const tab = useTab();

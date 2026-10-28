@@ -127,8 +127,9 @@ it('w_pass / w_frame.closequery：单页关闭先保存同账套其他脏页，�
         password.update(page('自改密码', false));
         context!.afterLeave(async () => {
           calls.push('登录');
-          // Coordination is over before navigation or cache teardown starts.
-          expect(await registry.leave('book', undefined, async () => 'cancel')).toBe(true);
+          // Saves are complete, but the old session remains guarded during cleanup.
+          expect(registry.isSessionCommitPending('book')).toBe(true);
+          expect(await registry.leave('book', undefined, async () => 'cancel')).toBe(false);
         });
         return { sessionRevoked: true };
       });
@@ -153,6 +154,48 @@ it('w_pass / w_frame.closequery：单页关闭先保存同账套其他脏页，�
   expect(calls).toEqual(['保存打印', '改密', '登录']);
   expect(other).not.toHaveBeenCalled();
 });
+
+it.each(['false', 'reject', 'throw', 'success'] as const)(
+  'w_pass：会话请求%s时按账套持锁，其他账套可独立保存，所有退出路径释放锁',
+  async (outcome) => {
+    const registry = new UnsavedRegistry();
+    const error = new Error('凭据请求失败');
+    let finish!: () => void;
+    const leaving = registry.saveSessionChange('book', '密码', vi.fn(), async (context) =>
+      context!.commit(() => {
+        expect(registry.isSessionCommitPending('book')).toBe(true);
+        if (outcome === 'throw') throw error;
+        return new Promise((resolve, reject) => {
+          finish = () => {
+            if (outcome === 'reject') reject(error);
+            else resolve(outcome === 'success' ? { sessionRevoked: true } : false);
+          };
+        });
+      }),
+    );
+    expect(registry.isSessionCommitPending('other')).toBe(false);
+    const other = registry.register({
+      ...page('另账套'),
+      bookId: 'other',
+      save: async () => {
+        other.update({ ...page('另账套', false), bookId: 'other' });
+      },
+    });
+    expect(await registry.leave('other', undefined, async () => 'save')).toBe(true);
+    if (outcome !== 'throw') {
+      expect(registry.isSessionCommitPending('book')).toBe(true);
+      expect(await registry.saveSessionChange('book', '密码', vi.fn(), vi.fn())).toMatchObject({
+        allowed: false,
+      });
+      finish();
+    }
+    const result = await leaving;
+    expect(result.allowed).toBe(outcome === 'success');
+    if (outcome === 'reject' || outcome === 'throw') expect(result.error).toBe(error);
+    expect(registry.isSessionCommitPending('book')).toBe(false);
+    expect(await registry.leave('book', undefined, vi.fn())).toBe(true);
+  },
+);
 
 it.each(['false', 'throw', 'dirty', 'new-page', 'new-version'] as const)(
   'w_pass：其他页面保存失败或新增编辑（%s）阻止凭据请求，错误可由调用方读取',

@@ -1,6 +1,6 @@
 import { Modal } from 'antd';
 import { createElement } from 'react';
-import { unsavedPages } from '@caiwu/web-kit';
+import { showError, unsavedPages, type LeaveResult } from '@caiwu/web-kit';
 import type { CurrentUser, ModuleManifest } from '@caiwu/core';
 import type { NavItem } from './NavMenu';
 import { tabPath } from './paths';
@@ -54,7 +54,15 @@ export function canHandleShellKey(e: KeyboardEvent) {
 
 /** One confirmation is completed before any page is unmounted. */
 export async function requestBeforeLeave(bookId: string, keys?: readonly string[]) {
-  const accepted = await unsavedPages.leave(
+  const result = await requestBeforeLeaveResult(bookId, keys);
+  return result.allowed && !result.sessionRevoked;
+}
+
+export async function requestBeforeLeaveResult(
+  bookId: string,
+  keys?: readonly string[],
+): Promise<LeaveResult> {
+  const result = await unsavedPages.leaveWithResult(
     bookId,
     keys,
     (pages) =>
@@ -95,7 +103,8 @@ export async function requestBeforeLeave(bookId: string, keys?: readonly string[
         });
       }),
   );
-  return accepted && checkBeforeLeave();
+  if (result.error !== undefined) showError(result.error);
+  return result.allowed ? { ...result, allowed: checkBeforeLeave() } : result;
 }
 
 /** The native host asks before it starts closing the renderer or local service. */
@@ -111,8 +120,8 @@ export function listenForNativeClose(bookId: string) {
     }
   ).caiwuDesktopHost?.closing;
   return desktop?.onRequest((id) => {
-    void requestBeforeLeave(bookId).then(
-      (allowed) => desktop.respond(id, allowed),
+    void requestBeforeLeaveResult(bookId).then(
+      (result) => desktop.respond(id, result.allowed),
       () => desktop.respond(id, false),
     );
   });
