@@ -53,6 +53,8 @@ type Plan = {
   metadata: NonNullable<BackupListItem['metadata']>;
   status: string;
   expires_at: string;
+  targetBook: { name: string; startPeriod: number };
+  targetPeriod: number | null;
 };
 type BatchRow = {
   key: string;
@@ -84,10 +86,18 @@ function BackupPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [text, setText] = useState('');
   const [password, setPassword] = useState('');
-  const [protection, setProtection] = useState<{ location: string; createdAt: string } | null>(
-    null,
-  );
-  const [result, setResult] = useState<{ bookId: string; name: string } | null>(null);
+  const [protection, setProtection] = useState<{
+    location: string;
+    createdAt: string;
+    available: boolean;
+    expiresAt: string;
+  } | null>(null);
+  const [result, setResult] = useState<{
+    bookId: string;
+    name: string;
+    purpose: 'copy' | 'overwrite';
+    cleanupPending?: boolean;
+  } | null>(null);
   const [deletion, setDeletion] = useState<BackupListItem | null>(null);
   const [deleteText, setDeleteText] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
@@ -168,6 +178,11 @@ function BackupPage() {
         setResult(r);
         setPassword('');
       },
+      onError: () => {
+        setPassword('');
+        setProtection(null);
+        refresh();
+      },
     }),
   );
   const prune = useMutation(
@@ -182,7 +197,7 @@ function BackupPage() {
   const save = useMutation(
     api.saveSettings.mutationOptions({
       onSuccess: () => {
-        notify.success('配置已保存；启动、退出与定时仍待运行时接入');
+        notify.success('自动备份配置已保存');
         refresh();
       },
     }),
@@ -299,7 +314,7 @@ function BackupPage() {
         if (file.size > TRANSFER_LIMIT) {
           updateBatch(row.key, {
             status: '拒绝',
-            error: '文件超过 32 MiB；需要受管流式传输共享接口',
+            error: '文件超过 32 MiB，暂不能从浏览器上传',
           });
           continue;
         }
@@ -322,7 +337,11 @@ function BackupPage() {
           }
           if (meta) sourceIds.add(meta.book.id);
           if (canRestore) {
-            const p = await preview.mutateAsync({ id: item.id, purpose: 'copy' });
+            const p = await preview.mutateAsync({
+              id: item.id,
+              purpose,
+              name: purpose === 'copy' && copyName.trim() ? copyName : undefined,
+            });
             updateBatch(row.key, {
               backupId: item.id,
               status: p.status === 'done' ? '已引入，不重复创建' : '预检通过',
@@ -343,12 +362,19 @@ function BackupPage() {
   };
   if (result)
     return (
-      <PageContainer title="已恢复为新账套">
+      <PageContainer title={result.purpose === 'overwrite' ? '已覆盖恢复账套' : '已恢复为新账套'}>
         <Alert
           type="success"
-          title={`新副本「${result.name}」已发布`}
-          description={`新 ID：${result.bookId}。原账套保留。请重新登录此副本，使用备份中的操作员凭据。`}
+          title={
+            result.purpose === 'overwrite'
+              ? `账套「${result.name}」已恢复`
+              : `新副本「${result.name}」已发布`
+          }
+          description={`${result.purpose === 'overwrite' ? '恢复前保护备份已保留。' : '原账套保留。'}请重新登录「${result.name}」，使用备份中的操作员及密码。`}
         />
+        {result.cleanupPending && (
+          <Alert type="info" title="账套已恢复，临时文件将由系统继续清理；请重新登录使用账套" />
+        )}
         <Button
           type="primary"
           onClick={() => {
@@ -364,13 +390,13 @@ function BackupPage() {
   return (
     <PageContainer
       title="备份恢复"
-      subtitle="完整保存当前 .caiwu 中的核心及所有模块数据；SHA-256 用于发现改动，不代表来源可信。"
+      subtitle="完整备份账套及所有业务数据。恢复前请核对来源、期间和目标账套。"
     >
       <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
         <Alert
           type="warning"
-          title="当前账套覆盖暂不可用；可安全恢复为独立新账套"
-          description="W0 尚无跨模块维护锁和请求排空接口，覆盖执行已阻止。启动、正常退出与定时自动备份未接入，请主动备份。原版 SQL Anywhere .bak 暂不支持。"
+          title="恢复可新建账套，也可覆盖当前账套"
+          description="覆盖前须生成保护备份、输入确认文字并核对当前管理员密码。恢复会替换全部业务数据与操作员资料，完成后请重新登录。请选择可信来源的新版备份包；原版 .bak 请使用原账导入功能。"
         />
         {deletion && (
           <Card title="删除受管备份确认">
@@ -418,7 +444,7 @@ function BackupPage() {
             </Form>
           </Card>
         )}
-        <Card title="手动完整备份（w_bf）">
+        <Card title="手动完整备份">
           <p>
             当前账套：{view.data?.book.name}；期间：{view.data?.period?.period}；预计 SQLite 大小：
             {size(view.data?.estimatedBytes ?? 0)}。受管位置：{view.data?.managedRoot}
@@ -442,7 +468,7 @@ function BackupPage() {
             <Button onClick={refresh}>刷新状态</Button>
           </Space>
         </Card>
-        <Card title="恢复目的与上传（w_hf / w_tzjl_get / w_tzjl_get_all）">
+        <Card title="恢复目的与上传">
           <Space orientation="vertical" style={{ width: '100%' }}>
             <Radio.Group
               aria-label="恢复目的"
@@ -450,10 +476,12 @@ function BackupPage() {
               onChange={(e) => {
                 setPurpose(e.target.value as 'copy' | 'overwrite');
                 setPlan(null);
+                setProtection(null);
+                setPassword('');
               }}
               options={[
                 { label: '恢复为新账套（原账套保留）', value: 'copy' },
-                { label: '覆盖当前账套（执行暂不可用）', value: 'overwrite' },
+                { label: '覆盖当前账套（先生成保护备份）', value: 'overwrite' },
               ]}
             />
             <Input
@@ -495,7 +523,7 @@ function BackupPage() {
                 { key: 'file', title: '文件', dataIndex: 'name', width: 200 },
                 {
                   key: 'target',
-                  title: '目标新 ID / 名称',
+                  title: '恢复目标编号 / 名称',
                   width: 340,
                   render: (_, r) => (r.plan ? `${r.plan.target_id} / ${r.plan.target_name}` : '—'),
                 },
@@ -507,16 +535,21 @@ function BackupPage() {
                 },
                 {
                   key: 'action',
-                  title: '逐项引入',
+                  title: '逐项恢复',
                   width: 180,
                   render: (_, r) =>
                     r.plan?.status === 'ready' && (
                       <Space>
                         <Button
                           onClick={() => {
-                            setPlan(r.plan!);
-                            setText('');
-                            setPassword('');
+                            if (r.plan?.purpose === 'overwrite' && r.backupId)
+                              preview.mutate({ id: r.backupId, purpose: 'overwrite' });
+                            else {
+                              setPlan(r.plan!);
+                              setProtection(null);
+                              setText('');
+                              setPassword('');
+                            }
                           }}
                         >
                           确认此项
@@ -559,13 +592,23 @@ function BackupPage() {
                   children: `${plan.metadata.book.startPeriod} / ${plan.metadata.book.currentPeriod}`,
                 },
                 { key: 'date', label: '备份时间', children: plan.metadata.createdAt },
-                { key: 'target', label: '当前目标账套', children: session.book.name },
+                { key: 'target', label: '当前目标账套', children: plan.targetBook.name },
                 {
                   key: 'new',
                   label: '恢复目的 / 目标 ID',
-                  children: `${plan.purpose === 'copy' ? '新副本' : '覆盖当前（暂不可用）'}：${plan.target_name} / ${plan.target_id}`,
+                  children: `${plan.purpose === 'copy' ? '新副本' : '覆盖当前'}：${plan.target_name} / ${plan.target_id}`,
                 },
-                { key: 'expiry', label: '确认有效期', children: plan.expires_at },
+                { key: 'sourceId', label: '来源账套编号', children: plan.metadata.book.id },
+                {
+                  key: 'targetPeriod',
+                  label: '当前账套启用 / 当前期间',
+                  children: `${plan.targetBook.startPeriod} / ${plan.targetPeriod ?? '无开放期间'}`,
+                },
+                {
+                  key: 'expiry',
+                  label: '确认有效期',
+                  children: protection?.expiresAt ?? plan.expires_at,
+                },
               ]}
             />
             <Alert
@@ -574,7 +617,7 @@ function BackupPage() {
               title={
                 plan.purpose === 'copy'
                   ? '创建独立新账套，继承备份内的操作员与全部数据；原账套保留'
-                  : '覆盖会替换当前账套全部数据；此版本已阻止执行'
+                  : '覆盖会替换当前账套全部数据和操作员资料；请先确认来源账套与期间'
               }
             />
             {plan.purpose === 'overwrite' && (
@@ -589,7 +632,7 @@ function BackupPage() {
                 {protection && (
                   <p>
                     保护备份：{protection.location}；时间：{protection.createdAt}
-                    。覆盖仍需共享维护锁接入。
+                    。请在 {protection.expiresAt} 前确认；准备后账套有变化须重新预览。
                   </p>
                 )}
               </Space>
@@ -615,7 +658,8 @@ function BackupPage() {
                 <Button
                   type="primary"
                   disabled={
-                    plan.purpose !== 'copy' ||
+                    (plan.purpose === 'overwrite' && !protection?.available) ||
+                    !password ||
                     text !== plan.confirmation ||
                     !canRestore ||
                     plan.status === 'done'
@@ -623,7 +667,7 @@ function BackupPage() {
                   loading={restore.isPending}
                   onClick={() => restore.mutate({ planId: plan.id, text, password })}
                 >
-                  确认恢复为新账套
+                  {plan.purpose === 'overwrite' ? '确认覆盖当前账套' : '确认恢复为新账套'}
                 </Button>
                 <Button
                   disabled={restore.isPending}
@@ -644,11 +688,11 @@ function BackupPage() {
           scroll={{ x: 1370 }}
           pagination={{ pageSize: 10 }}
         />
-        <Card title="系统自动备份设置（w_autobak）">
+        <Card title="系统自动备份设置">
           <Alert
             type="info"
-            title={view.data?.runtimeStatus ?? '运行时未接入'}
-            description={`上次成功：${view.data?.lastSuccess?.created_at ?? '暂无'}；上次失败：${view.data?.lastFailure ? `${view.data.lastFailure.created_at} ${view.data.lastFailure.reason}` : '暂无'}；下次：未安排（待接入）。保存配置不代表已经开始保护。`}
+            title={view.data?.runtimeStatus ?? '正在读取自动备份配置'}
+            description={`上次成功：${view.data?.lastSuccess?.created_at ?? '暂无'}；上次失败：${view.data?.lastFailure ? `${view.data.lastFailure.created_at} ${view.data.lastFailure.reason}` : '暂无'}；下次：${view.data?.nextAt ?? (view.data?.config.enabled ? '由本地服务按设定间隔安排' : '已关闭')}。`}
           />
           {view.data && (
             <Form<BackupSettings>
@@ -669,13 +713,13 @@ function BackupPage() {
               >
                 <Input />
               </Form.Item>
-              <Form.Item name="onStart" label="启动时备份（未接入）" valuePropName="checked">
+              <Form.Item name="onStart" label="启动时备份" valuePropName="checked">
                 <Switch />
               </Form.Item>
-              <Form.Item name="onExit" label="正常退出时备份（未接入）" valuePropName="checked">
+              <Form.Item name="onExit" label="正常退出时备份" valuePropName="checked">
                 <Switch />
               </Form.Item>
-              <Form.Item name="intervalMinutes" label="定时间隔 / 分钟（未接入）">
+              <Form.Item name="intervalMinutes" label="定时间隔 / 分钟">
                 <InputNumber min={5} max={43200} />
               </Form.Item>
               <Form.Item name="keep" label="保留有效自动备份份数（手动及保护备份不轮替）">

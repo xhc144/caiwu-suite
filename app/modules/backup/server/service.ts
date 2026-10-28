@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { copyFile, link, lstat, open, rm, stat } from 'node:fs/promises';
+import { copyFile, link, lstat, open, readFile, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import {
@@ -11,6 +11,7 @@ import {
   type CoreServices,
 } from '@caiwu/core/server';
 import type { AppRuntime, AuthedContext } from '@caiwu/server-kit';
+import { BusinessError } from '@caiwu/core';
 import {
   ConfirmSchema,
   CreateSchema,
@@ -45,6 +46,14 @@ type Protection = {
   location: string;
   confirmation: string;
   available: boolean;
+  expiresAt: string;
+};
+type LocalBackup = Readonly<BackupTables['backup_item']>;
+type Overwrite = {
+  revision: string;
+  replacementId?: string;
+  protection?: Protection;
+  localBackups?: readonly LocalBackup[];
 };
 type Job = { bookId: string; abort: AbortController; promise: Promise<void>; progress: number };
 type Terminal = { status: 'failed' | 'cancelled'; reason: string };
@@ -109,6 +118,7 @@ const states = new WeakMap<
     jobs: Map<string, Job>;
     creating: Map<string, Promise<BackupTables['backup_item']>>;
     preparing: Map<string, Promise<Protection>>;
+    overwrites: Map<string, Overwrite>;
   }
 >();
 function state(app: AppRuntime) {
@@ -120,6 +130,7 @@ function state(app: AppRuntime) {
       jobs: new Map(),
       creating: new Map(),
       preparing: new Map(),
+      overwrites: new Map(),
     };
     states.set(app, s);
   }
@@ -186,6 +197,28 @@ export async function waitForJobs(app: AppRuntime, bookId?: string, signal?: Abo
   }
 }
 
+/** 仅接受替换前目标本机的登记；源机器快照中的目录和文件登记不参与保留。 */
+async function verifiedLocalBackup(app: AppRuntime, bookId: string, row: LocalBackup) {
+  if (row.owner_id !== bookId || row.status !== 'valid')
+    throw fail('CATALOG', '本机备份登记不属于覆盖目标或尚未校验通过');
+  const file = packagePath(await directory(app.dataDir, bookId, row.directory), row.id);
+  const checked = await validatePackage(file, app);
+  try {
+    if (checked.digest !== row.digest)
+      throw fail('CHANGED', '本机备份与登记摘要不符，覆盖未完成', '请重新校验本机备份后再预览恢复');
+    return Object.freeze({
+      ...row,
+      metadata: JSON.stringify(checked.metadata),
+      bytes: checked.bytes,
+      digest: checked.digest,
+      reason: '',
+      progress: 100,
+    });
+  } finally {
+    await rm(checked.snapshot, { force: true });
+  }
+}
+
 // 每次取得租约后重新构造，禁止后台作业捕获已返回 HTTP 请求的 db/svc。
 function backupOperations(ctx: Context) {
   const db = ctx.svc.db.withTables<BackupTables>();
@@ -212,11 +245,12 @@ function backupOperations(ctx: Context) {
         await rm(checked.snapshot);
         throw fail('CHANGED', '受管备份与登记摘要不符');
       }
-      await db
-        .updateTable('backup_item')
-        .set({ status: 'valid', reason: '' })
-        .where('id', '=', id)
-        .execute();
+      if (row.status !== 'valid' || row.reason)
+        await db
+          .updateTable('backup_item')
+          .set({ status: 'valid', reason: '' })
+          .where('id', '=', id)
+          .execute();
       return checked;
     } catch (e) {
       const err = fileError(e);
@@ -347,7 +381,7 @@ export function backupService(ctx: Context) {
   const { db, now, load, fileOf, verify, settings } = backupOperations(ctx);
   const admin = () => {
     if (!ctx.user.isAdmin)
-      throw fail('ADMIN', '恢复副本与覆盖准备需要当前账套管理员', '请使用管理员重新登录');
+      throw fail('ADMIN', '恢复账套需要当前账套管理员', '请使用管理员重新登录');
   };
   const startBackup = async (
     input: { requestId: string; name: string },
@@ -498,12 +532,7 @@ export function backupService(ctx: Context) {
     if (!plan) throw fail('PLAN', '恢复预览不存在或不属于当前用户');
     return plan;
   };
-  const fingerprint = () =>
-    JSON.stringify([
-      ctx.book.raw.prepare('SELECT total_changes() AS n').get(),
-      ctx.book.raw.pragma('data_version', { simple: true }),
-      ctx.book.raw.prepare('SELECT period,status FROM period ORDER BY period').all(),
-    ]);
+  const fingerprint = () => ctx.app.bookStore.revision(ctx.book.id);
   const confirmation = (p: Awaited<ReturnType<typeof loadPlan>>) =>
     p.purpose === 'copy' ? `恢复副本 ${p.target_name}` : `覆盖 ${p.target_name}`;
   const self = {
@@ -544,7 +573,9 @@ export function backupService(ctx: Context) {
         lastSuccess,
         lastFailure,
         nextAt: null,
-        runtimeStatus: '启动 / 正常退出 / 定时未接入；配置已保存，尚未全程生效',
+        runtimeStatus: config.enabled
+          ? '已启用自动备份：本地服务按启动、定时和正常退出设置执行'
+          : '自动备份已关闭，请按需手动备份',
         transferLimit: TRANSFER_LIMIT,
         managedRoot: `backups/${ctx.book.id}`,
       };
@@ -679,7 +710,7 @@ export function backupService(ctx: Context) {
       await ctx.svc.settings.set('automatic', config);
       await ctx.svc.log.write({
         action: 'backup.settings',
-        summary: '更新自动备份配置；运行时钩子尚未接入',
+        summary: '更新自动备份配置',
       });
       return config;
     },
@@ -743,6 +774,7 @@ export function backupService(ctx: Context) {
               confirmation: confirmation(previous),
               metadata: checked.metadata,
               targetBook: await ctx.svc.book.info(),
+              targetPeriod: (await ctx.svc.periods.current())?.period ?? null,
             };
           }
         }
@@ -767,11 +799,14 @@ export function backupService(ctx: Context) {
           reason: '',
         };
         await db.insertInto('backup_plan').values(plan).execute();
+        if (purpose === 'overwrite')
+          state(ctx.app).overwrites.set(plan.id, { revision: fingerprint() });
         return {
           ...plan,
           confirmation: confirmation(plan),
           metadata: checked.metadata,
           targetBook: await ctx.svc.book.info(),
+          targetPeriod: (await ctx.svc.periods.current())?.period ?? null,
         };
       });
     },
@@ -779,12 +814,24 @@ export function backupService(ctx: Context) {
       return exclusive(ctx, async () => {
         const plan = await loadPlan(id);
         if (plan.status !== 'ready') throw fail('PLAN', '只能取消尚未开始的恢复');
+        const prepared = state(ctx.app).overwrites.get(id);
+        const store = ctx.app.bookStore;
+        if (
+          prepared?.replacementId &&
+          'cancelReplacement' in store &&
+          typeof store.cancelReplacement === 'function'
+        ) {
+          await store.cancelReplacement({
+            bookId: ctx.book.id,
+            replacementId: prepared.replacementId,
+          });
+        }
         await db
           .updateTable('backup_plan')
           .set({ status: 'cancelled' })
           .where('id', '=', id)
           .execute();
-        overwriteStamps.delete(id);
+        state(ctx.app).overwrites.delete(id);
       });
     },
     async prepareOverwrite(planId: string): Promise<Protection> {
@@ -798,39 +845,85 @@ export function backupService(ctx: Context) {
         const plan = await loadPlan(planId);
         if (plan.purpose !== 'overwrite' || plan.status !== 'ready' || plan.expires_at <= now())
           throw fail('PLAN', '覆盖预览已失效，请重新预览');
-        const protection =
-          plan.protection_id && overwriteStamps.get(plan.id) === fingerprint()
-            ? await load(plan.protection_id)
-            : await create(
-                { requestId: randomUUID(), name: '恢复前保护备份' },
-                'pre-restore',
-                true,
-              );
+        const prepared = state(ctx.app).overwrites.get(plan.id);
+        if (!prepared || prepared.revision !== fingerprint())
+          throw fail('TARGET_CHANGED', '目标账套在预览后发生变化，请重新预览并备份');
+        if (prepared.replacementId && !prepared.protection)
+          throw fail('PLAN', '上次恢复未完成，请先取消该计划再重新预览');
+        if (prepared.protection) {
+          if (Date.parse(prepared.protection.expiresAt) <= Date.now())
+            throw fail('EXPIRED', '覆盖确认已过期，请重新预览');
+          return prepared.protection;
+        }
+        const protection = await create(
+          { requestId: randomUUID(), name: '恢复前保护备份' },
+          'pre-restore',
+          true,
+        );
         if (protection.status !== 'valid')
           throw fail('PROTECTION', '恢复前保护备份失败，已阻止覆盖', protection.reason);
-        const checked = await verify(protection.id);
-        await rm(checked.snapshot);
+        const checkedProtection = await verify(protection.id);
+        await rm(checkedProtection.snapshot);
         await db
           .updateTable('backup_plan')
           .set({ protection_id: protection.id })
           .where('id', '=', plan.id)
           .execute();
-        const stamp = fingerprint();
-        await db
-          .updateTable('backup_plan')
-          .set({ fingerprint: stamp })
-          .where('id', '=', plan.id)
-          .execute();
-        // 上一条计划更新本身也增加 total_changes，记录最终值。
-        const finalStamp = fingerprint();
-        overwriteStamps.set(plan.id, finalStamp);
-        return {
-          protectionId: protection.id,
-          createdAt: protection.created_at,
-          location: `backups/${ctx.book.id}/${protection.directory}/${protection.id}.caiwubak`,
-          confirmation: confirmation(plan),
-          available: false,
-        };
+        return exclusive(ctx, async () => {
+          const checked = await verify(plan.backup_id);
+          try {
+            if (checked.digest !== plan.digest) throw fail('CHANGED', '备份在预览后发生变化');
+            const bytes = await readFile(checked.snapshot);
+            if (
+              bytes.length !== checked.metadata.length ||
+              createHash('sha256').update(bytes).digest('hex') !== checked.metadata.sha256
+            )
+              throw fail('CHANGED', '已校验快照在暂存前发生变化，覆盖未执行');
+            const localRows = await db
+              .selectFrom('backup_item')
+              .selectAll()
+              .where('owner_id', '=', ctx.book.id)
+              .where('status', '=', 'valid')
+              .execute();
+            const localBackups: LocalBackup[] = [];
+            for (const row of localRows)
+              localBackups.push(await verifiedLocalBackup(ctx.app, ctx.book.id, row));
+            if (
+              !localBackups.some((row) => row.id === plan.backup_id) ||
+              !localBackups.some((row) => row.id === protection.id)
+            )
+              throw fail('CATALOG', '恢复来源或保护备份登记已变化，请重新预览');
+            const revision = fingerprint();
+            const expiresAt = Math.min(Date.now() + 5 * 60_000, Date.parse(plan.expires_at));
+            const replacementInput = {
+              sourceBookId: checked.metadata.book.id,
+              bookId: ctx.book.id,
+              bytes,
+              length: checked.metadata.length,
+              sha256: checked.metadata.sha256,
+              expectedRevision: revision,
+              expiresAt,
+            };
+            const ticket = await ctx.app.bookStore.prepareReplacement(replacementInput);
+            const result: Protection = {
+              protectionId: protection.id,
+              createdAt: protection.created_at,
+              location: `backups/${ctx.book.id}/${protection.directory}/${protection.id}.caiwubak`,
+              confirmation: confirmation(plan),
+              available: true,
+              expiresAt: new Date(expiresAt).toISOString(),
+            };
+            state(ctx.app).overwrites.set(plan.id, {
+              revision,
+              replacementId: ticket.replacementId,
+              protection: result,
+              localBackups: Object.freeze(localBackups),
+            });
+            return result;
+          } finally {
+            await rm(checked.snapshot, { force: true });
+          }
+        });
       })();
       state(ctx.app).preparing.set(key, task);
       try {
@@ -853,19 +946,175 @@ export function backupService(ctx: Context) {
         if (plan.status === 'done') {
           if (!ctx.app.bookStore.exists(plan.target_id))
             throw fail('COPY_MISSING', '之前恢复的新副本已被移除，请核对账套目录');
-          return { bookId: plan.target_id, name: plan.target_name, relogin: true };
+          return {
+            bookId: plan.target_id,
+            name: plan.target_name,
+            relogin: true,
+            purpose: 'copy' as const,
+          };
         }
         if (plan.status !== 'ready' || plan.expires_at <= now())
           throw fail('EXPIRED', '确认已取消或过期，请重新预览');
         if (plan.purpose === 'overwrite') {
           if (!plan.protection_id) throw fail('PROTECTION', '尚未完成恢复前保护备份');
-          if (overwriteStamps.get(plan.id) !== fingerprint())
+          ctx.svc.permissions.require('backup.create');
+          const prepared = state(ctx.app).overwrites.get(plan.id);
+          if (!prepared?.replacementId || !prepared.protection || !prepared.localBackups)
+            throw fail('PROTECTION', '覆盖准备已失效，请重新预览并生成保护备份');
+          if (Date.parse(prepared.protection.expiresAt) <= Date.now())
+            throw fail('EXPIRED', '覆盖确认已过期，请重新预览');
+          if (prepared.revision !== fingerprint())
             throw fail('TARGET_CHANGED', '目标账套在确认后发生变化，请重新预览并备份');
-          throw fail(
-            'MAINTENANCE_REQUIRED',
-            '当前版本暂不能安全覆盖活动账套',
-            '需要共享层提供跨模块独占维护锁、在途请求排空及重新登录控制；可选择恢复为新账套',
-          );
+          const protection = await load(plan.protection_id);
+          const checkedProtection = await verify(protection.id);
+          await rm(checkedProtection.snapshot);
+          const localBackups = prepared.localBackups;
+          const replacementId = prepared.replacementId;
+          const runtime = ctx.app;
+          const targetId = ctx.book.id;
+          const actorId = ctx.user.id;
+          const actorName = ctx.user.name;
+          const sessionToken = ctx.session.token;
+          const clock = runtime.now;
+          const replacementStatus = () => {
+            try {
+              return runtime.bookStore.replacementStatus(replacementId);
+            } catch {
+              return null;
+            }
+          };
+          // 升级维护后原请求 svc/连接已撤销，只能使用共享层给出的新服务和新连接。
+          let replacementDone = false;
+          try {
+            await runtime.lifecycle.maintainBook({
+              token: sessionToken,
+              bookId: targetId,
+              permission: 'backup.restore',
+              confirmation: {
+                bookId: targetId,
+                bookName: plan.target_name,
+                password: input.password,
+              },
+              authorize: async (svc) => {
+                svc.permissions.require('backup.restore');
+                svc.permissions.require('backup.create');
+                svc.permissions.require('backup.verify');
+                const current = await svc.db
+                  .withTables<BackupTables>()
+                  .selectFrom('backup_plan')
+                  .selectAll()
+                  .where('id', '=', plan.id)
+                  .executeTakeFirst();
+                if (
+                  !current ||
+                  current.owner_id !== targetId ||
+                  current.user_id !== actorId ||
+                  current.purpose !== 'overwrite' ||
+                  current.target_id !== targetId ||
+                  current.target_name !== plan.target_name ||
+                  current.backup_id !== plan.backup_id ||
+                  current.status !== 'ready' ||
+                  current.expires_at <= clock().toISOString() ||
+                  current.digest !== plan.digest ||
+                  current.protection_id !== protection.id
+                )
+                  throw fail('EXPIRED', '恢复计划已变化或过期，请重新预览');
+                if (prepared.revision !== runtime.bookStore.revision(targetId))
+                  throw fail('TARGET_CHANGED', '目标账套在确认后发生变化，请重新预览并备份');
+              },
+              plan: {
+                kind: 'replace',
+                replacementId: prepared.replacementId,
+                validate: async (book, signal) => {
+                  signal.throwIfAborted();
+                  if (book.id !== targetId)
+                    throw fail(
+                      'TARGET_CHANGED',
+                      '恢复后的账套身份与覆盖目标不符，正在回滚保护副本',
+                    );
+                  // 排空后再次校验冻结的本机文件；任一变化由共享维护流程回滚。
+                  for (const row of localBackups) {
+                    signal.throwIfAborted();
+                    await verifiedLocalBackup(runtime, targetId, row);
+                  }
+                  // 丢弃源机器登记，只重建替换前已验证的目标本机目录（含来源及历史保护）。
+                  await book.db.transaction().execute(async (tx) => {
+                    await tx.withTables<BackupTables>().deleteFrom('backup_plan').execute();
+                    await tx.withTables<BackupTables>().deleteFrom('backup_item').execute();
+                    await tx
+                      .withTables<BackupTables>()
+                      .insertInto('backup_item')
+                      .values(localBackups)
+                      .execute();
+                    await tx
+                      .updateTable('book_info')
+                      .set({ name: plan.target_name, updated_at: clock().toISOString() })
+                      .where('id', '=', 1)
+                      .execute();
+                    await tx
+                      .deleteFrom('book_setting')
+                      .where((eb) =>
+                        eb.or([
+                          eb.and([eb('scope', '=', 'backup'), eb('key', '=', 'restorePlan')]),
+                          eb.and([eb('scope', '=', 'core'), eb('key', '=', 'lastOpenedAt')]),
+                        ]),
+                      )
+                      .execute();
+                    await tx
+                      .insertInto('operation_log')
+                      .values({
+                        at: clock().toISOString(),
+                        user_id: null,
+                        user_name: actorName,
+                        module: 'backup',
+                        action: 'backup.restore.overwrite',
+                        summary: `从完整备份覆盖账套「${plan.target_name}」；恢复前保护备份 ${protection.id}；请重新登录`,
+                        target_type: 'book',
+                        target_id: targetId,
+                        detail: null,
+                      })
+                      .execute();
+                    signal.throwIfAborted();
+                  });
+                  if (
+                    (book.raw.pragma('integrity_check') as { integrity_check: string }[])[0]
+                      ?.integrity_check !== 'ok'
+                  )
+                    throw fail('INTEGRITY', '恢复后的账套校验失败，正在回滚保护副本');
+                },
+              },
+            });
+            replacementDone = true;
+          } catch (error) {
+            // 仅共享票据明确已完成时保留成功结果；清理错误不能触发重复恢复。
+            if (replacementStatus()?.status !== 'done') {
+              if (error instanceof BusinessError) throw error;
+              throw fail(
+                'RESTORE_FAILED',
+                '覆盖恢复未完成，保护备份已保留',
+                '请重新登录核对账套；如账套已隔离，请先修复存储，再由管理员恢复保护副本',
+              );
+            }
+            replacementDone = true;
+          } finally {
+            if (replacementDone) state(runtime).overwrites.delete(plan.id);
+            else
+              state(runtime).overwrites.set(plan.id, {
+                revision: prepared.revision,
+                replacementId,
+              });
+          }
+          const completed = replacementStatus();
+          return {
+            bookId: plan.target_id,
+            name: plan.target_name,
+            relogin: true,
+            purpose: 'overwrite' as const,
+            cleanupPending:
+              completed !== null &&
+              'cleanupPending' in completed &&
+              completed.cleanupPending === true,
+          };
         }
         const checked = await verify(plan.backup_id);
         if (checked.digest !== plan.digest) {
@@ -991,7 +1240,12 @@ export function backupService(ctx: Context) {
           });
           ctx.app.sessions.deleteForBook(ctx.book.id);
           ctx.app.sessions.deleteForBook(plan.target_id);
-          return { bookId: plan.target_id, name: plan.target_name, relogin: true };
+          return {
+            bookId: plan.target_id,
+            name: plan.target_name,
+            relogin: true,
+            purpose: 'copy' as const,
+          };
         } catch (e) {
           // 发布后登记失败保留带 plan 标识的完整副本，重试只认领本计划文件。
           await db
@@ -1013,7 +1267,5 @@ export function backupService(ctx: Context) {
   };
   return self;
 }
-// 覆盖能力尚未接入；确认凭据不跨重启保留。
-const overwriteStamps = new Map<string, string>();
 export type BackupService = ReturnType<typeof backupService>;
 export type BackupListItem = Awaited<ReturnType<BackupService['list']>>[number];
