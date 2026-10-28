@@ -185,7 +185,7 @@ function VoucherEditor({ filters }: { filters: SourceFilters }) {
                     ? d.kind === 'count'
                     : purpose === 'receipt'
                       ? d.kind === 'receipt'
-                      : d.kind === 'issue',
+                      : d.kind === 'issue' && (purpose !== 'revenue' || d.revenueEligible),
                 )
                 .map((d) => ({
                   value: d.id,

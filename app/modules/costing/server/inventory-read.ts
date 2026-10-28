@@ -51,6 +51,8 @@ export type InventoryReadTables = {
     account_id: number | null;
     cost_account_id: number | null;
     voucher_id: number | null;
+    source_type: string | null;
+    source_id: number | null;
     revision: number;
     calculation_status: string;
     calculation_batch: string | null;

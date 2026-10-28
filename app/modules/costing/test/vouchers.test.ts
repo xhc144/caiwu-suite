@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { sql } from '@caiwu/db';
+import { seedVouchers } from '@caiwu/testkit';
 import { generateVoucher, regenerateVoucher } from '../server/vouchers';
-import { readInventory } from '../server/inventory-read';
+import { readInventory, type InventoryReadTables } from '../server/inventory-read';
 import type { GenerateVoucherSchema, VoucherPreviewSchema } from '../shared';
 import type { z } from 'zod';
 import { caller, setup } from './fixtures';
@@ -40,7 +42,122 @@ async function seed() {
   return { receipt, issue };
 }
 
+// 发票 provider 由独立任务交付；这里用实际库存表中的来源字段构造合成前置，
+// 不把旧版库存输入类型强制转换成尚未接回的发票输入，后续均调用真实成本接口。
+async function markInvoiceSource(documentId: number) {
+  await t.app.svc.tx(async (tx) => {
+    const db = tx.db.withTables<InventoryReadTables>();
+    await db
+      .updateTable('inventory_document')
+      .set({
+        source_type: 'invoice',
+        source_id: 7001,
+        revision: sql`revision+1`,
+      })
+      .where('id', '=', documentId)
+      .execute();
+    await db
+      .updateTable('inventory_control')
+      .set({ stock_revision: sql`stock_revision+1` })
+      .where('id', '=', 1)
+      .execute();
+  });
+}
+
 describe('w_cb_pz / w_ck_rk1 / w_ck_ck1：正式来源凭证', () => {
+  it('发票来源排除收入候选并拒绝收入预览、生成与重生成，正式成本凭证仍可入账', async () => {
+    const { issue } = await seed();
+    const target = {
+      documentId: issue.id,
+      purpose: 'revenue' as const,
+      taxAccountId: t.ids.outputTax,
+    };
+    const oldPreview = await generation(target);
+    const [invoiceRevenue] = await seedVouchers(t.app.svc, [
+      {
+        date: '2026-01-10',
+        lines: [
+          { account: '1001', debit: 5650 },
+          { account: '6001', credit: 5000 },
+          { account: '22210102', credit: 650 },
+        ],
+      },
+    ]);
+    await markInvoiceSource(issue.id);
+
+    const snapshot = await readInventory(t.app.svcFor('costing'), 202601);
+    expect(snapshot.documents.find((d) => d.id === issue.id)).toMatchObject({
+      source_type: 'invoice',
+      source_id: 7001,
+    });
+    expect(snapshot.sharedSnapshot.documents.find((d) => d.id === issue.id)).toMatchObject({
+      sourceType: 'invoice',
+      sourceId: 7001,
+    });
+    expect(
+      (await t.api.voucherDocuments()).find((d) => d.kind === 'issue' && d.id === issue.id),
+    ).toMatchObject({ sourceType: 'invoice', revenueEligible: false });
+    await expect(t.api.previewVoucher(target)).rejects.toMatchObject({
+      cause: { data: { code: 'COSTING_INVOICE_REVENUE_OWNED' } },
+    });
+    await expect(t.api.generateVoucher(oldPreview)).rejects.toThrow(/销售发票.*不能重复制证/);
+    await expect(t.api.regenerateVoucher(oldPreview)).rejects.toThrow(/销售发票.*不能重复制证/);
+    expect((await t.app.svc.vouchers.list()).total).toBe(1);
+
+    await formal();
+    const cost = await t.api.generateVoucher(
+      await generation({ documentId: issue.id, purpose: 'cost' }),
+    );
+    expect(cost).toMatchObject({
+      status: 'pending',
+      debitTotal: 1000,
+      creditTotal: 1000,
+      source: { module: 'costing', type: 'cost', id: String(issue.id) },
+    });
+    expect(
+      (await t.api.voucherDocuments()).find((d) => d.kind === 'issue' && d.id === issue.id)!
+        .sources,
+    ).toEqual([expect.objectContaining({ purpose: 'cost', voucherId: cost.id })]);
+    expect((await t.app.svc.vouchers.list()).total).toBe(2);
+    expect(await t.app.svc.vouchers.get(invoiceRevenue!.id)).toMatchObject({
+      id: invoiceRevenue!.id,
+      debitTotal: 5650,
+      creditTotal: 5650,
+    });
+  });
+
+  it('来源改为发票后拒绝重生成，保留已有收入凭证及关联，普通销售仍允许收入制证', async () => {
+    const { issue } = await seed();
+    const target = {
+      documentId: issue.id,
+      purpose: 'revenue' as const,
+      taxAccountId: t.ids.outputTax,
+    };
+    expect(
+      (await t.api.voucherDocuments()).find((d) => d.kind === 'issue' && d.id === issue.id),
+    ).toMatchObject({ sourceType: null, revenueEligible: true });
+    const original = await t.api.generateVoucher(await generation(target));
+    const regeneration = await generation(target);
+    const deletion = await t.api.previewVoucherDelete(target);
+    await markInvoiceSource(issue.id);
+    await expect(
+      t.api.regenerateVoucher({
+        ...regeneration,
+        voucherDeletion: { plan: deletion.plan, confirmed: true },
+      }),
+    ).rejects.toThrow(/销售发票.*不能重复制证/);
+    expect(await t.app.svc.vouchers.get(original.id)).toMatchObject({
+      id: original.id,
+      status: 'pending',
+      debitTotal: original.debitTotal,
+    });
+    expect((await t.app.svc.vouchers.list()).total).toBe(1);
+    expect(
+      (await t.api.voucherDocuments()).find((d) => d.kind === 'issue' && d.id === issue.id)!
+        .sources,
+    ).toEqual([expect.objectContaining({ purpose: 'revenue', voucherId: original.id })]);
+  });
+
   it('入库、收入、成本真实入账；同一销售单保留两种用途和来源链接', async () => {
     const { receipt, issue } = await seed();
     const receiptVoucher = await t.api.generateVoucher(

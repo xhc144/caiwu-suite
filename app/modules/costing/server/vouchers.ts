@@ -146,7 +146,7 @@ export async function listVoucherDocuments(svc: CoreServices) {
     const db = await inventoryReader(t);
     const documents = await db
       .selectFrom('inventory_document')
-      .select(['id', 'number', 'date', 'period', 'kind', 'category', 'revision'])
+      .select(['id', 'number', 'date', 'period', 'kind', 'category', 'revision', 'source_type'])
       .orderBy('date', 'desc')
       .orderBy('id', 'desc')
       .execute();
@@ -161,6 +161,9 @@ export async function listVoucherDocuments(svc: CoreServices) {
     for (const doc of documents)
       result.push({
         ...doc,
+        sourceType: doc.source_type,
+        revenueEligible:
+          doc.kind === 'issue' && doc.category === '销售' && doc.source_type !== 'invoice',
         documentId: doc.id,
         countId: undefined,
         sources: await linksFor(t, {
@@ -180,6 +183,8 @@ export async function listVoucherDocuments(svc: CoreServices) {
         period: count.period,
         kind: 'count' as const,
         category: '盘点',
+        sourceType: null,
+        revenueEligible: false,
         revision: count.revision,
         sources: await linksFor(t, { countId: count.id, purpose: 'count' }),
       });
@@ -198,6 +203,12 @@ async function buildPreview(svc: CoreServices, input: PreviewInput) {
     fail('PURPOSE', '只有出库单可以生成收入或成本凭证');
   if (input.purpose === 'revenue' && doc?.category !== '销售')
     fail('PURPOSE', '只有销售类别出库单才有销售收入凭证', '领用出库请在本月成本核算后生成成本凭证');
+  if (input.purpose === 'revenue' && doc?.source_type === 'invoice')
+    fail(
+      'INVOICE_REVENUE_OWNED',
+      '该出库单来自销售发票，收入凭证由发票功能生成，不能重复制证',
+      '请到发票功能查看或生成收入凭证；本功能仍可生成该单成本凭证',
+    );
   const lines: VoucherLineInput[] = [];
   const summary = `${input.purpose === 'receipt' ? '入库' : input.purpose === 'revenue' ? '销售收入' : input.purpose === 'count' ? '盘盈盘亏' : '出库成本'} ${target.number}`;
   const append = async (
