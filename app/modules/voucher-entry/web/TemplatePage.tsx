@@ -19,6 +19,7 @@ import { confirm } from './dialogs';
 import LineGrid, { LineDetails } from './LineGrid';
 import CalculatorDialog, { type CalculatorDialogHandle } from './CalculatorDialog';
 import { useSaveActivity } from './useSaveActivity';
+import { AmountDraftContext, amountDraftHint, useAmountDrafts } from './amount-drafts';
 
 type TemplateDraft = {
   id?: number;
@@ -71,7 +72,20 @@ export default function TemplatePage() {
     setDraft(value);
     setDirty(true);
   };
+  const amountDrafts = useAmountDrafts(() => {
+    const current = draftRef.current;
+    if (current && canEdit) change(current);
+  });
+  const rejectInvalidAmount = () => {
+    const invalid = amountDrafts.values.values().next().value;
+    if (!invalid) return false;
+    setNotice(amountDraftHint(invalid));
+    if (invalid.field === 'fcAmount') setDetails(true);
+    focus(invalid.line - 1, invalid.field);
+    return true;
+  };
   const openDraft = (value: TemplateDraft) => {
+    amountDrafts.clear();
     draftRef.current = value;
     version.current += 1;
     dirtyRef.current = false;
@@ -96,6 +110,7 @@ export default function TemplatePage() {
     if (dirtyRef.current && !(await ask('放弃模版修改', '本次修改尚未保存，确定放弃？')))
       return false;
     flushSync(() => {
+      amountDrafts.clear();
       draftRef.current = null;
       dirtyRef.current = false;
       setDraft(null);
@@ -106,7 +121,7 @@ export default function TemplatePage() {
   };
   const submit = async () => {
     const snapshot = draftRef.current;
-    if (!snapshot || !canEdit || pending.current) return false;
+    if (!snapshot || !canEdit || pending.current || rejectInvalidAmount()) return false;
     const savedVersion = version.current;
     startSaving();
     try {
@@ -127,6 +142,7 @@ export default function TemplatePage() {
         ))
       )
         return false;
+      if (rejectInvalidAmount()) return false;
       const id = await save.mutateAsync({ ...snapshot, acknowledgeCashflowUnknown: hasUnknown });
       if (version.current === savedVersion) {
         draftRef.current = null;
@@ -161,6 +177,7 @@ export default function TemplatePage() {
         notify.info('模版正在保存，请等待响应后再关闭');
         throw new Error('模版正在保存');
       }
+      amountDrafts.clear();
       draftRef.current = null;
       dirtyRef.current = false;
       setDraft(null);
@@ -181,6 +198,7 @@ export default function TemplatePage() {
   const insert = () => {
     const current = draftRef.current;
     if (!current || !canEdit || current.lines.length >= 999) return;
+    amountDrafts.remap((line) => (line > active + 1 ? line + 1 : line));
     const lines = [...current.lines];
     lines.splice(active + 1, 0, blankLine());
     change({ ...current, lines });
@@ -189,6 +207,9 @@ export default function TemplatePage() {
   const removeLine = () => {
     const current = draftRef.current;
     if (!current || !canEdit || current.lines.length < 2) return;
+    amountDrafts.remap((line) =>
+      line === active + 1 ? null : line > active + 1 ? line - 1 : line,
+    );
     const lines = current.lines.filter((_, i) => i !== active);
     change({ ...current, lines });
     focus(Math.min(active, lines.length - 1), 'summary');
@@ -201,6 +222,7 @@ export default function TemplatePage() {
       !(await ask('重新输入模版分录', '清空当前分录？已保存的模版在再次存盘前保持原样。'))
     )
       return;
+    amountDrafts.clear();
     change({ ...current, lines: [blankLine(), blankLine()] });
     focus(0, 'summary');
   };
@@ -275,7 +297,7 @@ export default function TemplatePage() {
     document.addEventListener('keydown', listener, true);
     return () => document.removeEventListener('keydown', listener, true);
   }, [tab.active]);
-  return (
+  const content = (
     <PageContainer
       title="凭证模版"
       subtitle="编码最多 4 位。调用前保留原内容，确认后才替换分录；保存时重新校验引用。"
@@ -492,13 +514,15 @@ export default function TemplatePage() {
               ? (cents) => {
                   const current = draftRef.current;
                   const { line, side } = calculator;
-                  if (current && side)
+                  if (current && side) {
+                    amountDrafts.clearField(line + 1, side);
                     change({
                       ...current,
                       lines: current.lines.map((value, index) =>
                         index === line ? { ...value, [side]: cents } : value,
                       ),
                     });
+                  }
                   setCalculator(null);
                   if (side) focus(line, side);
                 }
@@ -508,4 +532,5 @@ export default function TemplatePage() {
       )}
     </PageContainer>
   );
+  return <AmountDraftContext.Provider value={amountDrafts}>{content}</AmountDraftContext.Provider>;
 }
