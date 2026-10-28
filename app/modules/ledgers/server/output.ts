@@ -1,17 +1,9 @@
 import { BusinessError } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
-import { cellText, displayColumns, reportCaption } from '../presentation';
+import { reportCellText, reportColumns, reportCaption } from '../presentation';
+import { buildLedgerPrintView, selectReportAccounts, type PrintOptionsInput } from '../printing';
 import type { ColumnId, LedgerQuery, LedgerReport } from '../shared';
 import { ledgersService } from './service';
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 export function assertPrintable(report: LedgerReport) {
   if (!report.rows.length)
@@ -22,6 +14,18 @@ export function assertPrintable(report: LedgerReport) {
       actions: [{ label: '调整筛选', to: '/m/ledgers/detail' }],
     });
 }
+/** 原版 w_zc_dlz_1 / w_zc_fhdlz_1 的另存列数上限，打印仍可分附页。 */
+export function assertExportColumns(report: LedgerReport) {
+  if (
+    (report.query.kind === 'multi' || report.query.kind === 'auxiliary-multi') &&
+    (report.dynamicColumns?.length ?? 0) > 248
+  )
+    throw new BusinessError({
+      code: 'LEDGERS_EXPORT_COLUMNS',
+      message: '多栏账的栏目超过 248 列，不能导出',
+      hint: '请减少自定义栏目、改选下级科目，或使用正页和附页打印。',
+    });
+}
 async function load(svc: CoreServices, input: LedgerQuery) {
   await svc.permissions.require('ledgers.view');
   const report = await ledgersService(svc).report(input);
@@ -30,19 +34,21 @@ async function load(svc: CoreServices, input: LedgerQuery) {
 }
 export async function exportReport(
   svc: CoreServices,
-  input: LedgerQuery & { columns: ColumnId[] },
+  input: LedgerQuery & { columns: ColumnId[]; accountCodes?: string[] },
 ) {
-  const report = await load(svc, input);
+  await svc.permissions.require('ledgers.export');
+  const report = selectReportAccounts(await load(svc, input), input.accountCodes);
+  assertExportColumns(report);
   const { default: ExcelJS } = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet(report.title);
-  const columns = displayColumns(input.kind, input.columns);
+  const columns = reportColumns(report, input.columns);
   sheet.addRow([reportCaption(report)]);
   sheet.mergeCells(1, 1, 1, columns.length);
   sheet.addRow(columns.map((c) => c.label)).font = { bold: true };
   for (const row of report.rows) {
     // 文本金额保证所有安全整数分均精确落盘，不受 Excel 15 位有效数限制。
-    const output = sheet.addRow(columns.map((c) => cellText(row, c.id)));
+    const output = sheet.addRow(columns.map((c) => reportCellText(row, c.id, c.money)));
     if (row.kind !== 'entry') output.font = { bold: true };
   }
   columns.forEach((c, i) => {
@@ -56,12 +62,14 @@ export async function exportReport(
     report,
   };
 }
-export async function printReport(svc: CoreServices, input: LedgerQuery & { columns: ColumnId[] }) {
+export async function printReport(
+  svc: CoreServices,
+  input: LedgerQuery & { columns: ColumnId[]; printOptions?: PrintOptionsInput },
+) {
+  await svc.permissions.require('ledgers.print');
   const report = await load(svc, input);
-  const columns = displayColumns(input.kind, input.columns);
   return {
-    title: report.title,
+    ...buildLedgerPrintView(report, reportColumns(report, input.columns), input.printOptions),
     report,
-    html: `<h1>${escapeHtml(report.title)}</h1><p>${escapeHtml(reportCaption(report))}</p><table><thead><tr>${columns.map((c) => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody>${report.rows.map((row) => `<tr${row.kind !== 'entry' ? ' style="font-weight:bold;background:#f0f2f5"' : ''}>${columns.map((c) => `<td${c.money ? ' class="num"' : ''}>${escapeHtml(cellText(row, c.id))}</td>`).join('')}</tr>`).join('')}</tbody></table>`,
   };
 }

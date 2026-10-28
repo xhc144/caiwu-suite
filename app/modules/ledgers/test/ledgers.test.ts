@@ -21,6 +21,11 @@ const query = (patch: Partial<LedgerQuery> = {}): LedgerQuery => ({
   dimensions: {},
   currency: '',
   includeUnposted: false,
+  includeZero: false,
+  dimensionType: 'partner',
+  multiMode: 'auto',
+  valueMode: 'base',
+  groupAuxiliary: false,
   ...patch,
 });
 const output = (patch: Partial<LedgerQuery> = {}) => ({

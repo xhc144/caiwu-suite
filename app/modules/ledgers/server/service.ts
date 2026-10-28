@@ -5,6 +5,7 @@ import {
   formatPeriod,
   moduleRoute,
   nextPeriod,
+  sumCents,
   VOUCHER_STATUS_LABELS,
   type EntryRow,
 } from '@caiwu/core';
@@ -13,6 +14,8 @@ import {
   defaultColumns,
   FormatSchema,
   QuerySchema,
+  MultiFormatSchema,
+  type MultiColumn,
   TITLES,
   type LedgerFormat,
   type LedgerKind,
@@ -21,6 +24,9 @@ import {
   type LedgerRow,
 } from '../shared';
 import { buildGeneralReport } from './general';
+import { buildMultiReport, validateMultiColumns } from './multicolumn';
+import { buildSpecialtyReport } from './specialty';
+import { buildVatReport } from './vat';
 
 type MoneyBalance = {
   opening: number;
@@ -33,18 +39,15 @@ type MoneyBalance = {
 
 export const ENTRY_LIMIT = 200_000;
 export function safeSum(values: readonly number[]): number {
-  let total = 0;
-  for (const value of values) {
-    if (!Number.isSafeInteger(value) || !Number.isSafeInteger(total + value)) {
-      throw new BusinessError({
-        code: 'LEDGERS_AMOUNT_RANGE',
-        message: '账簿金额超出安全整数范围',
-        hint: '请缩小期间或科目范围后重新查询。',
-      });
-    }
-    total += value;
+  try {
+    return sumCents(values);
+  } catch {
+    throw new BusinessError({
+      code: 'LEDGERS_AMOUNT_RANGE',
+      message: '账簿金额超出安全整数范围',
+      hint: '请缩小期间或科目范围后重新查询。',
+    });
   }
-  return total;
 }
 export function assertComplete(count: number) {
   if (count >= ENTRY_LIMIT)
@@ -59,6 +62,45 @@ export function assertComplete(count: number) {
 export function ledgersService(svc: CoreServices) {
   const formatKey = (kind: LedgerKind) => `format.${kind}`;
   const self = {
+    async multiFormat(input: { kind: 'multi' | 'auxiliary-multi'; account: string }) {
+      return MultiFormatSchema.parse(
+        await svc.settings.get(`multi.${input.kind}.${input.account}`, {
+          columns: [],
+          revision: 0,
+        }),
+      );
+    },
+    async saveMultiFormat(input: {
+      kind: 'multi' | 'auxiliary-multi';
+      account: string;
+      columns: MultiColumn[];
+      expectedRevision: number;
+      confirmed: boolean;
+    }) {
+      await svc.permissions.require('ledgers.config.edit');
+      return svc.tx(async (tsvc) => {
+        const service = ledgersService(tsvc);
+        const current = await service.multiFormat(input);
+        if (!input.confirmed) return current;
+        if (current.revision !== input.expectedRevision)
+          throw new BusinessError({
+            code: 'LEDGERS_FORMAT_STALE',
+            message: '多栏账栏目已被其他窗口修改',
+            hint: '请重新打开栏目设置后保存；当前编辑内容仍可保留。',
+          });
+        validateMultiColumns(await tsvc.accounts.list(), input.account, input.columns);
+        const next = MultiFormatSchema.parse({
+          columns: input.columns,
+          revision: current.revision + 1,
+        });
+        await tsvc.settings.set(`multi.${input.kind}.${input.account}`, next);
+        await tsvc.log.write({
+          action: 'ledgers.multi-format',
+          summary: `保存科目 ${input.account} 的多栏账栏目（${next.columns.length}栏）`,
+        });
+        return next;
+      });
+    },
     async format(kind: LedgerKind): Promise<LedgerFormat> {
       return FormatSchema.parse(
         await svc.settings.get(formatKey(kind), { columns: defaultColumns(kind), revision: 0 }),
@@ -93,7 +135,18 @@ export function ledgersService(svc: CoreServices) {
     },
     async report(raw: LedgerQuery): Promise<LedgerReport> {
       const input = QuerySchema.parse(raw);
-      return svc.tx((tsvc) => buildReport(tsvc, input));
+      return svc.tx(async (tsvc) => {
+        const report = await buildReport(tsvc, input);
+        const items = await tsvc.dimensions.items();
+        report.filterDescription =
+          DIMENSION_TYPES.filter((dt) => input.dimensions[dt.id] != null)
+            .map(
+              (dt) =>
+                `${dt.name}：${items.find((item) => item.id === input.dimensions[dt.id])?.name ?? '已选择'}`,
+            )
+            .join('；') || '全部';
+        return report;
+      });
     },
   };
   return self;
@@ -133,6 +186,15 @@ async function buildReport(svc: CoreServices, input: LedgerQuery): Promise<Ledge
       });
   }
   if (input.kind === 'general') return buildGeneralReport(svc, input, all);
+  if (input.kind === 'vat') return buildVatReport(svc, input, all);
+  if (input.kind === 'multi' || input.kind === 'auxiliary-multi')
+    return buildMultiReport(svc, input, all);
+  if (
+    ['auxiliary', 'quantity', 'foreign', 'quantity-foreign'].includes(input.kind) ||
+    ((input.kind === 'cash' || input.kind === 'bank') &&
+      (input.valueMode !== 'base' || input.groupAuxiliary))
+  )
+    return buildSpecialtyReport(svc, input, all);
   // 每个末级科目独立成账，上级筛选展开下级，绝不把父级汇总再加一遍。
   const selected = all.filter(
     (a) =>
@@ -155,6 +217,7 @@ async function buildReport(svc: CoreServices, input: LedgerQuery): Promise<Ledge
     scope,
     rows: [],
     entryCount: 0,
+    orgName: (await svc.book.info()).orgName,
   };
   if (!selected.length) return report;
   const periods: number[] = [];
@@ -193,6 +256,7 @@ async function buildReport(svc: CoreServices, input: LedgerQuery): Promise<Ledge
       dimensions: input.dimensions,
       includeUnposted: input.includeUnposted,
       rollup: false,
+      includeZero: input.includeZero,
       accountCodes: selected.map((a) => a.code),
     };
     const balances = await svc.ledger.balances({
@@ -233,6 +297,7 @@ async function buildReport(svc: CoreServices, input: LedgerQuery): Promise<Ledge
     const group = byAccount.get(a.id) ?? [];
     const first = monthly.get(input.periodFrom)?.get(a.id);
     if (
+      !input.includeZero &&
       !group.length &&
       !periods.some((p) => {
         const b = monthly.get(p)?.get(a.id);

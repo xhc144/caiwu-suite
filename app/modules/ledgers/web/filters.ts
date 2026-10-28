@@ -10,6 +10,11 @@ const defaults = {
   dims: '',
   currency: '',
   includeUnposted: '',
+  includeZero: '',
+  dimensionType: '',
+  multiMode: '',
+  valueMode: '',
+  groupAuxiliary: '',
 };
 
 /** 标签页 location 更新期间，页面先使用刚提交的条件；地址栏仍由 useUrlFilters 持久化。 */
