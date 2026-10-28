@@ -413,18 +413,28 @@ describe('工资纵切', () => {
       api.preview({ id: b.id, revision: b.revision, kind: 'payment', date: '2026-01-31' }),
     ).rejects.toThrow();
   });
-  it('w_pz_build_gz 负实发、必需其他维度会阻止生成；修改工资过期版本不覆盖', async () => {
+  it('w_pz_build_gz 负实发以贷方红字调整、总额配平；修改工资过期版本不覆盖', async () => {
     const { category, employees } = await setup();
     const r = row(employees[0]!.id, 1000);
     r.values.deduction = 2000;
     const b = await computed(category, [r]);
     await mapping(category);
-    await expect(
-      api.preview({ id: b.id, revision: b.revision, kind: 'payment', date: '2026-01-31' }),
-    ).rejects.toThrow('为负');
+    const input = { id: b.id, revision: b.revision, kind: 'payment' as const, date: '2026-01-31' };
+    const plan = await api.preview(input);
+    expect(plan.lines.some((line) => line.credit === -1000 && line.debit === 0)).toBe(true);
+    expect(plan.debit).toBe(1000);
+    expect(plan.credit).toBe(plan.debit);
     await expect(
       api.saveBatch({ ...b, revision: 0, categoryRevision: category.revision }),
     ).rejects.toThrow('其他操作修改');
+    expect(await api.batch({ id: b.id })).toEqual(b);
+    const generated = await api.generate({ ...input, hash: plan.hash });
+    const voucher = await app.svc.vouchers.get(generated.vouchers[0]!.id);
+    expect(voucher?.debitTotal).toBe(1000);
+    expect(
+      voucher?.lines.some((line) => line.entrySide === 'credit' && line.credit === -1000),
+    ).toBe(true);
+    expect(generated.snapshots).toEqual(b.snapshots);
   });
   it('w_gz_gzgl/w_pz_build_gz 中途失败整批回滚，不留半批税额和孤儿凭证', async () => {
     const { category, employees } = await setup();
@@ -668,7 +678,24 @@ describe('窗口规则补充', () => {
     r.values.deduction = 1000;
     let b = await computed(category, [r]);
     const input = { id: b.id, revision: b.revision, kind: 'payment' as const, date: '2026-01-31' };
-    await expect(api.preview(input)).rejects.toThrow('部门以外的辅助维度');
+    await expect(api.preview(input)).rejects.toThrow('需要个人');
+    expect(await api.batch({ id: b.id })).toEqual(b);
+    expect((await app.svc.vouchers.list({})).total).toBe(0);
+    const personalItem = (await app.svc.dimensions.getByCode('person', 'P01'))!;
+    const currentMapping = (await api.mapping({ categoryId: category.id }))!;
+    await api.saveMapping({
+      categoryId: category.id,
+      mapping: {
+        ...currentMapping,
+        auxiliaries: [{ accountId: person.id, values: { person: personalItem.id } }],
+      },
+    });
+    const withPersonal = await api.preview(input);
+    expect(withPersonal.lines.find((line) => line.accountId === person.id)).toMatchObject({
+      credit: 1000,
+      dimensions: { person: personalItem.id },
+    });
+    expect(withPersonal.debit).toBe(withPersonal.credit);
     await expect(
       api.saveMapping({ categoryId: category.id, mapping: { ...m, taxAccountId: 0 } }),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
@@ -735,12 +762,28 @@ it('w_gz_gzgl 官方累计预扣全部扣除分项与税额解释，政策施行
     alreadyWithheld: 3000,
     currentTax: 3000,
   });
-  expect(() => calculateTax(e, 201812, profile, 1000000, 0, 0)).toThrow('施行日期');
+  expect(() => calculateTax(e, 201812, profile, 1000000, 0, 0)).toThrow('专项附加');
+  expect(
+    calculateTax(e, 201812, TaxInputSchema.parse({ confirmed: true }), 1000000, 0, 0),
+  ).toMatchObject({
+    expense: 500000,
+    taxable: 500000,
+    currentTax: 29000,
+    version: 'cn-salary-monthly-2018-10',
+  });
   expect(() =>
-    calculateTax({ ...e, startDate: '2027-01-01' }, 202601, profile, 1000000, 0, 0),
+    calculateTax(
+      Object.assign({ ...e, startDate: '2027-01-01' }, { employmentSpells: [] }),
+      202601,
+      profile,
+      1000000,
+      0,
+      0,
+    ),
   ).toThrow('没有任职受雇月份');
   const previous = {
     ...e,
+    employmentSpells: [],
     startDate: '2019-01-01',
     policy: 'annual60000' as const,
     qualificationYear: 2020,

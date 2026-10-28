@@ -12,16 +12,29 @@ import {
   exportToExcel,
   type DataColumn,
 } from '@caiwu/ui';
-import { SalaryQuerySchema } from '../shared';
+import { GroupedSalaryQuerySchema, type GroupedSalaryQuery } from '../shared-query';
+import { useMoneyDrafts } from './money-drafts';
 import { api } from './api';
 import { usePayrollFilters } from './filters';
-type Filters = { category: number; from: number; to: number; conditions: string; run: number };
+type Filters = {
+  category: number;
+  from: number;
+  to: number;
+  conditions: string;
+  groups: string;
+  groupMode: string;
+  sorts: string;
+  run: number;
+};
 export default function QueryPage() {
   const [values, set] = usePayrollFilters({
     category: 0,
     from: 202601,
     to: 202601,
     conditions: '[]',
+    groups: '[]',
+    groupMode: 'all',
+    sorts: '[]',
     run: 0,
   });
   const text = JSON.stringify(values),
@@ -62,11 +75,16 @@ const QueryContent = memo(function QueryContent({
 }) {
   const categories = useQuery(api.categories.queryOptions());
   const [form] = Form.useForm();
+  const drafts = useMoneyDrafts();
   const canExport = usePermission('payroll.export');
   let conditions: unknown = [],
+    groups: unknown = [],
+    sorts: unknown = [],
     jsonError = false;
   try {
     conditions = JSON.parse(filters.conditions);
+    groups = JSON.parse(filters.groups);
+    sorts = JSON.parse(filters.sorts);
   } catch {
     jsonError = true;
   }
@@ -75,9 +93,22 @@ const QueryContent = memo(function QueryContent({
     from: filters.from,
     to: filters.to,
     conditions,
+    groups,
+    sorts,
+    groupMode: filters.groupMode,
   };
-  const parsed = SalaryQuerySchema.safeParse(candidate),
-    input = parsed.success ? parsed.data : { ...candidate, conditions: [] };
+  const parsed = GroupedSalaryQuerySchema.safeParse(candidate),
+    input = parsed.success
+      ? parsed.data
+      : {
+          categoryId: candidate.categoryId,
+          from: candidate.from,
+          to: candidate.to,
+          conditions: [],
+          groups: [],
+          sorts: [],
+          groupMode: 'all' as const,
+        };
   const q = useQuery({
     ...api.querySalary.queryOptions(input),
     enabled: !jsonError && parsed.success && filters.run > 0,
@@ -127,7 +158,7 @@ const QueryContent = memo(function QueryContent({
   return (
     <PageContainer
       title="工资综合查询"
-      subtitle="仅使用允许的字段和操作符；无效条件会阻止执行并保留在地址中。所有条件按“并且”组合。"
+      subtitle="基本条件按“并且”组合；可添加条件组，组内和组间分别选择“全部”或“任一”。排序按所列次序，导出采用相同条件和排序。"
       extra={<Link to="/m/payroll">返回工资管理</Link>}
     >
       <FilterBar
@@ -138,17 +169,49 @@ const QueryContent = memo(function QueryContent({
           from: filters.from,
           to: filters.to,
           conditions: parsed.success ? parsed.data.conditions : [],
+          groups: parsed.success ? parsed.data.groups : [],
+          groupMode: parsed.success ? parsed.data.groupMode : 'all',
+          sorts: parsed.success ? parsed.data.sorts : [],
         }}
-        onSearch={(v: { category: number; from: number; to: number; conditions: unknown[] }) =>
+        onSearch={(v: {
+          category: number;
+          from: number;
+          to: number;
+          conditions: GroupedSalaryQuery['conditions'];
+          groups: GroupedSalaryQuery['groups'];
+          groupMode: string;
+          sorts: GroupedSalaryQuery['sorts'];
+        }) => {
+          const keys = [
+            ...(v.conditions ?? []).flatMap((c, i) =>
+              ['gross', 'net', 'deductions', 'taxAmount'].includes(c.field)
+                ? [`conditions.${i}`]
+                : [],
+            ),
+            ...(v.groups ?? []).flatMap((g, gi) =>
+              (g.conditions ?? []).flatMap((c, i) =>
+                ['gross', 'net', 'deductions', 'taxAmount'].includes(c.field)
+                  ? [`groups.${gi}.conditions.${i}`]
+                  : [],
+              ),
+            ),
+          ];
+          if (!drafts.validate(keys)) return;
           update({
             category: v.category,
             from: v.from,
             to: v.to,
             conditions: JSON.stringify(v.conditions ?? []),
+            groups: JSON.stringify(v.groups ?? []),
+            groupMode: v.groupMode,
+            sorts: JSON.stringify(v.sorts ?? []),
             run: Date.now(),
-          })
-        }
-        onReset={() => update({ conditions: '[]', run: 0 })}
+          });
+        }}
+        onReset={() => {
+          drafts.clear();
+          update({ conditions: '[]', groups: '[]', groupMode: 'all', sorts: '[]', run: 0 });
+        }}
       >
         <Form.Item name="category" label="类别">
           <Select
@@ -166,7 +229,16 @@ const QueryContent = memo(function QueryContent({
           {(items, { add, remove }) => (
             <Space orientation="vertical">
               {items.map((item) => (
-                <Condition key={item.key} index={item.name} remove={() => remove(item.name)} />
+                <Condition
+                  key={item.key}
+                  index={item.name}
+                  path={['conditions']}
+                  drafts={drafts}
+                  remove={() => {
+                    drafts.removeListItem('conditions', item.name);
+                    remove(item.name);
+                  }}
+                />
               ))}
               <Button onClick={() => add({ field: 'name', operator: 'contains', value: '' })}>
                 添加查询条件
@@ -174,6 +246,120 @@ const QueryContent = memo(function QueryContent({
             </Space>
           )}
         </Form.List>
+        <Space orientation="vertical" style={{ width: '100%' }}>
+          <Form.Item name="groupMode" label="组间关系">
+            <Select
+              aria-label="组间关系"
+              style={{ width: 150 }}
+              options={[
+                { value: 'all', label: '满足全部条件组' },
+                { value: 'any', label: '满足任一条件组' },
+              ]}
+            />
+          </Form.Item>
+          <Form.List name="groups">
+            {(groups, { add, remove }) => (
+              <Space orientation="vertical">
+                {groups.map((group) => (
+                  <Space
+                    key={group.key}
+                    orientation="vertical"
+                    style={{ border: '1px solid #d9d9d9', padding: 12 }}
+                  >
+                    <Space>
+                      <Form.Item name={[group.name, 'mode']} label={`条件组${group.name + 1}`}>
+                        <Select
+                          aria-label={`组内关系${group.name + 1}`}
+                          style={{ width: 140 }}
+                          options={[
+                            { value: 'all', label: '满足全部条件' },
+                            { value: 'any', label: '满足任一条件' },
+                          ]}
+                        />
+                      </Form.Item>
+                      <Button
+                        onClick={() => {
+                          drafts.removeListItem('groups', group.name);
+                          remove(group.name);
+                        }}
+                      >
+                        删除条件组
+                      </Button>
+                    </Space>
+                    <Form.List name={[group.name, 'conditions']}>
+                      {(items, { add, remove }) => (
+                        <Space orientation="vertical">
+                          {items.map((item) => (
+                            <Condition
+                              key={item.key}
+                              index={item.name}
+                              path={['groups', group.name, 'conditions']}
+                              labelPrefix={`组${group.name + 1}`}
+                              drafts={drafts}
+                              remove={() => {
+                                drafts.removeListItem(`groups.${group.name}.conditions`, item.name);
+                                remove(item.name);
+                              }}
+                            />
+                          ))}
+                          <Button
+                            onClick={() => add({ field: 'name', operator: 'contains', value: '' })}
+                          >
+                            组内添加条件
+                          </Button>
+                        </Space>
+                      )}
+                    </Form.List>
+                  </Space>
+                ))}
+                <Button
+                  onClick={() =>
+                    add({
+                      mode: 'all',
+                      conditions: [{ field: 'name', operator: 'contains', value: '' }],
+                    })
+                  }
+                >
+                  添加条件组
+                </Button>
+              </Space>
+            )}
+          </Form.List>
+          <Form.List name="sorts">
+            {(items, { add, remove }) => (
+              <Space orientation="vertical">
+                {items.map((item) => (
+                  <Space key={item.key}>
+                    <Form.Item name={[item.name, 'field']} label={`排序${item.name + 1}`}>
+                      <Select
+                        aria-label={`排序字段${item.name + 1}`}
+                        style={{ width: 130 }}
+                        options={[{ value: 'period', label: '期间' }, ...fields]}
+                      />
+                    </Form.Item>
+                    <Form.Item name={[item.name, 'direction']}>
+                      <Select
+                        aria-label={`排序方向${item.name + 1}`}
+                        style={{ width: 100 }}
+                        options={[
+                          { value: 'asc', label: '升序' },
+                          { value: 'desc', label: '降序' },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Button onClick={() => remove(item.name)}>移除排序</Button>
+                  </Space>
+                ))}
+                <Button
+                  disabled={items.length >= 5}
+                  onClick={() => add({ field: 'gross', direction: 'desc' })}
+                >
+                  添加排序
+                </Button>
+              </Space>
+            )}
+          </Form.List>
+        </Space>
       </FilterBar>
       {(jsonError || (!parsed.success && filters.run > 0)) && (
         <Alert
@@ -201,10 +387,22 @@ const QueryContent = memo(function QueryContent({
     </PageContainer>
   );
 });
-function Condition({ index, remove }: { index: number; remove: () => void }) {
+function Condition({
+  index,
+  remove,
+  path,
+  drafts,
+  labelPrefix = '',
+}: {
+  index: number;
+  remove: () => void;
+  path: (string | number)[];
+  drafts: ReturnType<typeof useMoneyDrafts>;
+  labelPrefix?: string;
+}) {
   const form = Form.useFormInstance();
-  const field = (Form.useWatch(['conditions', index, 'field'], form) ??
-    form.getFieldValue(['conditions', index, 'field']) ??
+  const field = (Form.useWatch([...path, index, 'field'], form) ??
+    form.getFieldValue([...path, index, 'field']) ??
     'name') as string;
   const isText = ['code', 'name', 'department'].includes(field ?? ''),
     isDate = field === 'startDate';
@@ -212,14 +410,15 @@ function Condition({ index, remove }: { index: number; remove: () => void }) {
     <Space wrap>
       <Form.Item name={[index, 'field']} label="字段">
         <Select
-          aria-label={`条件字段${index + 1}`}
+          aria-label={`${labelPrefix}条件字段${index + 1}`}
           style={{ width: 130 }}
           options={fields}
           onChange={(value) => {
+            drafts.forgetExact([...path, index].join('.'));
             const text = ['code', 'name', 'department'].includes(value);
-            form.setFieldValue(['conditions', index, 'operator'], text ? 'contains' : 'equals');
+            form.setFieldValue([...path, index, 'operator'], text ? 'contains' : 'equals');
             form.setFieldValue(
-              ['conditions', index, 'value'],
+              [...path, index, 'value'],
               text ? '' : value === 'startDate' ? '2026-01-01' : 0,
             );
           }}
@@ -227,18 +426,28 @@ function Condition({ index, remove }: { index: number; remove: () => void }) {
       </Form.Item>
       <Form.Item name={[index, 'operator']} label="操作符">
         <Select
-          aria-label={`条件操作符${index + 1}`}
+          aria-label={`${labelPrefix}条件操作符${index + 1}`}
           style={{ width: 130 }}
           options={isText ? textOps : numberOps}
         />
       </Form.Item>
       <Form.Item name={[index, 'value']} label="条件值">
         {isText ? (
-          <Input aria-label={`条件值${index + 1}`} />
+          <Input aria-label={`${labelPrefix}条件值${index + 1}`} />
         ) : isDate ? (
-          <Input type="date" aria-label={`条件值${index + 1}`} />
+          <Input type="date" aria-label={`${labelPrefix}条件值${index + 1}`} />
         ) : (
-          <MoneyInput aria-label={`条件值${index + 1}`} />
+          <MoneyInput
+            aria-label={`${labelPrefix}条件值${index + 1}`}
+            resetKey={drafts.resetKey}
+            draftText={drafts.text([...path, index].join('.'))}
+            status={
+              Object.keys(drafts.invalidFor([[...path, index].join('.')])).length
+                ? 'error'
+                : undefined
+            }
+            onDraftStateChange={(state) => drafts.observe([...path, index].join('.'), state)}
+          />
         )}
       </Form.Item>
       <Button onClick={remove}>移除条件</Button>

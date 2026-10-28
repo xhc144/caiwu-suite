@@ -19,8 +19,40 @@ CREATE TABLE payroll_voucher(batch_id INTEGER NOT NULL REFERENCES payroll_batch(
     id: '0003_previous_calculation',
     sql: `ALTER TABLE payroll_batch ADD COLUMN previous_json TEXT NOT NULL DEFAULT '[]';`,
   },
+  {
+    id: '0004_quantity',
+    sql: `CREATE TABLE payroll_quantity(batch_id INTEGER NOT NULL, employee_id INTEGER NOT NULL, field_key TEXT NOT NULL, quantity_e6 INTEGER NOT NULL, PRIMARY KEY(batch_id,employee_id,field_key), FOREIGN KEY(batch_id,employee_id) REFERENCES payroll_row(batch_id,employee_id) ON DELETE CASCADE);`,
+  },
+  {
+    id: '0005_hr_profiles',
+    sql: `CREATE TABLE payroll_hr_profile(employee_id INTEGER PRIMARY KEY REFERENCES payroll_employee(id), employment_json TEXT NOT NULL, values_json TEXT NOT NULL);`,
+  },
+  {
+    id: '0006_history',
+    sql: `CREATE TABLE payroll_correction(id INTEGER PRIMARY KEY, batch_id INTEGER NOT NULL REFERENCES payroll_batch(id), reason TEXT NOT NULL, created_at TEXT NOT NULL, user_id INTEGER NOT NULL, user_name TEXT NOT NULL, before_json TEXT NOT NULL, after_json TEXT NOT NULL); CREATE INDEX payroll_correction_batch ON payroll_correction(batch_id,id);`,
+  },
+  {
+    id: '0007_transfer',
+    sql: `CREATE TABLE payroll_transfer_backup(id INTEGER PRIMARY KEY,created_at TEXT NOT NULL,hash TEXT NOT NULL,data TEXT NOT NULL,reason TEXT NOT NULL); CREATE TABLE payroll_transfer_origin(batch_id INTEGER PRIMARY KEY REFERENCES payroll_batch(id),source_book_id TEXT NOT NULL,source_book_name TEXT NOT NULL,source_batch_id INTEGER NOT NULL,imported_at TEXT NOT NULL,data TEXT NOT NULL);`,
+  },
 ]);
 export type PayrollTables = {
+  payroll_correction: {
+    id: Generated<number>;
+    batch_id: number;
+    reason: string;
+    created_at: string;
+    user_id: number;
+    user_name: string;
+    before_json: string;
+    after_json: string;
+  };
+  payroll_quantity: {
+    batch_id: number;
+    employee_id: number;
+    field_key: string;
+    quantity_e6: number;
+  };
   payroll_period: {
     period: number;
     category_id: number;

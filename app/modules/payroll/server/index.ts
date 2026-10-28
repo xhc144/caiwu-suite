@@ -41,13 +41,19 @@ export default defineServerModule(manifest, {
           .where('key', 'like', 'mapping.%')
           .execute();
         const mappings = settings.filter((r) => {
-          const mapping = JSON.parse(r.value) as { rules?: { departmentId?: number }[] };
-          return mapping.rules?.some((rule) => rule.departmentId === id);
+          const mapping = JSON.parse(r.value) as {
+            rules?: { departmentId?: number }[];
+            auxiliaries?: { values: Record<string, number | null> }[];
+          };
+          return (
+            mapping.rules?.some((rule) => rule.departmentId === id) ||
+            mapping.auxiliaries?.some((aux) => Object.values(aux.values).includes(id))
+          );
         }).length;
         return [
           { category: '工资人事档案', count: employees.length, to: '/m/payroll/employees' },
           { category: '已计算工资部门快照', count: historical, to: '/m/payroll' },
-          { category: '工资凭证部门映射', count: mappings, to: '/m/payroll' },
+          { category: '工资凭证辅助核算映射', count: mappings, to: '/m/payroll' },
         ].filter((r) => r.count > 0);
       },
     ],

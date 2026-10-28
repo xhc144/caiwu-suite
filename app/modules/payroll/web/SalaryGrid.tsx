@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Alert, Button, Popconfirm, Space, Typography } from 'antd';
+import { Alert, Button, Input, Modal, Popconfirm, Space, Typography } from 'antd';
 import { queryClient, useHotkey, usePermission, useUnsavedChanges } from '@caiwu/web-kit';
 import { DataTable, MoneyInput, MoneyText, type DataColumn } from '@caiwu/ui';
 import type { Batch, RowInput, SalaryRow } from '../shared';
 import { api } from './api';
 import { useMoneyDrafts } from './money-drafts';
+import QuantityInput from './QuantityInput';
+import { useQuantityDrafts } from './quantity-drafts';
 
 type GridRow = {
   employeeId: number;
@@ -17,7 +19,12 @@ type GridRow = {
   snapshot: SalaryRow | undefined;
 };
 const copyRows = (rows: RowInput[]) =>
-  rows.map((row) => ({ ...row, values: { ...row.values }, tax: { ...row.tax } }));
+  rows.map((row) => ({
+    ...row,
+    values: { ...row.values },
+    ...(row.quantities ? { quantities: { ...row.quantities } } : {}),
+    tax: { ...row.tax },
+  }));
 
 /** 输入始终基于完整批次；筛选和分页只改变显示，保存不会移除看不见的人员。 */
 export default function SalaryGrid({
@@ -41,10 +48,35 @@ export default function SalaryGrid({
   const canEdit = usePermission('payroll.salary.edit');
   const [draft, setDraft] = useState(() => ({ base: batch, rows: copyRows(batch.rows) }));
   const [saving, setSaving] = useState(false);
+  const section = useRef<HTMLElement>(null);
+  const [pageIndex, setPageIndex] = useState(1),
+    [pageSize, setPageSize] = useState(20);
+  const [currentId, setCurrentId] = useState(batch.rows[0]?.employeeId);
+  const [focusId, setFocusId] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false),
+    [locateText, setLocateText] = useState('');
+  useLayoutEffect(() => {
+    if (focusId === null) return;
+    const row = section.current?.querySelector<HTMLElement>(`tr[data-row-key="${focusId}"]`);
+    if (row) {
+      row.focus();
+      row.scrollIntoView({ block: 'nearest' });
+      setFocusId(null);
+    }
+  }, [focusId, pageIndex]);
   const inFlight = useRef<Promise<boolean> | null>(null);
   const mutation = useMutation(api.saveBatch.mutationOptions());
   const moneyDrafts = useMoneyDrafts();
   const clearMoneyDrafts = moneyDrafts.clear;
+  const quantityDrafts = useQuantityDrafts();
+  const clearQuantityDrafts = quantityDrafts.clear;
+  const quantityKeys = draft.rows.flatMap((row) =>
+    draft.base.category.fields
+      .filter((f) => f.kind === 'quantity' && !f.disabled)
+      .map((f) => `${row.employeeId}.${f.key}`),
+  );
+  const invalidQuantity = quantityDrafts.invalidFor(quantityKeys);
+  const hasInvalidQuantity = Object.keys(invalidQuantity).length > 0;
   const moneyKeys = draft.rows.flatMap((row) =>
     draft.base.category.fields
       .filter((f) => f.kind === 'money' && !f.disabled)
@@ -52,8 +84,11 @@ export default function SalaryGrid({
   );
   const invalidMoney = moneyDrafts.invalidFor(moneyKeys);
   const hasInvalidMoney = Object.keys(invalidMoney).length > 0;
-  const version = JSON.stringify({ rows: draft.rows, invalid: invalidMoney });
-  const dirty = JSON.stringify(draft.rows) !== JSON.stringify(draft.base.rows) || hasInvalidMoney;
+  const version = JSON.stringify({ rows: draft.rows, invalid: invalidMoney, invalidQuantity });
+  const dirty =
+    JSON.stringify(draft.rows) !== JSON.stringify(draft.base.rows) ||
+    hasInvalidMoney ||
+    hasInvalidQuantity;
   const editable = canEdit && !batch.closed && !batch.vouchers.length;
   const changedElsewhere = batch.revision !== draft.base.revision;
 
@@ -61,8 +96,9 @@ export default function SalaryGrid({
     if (!dirty && !inFlight.current && draft.base !== batch) {
       setDraft({ base: batch, rows: copyRows(batch.rows) });
       clearMoneyDrafts();
+      clearQuantityDrafts();
     }
-  }, [batch, dirty, draft.base, clearMoneyDrafts]);
+  }, [batch, dirty, draft.base, clearMoneyDrafts, clearQuantityDrafts]);
   useLayoutEffect(() => {
     onDirtyChange(dirty || saving);
   }, [dirty, saving, onDirtyChange]);
@@ -72,11 +108,13 @@ export default function SalaryGrid({
     if (inFlight.current) return;
     setDraft({ base: batch, rows: copyRows(batch.rows) });
     moneyDrafts.clear();
+    quantityDrafts.clear();
     mutation.reset();
   };
   const saveDraft = (): Promise<boolean> => {
     if (inFlight.current) return inFlight.current;
     if (!moneyDrafts.validate(moneyKeys)) return Promise.resolve(false);
+    if (!quantityDrafts.validate(quantityKeys)) return Promise.resolve(false);
     if (!dirty) return Promise.resolve(true);
     if (!editable) return Promise.resolve(false);
     setSaving(true);
@@ -92,6 +130,7 @@ export default function SalaryGrid({
         });
         setDraft({ base: saved, rows: copyRows(saved.rows) });
         clearMoneyDrafts();
+        clearQuantityDrafts();
         queryClient.setQueryData(api.batch.queryKey({ id: saved.id }), saved);
         void queryClient.invalidateQueries({ queryKey: api.pathKey() });
         return true;
@@ -134,6 +173,19 @@ export default function SalaryGrid({
       (!department || row.departmentId === department) &&
       (!person || `${row.code} ${row.name}`.includes(person)),
   );
+  const currentIndex = Math.max(
+    0,
+    visibleRows.findIndex((row) => row.employeeId === currentId),
+  );
+  const move = (index: number) => {
+    if (saving || !visibleRows.length) return;
+    const nextIndex = Math.max(0, Math.min(index, visibleRows.length - 1)),
+      row = visibleRows[nextIndex]!;
+    setCurrentId(row.employeeId);
+    setPageIndex(Math.floor(nextIndex / pageSize) + 1);
+    setFocusId(row.employeeId);
+  };
+  useHotkey('Ctrl+Q', () => setLocating(true), { enabled: !saving && !locating });
   const pendingCalculation = dirty || !draft.base.calculated;
   const columns: DataColumn<GridRow>[] = [
     { key: 'code', title: '编号', dataIndex: 'code', width: 110 },
@@ -143,10 +195,50 @@ export default function SalaryGrid({
       .filter((field) => field.visible && !field.disabled)
       .map((field): DataColumn<GridRow> => ({
         key: field.key,
-        title: field.name,
-        width: 155,
+        title: field.unit ? `${field.name}（${field.unit}）` : field.name,
+        width: field.width ?? 155,
         render: (_, row) =>
-          field.kind === 'money' ? (
+          field.kind === 'basic' ? (
+            (row.snapshot?.employee[field.basicSource ?? 'name'] ??
+            people.data?.find((person) => person.id === row.employeeId)?.[
+              field.basicSource ?? 'name'
+            ] ??
+            '')
+          ) : field.kind === 'quantity' ? (
+            editable ? (
+              <QuantityInput
+                aria-label={`工资-${row.employeeId}-${field.key}`}
+                value={row.input.quantities?.[field.key]}
+                draftText={quantityDrafts.text(`${row.employeeId}.${field.key}`)}
+                disabled={saving}
+                status={
+                  invalidQuantity[`${row.employeeId}.${field.key}`] !== undefined
+                    ? 'error'
+                    : undefined
+                }
+                onDraftChange={(text) => {
+                  if (!inFlight.current)
+                    quantityDrafts.observe(`${row.employeeId}.${field.key}`, text);
+                }}
+                onChange={(value) => {
+                  if (inFlight.current) return;
+                  setDraft((current) => ({
+                    ...current,
+                    rows: current.rows.map((input) => {
+                      if (input.employeeId !== row.employeeId) return input;
+                      const quantities = { ...input.quantities };
+                      if (value === undefined) delete quantities[field.key];
+                      else quantities[field.key] = value;
+                      const { quantities: _old, ...rest } = input;
+                      return Object.keys(quantities).length ? { ...rest, quantities } : rest;
+                    }),
+                  }));
+                }}
+              />
+            ) : (
+              (row.input.quantities?.[field.key] ?? '')
+            )
+          ) : field.kind === 'money' ? (
             editable ? (
               <MoneyInput
                 resetKey={moneyDrafts.resetKey}
@@ -209,12 +301,67 @@ export default function SalaryGrid({
     },
   ];
   return (
-    <section aria-label="工资逐格编辑" data-testid="payroll-salary-grid">
+    <section
+      ref={section}
+      aria-label="工资逐格编辑"
+      data-testid="payroll-salary-grid"
+      onKeyDown={(event) => {
+        if (locating || saving) return;
+        if (event.ctrlKey && (event.key === 'Home' || event.key === 'End')) {
+          event.preventDefault();
+          move(event.key === 'Home' ? 0 : visibleRows.length - 1);
+          return;
+        }
+        const target = event.target as HTMLElement;
+        if (target.isContentEditable || target.closest('input,textarea,select,[role="combobox"]'))
+          return;
+        if (
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey &&
+          (event.key === 'ArrowUp' || event.key === 'ArrowDown')
+        ) {
+          event.preventDefault();
+          move(currentIndex + (event.key === 'ArrowUp' ? -1 : 1));
+        }
+      }}
+    >
       <Space wrap style={{ marginBottom: 8 }}>
         <Typography.Text>
           {editable
             ? '金额单位：元；可直接在工资金额单元格输入，Tab 切换。'
             : '金额单位：元；本批工资为只读。'}
+        </Typography.Text>
+        <Button disabled={saving} onClick={() => setLocating(true)}>
+          定位 Ctrl+Q
+        </Button>
+        <Button
+          disabled={saving || !visibleRows.length || currentIndex === 0}
+          onClick={() => move(0)}
+        >
+          首记录
+        </Button>
+        <Button
+          disabled={saving || !visibleRows.length || currentIndex === 0}
+          onClick={() => move(currentIndex - 1)}
+        >
+          上一记录
+        </Button>
+        <Button
+          disabled={saving || !visibleRows.length || currentIndex === visibleRows.length - 1}
+          onClick={() => move(currentIndex + 1)}
+        >
+          下一记录
+        </Button>
+        <Button
+          disabled={saving || !visibleRows.length || currentIndex === visibleRows.length - 1}
+          onClick={() => move(visibleRows.length - 1)}
+        >
+          尾记录
+        </Button>
+        <Typography.Text aria-live="polite">
+          当前记录：{visibleRows[currentIndex]?.code ?? '无'}（
+          {visibleRows.length ? currentIndex + 1 : 0}/{visibleRows.length}）
         </Typography.Text>
         {editable && (
           <>
@@ -256,6 +403,14 @@ export default function SalaryGrid({
           description={Object.values(invalidMoney).join('；')}
         />
       )}
+      {hasInvalidQuantity && (
+        <Alert
+          type="error"
+          showIcon
+          title="数量格式无效，请输入最多六位小数；整批工资尚未提交。"
+          description={Object.values(invalidQuantity).join('；')}
+        />
+      )}
       {people.error && <Alert type="error" showIcon title={people.error.message} />}
       <DataTable<GridRow>
         tableId="payroll.salary"
@@ -264,13 +419,71 @@ export default function SalaryGrid({
         dataSource={visibleRows}
         columns={columns}
         scroll={{ x: 'max-content' }}
-        pagination={{ defaultPageSize: 20, showSizeChanger: true }}
+        pagination={{
+          current: pageIndex,
+          pageSize,
+          showSizeChanger: true,
+          onChange: (page, size) => {
+            setPageIndex(page);
+            setPageSize(size);
+          },
+        }}
+        onRow={(row) => ({
+          tabIndex: -1,
+          onFocus: () => setCurrentId(row.employeeId),
+          onClick: () => setCurrentId(row.employeeId),
+          style: row.employeeId === currentId ? { backgroundColor: '#e6f4ff' } : undefined,
+        })}
         rowSelection={{
           selectedRowKeys: selected,
           preserveSelectedRowKeys: true,
           onChange: (keys) => onSelectionChange(keys.map(Number)),
         }}
       />
+      <Modal
+        open={locating}
+        title="工资定位查询"
+        footer={null}
+        onCancel={() => setLocating(false)}
+        destroyOnHidden
+      >
+        <Input
+          autoFocus
+          aria-label="工资定位条件"
+          placeholder="输入人员编号或姓名"
+          value={locateText}
+          onChange={(event) => setLocateText(event.target.value)}
+        />
+        <DataTable
+          tableId="payroll.locate"
+          rowKey="employeeId"
+          dataSource={visibleRows.filter((row) =>
+            `${row.code} ${row.name}`
+              .toLocaleLowerCase()
+              .includes(locateText.trim().toLocaleLowerCase()),
+          )}
+          columns={[
+            { key: 'code', title: '编号', dataIndex: 'code' },
+            { key: 'name', title: '姓名', dataIndex: 'name' },
+            {
+              key: 'locate',
+              title: '定位',
+              render: (_, row) => (
+                <Button
+                  onClick={() => {
+                    setLocating(false);
+                    move(
+                      visibleRows.findIndex((candidate) => candidate.employeeId === row.employeeId),
+                    );
+                  }}
+                >
+                  定位此人
+                </Button>
+              ),
+            },
+          ]}
+        />
+      </Modal>
     </section>
   );
 }

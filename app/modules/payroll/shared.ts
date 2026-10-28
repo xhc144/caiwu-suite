@@ -11,7 +11,11 @@ const key = z
 export const FieldSchema = z.object({
   key,
   name,
-  kind: z.enum(['money', 'calculated']),
+  kind: z.enum(['money', 'calculated', 'quantity', 'basic']),
+  unit: z.string().trim().max(20).optional(),
+  description: z.string().trim().max(200).optional(),
+  width: z.number().int().min(60).max(600).optional(),
+  basicSource: z.enum(['code', 'name', 'departmentName', 'startDate', 'endDate']).optional(),
   role: z.enum(['earning', 'deduction', 'memo']),
   visible: z.boolean().default(true),
   print: z.boolean().default(true),
@@ -32,6 +36,7 @@ export const CategorySchema = z.object({
   name,
   disabled: z.boolean().default(false),
   fields: z.array(FieldSchema).min(1).max(40),
+  taxMode: z.enum(['builtin', 'custom']).optional(),
   formulas: z.array(FormulaSchema).max(40).default([]),
 });
 export type Category = z.output<typeof CategorySchema> & { id: number };
@@ -64,9 +69,23 @@ export const TaxInputSchema = z.object({
   confirmed: z.boolean().default(false),
 });
 export type TaxInput = z.output<typeof TaxInputSchema>;
+/** 接口数量使用十进制字符串；最多六位小数，禁止指数、NaN和超出安全e6整数的值。 */
+export const QuantitySchema = z
+  .string()
+  .trim()
+  .max(24, '数量超出可保存范围')
+  .regex(/^-?\d+(?:\.\d{1,6})?$/, '数量须为最多六位小数的十进制数')
+  .refine((value) => {
+    if (value.length > 24) return false;
+    const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+    if (!match) return false;
+    const scaled = BigInt(`${match[1]}${match[2]}${(match[3] ?? '').padEnd(6, '0')}`);
+    return scaled >= -9007199254740991n && scaled <= 9007199254740991n;
+  }, '数量超出可保存范围');
 export const RowInputSchema = z.object({
   employeeId: zId,
   values: z.record(key, zCents),
+  quantities: z.record(key, QuantitySchema).optional(),
   tax: TaxInputSchema.default({
     exempt: 0,
     special: 0,
@@ -134,6 +153,7 @@ export type TaxDetail = {
 export type SalaryRow = RowInput & {
   employee: Employee;
   calculatedValues: Record<string, number>;
+  calculatedQuantities?: Record<string, string>;
   formulaDetails: string[];
   gross: number;
   deductions: number;
@@ -249,14 +269,20 @@ export const BulkInputSchema = z.object({
   revision: z.number().int().nonnegative(),
   employeeIds: z.array(zId).min(1, '请选择置数范围').max(500),
   field: key,
-  value: zCents,
+  value: z.union([zCents, QuantitySchema]),
   onlyEmpty: z.boolean().default(false),
 });
 export const PasteInputSchema = z.object({
   id: zId,
   revision: z.number().int().nonnegative(),
   rows: z
-    .array(z.object({ code: z.string().trim().min(1), values: z.record(key, zCents) }))
+    .array(
+      z.object({
+        code: z.string().trim().min(1),
+        values: z.record(key, zCents),
+        quantities: z.record(key, QuantitySchema).optional(),
+      }),
+    )
     .min(1)
     .max(500),
 });

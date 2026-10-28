@@ -177,7 +177,7 @@ it('w_pz_build_gz 自定义规则设置修订使旧预览失效，确认失败�
   expect((await app.svc.vouchers.list({})).total).toBe(0);
 });
 
-it('w_pz_build_gz 自定义列负数及缺失历史栏目不能用零值蒙混制证', async () => {
+it('w_pz_build_gz 缺失历史栏目不得按零制证，负额保留原借贷方向生成红字', async () => {
   const { category, mapping, batch } = await setup();
   const memo = { ...DEFAULT_FIELDS[0]!, key: 'memo', name: '备注金额', role: 'memo' as const };
   const updated = await api.saveCategory({ ...category, fields: [...category.fields, memo] });
@@ -208,8 +208,30 @@ it('w_pz_build_gz 自定义列负数及缺失历史栏目不能用零值蒙混�
     rows: batch.rows.map((r) => ({ ...r, values: { ...r.values, memo: -1 } })),
   });
   const calculated = await api.calculate({ id: saved.id, revision: saved.revision });
-  await expect(api.preview({ ...input, revision: calculated.revision })).rejects.toThrow('负数');
-  expect((await api.batch({ id: batch.id })).vouchers).toEqual([]);
+  const plan = await api.preview({ ...input, revision: calculated.revision });
+  expect(plan.debit).toBe(-2);
+  expect(plan.credit).toBe(-2);
+  expect(plan.lines.map((l) => [l.debit, l.credit])).toEqual([
+    [-1, 0],
+    [0, -1],
+    [-1, 0],
+    [0, -1],
+  ]);
+  const generated = await api.generate({
+    ...input,
+    revision: calculated.revision,
+    hash: plan.hash,
+  });
+  const voucher = await app.svc.vouchers.get(generated.vouchers[0]!.id);
+  expect(voucher?.debitTotal).toBe(-2);
+  expect(voucher?.creditTotal).toBe(-2);
+  expect(voucher?.lines.map((l) => [l.entrySide, l.debit, l.credit])).toEqual([
+    ['debit', -1, 0],
+    ['credit', 0, -1],
+    ['debit', -1, 0],
+    ['credit', 0, -1],
+  ]);
+  expect((await api.batch({ id: batch.id })).snapshots).toEqual(calculated.snapshots);
 });
 
 it('w_pz_build_gz 自定义工资项借贷整数分不变量', async () => {

@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef } from 'react';
+import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { Alert, Button, Form, Select, Space, Typography } from 'antd';
@@ -15,11 +15,18 @@ import {
   type ExcelColumn,
 } from '@caiwu/ui';
 import { escapeHtml, printHtml } from '@caiwu/print';
-import { CASH_DENOMINATIONS, ReportInputSchema } from '../shared';
+import { CASH_DENOMINATIONS } from '../shared';
+import { PayrollReportInputSchema } from '../shared-report';
 import { api } from './api';
 import { usePayrollFilters } from './filters';
+import type { PayrollPrintMode } from '../shared-print';
+import type { PrintJob } from '@caiwu/print';
+import PrintLayoutEditor from './PrintLayoutEditor';
+import PayrollPrintPreview from './PayrollPrintPreview';
+import { printPayrollJob } from './print-job';
 type Filters = {
   category: number;
+  additionalCategories: string;
   from: number;
   to: number;
   department: number;
@@ -33,6 +40,7 @@ type Filters = {
 export default function ReportsPage() {
   const [values, set] = usePayrollFilters({
     category: 0,
+    additionalCategories: '',
     from: 202601,
     to: 202601,
     department: 0,
@@ -68,6 +76,7 @@ const ReportContent = memo(function ReportContent({
       : filters.denominations.split(',').filter(Boolean).map(Number);
   const candidate = {
     categoryId: category?.id ?? 1,
+    additionalCategoryIds: filters.additionalCategories.split(',').filter(Boolean).map(Number),
     from: filters.from,
     to: filters.to,
     departmentId: filters.department || undefined,
@@ -77,7 +86,7 @@ const ReportContent = memo(function ReportContent({
     cashField: filters.cashField,
     denominations: filters.kind === 'cash' ? selectedDenominations : CASH_DENOMINATIONS,
   };
-  const parsed = ReportInputSchema.safeParse(candidate),
+  const parsed = PayrollReportInputSchema.safeParse(candidate),
     input = parsed.success ? parsed.data : { ...candidate, kind: 'table' as const };
   const q = useQuery({
     ...api.report.queryOptions(input),
@@ -85,15 +94,40 @@ const ReportContent = memo(function ReportContent({
   });
   const canExport = usePermission('payroll.export'),
     data = q.data;
+  const canConfigure = usePermission('payroll.salary.edit');
+  const [printMode, setPrintMode] = useState<PayrollPrintMode>('table');
+  const [configure, setConfigure] = useState(false),
+    [preview, setPreview] = useState<{ job: PrintJob; pages: number } | null>(null);
+  const [outputError, setOutputError] = useState(''),
+    [working, setWorking] = useState(false);
   type Row = NonNullable<typeof data>['rows'][number];
   const columns: DataColumn<Row>[] = [
     { key: 'label', title: '人员 / 部门', dataIndex: 'label', width: 240 },
     { key: 'period', title: '期间', dataIndex: 'period', width: 180 },
+    {
+      key: 'categoryNames',
+      title: '工资类别',
+      width: 180,
+      render: (_: unknown, row: Row) => row.categoryNames.join('、'),
+      exportValue: (row: Row) => row.categoryNames.join('、'),
+    },
     ...(data?.columns ?? []).map((c) => ({
       key: c.key,
       title: c.name,
       dataIndex: ['values', c.key],
-      money: true,
+      money: c.kind === 'money',
+      render:
+        c.kind === 'quantity'
+          ? (_: unknown, row: Row) => row.quantities[c.key] ?? '0'
+          : c.kind === 'basic'
+            ? (_: unknown, row: Row) => row.basicValues[c.key] ?? ''
+            : undefined,
+      exportValue:
+        c.kind === 'quantity'
+          ? (row: Row) => row.quantities[c.key] ?? '0'
+          : c.kind === 'basic'
+            ? (row: Row) => row.basicValues[c.key] ?? ''
+            : undefined,
     })),
     ...(filters.kind === 'cash'
       ? (data?.rows[0]?.notes ?? []).map((n) => ({
@@ -108,8 +142,17 @@ const ReportContent = memo(function ReportContent({
       ? [{ key: 'remainder', title: '余款', dataIndex: 'remainder', money: true }]
       : []),
   ];
-  const output = async (print: boolean) => {
+  const output = async (print: boolean, showPreview = false) => {
     if (!parsed.success) return;
+    if (print && filters.kind !== 'cash') {
+      const fresh = await queryClient.fetchQuery({
+        ...api.printReport.queryOptions({ report: parsed.data, mode: printMode }),
+        staleTime: 0,
+      });
+      if (showPreview) setPreview(fresh);
+      else await printPayrollJob(fresh.job);
+      return;
+    }
     const fresh = await queryClient.fetchQuery({
       ...api.exportReport.queryOptions(parsed.data),
       staleTime: 0,
@@ -117,11 +160,17 @@ const ReportContent = memo(function ReportContent({
     const cols: ExcelColumn<Row>[] = [
       { title: '人员 / 部门', value: (r) => r.label },
       { title: '期间', value: (r) => r.period },
+      { title: '工资类别', value: (r) => r.categoryNames.join('、') },
       ...(fresh.cashColumn ? [{ title: '票面工资栏目', value: () => fresh.cashColumn!.name }] : []),
       ...fresh.columns.map((c) => ({
         title: c.name,
-        money: true,
-        value: (r: Row) => r.values[c.key] ?? 0,
+        money: c.kind === 'money',
+        value: (r: Row) =>
+          c.kind === 'quantity'
+            ? (r.quantities[c.key] ?? '0')
+            : c.kind === 'basic'
+              ? (r.basicValues[c.key] ?? '')
+              : (r.values[c.key] ?? 0),
       })),
       ...(filters.kind === 'cash'
         ? (fresh.rows[0]?.notes ?? []).map((n) => ({
@@ -148,6 +197,15 @@ const ReportContent = memo(function ReportContent({
         html: `<h3>${escapeHtml(title)}</h3><table><thead><tr>${cols.map((c) => `<th>${escapeHtml(c.title)}</th>`).join('')}</tr></thead><tbody>${fresh.rows.map((r) => `<tr>${cols.map((c) => `<td>${escapeHtml(c.money ? formatMoney(c.value(r) as number) : c.value(r))}</td>`).join('')}</tr>`).join('')}</tbody></table>`,
       });
   };
+  const runOutput = (print: boolean, showPreview = false) => {
+    setWorking(true);
+    setOutputError('');
+    void output(print, showPreview)
+      .catch((error: unknown) =>
+        setOutputError(error instanceof Error ? error.message : String(error)),
+      )
+      .finally(() => setWorking(false));
+  };
   return (
     <PageContainer
       title="工资报表"
@@ -159,6 +217,7 @@ const ReportContent = memo(function ReportContent({
         initialValues={{
           ...filters,
           category: category?.id,
+          additionalCategoryIds: candidate.additionalCategoryIds,
           employeeIds: candidate.employeeIds,
           selectedColumns: candidate.columns,
           selectedDenominations,
@@ -166,12 +225,14 @@ const ReportContent = memo(function ReportContent({
         onSearch={(
           v: Filters & {
             employeeIds: number[];
+            additionalCategoryIds: number[];
             selectedColumns: string[];
             selectedDenominations: number[];
           },
         ) =>
           update({
             category: v.category,
+            additionalCategories: (v.additionalCategoryIds ?? []).join(','),
             from: v.from,
             to: v.to,
             department: v.department,
@@ -188,6 +249,16 @@ const ReportContent = memo(function ReportContent({
           <Select
             style={{ width: 140 }}
             options={(categories.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+          />
+        </Form.Item>
+        <Form.Item name="additionalCategoryIds" label="合并其它类别">
+          <Select
+            mode="multiple"
+            aria-label="合并其它工资类别"
+            style={{ minWidth: 220 }}
+            options={(categories.data ?? [])
+              .filter((c) => c.id !== category?.id)
+              .map((c) => ({ value: c.id, label: c.name }))}
           />
         </Form.Item>
         <Form.Item name="from" label="开始期间">
@@ -272,12 +343,48 @@ const ReportContent = memo(function ReportContent({
         <Alert type="error" title={parsed.error.issues.map((i) => i.message).join('；')} />
       )}
       {q.error && <Alert type="error" title={q.error.message} />}
+      {outputError && <Alert type="error" title={outputError} />}
+      {candidate.additionalCategoryIds.length > 0 && (
+        <Alert
+          type="info"
+          title="合并报表累计所选类别的已计算快照；个税按各批次已分配税额相加，不重复计算累计扣除。自定义栏目须同名、同类型、同单位。"
+        />
+      )}
       {canExport && (
         <Space>
-          <Button disabled={!data || !parsed.success} onClick={() => void output(false)}>
+          <Button disabled={!data || !parsed.success || working} onClick={() => runOutput(false)}>
             导出报表 Excel
           </Button>
-          <Button disabled={!data || !parsed.success} onClick={() => void output(true)}>
+          {filters.kind !== 'cash' && (
+            <>
+              <label>
+                输出格式{' '}
+                <Select
+                  aria-label="工资打印格式"
+                  value={printMode}
+                  style={{ width: 140 }}
+                  options={[
+                    { value: 'table', label: '工资表' },
+                    { value: 'slips', label: '工资条' },
+                    { value: 'summary', label: '工资汇总表' },
+                  ]}
+                  onChange={setPrintMode}
+                />
+              </label>
+              {canConfigure && (
+                <Button disabled={!category} onClick={() => setConfigure(true)}>
+                  设置独立打印格式
+                </Button>
+              )}
+              <Button
+                disabled={!data || !parsed.success || working}
+                onClick={() => runOutput(true, true)}
+              >
+                预览报表
+              </Button>
+            </>
+          )}
+          <Button disabled={!data || !parsed.success || working} onClick={() => runOutput(true)}>
             打印报表
           </Button>
         </Space>
@@ -292,16 +399,22 @@ const ReportContent = memo(function ReportContent({
       {data && (
         <Typography.Paragraph>
           合计：
-          {data.columns.map((c) => `${c.name} ${formatMoney(data.totals[c.key] ?? 0)}`).join('；')}
+          {data.columns
+            .filter((c) => c.kind !== 'basic')
+            .map(
+              (c) =>
+                `${c.name} ${c.kind === 'quantity' ? `${data.quantityTotals[c.key] ?? '0'}${c.unit}` : formatMoney(data.totals[c.key] ?? 0)}`,
+            )
+            .join('；')}
         </Typography.Paragraph>
       )}
       {data && (
         <Typography.Paragraph>
           来源批次：
-          {data.sourceBatches.map((id) => (
-            <Link key={id} to={`/m/payroll?id=${id}`}>
+          {data.sourceDetails.map((source) => (
+            <Link key={source.batchId} to={`/m/payroll?id=${source.batchId}`}>
               {' '}
-              {id}{' '}
+              {source.categoryName} {source.period}（批次{source.batchId}）{' '}
             </Link>
           ))}
         </Typography.Paragraph>
@@ -312,6 +425,14 @@ const ReportContent = memo(function ReportContent({
           title={`票面工资栏目：${data?.cashColumn?.name ?? '待查询'}。逐人逐期分解后合并，面额数量×面额＋余款＝所选栏目金额；负金额会阻止计算。此表不执行取现或银行发薪。`}
         />
       )}
+      {configure && category && (
+        <PrintLayoutEditor
+          category={category}
+          mode={printMode}
+          onClose={() => setConfigure(false)}
+        />
+      )}
+      {preview && <PayrollPrintPreview output={preview} onClose={() => setPreview(null)} />}
     </PageContainer>
   );
 });
