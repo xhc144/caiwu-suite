@@ -17,10 +17,47 @@ import { payrollService } from './service';
 import { previewBulk, applyBulk, previewPaste, applyPaste } from './bulk';
 import { salaryReport, querySalary } from './reports';
 import { closePayroll, reopenPayroll } from './closing';
+import { PersonnelBulkInputSchema, PersonnelBulkApplySchema } from '../shared-personnel';
+import { previewPersonnelBulk, applyPersonnelBulk } from './personnel-bulk';
+import {
+  DepartmentDeleteSchema,
+  DepartmentStatusSchema,
+  DepartmentUpdateSchema,
+} from '../shared-departments';
+import {
+  updateDepartment,
+  setDepartmentDisabled,
+  previewDepartmentDelete,
+  deleteDepartment,
+} from './departments';
 const m = moduleKit(manifest);
 const version = z.object({ id: zId, revision: z.number().int().nonnegative() });
 const plan = version.extend({ kind: z.enum(['payment', 'allocation']), date: zDate });
 export const payrollRouter = m.router({
+  previewPersonnelBulk: m.procedure
+    .meta({ permission: 'payroll.hr.edit' })
+    .input(PersonnelBulkInputSchema)
+    .query(({ ctx, input }) => previewPersonnelBulk(ctx.svc, input)),
+  applyPersonnelBulk: m.procedure
+    .meta({ permission: 'payroll.hr.edit' })
+    .input(PersonnelBulkApplySchema)
+    .mutation(({ ctx, input }) => applyPersonnelBulk(ctx.svc, input, input.hash, input.confirmed)),
+  updateDepartment: m.procedure
+    .meta({ permission: 'payroll.hr.edit' })
+    .input(DepartmentUpdateSchema)
+    .mutation(({ ctx, input }) => updateDepartment(ctx.svc, input)),
+  setDepartmentDisabled: m.procedure
+    .meta({ permission: 'payroll.hr.edit' })
+    .input(DepartmentStatusSchema)
+    .mutation(({ ctx, input }) => setDepartmentDisabled(ctx.svc, input)),
+  previewDepartmentDelete: m.procedure
+    .meta({ permission: 'payroll.hr.edit' })
+    .input(z.object({ id: zId }))
+    .query(({ ctx, input }) => previewDepartmentDelete(ctx.svc, input.id)),
+  deleteDepartment: m.procedure
+    .meta({ permission: 'payroll.hr.edit' })
+    .input(DepartmentDeleteSchema)
+    .mutation(({ ctx, input }) => deleteDepartment(ctx.svc, input)),
   previewBulk: m.procedure
     .meta({ permission: 'payroll.salary.edit' })
     .input(BulkInputSchema)
@@ -68,6 +105,7 @@ export const payrollRouter = m.router({
       id: e.id,
       code: e.code,
       name: e.name,
+      departmentId: e.departmentId,
       departmentName: e.departmentName,
       disabled: e.disabled,
     })),

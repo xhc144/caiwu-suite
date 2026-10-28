@@ -115,7 +115,7 @@ describe('工资纵切', () => {
         departmentId: customer.id,
         startDate: '2026-01-01',
       }),
-    ).rejects.toThrow('core 部门');
+    ).rejects.toThrow('末级部门');
     await expect(
       api.saveEmployee({
         code: 'x',
@@ -152,7 +152,14 @@ describe('工资纵切', () => {
     await expect(
       api.saveCategory({ ...category, formulas: [{ name: '', target: '', expression: '' }] }),
     ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
-    for (const source of ['unknown + 1', '(base+1', 'base +', 'base bonus', 'today()', 'base;1'])
+    for (const source of [
+      'unknown + 1',
+      '(base+1',
+      'base +',
+      'base bonus',
+      'unknownfunction()',
+      'base;1',
+    ])
       expect(() => parseFormula(source, new Set(['base', 'bonus']))).toThrow(/第\d+位/);
     expect(() => evaluate(parseFormula('base / 0', new Set(['base'])).ast, { base: 1 })).toThrow(
       '除数为零',

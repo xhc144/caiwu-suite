@@ -10,7 +10,6 @@ import {
   type Batch,
   type Category,
   type Employee,
-  type Mapping,
   type RowInput,
   type SalaryRow,
 } from '../shared';
@@ -166,9 +165,15 @@ export function payrollService(svc: CoreServices) {
       if (e.endDate && e.endDate < e.startDate) fail('DATES', '离职日期不能早于任职日期');
       return svc.tx(async (t) => {
         const td = t.db.withTables<PayrollTables>();
+        const existing = e.id ? await payrollService(t).employee(e.id) : null;
         const dept = await t.dimensions.get(e.departmentId);
-        if (!dept || dept.typeId !== 'department' || dept.disabled || !dept.isLeaf)
-          fail('DEPARTMENT', '请选择启用的末级 core 部门');
+        if (
+          !dept ||
+          dept.typeId !== 'department' ||
+          !dept.isLeaf ||
+          (dept.disabled && existing?.departmentId !== e.departmentId)
+        )
+          fail('DEPARTMENT', '请选择启用的末级部门');
         const duplicate = await td
           .selectFrom('payroll_employee')
           .select('id')
@@ -301,6 +306,19 @@ export function payrollService(svc: CoreServices) {
         );
         for (const r of input.rows) {
           const e = await s.employee(r.employeeId);
+          const department = await t.dimensions.get(e.departmentId);
+          if (
+            !department ||
+            department.typeId !== 'department' ||
+            department.disabled ||
+            !department.isLeaf
+          )
+            fail(
+              'DEPARTMENT',
+              `${e.code} 的部门已停用或不是末级部门`,
+              '先在人事档案选择启用的末级部门',
+              '/m/payroll/employees',
+            );
           if (e.disabled)
             fail(
               'EMPLOYEE_DISABLED',
@@ -449,7 +467,7 @@ export function payrollService(svc: CoreServices) {
             )
               fail('POLICY_CHANGED', '同年计税方式已被历史批次使用', '前期计税方式更正尚不支持');
           }
-          const computed = computeValues(batch.category, r.values);
+          const computed = computeValues(batch.category, r.values, { period: b.period });
           const income = sum([
             r.tax.openingIncome,
             computed.gross,
@@ -509,25 +527,66 @@ export function payrollService(svc: CoreServices) {
       return self.taxConfig();
     },
     async mapping(categoryId: number) {
-      return svc.settings.get<Mapping | null>(`mapping.${categoryId}`, null);
+      const saved = await svc.settings.get<z.input<typeof MappingSchema> | null>(
+        `mapping.${categoryId}`,
+        null,
+      );
+      return saved ? MappingSchema.parse(saved) : null;
     },
-    async saveMapping(categoryId: number, raw: Mapping) {
+    async saveMapping(categoryId: number, raw: z.input<typeof MappingSchema>) {
       const input = MappingSchema.parse(raw);
-      await loadCategory(categoryId);
       if (input.amountField !== 'gross' || input.allocationField !== 'department')
         fail(
           'MAPPING_TYPE',
           '应付工资须使用应发金额，分配须使用基本项部门',
-          '应发金额结算到银行、个税和个人扣款科目',
+          '标准设置按应发结算；其它工资栏目请增加自定义规则',
         );
       return svc.tx(async (t) => {
-        for (const id of [
+        const category = await payrollService(t).category(categoryId);
+        const fields = new Set([
+          'gross',
+          'net',
+          'deductions',
+          'taxAmount',
+          ...category.fields.filter((f) => !f.disabled).map((f) => f.key),
+        ]);
+        const seen = new Set<string>();
+        for (const rule of input.rules ?? []) {
+          if (!fields.has(rule.field))
+            fail(
+              'MAPPING_FIELD',
+              `工资栏目 ${rule.field} 不存在或已停用`,
+              '请选择启用的工资金额或计算栏目',
+            );
+          const key = `${rule.kind}:${rule.field}:${rule.departmentId ?? 'all'}`;
+          if (seen.has(key))
+            fail(
+              'MAPPING_DUPLICATE',
+              '同种凭证、同一工资栏目和部门不能重复映射',
+              '每个栏目保留一条默认规则及每部门最多一条覆盖规则',
+            );
+          seen.add(key);
+          if (rule.debitAccountId === rule.creditAccountId)
+            fail('MAPPING_ACCOUNTS', '同一规则的借贷科目不能相同', '分别选择费用、应付或结算科目');
+          if (rule.departmentId) {
+            const department = await t.dimensions.get(rule.departmentId);
+            if (
+              !department ||
+              department.typeId !== 'department' ||
+              department.disabled ||
+              !department.isLeaf
+            )
+              fail('MAPPING_DEPARTMENT', '部门映射须选择启用的末级部门', '刷新部门后重新选择');
+          }
+        }
+        for (const id of new Set([
           input.payableAccountId,
           input.bankAccountId,
           input.taxAccountId,
           input.deductionAccountId,
           input.expenseAccountId,
-        ]) {
+          ...(input.rules ?? []).flatMap((r) => [r.debitAccountId, r.creditAccountId]),
+        ])) {
           const a = await t.accounts.require(id);
           if (!a.isLeaf || a.disabled) fail('NOT_LEAF', '凭证科目须为启用的末级科目');
         }
@@ -535,6 +594,12 @@ export function payrollService(svc: CoreServices) {
         requireRevision(previous?.revision ?? 0, input.revision);
         const saved = { ...input, revision: input.revision + 1 };
         await t.settings.set(`mapping.${categoryId}`, saved);
+        await t.log.write({
+          action: 'payroll.voucher.mapping',
+          summary: `保存工资类别 ${category.name} 的凭证设置`,
+          targetType: 'payroll_category',
+          targetId: categoryId,
+        });
         return saved;
       });
     },
@@ -558,12 +623,21 @@ export function payrollService(svc: CoreServices) {
         type = types.find((t) => !t.disabled);
       if (!type) fail('VOUCHER_TYPE', '没有可用凭证类型');
       const accounts = await svc.accounts.list();
+      const departments = await svc.dimensions.items('department');
       const lines: VoucherLineInput[] = [];
       const problems: string[] = [];
+      const rules = (mapping.rules ?? []).filter((rule) => rule.kind === kind);
+      const fields = new Map(b.category.fields.filter((f) => !f.disabled).map((f) => [f.key, f]));
+      for (const rule of rules)
+        if (
+          !['gross', 'net', 'deductions', 'taxAmount'].includes(rule.field) &&
+          !fields.has(rule.field)
+        )
+          problems.push(`工资栏目 ${rule.field} 不在本批次启用栏目内`);
       for (const r of b.snapshots) {
         if (r.gross < 0 || r.deductions < 0 || r.net < 0)
-          problems.push(`${r.employee.code} 实发、应发或扣款为负，首版凭证不支持负额调整`);
-        const line = (accountId: number, debit: number, credit: number) => {
+          problems.push(`${r.employee.code} 实发、应发或扣款为负，凭证不支持负额调整`);
+        const line = (accountId: number, debit: number, credit: number, fieldName = '') => {
           if (!debit && !credit) return;
           const a = accounts.find((a) => a.id === accountId);
           if (!a || !a.isLeaf || a.disabled) {
@@ -571,19 +645,50 @@ export function payrollService(svc: CoreServices) {
             return;
           }
           if (a.dimensions.some((d) => d.required && d.type !== 'department'))
-            problems.push(`科目 ${a.code} 需要部门以外的辅助维度，首版映射尚不支持`);
+            problems.push(`科目 ${a.code} 需要部门以外的辅助维度，工资映射尚不支持`);
+          if (a.currency || a.quantityUnit)
+            problems.push(`科目 ${a.code} 需要外币或数量，工资映射只提供本位币金额`);
           const department = a.dimensions.some((d) => d.type === 'department')
             ? r.employee.departmentId
             : null;
+          if (department) {
+            const item = departments.find((d) => d.id === department);
+            if (!item || item.disabled || !item.isLeaf)
+              problems.push(`${r.employee.code} 的工资快照部门已停用或不再是末级部门`);
+          }
           lines.push({
-            summary: `${b.period}工资${kind === 'payment' ? '发放' : '分配'} ${r.employee.code}`,
+            summary: `${b.period}工资${kind === 'payment' ? '发放' : '分配'} ${r.employee.code}${fieldName ? ` ${fieldName}` : ''}`,
             accountId,
             debit,
             credit,
             dimensions: { department },
           });
         };
-        if (kind === 'allocation') {
+        if (rules.length) {
+          for (const field of new Set(rules.map((rule) => rule.field))) {
+            // 指定部门的规则覆盖默认规则，避免同一工资项目被重复制证。
+            const rule =
+              rules.find((x) => x.field === field && x.departmentId === r.employee.departmentId) ??
+              rules.find((x) => x.field === field && x.departmentId === undefined);
+            if (!rule) continue;
+            const builtins: Record<string, { name: string; value: number }> = {
+              gross: { name: '应发合计', value: r.gross },
+              net: { name: '实发合计', value: r.net },
+              deductions: { name: '扣款合计', value: r.deductions },
+              taxAmount: { name: '个人所得税', value: r.taxAmount },
+            };
+            const value = builtins[field]?.value ?? r.calculatedValues[field];
+            const name = builtins[field]?.name ?? fields.get(field)?.name ?? field;
+            if (value === undefined || !Number.isSafeInteger(value) || value < 0) {
+              problems.push(
+                `${r.employee.code} 的${name}缺少有效金额或为负数，请检查工资并重新计算`,
+              );
+              continue;
+            }
+            line(rule.debitAccountId, value, 0, name);
+            line(rule.creditAccountId, 0, value, name);
+          }
+        } else if (kind === 'allocation') {
           line(mapping.expenseAccountId, r.gross, 0);
           line(mapping.payableAccountId, 0, r.gross);
         } else {
@@ -602,7 +707,19 @@ export function payrollService(svc: CoreServices) {
         fail('VOUCHER_PLAN', [...new Set(problems)].join('；'), '调整设置或工资后重新计算并预览');
       // 配置、科目属性、工资版本、日期、种类均绑定计划；设置变化后旧计划无法确认。
       const hash = createHash('sha256')
-        .update(JSON.stringify({ id, revision, kind, date, mapping, accounts, types, lines }))
+        .update(
+          JSON.stringify({
+            id,
+            revision,
+            kind,
+            date,
+            mapping,
+            accounts,
+            departments,
+            types,
+            lines,
+          }),
+        )
         .digest('hex');
       return { hash, lines, debit, credit, voucherTypeId: type.id };
     },
