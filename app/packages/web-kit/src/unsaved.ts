@@ -3,24 +3,45 @@ import { flushSync } from 'react-dom';
 import { useTab } from './tabs';
 import { useRequiredSession } from './session';
 
+export type UnsavedSaveResult = boolean | void | { sessionRevoked: true };
+export type UnsavedSaveContext = {
+  readonly bookId: string;
+  readonly phase: 'save' | 'session';
+  /** Call immediately around the session-revoking request, after any async validation. */
+  commit(action: () => Promise<UnsavedSaveResult>): Promise<UnsavedSaveResult>;
+  /** Navigation/cache teardown runs only after every page has been handled successfully. */
+  afterLeave(action: () => Promise<void> | void): void;
+};
+export type UnsavedSave = (context?: UnsavedSaveContext) => Promise<UnsavedSaveResult>;
+export type LeaveResult = {
+  allowed: boolean;
+  sessionRevoked: boolean;
+  error?: unknown;
+};
 export type UnsavedPage = {
   bookId: string;
   tabKey: string;
   title: string;
   dirty: boolean;
   version?: string | number;
-  save: () => Promise<boolean | void>;
+  /** Session-revoking saves must run after all other dirty pages in this book. */
+  savePhase?: 'session';
+  save: UnsavedSave;
   discard?: () => Promise<void> | void;
 };
 export type LeaveChoice = 'save' | 'discard' | 'cancel';
+export type ConfirmLeave = (pages: readonly UnsavedPage[]) => Promise<LeaveChoice>;
 export class UnsavedRegistry {
   readonly pages = new Map<symbol, UnsavedPage>();
-  private confirmation?: Promise<boolean>;
+  private confirmation?: Promise<LeaveResult>;
   private confirmationKey?: string;
+  private saving = false;
   private unversionedUpdates = new WeakMap<UnsavedPage, number>();
-  register(page: UnsavedPage) {
+  private settlements = new WeakMap<UnsavedPage, () => void>();
+  register(page: UnsavedPage, settle?: () => void) {
     const id = Symbol();
     this.pages.set(id, page);
+    if (settle) this.settlements.set(page, settle);
     return {
       update: (next: UnsavedPage) => {
         const previous = this.pages.get(id);
@@ -28,7 +49,10 @@ export class UnsavedRegistry {
           if (next.dirty && next.version === undefined)
             this.unversionedUpdates.set(previous, (this.unversionedUpdates.get(previous) ?? 0) + 1);
           Object.assign(previous, next);
-        } else this.pages.set(id, next);
+        } else {
+          this.pages.set(id, next);
+          if (settle) this.settlements.set(next, settle);
+        }
       },
       unregister: () => this.pages.delete(id),
     };
@@ -41,59 +65,184 @@ export class UnsavedRegistry {
   leave(
     bookId: string,
     keys: readonly string[] | undefined,
-    confirm: (pages: readonly UnsavedPage[]) => Promise<LeaveChoice>,
+    confirm: ConfirmLeave,
   ): Promise<boolean> {
+    return this.leaveWithResult(bookId, keys, confirm).then((result) => result.allowed);
+  }
+  leaveWithResult(
+    bookId: string,
+    keys: readonly string[] | undefined,
+    confirm: ConfirmLeave,
+  ): Promise<LeaveResult> {
     const key = JSON.stringify([bookId, keys ? [...keys].sort() : null]);
+    return this.coordinate(key, bookId, keys, confirm);
+  }
+  /** Direct submit uses the same ordering as closing/switching. Inside save(context),
+   * call context.commit instead of recursively requesting another leave. */
+  saveSessionChange(
+    bookId: string,
+    tabKey: string,
+    confirm: ConfirmLeave,
+    save: UnsavedSave,
+  ): Promise<LeaveResult> {
+    return this.coordinate(
+      JSON.stringify([bookId, tabKey, 'session']),
+      bookId,
+      undefined,
+      confirm,
+      {
+        tabKey,
+        save,
+      },
+    );
+  }
+  private coordinate(
+    key: string,
+    bookId: string,
+    keys: readonly string[] | undefined,
+    confirm: ConfirmLeave,
+    direct?: { tabKey: string; save: UnsavedSave },
+  ): Promise<LeaveResult> {
+    // A save callback awaiting its own leave promise deadlocks. Only duplicate
+    // confirmation requests may join; callbacks receive an explicit context.
     if (this.confirmation)
-      return this.confirmationKey === key ? this.confirmation : Promise.resolve(false);
-    this.confirmationKey = key;
-    this.confirmation = (async () => {
-      const pages = this.dirty(bookId, keys);
+      return this.confirmationKey === key && !this.saving
+        ? this.confirmation
+        : Promise.resolve({ allowed: false, sessionRevoked: false });
+    let sessionRevoked = false;
+    const afterLeave: (() => Promise<void> | void)[] = [];
+    const result = (allowed: boolean, error?: unknown): LeaveResult => ({
+      allowed,
+      sessionRevoked,
+      ...(error === undefined ? {} : { error }),
+    });
+    const run = async (): Promise<LeaveResult> => {
+      const selected = this.dirty(bookId, keys);
+      const scope =
+        direct || selected.some((page) => page.savePhase === 'session') ? undefined : keys;
+      const pages = this.dirty(bookId, scope);
       const versions = new Map(pages.map((page) => [page, page.version]));
       const updates = new Map(pages.map((page) => [page, this.unversionedUpdates.get(page) ?? 0]));
-      if (!pages.length) return true;
-      const choice = await confirm(pages);
-      if (choice === 'cancel') return false;
+      const phases = new Map(pages.map((page) => [page, page.savePhase]));
+      const sessionPages = pages.filter((page) => page.savePhase === 'session');
+      const sessionPage = sessionPages[0];
+      const confirmPages = direct ? pages.filter((page) => page !== sessionPage) : pages;
+      const choice = confirmPages.length ? await confirm(confirmPages) : 'save';
+      if (choice === 'cancel') return result(false);
+      this.saving = true;
+      // Once one request revokes the token, a second such save cannot be made safely.
+      if (
+        (direct || choice === 'save') &&
+        (sessionPages.length > 1 ||
+          (direct && sessionPages.some((p) => p.tabKey !== direct.tabKey)))
+      )
+        return result(
+          false,
+          new Error('有多页修改需要重新登录，请保留一页修改，取消其他相关页面的修改后再试。'),
+        );
       const changed = () =>
-        this.dirty(bookId, keys).some(
+        this.dirty(bookId, scope).some(
           (page) =>
             !versions.has(page) ||
             versions.get(page) !== page.version ||
+            phases.get(page) !== page.savePhase ||
             (page.version === undefined &&
               updates.get(page) !== (this.unversionedUpdates.get(page) ?? 0)),
         );
-      try {
-        if (changed()) return false;
-        for (const page of pages) {
-          // A clean page may have advanced its version while the dialog was open.
-          if (!this.dirty(bookId, keys).includes(page)) continue;
-          if (choice === 'save') {
-            if ((await page.save()) === false) return false;
-            // Success describes the saved snapshot, not edits made during that save.
-            // This also protects callers that omit the optional content version.
-            if (this.dirty(bookId, keys).includes(page)) return false;
-          } else await page.discard?.();
-          if (changed()) return false;
+      const discarded = new Set<UnsavedPage>();
+      const canCommit = () =>
+        !changed() &&
+        this.dirty(bookId, scope).every((page) => page === sessionPage || discarded.has(page));
+      const savePage = async (save: UnsavedSave, phase: 'save' | 'session') => {
+        let committed = false;
+        let active = true;
+        const context: UnsavedSaveContext = {
+          bookId,
+          phase,
+          commit: async (action) => {
+            if (!active || phase !== 'session' || committed || !canCommit()) return false;
+            committed = true;
+            const saved = await action();
+            if (typeof saved === 'object' && saved.sessionRevoked) sessionRevoked = true;
+            return saved;
+          },
+          afterLeave: (action) => {
+            if (!active || phase !== 'session') throw new Error('保存尚未完成，暂时不能重新登录。');
+            afterLeave.push(action);
+          },
+        };
+        try {
+          const saved = await save(context);
+          if (typeof saved === 'object' && saved.sessionRevoked) sessionRevoked = true;
+          return saved !== false;
+        } finally {
+          active = false;
         }
-        return choice === 'discard' || this.dirty(bookId, keys).length === 0;
-      } catch {
-        return false;
+      };
+      if (changed()) return result(false);
+      // Discarding a session page does not revoke the session. A direct submit
+      // still commits its initiating page after the other pages are handled.
+      const preparing =
+        choice === 'discard' && !direct ? pages : pages.filter((p) => p !== sessionPage);
+      for (const page of preparing) {
+        if (!this.dirty(bookId, scope).includes(page)) continue;
+        if (choice === 'save') {
+          if (!(await savePage(page.save, 'save'))) return result(false);
+          if (sessionRevoked)
+            return result(false, new Error('此页保存后需要重新登录，无法继续保存其他页面。'));
+          if (this.dirty(bookId, scope).includes(page)) return result(false);
+        } else {
+          await page.discard?.();
+          discarded.add(page);
+        }
+        if (changed()) return result(false);
       }
-    })().finally(() => {
-      this.confirmation = undefined;
-      this.confirmationKey = undefined;
+      // Direct actions may differ from the page's registered save. Flush that
+      // page's React state without substituting a different credential action.
+      const finalSave = direct
+        ? async (context?: UnsavedSaveContext) => {
+            try {
+              return await direct.save(context);
+            } finally {
+              if (sessionPage) this.settlements.get(sessionPage)?.();
+            }
+          }
+        : choice === 'save'
+          ? sessionPage?.save
+          : undefined;
+      if (finalSave && (direct || this.dirty(bookId, scope).includes(sessionPage!))) {
+        if (!canCommit() || !(await savePage(finalSave, 'session'))) return result(false);
+      }
+      return result(!changed() && this.dirty(bookId, scope).every((page) => discarded.has(page)));
+    };
+    this.confirmationKey = key;
+    // Install the lock before invoking even a synchronous confirmation callback.
+    let complete!: (outcome: LeaveResult) => void;
+    const confirmation = new Promise<LeaveResult>((resolve) => {
+      complete = resolve;
     });
-    return this.confirmation;
+    this.confirmation = confirmation;
+    void run()
+      .catch((error: unknown) => result(false, error))
+      .then(async (outcome) => {
+        this.confirmation = undefined;
+        this.confirmationKey = undefined;
+        this.saving = false;
+        if (outcome.allowed && outcome.sessionRevoked) {
+          try {
+            for (const action of afterLeave) await action();
+          } catch (error) {
+            complete(result(false, error));
+            return;
+          }
+        }
+        complete(outcome);
+      });
+    return confirmation;
   }
 }
 export const unsavedPages = new UnsavedRegistry();
-export function useUnsavedChanges(input: {
-  dirty: boolean;
-  title: string;
-  version?: string | number;
-  save: () => Promise<boolean | void>;
-  discard?: () => Promise<void> | void;
-}) {
+export function useUnsavedChanges(input: Omit<UnsavedPage, 'bookId' | 'tabKey'>) {
   const [, refresh] = useReducer((value: number) => value + 1, 0);
   const tab = useTab();
   const session = useRequiredSession();
@@ -101,20 +250,25 @@ export function useUnsavedChanges(input: {
   latest.current = input;
   const registration = useRef<ReturnType<UnsavedRegistry['register']> | null>(null);
   useLayoutEffect(() => {
-    const entry = unsavedPages.register({
-      ...latest.current,
-      save: async () => {
-        const result = await latest.current.save();
-        flushSync(() => refresh());
-        return result;
+    const entry = unsavedPages.register(
+      {
+        ...latest.current,
+        save: async (context) => {
+          try {
+            return await latest.current.save(context);
+          } finally {
+            flushSync(() => refresh());
+          }
+        },
+        discard: async () => {
+          await latest.current.discard?.();
+          flushSync(() => refresh());
+        },
+        bookId: session.bookId,
+        tabKey: tab.key,
       },
-      discard: async () => {
-        await latest.current.discard?.();
-        flushSync(() => refresh());
-      },
-      bookId: session.bookId,
-      tabKey: tab.key,
-    });
+      () => flushSync(() => refresh()),
+    );
     registration.current = entry;
     return () => {
       entry.unregister();
@@ -124,10 +278,12 @@ export function useUnsavedChanges(input: {
   useLayoutEffect(() => {
     registration.current?.update({
       ...input,
-      save: async () => {
-        const result = await latest.current.save();
-        flushSync(() => refresh());
-        return result;
+      save: async (context) => {
+        try {
+          return await latest.current.save(context);
+        } finally {
+          flushSync(() => refresh());
+        }
       },
       discard: async () => {
         await latest.current.discard?.();
