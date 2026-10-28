@@ -6,6 +6,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 import { BusinessError } from '@caiwu/core';
 import { coreMigrations } from '@caiwu/core/server';
+import { runMigrations, type MigrationSet } from '@caiwu/db';
 import type { AppRuntime } from '@caiwu/server-kit';
 import {
   DirectorySchema,
@@ -120,8 +121,11 @@ export async function hashFile(file: string, start = 0) {
     return hash.digest('hex');
   });
 }
+function migrationSets(app: AppRuntime): MigrationSet[] {
+  return [{ scope: 'core', migrations: coreMigrations }, ...app.modules.migrationSets()];
+}
 export function migrationList(app: AppRuntime) {
-  return [{ scope: 'core', migrations: coreMigrations }, ...app.modules.migrationSets()]
+  return migrationSets(app)
     .flatMap((s) =>
       s.migrations.map((m) => ({
         scope: s.scope,
@@ -133,7 +137,56 @@ export function migrationList(app: AppRuntime) {
       a.scope < b.scope ? -1 : a.scope > b.scope ? 1 : a.id < b.id ? -1 : a.id > b.id ? 1 : 0,
     );
 }
-export function inspectSqlite(file: string, app: AppRuntime, expected?: BackupMetadata) {
+/** 只认可每个已安装模块的非空历史前缀；缺模块、断档、未来迁移和改过的内容均拒绝。 */
+function historicalMigrations(app: AppRuntime, applied: BackupMetadata['migrations']) {
+  const installed = migrationList(app);
+  const history = migrationSets(app).map((set) => {
+    const rows = applied.filter((m) => m.scope === set.scope);
+    const known = installed.filter((m) => m.scope === set.scope);
+    if (
+      (known.length > 0 && rows.length === 0) ||
+      JSON.stringify(rows) !== JSON.stringify(known.slice(0, rows.length))
+    )
+      throw fail('MIGRATION', '备份迁移版本不是已安装模块的已知完整历史前缀');
+    return { scope: set.scope, migrations: set.migrations.slice(0, rows.length) };
+  });
+  if (applied.some((m) => !history.some((set) => set.scope === m.scope)))
+    throw fail('MIGRATION', '备份迁移版本包含未知模块');
+  return history;
+}
+
+/** 从已发布 SQL 重建结构，不能只凭 _migration 声称的版本补建任意缺失结构。 */
+function assertMigrationSchema(
+  raw: Database.Database,
+  sets: readonly MigrationSet[],
+  allowExtra = false,
+) {
+  const reference = new Database(':memory:');
+  const schema = (db: Database.Database) =>
+    db
+      .prepare(
+        "SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE substr(name,1,7) <> 'sqlite_' ORDER BY type,name",
+      )
+      .all() as { type: string; name: string; tbl_name: string; sql: string | null }[];
+  try {
+    runMigrations(reference, sets);
+    const expected = schema(reference);
+    const actual = schema(raw).filter(
+      (row) => !allowExtra || expected.some((e) => e.name === row.name),
+    );
+    if (JSON.stringify(actual) !== JSON.stringify(expected))
+      throw fail('SCHEMA', '备份表结构或约束与已发布的迁移内容不一致');
+  } finally {
+    reference.close();
+  }
+}
+
+export function inspectSqlite(
+  file: string,
+  app: AppRuntime,
+  expected?: BackupMetadata,
+  allowHistorical = false,
+) {
   const raw = new Database(file, { readonly: true, fileMustExist: true });
   try {
     raw.pragma('trusted_schema = OFF');
@@ -201,12 +254,10 @@ export function inspectSqlite(file: string, app: AppRuntime, expected?: BackupMe
       .prepare('SELECT scope, id, checksum FROM _migration ORDER BY scope,id')
       .all() as BackupMetadata['migrations'];
     const installed = migrationList(app);
-    if (JSON.stringify(migrations) !== JSON.stringify(installed))
-      throw fail(
-        'MIGRATION',
-        '备份迁移版本与已安装模块不兼容',
-        '请使用具有相同模块和迁移版本的应用；预览不会升级备份',
-      );
+    if (JSON.stringify(migrations) !== JSON.stringify(installed)) {
+      if (!allowHistorical) throw fail('MIGRATION', '备份迁移版本与已安装模块不兼容');
+      assertMigrationSchema(raw, historicalMigrations(app, migrations));
+    } else assertMigrationSchema(raw, migrationSets(app), true);
     if (
       expected &&
       (JSON.stringify(book) !== JSON.stringify(expected.book) ||
@@ -307,11 +358,38 @@ export async function validatePackage(file: string, app: AppRuntime, includeCont
       );
       if (payloadDigest.digest('hex') !== metadata.sha256)
         throw fail('DIGEST', '备份 SHA-256 摘要不符，文件已损坏或被修改');
-      inspectSqlite(snapshot, app, metadata);
-      return { metadata, snapshot, digest: digest.digest('hex'), bytes: size, content };
+      const inspected = inspectSqlite(snapshot, app, metadata, true);
+      let snapshotLength = metadata.length;
+      let snapshotSha256 = metadata.sha256;
+      if (JSON.stringify(inspected.migrations) !== JSON.stringify(migrationList(app))) {
+        // 只有从包中解出的受管副本可写；原包摘要、元数据和用于确认的 digest 始终不变。
+        const raw = new Database(snapshot, { fileMustExist: true });
+        try {
+          raw.pragma('trusted_schema = OFF');
+          raw.pragma('foreign_keys = ON');
+          raw.pragma('journal_mode = DELETE');
+          runMigrations(raw, migrationSets(app));
+          assertMigrationSchema(raw, migrationSets(app));
+        } finally {
+          raw.close();
+        }
+        inspectSqlite(snapshot, app, { ...metadata, migrations: migrationList(app) });
+        snapshotLength = Number((await regularFile(snapshot)).size);
+        snapshotSha256 = await hashFile(snapshot);
+      }
+      return {
+        metadata,
+        snapshot,
+        snapshotLength,
+        snapshotSha256,
+        digest: digest.digest('hex'),
+        bytes: size,
+        content,
+      };
     });
   } catch (e) {
-    await rm(snapshot, { force: true });
+    for (const suffix of ['', '-journal', '-wal', '-shm'])
+      await rm(snapshot + suffix, { force: true });
     throw e;
   }
 }
