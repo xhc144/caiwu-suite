@@ -4,6 +4,8 @@ import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
   BatchSchema,
+  ListEditSchema,
+  AssetPrintSettingsSchema,
   CardFilter,
   CardSchema,
   DepreciationConfirm,
@@ -18,6 +20,12 @@ import {
 import { assetService } from './service';
 import { operations } from './operations';
 import { departmentService } from './departments';
+import { transferService } from './transfers';
+import { recalculationService } from './recalculation';
+import { protectedAssetReset, assetResetPreview } from './reset';
+import { queryDefinitions } from './query-definitions';
+import { saveListEdits } from './list-edit';
+import { resetProtectionInfo, previewResetRestore, restoreBeforeReset } from './reset-restore';
 const m = moduleKit(manifest);
 const p = m.procedure.use(async ({ ctx, next }) => {
   if ((await ctx.svc.book.info()).product === 'qingsong')
@@ -44,6 +52,7 @@ const withVoucherDeletion = confirmed.extend({
 });
 export const fixedAssetsRouter = m.router({
   masters: view.query(({ ctx }) => assetService(ctx.svc).masters()),
+  currencies: view.query(({ ctx }) => ctx.svc.reference.currencies()),
   saveMaster: edit
     .input(z.object({ id: zId.optional(), data: MasterSchema }))
     .mutation(({ ctx, input }) => assetService(ctx.svc).saveMaster(input.data, input.id)),
@@ -87,7 +96,39 @@ export const fixedAssetsRouter = m.router({
     )
     .mutation(({ ctx, input }) => departmentService(ctx.svc).remove(input.plan, input.confirm)),
   list: view.input(CardFilter).query(({ ctx, input }) => assetService(ctx.svc).list(input)),
+  saveListEdits: edit
+    .input(
+      z.object({
+        rows: z
+          .array(
+            z.object({ id: zId, revision: z.number().int().positive(), changes: ListEditSchema }),
+          )
+          .min(1)
+          .max(500),
+      }),
+    )
+    .mutation(({ ctx, input }) => saveListEdits(ctx.svc, input.rows)),
   detail: view.input(id).query(({ ctx, input }) => assetService(ctx.svc).detail(input.id)),
+  transfers: view.input(id).query(({ ctx, input }) => transferService(ctx.svc).list(input.id)),
+  transfer: edit
+    .input(
+      id.extend({
+        revision: z.number().int().positive(),
+        date: zDate,
+        departmentId: zId,
+        purposeId: zId,
+        statusId: zId,
+        installation: z.string().max(200).optional(),
+        custodian: z.string().max(100).optional(),
+        quantity: quantitySchema.optional(),
+        note: z.string().trim().min(1, '请填写转移原因').max(500),
+        confirm: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) => transferService(ctx.svc).save(input)),
+  undoTransfer: edit
+    .input(confirmed)
+    .mutation(({ ctx, input }) => transferService(ctx.svc).undo(input.id, input.confirm)),
   save: edit
     .input(
       z.object({
@@ -205,7 +246,40 @@ export const fixedAssetsRouter = m.router({
       ),
     ),
   query: view.input(QuerySchema).query(({ ctx, input }) => operations(ctx.svc).query(input)),
+  queryDefinitions: view.query(({ ctx }) => queryDefinitions(ctx.svc).list()),
+  saveQueryDefinition: view
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(60),
+        query: QuerySchema,
+        revision: z.number().int().min(0),
+      }),
+    )
+    .mutation(({ ctx, input }) => queryDefinitions(ctx.svc).save(input)),
+  removeQueryDefinition: view
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(60),
+        revision: z.number().int().min(0),
+        confirm: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) =>
+      queryDefinitions(ctx.svc).remove(input.name, input.revision, input.confirm),
+    ),
   reports: view.input(ReportSchema).query(({ ctx, input }) => operations(ctx.svc).reports(input)),
+  printSettings: view.query(async ({ ctx }) =>
+    AssetPrintSettingsSchema.parse(await ctx.svc.settings.get('print', {})),
+  ),
+  savePrintSettings: p
+    .meta({ permission: 'fixed-assets.settings' })
+    .input(AssetPrintSettingsSchema)
+    .mutation(({ ctx, input }) =>
+      ctx.svc.tx(async (svc) => {
+        await svc.settings.set('print', input);
+        await assetService(svc).logInternal('print.settings', 'layout');
+      }),
+    ),
   exportOpening: view.query(({ ctx }) => operations(ctx.svc).exportOpening()),
   importPreview: p
     .meta({ permission: 'fixed-assets.import' })
@@ -226,9 +300,59 @@ export const fixedAssetsRouter = m.router({
   enable: p
     .meta({ permission: 'fixed-assets.import' })
     .mutation(({ ctx }) => operations(ctx.svc).enable()),
+  recalculationPreview: p
+    .meta({ permission: 'fixed-assets.depreciate' })
+    .input(CardFilter)
+    .query(async ({ ctx, input }) => {
+      const result = await recalculationService(ctx.svc).preview(input);
+      return { rows: result.rows, token: result.token, totalDifference: result.totalDifference };
+    }),
+  recalculate: p
+    .meta({ permission: 'fixed-assets.depreciate' })
+    .input(z.object({ filter: CardFilter, token: z.string(), confirm: z.boolean() }))
+    .mutation(({ ctx, input }) =>
+      recalculationService(ctx.svc).apply(input.filter, input.token, input.confirm),
+    ),
+  recalculations: view.query(({ ctx }) => recalculationService(ctx.svc).list()),
+  undoRecalculation: p
+    .meta({ permission: 'fixed-assets.depreciate' })
+    .input(confirmed)
+    .mutation(({ ctx, input }) => recalculationService(ctx.svc).undo(input.id, input.confirm)),
+  resetPreview: p
+    .meta({ permission: 'fixed-assets.reset' })
+    .query(({ ctx }) => assetResetPreview(ctx)),
   reset: p
-    .meta({ permission: 'fixed-assets.settings' })
-    .mutation(({ ctx }) => operations(ctx.svc).reset()),
+    .meta({ permission: 'fixed-assets.reset' })
+    .input(
+      z
+        .object({
+          revision: z.string().min(1),
+          bookName: z.string().min(1),
+          password: z.string().min(1),
+          confirmText: z.string(),
+        })
+        .optional(),
+    )
+    .mutation(({ ctx, input }) =>
+      input ? protectedAssetReset(ctx, input) : operations(ctx.svc).reset(),
+    ),
+  resetProtection: p
+    .meta({ permission: 'fixed-assets.reset' })
+    .query(({ ctx }) => resetProtectionInfo(ctx)),
+  resetRestorePreview: p
+    .meta({ permission: 'fixed-assets.reset' })
+    .mutation(({ ctx }) => previewResetRestore(ctx)),
+  resetRestore: p
+    .meta({ permission: 'fixed-assets.reset' })
+    .input(
+      z.object({
+        replacementId: z.uuid(),
+        bookName: z.string().min(1),
+        password: z.string().min(1),
+        confirmText: z.string(),
+      }),
+    )
+    .mutation(({ ctx, input }) => restoreBeforeReset(ctx, input)),
   batchPreview: edit
     .input(BatchSchema)
     .query(({ ctx, input }) => operations(ctx.svc).batchPreview(input)),

@@ -12,6 +12,7 @@ export default defineManifest({
     { id: 'fixed-assets.voucher', name: '生成及删除资产凭证' },
     { id: 'fixed-assets.settings', name: '资产凭证设置' },
     { id: 'fixed-assets.import', name: '导入期初卡片' },
+    { id: 'fixed-assets.reset', name: '重置固定资产（管理员）' },
   ],
   menu: [
     { group: 'asset', title: '固定资产台账', path: '/cards', permission: 'fixed-assets.view' },
