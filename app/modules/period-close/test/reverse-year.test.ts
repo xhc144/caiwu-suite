@@ -4,7 +4,7 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import periodCloseServer from '../server';
-import { call, errorData, snapshot, zeroOpening } from './helpers';
+import { call, errorData, rule, snapshot, zeroOpening } from './helpers';
 let app: TestApp;
 beforeEach(async () => {
   app = await createTestApp({ modules: [periodCloseServer] });
@@ -16,6 +16,74 @@ beforeEach(async () => {
 afterEach(async () => {
   vi.restoreAllMocks();
   await app.close();
+});
+it('w_zw_qxfz：后年度未结束的逐项结转须先停止，清理已结束记录前备份并保留原年度', async () => {
+  const api = call(app);
+  await api.saveRule({ data: await rule(app) });
+  const batch = await api.startTransferBatch({ period: 202701, ruleIds: [1], confirmed: true });
+  const before = snapshot(app);
+  expect((await errorData(api.reverseYearPreview({ year: 2026 }))).code).toBe(
+    'PERIOD_CLOSE_TARGET_BATCH_ACTIVE',
+  );
+  expect(snapshot(app)).toBe(before);
+  await api.decideTransferBatch({
+    id: batch.id,
+    revision: batch.revision,
+    decision: 'stop',
+    confirmed: true,
+  });
+  const plan = await api.reverseYearPreview({ year: 2026 });
+  expect(plan.batches).toEqual([{ id: batch.id, period: 202701 }]);
+  expect(plan.impact).toContain('在线备份');
+  const backup = await api.backupReverseYear({ year: 2026 });
+  const raw = new Database(path.join(app.runtime.dataDir, backup.relativePath), { readonly: true });
+  try {
+    expect(raw.prepare('SELECT id FROM period_close_batch').all()).toEqual([{ id: batch.id }]);
+  } finally {
+    raw.close();
+  }
+  await api.reverseYear({
+    year: 2026,
+    backupId: backup.backupId,
+    confirmed: true,
+    confirmText: plan.confirmationText,
+  });
+  expect(
+    await app.svc.db
+      .withTables<{ period_close_batch: { id: string } }>()
+      .selectFrom('period_close_batch')
+      .selectAll()
+      .execute(),
+  ).toEqual([]);
+  expect((await app.svc.periods.require(202612)).status).toBe('closed');
+  expect(await app.svc.opening.list(2026)).toHaveLength(1);
+});
+
+it('w_zw_qxfz：备份后新增并停止逐项结转也使备份版本失效，保留新记录', async () => {
+  const api = call(app);
+  await api.saveRule({ data: await rule(app) });
+  const backup = await api.backupReverseYear({ year: 2026 });
+  const batch = await api.startTransferBatch({ period: 202701, ruleIds: [1], confirmed: true });
+  await api.decideTransferBatch({
+    id: batch.id,
+    revision: batch.revision,
+    decision: 'stop',
+    confirmed: true,
+  });
+  const before = snapshot(app);
+  expect(
+    (
+      await errorData(
+        api.reverseYear({
+          year: 2026,
+          backupId: backup.backupId,
+          confirmed: true,
+          confirmText: '撤销2026年年结',
+        }),
+      )
+    ).code,
+  ).toBe('PERIOD_CLOSE_BACKUP_STALE');
+  expect(snapshot(app)).toBe(before);
 });
 it('w_zw_qxfz：先列影响，在线备份成功后才可文字确认，取消完全不改库', async () => {
   const api = call(app);

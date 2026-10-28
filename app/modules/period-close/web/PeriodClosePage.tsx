@@ -1,4 +1,15 @@
-import { Alert, Button, Card, Checkbox, Modal, Popconfirm, Space, Tag, Input } from 'antd';
+import {
+  Alert,
+  Button,
+  Card,
+  Checkbox,
+  Modal,
+  Popconfirm,
+  Space,
+  Tag,
+  Input,
+  InputNumber,
+} from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -15,6 +26,8 @@ import type { inferRouterOutputs } from '@trpc/server';
 import type { PeriodCloseRouter } from '../server/router';
 import type { TransferRule } from '../shared';
 import RuleDrawer from './RuleDrawer';
+import ExchangePanel from './ExchangePanel';
+import TransferBatchPanel from './TransferBatchPanel';
 import { api } from './api';
 
 type Output = inferRouterOutputs<PeriodCloseRouter>;
@@ -48,6 +61,7 @@ export default function PeriodClosePage() {
   const ruleIds = selection ?? list.data?.filter((r) => r.enabled).map((r) => r.id) ?? [];
   const [preview, setPreview] = useState<Output['preview'] | null>(null);
   const [ordered, setOrdered] = useState(false);
+  const [voucherNumbers, setVoucherNumbers] = useState<Record<string, number>>({});
   const [numberPreview, setNumberPreview] = useState<Output['renumberPreview'] | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [skipped, setSkipped] = useState<{ id: number; displayNo: string; reason: string }[]>([]);
@@ -155,6 +169,7 @@ export default function PeriodClosePage() {
         setSkipped(r.posting.skipped);
         if (r.preview) {
           setOrdered(false);
+          setVoucherNumbers({});
           setPreview(r.preview);
         }
       },
@@ -222,6 +237,7 @@ export default function PeriodClosePage() {
             void previewQuery.refetch().then((r) => {
               if (r.data) {
                 setOrdered(false);
+                setVoucherNumbers({});
                 setPreview(r.data);
               }
             })
@@ -453,7 +469,7 @@ export default function PeriodClosePage() {
           全选启用结转类型
         </Button>
         <p style={{ color: 'var(--ant-color-text-secondary)' }}>
-          损益科目按本账套类别识别，转入科目由用户显式设置；自定义按末级科目余额比例转出。编辑、删除、启停已有来源的类型须先合法撤销来源凭证。
+          损益科目按本账套类别识别，转入科目由用户显式设置；自定义按所选余额或本期发生额及比例转出。编辑、删除、启停已有来源的类型须先合法撤销来源凭证。
         </p>
         <DataTable<TransferRule>
           tableId="period-close.rules"
@@ -523,6 +539,8 @@ export default function PeriodClosePage() {
           ]}
         />
       </Card>
+      <ExchangePanel key={`exchange-${period}`} period={period} />
+      <TransferBatchPanel period={period} ruleIds={ruleIds} disabled={busy} />
       {editing && (
         <RuleDrawer
           key={editing === 'new' ? 'new' : editing.id}
@@ -539,7 +557,16 @@ export default function PeriodClosePage() {
         cancelText="取消"
         onCancel={() => setPreview(null)}
         confirmLoading={generate.isPending}
-        okButtonProps={{ disabled: !ordered || !canGenerate }}
+        okButtonProps={{
+          disabled:
+            !ordered ||
+            !canGenerate ||
+            (preview?.numbering === 'manual' &&
+              preview.items.some(
+                (item) =>
+                  !item.zero && !item.existingVoucherId && !voucherNumbers[String(item.ruleId)],
+              )),
+        }}
         onOk={() =>
           preview &&
           generate.mutate({
@@ -547,6 +574,7 @@ export default function PeriodClosePage() {
             ruleIds: preview.items.map((i) => i.ruleId),
             previewToken: preview.previewToken,
             confirmed: ordered,
+            voucherNumbers,
           })
         }
       >
@@ -558,6 +586,26 @@ export default function PeriodClosePage() {
             title={`${item.order}. ${item.code} ${item.name}`}
             style={{ marginBottom: 8 }}
           >
+            {preview.numbering === 'manual' && !item.existingVoucherId && !item.zero && (
+              <label>
+                结转凭证号{' '}
+                <InputNumber
+                  aria-label={`结转凭证号 ${item.code}`}
+                  min={1}
+                  max={2147483647}
+                  precision={0}
+                  value={voucherNumbers[String(item.ruleId)]}
+                  onChange={(value) =>
+                    setVoucherNumbers((previous) => {
+                      const next = { ...previous };
+                      if (value == null) delete next[String(item.ruleId)];
+                      else next[String(item.ruleId)] = value;
+                      return next;
+                    })
+                  }
+                />
+              </label>
+            )}
             {item.cashflowChecks.length > 0 && (
               <div>
                 现金流方向：

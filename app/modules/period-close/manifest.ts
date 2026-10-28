@@ -15,5 +15,8 @@ export default defineManifest({
     { id: 'period-close.year-end', name: '年结' },
   ],
   menu: [{ group: 'period', title: '过账与结账', path: '/', permission: 'period-close.view' }],
-  sources: [{ type: 'closing', name: '月度结转', path: '/?source={id}' }],
+  sources: [
+    { type: 'closing', name: '月度结转', path: '/?source={id}' },
+    { type: 'exchange', name: '汇兑损益', path: '/?period={id}' },
+  ],
 });
