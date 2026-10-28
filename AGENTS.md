@@ -150,6 +150,7 @@ router 里的 `ctx.svc` 已经绑定当前账套、当前操作员和当前模�
 | `bookStore.cancelReplacement({bookId,replacementId})` / `cleanupExpiredReplacements()` | 取消及过期只清理本实例登记、身份未变化的 UUID 暂存；释放目录也清理未执行票据，不扫描孤立文件或删除保护副本。应用及回滚中拒绝取消；回滚不确定的隔离暂存保留，修复解封后再显式取消。`replacementStatus` 的 `stagingRetained/cleanupPending` 表示保留及清理故障；数据已验证后单纯清理失败仍为 `done`，不能误报成数据回滚 |
 | `useUnsavedChanges({title,dirty,version,save,discard})`（web-kit） | 按当前账套和标签注册；version 可选；save 完成须将已保存内容标为 dirty:false，保存期间的新编辑仍 dirty 则拒绝离开；新版本已 clean 可离开。关闭、关闭所有、同标签路由离开、切账及桌面原生关闭统一异步保存；浏览器 beforeunload 保留同步提醒 |
 | `useRequestActivity()` / `useSubmission()`（web-kit） | 请求超过300ms显示加载，并发/取消/失败归零；提交使用 `submit(async()=>...)` 合并重复点击；服务端继续执行完整校验 |
+| `MoneyInput draftText={cached?.text} onDraftStateChange={(s)=>...} resetKey={reloadVersion}`（ui） | 同步收到 `{text,valid:true,value:Cents\|null}` 或 `{text,valid:false,value:undefined,reason,message}`，卸载为 null（生命周期通知，重挂载时保留草稿缓存）；非法文本失焦不恢复旧数。父级按业务字段缓存原文，按钮、快捷键、Form onFinish 共用保存预检，当前字段任一 invalid 阻止请求；空值必填另验，零值不能用真假值回退。取消/重载清缓存并改变 resetKey，允许同数值重置草稿 |
 | `runtime.bookStore.create({...input,requestKey})` | 同一不透明请求编号在并发和重启后只建一套；内容或管理员口令不一致则拒绝，失败可用原编号重试；只存非口令内容摘要 |
 | `runtime.bookStore.listStrict()` | 内部复制收据/幂等发现使用：任一账套维护、损坏、身份异常或未能扫描即拒绝，不能略过后创建第二份；拿到列表后的逐账套收据读取仍须 `withBook`。普通 `list()` 保持界面容错行为 |
 | `mapTemplateScheme(template, scheme)` | 从模板原生级次逐段映射新账套科目编码，保留父链、备抵、余额性质及来源版本，不改写已有账套 |

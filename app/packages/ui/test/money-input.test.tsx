@@ -33,17 +33,20 @@ describe('MoneyInput', () => {
     expect(input).toHaveValue('1234.56');
   });
 
-  it('非法输入离开时恢复原值；不允许负数时忽略负数', async () => {
+  it('非法输入离开后保留并标错；不允许负数时不把它报告为合法数值', async () => {
     render(<Harness initial={500} allowNegative={false} />);
     const input = screen.getByLabelText('金额');
     await userEvent.clear(input);
     await userEvent.type(input, '-3');
     expect(screen.getByTestId('cents')).toHaveTextContent('null');
     await userEvent.click(screen.getByText('别处'));
-    expect(input).toHaveValue('');
+    expect(input).toHaveValue('-3');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    await userEvent.clear(input);
     await userEvent.type(input, 'abc');
     await userEvent.click(screen.getByText('别处'));
-    expect(input).toHaveValue('');
+    expect(input).toHaveValue('abc');
+    expect(screen.getByTestId('cents')).toHaveTextContent('null');
   });
 });
 
