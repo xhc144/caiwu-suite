@@ -31,7 +31,7 @@ import {
 import { notify, queryClient, usePermission } from '@caiwu/web-kit';
 import { DimensionTypeSchema, type DimensionInput } from '../shared';
 import { api } from './api';
-import { ExcelActions, refresh, run, useConfirm, useUnsaved } from './common';
+import { ExcelActions, refresh, run, useConfirm, useUnsaved, draftVersion } from './common';
 
 const directionLabels: Record<string, string> = {
   inflow: '流入',
@@ -212,6 +212,7 @@ function DimensionDrawer({
 }) {
   const [form] = Form.useForm<DimensionInput>();
   const [dirty, setDirty] = useState(false);
+  const version = draftVersion(Form.useWatch([], form));
   const isNew = item === 'new';
   const save = useMutation(api.dimensions.save.mutationOptions());
   const submit = async () => {
@@ -222,10 +223,15 @@ function DimensionDrawer({
     notify.success('档案已保存');
     onClose();
   };
-  const unsaved = useUnsaved(dirty, submit, () => {
-    form.resetFields();
-    setDirty(false);
-  });
+  const unsaved = useUnsaved(
+    dirty,
+    submit,
+    () => {
+      form.resetFields();
+      setDirty(false);
+    },
+    { title: '辅助档案', version },
+  );
   const defaults: DimensionInput = isNew
     ? {
         type,
@@ -267,7 +273,7 @@ function DimensionDrawer({
             </Button>
             <Button onClick={() => unsaved.guard(onClose)}>取消</Button>
             {canEdit && (
-              <Button type="primary" loading={save.isPending} onClick={() => run(submit())}>
+              <Button type="primary" loading={unsaved.isSaving} onClick={() => run(unsaved.save())}>
                 保存
               </Button>
             )}
@@ -279,7 +285,7 @@ function DimensionDrawer({
           layout="vertical"
           initialValues={defaults}
           onValuesChange={() => setDirty(true)}
-          disabled={!canEdit}
+          disabled={!canEdit || unsaved.isSaving}
         >
           <Row gutter={16}>
             <Col span={10}>
@@ -383,39 +389,54 @@ function SchemeDrawer({
   onClose: () => void;
 }) {
   const [form] = Form.useForm<{ scheme: string }>();
+  const [dirty, setDirty] = useState(false);
+  const version = draftVersion(Form.useWatch([], form));
   const save = useMutation(api.dimensions.setScheme.mutationOptions());
+  const submit = async () => {
+    const v = await form.validateFields();
+    await save.mutateAsync({ type, scheme: v.scheme.split('-').map(Number) });
+    setDirty(false);
+    await refresh();
+    onClose();
+  };
+  const unsaved = useUnsaved(
+    dirty,
+    submit,
+    () => {
+      form.resetFields();
+      setDirty(false);
+    },
+    { title: `${dimensionName(type)}分级规则`, version },
+  );
   return (
-    <Drawer
-      open
-      title="分级规则"
-      size={480}
-      onClose={onClose}
-      footer={
-        <Button
-          type="primary"
-          onClick={() =>
-            run(
-              (async () => {
-                const v = await form.validateFields();
-                await save.mutateAsync({ type, scheme: v.scheme.split('-').map(Number) });
-                await refresh();
-                onClose();
-              })(),
-            )
-          }
+    <>
+      <Drawer
+        open
+        title="分级规则"
+        size={480}
+        onClose={() => unsaved.guard(onClose)}
+        footer={
+          <Button type="primary" loading={unsaved.isSaving} onClick={() => run(unsaved.save())}>
+            保存规则
+          </Button>
+        }
+      >
+        <Typography.Paragraph>
+          每级长度用连字符分隔，最多5级，总长不超过10位。保存前将逐项验证现存编码和分类关系。
+        </Typography.Paragraph>
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ scheme: scheme.join('-') }}
+          disabled={unsaved.isSaving}
+          onValuesChange={() => setDirty(true)}
         >
-          保存规则
-        </Button>
-      }
-    >
-      <Typography.Paragraph>
-        每级长度用连字符分隔，最多5级，总长不超过10位。保存前将逐项验证现存编码和分类关系。
-      </Typography.Paragraph>
-      <Form form={form} layout="vertical" initialValues={{ scheme: scheme.join('-') }}>
-        <Form.Item name="scheme" label="每级长度" rules={[{ required: true }]}>
-          <Input placeholder="2-2-2-2-2" />
-        </Form.Item>
-      </Form>
-    </Drawer>
+          <Form.Item name="scheme" label="每级长度" rules={[{ required: true }]}>
+            <Input placeholder="2-2-2-2-2" />
+          </Form.Item>
+        </Form>
+      </Drawer>
+      {unsaved.dialog}
+    </>
   );
 }

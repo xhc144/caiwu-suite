@@ -257,7 +257,7 @@ export function printService(svc: CoreServices) {
     },
     async saveFormat(data: PrintTemplate, revision?: number) {
       const value = TemplateSchema.parse(data);
-      await svc.tx(async (t) => {
+      return svc.tx(async (t) => {
         const td = t.db.withTables<PrintSettingsTables>();
         const old = await td
           .selectFrom('print_settings_format')
@@ -292,8 +292,8 @@ export function printService(svc: CoreServices) {
           summary: `保存打印格式 ${value.code}`,
           targetId: value.code,
         });
+        return printService(t).formats();
       });
-      return self.formats();
     },
     async copyFormat(source: number, code: number, name: string) {
       const format = (await self.formats()).find((f) => f.code === source);

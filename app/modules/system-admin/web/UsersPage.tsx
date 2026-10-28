@@ -12,11 +12,19 @@ import {
   Typography,
 } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
-import { coreApi, queryClient, usePermission, useRequiredSession } from '@caiwu/web-kit';
+import { useMemo, useRef, useState } from 'react';
+import {
+  coreApi,
+  queryClient,
+  usePermission,
+  useRequiredSession,
+  useUnsavedChanges,
+  useSubmission,
+} from '@caiwu/web-kit';
 import { DataTable, FilterBar, PageContainer, useUrlFilters, type DataColumn } from '@caiwu/ui';
 import type { UserRow } from '../shared';
 import { api } from './api';
+import { flushSync } from 'react-dom';
 import { goToLogin } from './session';
 
 const EMPTY_PERMISSIONS: string[] = [];
@@ -127,6 +135,11 @@ function UserDrawer({
   const [form] = Form.useForm();
   const [confirm, holder] = useAdminConfirm();
   const [dirty, setDirty] = useState(false);
+  const version = useRef(0);
+  const markDirty = () => {
+    version.current++;
+    setDirty(true);
+  };
   const [permissions, setPermissions] = useState<string[] | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [permissionSearch, setPermissionSearch] = useState('');
@@ -137,6 +150,7 @@ function UserDrawer({
       { enabled: editing.mode === 'permissions' },
     ),
   );
+  const submission = useSubmission();
   const create = useMutation(api.users.create.mutationOptions());
   const update = useMutation(api.users.update.mutationOptions());
   const setGrant = useMutation(api.users.setPermissions.mutationOptions());
@@ -173,76 +187,92 @@ function UserDrawer({
       return;
     onClose();
   };
-  const submit = async () => {
-    if (busy || (mode === 'permissions' && (grant.isError || modules.isError))) return;
-    const v = await form.validateFields();
-    if (mode === 'new')
-      await create.mutateAsync({
-        code: v.code,
-        name: v.name,
-        password: v.password,
-        confirmPassword: v.confirmPassword,
-        isAdmin: v.isAdmin ?? false,
-        permissions: [],
-      });
-    else if (user) {
-      if (mode === 'edit') {
-        if (
-          v.disabled &&
-          !(await confirm({
-            title: `停用用户 ${user.code}`,
-            content: '该用户当前账套的全部旧会话将失效，凭证及日志引用保留。',
-            confirmText: user.code,
-          }))
-        )
-          return;
-        await update.mutateAsync({
-          id: user.id,
+  const submit = () =>
+    submission.submit(async () => {
+      if (busy || (mode === 'permissions' && (grant.isError || modules.isError))) return false;
+      const savingVersion = version.current;
+      const v = await form.validateFields();
+      if (mode === 'new')
+        await create.mutateAsync({
+          code: v.code,
           name: v.name,
-          disabled: v.disabled,
-          confirmCode: user.code,
-        });
-      }
-      if (mode === 'permissions') {
-        if (
-          !(await confirm({
-            title: `保存 ${user.code} 的权限`,
-            content:
-              '授权变更后该用户当前账套全部旧会话失效，请重新登录。未加载模块的历史权限会保留。',
-            confirmText: user.code,
-          }))
-        )
-          return;
-        await setGrant.mutateAsync({
-          id: user.id,
-          permissions: selected,
-          isAdmin: isAdmin ?? grant.data?.isAdmin ?? false,
-          confirmCode: user.code,
-        });
-      }
-      if (mode === 'reset') {
-        if (
-          !(await confirm({
-            title: `重置 ${user.code} 的密码`,
-            content: '将设置所填的新密码，当前账套全部旧会话失效。请安全告知本人新密码。',
-            confirmText: user.code,
-          }))
-        )
-          return;
-        await reset.mutateAsync({
-          id: user.id,
-          confirmCode: user.code,
           password: v.password,
           confirmPassword: v.confirmPassword,
+          isAdmin: v.isAdmin ?? false,
+          permissions: [],
         });
+      else if (user) {
+        if (mode === 'edit') {
+          if (
+            v.disabled &&
+            !(await confirm({
+              title: `停用用户 ${user.code}`,
+              content: '该用户当前账套的全部旧会话将失效，凭证及日志引用保留。',
+              confirmText: user.code,
+            }))
+          )
+            return false;
+          await update.mutateAsync({
+            id: user.id,
+            name: v.name,
+            disabled: v.disabled,
+            confirmCode: user.code,
+          });
+        }
+        if (mode === 'permissions') {
+          if (
+            !(await confirm({
+              title: `保存 ${user.code} 的权限`,
+              content:
+                '授权变更后该用户当前账套全部旧会话失效，请重新登录。未加载模块的历史权限会保留。',
+              confirmText: user.code,
+            }))
+          )
+            return false;
+          await setGrant.mutateAsync({
+            id: user.id,
+            permissions: selected,
+            isAdmin: isAdmin ?? grant.data?.isAdmin ?? false,
+            confirmCode: user.code,
+          });
+        }
+        if (mode === 'reset') {
+          if (
+            !(await confirm({
+              title: `重置 ${user.code} 的密码`,
+              content: '将设置所填的新密码，当前账套全部旧会话失效。请安全告知本人新密码。',
+              confirmText: user.code,
+            }))
+          )
+            return false;
+          await reset.mutateAsync({
+            id: user.id,
+            confirmCode: user.code,
+            password: v.password,
+            confirmPassword: v.confirmPassword,
+          });
+        }
+        if (user.id === s.user.id) {
+          flushSync(() => setDirty(false));
+          await goToLogin(s.bookId);
+          return true;
+        }
       }
-      if (user.id === s.user.id) {
-        await goToLogin(s.bookId);
-        return;
-      }
-    }
-    onSaved();
-  };
+      if (savingVersion !== version.current) return false;
+      setDirty(false);
+      onSaved();
+      return true;
+    });
+  useUnsavedChanges({
+    title: '用户管理',
+    dirty,
+    version: version.current,
+    save: submit,
+    discard: () => {
+      setDirty(false);
+      onClose();
+    },
+  });
   const title =
     mode === 'new'
       ? '新增用户'
@@ -263,7 +293,7 @@ function UserDrawer({
           <Button onClick={() => void close()}>取消</Button>
           <Button
             type="primary"
-            loading={busy}
+            loading={busy || submission.isSubmitting}
             disabled={
               mode === 'permissions' &&
               (!grant.data || !modules.data || grant.isError || modules.isError)
@@ -280,7 +310,8 @@ function UserDrawer({
         form={form}
         layout="vertical"
         initialValues={{ name: user?.name, disabled: user?.disabled ?? false, isAdmin: false }}
-        onValuesChange={() => setDirty(true)}
+        onValuesChange={markDirty}
+        disabled={busy || submission.isSubmitting}
         onFinish={() => void submit()}
       >
         {mode === 'new' && (
@@ -368,7 +399,7 @@ function UserDrawer({
               checked={isAdmin ?? grant.data?.isAdmin ?? false}
               onChange={(e) => {
                 setIsAdmin(e.target.checked);
-                setDirty(true);
+                markDirty();
               }}
             >
               管理员（全部功能）
@@ -377,7 +408,7 @@ function UserDrawer({
               <Button
                 onClick={() => {
                   setPermissions(loaded);
-                  setDirty(true);
+                  markDirty();
                 }}
               >
                 全选功能
@@ -385,7 +416,7 @@ function UserDrawer({
               <Button
                 onClick={() => {
                   setPermissions([]);
-                  setDirty(true);
+                  markDirty();
                 }}
               >
                 清空功能
@@ -416,7 +447,7 @@ function UserDrawer({
                     .map(String)
                     .filter((k) => loaded.includes(k)),
                 );
-                setDirty(true);
+                markDirty();
               }}
               treeData={treeData}
               filterTreeNode={(node) => !!keyword && matches.some((p) => p.id === node.key)}

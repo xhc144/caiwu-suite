@@ -11,6 +11,7 @@ import path from 'node:path';
 
 type IsolatedBook = {
   bookId: string;
+  dataDir: string;
   voucherId: number;
   token: string;
   request: APIRequestContext;
@@ -76,6 +77,7 @@ export const test = base.extend<{ isolated: IsolatedBook }>({
       );
       await use({
         bookId: book.info.id,
+        dataDir: book.dataDir,
         voucherId: voucher!.id,
         token: session.token,
         request,

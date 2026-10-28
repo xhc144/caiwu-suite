@@ -113,8 +113,10 @@ export type SummaryRow = Account & {
   yearStart: number;
   ytdDebit: number;
   ytdCredit: number;
-  fcBalance: number;
-  quantity: string;
+  fcBalance: number | null;
+  quantity: string | null;
+  foreignCurrencies: string[];
+  quantityUnits: string[];
   savedCount: number;
   children?: SummaryRow[];
 };
@@ -150,6 +152,8 @@ export function accountTree(accounts: Account[], rows: SavedRow[]): SummaryRow[]
       ytdDebit: exactSum(own.map((r) => r.ytdDebit)),
       ytdCredit: exactSum(own.map((r) => r.ytdCredit)),
       fcBalance: exactSum(own.map((r) => r.fcBalance)),
+      foreignCurrencies: [...new Set(own.flatMap((r) => (r.currency ? [r.currency] : [])))],
+      quantityUnits: a.quantityUnit ? [a.quantityUnit] : [],
       quantity: own.reduce((s, r) => s.add(r.quantity), new Decimal(0)).toFixed(),
       savedCount: own.length,
     });
@@ -158,9 +162,20 @@ export function accountTree(accounts: Account[], rows: SavedRow[]): SummaryRow[]
     const child = result.get(a.id)!;
     const parent = a.parentId == null ? undefined : result.get(a.parentId);
     if (!parent) continue;
-    for (const field of ['balance', 'yearStart', 'ytdDebit', 'ytdCredit', 'fcBalance'] as const)
+    for (const field of ['balance', 'yearStart', 'ytdDebit', 'ytdCredit'] as const)
       parent[field] = exactSum([parent[field], child[field]]);
-    parent.quantity = new Decimal(parent.quantity).add(child.quantity).toFixed();
+    parent.foreignCurrencies = [
+      ...new Set([...parent.foreignCurrencies, ...child.foreignCurrencies]),
+    ];
+    parent.quantityUnits = [...new Set([...parent.quantityUnits, ...child.quantityUnits])];
+    parent.fcBalance =
+      parent.foreignCurrencies.length > 1 || parent.fcBalance == null || child.fcBalance == null
+        ? null
+        : exactSum([parent.fcBalance, child.fcBalance]);
+    parent.quantity =
+      parent.quantityUnits.length > 1 || parent.quantity == null || child.quantity == null
+        ? null
+        : new Decimal(parent.quantity).add(child.quantity).toFixed();
     parent.savedCount += child.savedCount;
     (parent.children ??= []).unshift(child);
   }

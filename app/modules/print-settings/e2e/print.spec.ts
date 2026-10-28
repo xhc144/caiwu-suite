@@ -142,10 +142,46 @@ test('w_pz_prn_1 / w_print_zc：真实凭证与明细账实际 PDF 各一页；�
   await expect(page.getByTestId('page-count')).toHaveText('共 2 页');
   await actualPdf(page, context, 2);
   await page.getByLabel('屏幕缩放', { exact: true }).selectOption('50');
+  const preview = page.locator('iframe[title="当前打印页"]');
+  const half = await preview.boundingBox();
+  await page.getByLabel('屏幕缩放', { exact: true }).selectOption('200');
+  const double = await preview.boundingBox();
+  expect(double!.width / half!.width).toBeCloseTo(4, 2);
+  await page.getByLabel('显示毫米标尺', { exact: true }).check();
+  const horizontal = page.getByLabel('水平标尺（毫米）', { exact: true });
+  const vertical = page.getByLabel('垂直标尺（毫米）', { exact: true });
+  await expect(horizontal).toBeVisible();
+  await expect(vertical).toBeVisible();
+  expect((await horizontal.boundingBox())!.width).toBeCloseTo(double!.width, 0);
+  expect((await vertical.boundingBox())!.height).toBeCloseTo(double!.height, 0);
+  await page.getByLabel('屏幕缩放', { exact: true }).selectOption('custom');
+  const custom = page.getByLabel('自定义屏幕缩放百分比', { exact: true });
+  await custom.fill('0');
+  await page.getByRole('button', { name: '应用缩放', exact: true }).click();
+  await expect(page.getByText('缩放比例须为 10–400 的整数', { exact: true })).toBeVisible();
+  expect((await preview.boundingBox())!.width).toBeCloseTo(double!.width, 1);
+  await custom.fill('137');
+  await page.getByRole('button', { name: '应用缩放', exact: true }).click();
+  await expect(page.getByText('缩放比例须为 10–400 的整数', { exact: true })).toBeHidden();
+  expect((await preview.boundingBox())!.width / half!.width).toBeCloseTo(137 / 50, 2);
+  const previewShot = test.info().outputPath('preview-rulers.png');
+  await page.locator('section[aria-label="打印预览"]').screenshot({ path: previewShot });
+  await test
+    .info()
+    .attach('毫米标尺与137%屏幕缩放', { path: previewShot, contentType: 'image/png' });
+  await page.getByRole('button', { name: '适合宽度', exact: true }).click();
+  const fit = await preview.boundingBox();
+  expect(fit!.width).toBeGreaterThan(0);
+  expect(fit!.x + fit!.width).toBeLessThanOrEqual(page.viewportSize()?.width ?? 1280);
   await page.evaluate(() => {
     delete (window as unknown as { __printHtml?: string }).__printHtml;
   });
   await actualPdf(page, context, 2);
+  const outputHtml = await page.evaluate(
+    () => (window as unknown as { __printHtml: string }).__printHtml,
+  );
+  expect(outputHtml).not.toContain('水平标尺');
+  expect(outputHtml).not.toContain('137%');
   const stored = await callApi<Settings>(request, 'm.print-settings.settings', undefined, {
     token: book.token,
     method: 'GET',

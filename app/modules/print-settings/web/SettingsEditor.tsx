@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { App, Button, Space, Tabs } from 'antd';
 import { useMutation } from '@tanstack/react-query';
-import { queryClient, notify } from '@caiwu/web-kit';
+import { queryClient, notify, useHotkey, useSubmission, useUnsavedChanges } from '@caiwu/web-kit';
 import { defaultSettings, SettingsSchema, type Settings } from '../shared';
 import { api } from './api';
+import { continueAfterEdit, type UnsavedChoice } from './unsaved';
 export default function SettingsEditor({
   settings,
   onClose,
@@ -12,16 +13,89 @@ export default function SettingsEditor({
   onClose: () => void;
 }) {
   const [value, setValue] = useState(settings);
+  const [original, setOriginal] = useState(JSON.stringify(settings));
+  const current = useRef(value),
+    saved = useRef(original);
+  current.current = value;
+  saved.current = original;
+  const version = JSON.stringify(value);
+  const dirty = version !== original;
+  const { submit, isSubmitting } = useSubmission();
   const { modal } = App.useApp();
   const save = useMutation(
     api.saveSettings.mutationOptions({
       onSuccess: () => {
         notify.success('打印设置已保存并立即生效');
         void queryClient.invalidateQueries({ queryKey: api.settings.queryKey() });
-        onClose();
       },
     }),
   );
+  const persist = () =>
+    submit(async () => {
+      const snapshot = current.current;
+      const parsed = SettingsSchema.safeParse(snapshot);
+      if (!parsed.success) {
+        notify.error(parsed.error.issues[0]?.message ?? '设置无效');
+        return false;
+      }
+      const stored = await save.mutateAsync(parsed.data);
+      const serialized = JSON.stringify(stored);
+      saved.current = serialized;
+      setOriginal(serialized);
+      return JSON.stringify(current.current) === JSON.stringify(snapshot);
+    });
+  useUnsavedChanges({
+    title: '打印格式设置',
+    dirty,
+    version,
+    save: persist,
+    discard: async () => {
+      await submit(async () => true);
+      setValue(JSON.parse(saved.current) as Settings);
+    },
+  });
+  const close = () => {
+    if (isSubmitting) return;
+    void continueAfterEdit(
+      dirty,
+      () =>
+        new Promise<UnsavedChoice>((resolve) => {
+          let choice: UnsavedChoice = 'cancel';
+          const dialog = modal.confirm({
+            title: '打印设置尚未保存',
+            content: '保存修改后关闭，或放弃修改；取消会保留输入。',
+            okText: '保存并继续',
+            cancelText: '取消',
+            onOk: () => {
+              choice = 'save';
+            },
+            afterClose: () => resolve(choice),
+            footer: (_, { OkBtn, CancelBtn }) => (
+              <Space>
+                <Button
+                  danger
+                  onClick={() => {
+                    choice = 'discard';
+                    dialog.destroy();
+                  }}
+                >
+                  放弃修改
+                </Button>
+                <CancelBtn />
+                <OkBtn />
+              </Space>
+            ),
+          });
+        }),
+      persist,
+      onClose,
+    ).catch(() => {
+      /* 保存失败保留输入。 */
+    });
+  };
+  useHotkey('Ctrl+S', () => {
+    void persist().catch(() => {});
+  });
   const fields = (kind: 'voucher' | 'ledger') => {
     const s = value[kind];
     const change = (key: string, v: unknown) =>
@@ -148,14 +222,13 @@ export default function SettingsEditor({
       <Space>
         <Button
           type="primary"
-          loading={save.isPending}
+          loading={isSubmitting}
           onClick={() => {
-            const parsed = SettingsSchema.safeParse(value);
-            if (!parsed.success) {
-              notify.error(parsed.error.issues[0]?.message ?? '设置无效');
-              return;
-            }
-            save.mutate(parsed.data);
+            void persist()
+              .then((complete) => {
+                if (complete) onClose();
+              })
+              .catch(() => {});
           }}
         >
           保存设置
@@ -171,7 +244,9 @@ export default function SettingsEditor({
         >
           恢复默认
         </Button>
-        <Button onClick={onClose}>关闭设置</Button>
+        <Button disabled={isSubmitting} onClick={close}>
+          关闭设置
+        </Button>
       </Space>
     </>
   );

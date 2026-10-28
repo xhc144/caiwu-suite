@@ -326,9 +326,17 @@ test('w_xt_ye：Ctrl+F4/F5取消退出，原生刷新保留草稿，明确放弃
   await drawer.getByLabel('年初余额（本位币）', { exact: true }).fill('1.23');
   for (const shortcut of ['Control+F4', 'F5']) {
     await page.keyboard.press(shortcut);
-    const dialog = page.getByRole('dialog', { name: '有未保存修改', exact: true });
+    const dialog = page.getByRole('dialog', {
+      name: shortcut === 'Control+F4' ? '有未保存内容' : '有未保存修改',
+      exact: true,
+    });
     await expect(dialog).toBeVisible();
-    await dialog.getByRole('button', { name: '取消退出', exact: true }).click();
+    await dialog
+      .getByRole('button', {
+        name: shortcut === 'Control+F4' ? /取\s*消/ : '取消退出',
+        exact: true,
+      })
+      .click();
     await expect(drawer.getByLabel('年初余额（本位币）', { exact: true })).toHaveValue('1.23');
   }
   page.once('dialog', (dialog) => void dialog.accept());

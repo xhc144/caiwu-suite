@@ -18,6 +18,60 @@ import {
 } from '@caiwu/print';
 import { notify, showError, useHotkey, usePermission } from '@caiwu/web-kit';
 import { api } from './api';
+const PX_PER_MM = 96 / 25.4;
+const ZOOMS = [25, 50, 75, 100, 125, 150, 200];
+
+function Ruler({
+  length,
+  zoom,
+  vertical = false,
+}: {
+  length: number;
+  zoom: number;
+  vertical?: boolean;
+}) {
+  const pixels = (length * PX_PER_MM * zoom) / 100;
+  const size = 24;
+  return (
+    <svg
+      aria-label={vertical ? '垂直标尺（毫米）' : '水平标尺（毫米）'}
+      width={vertical ? size : pixels}
+      height={vertical ? pixels : size}
+      style={{
+        position: 'absolute',
+        top: vertical ? size : 0,
+        left: vertical ? 0 : size,
+        background: '#f8fafc',
+      }}
+    >
+      {Array.from({ length: Math.floor(length) + 1 }, (_, mm) => {
+        const p = (mm * PX_PER_MM * zoom) / 100;
+        const tick = mm % 10 === 0 ? 10 : mm % 5 === 0 ? 6 : 3;
+        return (
+          <g key={mm}>
+            <line
+              x1={vertical ? size - tick : p}
+              y1={vertical ? p : size - tick}
+              x2={vertical ? size : p}
+              y2={vertical ? p : size}
+              stroke="#64748b"
+            />
+            {mm % 10 === 0 && (
+              <text
+                x={vertical ? 1 : p + 2}
+                y={vertical ? p + 10 : 11}
+                fontSize={10}
+                fill="#334155"
+              >
+                {mm}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 export default function Preview({
   view,
   kind,
@@ -31,6 +85,10 @@ export default function Preview({
 }) {
   const [page, setPage] = useState(1),
     [zoom, setZoom] = useState(75),
+    [customZoom, setCustomZoom] = useState(false),
+    [zoomDraft, setZoomDraft] = useState('75'),
+    [zoomError, setZoomError] = useState(false),
+    [rulers, setRulers] = useState(false),
     [range, setRange] = useState(''),
     [scope, setScope] = useState('all'),
     [busy, setBusy] = useState(false),
@@ -43,7 +101,8 @@ export default function Preview({
     } | null>(null),
     [layoutError, setLayoutError] = useState<string | null>(null);
   const lock = useRef(false),
-    abort = useRef<AbortController | null>(null);
+    abort = useRef<AbortController | null>(null),
+    viewport = useRef<HTMLDivElement | null>(null);
   useEffect(() => () => abort.current?.abort(), []);
   const { modal } = App.useApp();
   const canExport = usePermission('print-settings.export');
@@ -156,6 +215,14 @@ export default function Preview({
   useHotkey('PageDown', () => setPage(Math.min(current + 1, view.pages.length)));
   useHotkey('PageUp', () => setPage(Math.max(current - 1, 1)));
   const doc = renderPrintDocument(viewToPrintJob(view, [current]));
+  const applyZoom = () => {
+    const value = Number(zoomDraft);
+    const valid = zoomDraft.trim() !== '' && Number.isInteger(value) && value >= 10 && value <= 400;
+    setZoomError(!valid);
+    if (valid) setZoom(value);
+  };
+  const pageWidth = (g.width * PX_PER_MM * zoom) / 100;
+  const pageHeight = (g.height * PX_PER_MM * zoom) / 100;
   return (
     <section aria-label="打印预览">
       {layoutError && <Alert type="error" title={layoutError} />}
@@ -203,23 +270,66 @@ export default function Preview({
           屏幕缩放
           <select
             aria-label="屏幕缩放"
-            value={zoom}
-            onChange={(e) => setZoom(Number(e.target.value))}
+            value={customZoom || !ZOOMS.includes(zoom) ? 'custom' : String(zoom)}
+            onChange={(e) => {
+              setCustomZoom(e.target.value === 'custom');
+              setZoomError(false);
+              if (e.target.value !== 'custom') {
+                setZoom(Number(e.target.value));
+                setZoomDraft(e.target.value);
+              } else setZoomDraft(String(zoom));
+            }}
           >
-            {[25, 50, 75, 100, 125, 150].map((n) => (
+            {ZOOMS.map((n) => (
               <option key={n} value={n}>
                 {n}%
               </option>
             ))}
+            <option value="custom">自定义</option>
           </select>
         </label>
+        {(customZoom || !ZOOMS.includes(zoom)) && (
+          <>
+            <label>
+              自定义缩放（%）
+              <input
+                aria-label="自定义屏幕缩放百分比"
+                type="number"
+                min={10}
+                max={400}
+                step={1}
+                value={zoomDraft}
+                style={{ width: 76 }}
+                onChange={(e) => setZoomDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') applyZoom();
+                }}
+              />
+            </label>
+            <Button onClick={applyZoom}>应用缩放</Button>
+            {zoomError && <span role="alert">缩放比例须为 10–400 的整数</span>}
+          </>
+        )}
         <Button
-          onClick={() =>
-            setZoom(Math.min(100, Math.floor(((window.innerWidth - 340) / (g.width * 3.78)) * 100)))
-          }
+          onClick={() => {
+            const available =
+              (viewport.current?.clientWidth ?? window.innerWidth) - 32 - (rulers ? 24 : 0);
+            const value = Math.max(
+              10,
+              Math.min(400, Math.floor((available / (g.width * PX_PER_MM)) * 100)),
+            );
+            setZoom(value);
+            setZoomDraft(String(value));
+            setCustomZoom(!ZOOMS.includes(value));
+            setZoomError(false);
+          }}
         >
           适合宽度
         </Button>
+        <label>
+          <input type="checkbox" checked={rulers} onChange={(e) => setRulers(e.target.checked)} />
+          显示毫米标尺
+        </label>
         <label>
           打印范围
           <select
@@ -324,14 +434,24 @@ export default function Preview({
           <Button onClick={onClose}>关闭预览</Button>
         )}
       </Space>
-      <div style={{ overflow: 'auto', background: '#d9dfe7', padding: 16, maxHeight: '70vh' }}>
+      <div
+        ref={viewport}
+        style={{ overflow: 'auto', background: '#d9dfe7', padding: 16, maxHeight: '70vh' }}
+      >
         <div
           style={{
-            width: (g.width * 3.78 * zoom) / 100,
-            height: (g.height * 3.78 * zoom) / 100,
+            width: pageWidth + (rulers ? 24 : 0),
+            height: pageHeight + (rulers ? 24 : 0),
             margin: 'auto',
+            position: 'relative',
           }}
         >
+          {rulers && (
+            <>
+              <Ruler length={g.width} zoom={zoom} />
+              <Ruler length={g.height} zoom={zoom} vertical />
+            </>
+          )}
           <iframe
             onLoad={(event) => {
               const frame = event.currentTarget;
@@ -358,6 +478,9 @@ export default function Preview({
               height: `${g.height}mm`,
               transform: `scale(${zoom / 100})`,
               transformOrigin: 'top left',
+              position: 'absolute',
+              left: rulers ? 24 : 0,
+              top: rulers ? 24 : 0,
             }}
           />
         </div>

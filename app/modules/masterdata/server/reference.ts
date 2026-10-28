@@ -361,6 +361,13 @@ export function referenceService(svc: CoreServices) {
           .values({ currency_code: currency, account_id: accountId })
           .onConflict((o) => o.column('currency_code').doUpdateSet({ account_id: accountId }))
           .execute();
+        await tsvc.log.write({
+          action: 'masterdata.exchangeRate.save',
+          summary: `保存 ${currency} ${period} 期间汇率`,
+          targetType: 'exchange_rate',
+          targetId: `${currency}:${period}`,
+          detail: { currency, period, rate: new Decimal(rate).toFixed(), accountId },
+        });
       });
     },
   };

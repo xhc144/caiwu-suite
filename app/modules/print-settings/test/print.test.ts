@@ -270,6 +270,18 @@ describe('特殊格式原版规则', () => {
       .catch((e) => e);
     expect(e.cause).toBeInstanceOf(BusinessError);
     expect(e.cause.data.message).toContain('格式数据');
+    const logs = await app.svc.log.list();
+    await expect(app.call(server).saveFormat({ data: { ...format, code: 2 } })).rejects.toThrow(
+      '格式数据',
+    );
+    const rows = await app.svc.db
+      .withTables<{ print_settings_format: { code: number } }>()
+      .selectFrom('print_settings_format')
+      .select('code')
+      .orderBy('code')
+      .execute();
+    expect(rows).toEqual([{ code: 1 }]);
+    expect(await app.svc.log.list()).toEqual(logs);
   });
 });
 
