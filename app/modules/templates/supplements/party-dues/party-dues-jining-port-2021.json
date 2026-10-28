@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 1,
+  "id": "party-dues-jining-port-2021",
+  "version": "1.0.0",
+  "name": "党费专账（济宁港航2021参考口径，应用编码）",
+  "regime": "party-dues-jining-port-2021",
+  "description": "据济航〔2021〕30号第六至八、十三项整理，2021年4月30日起适用于该中心文件所列单位的党费专账。14个一级科目及4项党费支出明细；原文未规定科目编号、余额方向或辅助维度，编码和方向为应用映射，项目辅助用于区分普通和指定用途资金，暂付款往来对象使用统一partner档案。地方口径，不作全国党组织的默认制度；不是行政事业单位政府会计双体系或代管账。未复刻a46原始科目；未附三张专门报表、资产卡片或专属年末结转流程；新建后不自动修改已有账套。",
+  "order": 125,
+  "status": "deprecated",
+  "devOnly": false,
+  "codeScheme": "3-2-2",
+  "categories": [
+    { "id": "asset", "name": "资产类", "direction": "debit", "isPnl": false },
+    { "id": "liability", "name": "负债类", "direction": "credit", "isPnl": false },
+    { "id": "net-assets", "name": "净资产类", "direction": "credit", "isPnl": false },
+    { "id": "revenue", "name": "收入类", "direction": "credit", "isPnl": false },
+    { "id": "expense", "name": "支出类", "direction": "debit", "isPnl": false }
+  ],
+  "accounts": [
+    {
+      "code": "101",
+      "name": "现金",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "cash": true,
+      "source": "济航〔2021〕30号第八项：名称；编码、借方方向及现金标志为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "102",
+      "name": "银行存款",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "bank": true,
+      "source": "济航〔2021〕30号第八项：名称；中组发〔2008〕3号第二十四条：独立账户。编码、借方方向及银行标志为应用映射，未虚构实际银行或账号。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "103",
+      "name": "有价证券",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "source": "济航〔2021〕30号第八项：名称；中组发〔2008〕3号第二十四条禁止购买国债以外的投资。编码及借方方向为应用映射，科目存在不代表批准任何投资。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "104",
+      "name": "暂付款",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "partner": true,
+      "dimensions": [
+        { "type": "project", "required": true },
+        { "type": "partner", "required": true }
+      ],
+      "source": "济航〔2021〕30号第八项：名称；第六项（四）指定用途资金单独反映。编码、借方方向、必填项目及统一往来对象partner均为应用映射；单位与个人择一登记为往来对象，不强制同时填写单位和个人。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "106",
+      "name": "固定资产",
+      "category": "asset",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "source": "济航〔2021〕30号第八项：名称；编码及借方方向为应用映射，未预置折旧、资产卡片或资产确认标准。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "301",
+      "name": "固定基金",
+      "category": "net-assets",
+      "direction": "credit",
+      "balanceNature": "credit",
+      "closingRule": "none",
+      "source": "济航〔2021〕30号第八项：名称；编码及贷方方向为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "303",
+      "name": "党费结余",
+      "category": "net-assets",
+      "direction": "credit",
+      "balanceNature": "both",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：名称；第六项（四）指定用途资金单独反映。编码、默认贷方显示、双向余额及必填项目为应用映射；不套用企业本年利润结转。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "401",
+      "name": "党费收入",
+      "category": "revenue",
+      "direction": "credit",
+      "balanceNature": "credit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：名称；第六项（四）资金单独反映。编码、贷方方向及必填项目为应用映射；不预设党员名单或留存比例。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "402",
+      "name": "上级补助收入",
+      "category": "revenue",
+      "direction": "credit",
+      "balanceNature": "credit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：名称；第六项（四）指定用途资金单独反映。编码、贷方方向及必填项目为应用映射；用不同项目分别记录普通拨款及每笔指定用途资金。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "403",
+      "name": "党费利息收入",
+      "category": "revenue",
+      "direction": "credit",
+      "balanceNature": "credit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：名称；中组发〔2008〕3号第二十四条党费利息属于党费收入。编码、贷方方向及必填项目为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "404",
+      "name": "其它收入",
+      "category": "revenue",
+      "direction": "credit",
+      "balanceNature": "credit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：原文名称为其它收入；第六项（四）资金单独反映。编码、贷方方向及必填项目为应用映射，不凭科目名称扩张收入范围。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "501",
+      "name": "党费支出",
+      "category": "expense",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：名称及括号内四项明细；第六项（四）资金单独反映。编码、借方方向及必填项目为应用映射；必须在末级明细制证。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "50101",
+      "name": "党员培训费",
+      "category": "expense",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项党费支出括号内第一项；编码、借方方向及必填项目为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "50102",
+      "name": "党员教育费",
+      "category": "expense",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项党费支出括号内第二项；编码、借方方向及必填项目为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "50103",
+      "name": "党内表彰费",
+      "category": "expense",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项党费支出括号内第三项；编码、借方方向及必填项目为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "50104",
+      "name": "生活困难党员补助费",
+      "category": "expense",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项党费支出括号内第四项；编码、借方方向及必填项目为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "502",
+      "name": "补助下级支出",
+      "category": "expense",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：名称；第六项（四）指定用途资金单独反映。编码、借方方向及必填项目为应用映射。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    },
+    {
+      "code": "503",
+      "name": "上缴党费支出",
+      "category": "expense",
+      "direction": "debit",
+      "balanceNature": "debit",
+      "closingRule": "none",
+      "dimensions": [{ "type": "project", "required": true }],
+      "source": "济航〔2021〕30号第八项：名称；第六项（四）资金单独反映。编码、借方方向及必填项目为应用映射；不预设上缴比例或上级单位。",
+      "sourceVersion": "济航〔2021〕30号；应用预置1.0.0"
+    }
+  ],
+  "voucherTypes": [{ "code": "记", "name": "记账凭证" }],
+  "currencies": [],
+  "sources": [
+    {
+      "title": "济宁市港航事业发展中心党费会计核算办法（济航〔2021〕30号）",
+      "file": "https://www.jining.gov.cn/art/2021/4/30/art_59679_2722747.html",
+      "note": "官方发布机关全文；第六项（一）（三）（四）（五）为人民币、收付实现制、指定用途单独反映、借贷记账法；第七至八项列类别、14个一级科目名称及4项支出明细，未列编号或方向；第十三项自2021年4月30日发布日起施行，限该中心文件所列单位。页面有效性、失效日期栏为空，不能据此断言持续有效。2026-10-28核读。"
+    },
+    {
+      "title": "关于中国共产党党费收缴、使用和管理的规定（中组发〔2008〕3号）",
+      "file": "https://news.12371.cn/2016/08/25/ARTI1472088836873972.shtml",
+      "note": "共产党员网刊载原文；第二十三至二十四条为财务分工、参照行政单位会计制度、独立银行账户、利息及投资限制；第三十二条从2008年4月1日施行。未规定全国统一的党费科目编码或完整科目表。本预置不将该转引视为1998行政制度至今有效的依据。"
+    }
+  ],
+  "reports": []
+}
