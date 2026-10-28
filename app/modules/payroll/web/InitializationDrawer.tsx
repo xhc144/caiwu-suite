@@ -138,7 +138,12 @@ export default function InitializationDrawer() {
               />
             </Form.Item>
             {preview.error && <Alert type="error" title={preview.error.message} />}
-            <Button htmlType="submit" loading={preview.isPending} disabled={!password || locked}>
+            <Button
+              aria-label="预览初始化影响"
+              htmlType="submit"
+              loading={preview.isPending}
+              disabled={!password || locked}
+            >
               预览初始化影响
             </Button>
           </Form>
