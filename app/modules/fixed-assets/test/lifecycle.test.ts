@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import fc from 'fast-check';
 import { sql } from '@caiwu/db';
 import { createTestApp, type TestApp } from '@caiwu/testkit';
 import server from '../server';
@@ -65,6 +66,13 @@ async function voucher(id: number) {
 async function report(cutoff: string, kind: 'list' | 'distribution' | 'ledger' = 'list') {
   return api.reports({ kind, cutoff, year: 2026 });
 }
+async function recalculate(filter: { id?: number } = {}) {
+  const p = await api.recalculationPreview(filter);
+  return api.recalculate({ filter, token: p.token, confirm: true });
+}
+const assetDb = () => app.svc.db.withTables<FixedAssetsTables>();
+const recalculationRecords = () =>
+  assetDb().selectFrom('fixed_assets_recalculation').selectAll().orderBy('id').execute();
 
 describe('w_zc_zcgl / zc_zcbdb：按日期转移资产', () => {
   it('已审核的以前月份保留；新月份按转后部门用途状态计提，历史截止日按原部门取数', async () => {
@@ -233,7 +241,7 @@ describe('w_zc_zcgl.ue_action_zjjs：历史累计折旧重算', () => {
     await expect(api.recalculationPreview({ id })).rejects.toThrow();
     expect(await api.detail({ id })).toEqual(before);
   });
-  it('按使用次月重建期初和已有月份，手算差额、尾差、累计月数及撤回恢复原快照', async () => {
+  it('R1 重建期初和月份→零差额 R2→逆序撤回 R2/R1，恢复 700 元和原月记录且版本递增', async () => {
     const rows = [
       {
         row: 2,
@@ -252,6 +260,7 @@ describe('w_zc_zcgl.ue_action_zjjs：历史累计折旧重算', () => {
     await run(202601);
     await run(202602);
     const before = await api.detail({ id });
+    const linesBefore = await assetDb().selectFrom('fixed_assets_line').selectAll().execute();
     const preview = await api.recalculationPreview({});
     expect(preview.rows[0]).toMatchObject({ opening: 110000, after: 130000, afterMonths: 13 });
     expect(preview.totalDifference).toBe(130000 - before.card.depreciation);
@@ -264,13 +273,259 @@ describe('w_zc_zcgl.ue_action_zjjs：历史累计折旧重算', () => {
       depreciation: 130000,
       months: 13,
     });
+    const secondPreview = await api.recalculationPreview({});
+    expect(secondPreview.totalDifference).toBe(0);
+    const second = await api.recalculate({
+      filter: {},
+      token: secondPreview.token,
+      confirm: true,
+    });
+    const immutable = (await recalculationRecords()).map((r) => [r.before_json, r.after_json]);
+    expect(await api.recalculations()).toMatchObject([
+      { id: second, canUndo: true },
+      { id: recalc, canUndo: false },
+    ]);
+    await expect(api.undoRecalculation({ id: recalc, confirm: true })).rejects.toThrow('后续');
+    await api.undoRecalculation({ id: second, confirm: true });
+    expect((await api.detail({ id })).card).toMatchObject({
+      revision: before.card.revision + 3,
+      depreciation: 130000,
+    });
+    expect(await api.recalculations()).toMatchObject([
+      { id: second, undone: 1, canUndo: false },
+      { id: recalc, canUndo: true },
+    ]);
     await api.undoRecalculation({ id: recalc, confirm: true });
     expect((await api.detail({ id })).card).toMatchObject({
+      revision: before.card.revision + 4,
       depreciation: before.card.depreciation,
       months: before.card.months,
       opening_depreciation: 50000,
     });
-    expect((await api.recalculations())[0]?.undone).toBe(1);
+    expect(await assetDb().selectFrom('fixed_assets_line').selectAll().execute()).toEqual(
+      linesBefore,
+    );
+    expect((await recalculationRecords()).map((r) => [r.before_json, r.after_json])).toEqual(
+      immutable,
+    );
+    expect((await api.recalculations()).map((r) => r.undone)).toEqual([1, 1]);
+  });
+  it('跨资产、部分重叠和三级零差额链只推进各资产最近的未撤回前驱', async () => {
+    const a = await api.save({ data });
+    const b = await api.save({ data: { ...data, code: 'OTHER' } });
+    await run(202602);
+    const original = await api.list({});
+    const first = await recalculate();
+    const second = await recalculate({ id: b });
+    const third = await recalculate({ id: b });
+    const independent = await recalculate({ id: a });
+    await api.undoRecalculation({ id: independent, confirm: true });
+    await expect(api.undoRecalculation({ id: first, confirm: true })).rejects.toThrow('后续');
+    await expect(api.undoRecalculation({ id: second, confirm: true })).rejects.toThrow('后续');
+    await api.undoRecalculation({ id: third, confirm: true });
+    // A new zero-difference calculation after a successful undo must also link.
+    const fourth = await recalculate({ id: b });
+    await api.undoRecalculation({ id: fourth, confirm: true });
+    await api.undoRecalculation({ id: second, confirm: true });
+    await api.undoRecalculation({ id: first, confirm: true });
+    expect((await api.list({})).map((c) => [c.id, c.depreciation, c.months])).toEqual(
+      original.map((c) => [c.id, c.depreciation, c.months]),
+    );
+    expect((await api.detail({ id: a })).card.revision).toBe(6);
+    expect((await api.detail({ id: b })).card.revision).toBe(10);
+  });
+  it('任意资产范围的重算链逆序撤回保持原累计数和月记录，版本精确增加两次每个参与批次', async () => {
+    const a = await api.save({ data });
+    const b = await api.save({ data: { ...data, code: 'PROPERTY' } });
+    await run(202602);
+    const lines = await assetDb().selectFrom('fixed_assets_line').selectAll().execute();
+    await fc.assert(
+      fc.asyncProperty(
+        fc.array(fc.constantFrom(0, a, b), { minLength: 1, maxLength: 8 }),
+        async (scopes) => {
+          const original = await assetDb().selectFrom('fixed_assets_card').selectAll().execute();
+          const chain = [];
+          for (const scope of scopes) chain.push(await recalculate(scope ? { id: scope } : {}));
+          for (const id of chain.reverse()) await api.undoRecalculation({ id, confirm: true });
+          for (const card of original) {
+            const count = scopes.filter((id) => id === 0 || id === card.id).length;
+            expect((await api.detail({ id: card.id })).card).toEqual({
+              ...card,
+              revision: card.revision + 2 * count,
+            });
+          }
+          expect(await assetDb().selectFrom('fixed_assets_line').selectAll().execute()).toEqual(
+            lines,
+          );
+        },
+      ),
+      { numRuns: 15 },
+    );
+  });
+  it('旧格式未撤回快照继续完整校验，撤回后继时不改写原始快照或回退版本', async () => {
+    const id = await api.save({ data });
+    await run(202602);
+    const first = await recalculate({ id });
+    const second = await recalculate({ id });
+    // Emulate records produced before the additive migration, without a guard.
+    for (const record of await recalculationRecords()) {
+      const oldFormat = (json: string) => {
+        const state = JSON.parse(json) as { cards: unknown[]; lines: unknown[] };
+        return JSON.stringify({ cards: state.cards, lines: state.lines });
+      };
+      await assetDb()
+        .updateTable('fixed_assets_recalculation')
+        .set({
+          before_json: oldFormat(record.before_json),
+          after_json: oldFormat(record.after_json),
+          undo_guard_json: null,
+        })
+        .where('id', '=', record.id)
+        .execute();
+    }
+    await api.undoRecalculation({ id: second, confirm: true });
+    await api.undoRecalculation({ id: first, confirm: true });
+    expect((await api.detail({ id })).card.revision).toBe(6);
+  });
+  it.each(['between', 'after'] as const)(
+    '外部同值保存发生于 %s 时仍拒绝 R1，不会把相同金额或版本差当作重算链',
+    async (when) => {
+      const id = await api.save({ data });
+      await run(202602);
+      const first = await recalculate({ id });
+      const externalSave = async () =>
+        api.saveListEdits({
+          rows: [
+            {
+              id,
+              revision: (await api.detail({ id })).card.revision,
+              changes: { name: data.name },
+            },
+          ],
+        });
+      if (when === 'between') await externalSave();
+      const second = await recalculate({ id });
+      await api.undoRecalculation({ id: second, confirm: true });
+      if (when === 'after') await externalSave();
+      const current = await api.detail({ id });
+      const records = await recalculationRecords();
+      await expect(api.undoRecalculation({ id: first, confirm: true })).rejects.toThrow('后续');
+      expect(await api.detail({ id })).toEqual(current);
+      expect(await recalculationRecords()).toEqual(records);
+    },
+  );
+  it.each(['card', 'line'] as const)(
+    '外部直接更改 %s 内容而不递增版本时也拒绝，拒绝不写数据',
+    async (target) => {
+      const id = await api.save({ data });
+      await run(202602);
+      const first = await recalculate({ id });
+      const second = await recalculate({ id });
+      await api.undoRecalculation({ id: second, confirm: true });
+      // Synthetic external-writer fixtures; production mutations never use this path.
+      if (target === 'card')
+        await assetDb()
+          .updateTable('fixed_assets_card')
+          .set({ name: '外部修改' })
+          .where('id', '=', id)
+          .execute();
+      else
+        await assetDb()
+          .updateTable('fixed_assets_line')
+          .set({ amount: 9999 })
+          .where('asset_id', '=', id)
+          .execute();
+      const current = await api.detail({ id });
+      const records = await recalculationRecords();
+      const lines = await assetDb().selectFrom('fixed_assets_line').selectAll().execute();
+      await expect(api.undoRecalculation({ id: first, confirm: true })).rejects.toThrow('后续');
+      expect(await api.detail({ id })).toEqual(current);
+      expect(await recalculationRecords()).toEqual(records);
+      expect(await assetDb().selectFrom('fixed_assets_line').selectAll().execute()).toEqual(lines);
+    },
+  );
+  it('工作量后续业务不改卡片版本，R2 撤回也不能追认该变更为 R1 的正常链', async () => {
+    const id = await api.save({ data: { ...data, method: '2', totalWork: '100' } });
+    const first = await recalculate({ id });
+    const revision = (await api.detail({ id })).card.revision;
+    await api.setWork({ id, period: 202602, quantity: '10' });
+    expect((await api.detail({ id })).card.revision).toBe(revision);
+    const second = await recalculate({ id });
+    await api.undoRecalculation({ id: second, confirm: true });
+    await expect(api.undoRecalculation({ id: first, confirm: true })).rejects.toThrow('后续');
+    expect(await assetDb().selectFrom('fixed_assets_work').selectAll().execute()).toMatchObject([
+      { asset_id: id, quantity_e6: 10000000 },
+    ]);
+  });
+  it('R2 撤回后来源的待审核、审核和过账锁仍生效，正常删除来源后 R1 可撤回', async () => {
+    const id = await api.save({ data });
+    const batch = await run(202602);
+    const first = await recalculate({ id });
+    const second = await recalculate({ id });
+    await api.undoRecalculation({ id: second, confirm: true });
+    const v = await voucher(batch);
+    const records = await recalculationRecords();
+    const current = await api.detail({ id });
+    for (const status of ['pending', 'audited', 'posted'] as const) {
+      if (status !== 'pending') await app.svc.vouchers.changeStatus({ ids: [v.id], to: status });
+      await expect(api.undoRecalculation({ id: first, confirm: true })).rejects.toThrow('已生成');
+      expect((await app.svc.vouchers.get(v.id))?.status).toBe(status);
+      expect(await api.detail({ id })).toEqual(current);
+      expect(await recalculationRecords()).toEqual(records);
+    }
+    await app.svc.vouchers.changeStatus({ ids: [v.id], to: 'audited' });
+    await app.svc.vouchers.changeStatus({ ids: [v.id], to: 'pending' });
+    const deletion = await api.voucherDeletePreview({ id: batch });
+    await api.deleteVoucher({
+      id: batch,
+      confirm: true,
+      expectedVoucherId: v.id,
+      voucherDeletion: deletion.voucherDeletion ?? undefined,
+    });
+    await api.undoRecalculation({ id: first, confirm: true });
+    expect((await api.detail({ id })).card.depreciation).toBe(10000);
+  });
+  it('关闭启用月、受影响月或锁定期初时，R2 撤回后的 R1 仍拒绝并保留整批数据', async () => {
+    const id = await api.save({ data: { ...data, method: '2', totalWork: '100' } });
+    await api.setWork({ id, period: 202602, quantity: '0' });
+    await run(202602);
+    const first = await recalculate({ id });
+    const second = await recalculate({ id });
+    await api.undoRecalculation({ id: second, confirm: true });
+    const current = await api.detail({ id });
+    const records = await recalculationRecords();
+    for (const period of [202601, 202602]) {
+      await app.svc.periods.setStatus(period, 'closed');
+      await expect(api.undoRecalculation({ id: first, confirm: true })).rejects.toThrow();
+      expect(await api.detail({ id })).toEqual(current);
+      expect(await recalculationRecords()).toEqual(records);
+      await app.svc.periods.setStatus(period, 'open');
+    }
+    await app.svcFor('opening').settings.set('lock.2026', true);
+    await expect(api.undoRecalculation({ id: first, confirm: true })).rejects.toThrow();
+    expect(await api.detail({ id })).toEqual(current);
+    expect(await recalculationRecords()).toEqual(records);
+  });
+  it('前驱校验快照已推进后发生故障，卡片、月记录、校验快照和撤回标记同事务回滚', async () => {
+    const id = await api.save({ data });
+    await run(202602);
+    const first = await recalculate({ id });
+    const second = await recalculate({ id });
+    const current = await api.detail({ id });
+    const lines = await assetDb().selectFrom('fixed_assets_line').selectAll().execute();
+    const records = await recalculationRecords();
+    await sql`CREATE TRIGGER fixed_assets_test_undo BEFORE UPDATE OF undone ON fixed_assets_recalculation BEGIN SELECT RAISE(ABORT,'synthetic undo finalization failure'); END`.execute(
+      assetDb(),
+    );
+    await expect(api.undoRecalculation({ id: second, confirm: true })).rejects.toThrow(
+      'synthetic undo finalization failure',
+    );
+    expect(await api.detail({ id })).toEqual(current);
+    expect(await assetDb().selectFrom('fixed_assets_line').selectAll().execute()).toEqual(lines);
+    expect(await recalculationRecords()).toEqual(records);
+    await sql`DROP TRIGGER fixed_assets_test_undo`.execute(assetDb());
+    await api.undoRecalculation({ id: second, confirm: true });
+    await api.undoRecalculation({ id: first, confirm: true });
   });
   it('过期预览、后续业务、关闭期间及审核来源均保护现存数据', async () => {
     const id = await api.save({ data });

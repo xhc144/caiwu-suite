@@ -29,7 +29,7 @@ export default function RecalculationDrawer({
       <Alert
         type="warning"
         title="将重建当前筛选资产的期初累计折旧及已有月记录，保存前请核对逐项差额。"
-        description="平均年限法从使用次月算至启用前月，并按现存折旧月份、原值调整、转移状态继续计算。工作量法按已录累计及每月工作量计算。启用前没有逐月状态记录时沿用最早可还原状态。关闭期间或已有来源凭证须先按正常流程逆序处理。成功后保留原数快照，可在后续业务开始前撤回。"
+        description="平均年限法从使用次月算至启用前月，并按现存折旧月份、原值调整、转移状态继续计算。工作量法按已录累计及每月工作量计算。启用前没有逐月状态记录时沿用最早可还原状态。关闭期间或已有来源凭证须先按正常流程逆序处理。成功后保留原数快照，多次重算请从最后一次逆序撤回；其他后续变更会阻止撤回。"
       />
       {preview.error && <Alert type="error" title={preview.error.message} />}
       <DataTable
@@ -81,13 +81,18 @@ export default function RecalculationDrawer({
         columns={[
           { key: 'date', title: '重算时间', dataIndex: 'created_at', width: 200 },
           { key: 'operator', title: '操作员', dataIndex: 'operator' },
-          { key: 'status', title: '状态', render: (_, r) => (r.undone ? '已撤回' : '已保存') },
+          {
+            key: 'status',
+            title: '状态',
+            render: (_, r) => (r.undone ? '已撤回' : r.canUndo ? '可撤回' : r.undoBlockReason),
+          },
           {
             key: 'action',
             title: '操作',
             noExport: true,
             render: (_, r) =>
-              !r.undone && (
+              !r.undone &&
+              r.canUndo && (
                 <Confirm
                   danger
                   title="确认恢复此批重算前的累计数和月记录？后续变更会阻止撤回。"

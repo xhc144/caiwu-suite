@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { Decimal, assertCents, periodEndDate, periodOfDate } from '@caiwu/core';
+import { BusinessError, Decimal, assertCents, periodEndDate, periodOfDate } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { Selectable } from '@caiwu/db';
 import type { CardFilterInput } from '../shared';
@@ -9,30 +9,106 @@ import { allocationAt } from './transfers';
 
 type Card = Selectable<FixedAssetsTables['fixed_assets_card']>;
 type Line = Selectable<FixedAssetsTables['fixed_assets_line']>;
-type Snapshot = { cards: Card[]; lines: Line[] };
+type Snapshot = { cards: Card[]; lines: Line[]; context?: Record<string, string> };
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const monthIndex = (period: number) => Math.floor(period / 100) * 12 + (period % 100);
+const subset = (state: Snapshot, ids: number[]): Snapshot => ({
+  cards: state.cards.filter((c) => ids.includes(c.id)),
+  lines: state.lines.filter((l) => ids.includes(l.asset_id)),
+  ...(state.context && {
+    context: Object.fromEntries(ids.map((id) => [id, state.context![id]!])),
+  }),
+});
+// Older records contain only cards and lines. Keep their original exact comparison.
+const matches = (current: Snapshot, expected: Snapshot) =>
+  digest(expected.context ? current : { cards: current.cards, lines: current.lines }) ===
+  digest(expected);
 
 export function recalculationService(svc: CoreServices) {
   const db = svc.db.withTables<FixedAssetsTables>();
-  const snapshot = async (ids: number[]): Promise<Snapshot> => ({
-    cards: ids.length
-      ? await db
+  const snapshot = async (ids: number[]): Promise<Snapshot> => {
+    if (!ids.length) return { cards: [], lines: [], context: {} };
+    const [cards, lines, work, adjustments, transfers, accessories, batches, masters] =
+      await Promise.all([
+        db
           .selectFrom('fixed_assets_card')
           .selectAll()
           .where('id', 'in', ids)
           .orderBy('id')
-          .execute()
-      : [],
-    lines: ids.length
-      ? await db
+          .execute(),
+        db
           .selectFrom('fixed_assets_line')
           .selectAll()
           .where('asset_id', 'in', ids)
           .orderBy('id')
-          .execute()
-      : [],
-  });
+          .execute(),
+        db
+          .selectFrom('fixed_assets_work')
+          .selectAll()
+          .where('asset_id', 'in', ids)
+          .orderBy('asset_id')
+          .orderBy('period')
+          .execute(),
+        db
+          .selectFrom('fixed_assets_adjustment')
+          .selectAll()
+          .where('asset_id', 'in', ids)
+          .orderBy('id')
+          .execute(),
+        db
+          .selectFrom('fixed_assets_transfer')
+          .selectAll()
+          .where('asset_id', 'in', ids)
+          .orderBy('id')
+          .execute(),
+        db
+          .selectFrom('fixed_assets_accessory')
+          .selectAll()
+          .where('asset_id', 'in', ids)
+          .orderBy('id')
+          .execute(),
+        db
+          .selectFrom('fixed_assets_line as l')
+          .innerJoin('fixed_assets_batch as b', 'b.id', 'l.batch_id')
+          .select(['l.asset_id', 'b.id', 'b.period', 'b.created_at'])
+          .where('l.asset_id', 'in', ids)
+          .orderBy('b.id')
+          .orderBy('l.asset_id')
+          .execute(),
+        db.selectFrom('fixed_assets_master').selectAll().orderBy('id').execute(),
+      ]);
+    return {
+      cards,
+      lines,
+      context: Object.fromEntries(
+        cards.map((c) => {
+          const assetTransfers = transfers.filter((t) => t.asset_id === c.id);
+          const masterIds = new Set([
+            c.category_id,
+            c.purpose_id,
+            c.status_id,
+            ...assetTransfers.flatMap((t) => [
+              t.from_purpose_id,
+              t.to_purpose_id,
+              t.from_status_id,
+              t.to_status_id,
+            ]),
+          ]);
+          return [
+            c.id,
+            digest({
+              work: work.filter((w) => w.asset_id === c.id),
+              adjustments: adjustments.filter((a) => a.asset_id === c.id),
+              transfers: assetTransfers,
+              accessories: accessories.filter((a) => a.asset_id === c.id),
+              batches: batches.filter((b) => b.asset_id === c.id),
+              masters: masters.filter((m) => masterIds.has(m.id)),
+            }),
+          ];
+        }),
+      ),
+    };
+  };
   const writable = async (cards: Card[], lines: Line[]) => {
     const assets = assetService(svc);
     const start = (await svc.book.info()).startPeriod;
@@ -255,6 +331,7 @@ export function recalculationService(svc: CoreServices) {
           .values({
             before_json: JSON.stringify(p.before),
             after_json: JSON.stringify(current),
+            undo_guard_json: JSON.stringify(current),
             operator: ts.ctx.user.name,
             created_at: ts.ctx.now().toISOString(),
             undone: 0,
@@ -267,11 +344,40 @@ export function recalculationService(svc: CoreServices) {
     },
     async list() {
       svc.permissions.require('fixed-assets.view');
-      return db
+      const records = await db
         .selectFrom('fixed_assets_recalculation')
-        .select(['id', 'operator', 'created_at', 'undone'])
+        .selectAll()
         .orderBy('id', 'desc')
         .execute();
+      const guards = records.map((r) => JSON.parse(r.undo_guard_json ?? r.after_json) as Snapshot);
+      const current = await snapshot([...new Set(guards.flatMap((s) => s.cards.map((c) => c.id)))]);
+      return Promise.all(
+        records.map(async (r, i) => {
+          const state = subset(
+            current,
+            guards[i]!.cards.map((c) => c.id),
+          );
+          let undoBlockReason: string | null = r.undone ? '已撤回' : null;
+          if (!r.undone) {
+            if (!matches(state, guards[i]!)) undoBlockReason = '已有后续变更，请先逆序处理';
+            else
+              try {
+                await writable(state.cards, state.lines);
+              } catch (error) {
+                if (!(error instanceof BusinessError)) throw error;
+                undoBlockReason = error.message;
+              }
+          }
+          return {
+            id: r.id,
+            operator: r.operator,
+            created_at: r.created_at,
+            undone: r.undone,
+            canUndo: undoBlockReason === null,
+            undoBlockReason,
+          };
+        }),
+      );
     },
     async undo(id: number, confirm: boolean) {
       svc.permissions.require('fixed-assets.depreciate');
@@ -285,13 +391,52 @@ export function recalculationService(svc: CoreServices) {
           .executeTakeFirst();
         if (!r || r.undone) fail('RECALCULATION_MISSING', '重算记录不存在或已经撤回');
         const before = JSON.parse(r.before_json) as Snapshot,
-          after = JSON.parse(r.after_json) as Snapshot;
+          after = JSON.parse(r.undo_guard_json ?? r.after_json) as Snapshot;
         const service = recalculationService(ts),
           ids = after.cards.map((c) => c.id);
-        if (digest(await service.snapshot(ids)) !== digest(after))
+        const current = await service.snapshot(ids);
+        if (!matches(current, after))
           fail('REVERSE_ORDER', '重算后已有其他资产业务，不能覆盖后续变更', '请先逆序撤销后续业务');
-        await service.writable(after.cards, after.lines);
+        await service.writable(current.cards, current.lines);
         await service.write(before);
+        const restored = await service.snapshot(ids);
+        // Advance only the nearest live predecessor for each asset, and only if
+        // its entire expected state (including revision) is this operation's input.
+        // Original before/after snapshots stay immutable; no revision is rewound.
+        const predecessors = await tdb
+          .selectFrom('fixed_assets_recalculation')
+          .selectAll()
+          .where('id', '<', id)
+          .where('undone', '=', 0)
+          .orderBy('id', 'desc')
+          .execute();
+        const pending = new Set(ids);
+        for (const predecessor of predecessors) {
+          const guard = JSON.parse(
+            predecessor.undo_guard_json ?? predecessor.after_json,
+          ) as Snapshot;
+          const linked = guard.cards.filter((c) => pending.has(c.id)).map((c) => c.id);
+          let changed = false;
+          for (const assetId of linked) {
+            pending.delete(assetId);
+            if (!matches(subset(before, [assetId]), subset(guard, [assetId]))) continue;
+            guard.cards = guard.cards.map((c) =>
+              c.id === assetId ? restored.cards.find((c) => c.id === assetId)! : c,
+            );
+            guard.lines = [
+              ...guard.lines.filter((l) => l.asset_id !== assetId),
+              ...restored.lines.filter((l) => l.asset_id === assetId),
+            ].sort((a, b) => a.id - b.id);
+            if (guard.context) guard.context[assetId] = restored.context![assetId]!;
+            changed = true;
+          }
+          if (changed)
+            await tdb
+              .updateTable('fixed_assets_recalculation')
+              .set({ undo_guard_json: JSON.stringify(guard) })
+              .where('id', '=', predecessor.id)
+              .execute();
+        }
         await tdb
           .updateTable('fixed_assets_recalculation')
           .set({ undone: 1 })

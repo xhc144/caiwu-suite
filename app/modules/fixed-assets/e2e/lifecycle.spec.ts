@@ -210,7 +210,7 @@ test('w_zc_zcgl：浏览器办理完整转移、历史取数、独立卡片打�
   });
 });
 
-test('w_zc_zcgl.ue_action_zjjs：浏览器核对重算差额、保存和撤回恢复原数', async ({
+test('w_zc_zcgl.ue_action_zjjs：浏览器 R1→零差额 R2→逆序撤回，刷新后恢复 700 元', async ({
   page,
   request,
 }) => {
@@ -235,6 +235,7 @@ test('w_zc_zcgl.ue_action_zjjs：浏览器核对重算差额、保存和撤回�
   const id = (await p.get<{ id: number }[]>('list', {}))[0]!.id;
   await p.run(202601);
   await p.run(202602);
+  const original = await p.get<{ card: { revision: number; months: number } }>('detail', { id });
   await page.goto('/m/fixed-assets/cards');
   await page.getByRole('button', { name: '累计折旧重算', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: '按使用日期重算累计折旧', exact: true });
@@ -249,7 +250,45 @@ test('w_zc_zcgl.ue_action_zjjs：浏览器核对重算差额、保存和撤回�
       p.get<{ card: { depreciation: number } }>('detail', { id }).then((x) => x.card.depreciation),
     )
     .toBe(130000);
-  await dialog.getByRole('button', { name: '撤回重算', exact: true }).click();
+  const first = (await p.get<{ id: number }[]>('recalculations'))[0]!.id;
+  await dialog.getByRole('button', { name: '重新预览', exact: true }).click();
+  await expect(dialog.getByText('累计折旧差额合计：0.00 元', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: '确认重算并保存', exact: true }).click();
+  await page
+    .locator('.ant-popconfirm:visible')
+    .getByRole('button', { name: '确认', exact: true })
+    .click();
+  await expect.poll(async () => (await p.get<unknown[]>('recalculations')).length).toBe(2);
+  const second = (await p.get<{ id: number }[]>('recalculations'))[0]!.id;
+  const firstRow = dialog
+    .locator(`tr[data-row-key="${first}"]`)
+    .filter({ hasText: '已有后续变更' });
+  await expect(firstRow).toBeVisible();
+  await expect(firstRow.getByRole('button', { name: '撤回重算', exact: true })).toHaveCount(0);
+  await expect(p.post('undoRecalculation', { id: first, confirm: true })).rejects.toThrow('后续');
+  await dialog
+    .locator(`tr[data-row-key="${second}"]`)
+    .filter({ hasText: '可撤回' })
+    .getByRole('button', { name: '撤回重算', exact: true })
+    .click();
+  await page
+    .locator('.ant-popconfirm:visible')
+    .getByRole('button', { name: '确认', exact: true })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        (await p.get<{ card: { revision: number; depreciation: number } }>('detail', { id })).card,
+    )
+    .toMatchObject({ revision: original.card.revision + 3, depreciation: 130000 });
+  // The predecessor's eligibility is persisted, not held only in React state.
+  await page.reload();
+  await page.getByRole('button', { name: '累计折旧重算', exact: true }).click();
+  await dialog
+    .locator(`tr[data-row-key="${first}"]`)
+    .filter({ hasText: '可撤回' })
+    .getByRole('button', { name: '撤回重算', exact: true })
+    .click();
   await page
     .locator('.ant-popconfirm:visible')
     .getByRole('button', { name: '确认', exact: true })
@@ -261,6 +300,45 @@ test('w_zc_zcgl.ue_action_zjjs：浏览器核对重算差额、保存和撤回�
         .then((x) => [x.card.depreciation, x.card.opening_depreciation]),
     )
     .toEqual([70000, 50000]);
+  expect(
+    (await p.get<{ card: { revision: number; months: number } }>('detail', { id })).card,
+  ).toMatchObject({ revision: original.card.revision + 4, months: original.card.months });
+});
+
+test('w_zc_zcgl.ue_action_zjjs：R2 撤回后的外部同值保存仍阻止 R1，页面显示原因且没有撤回入口', async ({
+  page,
+  request,
+}) => {
+  const { token } = await loginWithNewBook(page, request, { product: 'minfei' });
+  const p = await prepare(request, token);
+  const id = await p.post<number>('save', { data: p.data });
+  await p.run(202602);
+  const recalculate = async () => {
+    const preview = await p.get<{ token: string }>('recalculationPreview', { id });
+    return p.post<number>('recalculate', { filter: { id }, token: preview.token, confirm: true });
+  };
+  const first = await recalculate();
+  const second = await recalculate();
+  await p.post('undoRecalculation', { id: second, confirm: true });
+  const before = await p.get<{ card: { revision: number; depreciation: number } }>('detail', {
+    id,
+  });
+  await p.post('saveListEdits', {
+    rows: [{ id, revision: before.card.revision, changes: { name: p.data.name } }],
+  });
+  await expect(p.post('undoRecalculation', { id: first, confirm: true })).rejects.toThrow('后续');
+  expect(
+    (await p.get<{ card: { revision: number; depreciation: number } }>('detail', { id })).card,
+  ).toMatchObject({ revision: before.card.revision + 1, depreciation: before.card.depreciation });
+  await page.goto('/m/fixed-assets/cards');
+  await page.getByRole('button', { name: '累计折旧重算', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '按使用日期重算累计折旧', exact: true });
+  await expect(dialog.getByText('已有后续变更，请先逆序处理', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: '撤回重算', exact: true })).toHaveCount(0);
+  expect(await p.get('recalculations')).toMatchObject([
+    { id: second, undone: 1, canUndo: false },
+    { id: first, undone: 0, canUndo: false },
+  ]);
 });
 
 resetTest(

@@ -100,6 +100,10 @@ UPDATE fixed_assets_transfer SET
     id: '0005_foreign_amount',
     sql: `ALTER TABLE fixed_assets_card ADD COLUMN foreign_original_e6 INTEGER NOT NULL DEFAULT 0;`,
   },
+  {
+    id: '0006_recalculation_undo_guard',
+    sql: `ALTER TABLE fixed_assets_recalculation ADD COLUMN undo_guard_json TEXT;`,
+  },
 ]);
 export type CardRow = {
   id: Generated<number>;
@@ -167,6 +171,7 @@ export type FixedAssetsTables = {
     id: Generated<number>;
     before_json: string;
     after_json: string;
+    undo_guard_json: string | null;
     operator: string;
     created_at: string;
     undone: number;
