@@ -102,7 +102,7 @@ export const DepreciationConfirm = z.object({
 export const queryFields = {
   code: { label: '编码', type: 'text' },
   name: { label: '名称', type: 'text' },
-  amount: { label: '折旧额（整数分）', type: 'number' },
+  amount: { label: '折旧额（元）', type: 'number' },
   useDate: { label: '使用日期', type: 'date' },
 } as const;
 export const queryOperators = { eq: '等于', contains: '含有', gt: '大于', lt: '小于' } as const;
@@ -174,8 +174,12 @@ export const ReportSchema = z.object({
   year: z.number().int().min(1900).max(9999),
   cutoff: zDate,
   includeEarlier: z.boolean().default(false),
-  fromCode: z.string().default(''),
-  toCode: z.string().default(''),
+  fromCode: z.string().max(40).default(''),
+  toCode: z.string().max(40).default(''),
+  labelRange: z.enum(['all', 'serial']).default('all'),
+  fromSerial: z.number().int().positive('起始序号必须为正整数').default(1),
+  toSerial: z.number().int().positive('截止序号必须为正整数').default(1),
+  labelColor: z.enum(['monochrome', 'color']).default('monochrome'),
   measure: z.enum(['original', 'net', 'depreciation']).default('original'),
   departmentLevel: z.enum(['detail', 'top']).default('detail'),
   categoryLevel: z.enum(['detail', 'top']).default('detail'),

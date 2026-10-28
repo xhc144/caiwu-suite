@@ -115,8 +115,8 @@ test('w_zjgl_cx：两条件交集、增删编辑、清除恢复、重载、Excel
   await select(page, '条件 1 操作符', '含有');
   await page.getByLabel('条件 1 值', { exact: true }).fill('服务器');
   await page.getByRole('button', { name: '增加条件', exact: true }).click();
-  await select(page, '条件 2 字段', '折旧额（整数分）');
-  await page.getByLabel('条件 2 值', { exact: true }).fill('10000');
+  await select(page, '条件 2 字段', '折旧额（元）');
+  await page.getByLabel('条件 2 值', { exact: true }).fill('100');
   await page.getByLabel('起始月份', { exact: true }).fill('202602');
   await page.getByLabel('截止月份', { exact: true }).fill('202602');
   await page.getByRole('checkbox', { name: '显示零折旧', exact: true }).check();
@@ -162,15 +162,13 @@ test('w_zjgl_cx：两条件交集、增删编辑、清除恢复、重载、Excel
     const events = await printed.jsonValue();
     expect(events.every((e) => e.trusted)).toBe(true);
     expect(events[0]!.text).toContain('合计：100.00 元；共 1 条');
-    expect(events[0]!.text).toContain(
-      '全部同时满足：名称 含有 服务器；折旧额（整数分） 等于 10000',
-    );
+    expect(events[0]!.text).toContain('全部同时满足：名称 含有 服务器；折旧额（元） 等于 100.00');
     expect(events[0]!.text).not.toContain('服务器乙');
     if (label === '打印折旧明细') expect(events[0]!.text).toContain('A01');
     await printed.dispose();
   }
   await page.reload();
-  await expect(page.getByLabel('条件 2 值', { exact: true })).toHaveValue('10000');
+  await expect(page.getByLabel('条件 2 值', { exact: true })).toHaveValue('100.00');
   await expect(page.getByText('明细合计：100.00 元', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '清除筛选', exact: true }).click();
   await expect(page.getByLabel('条件 1 值', { exact: true })).toHaveCount(0);
@@ -179,7 +177,7 @@ test('w_zjgl_cx：两条件交集、增删编辑、清除恢复、重载、Excel
   await expect(page.getByRole('checkbox', { name: '显示零折旧', exact: true })).not.toBeChecked();
   await expect(page.getByText('明细合计：400.00 元', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: '恢复清除前筛选', exact: true }).click();
-  await expect(page.getByLabel('条件 2 值', { exact: true })).toHaveValue('10000');
+  await expect(page.getByLabel('条件 2 值', { exact: true })).toHaveValue('100.00');
   await expect(page.getByLabel('起始月份', { exact: true })).toHaveValue('202602');
   await expect(page.getByLabel('截止月份', { exact: true })).toHaveValue('202602');
   await expect(page.getByRole('checkbox', { name: '显示零折旧', exact: true })).toBeChecked();
@@ -209,7 +207,7 @@ test('w_zjgl_cx：旧单条件保留、类型操作符、错误条件及非法HT
   await expect(page.getByRole('button', { name: /导出 Excel$/ })).toHaveCount(0);
   await expect(page.getByRole('row', { name: /A02 服务器乙/ })).toHaveCount(0);
   await select(page, '条件 2 操作符', '含有');
-  await select(page, '条件 2 字段', '折旧额（整数分）');
+  await select(page, '条件 2 字段', '折旧额（元）');
   await page.getByLabel('条件 2 操作符', { exact: true }).click();
   await expect(
     page.locator('.ant-select-dropdown:visible').getByText('含有', { exact: true }),
@@ -217,7 +215,8 @@ test('w_zjgl_cx：旧单条件保留、类型操作符、错误条件及非法HT
   await page.keyboard.press('Escape');
   await page.getByLabel('条件 2 值', { exact: true }).fill('1.5');
   await page.getByRole('button', { name: '查询', exact: true }).click();
-  await expect(page.getByText('金额条件必须为整数分', { exact: true })).toBeVisible();
+  await expect(page.getByText('明细合计：0.00 元', { exact: true })).toBeVisible();
+  expect(new URL(page.url()).searchParams.get('conditions')).toContain('"value":"150"');
   await select(page, '条件 2 字段', '使用日期');
   await page.getByLabel('条件 2 值', { exact: true }).fill('2026-02-30');
   await page.getByRole('button', { name: '查询', exact: true }).click();
@@ -246,6 +245,7 @@ test('w_zjgl_cx：旧单条件保留、类型操作符、错误条件及非法HT
   for (const suffix of [
     '?field=unknown&op=eq&value=1',
     '?field=amount&op=contains&value=1',
+    '?field=amount&op=eq&value=1.5',
     '?conditions=%7B',
   ]) {
     await page.goto(`/m/fixed-assets/queries${suffix}`);

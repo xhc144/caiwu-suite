@@ -54,7 +54,7 @@ export function Confirm({
     </Popconfirm>
   );
 }
-export function EmptyError({ error }: { error: Error | null }) {
+export function EmptyError({ error }: { error: { message: string } | null }) {
   return error ? <Alert type="error" title={error.message} showIcon /> : null;
 }
 

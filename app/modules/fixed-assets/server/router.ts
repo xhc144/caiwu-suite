@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BusinessError, zCents, zDate, zId, zPeriod } from '@caiwu/core';
+import { BusinessError, zCents, zCode, zDate, zId, zPeriod } from '@caiwu/core';
 import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
@@ -17,6 +17,7 @@ import {
 } from '../shared';
 import { assetService } from './service';
 import { operations } from './operations';
+import { departmentService } from './departments';
 const m = moduleKit(manifest);
 const p = m.procedure.use(async ({ ctx, next }) => {
   if ((await ctx.svc.book.info()).product === 'qingsong')
@@ -31,6 +32,16 @@ const view = p.meta({ permission: 'fixed-assets.view' });
 const edit = p.meta({ permission: 'fixed-assets.edit' });
 const id = z.object({ id: zId });
 const confirmed = id.extend({ confirm: z.boolean() });
+const withVoucherDeletion = confirmed.extend({
+  expectedVoucherId: zId.nullable().optional(),
+  voucherDeletion: z
+    .object({
+      ids: z.array(zId).length(1),
+      expiresAt: z.number().int().positive(),
+      fingerprint: z.string().min(1),
+    })
+    .optional(),
+});
 export const fixedAssetsRouter = m.router({
   masters: view.query(({ ctx }) => assetService(ctx.svc).masters()),
   saveMaster: edit
@@ -40,8 +51,41 @@ export const fixedAssetsRouter = m.router({
     .input(confirmed)
     .mutation(({ ctx, input }) => assetService(ctx.svc).removeMaster(input.id, input.confirm)),
   createDepartment: edit
-    .input(z.object({ code: z.string().trim().min(1), name: z.string().trim().min(1) }))
+    .input(z.object({ code: zCode, name: z.string().trim().min(1).max(100) }))
     .mutation(({ ctx, input }) => assetService(ctx.svc).createDepartment(input.code, input.name)),
+  departments: view.query(({ ctx }) => departmentService(ctx.svc).list()),
+  saveDepartment: edit
+    .input(
+      z.object({
+        id: zId.optional(),
+        revision: z.number().int().positive().optional(),
+        code: zCode,
+        name: z.string().trim().min(1, '部门名称必填').max(100),
+        disabled: z.boolean().default(false),
+      }),
+    )
+    .mutation(({ ctx, input }) => departmentService(ctx.svc).save(input)),
+  setDepartmentDisabled: edit
+    .input(id.extend({ disabled: z.boolean(), revision: z.number().int().positive() }))
+    .mutation(({ ctx, input }) =>
+      departmentService(ctx.svc).setDisabled(input.id, input.disabled, input.revision),
+    ),
+  departmentDeletePreview: edit
+    .input(id)
+    .query(({ ctx, input }) => departmentService(ctx.svc).previewDelete(input.id)),
+  removeDepartment: edit
+    .input(
+      z.object({
+        plan: z.object({
+          id: zId,
+          revision: z.number().int().positive(),
+          expiresAt: z.number().int(),
+          fingerprint: z.string().min(1),
+        }),
+        confirm: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) => departmentService(ctx.svc).remove(input.plan, input.confirm)),
   list: view.input(CardFilter).query(({ ctx, input }) => assetService(ctx.svc).list(input)),
   detail: view.input(id).query(({ ctx, input }) => assetService(ctx.svc).detail(input.id)),
   save: edit
@@ -75,8 +119,15 @@ export const fixedAssetsRouter = m.router({
     .query(({ ctx, input }) => assetService(ctx.svc).cancelPreview(input.id)),
   cancel: p
     .meta({ permission: 'fixed-assets.cancel' })
-    .input(confirmed)
-    .mutation(({ ctx, input }) => assetService(ctx.svc).cancel(input.id, input.confirm)),
+    .input(withVoucherDeletion)
+    .mutation(({ ctx, input }) =>
+      assetService(ctx.svc).cancel(
+        input.id,
+        input.confirm,
+        input.voucherDeletion,
+        input.expectedVoucherId,
+      ),
+    ),
   getSettings: p
     .meta({ permission: 'fixed-assets.settings' })
     .query(({ ctx }) => assetService(ctx.svc).getSettings()),
@@ -94,10 +145,21 @@ export const fixedAssetsRouter = m.router({
     .mutation(({ ctx, input }) =>
       assetService(ctx.svc).generateVoucher(input.id, input.token, input.date),
     ),
+  voucherDeletePreview: p
+    .meta({ permission: 'fixed-assets.voucher' })
+    .input(id)
+    .query(({ ctx, input }) => assetService(ctx.svc).voucherDeletePreview(input.id)),
   deleteVoucher: p
     .meta({ permission: 'fixed-assets.voucher' })
-    .input(confirmed)
-    .mutation(({ ctx, input }) => assetService(ctx.svc).deleteVoucher(input.id, input.confirm)),
+    .input(withVoucherDeletion)
+    .mutation(({ ctx, input }) =>
+      assetService(ctx.svc).deleteVoucher(
+        input.id,
+        input.confirm,
+        input.voucherDeletion,
+        input.expectedVoucherId,
+      ),
+    ),
   adjust: edit
     .input(
       id.extend({
@@ -129,9 +191,19 @@ export const fixedAssetsRouter = m.router({
       }),
     )
     .mutation(({ ctx, input }) => operations(ctx.svc).dispose(input)),
+  undoDisposalPreview: edit
+    .input(id)
+    .query(({ ctx, input }) => operations(ctx.svc).undoDisposalPreview(input.id)),
   undoDisposal: edit
-    .input(confirmed)
-    .mutation(({ ctx, input }) => operations(ctx.svc).undoDisposal(input.id, input.confirm)),
+    .input(withVoucherDeletion)
+    .mutation(({ ctx, input }) =>
+      operations(ctx.svc).undoDisposal(
+        input.id,
+        input.confirm,
+        input.voucherDeletion,
+        input.expectedVoucherId,
+      ),
+    ),
   query: view.input(QuerySchema).query(({ ctx, input }) => operations(ctx.svc).query(input)),
   reports: view.input(ReportSchema).query(({ ctx, input }) => operations(ctx.svc).reports(input)),
   exportOpening: view.query(({ ctx }) => operations(ctx.svc).exportOpening()),

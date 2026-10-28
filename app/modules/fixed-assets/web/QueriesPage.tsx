@@ -2,7 +2,13 @@ import { useAssetFilters as useUrlFilters } from './common';
 import { useEffect, useMemo, useState } from 'react';
 import { skipToken, useQuery } from '@tanstack/react-query';
 import { Alert, Button, Checkbox, Form, Input, InputNumber, Select, Space } from 'antd';
-import { DataTable, DimensionSelect, PageContainer } from '@caiwu/ui';
+import {
+  DataTable,
+  DimensionSelect,
+  MoneyInput,
+  PageContainer,
+  type MoneyInputProps,
+} from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
 import { getBusinessError, notify, useRequiredSession } from '@caiwu/web-kit';
 import { printHtml } from '@caiwu/print';
@@ -18,6 +24,26 @@ import {
   validateQuery,
   type QueryDraft,
 } from './query-filters';
+export function QueryAmountInput({
+  value,
+  onChange,
+  ...props
+}: Omit<MoneyInputProps, 'value' | 'onChange'> & {
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
+  const cents =
+    value && /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null;
+  return (
+    <MoneyInput
+      {...props}
+      allowNegative={false}
+      value={cents}
+      onChange={(next) => onChange?.(next == null ? '' : String(next))}
+    />
+  );
+}
+
 export default function QueriesPage() {
   const year = Math.trunc(useRequiredSession().book.startPeriod / 100);
   const [f, setF] = useUrlFilters(queryUrlDefaults(year));
@@ -52,7 +78,7 @@ export default function QueriesPage() {
   const q = useQuery(api.query.queryOptions(parsed.input ?? skipToken, { meta: { silent: true } }));
   const cards = useQuery(api.list.queryOptions({ includeDisposed: true }));
   const queryError = q.error ? getBusinessError(q.error) : null;
-  const error =
+  const rawError =
     formError ??
     parsed.error ??
     (q.error
@@ -60,6 +86,7 @@ export default function QueriesPage() {
         ? queryError.message
         : '查询失败，请重试'
       : null);
+  const error = rawError?.replace('金额条件必须为整数分', '金额条件不正确，请按元重新输入');
   const result = !dirty && !error && !q.isFetching ? q.data : undefined;
   const conditionError = /^(第 \d+ 条条件：)(.*)$/.exec(error ?? '');
   const submit = (draft: QueryDraft) => {
@@ -189,18 +216,19 @@ export default function QueriesPage() {
                               />
                             </Form.Item>
                             <Form.Item name={[name, 'value']}>
-                              <Input
-                                aria-label={`条件 ${index + 1} 值`}
-                                inputMode={type === 'number' ? 'numeric' : 'text'}
-                                placeholder={
-                                  type === 'number'
-                                    ? '整数分，如 100 元填 10000'
-                                    : type === 'date'
-                                      ? 'YYYY-MM-DD'
-                                      : '请输入文字'
-                                }
-                                style={{ width: 240 }}
-                              />
+                              {type === 'number' ? (
+                                <QueryAmountInput
+                                  aria-label={`条件 ${index + 1} 值`}
+                                  placeholder="请输入金额（元）"
+                                  style={{ width: 240 }}
+                                />
+                              ) : (
+                                <Input
+                                  aria-label={`条件 ${index + 1} 值`}
+                                  placeholder={type === 'date' ? 'YYYY-MM-DD' : '请输入文字'}
+                                  style={{ width: 240 }}
+                                />
+                              )}
                             </Form.Item>
                           </Space>
                         );

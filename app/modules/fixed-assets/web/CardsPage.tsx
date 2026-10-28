@@ -1,5 +1,5 @@
 import { useAssetFilters as useUrlFilters } from './common';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import {
@@ -35,6 +35,7 @@ import type { CardInput } from '../shared';
 import { api, type Outputs } from './api';
 import { Confirm, MasterSelect, refresh } from './common';
 import CardOperations from './CardOperations';
+import { useAssetDraft } from './useAssetDraft';
 type Card = Outputs['list'][number];
 export default function CardsPage() {
   const navigate = useNavigate();
@@ -189,6 +190,7 @@ export default function CardsPage() {
       )}
       {operation && (
         <CardOperations
+          key={`${operation.id}-${operation.kind}`}
           id={operation.id}
           kind={operation.kind}
           onClose={() => setOperation(null)}
@@ -214,18 +216,31 @@ function CardEditor({
   const detail = useQuery({ ...api.detail.queryOptions({ id: id ?? 1 }), enabled: !!id });
   const masters = useQuery(api.masters.queryOptions());
   const [form] = Form.useForm<CardInput>();
-  const create = useMutation(
-    api.save.mutationOptions({
-      onSuccess: () => {
-        notify.success('资产卡片已保存');
-        void refresh();
-        onClose();
-      },
-    }),
-  );
+  const create = useMutation(api.save.mutationOptions());
+  const hydrated = useRef(false);
+  const persisted = useRef<{ id?: number; revision?: number }>({
+    id: copy ? undefined : id,
+  });
+  const draft = useAssetDraft({
+    title: copy ? '复制新增资产' : id ? '修改资产卡片' : '新增资产卡片',
+    discard: onClose,
+    save: async () => {
+      if (readOnly || (id && !hydrated.current)) return false;
+      const data = structuredClone(await form.validateFields());
+      const savedId = await create.mutateAsync({ ...persisted.current, data });
+      persisted.current = {
+        id: savedId,
+        revision: (persisted.current.revision ?? 0) + 1,
+      };
+      notify.success('资产卡片已保存');
+      void refresh();
+    },
+  });
   const d = detail.data;
   useEffect(() => {
-    if (!d) return;
+    if (!d || hydrated.current) return;
+    hydrated.current = true;
+    if (!copy) persisted.current = { id: d.card.id, revision: d.card.revision };
     const c = d.card;
     form.setFieldsValue({
       code: copy ? '' : c.code,
@@ -262,12 +277,11 @@ function CardEditor({
   }, [d, form, copy]);
   const method = Form.useWatch('method', form);
   const submit = async () => {
-    const data = await form.validateFields();
-    create.mutate({
-      id: copy ? undefined : id,
-      revision: copy ? undefined : d?.card.revision,
-      data,
-    });
+    try {
+      if (await draft.save()) onClose();
+    } catch {
+      // Validation and server failures retain the current form for correction or retry.
+    }
   };
   useHotkey('Ctrl+S', () => !readOnly && void submit());
   return (
@@ -276,13 +290,18 @@ function CardEditor({
         readOnly ? '查看资产卡片' : copy ? '复制新增资产' : id ? '修改资产卡片' : '新增资产卡片'
       }
       open
-      onClose={onClose}
+      onClose={() => draft.close(onClose)}
       size={850}
       footer={
         <Space>
-          <Button onClick={onClose}>取消</Button>
+          <Button onClick={() => draft.close(onClose)}>取消</Button>
           {!readOnly && (
-            <Button type="primary" loading={create.isPending} onClick={() => void submit()}>
+            <Button
+              type="primary"
+              loading={draft.saving}
+              disabled={!!id && !d}
+              onClick={() => void submit()}
+            >
               保存卡片
             </Button>
           )}
@@ -299,7 +318,8 @@ function CardEditor({
         name="fixed-assets-card"
         form={form}
         layout="vertical"
-        disabled={readOnly}
+        disabled={readOnly || (!!id && !d)}
+        onValuesChange={draft.changed}
         initialValues={{
           code: '',
           name: '',
@@ -365,7 +385,7 @@ function CardEditor({
           <Input type="date" />
         </Form.Item>
         <Form.Item name="original" label="原值（元）" rules={[{ required: true }]}>
-          <MoneyInput allowNegative={false} disabled={!!id && !copy} />
+          <MoneyInput allowNegative={false} disabled={!!persisted.current.id} />
         </Form.Item>
         <Form.Item name="rate" label="残值率（0 至 1）" rules={[{ required: true }]}>
           <Input />
@@ -377,7 +397,7 @@ function CardEditor({
           <Select
             options={[
               { value: '1', label: '平均年限法' },
-              { value: '2', label: '工作量法（原版方法码 2）' },
+              { value: '2', label: '工作量法' },
             ]}
           />
         </Form.Item>
@@ -399,7 +419,7 @@ function CardEditor({
         <Form.Item name="quantity" label="数量">
           <Input />
         </Form.Item>
-        {id && !copy && (
+        {persisted.current.id && (
           <Form.Item
             name="confirmCodeChange"
             valuePropName="checked"

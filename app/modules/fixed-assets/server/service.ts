@@ -26,6 +26,12 @@ import {
   type Settings,
 } from '../shared';
 import type { FixedAssetsTables } from './migrations';
+import { departmentService } from './departments';
+import {
+  deleteAssetVoucher,
+  previewAssetVoucherDeletion,
+  type AssetVoucherDeletionPlan,
+} from './voucher-deletion';
 
 export function fail(code: string, message: string, hint = '请检查输入后重试', to?: string): never {
   throw new BusinessError({
@@ -271,7 +277,7 @@ export function assetService(svc: CoreServices) {
         '从最后计提月逆序取消折旧',
       );
   };
-  const normalize = async (raw: CardInput, opening: boolean) => {
+  const normalize = async (raw: CardInput, opening: boolean, retainedDepartmentId?: number) => {
     const p = CardSchema.parse(raw);
     for (const [id, kind] of [
       [p.categoryId, 'category'],
@@ -280,7 +286,12 @@ export function assetService(svc: CoreServices) {
     ] as const)
       await master(id, kind);
     const dep = await svc.dimensions.get(p.departmentId);
-    if (!dep || dep.typeId !== 'department' || dep.disabled || !dep.isLeaf)
+    if (
+      !dep ||
+      dep.typeId !== 'department' ||
+      (dep.disabled && dep.id !== retainedDepartmentId) ||
+      !dep.isLeaf
+    )
       fail('DEPARTMENT', '请选择启用的末级部门', '请在基础档案新增部门', '/m/fixed-assets/masters');
     if (p.method === '1' && p.lifeMonths < 30 && !p.confirmShortLife)
       fail('SHORT_LIFE', `使用年限为 ${p.lifeMonths} 月，少于 30 月`, '复核单位为月后勾选确认');
@@ -311,6 +322,7 @@ export function assetService(svc: CoreServices) {
       fail('OPENING_EXHAUSTED', '期初工作量已用完，但折旧尚未提足', '请复核期初工作量、折旧和残值');
     const start = (await svc.book.info()).startPeriod;
     if (opening) {
+      await svc.periods.assertWritable({ period: start, mode: 'opening', action: '导入资产期初' });
       if (periodOfDate(p.useDate) > start) fail('OPENING_DATE', '期初卡片使用日期不能晚于开账月份');
     } else {
       if (periodOfDate(p.useDate) < start)
@@ -345,8 +357,8 @@ export function assetService(svc: CoreServices) {
     raw: CardInput,
     opts: { id?: number; revision?: number; opening?: boolean } = {},
   ) => {
-    const { p, residual } = await normalize(raw, opts.opening ?? false);
     const old = opts.id ? await assertUnlocked(opts.id) : null;
+    const { p, residual } = await normalize(raw, opts.opening ?? false, old?.department_id);
     if (!old && !opts.opening)
       await assertNoFuture(Math.max((await svc.book.info()).startPeriod, periodOfDate(p.useDate)));
     if (old) {
@@ -580,8 +592,7 @@ export function assetService(svc: CoreServices) {
       });
     },
     async createDepartment(code: string, name: string) {
-      requirePermission(svc, 'edit');
-      return svc.dimensions.create({ type: 'department', code, name });
+      return departmentService(svc).save({ code, name, disabled: false });
     },
     async list(raw: CardFilterInput = {}) {
       requirePermission(svc, 'view');
@@ -927,9 +938,19 @@ export function assetService(svc: CoreServices) {
           .select(['c.code', 'c.name', 'l.asset_id', 'l.amount', 'l.work_e6', 'l.month_count'])
           .where('l.batch_id', '=', id)
           .execute();
-      return { batch: b, lines, total: sumCents(lines.map((l) => l.amount)) };
+      return {
+        batch: b,
+        lines,
+        total: sumCents(lines.map((l) => l.amount)),
+        voucherDeletion: b.voucher_id ? await previewAssetVoucherDeletion(svc, b.voucher_id) : null,
+      };
     },
-    async cancel(id: number, confirm: boolean) {
+    async cancel(
+      id: number,
+      confirm: boolean,
+      voucherDeletion?: AssetVoucherDeletionPlan,
+      expectedVoucherId?: number | null,
+    ) {
       requirePermission(svc, 'cancel');
       return svc.tx(async (ts) => {
         const s = assetService(ts),
@@ -971,9 +992,8 @@ export function assetService(svc: CoreServices) {
               '先逆序撤销后续调整或注销',
             );
         }
+        await deleteAssetVoucher(ts, b.voucher_id, voucherDeletion, expectedVoucherId);
         if (b.voucher_id) {
-          requirePermission(ts, 'voucher');
-          await ts.vouchers.delete(b.voucher_id);
           await tdb
             .updateTable('fixed_assets_batch')
             .set({ voucher_id: null })
@@ -1111,13 +1131,26 @@ export function assetService(svc: CoreServices) {
         return v;
       });
     },
-    async deleteVoucher(id: number, confirm: boolean) {
+    async voucherDeletePreview(id: number) {
+      requirePermission(svc, 'voucher');
+      const b = await batch(id);
+      return {
+        voucherId: b.voucher_id,
+        voucherDeletion: await previewAssetVoucherDeletion(svc, b.voucher_id),
+      };
+    },
+    async deleteVoucher(
+      id: number,
+      confirm: boolean,
+      voucherDeletion?: AssetVoucherDeletionPlan,
+      expectedVoucherId?: number | null,
+    ) {
       requirePermission(svc, 'voucher');
       if (!confirm) fail('CONFIRM', '删除凭证需要确认');
       return svc.tx(async (ts) => {
         const b = await assetService(ts).batchInternal(id);
+        await deleteAssetVoucher(ts, b.voucher_id, voucherDeletion, expectedVoucherId);
         if (b.voucher_id) {
-          await ts.vouchers.delete(b.voucher_id);
           await table(ts)
             .updateTable('fixed_assets_batch')
             .set({ voucher_id: null })

@@ -7,7 +7,9 @@ import { DataTable, PageContainer, type DataColumn } from '@caiwu/ui';
 import { formatMoney, qtyFromE6 } from '@caiwu/core';
 import { notify, useAccounts, usePermission, useRequiredSession } from '@caiwu/web-kit';
 import { api, type Outputs } from './api';
-import { Confirm, refresh } from './common';
+import { Confirm, EmptyError, refresh } from './common';
+import { VoucherDeletionPreview } from './VoucherDeletionPreview';
+import { useAssetDraft } from './useAssetDraft';
 export default function DepreciationPage() {
   const navigate = useNavigate();
   const session = useRequiredSession();
@@ -44,6 +46,24 @@ export default function DepreciationPage() {
       },
     }),
   );
+  const workDraft = useAssetDraft({
+    title: '固定资产月工作量',
+    save: async () => {
+      if (!workId || !work) {
+        notify.warning('请先选择工作量资产并填写当月工作量');
+        return false;
+      }
+      await saveWork.mutateAsync({
+        id: workId,
+        period: Number(periodInput),
+        quantity: work,
+      });
+    },
+    discard: () => {
+      setWorkId(undefined);
+      setWork('');
+    },
+  });
   const columns: DataColumn<Outputs['batches'][number]>[] = [
     { key: 'period', title: '计提月份', dataIndex: 'period', width: 120 },
     { key: 'total', title: '折旧合计', dataIndex: 'total', money: true },
@@ -88,7 +108,7 @@ export default function DepreciationPage() {
   return (
     <PageContainer title="计提与取消折旧">
       <Alert
-        title="使用当月不提，次月开始。平均年限法按剩余月份分摊整数分尾差；工作量法需录入当月工作量。其他方法尚未实现。"
+        title="使用当月不提，次月开始。平均年限法按剩余月份分摊到分，尾差随剩余月份分配；工作量法需录入当月工作量。"
         style={{ marginBottom: 16 }}
       />
       <Space wrap style={{ marginBottom: 16 }}>
@@ -100,6 +120,7 @@ export default function DepreciationPage() {
           onChange={(e) => {
             setPeriodInput(e.target.value);
             setShow(false);
+            if (workId || work) workDraft.changed();
           }}
         />
         <Button
@@ -121,20 +142,29 @@ export default function DepreciationPage() {
               aria-label="工作量资产"
               style={{ width: 240 }}
               value={workId}
-              onChange={setWorkId}
+              onChange={(value) => {
+                setWorkId(value);
+                workDraft.changed();
+              }}
               options={(cards.data ?? [])
                 .filter((c) => c.method === '2')
                 .map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))}
             />
           </Form.Item>
           <Form.Item label="当月工作量">
-            <Input value={work} onChange={(e) => setWork(e.target.value)} />
+            <Input
+              aria-label="当月工作量"
+              value={work}
+              onChange={(e) => {
+                setWork(e.target.value);
+                workDraft.changed();
+              }}
+            />
           </Form.Item>
           <Button
             disabled={!workId || !work}
-            onClick={() =>
-              workId && saveWork.mutate({ id: workId, period: Number(periodInput), quantity: work })
-            }
+            loading={workDraft.saving}
+            onClick={() => void workDraft.save().catch(() => {})}
           >
             保存工作量
           </Button>
@@ -202,6 +232,7 @@ export default function DepreciationPage() {
 function VoucherDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   const { byId } = useAccounts();
   const { data } = useQuery(api.voucherPreview.queryOptions({ id }));
+  const deletion = useQuery(api.voucherDeletePreview.queryOptions({ id }));
   const generate = useMutation(
     api.generateVoucher.mutationOptions({
       onSuccess: () => {
@@ -222,6 +253,10 @@ function VoucherDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <Drawer open title="折旧凭证预览" size={750} onClose={onClose}>
       <Alert title="生成与来源关联在同一事务内。重复点击返回已有凭证，已审核/过账凭证不能刷新或删除。" />
+      <EmptyError error={deletion.error} />
+      <Button loading={deletion.isFetching} onClick={() => void deletion.refetch()}>
+        重新预览删除影响
+      </Button>
       <DataTable
         tableId="fixed-assets-voucher-preview"
         rowKey={(_, i) => String(i)}
@@ -254,21 +289,34 @@ function VoucherDrawer({ id, onClose }: { id: number; onClose: () => void }) {
             >
               确认生成凭证
             </Confirm>
-            <Confirm
-              title="通过 core 删除待审核来源凭证并解除关联？"
-              danger
-              onConfirm={() => remove.mutate({ id, confirm: true })}
-            >
-              删除待审核凭证
-            </Confirm>
+            {deletion.isSuccess && !deletion.isFetching && deletion.data.voucherDeletion && (
+              <Confirm
+                title="确认删除待审核来源凭证并执行以上编号调整？"
+                danger
+                onConfirm={() =>
+                  remove.mutate({
+                    id,
+                    confirm: true,
+                    expectedVoucherId: deletion.data.voucherId,
+                    voucherDeletion: deletion.data.voucherDeletion ?? undefined,
+                  })
+                }
+              >
+                删除待审核凭证
+              </Confirm>
+            )}
           </Space>
+          {deletion.isSuccess && !deletion.isFetching && (
+            <VoucherDeletionPreview preview={deletion.data.voucherDeletion} />
+          )}
         </>
       )}
     </Drawer>
   );
 }
 function CancelDrawer({ id, onClose }: { id: number; onClose: () => void }) {
-  const { data } = useQuery(api.cancelPreview.queryOptions({ id }));
+  const preview = useQuery(api.cancelPreview.queryOptions({ id }));
+  const data = preview.isSuccess && !preview.isFetching ? preview.data : undefined;
   const cancel = useMutation(
     api.cancel.mutationOptions({
       onSuccess: () => {
@@ -280,13 +328,18 @@ function CancelDrawer({ id, onClose }: { id: number; onClose: () => void }) {
   );
   return (
     <Drawer open title="取消折旧预览" size={750} onClose={onClose}>
+      <EmptyError error={preview.error} />
+      <Button loading={preview.isFetching} onClick={() => void preview.refetch()}>
+        重新预览取消影响
+      </Button>
       {data && (
         <>
           <Alert
             type="warning"
             title={`将取消 ${data.batch.period} 月折旧，合计 ${formatMoney(data.total)} 元`}
-            description="待审核凭证将通过 core 删除并解除关联；已审核或过账将拒绝。仅支持最后月份逆序取消。"
+            description="待审核凭证将删除并解除关联；已审核或过账将拒绝。仅支持最后月份逆序取消。"
           />
+          <VoucherDeletionPreview preview={data.voucherDeletion} />
           <DataTable
             tableId="fixed-assets-cancel-preview"
             rowKey="asset_id"
@@ -300,7 +353,14 @@ function CancelDrawer({ id, onClose }: { id: number; onClose: () => void }) {
           <Confirm
             title={`确认取消 ${data.batch.period} 月并恢复累计月数、工作量、折旧与净值？`}
             danger
-            onConfirm={() => cancel.mutate({ id, confirm: true })}
+            onConfirm={() =>
+              cancel.mutate({
+                id,
+                confirm: true,
+                expectedVoucherId: data.batch.voucher_id,
+                voucherDeletion: data.voucherDeletion ?? undefined,
+              })
+            }
           >
             确认取消最后月
           </Confirm>

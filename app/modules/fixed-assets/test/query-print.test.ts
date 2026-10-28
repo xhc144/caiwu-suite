@@ -67,7 +67,7 @@ describe('w_zjgl / w_zjgl_fb：打印实际查询结果', () => {
         kind,
       );
       expect(output.html).toContain(
-        '全部同时满足：名称 含有 &lt;script&gt;&amp;；折旧额（整数分） 大于 1',
+        '全部同时满足：名称 含有 &lt;script&gt;&amp;；折旧额（元） 大于 0.01',
       );
       expect(output.html).not.toContain('<script>');
     }
