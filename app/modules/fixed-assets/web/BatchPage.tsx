@@ -6,8 +6,11 @@ import { DataTable, PageContainer } from '@caiwu/ui';
 import { notify } from '@caiwu/web-kit';
 import { api } from './api';
 import { Confirm, refresh } from './common';
+import { useAssetDraft } from './useAssetDraft';
 export default function BatchPage() {
-  const [f, setF] = useUrlFilters({ keyword: '', field: 'model', value: '' });
+  const [initial] = useUrlFilters({ keyword: '', field: 'model', value: '' });
+  const [f, setF] = useState(initial);
+  const [form] = Form.useForm<typeof initial>();
   const [show, setShow] = useState(false);
   const input = {
     filter: { keyword: f.keyword },
@@ -15,24 +18,40 @@ export default function BatchPage() {
     value: f.value,
   };
   const preview = useQuery({ ...api.batchPreview.queryOptions(input), enabled: show && !!f.value });
-  const apply = useMutation(
-    api.batchApply.mutationOptions({
-      onSuccess: (r) => {
-        notify.success(`已修改 ${r.changed} 张，跳过 ${r.skipped.length} 张`);
-        setShow(false);
-        void refresh();
-      },
-    }),
-  );
+  const apply = useMutation(api.batchApply.mutationOptions());
+  const draft = useAssetDraft({
+    title: '统一置数',
+    save: async () => {
+      if (!show || !preview.data || preview.isFetching || preview.error) {
+        notify.error('请先筛选并预览本次修改');
+        return false;
+      }
+      const r = await apply.mutateAsync({ data: input, token: preview.data.token, confirm: true });
+      notify.success(`已修改 ${r.changed} 张，跳过 ${r.skipped.length} 张`);
+      setShow(false);
+      await refresh();
+    },
+    discard: () => {
+      form.resetFields();
+      setShow(false);
+    },
+  });
   return (
     <PageContainer title="统一置数">
       <Alert title="先筛选并预览待改卡片，再确认字段和值。已锁资产跳过；编号补零遇重复编号跳过并列明原因。" />
       <Form
+        form={form}
+        disabled={draft.saving}
         layout="inline"
-        initialValues={f}
+        initialValues={initial}
+        onValuesChange={() => {
+          setShow(false);
+          draft.changed();
+        }}
         onFinish={(v) => {
           setF(v);
           setShow(true);
+          draft.changed();
         }}
         style={{ margin: '16px 0' }}
       >
@@ -58,7 +77,8 @@ export default function BatchPage() {
           筛选并预览
         </Button>
       </Form>
-      {preview.data && show && (
+      {preview.error && show && <Alert type="error" title={preview.error.message} />}
+      {preview.data && show && !preview.isFetching && !preview.error && (
         <>
           <p>
             确认字段：
@@ -86,9 +106,7 @@ export default function BatchPage() {
           />
           <Confirm
             title="确认对以上可修改记录统一置数？"
-            onConfirm={() =>
-              apply.mutate({ data: input, token: preview.data!.token, confirm: true })
-            }
+            onConfirm={() => void draft.save().catch(() => {})}
           >
             确认统一置数
           </Confirm>
@@ -96,7 +114,7 @@ export default function BatchPage() {
       )}
       <Alert
         type="info"
-        title="未实现按使用日期覆盖历史累计折旧：缺少安全备份和历史重建原语，不提供改写历史按钮。"
+        title="按使用日期重算累计折旧尚未开放。请通过期初导入填写已核对的累计数；已有历史记录不能批量覆盖。"
       />
     </PageContainer>
   );

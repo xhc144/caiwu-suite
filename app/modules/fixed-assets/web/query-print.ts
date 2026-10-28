@@ -37,7 +37,7 @@ export function depreciationPrint(
       : ['部门 / 资产类别', '折旧额（元）'];
   const grouping = `${range.departmentLevel === 'top' ? '部门大类' : '明细部门'} / ${range.categoryLevel === 'top' ? '资产大类' : '资产细类'}`;
   const conditions = range.conditions?.length
-    ? `<p>全部同时满足：${range.conditions.map((c) => escapeHtml(`${queryFields[c.field].label} ${queryOperators[c.op]} ${c.value}`)).join('；')}</p>`
+    ? `<p>全部同时满足：${range.conditions.map((c) => escapeHtml(`${queryFields[c.field].label} ${queryOperators[c.op]} ${c.field === 'amount' ? formatMoney(Number(c.value)) : c.value}`)).join('；')}</p>`
     : '';
   return {
     title,

@@ -24,6 +24,11 @@ import {
 import type { FixedAssetsTables } from './migrations';
 import { assetService, fail, safeSum as sumCents } from './service';
 import { buildAssetHistory, dueDate } from './history';
+import {
+  deleteAssetVoucher,
+  previewAssetVoucherDeletion,
+  type AssetVoucherDeletionPlan,
+} from './voucher-deletion';
 
 const digest = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const table = (s: CoreServices) => s.db.withTables<FixedAssetsTables>();
@@ -297,7 +302,20 @@ export function operations(svc: CoreServices) {
         return v?.id ?? null;
       });
     },
-    async undoDisposal(id: number, confirm: boolean) {
+    async undoDisposalPreview(id: number) {
+      permit(svc, 'edit');
+      const c = await assets.cardInternal(id);
+      return {
+        voucherId: c.voucher_id,
+        voucherDeletion: await previewAssetVoucherDeletion(svc, c.voucher_id),
+      };
+    },
+    async undoDisposal(
+      id: number,
+      confirm: boolean,
+      voucherDeletion?: AssetVoucherDeletionPlan,
+      expectedVoucherId?: number | null,
+    ) {
       permit(svc, 'edit');
       return svc.tx(async (ts) => {
         const s = assetService(ts),
@@ -311,10 +329,7 @@ export function operations(svc: CoreServices) {
           .where('period', '>', periodOfDate(c.disposal_date))
           .executeTakeFirst();
         if (later) fail('REVERSE_ORDER', '已有后续月份折旧', '先逆序取消后续月份');
-        if (c.voucher_id) {
-          permit(ts, 'voucher');
-          await ts.vouchers.delete(c.voucher_id);
-        }
+        await deleteAssetVoucher(ts, c.voucher_id, voucherDeletion, expectedVoucherId);
         await table(ts)
           .updateTable('fixed_assets_card')
           .set({ disposal_date: null, reason_id: null, voucher_id: null, revision: c.revision + 1 })
@@ -419,6 +434,8 @@ export function operations(svc: CoreServices) {
         all = await assets.list({ includeDisposed: true });
       if (f.fromCode && f.toCode && f.fromCode > f.toCode)
         fail('REPORT_RANGE', '编号起始范围不能大于截止范围');
+      if (f.kind === 'labels' && f.labelRange === 'serial' && f.fromSerial > f.toSerial)
+        fail('LABEL_RANGE', '起始序号不能大于截止序号', '请按当前标签清单填写从小到大的序号范围');
       await svc.periods.require(periodOfDate(f.cutoff));
       const bookStart = (await svc.periods.require((await svc.book.info()).startPeriod)).startDate;
       const [lines, changes, accessories] = await Promise.all([
@@ -434,8 +451,11 @@ export function operations(svc: CoreServices) {
       const selected = all.filter(
         (c) => (!f.fromCode || c.code >= f.fromCode) && (!f.toCode || c.code <= f.toCode),
       );
+      const labelCount = selected.filter((c) => c.acquired <= f.cutoff).length;
+      let serial = 0;
       const rows: {
         key: string;
+        serial: number;
         code: string;
         name: string;
         date: string;
@@ -451,6 +471,13 @@ export function operations(svc: CoreServices) {
       }[] = [];
       for (const c of selected) {
         if (c.acquired > f.cutoff) continue;
+        serial++;
+        if (
+          f.kind === 'labels' &&
+          f.labelRange === 'serial' &&
+          (serial < f.fromSerial || serial > f.toSerial)
+        )
+          continue;
         let original = c.base_original;
         for (const a of changes.filter((a) => a.asset_id === c.id && a.date <= f.cutoff))
           original = a.after_value;
@@ -466,6 +493,7 @@ export function operations(svc: CoreServices) {
           dueYear = Number(due.slice(0, 4));
         const base = {
           key: String(c.id),
+          serial,
           code: c.code,
           name: c.name,
           date: c.use_date,
@@ -599,6 +627,7 @@ export function operations(svc: CoreServices) {
         }
         return {
           title: reportKinds[f.kind],
+          labelCount,
           rows: [...result.values()],
           total: sumCents([...result.values()].map((r) => r.original)),
           empty: '截止日无在用资产',
@@ -606,6 +635,7 @@ export function operations(svc: CoreServices) {
       }
       return {
         title: reportKinds[f.kind],
+        labelCount,
         rows,
         total:
           f.kind === 'ledger'
@@ -639,6 +669,11 @@ export function operations(svc: CoreServices) {
     },
     async importPreview(rows: { row: number; data: unknown }[]) {
       permit(svc, 'import');
+      await svc.periods.assertWritable({
+        period: (await svc.book.info()).startPeriod,
+        mode: 'opening',
+        action: '导入资产期初',
+      });
       const seen = new Set<string>();
       const result = [];
       const existing = await assets.list({ includeDisposed: true });
@@ -765,13 +800,15 @@ export function operations(svc: CoreServices) {
       permit(svc, 'settings');
       fail(
         'RESET_UNAVAILABLE',
-        '破坏性重置已禁用：当前 core 缺少完整在线备份、恢复及排他锁接口',
-        '可正常开通和导入期初；等待共享安全原语后再提供重置',
+        '尚未提供可恢复的资产清空流程，不能重置已有数据',
+        '可正常开通和导入期初；需要重新开始时，请新建账套并保留原账套备查',
       );
     },
     async batchPreview(raw: z.input<typeof BatchSchema>) {
       permit(svc, 'edit');
       const p = BatchSchema.parse(raw);
+      if (p.field === 'unit' && !CardSchema.shape.unit.safeParse(p.value).success)
+        fail('BATCH_UNIT', '单位不能超过 20 个字', '请缩短单位后重新预览');
       if (
         p.field === 'lifeMonths' &&
         (!/^\d+$/.test(p.value) || Number(p.value) < 30 || Number(p.value) > 12000)

@@ -308,6 +308,7 @@ describe('固定资产规则与闭环', () => {
       'FIXED_ASSETS_FUTURE_BATCH',
     );
     expect((await code(api.cancel({ id: b, confirm: false }))).code).toBe('FIXED_ASSETS_CONFIRM');
+    await voucher(b);
     await app.svc.periods.setStatus(202603, 'closed');
     expect((await code(api.cancel({ id: b, confirm: true }))).code).toBe('PERIOD_CLOSED');
   });
