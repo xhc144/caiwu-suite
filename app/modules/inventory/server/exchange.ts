@@ -20,7 +20,12 @@ import type { DocumentInput } from '../shared';
 import type { InventoryTables } from './migrations';
 import { e6, fail, inventoryService, quantity } from './service';
 import { priceLine } from '../math';
-import { assertContractWithinPlan, contractFulfillment } from './contracts';
+import { nonnegativeImportOrder } from './import-order';
+import {
+  assertContractWithinPlan,
+  contractFulfillment,
+  withContractReversalHistory,
+} from './contracts';
 
 const secret = randomBytes(32);
 type Relations = z.infer<typeof ExchangeRelationsSchema>;
@@ -574,182 +579,242 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
             input.sourceId = source.id;
           }
         }
-        await s.prepare(input);
         inputs.set(d.key, input);
       } catch (error) {
         errors.push({ document: i + 1, message: errorText(error) });
       }
     }
-    // 普通单据仍先入后出；合同反冲逐对恢复额度后，后续合同入库才能保存。
-    const contractReversals = new Map<number, Relations['reversals']>();
-    for (const relation of relations.reversals) {
-      const source = sources.get(relation.originalKey);
-      if (source?.type === 'contract') {
-        const pairs = contractReversals.get(source.id!) ?? [];
-        pairs.push(relation);
-        contractReversals.set(source.id!, pairs);
+    const history = errors.length
+      ? []
+      : relations.reversals.flatMap((r) => {
+          const receipt = inputs.get(r.originalKey),
+            reversal = inputs.get(r.reversalKey);
+          return receipt?.sourceType === 'contract' && reversal ? [{ receipt, reversal }] : [];
+        });
+    return withContractReversalHistory(t, history, commit, async () => {
+      for (const [i, d] of file.documents.entries()) {
+        const input = inputs.get(d.key);
+        if (!input) continue;
+        try {
+          await s.prepare(input);
+        } catch (error) {
+          errors.push({ document: i + 1, message: errorText(error) });
+          inputs.delete(d.key);
+        }
       }
-    }
-    const predecessors = new Map<string, string[]>();
-    for (const pairs of contractReversals.values())
-      for (let i = 1; i < pairs.length; i++)
-        predecessors.set(pairs[i]!.originalKey, [pairs[i - 1]!.reversalKey]);
-    for (const [key, source] of sources)
-      if (source.type === 'contract' && !reversedKeys.has(key))
-        predecessors.set(
-          key,
-          (contractReversals.get(source.id!) ?? []).map((r) => r.reversalKey),
+      const pending = [...file.documents];
+      const ordered: ExchangeDocument[] = [];
+      const visited = new Set<string>();
+      const balances = new Map<number, Map<number, number>>();
+      const initialBalances = new Map<number, Map<number, number>>();
+      const movement = async (d: ExchangeDocument, apply: boolean) => {
+        const input = inputs.get(d.key);
+        if (!input) return [];
+        const index = file.documents.indexOf(d) + 1;
+        let balance = balances.get(input.warehouseId);
+        if (!balance) {
+          balance = await s.balances(input.warehouseId);
+          balances.set(input.warehouseId, balance);
+          initialBalances.set(input.warehouseId, new Map(balance));
+        }
+        const grouped = new Map<string, number>();
+        for (const line of d.lines) {
+          const total = (grouped.get(line.productCode) ?? 0) + e6(line.quantity);
+          if (!Number.isSafeInteger(total)) fail('OVERFLOW', '导入单据的产品数量合计超出允许范围');
+          grouped.set(line.productCode, total);
+        }
+        const missing: typeof shortages = [];
+        for (const [code, n] of grouped) {
+          const product = products.find((p) => p.code === code)!;
+          const current = balance.get(product.id) ?? 0;
+          const next = current + (d.kind === 'receipt' ? n : -n);
+          if (!Number.isSafeInteger(next)) fail('OVERFLOW', '导入后的库存数量超出允许范围');
+          if (d.kind === 'issue' && current < n)
+            missing.push({
+              document: index,
+              number: d.number,
+              productCode: code,
+              current: quantity(current),
+              requested: quantity(n),
+              difference: quantity(n - current),
+            });
+          if (apply) balance.set(product.id, next);
+        }
+        return missing;
+      };
+      const originalIssues = new Set(
+        relations.reversals
+          .filter((r) => file.documents.find((d) => d.key === r.originalKey)?.kind === 'issue')
+          .map((r) => r.originalKey),
+      );
+      const priority = (d: ExchangeDocument) =>
+        d.kind === 'receipt' && reversalByKey.has(d.key)
+          ? 0
+          : originalIssues.has(d.key)
+            ? 1
+            : reversalByKey.has(d.key)
+              ? 2
+              : reversedKeys.has(d.key)
+                ? 3
+                : d.kind === 'receipt'
+                  ? 4
+                  : 5;
+      while (pending.length) {
+        const ready = pending
+          .filter(
+            (d) => !sources.get(d.key)?.imported || visited.has(sources.get(d.key)!.imported!),
+          )
+          .sort((a, b) => priority(a) - priority(b));
+        if (!ready.length) {
+          errors.push({ document: 0, message: '文件中的单据来源形成循环，不能转入' });
+          break;
+        }
+        let chosen = ready[0]!;
+        for (const d of ready)
+          if (!(await movement(d, false)).length) {
+            chosen = d;
+            break;
+          }
+        shortages.push(...(await movement(chosen, true)));
+        pending.splice(pending.indexOf(chosen), 1);
+        ordered.push(chosen);
+        visited.add(chosen.key);
+      }
+      if (shortages.length && !errors.length) {
+        const stock = new Map(
+          [...initialBalances].flatMap(([w, rows]) =>
+            [...rows].map(([p, n]) => [`${w}:${p}`, n] as const),
+          ),
         );
-    const pending = [...file.documents].sort(
-      (a, b) => Number(a.kind === 'issue') - Number(b.kind === 'issue'),
-    );
-    const ordered: ExchangeDocument[] = [];
-    const visited = new Set<string>();
-    while (pending.length) {
-      const index = pending.findIndex(
-        (d) =>
-          (!sources.get(d.key)?.imported || visited.has(sources.get(d.key)!.imported!)) &&
-          (predecessors.get(d.key) ?? []).every((key) => visited.has(key)),
-      );
-      if (index < 0) {
-        errors.push({ document: 0, message: '文件中的单据来源形成循环，不能转入' });
-        break;
+        const retry = nonnegativeImportOrder(
+          file.documents.map((d) => {
+            const input = inputs.get(d.key)!;
+            const totals = new Map<string, number>();
+            for (const l of input.lines) {
+              const key = `${input.warehouseId}:${products.find((p) => p.code === l.productCode)!.id}`;
+              totals.set(key, (totals.get(key) ?? 0) + e6(l.quantity));
+            }
+            return {
+              key: d.key,
+              parent: sources.get(d.key)?.imported,
+              kind: d.kind,
+              quantities: [...totals],
+              priority: priority(d),
+            };
+          }),
+          stock,
+        );
+        if (retry) {
+          ordered.splice(
+            0,
+            ordered.length,
+            ...retry.map((key) => file.documents.find((d) => d.key === key)!),
+          );
+          balances.clear();
+          for (const [w, rows] of initialBalances) balances.set(w, new Map(rows));
+          shortages.splice(0);
+          for (const d of ordered) shortages.push(...(await movement(d, true)));
+        }
       }
-      const [d] = pending.splice(index, 1);
-      ordered.push(d!);
-      visited.add(d!.key);
-    }
-    const balances = new Map<number, Map<number, number>>();
-    for (const d of ordered) {
-      const input = inputs.get(d.key);
-      if (!input) continue;
-      const index = file.documents.indexOf(d) + 1;
-      let balance = balances.get(input.warehouseId);
-      if (!balance) {
-        balance = await s.balances(input.warehouseId);
-        balances.set(input.warehouseId, balance);
-      }
-      const grouped = new Map<string, number>();
-      for (const line of d.lines) {
-        const total = (grouped.get(line.productCode) ?? 0) + e6(line.quantity);
-        if (!Number.isSafeInteger(total)) fail('OVERFLOW', '导入单据的产品数量合计超出允许范围');
-        grouped.set(line.productCode, total);
-      }
-      for (const [code, n] of grouped) {
-        const product = products.find((p) => p.code === code)!;
-        const current = balance.get(product.id) ?? 0;
-        const next = current + (d.kind === 'receipt' ? n : -n);
-        if (!Number.isSafeInteger(next)) fail('OVERFLOW', '导入后的库存数量超出允许范围');
-        if (d.kind === 'issue' && current < n)
-          shortages.push({
-            document: index,
-            number: d.number,
-            productCode: code,
-            current: quantity(current),
-            requested: quantity(n),
-            difference: quantity(n - current),
-          });
-        balance.set(product.id, next);
-      }
-    }
-    const confirmation = createHmac('sha256', secret)
-      .update(
-        JSON.stringify({
-          file,
-          requestKey: v.requestKey,
-          allowNegative: v.allowNegative,
-          actor: t.user.id,
-          book: context.book.id,
-          control: context.control,
-          warehouses,
-          accounts,
-          products,
-          periods,
-        }),
-      )
-      .digest('hex');
-    if (!commit) return result(confirmation);
-    if (errors.length)
-      fail('EXCHANGE_ERRORS', '多单转入存在错误，未保存任何数据', '修正文件后重新预览');
-    if (v.confirmation !== confirmation)
-      fail(
-        'EXCHANGE_VERSION',
-        '转入预览已过期或库存、期间、档案已变化',
-        '重新预览并核对后再确认转入',
-      );
-    if (shortages.length) {
-      t.permissions.require('inventory.negative-stock');
-      if (!v.allowNegative)
+      const confirmation = createHmac('sha256', secret)
+        .update(
+          JSON.stringify({
+            file,
+            requestKey: v.requestKey,
+            allowNegative: v.allowNegative,
+            actor: t.user.id,
+            book: context.book.id,
+            control: context.control,
+            warehouses,
+            accounts,
+            products,
+            periods,
+          }),
+        )
+        .digest('hex');
+      if (!commit) return result(confirmation);
+      if (errors.length)
+        fail('EXCHANGE_ERRORS', '多单转入存在错误，未保存任何数据', '修正文件后重新预览');
+      if (v.confirmation !== confirmation)
         fail(
-          'EXCHANGE_NEGATIVE',
-          '转入会造成负库存，尚未明确确认',
-          '核对预览中的库存差额，默认取消',
+          'EXCHANGE_VERSION',
+          '转入预览已过期或库存、期间、档案已变化',
+          '重新预览并核对后再确认转入',
         );
-    }
-    const importedIds = new Map<string, number>();
-    for (const d of ordered) {
-      const input = inputs.get(d.key)!;
-      const source = sources.get(d.key);
-      if (source) {
-        input.sourceType = source.type;
-        input.sourceId = source.imported ? importedIds.get(source.imported)! : source.id!;
+      if (shortages.length) {
+        t.permissions.require('inventory.negative-stock');
+        if (!v.allowNegative)
+          fail(
+            'EXCHANGE_NEGATIVE',
+            '转入会造成负库存，尚未明确确认',
+            '核对预览中的库存差额，默认取消',
+          );
       }
-      const p = await s.previewDocument(input);
-      if (p.shortages.length && v.allowNegative) input.negativeConfirmation = p.confirmation;
-      const saved = await t.inventory.with((inventory) => inventory.saveDocument(input));
-      importedIds.set(d.key, saved.id);
-      const reversal = reversalByKey.get(d.key);
-      if (reversal) {
-        const { relation, index } = reversal;
-        const originalId = importedIds.get(relation.originalKey)!;
+      const importedIds = new Map<string, number>();
+      for (const d of ordered) {
+        const input = inputs.get(d.key)!;
+        const source = sources.get(d.key);
+        if (source) {
+          input.sourceType = source.type;
+          input.sourceId = source.imported ? importedIds.get(source.imported)! : source.id!;
+        }
+        const p = await s.previewDocument(input);
+        if (p.shortages.length && v.allowNegative) input.negativeConfirmation = p.confirmation;
+        const saved = await t.inventory.with((inventory) => inventory.saveDocument(input));
+        importedIds.set(d.key, saved.id);
+        const reversal = reversalByKey.get(d.key);
+        if (reversal) {
+          const { relation, index } = reversal;
+          const originalId = importedIds.get(relation.originalKey)!;
+          await db
+            .insertInto('inventory_reversal')
+            .values({
+              original_document_id: originalId,
+              reversal_document_id: saved.id,
+              request_key: `${v.requestKey}:reversal:${index + 1}`,
+              payload_hash: digest({ hash, relation }),
+              created_by: t.user.id,
+              created_at: t.ctx.now().toISOString(),
+            })
+            .execute();
+          await db
+            .updateTable('inventory_document')
+            .set({ revision: sql`revision+1` })
+            .where('id', '=', originalId)
+            .execute();
+        }
+      }
+      for (const [i, relation] of relations.transfers.entries()) {
         await db
-          .insertInto('inventory_reversal')
+          .insertInto('inventory_transfer')
           .values({
-            original_document_id: originalId,
-            reversal_document_id: saved.id,
-            request_key: `${v.requestKey}:reversal:${index + 1}`,
+            number: relation.number,
+            request_key: `${v.requestKey}:transfer:${i + 1}`,
             payload_hash: digest({ hash, relation }),
+            issue_document_id: importedIds.get(relation.issueKey)!,
+            receipt_document_id: importedIds.get(relation.receiptKey)!,
+            revision: 1,
             created_by: t.user.id,
             created_at: t.ctx.now().toISOString(),
           })
           .execute();
-        await db
-          .updateTable('inventory_document')
-          .set({ revision: sql`revision+1` })
-          .where('id', '=', originalId)
-          .execute();
       }
-    }
-    for (const [i, relation] of relations.transfers.entries()) {
-      await db
-        .insertInto('inventory_transfer')
-        .values({
-          number: relation.number,
-          request_key: `${v.requestKey}:transfer:${i + 1}`,
-          payload_hash: digest({ hash, relation }),
-          issue_document_id: importedIds.get(relation.issueKey)!,
-          receipt_document_id: importedIds.get(relation.receiptKey)!,
-          revision: 1,
-          created_by: t.user.id,
-          created_at: t.ctx.now().toISOString(),
-        })
-        .execute();
-    }
-    for (const id of new Set(
-      [...sources.values()].filter((s) => s.type === 'contract').map((s) => s.id!),
-    ))
-      await assertContractWithinPlan(t, id, '多单转入');
-    savedIds.push(...file.documents.map((d) => importedIds.get(d.key)!));
-    await t.settings.set(requestSetting, {
-      hash,
-      actorId: t.user.id,
-      ids: savedIds,
-    } satisfies SavedImport);
-    await t.log.write({
-      action: 'inventory.documents.import',
-      summary: `转入 ${savedIds.length} 张出入库单`,
-      detail: { transfers: relations.transfers.length, reversals: relations.reversals.length },
+      for (const id of new Set(
+        [...sources.values()].filter((s) => s.type === 'contract').map((s) => s.id!),
+      ))
+        await assertContractWithinPlan(t, id, '多单转入');
+      savedIds.push(...file.documents.map((d) => importedIds.get(d.key)!));
+      await t.settings.set(requestSetting, {
+        hash,
+        actorId: t.user.id,
+        ids: savedIds,
+      } satisfies SavedImport);
+      await t.log.write({
+        action: 'inventory.documents.import',
+        summary: `转入 ${savedIds.length} 张出入库单`,
+        detail: { transfers: relations.transfers.length, reversals: relations.reversals.length },
+      });
+      return result(confirmation, true);
     });
-    return result(confirmation, true);
   });
 }

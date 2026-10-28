@@ -1,7 +1,204 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { createHash } from 'node:crypto';
+import { Decimal } from '@caiwu/core';
+import { isInDatabaseTransaction } from '@caiwu/db';
 import type { CoreServices } from '@caiwu/core/server';
-import type { DocumentInput } from '../shared';
+import { DocumentSchema, type DocumentInput } from '../shared';
+import { priceLine } from '../math';
 import type { InventoryTables } from './migrations';
 import { e6, fail, quantity } from './service';
+
+type HistoryPair = { receipt: DocumentInput; reversal: DocumentInput };
+const fingerprint = (input: DocumentInput) => {
+  const { negativeConfirmation: _n, ...document } = DocumentSchema.parse(input);
+  return createHash('sha256').update(JSON.stringify(document)).digest('hex');
+};
+const histories = new AsyncLocalStorage<{
+  db: CoreServices['db'];
+  actorId: number;
+  active: boolean;
+  commit: boolean;
+  pairs: (HistoryPair & { hash: string; reversed: Map<string, bigint> })[];
+}>();
+function historyFor(svc: CoreServices) {
+  const history = histories.getStore();
+  return history?.active &&
+    history.db === svc.db &&
+    history.actorId === svc.user.id &&
+    svc.moduleId === 'inventory'
+    ? history
+    : undefined;
+}
+
+export function assertContractHistoryWrite(svc: CoreServices) {
+  const history = historyFor(svc);
+  if (history && !history.commit)
+    fail('HISTORY_PREVIEW_WRITE', '合同反冲历史尚处于预览，不能保存单据');
+}
+
+/** 仅整批导入事务可计入已验证反冲的净数量；退出前核对真实头行、请求及关联。 */
+export async function withContractReversalHistory<T>(
+  svc: CoreServices,
+  pairs: HistoryPair[],
+  commit: boolean,
+  run: () => Promise<T>,
+): Promise<T> {
+  if (!pairs.length) return run();
+  if (svc.moduleId !== 'inventory' || !svc.db.isTransaction || !isInDatabaseTransaction())
+    fail('HISTORY_SCOPE', '合同反冲历史只能通过多单文件转入办理');
+  svc.permissions.require('inventory.import');
+  svc.permissions.require('inventory.edit');
+  const signature = (d: DocumentInput) =>
+    JSON.stringify(
+      d.lines.map((l) => [
+        l.productCode,
+        e6(l.quantity),
+        new Decimal(l.unitPrice).toFixed(),
+        !!l.priceIncludesTax,
+      ]),
+    );
+  const plans = pairs.map((pair) => {
+    const receipt = DocumentSchema.parse(pair.receipt),
+      reversal = DocumentSchema.parse(pair.reversal);
+    if (
+      receipt.id != null ||
+      reversal.id != null ||
+      receipt.sourceType !== 'contract' ||
+      receipt.sourceId == null ||
+      reversal.sourceType != null ||
+      reversal.sourceId != null ||
+      receipt.kind !== 'receipt' ||
+      reversal.kind !== 'issue' ||
+      reversal.category !== '其他出库' ||
+      receipt.warehouseId !== reversal.warehouseId ||
+      reversal.date < receipt.date ||
+      receipt.invoiceKind !== reversal.invoiceKind ||
+      new Decimal(receipt.taxRate).cmp(reversal.taxRate) !== 0 ||
+      signature(receipt) !== signature(reversal)
+    )
+      fail('HISTORY_PAIR', '合同反冲历史必须是完整且数量、计价、方向和仓库一致的原入库与反冲对');
+    const reversed = new Map<string, bigint>();
+    for (const l of reversal.lines)
+      reversed.set(l.productCode, (reversed.get(l.productCode) ?? 0n) + BigInt(e6(l.quantity)));
+    return { receipt, reversal, hash: fingerprint(receipt), reversed };
+  });
+  const db = svc.db.withTables<InventoryTables>();
+  const keys = plans.flatMap((p) => [p.receipt.requestKey, p.reversal.requestKey]);
+  if (
+    new Set(keys).size !== keys.length ||
+    (await db
+      .selectFrom('inventory_request')
+      .select('request_key')
+      .where('request_key', 'in', keys)
+      .executeTakeFirst())
+  )
+    fail('HISTORY_REQUEST', '合同反冲历史的保存编号已被使用，请重新预览');
+  const history = { db: svc.db, actorId: svc.user.id, active: true, commit, pairs: plans };
+  return histories.run(history, async () => {
+    try {
+      const result = await run();
+      history.active = false;
+      if (commit) {
+        const requests = await db
+          .selectFrom('inventory_request')
+          .selectAll()
+          .where('request_key', 'in', keys)
+          .execute();
+        const verify = async (id: number, input: DocumentInput) => {
+          const v = DocumentSchema.parse(input);
+          const d = await db
+            .selectFrom('inventory_document')
+            .selectAll()
+            .where('id', '=', id)
+            .executeTakeFirst();
+          const rows = await db
+            .selectFrom('inventory_line as l')
+            .innerJoin('inventory_product as p', 'p.id', 'l.product_id')
+            .selectAll('l')
+            .select('p.code')
+            .where('l.document_id', '=', id)
+            .orderBy('l.position')
+            .execute();
+          const expected = v.lines.map((l) => {
+            const p = priceLine(l.quantity, l.unitPrice, v.taxRate, l.priceIncludesTax ?? false);
+            return [
+              l.productCode,
+              e6(l.quantity),
+              l.priceIncludesTax ? 1 : 0,
+              p.net_cents,
+              p.tax_cents,
+              p.gross_cents,
+              new Decimal(p.unit_price).toFixed(),
+              new Decimal(p.tax_unit_price).toFixed(),
+              l.note,
+            ];
+          });
+          if (
+            !d ||
+            d.kind !== v.kind ||
+            d.warehouse_id !== v.warehouseId ||
+            d.number !== v.number ||
+            d.date !== v.date ||
+            d.category !== v.category ||
+            d.operator !== (v.operator || svc.user.name) ||
+            d.summary !== v.summary ||
+            d.account_id !== v.accountId ||
+            d.cost_account_id !== v.costAccountId ||
+            d.tax_rate !== v.taxRate ||
+            d.invoice_kind !== v.invoiceKind ||
+            d.source_type !== v.sourceType ||
+            d.source_id !== v.sourceId ||
+            d.created_by !== svc.user.id ||
+            JSON.stringify(
+              rows.map((l) => [
+                l.code,
+                l.quantity_e6,
+                l.price_includes_tax,
+                l.net_cents,
+                l.tax_cents,
+                l.gross_cents,
+                new Decimal(l.unit_price).toFixed(),
+                new Decimal(l.tax_unit_price).toFixed(),
+                l.note,
+              ]),
+            ) !== JSON.stringify(expected)
+          )
+            fail('HISTORY_CHANGED', '合同反冲历史的实际保存头行与已校验文件不一致，整批未保存');
+        };
+        for (const plan of plans) {
+          const original = requests.find((r) => r.request_key === plan.receipt.requestKey);
+          const reversed = requests.find((r) => r.request_key === plan.reversal.requestKey);
+          const reversal = {
+            ...plan.reversal,
+            sourceType: 'document' as const,
+            sourceId: original?.document_id,
+          };
+          if (
+            !original ||
+            !reversed ||
+            original.payload_hash !== plan.hash ||
+            reversed.payload_hash !== fingerprint(reversal)
+          )
+            fail('HISTORY_INCOMPLETE', '合同反冲历史未完整保存，整批未保存');
+          const relation = await db
+            .selectFrom('inventory_reversal')
+            .selectAll()
+            .where('original_document_id', '=', original.document_id)
+            .executeTakeFirst();
+          if (relation?.reversal_document_id !== reversed.document_id)
+            fail('HISTORY_INCOMPLETE', '合同反冲历史缺少真实反冲关联，整批未保存');
+          await verify(original.document_id, plan.receipt);
+          await verify(reversed.document_id, reversal);
+        }
+        for (const id of new Set(plans.map((p) => p.receipt.sourceId!)))
+          await assertContractWithinPlan(svc, id, '多单转入');
+      }
+      return result;
+    } finally {
+      history.active = false;
+    }
+  });
+}
 
 /** 合同与库存仍各自保存；只按有效来源入库累计履约，整单反冲及删除会恢复余额。 */
 export async function contractFulfillment(
@@ -40,6 +237,23 @@ export async function contractFulfillment(
     .where('d.source_type', '=', 'contract')
     .where('d.source_id', '=', id)
     .execute();
+  const history = historyFor(svc);
+  const pending = history?.pairs.filter((p) => p.receipt.sourceId === id) ?? [];
+  const historicalIds = new Set<number>();
+  if (pending.length) {
+    const requests = await db
+      .selectFrom('inventory_request')
+      .selectAll()
+      .where(
+        'request_key',
+        'in',
+        pending.map((p) => p.receipt.requestKey),
+      )
+      .execute();
+    for (const r of requests)
+      if (pending.some((p) => p.receipt.requestKey === r.request_key && p.hash === r.payload_hash))
+        historicalIds.add(r.document_id);
+  }
   const totals = new Map<
     number,
     { productCode: string; productName: string; planned: bigint; received: bigint }
@@ -55,7 +269,8 @@ export async function contractFulfillment(
     totals.set(l.product_id, row);
   }
   for (const l of received) {
-    if (l.id === excludeDocumentId || l.reversal_document_id != null) continue;
+    if (l.id === excludeDocumentId || l.reversal_document_id != null || historicalIds.has(l.id))
+      continue;
     const row = totals.get(l.product_id);
     if (!row)
       fail(
@@ -103,6 +318,9 @@ export async function assertContractReceipt(svc: CoreServices, input: DocumentIn
     fail('SOURCE', '来源采购合同已结束或入库方向、仓库不符');
   if (input.date < c.date) fail('CONTRACT_DATE', '入库日期不能早于来源采购合同日期');
   const requested = new Map<string, bigint>();
+  const binding = historyFor(svc);
+  const inputHash = binding ? fingerprint(input) : undefined;
+  const history = binding?.pairs.find((p) => p.hash === inputHash);
   for (const l of input.lines)
     requested.set(l.productCode, (requested.get(l.productCode) ?? 0n) + BigInt(e6(l.quantity)));
   for (const [code, amount] of requested) {
@@ -113,7 +331,8 @@ export async function assertContractReceipt(svc: CoreServices, input: DocumentIn
         `产品 ${code} 不在来源采购合同中`,
         '请改用合同内产品，或取消合同来源后另办采购',
       );
-    if (amount > BigInt(e6(row.remaining)))
+    const effective = amount - (history?.reversed.get(code) ?? 0n);
+    if (effective > BigInt(e6(row.remaining)))
       fail(
         'CONTRACT_EXCEEDED',
         `产品 ${code} 的本次入库超过合同未入库数量 ${row.remaining}`,

@@ -5,6 +5,9 @@ import { sql } from '@caiwu/db';
 import server from '../server';
 import type { ExchangeFile } from '../exchange';
 import type { InventoryTables } from '../server/migrations';
+import { withContractReversalHistory } from '../server/contracts';
+import { inventoryService } from '../server/service';
+import type { DocumentInput } from '../shared';
 
 let target: Awaited<ReturnType<typeof setup>>;
 const apps: TestApp[] = [];
@@ -368,4 +371,414 @@ it('w_cb_ck_copy/w_ck_rk：合同允许撤销反冲但后续写入失败时，�
     target.api.removeDocument({ id: reversal.id, revision: reversal.revision, confirmed: true }),
   ).rejects.toThrow(/撤销反冲更新原单失败/);
   expect(await snapshot(target)).toEqual(before);
+});
+
+it('ht1/ht2/w_ck_rk：目标合同已满仍可迁入真实净零反冲历史，普通额外入库仍拒绝', async () => {
+  const s = await source();
+  await target.receive('TARGET-FULL');
+  const input = {
+    file: JSON.parse(
+      JSON.stringify(await s.api.exportDocuments({ ids: [s.first.id, s.reversal.id] })),
+    ) as ExchangeFile,
+    requestKey: randomUUID(),
+  };
+  const before = await snapshot(target);
+  const p = await target.api.importDocumentsPreview(input);
+  expect(p.errors).toEqual([]);
+  expect(p.shortages).toEqual([]);
+  expect(await snapshot(target)).toEqual(before);
+  await expect(
+    target.api.saveDocument({
+      requestKey: randomUUID(),
+      kind: 'receipt',
+      warehouseId: target.warehouseId,
+      number: 'NORMAL-OVER',
+      date: '2026-01-11',
+      category: '采购',
+      accountId: target.accountId,
+      sourceType: 'contract',
+      sourceId: target.contract.id,
+      lines: [{ productCode: 'P1', quantity: '1', unitPrice: '2.5' }],
+    }),
+  ).rejects.toThrow(/超过合同未入库数量 0/);
+  expect(await snapshot(target)).toEqual(before);
+  const result = await target.api.importDocuments({ ...input, confirmation: p.confirmation });
+  expect(await target.api.exportDocuments({ ids: result.savedIds })).toEqual(input.file);
+  expect((await target.api.contractFulfillment({ id: target.contract.id })).rows[0]).toMatchObject({
+    received: '10',
+    remaining: '0',
+  });
+  expect((await target.api.stock({ warehouseId: target.warehouseId }))[0]?.balance).toBe('10');
+  const extra = {
+    file: await s.api.exportDocuments({ ids: [s.second.id] }),
+    requestKey: randomUUID(),
+  };
+  const rejected = await target.api.importDocumentsPreview(extra);
+  expect(rejected.errors.some((e) => /超过/.test(e.message))).toBe(true);
+  const after = await snapshot(target, extra.requestKey);
+  await expect(
+    target.api.importDocuments({ ...extra, confirmation: rejected.confirmation }),
+  ).rejects.toThrow(/未保存/);
+  expect(await snapshot(target, extra.requestKey)).toEqual(after);
+});
+
+const selections = [0, 1, 2, 3].flatMap((a) =>
+  [0, 1, 2, 3]
+    .filter((b) => b !== a)
+    .flatMap((b) =>
+      [0, 1, 2, 3].filter((c) => c !== a && c !== b).map((c) => [a, b, c, 6 - a - b - c]),
+    ),
+);
+it.each(selections)(
+  'w_ck_rk/w_ck_ck：R1、R2、普通领用、I1按%i/%i/%i/%i选择，不制造负库存且普通操作员可迁入',
+  async (...order) => {
+    const s = await source();
+    const issue = await s.api.saveDocument({
+      requestKey: randomUUID(),
+      kind: 'issue',
+      warehouseId: s.warehouseId,
+      number: 'O',
+      date: '2026-01-12',
+      category: '领用',
+      costAccountId: s.costAccountId,
+      lines: [{ productCode: 'P1', quantity: '10', unitPrice: '2.5' }],
+    });
+    const limited = target.a.call(
+      server,
+      await target.a.addUser('ordinary-importer', {
+        permissions: ['inventory.view', 'inventory.import', 'inventory.edit'],
+      }),
+    );
+    const input = {
+      file: await s.api.exportDocuments({
+        ids: order.map((i) => [s.first.id, s.second.id, issue.id, s.reversal.id][i]!),
+      }),
+      requestKey: randomUUID(),
+    };
+    const p = await limited.importDocumentsPreview(input);
+    expect(p.errors).toEqual([]);
+    expect(p.shortages).toEqual([]);
+    const saved = await limited.importDocuments({ ...input, confirmation: p.confirmation });
+    expect(await target.api.exportDocuments({ ids: saved.savedIds })).toEqual(input.file);
+    expect((await target.api.stock({ warehouseId: target.warehouseId }))[0]?.balance).toBe('0');
+    expect(
+      (await target.api.contractFulfillment({ id: target.contract.id })).rows[0]?.received,
+    ).toBe('10');
+  },
+);
+
+it('ht1/ht2：反冲历史预览不能写入，作用域结束后相同头行仍按普通合同余额校验', async () => {
+  await target.receive('TARGET-FULL');
+  const receipt: DocumentInput = {
+    requestKey: randomUUID(),
+    kind: 'receipt',
+    warehouseId: target.warehouseId,
+    number: 'HISTORY-R',
+    date: '2026-01-10',
+    category: '采购',
+    accountId: target.accountId,
+    sourceType: 'contract',
+    sourceId: target.contract.id,
+    lines: [{ productCode: 'P1', quantity: '10', unitPrice: '2.5' }],
+  };
+  const reversal: DocumentInput = {
+    requestKey: randomUUID(),
+    kind: 'issue',
+    warehouseId: target.warehouseId,
+    number: 'HISTORY-I',
+    date: '2026-01-11',
+    category: '其他出库',
+    costAccountId: target.costAccountId,
+    lines: receipt.lines,
+  };
+  const before = await snapshot(target);
+  await target.a.svcFor('inventory').tx(async (t) => {
+    await withContractReversalHistory(t, [{ receipt, reversal }], false, async () => {
+      await inventoryService(t).prepare(receipt);
+      await expect(inventoryService(t).saveDocument(receipt)).rejects.toThrow(/预览/);
+    });
+    await expect(inventoryService(t).prepare(receipt)).rejects.toThrow(/超过合同未入库数量 0/);
+  });
+  expect(await snapshot(target)).toEqual(before);
+});
+
+it('ht1/ht2：目标已有9、净零历史加本批有效入库1，普通入库仅占真实剩余1', async () => {
+  const s = await source();
+  await target.receive('TARGET-NINE', '9');
+  await s.api.saveDocument({
+    requestKey: randomUUID(),
+    id: s.second.id,
+    revision: s.second.revision,
+    kind: 'receipt',
+    warehouseId: s.warehouseId,
+    number: s.second.number,
+    date: s.second.date,
+    category: '采购',
+    accountId: s.accountId,
+    sourceType: 'contract',
+    sourceId: s.contract.id,
+    lines: [{ productCode: 'P1', quantity: '1', unitPrice: '2.5' }],
+  });
+  const input = {
+    file: await s.api.exportDocuments({ ids: [s.second.id, s.first.id, s.reversal.id] }),
+    requestKey: randomUUID(),
+  };
+  const p = await target.api.importDocumentsPreview(input);
+  expect(p.errors).toEqual([]);
+  expect(p.shortages).toEqual([]);
+  const saved = await target.api.importDocuments({ ...input, confirmation: p.confirmation });
+  expect(await target.api.exportDocuments({ ids: saved.savedIds })).toEqual(input.file);
+  expect((await target.api.contractFulfillment({ id: target.contract.id })).rows[0]).toMatchObject({
+    received: '10',
+    remaining: '0',
+  });
+});
+
+it('w_ck_rk/w_ck_ck：相反方向两组反冲有交叉库存依赖时，先退回领用再反冲入库，不制造短缺', async () => {
+  const s = await setup();
+  const r = await s.receive('R');
+  const o = await s.api.saveDocument({
+    requestKey: randomUUID(),
+    kind: 'issue',
+    warehouseId: s.warehouseId,
+    number: 'O',
+    date: '2026-01-10',
+    category: '领用',
+    costAccountId: s.costAccountId,
+    lines: [{ productCode: 'P1', quantity: '10', unitPrice: '2.5' }],
+  });
+  const returned = await s.api.reverseDocument({
+    id: o.id,
+    revision: o.revision,
+    requestKey: randomUUID(),
+    number: 'RETURNED',
+    date: '2026-01-11',
+    accountId: s.accountId,
+    unitPrices: ['2.5'],
+    confirmed: true,
+  });
+  const reversed = await s.api.reverseDocument({
+    id: r.id,
+    revision: r.revision,
+    requestKey: randomUUID(),
+    number: 'REVERSED',
+    date: '2026-01-12',
+    accountId: s.costAccountId,
+    confirmed: true,
+  });
+  const input = {
+    file: await s.api.exportDocuments({ ids: [r.id, reversed.id, o.id, returned.id] }),
+    requestKey: randomUUID(),
+  };
+  const p = await target.api.importDocumentsPreview(input);
+  expect(p.errors).toEqual([]);
+  expect(p.shortages).toEqual([]);
+  await target.api.importDocuments({ ...input, confirmation: p.confirmation });
+  expect((await target.api.stock({ warehouseId: target.warehouseId }))[0]?.balance).toBe('0');
+  expect((await target.api.contractFulfillment({ id: target.contract.id })).rows[0]?.received).toBe(
+    '0',
+  );
+});
+
+it.each(['目标入库变更', '合同取消', '期间关闭'] as const)(
+  'ht1/ht2：满额净零历史预览后%s，旧确认拒绝且保留外部结果',
+  async (change) => {
+    const s = await source();
+    const full = await target.receive('TARGET-FULL');
+    const input = {
+      file: await s.api.exportDocuments({ ids: [s.reversal.id, s.first.id] }),
+      requestKey: randomUUID(),
+    };
+    const p = await target.api.importDocumentsPreview(input);
+    expect(p.errors).toEqual([]);
+    if (change === '目标入库变更')
+      await target.api.saveDocument({
+        requestKey: randomUUID(),
+        id: full.id,
+        revision: full.revision,
+        kind: 'receipt',
+        warehouseId: target.warehouseId,
+        number: full.number,
+        date: full.date,
+        category: '采购',
+        accountId: target.accountId,
+        sourceType: 'contract',
+        sourceId: target.contract.id,
+        lines: [{ productCode: 'P1', quantity: '9', unitPrice: '2.5' }],
+      });
+    else if (change === '合同取消')
+      await target.api.setContractStatus({
+        id: target.contract.id,
+        revision: target.contract.revision,
+        status: 'cancelled',
+        confirmed: true,
+      });
+    else await target.a.svc.periods.setStatus(202601, 'closed');
+    const before = await snapshot(target, input.requestKey);
+    await expect(
+      target.api.importDocuments({ ...input, confirmation: p.confirmation }),
+    ).rejects.toThrow(/未保存|预览已过期/);
+    expect(await snapshot(target, input.requestKey)).toEqual(before);
+  },
+);
+
+it.each(['缺关系', '数量不符', '金额伪造'] as const)(
+  'ht1/ht2：满额历史对%s不得获得净量额度',
+  async (invalid) => {
+    const s = await source();
+    await target.receive('TARGET-FULL');
+    const file = await s.api.exportDocuments({ ids: [s.first.id, s.reversal.id] });
+    if (file.version !== 2) throw new Error('缺少关系');
+    if (invalid === '缺关系') file.relations.reversals = [];
+    else if (invalid === '数量不符') file.documents[1]!.lines[0]!.quantity = '9';
+    else file.documents[0]!.lines[0]!.grossCents++;
+    const input = { file, requestKey: randomUUID() };
+    const p = await target.api.importDocumentsPreview(input);
+    expect(p.errors.length).toBeGreaterThan(0);
+    const before = await snapshot(target, input.requestKey);
+    await expect(
+      target.api.importDocuments({ ...input, confirmation: p.confirmation }),
+    ).rejects.toThrow(/未保存/);
+    expect(await snapshot(target, input.requestKey)).toEqual(before);
+  },
+);
+
+it.each(['关系写入报错', '关系保存后被移除', '明细保存后被改变'] as const)(
+  'ht1/ht2：满额净零历史%s，已有单据和整批头行、关系、版本、日志全部回滚',
+  async (failure) => {
+    const s = await source();
+    await target.receive('TARGET-FULL');
+    const input = {
+      file: await s.api.exportDocuments({ ids: [s.first.id, s.reversal.id] }),
+      requestKey: randomUUID(),
+    };
+    const p = await target.api.importDocumentsPreview(input);
+    expect(p.errors).toEqual([]);
+    const before = await snapshot(target, input.requestKey);
+    if (failure === '关系写入报错')
+      await sql`CREATE TEMP TRIGGER history_fail BEFORE INSERT ON inventory_reversal
+    BEGIN SELECT RAISE(ABORT,'历史反冲关系写入失败'); END`.execute(target.a.svc.db);
+    else if (failure === '关系保存后被移除')
+      await sql`CREATE TEMP TRIGGER history_fail AFTER INSERT ON inventory_reversal
+    BEGIN DELETE FROM inventory_reversal WHERE original_document_id=NEW.original_document_id; END`.execute(
+        target.a.svc.db,
+      );
+    else
+      await sql`CREATE TEMP TRIGGER history_fail AFTER INSERT ON inventory_reversal
+    BEGIN UPDATE inventory_line SET quantity_e6=quantity_e6+1000000 WHERE document_id=NEW.reversal_document_id; END`.execute(
+        target.a.svc.db,
+      );
+    await expect(
+      target.api.importDocuments({ ...input, confirmation: p.confirmation }),
+    ).rejects.toThrow(/写入失败|未保存|不一致/);
+    expect(await snapshot(target, input.requestKey)).toEqual(before);
+    await sql`DROP TRIGGER history_fail`.execute(target.a.svc.db);
+    const saved = await target.api.importDocuments({ ...input, confirmation: p.confirmation });
+    expect(await target.api.exportDocuments({ ids: saved.savedIds })).toEqual(input.file);
+  },
+);
+
+it('w_ck_ck：真实负库存仍要求权限和明确确认，历史净量不能消除实际短缺', async () => {
+  const s = await source();
+  const raw = {
+    requestKey: randomUUID(),
+    kind: 'issue' as const,
+    warehouseId: s.warehouseId,
+    number: 'O-NEGATIVE',
+    date: '2026-01-12',
+    category: '领用' as const,
+    costAccountId: s.costAccountId,
+    lines: [{ productCode: 'P1', quantity: '11', unitPrice: '2.5' }],
+  };
+  const negative = await s.api.previewDocument(raw);
+  const issue = await s.api.saveDocument({ ...raw, negativeConfirmation: negative.confirmation });
+  const file = await s.api.exportDocuments({
+    ids: [s.first.id, s.second.id, issue.id, s.reversal.id],
+  });
+  const input = { file, requestKey: randomUUID() };
+  const limited = target.a.call(
+    server,
+    await target.a.addUser('no-negative-importer', {
+      permissions: ['inventory.view', 'inventory.import', 'inventory.edit'],
+    }),
+  );
+  const p = await limited.importDocumentsPreview(input);
+  expect(p.errors).toEqual([]);
+  expect(p.shortages.some((r) => r.difference === '1')).toBe(true);
+  const before = await snapshot(target, input.requestKey);
+  await expect(limited.importDocuments({ ...input, confirmation: p.confirmation })).rejects.toThrow(
+    /权限/,
+  );
+  const admin = await target.api.importDocumentsPreview(input);
+  await expect(
+    target.api.importDocuments({ ...input, confirmation: admin.confirmation }),
+  ).rejects.toThrow(/尚未明确确认/);
+  expect(await snapshot(target, input.requestKey)).toEqual(before);
+  const allowed = { ...input, allowNegative: true };
+  const confirmed = await target.api.importDocumentsPreview(allowed);
+  await target.api.importDocuments({ ...allowed, confirmation: confirmed.confirmation });
+  expect((await target.api.stock({ warehouseId: target.warehouseId }))[0]?.balance).toBe('-1');
+});
+
+it('w_ck_ck：两条领用退回来源链需要不同周转库存时，回溯选择合法次序，不因贪心次序制造短缺', async () => {
+  const s = await setup();
+  for (const fixture of [s, target])
+    await fixture.api.saveOpening({
+      warehouseId: fixture.warehouseId,
+      revision: 0,
+      rows: [{ productCode: 'P1', quantity: '3', unitPrice: '2.5' }],
+    });
+  const issue = (number: string, quantity: string, sourceId?: number) =>
+    s.api.saveDocument({
+      requestKey: randomUUID(),
+      kind: 'issue',
+      warehouseId: s.warehouseId,
+      number,
+      date: '2026-01-10',
+      category: '领用',
+      costAccountId: s.costAccountId,
+      sourceType: sourceId == null ? null : 'document',
+      sourceId,
+      lines: [{ productCode: 'P1', quantity, unitPrice: '2.5' }],
+    });
+  const b0 = await issue('B0', '1'),
+    b1 = await issue('B1', '2', b0.id);
+  const br = await s.api.reverseDocument({
+    id: b1.id,
+    revision: b1.revision,
+    requestKey: randomUUID(),
+    number: 'BR',
+    date: '2026-01-11',
+    accountId: s.accountId,
+    unitPrices: ['2.5'],
+    confirmed: true,
+  });
+  const a0 = await issue('A0', '1'),
+    a1 = await issue('A1', '1', a0.id);
+  const ar = await s.api.reverseDocument({
+    id: a1.id,
+    revision: a1.revision,
+    requestKey: randomUUID(),
+    number: 'AR',
+    date: '2026-01-11',
+    accountId: s.accountId,
+    unitPrices: ['2.5'],
+    confirmed: true,
+  });
+  const input = {
+    file: await s.api.exportDocuments({ ids: [a0.id, a1.id, ar.id, b0.id, b1.id, br.id] }),
+    requestKey: randomUUID(),
+  };
+  const limited = target.a.call(
+    server,
+    await target.a.addUser('loan-chain-importer', {
+      permissions: ['inventory.view', 'inventory.import', 'inventory.edit'],
+    }),
+  );
+  const p = await limited.importDocumentsPreview(input);
+  expect(p.errors).toEqual([]);
+  expect(p.shortages).toEqual([]);
+  const result = await limited.importDocuments({ ...input, confirmation: p.confirmation });
+  expect(result.savedIds).toHaveLength(6);
+  expect((await target.api.stock({ warehouseId: target.warehouseId }))[0]?.balance).toBe('1');
 });

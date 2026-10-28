@@ -31,7 +31,12 @@ import type { z } from 'zod';
 import { priceLine } from '../math';
 import { openingValue } from '../opening';
 import type { InventoryTables } from './migrations';
-import { assertContractReceipt, assertContractWithinPlan, contractFulfillment } from './contracts';
+import {
+  assertContractHistoryWrite,
+  assertContractReceipt,
+  assertContractWithinPlan,
+  contractFulfillment,
+} from './contracts';
 const secret = randomBytes(32);
 const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 export function fail(code: string, message: string, hint = '请检查当前数据后重试'): never {
@@ -971,6 +976,7 @@ export function inventoryService(svc: CoreServices) {
     },
     async saveDocument(raw: DocumentInput, invoice?: InvoiceDocumentOptions) {
       return svc.tx(async (t) => {
+        assertContractHistoryWrite(t);
         const s = inventoryService(t),
           tdb = t.db.withTables<InventoryTables>();
         const parsed = DocumentSchema.parse(raw);
