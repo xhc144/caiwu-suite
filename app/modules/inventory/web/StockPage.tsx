@@ -5,12 +5,15 @@ import { FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
 import { api } from './api';
 import { CostingData } from './CostingData';
+import BatchLedgers from './BatchLedgers';
 import { InventoryNavigation } from './common';
 import { Grid, ProductSelect, WarehouseSelect, useCatalog, useInventoryNavigate } from './common';
 export default function StockPage() {
   const [f, setF] = useUrlFilters({
     warehouseId: 0,
     productCode: '',
+    productFrom: '',
+    productTo: '',
     from: '',
     to: '',
     hideZero: false,
@@ -23,6 +26,8 @@ export default function StockPage() {
   const filter = {
     warehouseId: warehouseId || undefined,
     productCode: f.productCode || undefined,
+    productFrom: f.productFrom || undefined,
+    productTo: f.productTo || undefined,
     from: f.from || undefined,
     to: f.to || undefined,
     hideZero: f.hideZero,
@@ -55,11 +60,25 @@ export default function StockPage() {
         <Form.Item name="from" label="起始日期">
           <Input type="date" />
         </Form.Item>
+        <Form.Item label="起始产品">
+          <ProductSelect
+            label="起始产品"
+            value={f.productFrom}
+            onChange={(productFrom) => setF({ productFrom: productFrom ?? '' })}
+          />
+        </Form.Item>
+        <Form.Item label="截止产品">
+          <ProductSelect
+            label="截止产品"
+            value={f.productTo}
+            onChange={(productTo) => setF({ productTo: productTo ?? '' })}
+          />
+        </Form.Item>
         <Form.Item name="to" label="截止日期">
           <Input type="date" />
         </Form.Item>
         <Form.Item name="hideZero" valuePropName="checked">
-          <Checkbox>隐藏期初与发生全零项</Checkbox>
+          <Checkbox>隐藏期末零数量</Checkbox>
         </Form.Item>
       </FilterBar>
       <Select
@@ -72,6 +91,7 @@ export default function StockPage() {
           { value: 'issue', label: '默认出库价估算' },
         ]}
       />
+      <BatchLedgers filter={filter} />
       {q.error && <Alert type="error" title={q.error.message} />}
       <Grid
         id="stock"
@@ -148,6 +168,12 @@ export default function StockPage() {
               { key: 'issued', title: '出库数量', dataIndex: 'issued' },
               { key: 'balance', title: '结余数量', dataIndex: 'balance' },
               { key: 'amountCents', title: '金额', dataIndex: 'amountCents', money: true },
+              { key: 'unitPrice', title: '本笔成本单价（元）', dataIndex: 'unitPrice' },
+              {
+                key: 'balanceUnitPrice',
+                title: '结余成本单价（元）',
+                dataIndex: 'balanceUnitPrice',
+              },
               {
                 key: 'balanceCents',
                 title: '结余账面金额',

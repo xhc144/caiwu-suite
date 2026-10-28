@@ -96,6 +96,8 @@ it('w_ck_kc_hz/w_cb_sl_hzyeb/w_ck_tz1：真实成本与默认估价分开，跨�
   });
   const ledger = await api().ledger({ warehouseId, productCode: 'P1' });
   expect(ledger.map((r) => r.balanceCents)).toEqual([2550, 4215, 3372]);
+  expect(ledger.map((r) => r.unitPrice)).toEqual([null, '3.330000', '2.810000']);
+  expect(ledger.map((r) => r.balanceUnitPrice)).toEqual(['2.550000', '2.810000', '2.810000']);
   const february = (await api().stock({ warehouseId, from: '2026-02-01', to: '2026-02-28' }))[0]!;
   expect(february).toMatchObject({
     opening: '12',
@@ -134,6 +136,9 @@ it('w_ck_tz1/w_cb_sl_hzyeb：任一未核算出库使后续结余留空，后来
   expect(
     (await api().ledger({ warehouseId, productCode: 'P1' })).map((r) => r.balanceCents),
   ).toEqual([2550, null, null]);
+  const uncostedLedger = await api().ledger({ warehouseId, productCode: 'P1' });
+  expect(uncostedLedger[1]?.unitPrice).toBeNull();
+  expect(uncostedLedger.slice(1).every((r) => r.balanceUnitPrice === null)).toBe(true);
   await seedCost(issue.id);
   await db
     .updateTable('inventory_line')

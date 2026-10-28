@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Button, Space } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { PageContainer, exportToExcel, useUrlFilters } from '@caiwu/ui';
@@ -29,9 +29,10 @@ export default function OpeningPage() {
   const can = usePermission('inventory.edit');
   const refresh = useRefresh();
   const save = useMutation(api.saveOpening.mutationOptions());
-  useUnsaved(!!draft);
+  const latest = useRef(draft);
+  latest.current = draft;
   const submit = async () => {
-    if (!draft) return;
+    if (!draft || save.isPending) return false;
     let rows;
     try {
       rows = draft.lines.map((line) => {
@@ -42,7 +43,7 @@ export default function OpeningPage() {
       setError('');
     } catch (e) {
       setError(openingError(e));
-      return;
+      return false;
     }
     const replace = !!q.data?.rows.length;
     if (
@@ -51,16 +52,28 @@ export default function OpeningPage() {
         `确认完整替换当前仓库期初为以下 ${draft.lines.length} 行？未列出的产品期初将被清除。`,
       )
     )
-      return;
-    await save.mutateAsync({
+      return false;
+    const saved = await save.mutateAsync({
       warehouseId: draft.warehouseId,
       revision: draft.revision,
       rows,
       confirmReplace: replace,
     });
-    setDraft(null);
+    if (latest.current === draft) setDraft(null);
+    else setDraft((current) => (current ? { ...current, revision: saved.revision } : current));
     await refresh();
+    return true;
   };
+  useUnsaved(!!draft, {
+    pending: save.isPending,
+    title: '库存期初',
+    version: JSON.stringify(draft),
+    save: submit,
+    discard: () => {
+      setDraft(null);
+      setError('');
+    },
+  });
   return (
     <PageContainer
       title="库存期初"

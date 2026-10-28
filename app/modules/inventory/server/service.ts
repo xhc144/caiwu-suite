@@ -31,6 +31,7 @@ import type { z } from 'zod';
 import { priceLine } from '../math';
 import { openingValue } from '../opening';
 import type { InventoryTables } from './migrations';
+import { assertContractReceipt, contractFulfillment } from './contracts';
 const secret = randomBytes(32);
 const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
 export function fail(code: string, message: string, hint = '请检查当前数据后重试'): never {
@@ -82,6 +83,18 @@ function countAmount(bookCents: number | null, bookE6: number, actualE6: number)
   );
 }
 export { priceLine } from '../math';
+export type InvoiceDocumentOptions = {
+  invoiceId: number;
+  lineValues: {
+    unit_price: string;
+    tax_unit_price: string;
+    net_cents: number;
+    tax_cents: number;
+    gross_cents: number;
+    tax_rate: string;
+  }[];
+  negativeConfirmed: boolean;
+};
 export function inventoryService(svc: CoreServices) {
   const db = svc.db.withTables<InventoryTables>();
   const control = () =>
@@ -219,13 +232,57 @@ export function inventoryService(svc: CoreServices) {
         '先由原审核人或获授权管理员取消审核',
       );
   };
+  const pairedTransfer = (id: number) =>
+    db
+      .selectFrom('inventory_transfer')
+      .select(['id', 'number'])
+      .where((eb) => eb.or([eb('issue_document_id', '=', id), eb('receipt_document_id', '=', id)]))
+      .executeTakeFirst();
+  const protectedDocument = async (id: number, removing = false, invoiceId?: number) => {
+    const source = await document(id);
+    if (source.source_type === 'invoice' && source.source_id !== invoiceId)
+      fail(
+        'INVOICE_SOURCE',
+        '这张出库单由发票生成，不能在普通库存入口修改或删除',
+        '请从发票处理办理原发票的出库更新',
+      );
+    if (
+      invoiceId !== undefined &&
+      (source.source_type !== 'invoice' || source.source_id !== invoiceId)
+    )
+      fail('INVOICE_SOURCE', '只能更新当前发票已经关联的出库单');
+    const transfer = await pairedTransfer(id);
+    if (transfer)
+      fail(
+        'TRANSFER_PAIR',
+        `单据属于调拨 ${transfer.number}，不能单独修改或删除`,
+        '请进入仓库调拨成对处理',
+      );
+    const reversal = await db
+      .selectFrom('inventory_reversal')
+      .selectAll()
+      .where((eb) =>
+        eb.or([eb('original_document_id', '=', id), eb('reversal_document_id', '=', id)]),
+      )
+      .executeTakeFirst();
+    if (reversal && (!removing || reversal.original_document_id === id))
+      fail(
+        'REVERSAL_LOCK',
+        '单据已有反冲关联，不能修改或删除原单',
+        '需要撤销反冲时，先删除尚未审核、尚未核算的反冲单',
+      );
+  };
   const openingUnlocked = async () => {
     if (await db.selectFrom('inventory_costing_month_lock').select('period').executeTakeFirst())
       fail('OPENING_LOCKED', '库存期初已被正式成本批次锁定');
     const b = await svc.book.info();
     const c = await control();
     const current = await svc.periods.current();
-    await svc.periods.assertOpen(b.startPeriod, '修改库存期初');
+    await svc.periods.assertWritable({
+      period: b.startPeriod,
+      mode: 'opening',
+      action: '修改库存期初',
+    });
     if (
       c.opening_locked ||
       c.cost_cutoff_date ||
@@ -294,6 +351,8 @@ export function inventoryService(svc: CoreServices) {
       .orderBy('l.position');
     if (f.warehouseId) q = q.where('d.warehouse_id', '=', f.warehouseId);
     if (f.productCode) q = q.where('p.code', '=', f.productCode);
+    if (f.productFrom) q = q.where('p.code', '>=', f.productFrom);
+    if (f.productTo) q = q.where('p.code', '<=', f.productTo);
     if (f.to) q = q.where('d.date', '<=', f.to);
     return q.execute();
   };
@@ -334,7 +393,11 @@ export function inventoryService(svc: CoreServices) {
       .map((a) => ({ ...a, date: periodEndDate(a.period) }))
       .filter((a) => !to || a.date <= to);
   };
-  const prepare = async (raw: DocumentInput) => {
+  const prepare = async (raw: DocumentInput, invoiceId?: number) => {
+    if (invoiceId !== undefined) {
+      if (svc.moduleId !== 'invoice') fail('INVOICE_OWNER', '发票来源出库只能由发票处理调用');
+      svc.permissions.require('invoice.voucher');
+    }
     const input = DocumentSchema.parse(raw);
     await warehouse(input.warehouseId);
     await unlocked(input.date);
@@ -354,7 +417,19 @@ export function inventoryService(svc: CoreServices) {
     const old = input.id ? await document(input.id) : null;
     if (old) {
       checkRevision(old.revision, input.revision);
+      await protectedDocument(old.id, false, invoiceId);
       await sourceUnlocked(old);
+      if (input.sourceType === 'document' && input.sourceId === input.id)
+        fail('SOURCE', '单据不能以自身作为来源');
+      if (
+        invoiceId === undefined &&
+        (old.source_type !== input.sourceType || old.source_id !== input.sourceId)
+      )
+        fail(
+          'SOURCE_CHANGE',
+          '已保存单据的来源关联不能在编辑时改换或清除',
+          '请保留来源关系；确需重办时先确认删除尚未审核、尚未核算的原单，再新增正确来源单据',
+        );
       if (old.kind !== input.kind) fail('KIND', '不能改变单据的出入库方向');
     }
     const duplicate = await db
@@ -385,9 +460,13 @@ export function inventoryService(svc: CoreServices) {
         c.status !== 'open'
       )
         fail('SOURCE', '来源采购合同不存在、已结束或仓库不符');
+      await assertContractReceipt(svc, input);
     } else if (input.sourceType === 'document') {
       if (!input.sourceId) fail('SOURCE', '缺少来源单据');
-      await document(input.sourceId);
+      if (input.sourceId === input.id) fail('SOURCE', '单据不能以自身作为来源');
+      const from = await document(input.sourceId);
+      if (from.source_type === 'invoice')
+        fail('INVOICE_SOURCE', '发票来源单据不能作为普通库存单据的复制来源', '请从发票处理办理');
     }
     const lines = [];
     for (const [i, l] of input.lines.entries()) {
@@ -398,6 +477,7 @@ export function inventoryService(svc: CoreServices) {
         position: i + 1,
         quantity_e6: e6(l.quantity),
         price_includes_tax: l.priceIncludesTax ? 1 : 0,
+        tax_rate: null,
         ...priceLine(l.quantity, l.unitPrice, input.taxRate, l.priceIncludesTax),
         note: l.note,
         productCode: p.code,
@@ -653,6 +733,44 @@ export function inventoryService(svc: CoreServices) {
         return id;
       });
     },
+    async removeWarehouse(v: { id: number; revision: number; confirmed: boolean }) {
+      return svc.tx(async (t) => {
+        t.permissions.require('inventory.edit');
+        if (!v.confirmed) fail('CONFIRM', '删除仓库需要明确确认');
+        const s = inventoryService(t),
+          w = await s.warehouse(v.id, false);
+        checkRevision(w.revision, v.revision);
+        const tdb = t.db.withTables<InventoryTables>();
+        const tables = [
+          'inventory_opening',
+          'inventory_document',
+          'inventory_count',
+          'inventory_contract',
+          'inventory_costing_balance',
+          'inventory_costing_adjustment',
+        ] as const;
+        for (const table of tables)
+          if (
+            await tdb
+              .selectFrom(table)
+              .select('warehouse_id')
+              .where('warehouse_id', '=', w.id)
+              .executeTakeFirst()
+          )
+            fail(
+              'WAREHOUSE_USED',
+              `仓库 ${w.code} 已有期初、单据、盘点、合同或核算历史，不能删除`,
+              '请保留仓库并改为停用，以便查询历史业务',
+            );
+        await tdb.deleteFrom('inventory_warehouse').where('id', '=', w.id).execute();
+        await s.bump();
+        await t.log.write({
+          action: 'inventory.warehouse.delete',
+          summary: `删除未使用仓库 ${w.code}`,
+          targetId: w.id,
+        });
+      });
+    },
     async opening(warehouseId: number) {
       await warehouse(warehouseId, false);
       const c = await control();
@@ -779,10 +897,27 @@ export function inventoryService(svc: CoreServices) {
           db.selectFrom('inventory_line').select('document_id').where('product_id', '=', p.id),
         );
       }
+      if (f.productFrom || f.productTo) {
+        let matching = db
+          .selectFrom('inventory_line as l')
+          .innerJoin('inventory_product as p', 'p.id', 'l.product_id')
+          .select('l.document_id');
+        if (f.productFrom) matching = matching.where('p.code', '>=', f.productFrom);
+        if (f.productTo) matching = matching.where('p.code', '<=', f.productTo);
+        q = q.where('d.id', 'in', matching);
+      }
       const documents = await q.execute();
       const links = await db.selectFrom('inventory_voucher_source').selectAll().execute();
+      const transfers = await db.selectFrom('inventory_transfer').selectAll().execute();
+      const reversals = await db.selectFrom('inventory_reversal').selectAll().execute();
       return documents.map((d) => ({
         ...d,
+        transfer: transfers.find(
+          (p) => p.issue_document_id === d.id || p.receipt_document_id === d.id,
+        ),
+        reversal: reversals.find(
+          (p) => p.original_document_id === d.id || p.reversal_document_id === d.id,
+        ),
         voucherSources: links.filter((l) => l.document_id === d.id),
         voucher_id: d.voucher_id ?? links.find((l) => l.document_id === d.id)?.voucher_id ?? null,
       }));
@@ -806,6 +941,14 @@ export function inventoryService(svc: CoreServices) {
         ...r,
         voucher_id: r.voucher_id ?? voucherSources[0]?.voucher_id ?? null,
         voucherSources,
+        transfer: await pairedTransfer(id),
+        reversal: await db
+          .selectFrom('inventory_reversal')
+          .selectAll()
+          .where((eb) =>
+            eb.or([eb('original_document_id', '=', id), eb('reversal_document_id', '=', id)]),
+          )
+          .executeTakeFirst(),
         lines: lines.map((l) => ({
           ...l,
           quantity: quantity(l.quantity_e6),
@@ -826,13 +969,19 @@ export function inventoryService(svc: CoreServices) {
         };
       });
     },
-    async saveDocument(raw: DocumentInput) {
+    async saveDocument(raw: DocumentInput, invoice?: InvoiceDocumentOptions) {
       return svc.tx(async (t) => {
         const s = inventoryService(t),
           tdb = t.db.withTables<InventoryTables>();
         const parsed = DocumentSchema.parse(raw);
+        if (invoice) {
+          if (t.moduleId !== 'invoice') fail('INVOICE_OWNER', '发票来源出库只能由发票处理调用');
+          t.permissions.require('invoice.voucher');
+          if (parsed.kind !== 'issue' || invoice.lineValues.length !== parsed.lines.length)
+            fail('INVOICE_INPUT', '发票出库方向或明细数量不正确');
+        }
         const { negativeConfirmation: _n, ...req } = parsed;
-        const payloadHash = hash(req);
+        const payloadHash = hash(invoice ? { input: req, invoice } : req);
         const done = await tdb
           .selectFrom('inventory_request')
           .selectAll()
@@ -843,11 +992,11 @@ export function inventoryService(svc: CoreServices) {
             fail('REQUEST', '同一次保存的请求编号被用于不同内容', '重新发起保存');
           return s.getDocument(done.document_id);
         }
-        const p = await s.prepare(parsed),
+        const p = await s.prepare(parsed, invoice?.invoiceId),
           v = p.input;
         if (p.shortages.length) {
           t.permissions.require('inventory.negative-stock');
-          if (v.negativeConfirmation !== p.token)
+          if (!(invoice?.negativeConfirmed || v.negativeConfirmation === p.token))
             fail(
               'NEGATIVE',
               '出库数量超过可用库存，尚未确认或数据版本已变化',
@@ -871,8 +1020,9 @@ export function inventoryService(svc: CoreServices) {
           account_id: v.accountId,
           cost_account_id: v.costAccountId,
           tax_rate: v.taxRate,
-          source_type: v.sourceType,
-          source_id: v.sourceId,
+          invoice_kind: v.invoiceKind,
+          source_type: invoice ? 'invoice' : v.sourceType,
+          source_id: invoice ? invoice.invoiceId : v.sourceId,
         };
         let id = v.id;
         if (id) {
@@ -905,8 +1055,9 @@ export function inventoryService(svc: CoreServices) {
         await tdb
           .insertInto('inventory_line')
           .values(
-            p.lines.map(({ productCode: _c, productName: _pn, ...l }) => ({
+            p.lines.map(({ productCode: _c, productName: _pn, ...l }, i) => ({
               ...l,
+              ...invoice?.lineValues[i],
               document_id: id!,
               outbound_cost_cents: null,
               unit_cost: null,
@@ -936,7 +1087,20 @@ export function inventoryService(svc: CoreServices) {
         if (!v.confirmed) fail('CONFIRM', '删除单据需要确认');
         const r = await s.document(v.id);
         checkRevision(r.revision, v.revision);
+        await inventoryService(t).protectedDocument(r.id, true);
         await s.sourceUnlocked(r);
+        const dependent = await tdb
+          .selectFrom('inventory_document')
+          .select('number')
+          .where('source_type', '=', 'document')
+          .where('source_id', '=', r.id)
+          .executeTakeFirst();
+        if (dependent)
+          fail(
+            'DOCUMENT_REFERENCED',
+            `单据 ${r.number} 被单据 ${dependent.number} 引用，不能删除`,
+            '请先处理引用单据，再删除来源单据',
+          );
         if (r.kind === 'receipt') {
           const b = await s.balances(r.warehouse_id);
           for (const l of await tdb
@@ -948,7 +1112,18 @@ export function inventoryService(svc: CoreServices) {
           if ([...b.values()].some((n) => n < 0))
             fail('INBOUND_USED', `入库单 ${r.number} 已被出库使用，删除会造成负库存`);
         }
+        const reversal = await tdb
+          .selectFrom('inventory_reversal')
+          .selectAll()
+          .where('reversal_document_id', '=', r.id)
+          .executeTakeFirst();
         await tdb.deleteFrom('inventory_document').where('id', '=', r.id).execute();
+        if (reversal)
+          await tdb
+            .updateTable('inventory_document')
+            .set({ revision: sql`revision+1` })
+            .where('id', '=', reversal.original_document_id)
+            .execute();
         await s.bump();
         await t.log.write({
           action: 'inventory.document.delete',
@@ -957,11 +1132,18 @@ export function inventoryService(svc: CoreServices) {
         });
       });
     },
-    async audit(v: { id: number; revision: number; to: boolean }) {
+    async audit(v: { id: number; revision: number; to: boolean }, pairId?: number) {
       return svc.tx(async (t) => {
         const s = inventoryService(t),
           r = await s.document(v.id);
         checkRevision(r.revision, v.revision);
+        const pair = await inventoryService(t).pairedTransfer(r.id);
+        if (pair && pair.id !== pairId)
+          fail(
+            'TRANSFER_PAIR',
+            `单据属于调拨 ${pair.number}，不能单独审核或撤审`,
+            '请进入仓库调拨成对处理',
+          );
         await s.sourceUnlocked(r, true);
         if (!v.to && r.audited_by !== t.user.id) t.permissions.require('inventory.audit-admin');
         if (v.to && r.audited_by != null) fail('AUDITED', `单据 ${r.number} 已审核`);
@@ -1011,6 +1193,12 @@ export function inventoryService(svc: CoreServices) {
     },
     async copyDocument(id: number) {
       const r = await self.getDocument(id);
+      if (r.source_type === 'invoice')
+        fail(
+          'INVOICE_SOURCE',
+          '发票来源出库单不能作为普通单据复制',
+          '请从发票处理选择原发票并办理出库',
+        );
       return {
         kind: r.kind,
         warehouseId: r.warehouse_id,
@@ -1022,6 +1210,7 @@ export function inventoryService(svc: CoreServices) {
         accountId: r.account_id,
         costAccountId: r.cost_account_id,
         taxRate: r.tax_rate,
+        invoiceKind: r.invoice_kind,
         sourceType: 'document' as const,
         sourceId: r.id,
         requestKey: randomBytes(16).toString('hex'),
@@ -1050,6 +1239,8 @@ export function inventoryService(svc: CoreServices) {
         const adjusted = await adjustments(w.id, f.to);
         for (const p of products) {
           if (f.productCode && p.code !== f.productCode) continue;
+          if (f.productFrom && p.code < f.productFrom) continue;
+          if (f.productTo && p.code > f.productTo) continue;
           const opening =
             !f.to || f.to >= startDate ? initial.find((o) => o.product_id === p.id) : undefined;
           const before = moves.filter((l) => l.product_id === p.id && f.from && l.date < f.from);
@@ -1081,8 +1272,7 @@ export function inventoryService(svc: CoreServices) {
             .filter((l) => l.kind === 'issue')
             .reduce((n, l) => safe(n + l.quantity_e6), 0);
           const end = safe(start + received - issued + adjustmentE6);
-          if (f.hideZero && !start && !received && !issued && !adjustmentE6 && !adjustmentCents)
-            continue;
+          if (f.hideZero && end === 0) continue;
           const issues = during.filter((l) => l.kind === 'issue');
           const cost = totalIssueCost(issues);
           const beforeCost = totalIssueCost(before.filter((l) => l.kind === 'issue'));
@@ -1149,6 +1339,11 @@ export function inventoryService(svc: CoreServices) {
           balance: stock.opening,
           amountCents: stock.openingCents,
           balanceCents,
+          unitPrice: null as string | null,
+          balanceUnitPrice:
+            balance !== 0 && balanceCents != null
+              ? new Decimal(balanceCents).mul(10000).div(balance).toFixed(6)
+              : null,
           costStatus: balanceCents == null ? '待成本核算' : '账面金额完整',
         },
       ];
@@ -1171,6 +1366,11 @@ export function inventoryService(svc: CoreServices) {
           balance: quantity(balance),
           amountCents,
           balanceCents,
+          unitPrice:
+            amountCents != null && l.quantity_e6 !== 0
+              ? new Decimal(amountCents).mul(10000).div(l.quantity_e6).toFixed(6)
+              : null,
+          balanceUnitPrice: null,
           costStatus:
             l.kind === 'receipt' ? '入库原单金额' : amountCents == null ? '待成本核算' : '已核算',
         });
@@ -1188,6 +1388,8 @@ export function inventoryService(svc: CoreServices) {
           balance: '0',
           amountCents: sumCents([a.amount_cents, a.zero_cents]),
           balanceCents: null,
+          unitPrice: null,
+          balanceUnitPrice: null,
           costStatus: '正式核算调整',
         });
       }
@@ -1208,7 +1410,15 @@ export function inventoryService(svc: CoreServices) {
             balanceCents == null || r.amountCents == null
               ? null
               : sumCents([balanceCents, r.kind === 'issue' ? -r.amountCents : r.amountCents]);
-          return { ...r, balance: quantity(balance), balanceCents };
+          return {
+            ...r,
+            balance: quantity(balance),
+            balanceCents,
+            balanceUnitPrice:
+              balance !== 0 && balanceCents != null
+                ? new Decimal(balanceCents).mul(10000).div(balance).toFixed(6)
+                : null,
+          };
         }),
       ];
     },
@@ -1519,6 +1729,81 @@ export function inventoryService(svc: CoreServices) {
         });
       });
     },
+    async replaceCountProducts(v: {
+      warehouseId: number;
+      period: number;
+      revision: number;
+      productCodes: string[];
+      confirmed: boolean;
+    }) {
+      return svc.tx(async (t) => {
+        t.permissions.require('inventory.edit');
+        if (!v.confirmed) fail('CONFIRM', '调整盘点产品集合需要核对移除行的实盘和差异后确认');
+        if (new Set(v.productCodes).size !== v.productCodes.length)
+          fail('DUPLICATE', '盘点产品集合包含重复编号');
+        const s = inventoryService(t),
+          db = t.db.withTables<InventoryTables>();
+        await s.warehouse(v.warehouseId);
+        await s.countPeriod(v.period);
+        const old = await s.count(v);
+        checkRevision(old.revision, v.revision);
+        if (!old.id) fail('COUNT', '请先生成账面快照');
+        const header = await db
+          .selectFrom('inventory_count')
+          .selectAll()
+          .where('id', '=', old.id)
+          .executeTakeFirstOrThrow();
+        if (header.calculation_status !== 'uncalculated' || header.calculation_batch)
+          fail('CALCULATED', '盘点表已核算，不能调整产品集合');
+        const current = await s.stock({ warehouseId: v.warehouseId, to: periodEndDate(v.period) });
+        const added = [];
+        for (const code of v.productCodes) {
+          if (old.rows.some((r) => r.productCode === code)) continue;
+          const p = await s.product(code);
+          if (p.disabled) fail('DISABLED', `产品 ${code} 已停用，不能加入盘点`);
+          const row = current.find((r) => r.productId === p.id)!;
+          added.push({
+            count_id: old.id,
+            product_id: p.id,
+            book_e6: e6(row.balance),
+            actual_e6: e6(row.balance),
+            book_cents: row.balanceCents,
+            note: '',
+          });
+        }
+        const removed = old.rows.filter((r) => !v.productCodes.includes(r.productCode));
+        if (removed.length)
+          await db
+            .deleteFrom('inventory_count_line')
+            .where(
+              'id',
+              'in',
+              removed.map((r) => r.id),
+            )
+            .execute();
+        if (added.length) await db.insertInto('inventory_count_line').values(added).execute();
+        await db
+          .updateTable('inventory_count')
+          .set({ revision: old.revision + 1 })
+          .where('id', '=', old.id)
+          .execute();
+        await t.log.write({
+          action: 'inventory.count.products',
+          summary: `调整盘点 ${v.period} 产品集合`,
+          detail: {
+            removed: removed.map((r) => ({
+              productCode: r.productCode,
+              book: r.book,
+              actual: r.actual,
+              difference: r.difference,
+            })),
+            added,
+          },
+        });
+        await s.bump();
+        return s.count(v);
+      });
+    },
     async removeCount(v: {
       warehouseId: number;
       period: number;
@@ -1587,6 +1872,12 @@ export function inventoryService(svc: CoreServices) {
         const s = inventoryService(t),
           tdb = t.db.withTables<InventoryTables>();
         const v = ContractSchema.parse(raw);
+        if (v.lines.some((l) => l.priceIncludesTax))
+          fail(
+            'CONTRACT_TAX',
+            '采购合同单价采用不含税口径',
+            '请填写不含税单价，入库时再选择税率与含税口径',
+          );
         await s.warehouse(v.warehouseId);
         await s.unlocked(v.date);
         const supplier = await t.dimensions.get(v.supplierId);
@@ -1618,9 +1909,18 @@ export function inventoryService(svc: CoreServices) {
             );
         }
         const rows = [];
+        const productQuantities = new Map<number, number>();
         for (const [i, l] of v.lines.entries()) {
           const p = await s.product(l.productCode, i + 1);
           if (p.disabled) fail('DISABLED', `产品 ${p.code} 已停用`);
+          const totalQuantity = (productQuantities.get(p.id) ?? 0) + e6(l.quantity);
+          if (!Number.isSafeInteger(totalQuantity))
+            fail(
+              'CONTRACT_QUANTITY',
+              `产品 ${p.code} 的合同累计数量超出可核算范围`,
+              '请核对同产品的全部明细，减少数量或拆分合同',
+            );
+          productQuantities.set(p.id, totalQuantity);
           rows.push({
             product_id: p.id,
             quantity_e6: e6(l.quantity),
@@ -1664,12 +1964,37 @@ export function inventoryService(svc: CoreServices) {
           action: 'inventory.contract.save',
           summary: `保存采购合同 ${v.number}`,
         });
+        await s.bump();
         return s.getContract(id);
       });
     },
     async contractDraft(id: number) {
       const c = await self.getContract(id);
       if (c.status !== 'open') fail('CONTRACT', '已完成或取消的合同不能带入入库');
+      const fulfillment = await contractFulfillment(svc, id);
+      const consumed = new Map(fulfillment.rows.map((r) => [r.productCode, e6(r.received)]));
+      const lines = c.lines.flatMap((l) => {
+        const skip = Math.min(Math.max(consumed.get(l.productCode) ?? 0, 0), l.quantity_e6);
+        consumed.set(l.productCode, (consumed.get(l.productCode) ?? 0) - skip);
+        const remaining = l.quantity_e6 - skip;
+        return remaining > 0
+          ? [
+              {
+                productCode: l.productCode,
+                quantity: quantity(remaining),
+                unitPrice: l.unitPrice,
+                priceIncludesTax: false,
+                note: l.note,
+              },
+            ]
+          : [];
+      });
+      if (!lines.length)
+        fail(
+          'CONTRACT_COMPLETE',
+          '合同数量已经全部入库',
+          '请查询履约明细；需要退货时先办理原入库单反冲',
+        );
       return {
         requestKey: randomBytes(16).toString('hex'),
         kind: 'receipt' as const,
@@ -1684,19 +2009,87 @@ export function inventoryService(svc: CoreServices) {
         taxRate: '0',
         accountId: null,
         costAccountId: null,
-        lines: c.lines.map((l) => ({
-          productCode: l.productCode,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice,
-          priceIncludesTax: false,
-          note: l.note,
-        })),
+        lines,
       };
+    },
+    async contractFulfillment(id: number) {
+      return contractFulfillment(svc, id);
+    },
+    async setContractStatus(v: {
+      id: number;
+      revision: number;
+      status: 'open' | 'completed' | 'cancelled';
+      confirmed: boolean;
+    }) {
+      return svc.tx(async (t) => {
+        t.permissions.require('inventory.edit');
+        if (!v.confirmed) fail('CONFIRM', '变更采购合同执行状态需要确认');
+        const s = inventoryService(t),
+          c = await s.getContract(v.id);
+        checkRevision(c.revision, v.revision);
+        await s.unlocked(c.date);
+        if (v.status === 'completed') {
+          const f = await contractFulfillment(t, c.id);
+          if (f.rows.some((r) => e6(r.remaining) !== 0))
+            fail(
+              'CONTRACT_INCOMPLETE',
+              '合同尚有未入库数量，不能标记全部完成',
+              '如需终止剩余采购，请确认取消合同',
+            );
+        }
+        await t.db
+          .withTables<InventoryTables>()
+          .updateTable('inventory_contract')
+          .set({ status: v.status, revision: c.revision + 1 })
+          .where('id', '=', c.id)
+          .execute();
+        await t.log.write({
+          action: 'inventory.contract.status',
+          summary: `变更采购合同 ${c.number} 执行状态`,
+          targetId: c.id,
+          detail: { from: c.status, to: v.status },
+        });
+        await s.bump();
+        return s.getContract(c.id);
+      });
+    },
+    async removeContract(v: { id: number; revision: number; confirmed: boolean }) {
+      return svc.tx(async (t) => {
+        t.permissions.require('inventory.edit');
+        if (!v.confirmed) fail('CONFIRM', '删除采购合同及明细需要确认');
+        const s = inventoryService(t),
+          c = await s.getContract(v.id);
+        checkRevision(c.revision, v.revision);
+        await s.unlocked(c.date);
+        const db = t.db.withTables<InventoryTables>();
+        if (
+          await db
+            .selectFrom('inventory_document')
+            .select('id')
+            .where('source_type', '=', 'contract')
+            .where('source_id', '=', c.id)
+            .executeTakeFirst()
+        )
+          fail(
+            'CONTRACT_USED',
+            '采购合同已有来源入库，不能删除',
+            '请保留历史合同，必要时变更执行状态',
+          );
+        await db.deleteFrom('inventory_contract').where('id', '=', c.id).execute();
+        await s.bump();
+        await t.log.write({
+          action: 'inventory.contract.delete',
+          summary: `删除采购合同 ${c.number}`,
+          targetId: c.id,
+        });
+      });
     },
     async bulk(raw: z.input<typeof BulkSchema>) {
       return svc.tx(async (t) => {
         const v = BulkSchema.parse(raw),
           s = inventoryService(t);
+        if (new Set(v.products.map((p) => p.id)).size !== v.products.length)
+          fail('BULK_DUPLICATE', '批量修改集合包含重复产品', '请重新选择互不重复的产品');
         const all = await s.products();
         const changes = [];
         for (const p of v.products) {
@@ -1708,8 +2101,20 @@ export function inventoryService(svc: CoreServices) {
             if (!['true', 'false'].includes(v.value)) fail('BULK', '停用值必须为 true 或 false');
             value = v.value === 'true';
           }
-          const next = ProductSchema.parse({ ...old, [v.field]: value });
+          const patch =
+            v.field === 'inventoryAccountCode' || v.field === 'salesAccountCode'
+              ? {
+                  [v.field === 'inventoryAccountCode' ? 'inventoryAccountId' : 'salesAccountId']:
+                    v.value.trim() ? (await t.accounts.require(v.value.trim())).id : null,
+                }
+              : { [v.field]: value };
+          const next = ProductSchema.parse({
+            ...old,
+            ...patch,
+            confirmZeroFactor: v.confirmZeroFactor,
+          });
           await s.checkProduct(next);
+          if (new Decimal(next.allocationFactor).isZero()) next.allocationFactor = '1';
           changes.push({ before: old, after: next });
         }
         if (v.confirmed) {
@@ -1729,7 +2134,7 @@ export function inventoryService(svc: CoreServices) {
         await t.settings.set('preferences', v);
         await t.log.write({
           action: 'inventory.settings',
-          summary: '修改仓库编号及刷新偏好',
+          summary: '修改仓库编号、显示精度及默认税率',
           detail: v,
         });
         return v;
@@ -1743,6 +2148,8 @@ export function inventoryService(svc: CoreServices) {
     openingUnlocked,
     balances,
     document,
+    pairedTransfer,
+    protectedDocument,
     sourceUnlocked,
     unlocked,
     prepare,

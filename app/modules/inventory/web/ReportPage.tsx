@@ -10,6 +10,8 @@ export default function ReportPage() {
   const [f, setF] = useUrlFilters({
     warehouseId: 0,
     productCode: '',
+    productFrom: '',
+    productTo: '',
     from: '',
     to: '',
     category: '',
@@ -25,6 +27,8 @@ export default function ReportPage() {
   const filter = {
     warehouseId: warehouseId || undefined,
     productCode: f.productCode || undefined,
+    productFrom: f.productFrom || undefined,
+    productTo: f.productTo || undefined,
     from: f.from || undefined,
     to: f.to || undefined,
     category: f.category || undefined,
@@ -82,6 +86,20 @@ export default function ReportPage() {
         </Form.Item>
         <Form.Item name="from" label="起始日期">
           <Input type="date" />
+        </Form.Item>
+        <Form.Item label="起始产品">
+          <ProductSelect
+            label="起始产品"
+            value={f.productFrom}
+            onChange={(productFrom) => setF({ productFrom: productFrom ?? '' })}
+          />
+        </Form.Item>
+        <Form.Item label="截止产品">
+          <ProductSelect
+            label="截止产品"
+            value={f.productTo}
+            onChange={(productTo) => setF({ productTo: productTo ?? '' })}
+          />
         </Form.Item>
         <Form.Item name="to" label="截止日期">
           <Input type="date" />

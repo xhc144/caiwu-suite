@@ -17,6 +17,9 @@ it('w_cb_qc：新增口径迁移不重算或重写已有数量、单价、金额
     const old = raw.prepare('SELECT * FROM inventory_opening').get();
     expect(runMigrations(raw, [{ scope: 'inventory', migrations }]).applied).toEqual([
       { scope: 'inventory', id: '0004_opening_value_basis' },
+      { scope: 'inventory', id: '0005_transfer_and_reversal' },
+      { scope: 'inventory', id: '0006_invoice_issue_source' },
+      { scope: 'inventory', id: '0007_document_invoice_kind' },
     ]);
     const current = raw.prepare('SELECT * FROM inventory_opening').get() as Record<string, unknown>;
     const { value_basis, ...other } = current;

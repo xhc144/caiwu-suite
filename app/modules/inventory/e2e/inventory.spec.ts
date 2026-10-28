@@ -132,8 +132,11 @@ test('w_cb_cpda/w_cb_qc/w_ck_rk1/w_cb_pdk_1 未保存退出与刷新可取消', 
   page.once('dialog', (dialog) => dialog.dismiss());
   await d.getByRole('button', { name: '关闭', exact: true }).click();
   await expect(d.getByLabel('产品编号', { exact: true })).toHaveValue('UNSAVED');
-  page.once('dialog', (dialog) => dialog.dismiss());
   await page.keyboard.press('Control+F4');
+  await page
+    .getByRole('dialog', { name: '有未保存内容', exact: true })
+    .getByRole('button', { name: /^取\s*消$/ })
+    .click();
   await expect(d).toBeVisible();
   await Promise.all([
     page.waitForEvent('dialog').then(async (dialog) => {

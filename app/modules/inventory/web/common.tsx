@@ -3,18 +3,16 @@ import { Button, Form, Input, Select, Space } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { DataTable, type DataColumn } from '@caiwu/ui';
 import { escapeHtml, printHtml } from '@caiwu/print';
-import { formatMoney } from '@caiwu/core';
-import { useTab } from '@caiwu/web-kit';
+import { Decimal, formatMoney } from '@caiwu/core';
+import { useUnsavedChanges } from '@caiwu/web-kit';
+import { Link, useNavigate } from 'react-router';
 import { api } from './api';
 import { priceLine } from '../math';
 import type { DocumentInput } from '../shared';
-/** W0 TabsHost loops while mounting a second lazy module tab. A native location
- * change is the owner-local fallback until its title callback is stabilized.
- * beforeunload guards still protect all unsaved module forms. */
+import StockPicker from './StockPicker';
 export function useInventoryNavigate() {
-  return useCallback((to: string) => {
-    window.location.assign(to);
-  }, []);
+  const navigate = useNavigate();
+  return useCallback((to: string) => navigate(to), [navigate]);
 }
 export function InventoryNavigation() {
   return (
@@ -27,15 +25,17 @@ export function InventoryNavigation() {
         ['opening', '库存期初'],
         ['receipts', '入库单'],
         ['issues', '出库单'],
+        ['query', '综合查询'],
+        ['transfers', '仓库调拨'],
         ['contracts', '采购合同'],
         ['stock', '库存台账'],
         ['counts', '月末盘点'],
         ['reports', '汇总与销售明细'],
         ['settings', '仓库设置'],
       ].map(([path, title]) => (
-        <a key={path} href={`/m/inventory/${path}`}>
+        <Link key={path} to={`/m/inventory/${path}`}>
           {title}
-        </a>
+        </Link>
       ))}
     </nav>
   );
@@ -51,46 +51,39 @@ export function useRefresh() {
   const q = useQueryClient();
   return () => q.invalidateQueries();
 }
-export function useUnsaved(dirty: boolean) {
-  const tab = useTab();
+export type UnsavedOptions = {
+  title?: string;
+  version?: string | number;
+  pending?: boolean;
+  save?: () => Promise<boolean | void>;
+  discard?: () => Promise<void> | void;
+};
+export function useUnsaved(dirty: boolean, options: UnsavedOptions = {}) {
+  useUnsavedChanges({
+    title: options.title ?? '仓库业务',
+    dirty: dirty || !!options.pending,
+    version: options.version,
+    save: options.save ?? (() => Promise.resolve(false)),
+    discard: () => {
+      if (options.pending) throw new Error('数据正在保存，请等待保存结果后再关闭');
+      return options.discard?.();
+    },
+  });
   useEffect(() => {
     if (!dirty) return;
     const unload = (e: BeforeUnloadEvent) => {
+      if (
+        (e as BeforeUnloadEvent & { registeredPagesConfirmed?: boolean }).registeredPagesConfirmed
+      )
+        return;
       e.preventDefault();
       e.returnValue = '';
     };
-    const click = (e: MouseEvent) => {
-      if (
-        (e.target as Element)
-          .closest('.ant-tabs-tab-remove')
-          ?.closest('[data-node-key]')
-          ?.getAttribute('data-node-key') === tab.key &&
-        !window.confirm('有数据未保存，放弃修改并关闭吗？取消后可返回保存。')
-      ) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      }
-    };
-    const key = (e: KeyboardEvent) => {
-      if (
-        tab.active &&
-        e.ctrlKey &&
-        e.key === 'F4' &&
-        !window.confirm('有数据未保存，放弃修改并关闭吗？取消后可返回保存。')
-      ) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-      }
-    };
     window.addEventListener('beforeunload', unload);
-    window.addEventListener('click', click, true);
-    window.addEventListener('keydown', key, true);
     return () => {
       window.removeEventListener('beforeunload', unload);
-      window.removeEventListener('click', click, true);
-      window.removeEventListener('keydown', key, true);
     };
-  }, [dirty, tab.active, tab.key]);
+  }, [dirty]);
 }
 export function mayDiscard(dirty: boolean) {
   return !dirty || window.confirm('有数据未保存，放弃修改吗？取消后可返回保存。');
@@ -177,9 +170,10 @@ export function Grid<T extends object>({
   id,
   title,
   rows,
-  columns,
+  columns: inputColumns,
   toolbar,
   exportable = true,
+  height,
 }: {
   id: string;
   title: string;
@@ -187,8 +181,55 @@ export function Grid<T extends object>({
   columns: DataColumn<T>[];
   toolbar?: ReactNode;
   exportable?: boolean;
+  height?: number;
 }) {
   const [reset, setReset] = useState(0);
+  const { context } = useCatalog();
+  const quantityFields = new Set([
+    'quantity',
+    'opening',
+    'received',
+    'issued',
+    'balance',
+    'planned',
+    'remaining',
+    'book',
+    'actual',
+    'difference',
+    'adjustmentQuantity',
+  ]);
+  const priceFields = new Set([
+    'unitPrice',
+    'unitCost',
+    'balanceUnitPrice',
+    'unit_price',
+    'tax_unit_price',
+    'receiptPrice',
+    'issuePrice',
+    'planPrice',
+  ]);
+  const columns = inputColumns.map((c): DataColumn<T> => {
+    const field = String(c.dataIndex);
+    if (c.render || c.exportValue || (!quantityFields.has(field) && !priceFields.has(field)))
+      return c;
+    const display = (r: T) => {
+      const value = (r as Record<string, unknown>)[field];
+      if (value == null || value === '') return '';
+      try {
+        return new Decimal(String(value))
+          .toDecimalPlaces(
+            (quantityFields.has(field)
+              ? context?.settings.quantityDigits
+              : context?.settings.priceDigits) ?? 6,
+            Decimal.ROUND_HALF_UP,
+          )
+          .toFixed();
+      } catch {
+        return String(value);
+      }
+    };
+    return { ...c, exportValue: display, render: (_, r) => display(r) };
+  });
   const cellValue = (r: T, c: DataColumn<T>) => {
     const v = c.exportValue
       ? c.exportValue(r)
@@ -227,6 +268,7 @@ export function Grid<T extends object>({
       }
       columns={columns}
       dataSource={rows}
+      height={height}
       locale={{ emptyText: '该范围内无数据' }}
       exportName={exportable && rows.length ? title : undefined}
       toolbar={
@@ -268,11 +310,13 @@ export function LineEditor({
   onChange,
   opening = false,
   taxRate = '0',
+  warehouseId,
 }: {
   lines: EditLine[];
   onChange: (lines: EditLine[]) => void;
   opening?: boolean;
   taxRate?: string;
+  warehouseId?: number;
 }) {
   const calculated = (r: EditLine) => {
     try {
@@ -290,11 +334,20 @@ export function LineEditor({
       width: 240,
       exportValue: (r) => r.productCode,
       render: (_, r, index) => (
-        <ProductSelect
-          label={`第${index + 1}行产品`}
-          value={r.productCode}
-          onChange={(productCode) => update(index, { productCode })}
-        />
+        <Space orientation="vertical">
+          <ProductSelect
+            label={`第${index + 1}行产品`}
+            value={r.productCode}
+            onChange={(productCode) => update(index, { productCode })}
+          />
+          {warehouseId && (
+            <StockPicker
+              warehouseId={warehouseId}
+              label={`第${index + 1}行库存速查`}
+              onSelect={(productCode) => update(index, { productCode })}
+            />
+          )}
+        </Space>
       ),
     },
     {

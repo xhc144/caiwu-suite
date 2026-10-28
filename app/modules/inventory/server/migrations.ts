@@ -107,9 +107,79 @@ CREATE TABLE inventory_voucher_source (
     id: '0004_opening_value_basis',
     sql: `ALTER TABLE inventory_opening ADD COLUMN value_basis TEXT NOT NULL DEFAULT 'unitPrice' CHECK(value_basis IN ('unitPrice','amount'));`,
   },
+  {
+    id: '0005_transfer_and_reversal',
+    sql: `
+CREATE TABLE inventory_transfer (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, number TEXT NOT NULL UNIQUE,
+ request_key TEXT NOT NULL UNIQUE, payload_hash TEXT NOT NULL,
+ issue_document_id INTEGER NOT NULL UNIQUE REFERENCES inventory_document(id),
+ receipt_document_id INTEGER NOT NULL UNIQUE REFERENCES inventory_document(id),
+ revision INTEGER NOT NULL DEFAULT 1, created_by INTEGER NOT NULL REFERENCES app_user(id), created_at TEXT NOT NULL,
+ CHECK(issue_document_id <> receipt_document_id)
+);
+CREATE TABLE inventory_reversal (
+ original_document_id INTEGER PRIMARY KEY REFERENCES inventory_document(id),
+ reversal_document_id INTEGER NOT NULL UNIQUE REFERENCES inventory_document(id) ON DELETE CASCADE,
+ request_key TEXT NOT NULL UNIQUE, payload_hash TEXT NOT NULL,
+ created_by INTEGER NOT NULL REFERENCES app_user(id), created_at TEXT NOT NULL,
+ CHECK(original_document_id <> reversal_document_id)
+);
+`,
+  },
+  {
+    id: '0006_invoice_issue_source',
+    sql: `
+ALTER TABLE inventory_line ADD COLUMN tax_rate TEXT;
+CREATE TABLE inventory_invoice_source (
+ invoice_id INTEGER PRIMARY KEY, document_id INTEGER NOT NULL UNIQUE REFERENCES inventory_document(id),
+ request_key TEXT NOT NULL, payload_hash TEXT NOT NULL, created_by INTEGER NOT NULL REFERENCES app_user(id)
+);
+CREATE TABLE inventory_invoice_request (
+ request_key TEXT PRIMARY KEY, payload_hash TEXT NOT NULL, invoice_id INTEGER NOT NULL,
+ document_id INTEGER NOT NULL REFERENCES inventory_document(id), created_by INTEGER NOT NULL REFERENCES app_user(id)
+);
+`,
+  },
+  {
+    id: '0007_document_invoice_kind',
+    sql: `ALTER TABLE inventory_document ADD COLUMN invoice_kind TEXT NOT NULL DEFAULT 'none' CHECK(invoice_kind IN ('none','ordinary','special'));`,
+  },
 ]);
 type Id = { id: Generated<number> };
 export type InventoryTables = {
+  inventory_invoice_source: {
+    invoice_id: number;
+    document_id: number;
+    request_key: string;
+    payload_hash: string;
+    created_by: number;
+  };
+  inventory_invoice_request: {
+    request_key: string;
+    payload_hash: string;
+    invoice_id: number;
+    document_id: number;
+    created_by: number;
+  };
+  inventory_transfer: Id & {
+    number: string;
+    request_key: string;
+    payload_hash: string;
+    issue_document_id: number;
+    receipt_document_id: number;
+    revision: number;
+    created_by: number;
+    created_at: string;
+  };
+  inventory_reversal: {
+    original_document_id: number;
+    reversal_document_id: number;
+    request_key: string;
+    payload_hash: string;
+    created_by: number;
+    created_at: string;
+  };
   inventory_costing_batch: {
     id: string;
     request_key: string;
@@ -191,6 +261,7 @@ export type InventoryTables = {
     calculation_period: number | null;
   };
   inventory_document: Id & {
+    invoice_kind: Generated<'none' | 'ordinary' | 'special'>;
     kind: 'receipt' | 'issue';
     warehouse_id: number;
     number: string;
@@ -221,6 +292,7 @@ export type InventoryTables = {
     quantity_e6: number;
     unit_price: string;
     tax_unit_price: string;
+    tax_rate: Generated<string | null>;
     price_includes_tax: number;
     net_cents: number;
     tax_cents: number;

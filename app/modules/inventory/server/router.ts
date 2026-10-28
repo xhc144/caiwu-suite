@@ -17,6 +17,16 @@ import { inventoryService } from './service';
 import { inventoryCosting, withInventoryCosting } from './costing';
 import { CostingCommitSchema, CostingCancelSchema } from '../costing-contract';
 import { ImportSchema, importInventory } from './imports';
+import { InventoryQuerySchema } from '../query';
+import { inventoryQuery } from './query';
+import { TransferSchema, AuditTransferSchema, RemoveTransferSchema } from '../transfer';
+import { inventoryTransfer } from './transfer';
+import { ExportDocumentsSchema, ImportDocumentsSchema } from '../exchange';
+import { exportDocuments, importDocuments } from './exchange';
+import { ReversalSchema } from '../reversal';
+import { inventoryReversal } from './reversal';
+import { exportContracts } from './contract-exchange';
+import { inventoryLedgers } from './ledgers';
 const m = moduleKit(manifest);
 const base = m.procedure.use(async ({ next }) => {
   const result = await next();
@@ -27,6 +37,10 @@ const base = m.procedure.use(async ({ next }) => {
       name: '产品名称',
       productCode: '产品编号',
       warehouseId: '仓库',
+      sourceWarehouseId: '调出仓库',
+      targetWarehouseId: '调入仓库',
+      clearingAccountId: '调拨对方科目',
+      unitPrices: '退回入库单价',
       supplierId: '供应商',
       number: '单号',
       date: '日期',
@@ -69,6 +83,45 @@ const confirmedCount = countKey.extend({
   confirmed: z.boolean(),
 });
 export const inventoryRouter = m.router({
+  previewReversal: edit
+    .input(ReversalSchema)
+    .mutation(({ ctx, input }) => inventoryReversal(ctx.svc).preview(input)),
+  reverseDocument: edit
+    .input(ReversalSchema)
+    .mutation(({ ctx, input }) => inventoryReversal(ctx.svc).save(input)),
+  queryDocuments: view
+    .input(InventoryQuerySchema)
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryQuery(svc, input))),
+  previewTransfer: edit
+    .input(TransferSchema)
+    .mutation(({ ctx, input }) => inventoryTransfer(ctx.svc).preview(input)),
+  saveTransfer: edit
+    .input(TransferSchema)
+    .mutation(({ ctx, input }) => inventoryTransfer(ctx.svc).save(input)),
+  transfers: view
+    .input(FilterSchema)
+    .query(({ ctx, input }) => inventoryTransfer(ctx.svc).list(input)),
+  transfer: view
+    .input(z.object({ id: zId }))
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryTransfer(svc).get(input.id))),
+  auditTransfer: base
+    .meta({ permission: 'inventory.audit' })
+    .input(AuditTransferSchema)
+    .mutation(({ ctx, input }) => inventoryTransfer(ctx.svc).audit(input)),
+  removeTransfer: edit
+    .input(RemoveTransferSchema)
+    .mutation(({ ctx, input }) => inventoryTransfer(ctx.svc).remove(input)),
+  exportDocuments: view
+    .input(ExportDocumentsSchema)
+    .query(({ ctx, input }) => exportDocuments(ctx.svc, input)),
+  importDocumentsPreview: base
+    .meta({ permission: 'inventory.import' })
+    .input(ImportDocumentsSchema)
+    .mutation(({ ctx, input }) => importDocuments(ctx.svc, input)),
+  importDocuments: base
+    .meta({ permission: 'inventory.import' })
+    .input(ImportDocumentsSchema)
+    .mutation(({ ctx, input }) => importDocuments(ctx.svc, input, true)),
   costingSnapshot: view
     .input(z.object({ period: zPeriod }))
     .query(({ ctx, input }) => inventoryCosting(ctx.svc).snapshot(input.period)),
@@ -107,6 +160,9 @@ export const inventoryRouter = m.router({
   saveWarehouse: edit
     .input(WarehouseSchema)
     .mutation(({ ctx, input }) => inventoryService(ctx.svc).saveWarehouse(input)),
+  removeWarehouse: edit
+    .input(z.object({ id: zId, revision: z.number().int().positive(), confirmed: z.boolean() }))
+    .mutation(({ ctx, input }) => inventoryService(ctx.svc).removeWarehouse(input)),
   opening: view
     .input(z.object({ warehouseId: zId }))
     .query(({ ctx, input }) => inventoryService(ctx.svc).opening(input.warehouseId)),
@@ -115,19 +171,26 @@ export const inventoryRouter = m.router({
     .mutation(({ ctx, input }) => inventoryService(ctx.svc).saveOpening(input)),
   documents: view
     .input(FilterSchema)
-    .query(({ ctx, input }) => inventoryService(ctx.svc).documents(input)),
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).documents(input))),
   document: view
     .input(z.object({ id: zId }))
-    .query(({ ctx, input }) => inventoryService(ctx.svc).getDocument(input.id)),
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).getDocument(input.id))),
   previewDocument: edit
     .input(DocumentSchema)
     .mutation(({ ctx, input }) => inventoryService(ctx.svc).previewDocument(input)),
-  saveDocument: edit
-    .input(DocumentSchema)
-    .mutation(({ ctx, input }) => inventoryService(ctx.svc).saveDocument(input)),
+  saveDocument: edit.input(DocumentSchema).mutation(({ ctx, input }) =>
+    ctx.svc.tx((svc) =>
+      svc.inventory.with(async (inventory) => {
+        const saved = await inventory.saveDocument(input);
+        return inventoryService(svc).getDocument(saved.id);
+      }),
+    ),
+  ),
   removeDocument: edit
     .input(z.object({ id: zId, revision: z.number().int().positive(), confirmed: z.boolean() }))
-    .mutation(({ ctx, input }) => inventoryService(ctx.svc).removeDocument(input)),
+    .mutation(({ ctx, input }) =>
+      ctx.svc.tx((svc) => svc.inventory.with((inventory) => inventory.removeDocument(input))),
+    ),
   audit: base
     .meta({ permission: 'inventory.audit' })
     .input(z.object({ id: zId, revision: z.number().int().positive(), to: z.boolean() }))
@@ -144,6 +207,11 @@ export const inventoryRouter = m.router({
   ledger: view
     .input(FilterSchema)
     .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).ledger(input))),
+  ledgers: view
+    .input(z.object({ filter: FilterSchema, hideInactive: z.boolean().default(false) }))
+    .query(({ ctx, input }) =>
+      ctx.svc.tx((svc) => inventoryLedgers(svc, input.filter, input.hideInactive)),
+    ),
   sales: view
     .input(FilterSchema)
     .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).sales(input))),
@@ -169,12 +237,24 @@ export const inventoryRouter = m.router({
   resetCount: edit
     .input(confirmedCount)
     .mutation(({ ctx, input }) => inventoryService(ctx.svc).resetCount(input)),
+  replaceCountProducts: edit
+    .input(
+      countKey.extend({
+        revision: z.number().int().nonnegative(),
+        productCodes: z.array(z.string().trim().min(1).max(200)).max(1000),
+        confirmed: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) => inventoryService(ctx.svc).replaceCountProducts(input)),
   removeCount: edit
     .input(confirmedCount)
     .mutation(({ ctx, input }) => inventoryService(ctx.svc).removeCount(input)),
   contracts: view
     .input(FilterSchema)
     .query(({ ctx, input }) => inventoryService(ctx.svc).contracts(input)),
+  exportContracts: view
+    .input(z.object({ ids: z.array(zId).min(1).max(200) }))
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => exportContracts(svc, input.ids))),
   contract: view
     .input(z.object({ id: zId }))
     .query(({ ctx, input }) => inventoryService(ctx.svc).getContract(input.id)),
@@ -183,7 +263,25 @@ export const inventoryRouter = m.router({
     .mutation(({ ctx, input }) => inventoryService(ctx.svc).saveContract(input)),
   contractDraft: view
     .input(z.object({ id: zId }))
-    .query(({ ctx, input }) => inventoryService(ctx.svc).contractDraft(input.id)),
+    .query(({ ctx, input }) => ctx.svc.tx((svc) => inventoryService(svc).contractDraft(input.id))),
+  contractFulfillment: view
+    .input(z.object({ id: zId }))
+    .query(({ ctx, input }) =>
+      ctx.svc.tx((svc) => inventoryService(svc).contractFulfillment(input.id)),
+    ),
+  setContractStatus: edit
+    .input(
+      z.object({
+        id: zId,
+        revision: z.number().int().positive(),
+        status: z.enum(['open', 'completed', 'cancelled']),
+        confirmed: z.boolean(),
+      }),
+    )
+    .mutation(({ ctx, input }) => inventoryService(ctx.svc).setContractStatus(input)),
+  removeContract: edit
+    .input(z.object({ id: zId, revision: z.number().int().positive(), confirmed: z.boolean() }))
+    .mutation(({ ctx, input }) => inventoryService(ctx.svc).removeContract(input)),
   bulk: edit.input(BulkSchema).mutation(({ ctx, input }) => inventoryService(ctx.svc).bulk(input)),
   saveSettings: base
     .meta({ permission: 'inventory.settings' })
