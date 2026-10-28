@@ -3,6 +3,7 @@ import type { Worksheet } from 'exceljs';
 import { centsToYuan } from '@caiwu/core';
 import type { AgingReport, TrendReport } from '../shared';
 import type { ContractReport } from './contracts';
+import type { AnalysisSheet } from '../custom';
 
 const { Workbook } = ExcelJS;
 // Excel 数值只有15位有效数字；分值超过15位时，必须保留精确十进制文本。
@@ -248,6 +249,54 @@ export async function exportTrend(report: TrendReport) {
     ws,
     3,
     Array.from({ length: periods.length + 5 }, (_, i) => i + 3).filter((i) => i !== ratioColumn),
+  );
+  return Buffer.from(await wb.xlsx.writeBuffer()).toString('base64');
+}
+
+export async function exportAnalysisSheet(name: string, report: AnalysisSheet) {
+  const wb = new Workbook();
+  const ws = wb.addWorksheet('分析结果');
+  ws.addRow([name, '金额单位：元；比例单位：%']);
+  ws.addRow([report.title, report.generatedAt]);
+  ws.addRow([report.note]);
+  ws.addRow([
+    '项目编号',
+    '项目',
+    '单位',
+    ...report.periods.map(String),
+    report.source.kind === 'custom' ? '末期数' : '累计 / 末月余额',
+    '月均',
+    '占比%',
+  ]);
+  const units = { money: '元', percent: '%', number: '数值' };
+  for (const r of report.rows)
+    ws.addRow([
+      r.key,
+      r.name,
+      units[r.unit],
+      ...r.values.map((v) => (v === null ? '早于启用期间' : excelMoney(v))),
+      excelMoney(r.total),
+      excelMoney(r.average),
+      r.ratio,
+    ]);
+  formatSheet(
+    ws,
+    4,
+    Array.from({ length: report.periods.length + 2 }, (_, i) => i + 4),
+  );
+  const original = wb.addWorksheet('取数原值');
+  original.addRow(['项目编号', '项目', '公式', ...report.periods.map(String)]);
+  for (const r of report.rows)
+    original.addRow([
+      r.key,
+      r.name,
+      r.formula,
+      ...r.originalValues.map((v) => (v === null ? '早于启用期间' : excelMoney(v))),
+    ]);
+  formatSheet(
+    original,
+    1,
+    report.periods.map((_, i) => i + 4),
   );
   return Buffer.from(await wb.xlsx.writeBuffer()).toString('base64');
 }

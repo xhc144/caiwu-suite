@@ -22,6 +22,7 @@ import {
 import { SHORTCUT_NAMES, ShortcutSchema, TrendFilterSchema, type TrendRow } from '../shared';
 import { api } from './api';
 import AnalysisChart from './AnalysisChart';
+import ResultEditor, { type ResultDraft } from './ResultEditor';
 import {
   downloadWorkbook,
   NoPermission,
@@ -72,6 +73,7 @@ function TrendPage() {
   const query = useQuery({ ...api.trend.queryOptions(input), enabled: canView && parsed.success });
   const report = query.data;
   const [exporting, setExporting] = useState(false);
+  const [resultDraft, setResultDraft] = useState<ResultDraft>();
   const metricName =
     filters.metric === 'balance'
       ? '期末余额'
@@ -349,7 +351,32 @@ function TrendPage() {
           {shortcuts.isError && (
             <ReportError error={shortcuts.error} retry={() => void shortcuts.refetch()} />
           )}
-          <Space>
+          <Space wrap>
+            {canEdit && (
+              <Button
+                disabled={!report || query.isFetching}
+                onClick={() => {
+                  if (report)
+                    void queryClient
+                      .fetchQuery({
+                        ...api.results.trend.queryOptions(report.filter),
+                        staleTime: 0,
+                      })
+                      .then((sheet) =>
+                        setResultDraft({
+                          revision: 0,
+                          name: `${report.filter.accountCode}-${report.filter.period}-${report.filter.mode === 'annual' ? '年度分析' : '月度分析'}`,
+                          sheet,
+                        }),
+                      )
+                      .catch(showError);
+                }}
+              >
+                编辑并保存结果
+              </Button>
+            )}
+            <Link to="/m/analysis/results">已保存分析结果</Link>
+            <Link to="/m/analysis/custom">自定义分析表</Link>
             {canExport && (
               <>
                 <Button
@@ -386,6 +413,9 @@ function TrendPage() {
               </p>
               <AnalysisChart labels={chartLabels} values={chartValues} />
             </>
+          )}
+          {resultDraft && (
+            <ResultEditor initial={resultDraft} onClose={() => setResultDraft(undefined)} />
           )}
           <DataTable<TrendRow>
             tableId="analysis.trend"
