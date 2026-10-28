@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mapTemplateScheme, parseCodeScheme, parseTemplate, templateProblems } from '@caiwu/core';
 import { createTestApp, voucherInputFromSpec } from '@caiwu/testkit';
 import farmer from '../templates/farmer-cooperative-2023.json' with { type: 'json' };
-import templatesServer from '../server';
+import { integrationModules } from './template-fixtures';
 
 const template = parseTemplate(farmer);
 
@@ -214,7 +214,7 @@ describe('w_xt_kgzb_3：农合按成员、人员、项目和所属部门明细�
 
   it('真实建账强制成员对象、拒绝汇总科目，正式过账可按成员核对借贷余额', async () => {
     const app = await createTestApp({
-      modules: [templatesServer],
+      modules: [...integrationModules],
       templateId: 'farmer-cooperative-2023',
       seed: false,
     });

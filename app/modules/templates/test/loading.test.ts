@@ -7,7 +7,7 @@ import { createRuntime, defineServerModule } from '@caiwu/server-kit';
 import { createTestApp } from '@caiwu/testkit';
 import templatesServer from '../server';
 import { expectedAccounts, expectedTemplates } from './expected-accounts';
-import { loadedAccountSnapshot } from './template-fixtures';
+import { loadedAccountSnapshot, integrationModules } from './template-fixtures';
 
 const templates = templatesServer.templates.map((raw) => parseTemplate(raw));
 const input = (templateId: string, name = '制度加载测试') => ({
@@ -23,7 +23,7 @@ const input = (templateId: string, name = '制度加载测试') => ({
 describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite', (expected) => {
   it('确认的制度和级次落库，完整读取科目、类别、方向；重复建账不重复加载', async () => {
     const app = await createTestApp({
-      modules: [templatesServer],
+      modules: [...integrationModules],
       templateId: expected.id,
       seed: false,
     });
@@ -81,7 +81,7 @@ describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite',
 
   it('w_xt_kgzb_a2 阻止未选择制度；w_xt_kgzb_1 阻止错误级次，不留半成品', async () => {
     const app = await createTestApp({
-      modules: [templatesServer],
+      modules: [...integrationModules],
       templateId: expected.id,
       seed: false,
     });
@@ -155,7 +155,7 @@ it('w_xt_kgzb_3：事务加载到最后科目失败时回滚、清理 .creating�
 
 it('w_xt_kgzb_a2：切换制度和令牌不串科目，级次按账套参数加载', async () => {
   const app = await createTestApp({
-    modules: [templatesServer],
+    modules: [...integrationModules],
     templateId: 'nonprofit-2026',
     seed: false,
   });

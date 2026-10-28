@@ -1,3 +1,4 @@
+import { integrationModules } from './template-fixtures';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -17,7 +18,7 @@ const partnerAccounts = [
   { code: '2203', name: '预收账款', direction: 'credit', page: 96, clause: '第三项' },
 ] as const;
 const setup = () =>
-  createTestApp({ modules: [templatesServer], templateId: 'nonprofit-2026', seed: false });
+  createTestApp({ modules: [...integrationModules], templateId: 'nonprofit-2026', seed: false });
 
 it('w_xt_kgzb_a2：2026适用版本与四项原文定位明确，不把全部明细宣称为完成', () => {
   const template = parseTemplate(templatesServer.templates[0]);
@@ -260,7 +261,7 @@ const fixtureModule = defineServerModule(fixtureManifest, {
 
 it('w_xt_kgzb_3：模板字段不绕过权限/来源锁；账套覆盖拒绝并保留在线备份', async () => {
   const app = await createTestApp({
-    modules: [templatesServer, fixtureModule],
+    modules: [...integrationModules, fixtureModule],
     templateId: 'nonprofit-2026',
     seed: false,
   });
@@ -331,7 +332,7 @@ it('w_xt_kgzb_3：升级模板并重新打开旧账不改旧辅助配置，新�
     const before = await app.svc.accounts.list();
     expect(before.every((a) => a.dimensions.length === 0)).toBe(true);
     await app.runtime.bookStore.dispose();
-    runtime = createRuntime({ dataDir: app.runtime.dataDir, modules: [templatesServer] });
+    runtime = createRuntime({ dataDir: app.runtime.dataDir, modules: [...integrationModules] });
     const book = runtime.bookStore.open(app.book.id);
     const svc = createCoreServices({
       db: book.db,

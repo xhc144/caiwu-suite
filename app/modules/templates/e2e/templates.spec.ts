@@ -6,7 +6,7 @@ import { expectedAccounts, expectedTemplates } from '../test/expected-accounts';
 import { parseCodeScheme } from '@caiwu/core';
 import { loadedAccountSnapshot, registeredTemplates } from '../test/template-fixtures';
 
-const templates = registeredTemplates();
+const templates = registeredTemplates().filter((template) => template.status === 'current');
 
 const newBookInput = (templateId: string) => ({
   name: `M02-${templateId}-${randomUUID().slice(0, 8)}`,

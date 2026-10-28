@@ -1,3 +1,7 @@
+import { defineManifest } from '@caiwu/core';
+import { defineServerModule, moduleKit } from '@caiwu/server-kit';
+import enterpriseFixture from '../supplements/construction/test/fixtures/enterprise-2026.json' with { type: 'json' };
+import smallFixture from '../supplements/construction/test/fixtures/small-business-2013.json' with { type: 'json' };
 import {
   DIMENSION_TYPE_IDS,
   parentCodeOf,
@@ -52,3 +56,16 @@ export function loadedAccountSnapshot(template: AccountingTemplate, rows: Accoun
       };
     });
 }
+
+const baseManifest = defineManifest({
+  id: 'template-test-bases',
+  name: '合成验证基表',
+  products: 'all',
+});
+export const integrationModules = [
+  defineServerModule(baseManifest, {
+    router: moduleKit(baseManifest).router({}),
+    templates: [enterpriseFixture, smallFixture],
+  }),
+  templatesServer,
+];
