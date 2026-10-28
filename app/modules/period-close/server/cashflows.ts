@@ -85,6 +85,7 @@ export async function validateGeneratedCashflows(
     }
     if (id == null) invalid('REQUIRED', `科目 ${account.code} 的生成行缺少现金流量项目`);
     const declared = await cashflowItem(svc, id, account, '生成');
+    line.cashflowDirection = declared.direction;
     checked.push({ line: index + 1, itemId: id, direction: declared.direction });
     const signed = sumMoney([line.debit, -(line.credit ?? 0)]);
     if (declared.direction === 'internal') internal.push(signed);

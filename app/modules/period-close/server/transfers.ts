@@ -20,11 +20,15 @@ import {
   type TransferRule,
   type RuleInput,
   type Cashflows,
+  type SourceMode,
 } from '../shared';
 import { validateCashflows, cashflowForLine, validateGeneratedCashflows } from './cashflows';
 import type { PeriodCloseTables } from './migrations';
 import { applyLines, canonicalBuckets, closingBuckets, digest, type Bucket } from './buckets';
+import { applySourceActivity, loadSourceActivity, selectSourceBuckets } from './source-modes';
+import { verifyExchangeRuns } from './exchange';
 
+const TransferDecimal = Decimal.clone({ precision: 80, rounding: Decimal.ROUND_HALF_UP });
 export const tables = (svc: CoreServices) => svc.db.withTables<PeriodCloseTables>();
 export function fail(
   code: string,
@@ -67,6 +71,19 @@ export const runs = (svc: CoreServices) =>
   tables(svc).selectFrom('period_close_run').selectAll().orderBy('period').execute();
 export async function noLaterRun(svc: CoreServices, period: number) {
   const later = (await runs(svc)).filter((r) => r.period > period);
+  const laterExchange = await tables(svc)
+    .selectFrom('period_close_exchange_run')
+    .selectAll()
+    .where('period', '>', period)
+    .execute();
+  if (laterExchange.length)
+    fail(
+      'LATER_EXCHANGE',
+      '后期已有汇兑损益凭证，当前余额不能再改变',
+      '先按从后到前的顺序合法撤销后期汇兑凭证，再处理本期',
+      period,
+      { voucherIds: laterExchange.map((r) => r.voucher_id) },
+    );
   if (later.length)
     fail(
       'LATER_TRANSFER',
@@ -133,6 +150,7 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
     fail('TARGET_PNL', '损益转入科目不能仍属损益类', '按当前制度显式选择利润或结余末级科目');
   const sourceIds: number[] = [];
   const sourceRatios = new Map<number, string>();
+  const sourceModes = new Map<number, SourceMode>();
   if (r.kind === 'pnl') {
     for (const a of accounts.filter(
       (a) =>
@@ -143,6 +161,7 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
     )) {
       sourceIds.push(a.id);
       sourceRatios.set(a.id, '100');
+      sourceModes.set(a.id, 'balance');
     }
   } else {
     for (const source of r.sources) {
@@ -155,6 +174,7 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
       for (const a of leaves) {
         sourceIds.push(a.id);
         sourceRatios.set(a.id, source.ratio);
+        sourceModes.set(a.id, source.mode);
       }
     }
   }
@@ -206,7 +226,7 @@ export async function validateRule(svc: CoreServices, raw: RuleInput) {
         fail('TARGET_DIMENSION', `转入${d.name}无效`, '重新选择转入辅助项');
     }
   }
-  return { rule: r, sourceIds, sourceRatios, sourceCashflows, accounts, target };
+  return { rule: r, sourceIds, sourceRatios, sourceModes, sourceCashflows, accounts, target };
 }
 export async function saveRule(svc: CoreServices, raw: RuleInput, id?: number, revision?: number) {
   return svc.tx(async (t) => {
@@ -265,20 +285,16 @@ function makeLines(
   for (const b of buckets.values()) {
     if (!sourceIds.includes(b.accountId)) continue;
     const ratio = sourceRatios.get(b.accountId)!;
+    const RatioDecimal = Decimal.clone({
+      precision: Math.max(80, ratio.length + 20),
+      rounding: Decimal.ROUND_HALF_UP,
+    });
     const portion = (n: number) =>
-      assertCents(new Decimal(n).mul(ratio).div(100).toDecimalPlaces(0).toNumber());
+      assertCents(new RatioDecimal(n).mul(ratio).div(100).toDecimalPlaces(0).toNumber());
     const amount = portion(b.amount);
     const fc = portion(b.fc);
     const qty = portion(b.qty);
-    if (!amount) {
-      if (fc || qty)
-        fail(
-          'ZERO_AUXILIARY',
-          '转出本币金额为零但外币或数量非零，不能生成零金额分录',
-          '先处理该科目的外币/数量差额',
-        );
-      continue;
-    }
+    if (!amount && !fc && !qty) continue;
     const account = accounts.find((a) => a.id === b.accountId)!;
     if (account.disabled)
       fail(
@@ -299,10 +315,11 @@ function makeLines(
           `转出科目 ${account.code} 的余额缺少必填辅助项`,
           '先修正期初辅助桶，不会用默认项覆盖未知的余额桶',
         );
-    const side = amount < 0 ? 1 : -1;
+    const side = (amount || fc || qty) < 0 ? 1 : -1;
     lines.push({
       summary: rule.summary,
       accountId: b.accountId,
+      entrySide: side === 1 ? 'debit' : 'credit',
       dimensions: {
         ...b.dimensions,
         cashflow: cashflowForLine(account, sourceCashflows.get(b.accountId), -amount, '转出'),
@@ -311,8 +328,11 @@ function makeLines(
       credit: amount > 0 ? amount : 0,
       currency: b.currency,
       exchangeRate: b.currency
-        ? fc
-          ? new Decimal(Math.abs(amount)).div(Math.abs(fc)).toFixed(12)
+        ? fc && amount
+          ? new TransferDecimal(Math.abs(amount))
+              .div(Math.abs(fc))
+              .toSignificantDigits(40)
+              .toFixed()
           : (rates.get(b.currency) ??
             fail(
               'FX_RATE_REQUIRED',
@@ -336,7 +356,7 @@ function makeLines(
         '转入科目启用了外币或数量，但尚未填写显式换算设置',
         '编辑结转类型，填写转入币种汇率及本币单价，重新预览；不会沿用转出科目的外币或数量',
       );
-    const magnitude = new Decimal(targetAmount).abs();
+    const magnitude = new TransferDecimal(targetAmount).abs();
     const scaledInteger = (value: Decimal, label: string) => {
       const integer = value.toDecimalPlaces(0, Decimal.ROUND_HALF_UP).toNumber();
       if (!Number.isSafeInteger(integer))
@@ -367,6 +387,12 @@ function makeLines(
       unitPrice: target.quantityUnit ? conversion!.unitPrice : undefined,
     });
   }
+  if (lines.length === 1)
+    fail(
+      'ZERO_AUXILIARY',
+      '本次仅有一行零本币辅助余额调整，无法保存为正式凭证',
+      '正式凭证至少需要两行真实分录；请增加实际需要结转的辅助余额或通过凭证录入按真实对应关系处理',
+    );
   return lines;
 }
 export async function transferPreview(
@@ -374,8 +400,16 @@ export async function transferPreview(
   period: number,
   ruleIds: number[],
   allowPendingExisting = true,
+  batch?: { allowedPendingRuleIds: number[] },
 ) {
-  return calculateTransferPreview(svc, period, ruleIds, allowPendingExisting, 'prepare-generation');
+  return calculateTransferPreview(
+    svc,
+    period,
+    ruleIds,
+    allowPendingExisting,
+    'prepare-generation',
+    batch,
+  );
 }
 
 async function calculateTransferPreview(
@@ -384,13 +418,15 @@ async function calculateTransferPreview(
   ruleIds: number[],
   allowPendingExisting: boolean,
   purpose: 'prepare-generation' | 'verify-existing',
+  batch?: { allowedPendingRuleIds: number[] },
 ) {
   if (!ruleIds.length) fail('NO_SELECTION', '请选择需要结转的内容', '在结转列表勾选后重新预览');
   if (new Set(ruleIds).size !== ruleIds.length) fail('NO_SELECTION', '结转类型不能重复选择');
-  await svc.periods.assertOpen(period, '月度结转');
+  await svc.periods.assertWritable({ period, mode: 'business', action: '月度结转' });
   await requireOpening(svc, periodYear(period));
   // 生成/重算会影响后月基数；只读核验已有快照不会改变基数。
   if (purpose === 'prepare-generation') await noLaterRun(svc, period);
+  await verifyExchangeRuns(svc, period, period);
   const allRules = await rules(svc);
   const selected = allRules.filter((r) => ruleIds.includes(r.id));
   if (selected.length !== ruleIds.length || selected.some((r) => !r.enabled))
@@ -403,11 +439,16 @@ async function calculateTransferPreview(
   const selectedExisting = existing.filter((r) => ruleIds.includes(r.rule_id));
   if (purpose === 'verify-existing' && selectedExisting.length !== selected.length)
     fail('SOURCE_MISMATCH', '只读核验缺少对应的已生成结转快照', '保留数据并检查来源关联', period);
+  const allowedExisting = batch
+    ? existing.filter(
+        (r) => batch.allowedPendingRuleIds.includes(r.rule_id) || ruleIds.includes(r.rule_id),
+      )
+    : selectedExisting;
   if (
     unposted.some(
-      (v) => !allowPendingExisting || !selectedExisting.some((r) => r.voucher_id === v.id),
+      (v) => !allowPendingExisting || !allowedExisting.some((r) => r.voucher_id === v.id),
     ) ||
-    (unposted.length && selectedExisting.length !== selected.length)
+    (!batch && unposted.length && selectedExisting.length !== selected.length)
   )
     fail(
       'UNPOSTED',
@@ -423,6 +464,11 @@ async function calculateTransferPreview(
     false,
   );
   const rates = new Map<string, string | null>();
+  const activity = await loadSourceActivity(
+    svc,
+    period,
+    existing.map((r) => r.voucher_id),
+  );
   for (const currency of new Set(
     [...buckets.values()].map((b) => b.currency).filter((c): c is string => c != null),
   ))
@@ -432,8 +478,9 @@ async function calculateTransferPreview(
     (r) => selected.some((s) => s.id === r.id) || existing.some((e) => e.rule_id === r.id),
   )) {
     const validated = await validateRule(svc, rule);
+    const sourceBuckets = selectSourceBuckets(buckets, activity, validated.sourceModes);
     const lines = makeLines(
-      buckets,
+      sourceBuckets,
       rule,
       validated.sourceIds,
       validated.target,
@@ -448,6 +495,8 @@ async function calculateTransferPreview(
       RuleSchema.parse(rule),
       [...rates].sort(),
     ];
+    if ([...validated.sourceModes.values()].some((mode) => mode !== 'balance'))
+      basisData.push(canonicalBuckets(sourceBuckets));
     if (cashflowChecks.length) basisData.push(cashflowChecks);
     const basis = digest(basisData);
     const prior = existing.find((r) => r.rule_id === rule.id);
@@ -476,11 +525,14 @@ async function calculateTransferPreview(
         credit: sumCents(lines.map((l) => l.credit)),
       });
     applyLines(buckets, lines, false);
+    applySourceActivity(activity, lines);
   }
+  const numbering = (await svc.voucherPolicy.get()).numbering;
   return {
     period,
+    numbering,
     items: output,
-    previewToken: digest(output),
+    previewToken: digest([output, numbering]),
     drafts: vouchers
       .filter((v) => v.status === 'draft' && !v.voided)
       .map((v) => ({ id: v.id, displayNo: v.displayNo })),
@@ -525,9 +577,46 @@ export async function verifyPostedRuns(svc: CoreServices, from: number, to: numb
     await calculateTransferPreview(svc, period, ids, true, 'verify-existing');
   }
 }
+/** 调用者必须在同一事务内重新计算、核对预览；逐项流程与整批流程共用写入。 */
+export async function generatePreparedItem(
+  svc: CoreServices,
+  period: number,
+  item: Awaited<ReturnType<typeof transferPreview>>['items'][number],
+  number?: number,
+) {
+  if (item.existingVoucherId) return { id: item.existingVoucherId, existing: true };
+  if (item.zero) return null;
+  const rule = (await rules(svc)).find((r) => r.id === item.ruleId)!;
+  const v = await svc.vouchers.create({
+    number,
+    voucherTypeId: rule.voucherTypeId,
+    date: periodEndDate(period),
+    lines: item.lines,
+    closingKind: rule.kind === 'pnl' ? 'pnl' : `period-close:${rule.code}`,
+    source: { type: 'closing', id: `${period}:${rule.id}` },
+  });
+  await tables(svc)
+    .insertInto('period_close_run')
+    .values({
+      period,
+      rule_id: rule.id,
+      voucher_id: v.id,
+      basis: item.basis,
+      definition: JSON.stringify(RuleSchema.parse(rule)),
+      created_at: svc.ctx.now().toISOString(),
+    })
+    .execute();
+  return { id: v.id, existing: false };
+}
 export async function generate(
   svc: CoreServices,
-  input: { period: number; ruleIds: number[]; confirmed: boolean; previewToken: string },
+  input: {
+    period: number;
+    ruleIds: number[];
+    confirmed: boolean;
+    previewToken: string;
+    voucherNumbers?: Record<string, number>;
+  },
 ) {
   if (!input.confirmed) fail('CONFIRM', '请先确认结转顺序和分录预览', '取消不会修改账套');
   return svc.tx(async (t) => {
@@ -544,34 +633,15 @@ export async function generate(
       };
     if (preview.previewToken !== input.previewToken)
       fail('PREVIEW_CHANGED', '预览已变化，请重新预览', '确认最新金额和顺序后再生成');
-    const list = await rules(t);
     const generated = [];
     for (const item of preview.items) {
-      if (item.existingVoucherId) {
-        generated.push({ id: item.existingVoucherId, existing: true });
-        continue;
-      }
-      if (item.zero) continue;
-      const rule = list.find((r) => r.id === item.ruleId)!;
-      const v = await t.vouchers.create({
-        voucherTypeId: rule.voucherTypeId,
-        date: periodEndDate(input.period),
-        lines: item.lines,
-        closingKind: rule.kind === 'pnl' ? 'pnl' : `period-close:${rule.code}`,
-        source: { type: 'closing', id: `${input.period}:${rule.id}` },
-      });
-      await tables(t)
-        .insertInto('period_close_run')
-        .values({
-          period: input.period,
-          rule_id: rule.id,
-          voucher_id: v.id,
-          basis: item.basis,
-          definition: JSON.stringify(RuleSchema.parse(rule)),
-          created_at: t.ctx.now().toISOString(),
-        })
-        .execute();
-      generated.push({ id: v.id, existing: false });
+      const result = await generatePreparedItem(
+        t,
+        input.period,
+        item,
+        input.voucherNumbers?.[String(item.ruleId)],
+      );
+      if (result) generated.push(result);
     }
     await t.log.write({
       action: 'period-close.transfer.generate',

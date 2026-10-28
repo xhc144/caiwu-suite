@@ -67,6 +67,7 @@ test('独立账套真实主流程：过账 → 浏览器结转预览生成 → �
   await expect(preview).toContainText('管理费用');
   const before = (await app.svc.vouchers.list()).total;
   await preview.getByRole('button', { name: '取消', exact: true }).click();
+  await expect(preview).not.toBeVisible();
   expect((await app.svc.vouchers.list()).total).toBe(before);
   await page.getByRole('button', { name: '结转预览', exact: true }).click();
   await preview.getByRole('checkbox').check();

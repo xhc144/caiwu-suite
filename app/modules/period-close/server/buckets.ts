@@ -54,7 +54,7 @@ export async function closingBuckets(
   for (const r of await svc.opening.list(year.year))
     addBucket(map, {
       accountId: r.accountId,
-      dimensions: r.dimensions,
+      dimensions: cashflow ? r.dimensions : { ...r.dimensions, cashflow: null },
       currency: r.currency,
       amount: r.balance,
       fc: r.fcBalance,
@@ -70,7 +70,7 @@ export async function closingBuckets(
     .where('l.period', '<=', period);
   if (exclude.length) q = q.where('v.id', 'not in', exclude);
   for (const r of await q.execute()) {
-    const sign = r.debit !== 0 ? 1 : -1;
+    const sign = (r.entry_side ?? (r.debit !== 0 ? 'debit' : 'credit')) === 'debit' ? 1 : -1;
     addBucket(map, {
       accountId: r.account_id,
       dimensions: {
@@ -92,7 +92,7 @@ export function applyLines(map: Map<string, Bucket>, lines: VoucherLineInput[], 
   for (const l of lines) {
     const debit = l.debit ?? 0;
     const credit = l.credit ?? 0;
-    const sign = debit !== 0 ? 1 : -1;
+    const sign = (l.entrySide ?? (debit !== 0 ? 'debit' : 'credit')) === 'debit' ? 1 : -1;
     addBucket(map, {
       accountId: l.accountId!,
       dimensions: cashflow ? (l.dimensions ?? {}) : { ...l.dimensions, cashflow: null },

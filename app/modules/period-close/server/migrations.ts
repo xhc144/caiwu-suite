@@ -27,8 +27,45 @@ CREATE TABLE period_close_year (
 );
 `,
   },
+  {
+    id: '0002_period_close_exchange_batch',
+    sql: `
+CREATE TABLE period_close_exchange_run (
+  period INTEGER PRIMARY KEY REFERENCES period(period),
+  voucher_id INTEGER NOT NULL UNIQUE REFERENCES voucher(id),
+  basis TEXT NOT NULL,
+  definition TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE period_close_batch (
+  id TEXT PRIMARY KEY,
+  period INTEGER NOT NULL REFERENCES period(period),
+  user_id INTEGER NOT NULL REFERENCES app_user(id),
+  state TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+`,
+  },
 ]);
 export type PeriodCloseTables = {
+  period_close_exchange_run: {
+    period: number;
+    voucher_id: number;
+    basis: string;
+    definition: string;
+    created_at: string;
+  };
+  period_close_batch: {
+    id: string;
+    period: number;
+    user_id: number;
+    state: string;
+    revision: number;
+    created_at: string;
+    updated_at: string;
+  };
   period_close_rule: { id: Generated<number>; code: string; definition: string; revision: number };
   period_close_run: {
     period: number;

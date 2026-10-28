@@ -216,6 +216,7 @@ it('w_zw_ydjz：旧定义缺少映射继续明确阻止，汇率/数量越界及
     year: 2026,
     accountId: target.id,
     currency: 'USD',
+    dimensions: { department: (await app.svc.dimensions.getByCode('department', '01'))!.id },
     balance: 0,
     fcBalance: 1,
     quantity: '1',

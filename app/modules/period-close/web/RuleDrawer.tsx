@@ -65,6 +65,7 @@ export default function RuleDrawer({
       }
     >
       <Form
+        name="period-close-rule"
         form={form}
         layout="vertical"
         initialValues={
@@ -199,7 +200,7 @@ export default function RuleDrawer({
               <>
                 {fields.map((field) => (
                   <div key={field.key}>
-                    <Space align="start">
+                    <Space align="start" wrap>
                       <Form.Item
                         name={[field.name, 'accountId']}
                         label={kind === 'pnl' ? '损益现金流设置科目' : '转出科目'}
@@ -215,7 +216,26 @@ export default function RuleDrawer({
                           onChange={() =>
                             form.setFieldValue(['sources', field.name, 'cashflows'], undefined)
                           }
-                          style={{ width: 280 }}
+                          style={{ width: 230 }}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        name={[field.name, 'mode']}
+                        label="转出类型"
+                        hidden={kind === 'pnl'}
+                        initialValue="balance"
+                        rules={[{ required: true, message: '请选择转出类型' }]}
+                      >
+                        <Select
+                          style={{ width: 180 }}
+                          options={[
+                            { value: 'balance', label: '期末余额' },
+                            { value: 'debitBalance', label: '期末借方余额' },
+                            { value: 'creditBalance', label: '期末贷方余额' },
+                            { value: 'periodDebit', label: '本期借方发生额' },
+                            { value: 'periodCredit', label: '本期贷方发生额' },
+                            { value: 'periodNet', label: '本期净发生额（借减贷）' },
+                          ]}
                         />
                       </Form.Item>
                       <Form.Item
@@ -227,9 +247,6 @@ export default function RuleDrawer({
                       >
                         <Input style={{ width: 110 }} />
                       </Form.Item>
-                      <Form.Item name={[field.name, 'mode']} hidden initialValue="balance">
-                        <Input />
-                      </Form.Item>
                       <Button onClick={() => remove(field.name)}>移除</Button>
                     </Space>
                     <SourceCashflowFields index={field.name} />
@@ -239,8 +256,8 @@ export default function RuleDrawer({
                   {kind === 'pnl' ? '增加损益现金流设置' : '增加转出科目'}
                 </Button>
                 <Typography.Paragraph type="secondary">
-                  自定义按“科目期末余额 ×
-                  比例”结转；损益范围仍由类别识别，此处只设置现金流项目。现金流项目按本次现金增减重新选择，不沿用历史流向。
+                  自定义按“所选转出类型的金额 ×
+                  比例”结转，逐个辅助项计算。余额含期初；发生额只含本月已过账凭证及本次前序结转，红字冲减原借贷侧。贷方金额以贷方方向转出；净发生额为借方减贷方。本币余额为零时，借贷余额类型依次按外币、数量方向筛选。损益结转范围按类别识别，此处只设置现金流项目。
                 </Typography.Paragraph>
               </>
             )}

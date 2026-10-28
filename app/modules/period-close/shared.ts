@@ -12,6 +12,15 @@ export const CashflowsSchema = z.object({
 export type Cashflows = z.input<typeof CashflowsSchema>;
 export const requiresCashflow = (account: Pick<Account, 'cashflowRequired' | 'dimensions'>) =>
   account.cashflowRequired || account.dimensions.some((d) => d.type === 'cashflow' && d.required);
+export const SourceModeSchema = z.enum([
+  'balance',
+  'debitBalance',
+  'creditBalance',
+  'periodDebit',
+  'periodCredit',
+  'periodNet',
+]);
+export type SourceMode = z.output<typeof SourceModeSchema>;
 export const RuleSchema = z.object({
   code: z
     .string()
@@ -49,7 +58,7 @@ export const RuleSchema = z.object({
     .array(
       z.object({
         accountId: zId,
-        mode: z.literal('balance'),
+        mode: SourceModeSchema,
         ratio: zDecimal,
         cashflows: CashflowsSchema.optional(),
       }),
@@ -62,6 +71,50 @@ export const TransferSchema = PeriodSchema.extend({ ruleIds: z.array(zId).max(10
 export const GenerateSchema = TransferSchema.extend({
   confirmed: z.boolean(),
   previewToken: z.string(),
+  voucherNumbers: z.record(z.string(), z.number().int().positive().max(2147483647)).optional(),
+});
+export const BatchIdSchema = z.object({ id: z.string().uuid() });
+export const BatchStartSchema = TransferSchema.extend({ confirmed: z.boolean() });
+export const BatchExecuteSchema = BatchIdSchema.extend({
+  revision: z.number().int().positive(),
+  previewToken: z.string(),
+  confirmed: z.boolean(),
+  number: z.number().int().positive().max(2147483647).optional(),
+});
+export const BatchDecisionSchema = BatchIdSchema.extend({
+  revision: z.number().int().positive(),
+  decision: z.enum(['retry', 'skip', 'stop']),
+  confirmed: z.boolean(),
+});
+export const ExchangeSettingsSchema = z.object({
+  period: zPeriod,
+  voucherTypeId: zId,
+  number: z.number().int().positive().max(2147483647).optional(),
+  summary: z.string().trim().min(1).max(200),
+  accountIds: z.array(zId).min(1).max(300),
+  rates: z
+    .array(
+      z.object({
+        currency: z.string().trim().min(1).max(10),
+        rate: z.string().trim().max(40).pipe(zDecimal),
+        gainLossAccountId: zId,
+        dimensions: z
+          .object({
+            project: zId.nullable().optional(),
+            partner: zId.nullable().optional(),
+            department: zId.nullable().optional(),
+            person: zId.nullable().optional(),
+          })
+          .default({}),
+      }),
+    )
+    .min(1)
+    .max(50),
+});
+export type ExchangeSettings = z.output<typeof ExchangeSettingsSchema>;
+export const ExchangeDeleteSchema = PeriodSchema.extend({
+  confirmed: z.boolean(),
+  plan: z.object({ ids: z.array(zId), expiresAt: z.number(), fingerprint: z.string() }),
 });
 export const CloseSchema = PeriodSchema.extend({
   confirmed: z.boolean(),

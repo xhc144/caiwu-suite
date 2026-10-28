@@ -97,6 +97,24 @@ export async function reverseYearPlan(
       target * 100 + 1,
       { vouchers: business.map((v) => ({ id: v.id, displayNo: v.displayNo, status: v.status })) },
     );
+  const batches = await tables(svc)
+    .selectFrom('period_close_batch')
+    .selectAll()
+    .where('period', '>=', target * 100 + 1)
+    .where('period', '<=', target * 100 + 12)
+    .execute();
+  const unfinished = batches.filter(
+    (row) =>
+      !['completed', 'stopped'].includes((JSON.parse(row.state) as { status: string }).status),
+  );
+  if (unfinished.length)
+    fail(
+      'TARGET_BATCH_ACTIVE',
+      `${target} 年仍有未结束的逐项结转`,
+      '先恢复并完成或明确停止后年度的逐项结转，再预览逆年结；已完成凭证仍须合法撤销',
+      unfinished[0]!.period,
+      { batchIds: unfinished.map((row) => row.id) },
+    );
   const rows = await svc.opening.list(target);
   const stored = JSON.parse(record.snapshot) as typeof rows;
   if (!rows.length || digest(normalizeOpening(rows)) !== digest(normalizeOpening(stored)))
@@ -114,8 +132,9 @@ export async function reverseYearPlan(
       accountCode: accounts.find((a) => a.id === r.accountId)?.code ?? String(r.accountId),
     })),
     periods: targetPeriods.map((p) => p.period),
+    batches: batches.map((row) => ({ id: row.id, period: row.period })),
     confirmationText: `撤销${year}年年结`,
-    impact: `仅撤销 ${target} 年本模块生成的 ${rows.length} 行期初和 ${targetPeriods.length} 个月份，保留 ${year} 年全部已结月份、凭证及手工期初；随后才可逐月反结账。`,
+    impact: `仅撤销 ${target} 年本模块生成的 ${rows.length} 行期初和 ${targetPeriods.length} 个月份${batches.length ? `，并清理该年 ${batches.length} 条已结束的逐项结转记录（完整保留在在线备份中）` : ''}，保留 ${year} 年全部已结月份、凭证及手工期初；随后才可逐月反结账。`,
   };
 }
 /** 在事务里同样可调用，所用连接全部来自入参 svc。 */
@@ -138,7 +157,13 @@ async function financialFingerprint(svc: CoreServices) {
     const rows = await svc.db.selectFrom(table).selectAll().execute();
     payload.push([table, rows.map((r) => JSON.stringify(r)).sort()]);
   }
-  for (const table of ['period_close_rule', 'period_close_run', 'period_close_year'] as const) {
+  for (const table of [
+    'period_close_rule',
+    'period_close_run',
+    'period_close_year',
+    'period_close_exchange_run',
+    'period_close_batch',
+  ] as const) {
     const rows = await tables(svc).selectFrom(table).selectAll().execute();
     payload.push([table, rows.map((r) => JSON.stringify(r)).sort()]);
   }
@@ -256,6 +281,11 @@ export async function reverseYear(
         .where('source_year', '=', input.year)
         .execute();
       await t.opening.replaceYear(plan.targetYear, []);
+      await tables(t)
+        .deleteFrom('period_close_batch')
+        .where('period', '>=', plan.targetYear * 100 + 1)
+        .where('period', '<=', plan.targetYear * 100 + 12)
+        .execute();
       await t.db.deleteFrom('period').where('year', '=', plan.targetYear).execute();
       await t.db.deleteFrom('fiscal_year').where('year', '=', plan.targetYear).execute();
       await t.db
@@ -271,6 +301,7 @@ export async function reverseYear(
           targetYear: plan.targetYear,
           rows: plan.rows.length,
           periods: plan.periods,
+          batches: plan.batches,
         },
       });
       return {

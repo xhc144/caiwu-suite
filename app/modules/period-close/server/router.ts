@@ -14,13 +14,65 @@ import {
   TransferSchema,
   YearEndSchema,
   ReverseYearSchema,
+  ExchangeSettingsSchema,
+  ExchangeDeleteSchema,
+  BatchIdSchema,
+  BatchStartSchema,
+  BatchExecuteSchema,
+  BatchDecisionSchema,
 } from '../shared';
 import * as service from './service';
 import * as transfers from './transfers';
 import { yearEnd, yearEndPreview } from './year-end';
 import { backupReverseYear, reverseYear, reverseYearPlan } from './reverse-year';
+import * as exchange from './exchange';
+import * as batch from './transfer-batch';
 const m = moduleKit(manifest);
 export const periodCloseRouter = m.router({
+  exchangeSettings: m.procedure
+    .meta({ permission: 'period-close.view' })
+    .input(PeriodSchema)
+    .query(({ ctx, input }) => exchange.exchangeSettings(ctx.svc, input.period)),
+  saveExchangeSettings: m.procedure
+    .meta({ permission: 'period-close.transfer.edit' })
+    .input(ExchangeSettingsSchema)
+    .mutation(({ ctx, input }) => exchange.saveExchangeSettings(ctx.svc, input)),
+  exchangePreview: m.procedure
+    .meta({ permission: 'period-close.view' })
+    .input(PeriodSchema)
+    .query(({ ctx, input }) => exchange.exchangePreview(ctx.svc, input.period)),
+  generateExchange: m.procedure
+    .meta({ permission: 'period-close.transfer.generate' })
+    .input(PeriodSchema.extend({ confirmed: z.boolean(), previewToken: z.string() }))
+    .mutation(({ ctx, input }) => exchange.generateExchange(ctx.svc, input)),
+  deleteExchangePreview: m.procedure
+    .meta({ permission: 'period-close.view' })
+    .input(PeriodSchema)
+    .query(({ ctx, input }) => exchange.deleteExchangePreview(ctx.svc, input.period)),
+  deleteExchange: m.procedure
+    .meta({ permission: 'period-close.transfer.generate' })
+    .input(ExchangeDeleteSchema)
+    .mutation(({ ctx, input }) => exchange.deleteExchange(ctx.svc, input)),
+  transferBatch: m.procedure
+    .meta({ permission: 'period-close.view' })
+    .input(PeriodSchema)
+    .query(({ ctx, input }) => batch.getTransferBatch(ctx.svc, input.period)),
+  startTransferBatch: m.procedure
+    .meta({ permission: 'period-close.transfer.generate' })
+    .input(BatchStartSchema)
+    .mutation(({ ctx, input }) => batch.startTransferBatch(ctx.svc, input)),
+  transferBatchPreview: m.procedure
+    .meta({ permission: 'period-close.view' })
+    .input(BatchIdSchema)
+    .query(({ ctx, input }) => batch.transferBatchPreview(ctx.svc, input.id)),
+  executeTransferBatch: m.procedure
+    .meta({ permission: 'period-close.transfer.generate' })
+    .input(BatchExecuteSchema)
+    .mutation(({ ctx, input }) => batch.executeTransferBatch(ctx.svc, input)),
+  decideTransferBatch: m.procedure
+    .meta({ permission: 'period-close.transfer.generate' })
+    .input(BatchDecisionSchema)
+    .mutation(({ ctx, input }) => batch.decideTransferBatch(ctx.svc, input)),
   yearEndPreview: m.procedure
     .meta({ permission: 'period-close.view' })
     .input(YearEndSchema.pick({ year: true }))

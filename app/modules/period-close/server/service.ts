@@ -12,6 +12,7 @@ import { CloseSchema } from '../shared';
 import { openingCheck, requireOpening } from './preconditions';
 import { digest } from './buckets';
 import { closingBuckets } from './buckets';
+import { verifyExchangeRuns } from './exchange';
 import {
   allVouchers,
   fail,
@@ -227,7 +228,10 @@ export async function post(svc: CoreServices, from: number, to: number) {
         ids: candidates.slice(i, i + 1000).map((v) => v.id),
         to: 'posted',
       });
-    if (count) await verifyPostedRuns(t, from, to);
+    if (count) {
+      await verifyExchangeRuns(t, from, to);
+      await verifyPostedRuns(t, from, to);
+    }
     const candidateIds = new Set(candidates.map((v) => v.id));
     const skipped = vouchers
       .filter((v) => !candidateIds.has(v.id))
@@ -308,6 +312,7 @@ export async function closePeriod(
         '先结转，或明确确认带着损益余额结账（会记录日志）',
         input.period,
       );
+    await verifyExchangeRuns(t, input.period, input.period);
     if (check.generated.length) await verifyPostedRuns(t, input.period, input.period);
     await t.periods.setStatus(input.period, 'closed');
     await t.log.write({
@@ -393,7 +398,10 @@ export async function closeRangePreview(svc: CoreServices, from: number, to: num
       problems.push(`另有 ${check.drafts.length} 张草稿，请回到单月明确确认后办理`);
     items.push({ period, ready: !problems.length, problems });
   }
-  if (items.every((i) => i.ready)) await verifyPostedRuns(svc, from, to);
+  if (items.every((i) => i.ready)) {
+    await verifyExchangeRuns(svc, from, to);
+    await verifyPostedRuns(svc, from, to);
+  }
   // 核心凭证 revision 覆盖分录修改；期初、科目、期间和本模块来源快照另行纳入。
   const previewToken = digest([
     from,
