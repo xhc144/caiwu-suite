@@ -5,7 +5,9 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { coreMigrations } from '@caiwu/core/server';
-import { runMigrations } from '@caiwu/db';
+import { defineManifest } from '@caiwu/core';
+import { defineMigrations, runMigrations } from '@caiwu/db';
+import { defineServerModule, moduleKit } from '@caiwu/server-kit';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import backupServer from '../server';
 import {
@@ -20,6 +22,38 @@ import {
 import { waitForJobs } from '../server/service';
 import { MetadataSchema, type BackupMetadata } from '../shared';
 
+// 仅在本测试注册。main 的 core 仍为 0003，也必须真实执行一次已知前缀升级。
+const historyManifest = defineManifest({
+  id: 'backup-history-fixture',
+  name: '备份历史迁移测试',
+  products: 'all',
+  permissions: [],
+  menu: [],
+});
+const historyMigrations = defineMigrations([
+  {
+    id: '0001_records',
+    sql: `CREATE TABLE backup_history_fixture_record (
+      id INTEGER PRIMARY KEY, amount INTEGER NOT NULL CHECK(amount >= 0), label TEXT NOT NULL
+    );`,
+  },
+  {
+    id: '0002_query_index',
+    sql: 'CREATE INDEX backup_history_fixture_amount_label ON backup_history_fixture_record(amount, label);',
+  },
+]);
+const historyModule = defineServerModule(historyManifest, {
+  router: moduleKit(historyManifest).router({}),
+  migrations: historyMigrations,
+});
+const modules = [backupServer, historyModule];
+const schema = (raw: Database.Database) =>
+  raw
+    .prepare(
+      "SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE substr(name,1,7) <> 'sqlite_' ORDER BY type,name",
+    )
+    .all();
+
 let app: TestApp;
 let dir: string;
 const otherApps: TestApp[] = [];
@@ -32,9 +66,13 @@ const migrations = (raw: Database.Database) =>
     .all() as BackupMetadata['migrations'];
 
 beforeEach(async () => {
-  app = await createTestApp({ modules: [backupServer] });
+  app = await createTestApp({ modules });
   dir = await mkdtemp(path.join(os.tmpdir(), 'backup-history-'));
   await seed(12345);
+  app.runtime.bookStore
+    .open(app.book.id)
+    .raw.prepare('INSERT INTO backup_history_fixture_record VALUES (1,12345,?)')
+    .run('升级前后保留的测试行');
 });
 afterEach(async () => {
   vi.restoreAllMocks();
@@ -58,7 +96,7 @@ async function seed(amount: number) {
   ]);
 }
 
-/** 从 0001..0003 的已发布 SQL 直接建库，再填业务行；从未打开旧库作自动升级。 */
+/** 从 core 0001..0003 和测试模块 0001 的 SQL 直接建库，从未打开旧库作自动升级。 */
 async function oldPackage(
   change?: (raw: Database.Database) => void,
   changeMetadata?: (metadata: BackupMetadata) => void,
@@ -76,7 +114,13 @@ async function oldPackage(
     ]);
     runMigrations(raw, [
       { scope: 'core', migrations: historicalCore },
-      ...app.runtime.modules.migrationSets(),
+      ...app.runtime.modules
+        .migrationSets()
+        .map((set) =>
+          set.scope === historyManifest.id
+            ? { ...set, migrations: set.migrations.slice(0, 1) }
+            : set,
+        ),
     ]);
     const tables = raw
       .prepare("SELECT name FROM sqlite_schema WHERE type='table' AND name <> '_migration'")
@@ -98,7 +142,13 @@ async function oldPackage(
     expect(
       raw.prepare("SELECT name FROM sqlite_schema WHERE name='voucher_line_account_voucher'").get(),
     ).toBeUndefined();
+    expect(
+      raw
+        .prepare("SELECT name FROM sqlite_schema WHERE name='backup_history_fixture_amount_label'")
+        .get(),
+    ).toBeUndefined();
     expect(amounts(raw)).toEqual([{ debit_total: 12345 }]);
+    expect(migrations(raw)).not.toEqual(migrationList(app.runtime));
     change?.(raw);
     applied = migrations(raw);
   } finally {
@@ -128,16 +178,64 @@ async function upload(fixture: Awaited<ReturnType<typeof oldPackage>>) {
 }
 function assertCurrent(raw: Database.Database) {
   expect(migrations(raw)).toEqual(migrationList(app.runtime));
+  // 完整比较真实已安装的 SQL，包括 main 的 core 0003 或 shared 的 core 0004 索引。
+  const reference = new Database(':memory:');
+  try {
+    runMigrations(reference, [
+      { scope: 'core', migrations: coreMigrations },
+      ...app.runtime.modules.migrationSets(),
+    ]);
+    expect(schema(raw)).toEqual(schema(reference));
+  } finally {
+    reference.close();
+  }
   expect(
-    raw.prepare("SELECT sql FROM sqlite_schema WHERE name='voucher_line_account_voucher'").get(),
+    raw
+      .prepare("SELECT sql FROM sqlite_schema WHERE name='backup_history_fixture_amount_label'")
+      .get(),
   ).toEqual({
-    sql: 'CREATE INDEX voucher_line_account_voucher ON voucher_line(account_id, voucher_id)',
+    sql: 'CREATE INDEX backup_history_fixture_amount_label ON backup_history_fixture_record(amount, label)',
   });
   expect(raw.pragma('integrity_check', { simple: true })).toBe('ok');
   expect(raw.pragma('foreign_key_check')).toEqual([]);
 }
 
-it('w_hf / w_tzjl_get：真实0003包在新0004程序校验、预览和新副本恢复，原包和源账均保留', async () => {
+it('w_bf：当前完整迁移包不重写 SQLite，原包、完整摘要和当前结构均保留', async () => {
+  const api = app.call(backupServer);
+  const item = await api.create({ name: '当前完整包', requestId: randomUUID() });
+  await waitForJobs(app.runtime);
+  const content = Buffer.from((await api.download({ id: item.id })).base64, 'base64');
+  const row = (await api.list()).find((r) => r.id === item.id)!;
+  const file = packagePath(
+    await directory(app.runtime.dataDir, app.book.id, row.directory),
+    row.id,
+  );
+  const revision = app.runtime.bookStore.revision(app.book.id);
+  const checked = await validatePackage(file, app.runtime, true);
+  try {
+    const payload = content.subarray(12 + content.readUInt32BE(8));
+    expect(checked.metadata.migrations).toEqual(migrationList(app.runtime));
+    expect(checked.content).toEqual(content);
+    expect(checked.digest).toBe(createHash('sha256').update(content).digest('hex'));
+    expect(await readFile(checked.snapshot)).toEqual(payload);
+    expect(checked.snapshotLength).toBe(payload.length);
+    expect(checked.snapshotSha256).toBe(checked.metadata.sha256);
+    const raw = new Database(checked.snapshot, { readonly: true });
+    try {
+      assertCurrent(raw);
+      expect(amounts(raw)).toEqual([{ debit_total: 12345 }]);
+      expect(raw.prepare('SELECT book_id FROM book_info').get()).toEqual({ book_id: app.book.id });
+    } finally {
+      raw.close();
+    }
+  } finally {
+    await rm(checked.snapshot);
+  }
+  expect(app.runtime.bookStore.revision(app.book.id)).toBe(revision);
+  expect(await readFile(file)).toEqual(content);
+});
+
+it('w_hf / w_tzjl_get：真实历史前缀包升级到已安装版本，校验、预览和新副本恢复保留原包和源账', async () => {
   const fixture = await oldPackage();
   const originalRevision = app.runtime.bookStore.revision(app.book.id);
   const checked = await validatePackage(fixture.file, app.runtime, true);
@@ -153,6 +251,9 @@ it('w_hf / w_tzjl_get：真实0003包在新0004程序校验、预览和新副本
     try {
       assertCurrent(staged);
       expect(amounts(staged)).toEqual([{ debit_total: 12345 }]);
+      expect(staged.prepare('SELECT * FROM backup_history_fixture_record').all()).toEqual([
+        { id: 1, amount: 12345, label: '升级前后保留的测试行' },
+      ]);
       expect(staged.prepare('SELECT book_id FROM book_info').get()).toEqual({
         book_id: app.book.id,
       });
@@ -173,6 +274,9 @@ it('w_hf / w_tzjl_get：真实0003包在新0004程序校验、预览和新副本
   const restored = app.runtime.bookStore.open(result.bookId).raw;
   assertCurrent(restored);
   expect(amounts(restored)).toEqual([{ debit_total: 12345 }]);
+  expect(restored.prepare('SELECT * FROM backup_history_fixture_record').all()).toEqual([
+    { id: 1, amount: 12345, label: '升级前后保留的测试行' },
+  ]);
   expect(restored.prepare('SELECT book_id,name FROM book_info').get()).toEqual({
     book_id: result.bookId,
     name: '旧版恢复副本',
@@ -190,7 +294,7 @@ it('w_hf / w_tzjl_get：真实0003包在新0004程序校验、预览和新副本
   ).toEqual([]);
 });
 
-it('w_hf：真实0003包覆盖恢复保留目标身份、旧包和完整保护，升级摘要绑定受管暂存', async () => {
+it('w_hf：真实历史前缀包覆盖恢复保留目标身份、旧包和完整保护，升级摘要绑定受管暂存', async () => {
   const fixture = await oldPackage();
   const item = await upload(fixture);
   await seed(67890);
@@ -234,9 +338,9 @@ it('w_hf：真实0003包覆盖恢复保留目标身份、旧包和完整保护�
   expect(await readFile(fixture.file)).toEqual(fixture.bytes);
 });
 
-it('w_hf：另一账套的真实0003包先核源身份再覆盖目标，源账、目标编号及完整保护均保留', async () => {
+it('w_hf：另一账套的真实历史前缀包先核源身份再覆盖目标，源账、目标编号及完整保护均保留', async () => {
   const fixture = await oldPackage();
-  const target = await createTestApp({ modules: [backupServer] });
+  const target = await createTestApp({ modules });
   otherApps.push(target);
   await seedVouchers(target.svc, [
     {
@@ -359,11 +463,22 @@ it.each([
   [
     '冒充当前但缺少索引',
     (raw: Database.Database) => {
-      const m = migrationList(app.runtime).find((m) => m.id === '0004_voucher_line_query_index')!;
-      raw
-        .prepare('INSERT INTO _migration VALUES (?,?,?,?)')
-        .run(m.scope, m.id, m.checksum, new Date().toISOString());
+      const applied = migrations(raw);
+      for (const m of migrationList(app.runtime)) {
+        if (!applied.some((old) => old.scope === m.scope && old.id === m.id))
+          raw
+            .prepare('INSERT INTO _migration VALUES (?,?,?,?)')
+            .run(m.scope, m.id, m.checksum, new Date().toISOString());
+      }
     },
+    '表结构',
+  ],
+  [
+    '假冒测试模块新索引',
+    (raw: Database.Database) =>
+      raw.exec(
+        'CREATE INDEX backup_history_fixture_amount_label ON backup_history_fixture_record(amount)',
+      ),
     '表结构',
   ],
   ['缺少核心表', (raw: Database.Database) => raw.exec('DROP TABLE voucher_line'), '核心表'],
