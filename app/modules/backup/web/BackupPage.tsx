@@ -96,6 +96,7 @@ function BackupPage() {
     bookId: string;
     name: string;
     purpose: 'copy' | 'overwrite';
+    cleanupPending?: boolean;
   } | null>(null);
   const [deletion, setDeletion] = useState<BackupListItem | null>(null);
   const [deleteText, setDeleteText] = useState('');
@@ -371,6 +372,9 @@ function BackupPage() {
           }
           description={`${result.purpose === 'overwrite' ? '恢复前保护备份已保留。' : '原账套保留。'}请重新登录「${result.name}」，使用备份中的操作员及密码。`}
         />
+        {result.cleanupPending && (
+          <Alert type="info" title="账套已恢复，临时文件将由系统继续清理；请重新登录使用账套" />
+        )}
         <Button
           type="primary"
           onClick={() => {

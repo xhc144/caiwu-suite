@@ -814,6 +814,18 @@ export function backupService(ctx: Context) {
       return exclusive(ctx, async () => {
         const plan = await loadPlan(id);
         if (plan.status !== 'ready') throw fail('PLAN', '只能取消尚未开始的恢复');
+        const prepared = state(ctx.app).overwrites.get(id);
+        const store = ctx.app.bookStore;
+        if (
+          prepared?.replacementId &&
+          'cancelReplacement' in store &&
+          typeof store.cancelReplacement === 'function'
+        ) {
+          await store.cancelReplacement({
+            bookId: ctx.book.id,
+            replacementId: prepared.replacementId,
+          });
+        }
         await db
           .updateTable('backup_plan')
           .set({ status: 'cancelled' })
@@ -836,6 +848,8 @@ export function backupService(ctx: Context) {
         const prepared = state(ctx.app).overwrites.get(plan.id);
         if (!prepared || prepared.revision !== fingerprint())
           throw fail('TARGET_CHANGED', '目标账套在预览后发生变化，请重新预览并备份');
+        if (prepared.replacementId && !prepared.protection)
+          throw fail('PLAN', '上次恢复未完成，请先取消该计划再重新预览');
         if (prepared.protection) {
           if (Date.parse(prepared.protection.expiresAt) <= Date.now())
             throw fail('EXPIRED', '覆盖确认已过期，请重新预览');
@@ -955,13 +969,22 @@ export function backupService(ctx: Context) {
           const checkedProtection = await verify(protection.id);
           await rm(checkedProtection.snapshot);
           const localBackups = prepared.localBackups;
+          const replacementId = prepared.replacementId;
           const runtime = ctx.app;
           const targetId = ctx.book.id;
           const actorId = ctx.user.id;
           const actorName = ctx.user.name;
           const sessionToken = ctx.session.token;
           const clock = runtime.now;
+          const replacementStatus = () => {
+            try {
+              return runtime.bookStore.replacementStatus(replacementId);
+            } catch {
+              return null;
+            }
+          };
           // 升级维护后原请求 svc/连接已撤销，只能使用共享层给出的新服务和新连接。
+          let replacementDone = false;
           try {
             await runtime.lifecycle.maintainBook({
               token: sessionToken,
@@ -1061,21 +1084,36 @@ export function backupService(ctx: Context) {
                 },
               },
             });
+            replacementDone = true;
           } catch (error) {
-            if (error instanceof BusinessError) throw error;
-            throw fail(
-              'RESTORE_FAILED',
-              '覆盖恢复未完成，保护备份已保留',
-              '请重新登录核对账套；如账套已隔离，请先修复存储，再由管理员恢复保护副本',
-            );
+            // 仅共享票据明确已完成时保留成功结果；清理错误不能触发重复恢复。
+            if (replacementStatus()?.status !== 'done') {
+              if (error instanceof BusinessError) throw error;
+              throw fail(
+                'RESTORE_FAILED',
+                '覆盖恢复未完成，保护备份已保留',
+                '请重新登录核对账套；如账套已隔离，请先修复存储，再由管理员恢复保护副本',
+              );
+            }
+            replacementDone = true;
           } finally {
-            state(runtime).overwrites.delete(plan.id);
+            if (replacementDone) state(runtime).overwrites.delete(plan.id);
+            else
+              state(runtime).overwrites.set(plan.id, {
+                revision: prepared.revision,
+                replacementId,
+              });
           }
+          const completed = replacementStatus();
           return {
             bookId: plan.target_id,
             name: plan.target_name,
             relogin: true,
             purpose: 'overwrite' as const,
+            cleanupPending:
+              completed !== null &&
+              'cleanupPending' in completed &&
+              completed.cleanupPending === true,
           };
         }
         const checked = await verify(plan.backup_id);

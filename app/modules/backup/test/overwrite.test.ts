@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
 import type * as Fs from 'node:fs/promises';
 import type { CoreServices } from '@caiwu/core/server';
+import { BusinessError } from '@caiwu/core';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -137,7 +138,9 @@ it('w_hf：完整覆盖保留目标ID与名称、回退整数金额、保留保�
 
 it('w_hf：恢复后校验失败由共享层真实回滚，财务数据与保护包均保留，须重新登录再预览', async () => {
   const p = await preview();
+  const stage = vi.spyOn(app.runtime.bookStore, 'prepareReplacement');
   const protection = await api.prepareOverwrite({ planId: p.id });
+  const ticket = await stage.mock.results[0]!.value;
   const maintain = app.runtime.lifecycle.maintainBook.bind(app.runtime.lifecycle);
   vi.spyOn(app.runtime.lifecycle, 'maintainBook').mockImplementationOnce((input) =>
     maintain({
@@ -161,6 +164,17 @@ it('w_hf：恢复后校验失败由共享层真实回滚，财务数据与保护
   expect(await fresh.verify({ id: protection.protectionId })).toMatchObject({
     type: 'pre-restore',
   });
+  const cancelReplacement = vi.fn().mockResolvedValue(undefined);
+  Object.assign(app.runtime.bookStore, { cancelReplacement });
+  try {
+    await fresh.cancelPlan({ id: p.id });
+    expect(cancelReplacement).toHaveBeenCalledWith({
+      bookId: app.book.id,
+      replacementId: ticket.replacementId,
+    });
+  } finally {
+    Reflect.deleteProperty(app.runtime.bookStore, 'cancelReplacement');
+  }
   const next = await fresh.preview({ id: p.backup_id, purpose: 'overwrite' });
   expect((await fresh.prepareOverwrite({ planId: next.id })).available).toBe(true);
 });
@@ -378,4 +392,68 @@ it('w_hf：跨机覆盖清除源机器失效路径，保留本机手动、自动
     await waitForJobs(machine.runtime);
     await machine.close();
   }
+});
+
+it('w_hf：共享取消接口存在时绑定目标和准备票据；共享拒绝则保留计划，成功后才取消计划', async () => {
+  const plan = await preview();
+  const stage = vi.spyOn(app.runtime.bookStore, 'prepareReplacement');
+  await api.prepareOverwrite({ planId: plan.id });
+  const ticket = await stage.mock.results[0]!.value;
+  const cancelReplacement = vi
+    .fn()
+    .mockRejectedValueOnce(
+      new BusinessError({ code: 'RESTORE_APPLYING', message: '恢复正在应用，不能取消' }),
+    )
+    .mockResolvedValueOnce(undefined);
+  Object.assign(app.runtime.bookStore, { cancelReplacement });
+  try {
+    await expect(api.cancelPlan({ id: plan.id })).rejects.toThrow('恢复正在应用');
+    expect(
+      app.runtime.bookStore
+        .open(app.book.id)
+        .raw.prepare('SELECT status FROM backup_plan WHERE id=?')
+        .get(plan.id),
+    ).toEqual({ status: 'ready' });
+    await api.cancelPlan({ id: plan.id });
+    expect(cancelReplacement.mock.calls).toEqual([
+      [{ bookId: app.book.id, replacementId: ticket.replacementId }],
+      [{ bookId: app.book.id, replacementId: ticket.replacementId }],
+    ]);
+    await expect(
+      api.restore({ planId: plan.id, text: plan.confirmation, password: 'admin' }),
+    ).rejects.toThrow('取消或过期');
+    expect(
+      app.runtime.bookStore
+        .open(app.book.id)
+        .raw.prepare('SELECT status FROM backup_plan WHERE id=?')
+        .get(plan.id),
+    ).toEqual({ status: 'cancelled' });
+  } finally {
+    Reflect.deleteProperty(app.runtime.bookStore, 'cancelReplacement');
+  }
+});
+
+it('w_hf：共享票据已done而清理报错时仍返回真实恢复成功和待清理提示，不再触发恢复失败', async () => {
+  const plan = await preview();
+  await api.prepareOverwrite({ planId: plan.id });
+  const maintain = app.runtime.lifecycle.maintainBook.bind(app.runtime.lifecycle);
+  const status = app.runtime.bookStore.replacementStatus.bind(app.runtime.bookStore);
+  vi.spyOn(app.runtime.bookStore, 'replacementStatus').mockImplementation((id) => ({
+    ...status(id),
+    stagingRetained: true,
+    cleanupPending: true,
+  }));
+  vi.spyOn(app.runtime.lifecycle, 'maintainBook').mockImplementationOnce(async (input) => {
+    await maintain(input);
+    throw new Error('合成：数据库恢复完成后暂存清理失败');
+  });
+  const result = await api.restore({ planId: plan.id, text: plan.confirmation, password: 'admin' });
+  expect(result).toMatchObject({
+    bookId: app.book.id,
+    purpose: 'overwrite',
+    relogin: true,
+    cleanupPending: true,
+  });
+  expect(amounts(app.runtime.bookStore.open(app.book.id).raw)).toEqual([{ debit_total: 12345 }]);
+  await expect(api.list()).rejects.toThrow('登录已失效');
 });
