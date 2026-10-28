@@ -1,6 +1,8 @@
 import ExcelJS, { type Cell } from 'exceljs';
 import type { ImportReceipt } from '../shared';
 import type { ImportPayload, SourceRow } from './normalize';
+import { validateWorkbookZip } from './workbook-zip';
+import { WorkbookNumberError } from './workbook-numbers';
 
 export type ImportKind = 'accounts' | 'dimensions' | 'opening' | 'vouchers';
 export type FileIssue = {
@@ -321,45 +323,6 @@ function delimiterOf(text: string, extension: string): string {
   return [...counts].sort((a, b) => b[1] - a[1])[0]![0];
 }
 
-/** 加载前检查 ZIP 目录，不解压不可控体积或加密内容。 */
-function assertWorkbookZip(bytes: Buffer) {
-  let end = -1;
-  for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65_557); i--) {
-    if (
-      bytes.readUInt32LE(i) === 0x06054b50 &&
-      i + 22 + bytes.readUInt16LE(i + 20) === bytes.length
-    ) {
-      end = i;
-      break;
-    }
-  }
-  if (end < 0) throw new Error('文件不是完整的 Excel 工作簿，请重新另存为 .xlsx');
-  const count = bytes.readUInt16LE(end + 10),
-    size = bytes.readUInt32LE(end + 12);
-  const offset = bytes.readUInt32LE(end + 16);
-  if (count === 0xffff || size === 0xffffffff || offset === 0xffffffff || count > 2048) {
-    throw new Error('工作簿结构过大，请仅保留需要导入的数据表');
-  }
-  if (offset + size > end) throw new Error('工作簿目录损坏，请重新另存为 .xlsx');
-  let cursor = offset,
-    expanded = 0;
-  for (let n = 0; n < count; n++) {
-    if (cursor + 46 > end || bytes.readUInt32LE(cursor) !== 0x02014b50) {
-      throw new Error('工作簿目录损坏，请重新另存为 .xlsx');
-    }
-    if (bytes.readUInt16LE(cursor + 8) & 1) throw new Error('不支持加密工作簿，请移除密码后重试');
-    expanded += bytes.readUInt32LE(cursor + 24);
-    if (expanded > IMPORT_FILE_LIMITS.expandedBytes)
-      throw new Error('工作簿展开后超过 64 MB，请分批导入');
-    cursor +=
-      46 +
-      bytes.readUInt16LE(cursor + 28) +
-      bytes.readUInt16LE(cursor + 30) +
-      bytes.readUInt16LE(cursor + 32);
-  }
-  if (cursor !== offset + size) throw new Error('工作簿目录损坏，请重新另存为 .xlsx');
-}
-
 function cellText(cell: Cell): string {
   const value = cell.value;
   if (value == null) return '';
@@ -429,11 +392,18 @@ export async function parseImportFile(file: ImportFile): Promise<ParsedImportFil
       finishSheet(result, name, file.kind, parseDelimited(text, delimiterOf(text, extension)));
       return result;
     }
-    assertWorkbookZip(bytes);
+    await validateWorkbookZip(bytes);
     const workbook = new ExcelJS.Workbook();
     try {
+      // ExcelJS 4.4 的运行时支持这两个限额；其声明文件只列出 ignoreNodes。
+      const readOptions = {
+        maxRows: IMPORT_FILE_LIMITS.rows + 4,
+        maxCols: IMPORT_FILE_LIMITS.columns,
+        ignoreNodes: [] as string[],
+      };
       await workbook.xlsx.load(
         bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+        readOptions,
       );
     } catch {
       return fail('工作簿读取失败，请重新另存为 .xlsx 后重试');
@@ -486,6 +456,17 @@ export async function parseImportFile(file: ImportFile): Promise<ParsedImportFil
     if (!result.sheets.length && !result.issues.length)
       return fail('工作簿没有数据，请使用导入模板');
   } catch (error) {
+    if (error instanceof WorkbookNumberError) {
+      const address = /^([A-Z]+)(\d+)$/.exec(error.address);
+      issue(
+        result,
+        error.entry,
+        address ? Number(address[2]) : 0,
+        address?.[1] ?? '数值',
+        error.message,
+      );
+      return result;
+    }
     if (error instanceof DelimitedReadError) {
       issue(result, name, error.row, columnName(error.column), error.message);
       return result;

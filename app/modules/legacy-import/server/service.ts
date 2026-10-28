@@ -30,6 +30,8 @@ import {
   type ImportSummary,
 } from '../shared';
 import { parseImportFile, buildImportTemplate, buildSourceExport } from './files';
+import { validateWorkbookZip } from './workbook-zip';
+import { WorkbookNumberError } from './workbook-numbers';
 import {
   CellError,
   date,
@@ -155,6 +157,55 @@ async function fingerprint(svc: CoreServices): Promise<string> {
 
 function assertAllowed(svc: CoreServices, permission: string) {
   svc.permissions.require(permission);
+}
+
+/** 旧读取器生成的暂存结果也必须复查原文件，不能依赖已经丢精度的 payload。 */
+async function sourceIssues(
+  svc: CoreServices,
+  id: string,
+  payload: ImportPayload,
+): Promise<ImportIssue[]> {
+  const files = await svc.db
+    .withTables<ImportTables>()
+    .selectFrom('legacy_import_source')
+    .selectAll()
+    .where('batch_id', '=', id)
+    .orderBy('file_index')
+    .execute();
+  if (
+    files.length !== payload.files.length ||
+    files.length > 20 ||
+    files.some((f, i) => f.file_index !== i || f.name !== payload.files[i]?.name)
+  )
+    return [
+      {
+        file: '',
+        sheet: '',
+        row: 0,
+        column: '原文件',
+        severity: 'error',
+        message: '暂存原文件缺失或与批次不一致，请重新选择原文件保存迁移批次',
+      },
+    ];
+  const issues: ImportIssue[] = [];
+  for (const file of files)
+    if (file.name.split('.').at(-1)?.toLowerCase() === 'xlsx') {
+      try {
+        await validateWorkbookZip(Buffer.from(file.content_base64, 'base64'));
+      } catch (error) {
+        const address =
+          error instanceof WorkbookNumberError ? /^([A-Z]+)(\d+)$/.exec(error.address) : null;
+        issues.push({
+          file: file.name,
+          sheet: error instanceof WorkbookNumberError ? error.entry : '',
+          row: address ? Number(address[2]) : 0,
+          column: address?.[1] ?? '原文件',
+          severity: 'error',
+          message: error instanceof Error ? error.message : '原工作簿安全检查未通过，请重新导出',
+        });
+      }
+    }
+  return issues;
 }
 
 async function perform(
@@ -959,12 +1010,15 @@ export function legacyImportService(svc: CoreServices) {
           const row = await load(id, t);
           if (row.status === 'completed') return;
           const target = await fingerprint(t);
-          const result = await perform(
-            t,
-            JSON.parse(row.payload) as ImportPayload,
-            JSON.parse(row.options) as ImportOptions,
-            id,
-          );
+          const payload = JSON.parse(row.payload) as ImportPayload;
+          const originalIssues = await sourceIssues(t, id, payload);
+          const result = originalIssues.length
+            ? {
+                issues: [...payload.issues, ...originalIssues],
+                summary: emptySummary(),
+                vouchers: [],
+              }
+            : await perform(t, payload, JSON.parse(row.options) as ImportOptions, id);
           checked = { result, fingerprint: target, revision: row.revision };
           throw new RolledBack(result);
         });
@@ -1018,6 +1072,17 @@ export function legacyImportService(svc: CoreServices) {
               code: 'IMPORT_TARGET_CHANGED',
               message: '预检后账套数据或参数已变化，请重新预检后再导入',
               hint: '已暂存的迁移资料仍然保留',
+            });
+          const originalIssues = await sourceIssues(
+            t,
+            id,
+            JSON.parse(row.payload) as ImportPayload,
+          );
+          if (originalIssues.length)
+            throw new InvalidImport({
+              issues: originalIssues,
+              summary: emptySummary(),
+              vouchers: [],
             });
           const result = await perform(
             t,
