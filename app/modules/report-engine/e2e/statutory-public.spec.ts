@@ -1,9 +1,12 @@
-import { expect } from '@playwright/test';
+import { expect, type Response } from '@playwright/test';
 import ExcelJS from 'exceljs';
 import { callApi } from '@caiwu/testkit/e2e';
 import type { StatutoryProfile, StatutorySnapshot } from '../shared';
 import { statutoryIdentity } from '../test/statutory-fixture';
 import { test } from './fixture';
+
+const editorRequest = (response: Response) =>
+  decodeURIComponent(response.url()) + (response.request().postData() ?? '');
 
 test('w_bb_main → 真实配置保存 → 法定生成快照 → 授权xlsx与A4打印', async ({ page, isolated }) => {
   const { bookId, configuration } = await isolated.prepareStatutoryBook();
@@ -42,7 +45,13 @@ test('w_bb_main → 真实配置保存 → 法定生成快照 → 授权xlsx与A
     .getByRole('textbox', { name: '依据来源', exact: true })
     .first()
     .fill('通过真实配置页面再次核实政策');
+  const draftTransport = page.waitForRequest(
+    (request) => request.url().includes('statutory.editorDraft') && request.method() === 'POST',
+  );
   await page.getByRole('button', { name: '保存并确认来源' }).click();
+  const transported = await draftTransport;
+  expect(encodeURIComponent(transported.postData()!).length).toBeGreaterThan(4000);
+  expect(transported.postData()).toContain('通过真实配置页面再次核实政策');
   await expect(page.getByText('已保存配置版本 2；', { exact: false })).toBeVisible();
   const saved = await callApi<StatutoryProfile>(
     isolated.request,
@@ -60,7 +69,7 @@ test('w_bb_main → 真实配置保存 → 法定生成快照 → 授权xlsx与A
   const interimRead = page.waitForResponse(
     (response) =>
       response.url().includes('statutory.editor') &&
-      decodeURIComponent(response.url()).includes('"scope":"yearToDate"'),
+      editorRequest(response).includes('"scope":"yearToDate"'),
   );
   await page.getByRole('combobox', { name: '比较口径', exact: true }).click();
   await page
@@ -72,7 +81,7 @@ test('w_bb_main → 真实配置保存 → 法定生成快照 → 授权xlsx与A
     const reread = page.waitForResponse(
       (response) =>
         response.url().includes('statutory.editor') &&
-        decodeURIComponent(response.url()).includes(`"period":${period}`),
+        editorRequest(response).includes(`"period":${period}`),
     );
     await page.getByRole('combobox', { name: '报告期间', exact: true }).click();
     await page
@@ -87,7 +96,7 @@ test('w_bb_main → 真实配置保存 → 法定生成快照 → 授权xlsx与A
   const annualRead = page.waitForResponse(
     (response) =>
       response.url().includes('statutory.editor') &&
-      decodeURIComponent(response.url()).includes('"scope":"annual"'),
+      editorRequest(response).includes('"scope":"annual"'),
   );
   await page.getByRole('combobox', { name: '比较口径', exact: true }).click();
   await page

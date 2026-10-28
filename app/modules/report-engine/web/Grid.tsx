@@ -1,32 +1,42 @@
 import { Input, InputNumber, Space, Typography } from 'antd';
-import Decimal from 'decimal.js';
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react';
 import { MoneyInput, MoneyText } from '@caiwu/ui';
 import { balanceSide } from '@caiwu/core';
 import {
   columnName,
   type Cell,
+  type CellStyle,
   type ReportSnapshot,
   type ReportTemplate,
-  type ResultCell,
 } from '../shared';
+import { displayValue } from './format';
 
-export function displayValue(c: ResultCell, format = 'general') {
-  if (c.unit === 'text') return c.value;
-  const amount = new Decimal(c.value);
-  const n = ['cents', 'foreignCents'].includes(c.unit) ? amount.div(100) : amount;
-  return format === 'percent'
-    ? `${n.times(100).toFixed(2)}%`
-    : format === 'decimal2' || ['cents', 'foreignCents'].includes(c.unit)
-      ? n.toFixed(2)
-      : n.toFixed();
+export { displayValue } from './format';
+
+function borderCss(style: CellStyle['borderTop']) {
+  switch (style) {
+    case 'none':
+      return 'none';
+    case 'thin':
+      return '1px solid #262626';
+    case 'medium':
+      return '2px solid #262626';
+    case 'dashed':
+      return '1px dashed #262626';
+    case 'double':
+      return '3px double #262626';
+    default:
+      return '1px solid #d9d9d9';
+  }
 }
+
 export function ReportGrid({
   template,
   snapshot,
   selected,
   onSelect,
   onChange,
+  onPaste,
   disabled = false,
 }: {
   template: ReportTemplate;
@@ -34,10 +44,14 @@ export function ReportGrid({
   selected?: string;
   onSelect?(address: string): void;
   onChange?(cell: Cell): void;
+  onPaste?(address: string, text: string): void;
   disabled?: boolean;
 }) {
-  const [rowStart, setRowStart] = useState(1);
-  const [colStart, setColStart] = useState(1);
+  const [requestedRowStart, setRowStart] = useState(1);
+  const [requestedColStart, setColStart] = useState(1);
+  // 删除末尾行列后仍展示有效窗口；保留请求值以便撤销时恢复原查看位置。
+  const rowStart = Math.max(1, Math.min(template.rows, requestedRowStart));
+  const colStart = Math.max(1, Math.min(template.cols, requestedColStart));
   const grid = useRef<HTMLDivElement>(null);
   const cells = new Map(template.cells.map((c) => [c.address, c]));
   const results = new Map(snapshot?.cells.map((c) => [c.address, c]));
@@ -141,8 +155,7 @@ export function ReportGrid({
                     {row}
                   </th>
                   {Array.from({ length: colEnd - colStart + 1 }, (_, j) => {
-                    const col = j + colStart,
-                      address = `${columnName(col)}${row}`;
+                    const col = j + colStart;
                     const merged = template.merges.find(
                       (m) =>
                         row >= m.row &&
@@ -150,7 +163,16 @@ export function ReportGrid({
                         col >= m.col &&
                         col < m.col + m.cols,
                     );
-                    if (merged && (merged.row !== row || merged.col !== col)) return null;
+                    // 视窗落在合并区内部时，在可见左上角呈现原锚点，而非留下空洞。
+                    if (
+                      merged &&
+                      (Math.max(merged.row, rowStart) !== row ||
+                        Math.max(merged.col, colStart) !== col)
+                    )
+                      return null;
+                    const address = merged
+                      ? `${columnName(merged.col)}${merged.row}`
+                      : `${columnName(col)}${row}`;
                     const cell = cells.get(address) ?? {
                       address,
                       kind: 'text',
@@ -167,11 +189,28 @@ export function ReportGrid({
                       variant: 'borderless' as const,
                       style: {
                         textAlign: style?.align ?? 'left',
-                        fontWeight: style?.bold ? ('bold' as const) : ('normal' as const),
+                        fontFamily: 'inherit',
+                        fontSize: 'inherit',
+                        fontWeight: 'inherit',
+                        fontStyle: 'inherit',
+                        textDecoration: 'inherit',
+                        color: 'inherit',
                         minHeight: 32,
                       },
                       onFocus: () => onSelect?.(address),
+                      onPaste: (e: ClipboardEvent<HTMLInputElement>) => {
+                        if (disabled) {
+                          e.preventDefault();
+                          return;
+                        }
+                        const text = e.clipboardData.getData('text/plain');
+                        if (onPaste && /[\t\r\n]/.test(text)) {
+                          e.preventDefault();
+                          onPaste(address, text);
+                        }
+                      },
                       onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+                        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
                         const move: Record<string, [number, number]> = {
                           ArrowDown: [1, 0],
                           Enter: [1, 0],
@@ -189,13 +228,27 @@ export function ReportGrid({
                     return (
                       <td
                         key={col}
-                        rowSpan={merged ? Math.min(merged.rows, rowEnd - row + 1) : 1}
-                        colSpan={merged ? Math.min(merged.cols, colEnd - col + 1) : 1}
+                        rowSpan={
+                          merged ? Math.min(merged.row + merged.rows - row, rowEnd - row + 1) : 1
+                        }
+                        colSpan={
+                          merged ? Math.min(merged.col + merged.cols - col, colEnd - col + 1) : 1
+                        }
                         style={{
-                          border: selected === address ? '2px solid #1677ff' : '1px solid #d9d9d9',
+                          borderTop: borderCss(style?.borderTop),
+                          borderRight: borderCss(style?.borderRight),
+                          borderBottom: borderCss(style?.borderBottom),
+                          borderLeft: borderCss(style?.borderLeft),
+                          outline: selected === address ? '2px solid #1677ff' : undefined,
+                          outlineOffset: -2,
                           textAlign: style?.align ?? 'left',
                           whiteSpace: style?.wrap ? 'pre-wrap' : 'nowrap',
                           fontWeight: style?.bold ? 'bold' : 'normal',
+                          fontFamily: style?.fontFamily ?? '宋体',
+                          fontSize: `${style?.fontSize ?? 11}pt`,
+                          fontStyle: style?.italic ? 'italic' : 'normal',
+                          textDecoration: style?.underline ? 'underline' : 'none',
+                          color: style?.color,
                           padding: snapshot ? '6px 8px' : 0,
                         }}
                       >

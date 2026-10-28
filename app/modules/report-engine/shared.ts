@@ -41,8 +41,8 @@ export const METRIC_LABELS: Record<z.infer<typeof MetricSchema>, string> = {
 };
 export const UNIT_LABELS: Record<z.infer<typeof UnitSchema>, string> = {
   number: '普通数值',
-  cents: '本币金额（分，显示元）',
-  foreignCents: '外币金额（分，显示外币元）',
+  cents: '本币金额（元）',
+  foreignCents: '外币金额（外币元）',
   quantity: '数量',
 };
 /** 唯一取数签名；向导与服务端使用同一输入约束。没有未核实的原版别名。 */
@@ -64,8 +64,6 @@ export const BalanceFunctionSchema = z
       ctx.addIssue({ code: 'custom', message: '未选择辅助类型时不能指定辅助项' });
     if (v.unit !== 'foreignCents' && v.currency !== 'CNY')
       ctx.addIssue({ code: 'custom', message: '本币与数量取数币种固定为CNY；外币请选外币金额' });
-    if (v.unit !== 'cents' && ['ytdDebit', 'ytdCredit'].includes(v.metric))
-      ctx.addIssue({ code: 'custom', message: 'core暂未提供外币/数量本年累计，不能使用此组合' });
     if (
       v.dimension === 'cashflow' &&
       !['debit', 'credit', 'ytdDebit', 'ytdCredit'].includes(v.metric)
@@ -117,8 +115,46 @@ export const StyleSchema = z
     wrap: z.boolean().default(false),
     bold: z.boolean().default(false),
     format: z.enum(['general', 'decimal2', 'percent']).default('general'),
+    fontFamily: z.enum(['宋体', '黑体', '楷体', '仿宋', 'Arial']).optional(),
+    fontSize: z.number().int().min(6).max(72).optional(),
+    italic: z.boolean().optional(),
+    underline: z.boolean().optional(),
+    color: z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, '字体颜色须为六位颜色值')
+      .optional(),
+    borderTop: z.enum(['none', 'thin', 'medium', 'dashed', 'double']).optional(),
+    borderRight: z.enum(['none', 'thin', 'medium', 'dashed', 'double']).optional(),
+    borderBottom: z.enum(['none', 'thin', 'medium', 'dashed', 'double']).optional(),
+    borderLeft: z.enum(['none', 'thin', 'medium', 'dashed', 'double']).optional(),
   })
   .strict();
+export const FONT_FAMILIES = StyleSchema.shape.fontFamily.unwrap().options;
+export const BORDER_STYLES = StyleSchema.shape.borderTop.unwrap().options;
+/** 打印设置可缺省，兼容已保存定义与历史快照。分页线位于指定行之前。 */
+export const PrintSettingsSchema = z
+  .object({
+    paperSize: z.enum(['A4', 'A5', 'B5']).default('A4'),
+    orientation: z.enum(['portrait', 'landscape']).default('portrait'),
+    marginMm: z.number().min(0).max(40).default(10),
+    rowBreaks: z.array(z.number().int().min(2).max(999)).max(998).default([]),
+    repeatRows: z.number().int().min(0).max(998).default(0),
+    mode: z.enum(['normal', 'overlay']).default('normal'),
+    offsetXmm: z.number().min(-30).max(30).default(0),
+    offsetYmm: z.number().min(-30).max(30).default(0),
+    showGrid: z.boolean().default(true),
+  })
+  .strict();
+export type PrintSettings = z.infer<typeof PrintSettingsSchema>;
+export const StructureChangeSchema = z
+  .object({
+    axis: z.enum(['row', 'col']),
+    kind: z.enum(['insert', 'delete']),
+    index: z.number().int().min(1).max(1000),
+    count: z.number().int().min(1).max(999),
+  })
+  .strict();
+export const StructureChangesSchema = z.array(StructureChangeSchema).max(1000);
 export const MergeSchema = z
   .object({
     row: z.number().int().positive(),
@@ -130,6 +166,7 @@ export const MergeSchema = z
 export const CheckSchema = z
   .object({
     name: z.string().trim().min(1).max(80),
+    condition: z.string().min(1).max(2000).optional(),
     left: z.string().min(1).max(2000),
     right: z.string().min(1).max(2000),
     tolerance: z.string().regex(/^\d{1,12}(\.\d{1,6})?$/, '阈值使用非负十进制数（金额为分）'),
@@ -157,6 +194,7 @@ export const ReportTemplateSchema = HeaderSchema.extend({
     )
     .max(250),
   checks: z.array(CheckSchema).max(100),
+  print: PrintSettingsSchema.optional(),
   accounting: z
     .object({
       defaultScope: z.literal('posted'),
@@ -232,6 +270,22 @@ export const ReportTemplateSchema = HeaderSchema.extend({
       new Set(v.colWidths.map((c) => c.col)).size !== v.colWidths.length
     )
       issue('行高或列宽不能重复');
+    if (v.print) {
+      if (v.print.repeatRows >= v.rows) issue('重复表头行数必须小于报表总行数');
+      if (new Set(v.print.rowBreaks).size !== v.print.rowBreaks.length) issue('分页线不能重复');
+      for (const row of v.print.rowBreaks) {
+        if (row > v.rows || row <= v.print.repeatRows)
+          issue('分页线须位于报表范围内且在重复表头之后');
+        if (v.merges.some((m) => m.row < row && row < m.row + m.rows))
+          issue('分页线不能穿过合并单元格，请调整分页线或拆分合并');
+      }
+      if (
+        v.merges.some(
+          (m) => m.row <= v.print!.repeatRows && m.row + m.rows - 1 > v.print!.repeatRows,
+        )
+      )
+        issue('重复表头的末行不能穿过合并单元格');
+    }
   });
 export type ReportTemplate = z.infer<typeof ReportTemplateSchema>;
 export type Cell = z.infer<typeof CellSchema>;
@@ -239,6 +293,15 @@ export type CellStyle = z.infer<typeof StyleSchema>;
 export type Unit = z.infer<typeof UnitSchema>;
 export type Report = { id: number; revision: number; template: ReportTemplate };
 export type ResultCell = { address: string; value: string; unit: Unit | 'text'; currency: string };
+export type BalanceTrace = {
+  reportCode: string;
+  address: string;
+  input: BalanceFunction;
+  periodFrom: number;
+  periodTo: number;
+  dimensions: Partial<Record<Exclude<BalanceFunction['dimension'], 'none'>, number>>;
+  value: string;
+};
 export type ReportSnapshot = {
   id: number;
   reportId: number;
@@ -250,12 +313,14 @@ export type ReportSnapshot = {
   template: ReportTemplate;
   cells: ResultCell[];
   dependencies: { id: number; code: string; revision: number }[];
+  sources?: BalanceTrace[];
   checks: {
     name: string;
     status: 'pass' | 'fail' | 'error';
     difference: string | null;
     tolerance: string;
     reason?: string;
+    condition?: string;
   }[];
 };
 export const IdentitySchema = z

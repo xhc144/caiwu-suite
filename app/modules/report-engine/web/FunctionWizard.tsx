@@ -158,7 +158,7 @@ export function FunctionWizard({
       {source && <pre style={{ whiteSpace: 'pre-wrap', marginTop: 12 }}>{source}</pre>}
       <p>
         已核实原版 S/W/F
-        前缀说明，但资料缺少基本函数数据行，暂不提供猜测的旧函数别名。外币/数量本年累计、现金流量期初分配不支持。
+        前缀说明，但资料缺少基本函数数据行，暂不提供猜测的旧函数别名。外币和数量支持完整年度累计；年中启用且没有启用前独立来源时，请选择本期发生额。现金流量期初分配不支持。
       </p>
     </Drawer>
   );

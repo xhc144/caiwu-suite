@@ -8,12 +8,16 @@ import {
   ReportTemplateSchema,
   coordinates,
   type BalanceFunction,
+  type BalanceTrace,
   type GenerateSchema,
   type Report,
   type ReportSnapshot,
   type ReportTemplate,
 } from '../shared';
 import type { ReportTables } from './migrations';
+import { evaluateAudit, parseAudit } from './audit-formula';
+import { hasReportReference, rewriteReportReferences } from '../editor-references';
+import type { StructureChange } from '../editor-operations';
 import {
   calculate,
   evaluate,
@@ -49,7 +53,17 @@ function validate(raw: ReportTemplate): ReportTemplate {
         fail('FORMULA', `${c.address}：${e instanceof Error ? e.message : '公式不正确'}`);
       }
     }
-  for (const check of t.checks)
+  for (const check of t.checks) {
+    if (check.condition !== undefined) {
+      try {
+        parseAudit(check.condition);
+      } catch (error) {
+        fail(
+          'FORMULA',
+          `审核条件「${check.name}」：${error instanceof Error ? error.message : '条件不正确'}`,
+        );
+      }
+    }
     for (const f of [check.left, check.right]) {
       try {
         parseFormula(f);
@@ -60,6 +74,7 @@ function validate(raw: ReportTemplate): ReportTemplate {
         );
       }
     }
+  }
   return t;
 }
 const decode = (row: { id: number; revision: number; definition_json: string }): Report => ({
@@ -143,22 +158,126 @@ export function reportService(svc: CoreServices) {
         });
       });
     },
-    async save(id: number, expectedRevision: number, raw: ReportTemplate) {
+    async save(
+      id: number,
+      expectedRevision: number,
+      raw: ReportTemplate,
+      confirmShrink = false,
+      structureChanges: StructureChange[] = [],
+    ) {
       const template = validate(raw);
       return svc.tx(async (tsvc) => {
         const service = reportService(tsvc);
         const old = await service.assertEditable(id, expectedRevision);
-        // 即使调用者主动移除越界内容，也拒绝通过缩小尺寸悄悄删掉原定义。
+        // 删除行列允许缩小定义，但必须明确确认，普通改尺寸不能静默丢失原内容。
         if (
+          !confirmShrink &&
           old.template.cells.some((c) => {
             const p = coordinates(c.address);
             return p.row > template.rows || p.col > template.cols;
           })
         )
-          fail('SHRINK', '缩小尺寸会删除已有单元格，请先在原尺寸下清空并保存这些单元格');
+          fail('SHRINK', '缩小尺寸会删除已有单元格，请先确认删除行列后再保存');
         if (template.readOnly !== old.template.readOnly)
           fail('READ_ONLY', '编辑时不能更改模板只读属性');
         const tdb = tsvc.db.withTables<ReportTables>();
+        if (template.code !== old.template.code) {
+          for (const referring of await service.list()) {
+            const candidate = referring.id === id ? template : referring.template;
+            if (
+              candidate.cells.some(
+                (c) => c.kind === 'formula' && hasReportReference(c.source, old.template.code),
+              ) ||
+              candidate.checks.some(
+                (c) =>
+                  (c.condition !== undefined &&
+                    hasReportReference(c.condition, old.template.code)) ||
+                  hasReportReference(c.left, old.template.code) ||
+                  hasReportReference(c.right, old.template.code),
+              )
+            )
+              fail(
+                'REFERENCED_CODE',
+                `报表「${candidate.name}」仍引用编码${old.template.code}，暂不能修改该编码`,
+                '请先调整引用公式，或保留原编码后保存；当前编辑内容仍保留。',
+              );
+          }
+        }
+        const changes = [...structureChanges];
+        // 未指定插删步骤的旧客户端仅支持尾部改尺寸，不能推测内部行列的移动。
+        if (changes.length === 0) {
+          for (const axis of ['row', 'col'] as const) {
+            const key = axis === 'row' ? 'rows' : 'cols';
+            const difference = template[key] - old.template[key];
+            if (difference !== 0)
+              changes.push({
+                axis,
+                kind: difference > 0 ? 'insert' : 'delete',
+                index: Math.min(template[key], old.template[key]) + 1,
+                count: Math.abs(difference),
+              });
+          }
+        }
+        const size = { row: old.template.rows, col: old.template.cols };
+        for (const change of changes) {
+          const before = size[change.axis];
+          if (
+            change.index > before + (change.kind === 'insert' ? 1 : 0) ||
+            (change.kind === 'delete' && change.index + change.count - 1 > before)
+          )
+            fail('STRUCTURE', '插删步骤与已保存定义不一致，请保留草稿并重新读取报表');
+          size[change.axis] += change.kind === 'insert' ? change.count : -change.count;
+          if (size[change.axis] < 1 || size[change.axis] > (change.axis === 'row' ? 999 : 250))
+            fail('STRUCTURE', '插删步骤超出报表行列范围');
+        }
+        if (size.row !== template.rows || size.col !== template.cols)
+          fail('STRUCTURE', '插删步骤与报表尺寸不一致，请保留草稿并重新读取报表');
+        // 入向引用与当前定义同事务更新；任一受阻时全部保留，历史期间快照不改。
+        if (changes.length > 0) {
+          for (const referenced of await service.list()) {
+            if (referenced.id === id) continue;
+            const rewrite = (source: string) => {
+              try {
+                return changes.reduce(
+                  (source, change) => rewriteReportReferences(source, change, old.template.code),
+                  source,
+                );
+              } catch (error) {
+                fail(
+                  'REFERENCED',
+                  `报表「${referenced.template.name}」仍引用被删除的单元格：${error instanceof Error ? error.message : '请先修改引用公式'}`,
+                  '请先修改该报表中的引用公式，再删除行列；当前编辑和已保存定义均已保留。',
+                );
+              }
+            };
+            const next = {
+              ...referenced.template,
+              cells: referenced.template.cells.map((c) =>
+                c.kind === 'formula' ? { ...c, source: rewrite(c.source) } : c,
+              ),
+              checks: referenced.template.checks.map((c) => ({
+                ...c,
+                left: rewrite(c.left),
+                right: rewrite(c.right),
+                ...(c.condition !== undefined ? { condition: rewrite(c.condition) } : {}),
+              })),
+            };
+            if (JSON.stringify(next) === JSON.stringify(referenced.template)) continue;
+            if (referenced.template.readOnly)
+              fail(
+                'REFERENCED_READ_ONLY',
+                `只读报表「${referenced.template.name}」引用了本次移动的单元格，不能自动修改`,
+                '请保留当前草稿，改用其他插删位置，或复制本报表后编辑。',
+              );
+            const valid = validate(next);
+            await tdb
+              .updateTable('report_engine_template')
+              .set({ definition_json: JSON.stringify(valid), revision: referenced.revision + 1 })
+              .where('id', '=', referenced.id)
+              .where('revision', '=', referenced.revision)
+              .execute();
+          }
+        }
         const duplicate = await tdb
           .selectFrom('report_engine_template')
           .select('id')
@@ -279,6 +398,22 @@ export function reportService(svc: CoreServices) {
         const checks: ReportSnapshot['checks'] = [];
         for (const check of report.template.checks) {
           try {
+            if (check.condition !== undefined) {
+              const passed = await engine.condition(
+                report.template.code,
+                check.condition,
+                check.tolerance,
+              );
+              checks.push({
+                name: check.name,
+                status: passed ? 'pass' : 'fail',
+                difference: null,
+                tolerance: check.tolerance,
+                condition: check.condition,
+                reason: passed ? '条件成立' : '条件不成立',
+              });
+              continue;
+            }
             const a = await engine.expression(report.template.code, check.left);
             const b = await engine.expression(report.template.code, check.right);
             const difference = finalize(calculate('-', a, b)).amount;
@@ -295,6 +430,7 @@ export function reportService(svc: CoreServices) {
               difference: null,
               tolerance: check.tolerance,
               reason: e instanceof Error ? e.message : '无法计算',
+              ...(check.condition !== undefined ? { condition: check.condition } : {}),
             });
           }
         }
@@ -310,6 +446,7 @@ export function reportService(svc: CoreServices) {
           cells,
           checks,
           dependencies: engine.dependencies(),
+          sources: engine.sources(),
         };
         const saved = await tdb
           .insertInto('report_engine_snapshot')
@@ -338,6 +475,7 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
   const cache = new Map<string, Value>();
   const balances = new Map<string, Value>();
   const visiting = new Set<string>();
+  const sources: BalanceTrace[] = [];
   let steps = 0;
   const tick = () => {
     if (++steps > 100_000) throw new FormulaError('本次生成超过100000步，请减少引用或拆分报表');
@@ -358,6 +496,12 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
       !(await svc.reference.currencies()).some((c) => c.code === input.currency)
     )
       throw new FormulaError(`币种 ${input.currency} 不存在`);
+    const ytd = ['ytdDebit', 'ytdCredit'].includes(input.metric);
+    if (ytd && input.unit !== 'cents') {
+      const book = await svc.book.info();
+      if (book.startPeriod % 100 !== 1 && periodYear(period) === periodYear(book.startPeriod))
+        throw new FormulaError('启用前外币或数量累计没有独立来源，请选择本期发生额或后续完整年度');
+    }
     let total = value(0, input.unit, input.currency);
     if (input.dimension === 'cashflow') {
       const from = ['ytdDebit', 'ytdCredit'].includes(input.metric)
@@ -376,7 +520,9 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
         throw new FormulaError('现金流量明细达到查询上限，无法保证完整取数');
       const debit = ['debit', 'ytdDebit'].includes(input.metric);
       for (const e of entries)
-        if ((debit ? e.debit : e.credit) !== 0) {
+        if (
+          (e.entrySide ?? (e.debit !== 0 ? 'debit' : 'credit')) === (debit ? 'debit' : 'credit')
+        ) {
           const n =
             input.unit === 'quantity'
               ? (e.quantity ?? '0')
@@ -405,6 +551,8 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
         closing: 'Closing',
         debit: 'Debit',
         credit: 'Credit',
+        ytdDebit: 'YtdDebit',
+        ytdCredit: 'YtdCredit',
       };
       for (const r of rows) {
         const amounts = [
@@ -433,9 +581,16 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
             : `${input.unit === 'foreignCents' ? 'fc' : 'qty'}${suffix[input.metric]}`;
         const n = r[field as keyof BalanceRow];
         if (typeof n !== 'number' && typeof n !== 'string')
-          throw new FormulaError('core不提供所选取数指标');
+          throw new FormulaError(
+            r.dimensionYtdMissing ?? '所选币种或数量指标缺少独立来源，请核实取数条件',
+          );
         if (typeof n === 'number' && !Number.isSafeInteger(n))
           throw new FormulaError('总账金额超出安全整数范围');
+        if (
+          input.unit === 'quantity' &&
+          value(n).amount.times(1_000_000).abs().gt(Number.MAX_SAFE_INTEGER)
+        )
+          throw new FormulaError('总账数量超出安全e6范围，不能使用可能丢失精度的结果');
         total.amount = total.amount.plus(n);
       }
     }
@@ -455,10 +610,29 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
     used.set(r.id, r);
     return r;
   };
-  const context = (code: string) => ({
+  const context = (code: string, address = '审核表达式') => ({
     cell: (address: string) => cell(code, address),
     reference: cell,
-    balance,
+    balance: async (input: BalanceFunction) => {
+      const result = await balance(input);
+      const dimensions: BalanceTrace['dimensions'] = {};
+      if (input.dimension !== 'none') {
+        const item = await svc.dimensions.getByCode(input.dimension, input.item);
+        if (item) dimensions[input.dimension] = item.id;
+      }
+      sources.push({
+        reportCode: code,
+        address,
+        input,
+        periodFrom: ['ytdDebit', 'ytdCredit'].includes(input.metric)
+          ? Math.max((await svc.book.info()).startPeriod, periodYear(period) * 100 + 1)
+          : period,
+        periodTo: period,
+        dimensions,
+        value: result.amount.toFixed(),
+      });
+      return result;
+    },
     tick,
   });
   const cell = async (code: string, address: string): Promise<Value> => {
@@ -483,7 +657,7 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
       if (c.kind === 'text') throw new FormulaError(`引用的 ${key} 是文本，不能作为数值`);
       let v = finalize(
         c.kind === 'formula'
-          ? await evaluate(parseFormula(c.source), context(code))
+          ? await evaluate(parseFormula(c.source), context(code, address))
           : value(c.source, c.unit, c.currency),
       );
       if (v.empty) v = { ...v, unit: c.unit, currency: c.currency };
@@ -499,6 +673,9 @@ async function createEngine(svc: CoreServices, period: number, includeUnposted: 
     cell,
     expression: (code: string, source: string) =>
       evaluate(parseFormula(source), context(code)).then(finalize),
+    condition: (code: string, source: string, tolerance: string) =>
+      evaluateAudit(parseAudit(source), context(code, '审核条件'), tolerance),
+    sources: () => sources,
     dependencies: () =>
       [...used.values()].map((r) => ({ id: r.id, code: r.template.code, revision: r.revision })),
   };
