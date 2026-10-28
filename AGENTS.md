@@ -137,6 +137,7 @@ router 里的 `ctx.svc` 已经绑定当前账套、当前操作员和当前模�
 | `svc.users.*` | 操作员（最小实现） |
 | `svc.tx(async (svc2) => {...})` | 事务。**回调里只能用传进来的 svc2**，用外面的 svc 会报错（否则会卡死） |
 | `svc.inventory.snapshot(period)` / `svc.tx(t => t.inventory.with(async i => { ... }))` | 真实库存快照及事务能力；`i.commitCosting`/`cancelCosting`、`lockVoucherSource`/`releaseVoucherSource`。释放同时删除未审核凭证，调用方不得预删。删除后重排启用时，取消成本/释放须传 `voucherDeletion:{plan:await t.vouchers.previewDelete(ids),confirmed:true}`，先向用户展示编号影响。单据写入用 `i.saveDocument`/`removeDocument`；能力不得逃逸回调 |
+| `svc.inventory.previewInvoiceIssue(input)` / `svc.tx(t => t.inventory.with(i => i.saveInvoiceIssue({input,plan,newProductsConfirmed,negativeStockConfirmed,replacementConfirmed})))` | 仅 invoice 身份的预览和整批保存桥，保留原始操作员及事务连接；库存 provider 在原 `providers.inventory` 工厂上可选实现同名方法，负责复核来源、输入摘要、期限、版本、金额、权限、期间、库存及确认。旧 provider 明确报能力缺失；invoice 不获得旧成本能力，其他模块不能调用发票能力；红字退货暂不支持并明确拒绝 |
 | `svc.periods.assertWritable({ period, oldPeriod?, mode, action })` / `dependencies(input)` | 普通业务、期初、年结、逆年结分别用 `business/opening/year-close/year-reopen`；写事务内复检启用、月结、年结及期初锁。宿主通过 `providers.periodDependencies` 注册模块依赖，阻止项含处理入口 |
 | `svc.voucherPolicy.get()` / `set({numbering,renumberAfterDelete,allowModifyOthers})` | 全账套共享凭证策略；修改须管理员，策略和日志同事务。自动显式号只接受当前下一个号或本单原号；手工编号必须提供正整数，草稿不占号 |
 | `svc.vouchers.insertNumbered(input,numberPlan,true)` | 插入凭证先展示完整腾号映射，确认后同事务复核、腾号并保存；不能借普通保存绕过自动编号，审核及来源锁仍生效 |

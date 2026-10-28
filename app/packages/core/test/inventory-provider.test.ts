@@ -1,7 +1,12 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { isInDatabaseTransaction } from '@caiwu/db';
 import type { InventoryCostingCapability, InventorySnapshot } from '../src';
-import { withServiceScope, type CoreServices, type InventoryProviderFactory } from '../src/server';
+import {
+  withServiceScope,
+  type CoreServices,
+  type InventoryProvider,
+  type InventoryProviderFactory,
+} from '../src/server';
 import { createTestBook, type TestBook } from '@caiwu/testkit';
 
 const snapshot: InventorySnapshot = {
@@ -62,7 +67,7 @@ afterEach(async () => book?.close());
 
 it('工厂每次收到原始svc，事务中保留同一对象/连接/actor/module和数据库ALS', async () => {
   const received: CoreServices[] = [];
-  const factory: InventoryProviderFactory = vi.fn((svc) => {
+  const factory: InventoryProviderFactory = vi.fn((svc: CoreServices): InventoryProvider => {
     received.push(svc);
     return {
       snapshot: async () => snapshot,

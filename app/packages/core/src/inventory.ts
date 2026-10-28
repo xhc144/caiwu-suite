@@ -261,8 +261,66 @@ export interface InventoryCostingCapability {
   }>;
 }
 
+export interface InvoiceIssueInput {
+  invoiceId: number;
+  invoiceRevision: number;
+  requestKey: string;
+  redLetter: boolean;
+  warehouseId: number;
+  date: string;
+  number: string;
+  settlementAccountId: number;
+  costAccountId: number;
+  originalDocument?: { id: number; revision: number } | null;
+  newProducts: {
+    code: string;
+    name: string;
+    specification: string;
+    unit: string;
+    inventoryAccountId: number;
+    salesAccountId: number;
+  }[];
+  lines: {
+    productCode: string;
+    quantity: string;
+    unitPrice: string;
+    taxRate: string;
+    netCents: number;
+    taxCents: number;
+    totalCents: number;
+  }[];
+}
+
+export interface InvoiceIssuePlan {
+  fingerprint: string;
+  expiresAt: number;
+  stockRevision: number;
+  shortages: {
+    warehouseId: number;
+    productCode: string;
+    availableQuantity: string;
+    requiredQuantity: string;
+    shortageQuantity: string;
+  }[];
+}
+
+export interface InvoiceIssueSaveInput {
+  input: InvoiceIssueInput;
+  plan: InvoiceIssuePlan;
+  newProductsConfirmed: boolean;
+  negativeStockConfirmed: boolean;
+  replacementConfirmed: boolean;
+}
+
+export interface InventoryCapability extends InventoryCostingCapability {
+  /** 仅 invoice 身份；原始发票输入、预览及确认须由库存 provider 在同事务内复核。 */
+  saveInvoiceIssue(input: InvoiceIssueSaveInput): Promise<{ id: number; revision: number }>;
+}
+
 export interface InventoryService {
   snapshot(period: number): Promise<InventorySnapshot>;
+  /** 仅 invoice 身份。红字退货未支持，明确拒绝，不转换为正向出库。 */
+  previewInvoiceIssue(input: InvoiceIssueInput): Promise<InvoiceIssuePlan>;
   /** 必须在 svc.tx 回调中使用，传入能力在 with 回调结束时撤销。 */
-  with<T>(run: (inventory: InventoryCostingCapability) => Promise<T>): Promise<T>;
+  with<T>(run: (inventory: InventoryCapability) => Promise<T>): Promise<T>;
 }
