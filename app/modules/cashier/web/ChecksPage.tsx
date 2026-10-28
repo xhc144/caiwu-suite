@@ -6,6 +6,7 @@ import { useAccounts, usePermission } from '@caiwu/web-kit';
 import { DataTable, MoneyInput, PageContainer } from '@caiwu/ui';
 import { api, refresh, type Outputs } from './api';
 import { CashierNav, QueryState, useCashierConfirm } from './common';
+import { useCashierEditor } from './useCashierEditor';
 
 type Check = Outputs['checks'][number];
 const labels = { received: '已领用', issued: '已签发', cleared: '已兑付', voided: '已作废' };
@@ -109,16 +110,63 @@ function CheckDrawer({
           ? '登记兑付'
           : '作废支票';
   const [confirm, holder] = useCashierConfirm();
-  const onSuccess = () => {
-    void refresh();
-    onClose();
-  };
-  const receive = useMutation(api.receiveCheck.mutationOptions({ onSuccess }));
-  const issue = useMutation(api.issueCheck.mutationOptions({ onSuccess }));
-  const finish = useMutation(api.finishCheck.mutationOptions({ onSuccess }));
-  const busy = receive.isPending || issue.isPending || finish.isPending;
+  const [form] = Form.useForm<{
+    accountId: number;
+    number: string;
+    date: string;
+    payee: string;
+    amount: number;
+    note: string;
+  }>();
+  const receive = useMutation(api.receiveCheck.mutationOptions());
+  const issue = useMutation(api.issueCheck.mutationOptions());
+  const finish = useMutation(api.finishCheck.mutationOptions());
+  const editor = useCashierEditor({
+    form,
+    title,
+    fields: editing.action === 'issue' ? ['amount'] : [],
+    onClose,
+    onSave: async (v) => {
+      if (editing.action === 'receive') {
+        await receive.mutateAsync({
+          accountId: v.accountId,
+          number: v.number,
+          receivedDate: v.date,
+          note: v.note ?? '',
+        });
+      } else {
+        const accepted = await confirm({
+          title: `${title} ${editing.row.number}`,
+          content:
+            editing.action === 'issue'
+              ? '请核对收款人、金额和日期。签发后不能改写票面资料。'
+              : '请核对真实银行办理结果。已兑付或作废后不能再变更状态。',
+          confirmText: title,
+        });
+        if (!accepted) throw new Error('已取消支票登记');
+        if (editing.action === 'issue')
+          await issue.mutateAsync({
+            id: editing.row.id,
+            revision: editing.row.revision,
+            date: v.date,
+            payee: v.payee,
+            amount: v.amount,
+            confirmed: true,
+          });
+        else
+          await finish.mutateAsync({
+            id: editing.row.id,
+            revision: editing.row.revision,
+            date: v.date,
+            state: editing.action,
+            confirmed: true,
+          });
+      }
+      void refresh();
+    },
+  });
   return (
-    <Drawer open title={title} size={480} onClose={onClose}>
+    <Drawer open title={title} size={480} onClose={editor.close}>
       <Alert
         type="info"
         title={
@@ -127,53 +175,13 @@ function CheckDrawer({
             : `票号：${editing.row.number}；${labels[editing.row.state]}`
         }
       />
-      <Form<{
-        accountId: number;
-        number: string;
-        date: string;
-        payee: string;
-        amount: number;
-        note: string;
-      }>
+      <Form
+        form={form}
+        disabled={editor.isSubmitting}
         layout="vertical"
         initialValues={{ date: today() }}
-        onFinish={async (v) => {
-          if (editing.action === 'receive')
-            receive.mutate({
-              accountId: v.accountId,
-              number: v.number,
-              receivedDate: v.date,
-              note: v.note ?? '',
-            });
-          else if (
-            await confirm({
-              title: `${title} ${editing.row.number}`,
-              content:
-                editing.action === 'issue'
-                  ? '请核对收款人、金额和日期。签发后不能改写票面资料。'
-                  : '请核对真实银行办理结果。已兑付或作废后不能再变更状态。',
-              confirmText: title,
-            })
-          ) {
-            if (editing.action === 'issue')
-              issue.mutate({
-                id: editing.row.id,
-                revision: editing.row.revision,
-                date: v.date,
-                payee: v.payee,
-                amount: v.amount,
-                confirmed: true,
-              });
-            else
-              finish.mutate({
-                id: editing.row.id,
-                revision: editing.row.revision,
-                date: v.date,
-                state: editing.action,
-                confirmed: true,
-              });
-          }
-        }}
+        onValuesChange={editor.changed}
+        onFinish={() => void editor.save()}
       >
         {editing.action === 'receive' && (
           <>
@@ -200,16 +208,26 @@ function CheckDrawer({
             <Form.Item name="payee" label="收款人" rules={[{ required: true }]}>
               <Input maxLength={120} />
             </Form.Item>
-            <Form.Item name="amount" label="签发金额" rules={[{ required: true }]}>
-              <MoneyInput />
+            <Form.Item
+              name="amount"
+              label="签发金额"
+              rules={[{ required: true }, editor.money.rule('amount')]}
+            >
+              <MoneyInput {...editor.money.input('amount')} />
             </Form.Item>
           </>
         )}
-        <Button type="primary" htmlType="submit" disabled={busy} aria-busy={busy}>
+        <Button
+          type="primary"
+          htmlType="submit"
+          disabled={editor.isSubmitting}
+          aria-busy={editor.isSubmitting}
+        >
           保存支票登记
         </Button>
       </Form>
       {holder}
+      {editor.holder}
     </Drawer>
   );
 }

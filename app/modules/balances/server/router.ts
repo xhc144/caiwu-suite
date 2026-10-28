@@ -3,8 +3,29 @@ import manifest from '../manifest';
 import { QuerySchema, SettingsSchema } from '../shared';
 import { balancesService } from './service';
 
+import { CashflowQuerySchema, CashflowSettingsSchema } from '../cashflow';
+import { cashflowService } from './cashflow-service';
+
 const m = moduleKit(manifest);
 export const balancesRouter = m.router({
+  cashflowMetadata: m.procedure
+    .meta({ permission: 'balances.view' })
+    .query(({ ctx }) => cashflowService(ctx.svc).metadata()),
+  cashflow: m.procedure
+    .meta({ permission: 'balances.view' })
+    .input(CashflowQuerySchema)
+    .query(({ ctx, input }) => cashflowService(ctx.svc).query(input)),
+  exportCashflow: m.procedure
+    .meta({ permission: 'balances.export' })
+    .input(CashflowQuerySchema)
+    .query(({ ctx, input }) => {
+      ctx.svc.permissions.require('balances.view');
+      return cashflowService(ctx.svc).query(input);
+    }),
+  saveCashflowSettings: m.procedure
+    .meta({ permission: 'balances.settings.edit' })
+    .input(CashflowSettingsSchema)
+    .mutation(({ ctx, input }) => cashflowService(ctx.svc).saveSettings(input)),
   metadata: m.procedure
     .meta({ permission: 'balances.view' })
     .query(({ ctx }) => balancesService(ctx.svc).metadata()),

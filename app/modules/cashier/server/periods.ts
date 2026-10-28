@@ -48,6 +48,7 @@ async function preview(svc: CoreServices) {
     .orderBy('id')
     .execute();
   const checks = await db.selectFrom('cashier_check').selectAll().orderBy('id').execute();
+  const book = await svc.book.info();
   const rows = accounts.map((a) => {
     const initial = openings.find((o) => o.account_id === a.id && o.period === state.enabled);
     if (!initial) fail('OPENING_MISSING', `账户 ${a.name} 缺少启用期初，请检查账套数据`);
@@ -59,6 +60,27 @@ async function preview(svc: CoreServices) {
     const current = own.filter((d) => d.period === state.current);
     const receipt = safeSum(current.filter((d) => d.direction === 'receipt').map((d) => d.amount));
     const payment = safeSum(current.filter((d) => d.direction === 'payment').map((d) => d.amount));
+    const foreign = a.currency !== book.baseCurrency;
+    if (foreign && (initial.foreign_balance == null || own.some((d) => d.foreign_amount == null)))
+      fail(
+        'FOREIGN_MISSING',
+        `账户 ${a.name} 缺少原币期初或单据金额`,
+        '请先核对外币账户及单据，不要用本位币金额代替原币',
+      );
+    const foreignOpening = foreign
+      ? safeSum([
+          initial.foreign_balance!,
+          ...own
+            .filter((d) => d.period < state.current)
+            .map((d) => (d.direction === 'receipt' ? d.foreign_amount! : -d.foreign_amount!)),
+        ])
+      : null;
+    const foreignReceipt = foreign
+      ? safeSum(current.filter((d) => d.direction === 'receipt').map((d) => d.foreign_amount!))
+      : null;
+    const foreignPayment = foreign
+      ? safeSum(current.filter((d) => d.direction === 'payment').map((d) => d.foreign_amount!))
+      : null;
     return {
       accountId: a.id,
       name: a.name,
@@ -67,6 +89,12 @@ async function preview(svc: CoreServices) {
       receipt,
       payment,
       closing: safeSum([opening, receipt, -payment]),
+      foreignOpening,
+      foreignReceipt,
+      foreignPayment,
+      foreignClosing: foreign
+        ? safeSum([foreignOpening!, foreignReceipt!, -foreignPayment!])
+        : null,
     };
   });
   const next = state.current === 999912 ? null : nextPeriod(state.current);
@@ -111,6 +139,7 @@ export const periodService = (svc: CoreServices) => ({
       if (input.snapshot !== p.snapshot) fail('STALE', '出纳单据、账户或期间已变化，请重新预览');
       if (!p.rows.length) fail('NO_ACCOUNTS', '没有出纳账户，不能结账', '请先建立账户及期初');
       if (p.next == null) fail('PERIOD_LIMIT', '已到可支持的最后一个出纳月份');
+      await t.periods.assertWritable({ period: p.current, mode: 'business', action: '出纳结账' });
       const db = tables(t);
       const old = p.history.find((r) => r.period === p.current);
       await db
@@ -141,6 +170,10 @@ export const periodService = (svc: CoreServices) => ({
             receipt: row.receipt,
             payment: row.payment,
             closing: row.closing,
+            foreign_opening: row.foreignOpening,
+            foreign_receipt: row.foreignReceipt,
+            foreign_payment: row.foreignPayment,
+            foreign_closing: row.foreignClosing,
           })
           .execute();
         if (p.rollover) {
@@ -154,7 +187,12 @@ export const periodService = (svc: CoreServices) => ({
             fail('YEAR_EXISTS', '下一年度出纳期初已存在，不能覆盖', '保留现场并核对已有年度来源');
           await db
             .insertInto('cashier_opening')
-            .values({ account_id: row.accountId, period: p.next, balance: row.closing })
+            .values({
+              account_id: row.accountId,
+              period: p.next,
+              balance: row.closing,
+              foreign_balance: row.foreignClosing,
+            })
             .execute();
         }
       }
@@ -193,6 +231,13 @@ export const periodService = (svc: CoreServices) => ({
         }))
         .where('period', '=', p.lastClosed)
         .execute();
+      // 本模块的已结账依赖也由统一检查读取；先在事务内撤销本次结账，
+      // 再复核总账及其他依赖。任一检查失败会回滚以上派生数据和月份状态。
+      await t.periods.assertWritable({
+        period: p.lastClosed,
+        mode: 'business',
+        action: '出纳反结账',
+      });
       await t.log.write({
         action: 'cashier.period.reopen',
         summary: `出纳反结账 ${formatPeriod(p.lastClosed)}`,

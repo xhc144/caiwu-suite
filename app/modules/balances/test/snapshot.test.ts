@@ -215,3 +215,102 @@ for (const endpoint of ['query', 'export'] as const) {
     });
   }
 }
+
+/** 在真实现金流明细读取后暂停；另一连接过账，再继续取年累计与余额。 */
+function afterCashflowEntries() {
+  const paused = Promise.withResolvers<void>();
+  const resume = Promise.withResolvers<void>();
+  const targets = new Set<object>();
+  let hits = 0;
+  const plugin: KyselyPlugin = {
+    transformQuery({ node, queryId }) {
+      const text = JSON.stringify(node);
+      if (text.includes('"name":"voucher_line"') && text.includes('"name":"type_code"'))
+        targets.add(queryId);
+      return node;
+    },
+    async transformResult({ queryId, result }) {
+      if (targets.has(queryId) && hits === 0) {
+        hits++;
+        paused.resolve();
+        await resume.promise;
+      }
+      return result;
+    },
+  };
+  return { plugin, paused: paused.promise, resume: () => resume.resolve(), hits: () => hits };
+}
+for (const endpoint of ['cashflow', 'exportCashflow'] as const) {
+  it(`w_zc_xjll_1 ${endpoint}：明细后并发真实过账，收付、年累计、现金银行期末仍同一快照`, async () => {
+    await app.svc.opening.upsert({
+      year: 2026,
+      accountId: (await app.svc.accounts.require('1001')).id,
+      balance: 1000,
+    });
+    await seedVouchers(app.svc, [
+      {
+        date: '2026-01-10',
+        status: 'posted',
+        lines: [
+          { account: '1001', debit: 200 },
+          { account: '4001', credit: 200 },
+        ],
+      },
+    ]);
+    const [pending] = await seedVouchers(app.svc, [
+      {
+        date: '2026-02-10',
+        status: 'audited',
+        lines: [
+          { account: '1001', debit: 100 },
+          { account: '4001', credit: 100 },
+        ],
+      },
+    ]);
+    const opened = app.runtime.bookStore.open(app.book.id);
+    const writer = openDatabase<CoreDB>(opened.file);
+    const writerSvc = createCoreServices({ ...app.svc.ctx, db: writer.db });
+    const originalDb = opened.db;
+    const gate = afterCashflowEntries();
+    opened.db = originalDb.withPlugin(gate.plugin);
+    const api = app.call(balancesServer);
+    const input = { periodFrom: 202602, periodTo: 202602 };
+    const reading = api[endpoint](input);
+    try {
+      await Promise.race([
+        gate.paused,
+        reading.then(() => {
+          throw new Error('现金流明细门控未命中');
+        }),
+      ]);
+      expect(opened.raw.inTransaction).toBe(true);
+      await writerSvc.vouchers.changeStatus({ ids: [pending!.id], to: 'posted' });
+      expect(writer.raw.inTransaction).toBe(false);
+      gate.resume();
+      const before = await reading;
+      expect(before).toMatchObject({
+        cashOpening: 1200,
+        cashClosing: 1200,
+        balanceDifference: 0,
+        totals: { cashNet: 0 },
+        ytd: { cashNet: 200 },
+      });
+      expect(before.rows).toHaveLength(0);
+      expect(gate.hits()).toBe(1);
+      const after = await api[endpoint](input);
+      expect(after).toMatchObject({
+        cashOpening: 1200,
+        cashClosing: 1300,
+        balanceDifference: 0,
+        totals: { cashNet: 100 },
+        ytd: { cashNet: 300 },
+      });
+      expect(after.rows).toHaveLength(1);
+    } finally {
+      gate.resume();
+      await reading.catch(() => undefined);
+      opened.db = originalDb;
+      await writer.close();
+    }
+  });
+}

@@ -15,6 +15,7 @@ export const refresh = () =>
       api.status.queryKey(),
       api.accounts.queryKey(),
       api.documents.queryKey(),
+      api.summary.queryKey(),
       api.reconcile.queryKey(),
     ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
   );

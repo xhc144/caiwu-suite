@@ -2,7 +2,7 @@ import { centsToYuan, formatMoney } from '@caiwu/core';
 import { escapeHtml } from '@caiwu/print';
 import { downloadBlob } from '@caiwu/ui';
 import {
-  outputRows,
+  reportTables,
   reportCaption,
   reportTitle,
   groupCaption,
@@ -35,18 +35,32 @@ export const outputColumns: {
   { key: 'qtyDebit', title: '本期借方数量', quantity: true },
   { key: 'qtyCredit', title: '本期贷方数量', quantity: true },
   { key: 'qtyClosing', title: '期末数量（借正贷负）', quantity: true },
+  { key: 'fcYtdDebit', title: '原币本年累计借方', money: true, foreign: true },
+  { key: 'fcYtdCredit', title: '原币本年累计贷方', money: true, foreign: true },
+  { key: 'qtyYtdDebit', title: '本年累计借方数量', quantity: true },
+  { key: 'qtyYtdCredit', title: '本年累计贷方数量', quantity: true },
+  { key: 'closingUnitPrice', title: '结余单价（元/单位，六位小数）', quantity: true },
 ];
 
 export function columnsFor(report: Report) {
-  return outputColumns.filter(
+  const cols = outputColumns.filter(
     (c) => (!c.foreign || report.mode === 'foreign') && (!c.quantity || report.mode === 'quantity'),
   );
+  return report.order === 'account' && report.auxiliary
+    ? [
+        cols[0]!,
+        cols[1]!,
+        { key: 'auxiliaryCode' as const, title: '辅助编码' },
+        { key: 'auxiliaryName' as const, title: '辅助名称' },
+        ...cols.slice(2),
+      ]
+    : cols;
 }
 
 /** Excel 数值最多保留 15 位有效数字；金额还必须能按两位小数逐分回读。
  * 超出任一条件时保留精确文本，不把安全整数分静默转成失真的元数值。
  */
-function excelMoney(cents: number): number | string {
+export function excelMoney(cents: number): number | string {
   const exact = centsToYuan(cents);
   // 保守按分值计位数，即使某个更大的整元恰好可转也不依赖 Excel 的截位行为。
   if (Math.abs(cents) > 999_999_999_999_999) return exact;
@@ -58,19 +72,19 @@ export async function exportReport(report: Report, level: number, expanded: numb
   const { Workbook } = await import('exceljs');
   const wb = new Workbook();
   const columns = columnsFor(report);
-  for (const [index, group] of report.groups.entries()) {
+  for (const [index, { group, rows }] of reportTables(report, level, expanded).entries()) {
     const ws = wb.addWorksheet(`${index + 1}-${group.currency || '本位币'}`);
     ws.addRow([reportTitle(report)]);
     ws.addRow([`${reportCaption(report, group.currency)}；${groupCaption(group)}`]);
     ws.addRow([
-      `显示级次：${level === -1 ? '仅末级' : level || '全部'}；合计余额金额以“借方 / 贷方”分别列示；超出 Excel 15 位精度或无法逐分回读的金额使用精确两位小数文本`,
+      `显示级次：${level === -1 ? '仅末级' : level || '全部'}；合计余额金额以“借方 / 贷方”分别列示；累计来源缺失显示“—”，不能视为零；超出 Excel 15 位精度或无法逐分回读的金额使用精确两位小数文本`,
     ]);
     ws.addRow(columns.map((c) => c.title)).font = { bold: true };
-    for (const row of outputRows(group, level, expanded)) {
+    for (const row of rows) {
       ws.addRow(
         columns.map((c) => {
           const value = row[c.key];
-          return typeof value === 'number' && c.money ? excelMoney(value) : String(value ?? '');
+          return typeof value === 'number' && c.money ? excelMoney(value) : String(value ?? '—');
         }),
       );
     }
@@ -90,22 +104,28 @@ export async function exportReport(report: Report, level: number, expanded: numb
   );
 }
 
-export function reportHtml(report: Report, level: number, expanded: number[]) {
+export function reportHtml(
+  report: Report,
+  level: number,
+  expanded: number[],
+  selectedAccountIds?: number[],
+) {
   const cols = columnsFor(report);
-  return report.groups
+  const selected = selectedAccountIds ? new Set(selectedAccountIds) : null;
+  return reportTables(report, level, expanded)
+    .filter(
+      ({ rows }) => !selected || rows.some((r) => r.source && selected.has(r.source.accountId)),
+    )
     .map(
-      (g) =>
-        `<h2>${escapeHtml(reportTitle(report))}</h2><p>${escapeHtml(reportCaption(report, g.currency))}；${escapeHtml(groupCaption(g))}</p><p>合计余额金额按“借方 / 贷方”分别列示</p><table><thead><tr>${cols.map((c) => `<th>${escapeHtml(c.title)}</th>`).join('')}</tr></thead><tbody>${outputRows(
-          g,
-          level,
-          expanded,
-        )
+      ({ group: g, rows }) =>
+        `<h2>${escapeHtml(reportTitle(report))}</h2><p>${escapeHtml(reportCaption(report, g.currency))}；${escapeHtml(groupCaption(g))}</p><p>${selected ? '仅打印指定显示科目；为避免父子重复，不另列选中科目合计' : '合计余额金额按“借方 / 贷方”分别列示'}；累计来源缺失显示“—”，不能视为零</p><table><thead><tr>${cols.map((c) => `<th>${escapeHtml(c.title)}</th>`).join('')}</tr></thead><tbody>${rows
+          .filter((r) => !selected || (r.source && selected.has(r.source.accountId)))
           .map(
             (r) =>
               `<tr>${cols
                 .map((c) => {
                   const v = r[c.key];
-                  return `<td>${escapeHtml(typeof v === 'number' && c.money ? formatMoney(v) : v)}</td>`;
+                  return `<td>${escapeHtml(typeof v === 'number' && c.money ? formatMoney(v) : (v ?? '—'))}</td>`;
                 })
                 .join('')}</tr>`,
           )

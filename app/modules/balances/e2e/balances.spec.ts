@@ -95,6 +95,11 @@ test('w_zw_ye：真实账套查询、状态口径、树、合计、URL 恢复、
     };
   });
   await page.getByRole('button', { name: '打印', exact: true }).click();
+  await page.getByRole('button', { name: '开始打印', exact: true }).click();
+  await page
+    .getByRole('dialog', { name: '选择打印科目', exact: true })
+    .getByRole('button', { name: '取消', exact: true })
+    .click();
   await expect
     .poll(() => page.evaluate(() => document.body.dataset.lastPrint ?? ''))
     .toContain('918.34');

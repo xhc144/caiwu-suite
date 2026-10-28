@@ -1,5 +1,6 @@
 import { withSharedDependencies } from './shared-dependencies';
 import { withAutomaticBackup } from './automatic-backup';
+import { withCashierResetProtection } from './cashier-reset-protection';
 import { withInventoryProvider } from './inventory';
 import fastifyStatic from '@fastify/static';
 import { fastifyTRPCPlugin, type FastifyTRPCPluginOptions } from '@trpc/server/adapters/fastify';
@@ -53,6 +54,7 @@ export async function createServer(opts: ServerOptions): Promise<CaiwuServer> {
     modules: opts.modules
       .map(withInventoryProvider)
       .map((module) => withAutomaticBackup(module))
+      .map(withCashierResetProtection)
       .map(withSharedDependencies),
     moduleDirs: opts.moduleDirs,
     devMode: opts.devMode,

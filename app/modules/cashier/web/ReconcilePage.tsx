@@ -77,6 +77,25 @@ export default function ReconcilePage() {
         },
       ]
     : [];
+  const fx = data?.foreignAdjustment;
+  const foreignRows = fx
+    ? [
+        {
+          key: 'opening',
+          label: '原币期初（借正贷负）',
+          cash: fx.cashOpening,
+          core: fx.coreOpening,
+        },
+        { key: 'balance', label: '原币截止日余额', cash: fx.cashBalance, core: fx.coreBalance },
+        {
+          key: 'outstanding',
+          label: '加：对侧原币未达净额',
+          cash: fx.coreOutstanding,
+          core: fx.cashOutstanding,
+        },
+        { key: 'adjusted', label: '原币调节后余额', cash: fx.adjustedCash, core: fx.adjustedCore },
+      ]
+    : [];
   return (
     <PageContainer
       title="和账务对账"
@@ -153,7 +172,17 @@ export default function ReconcilePage() {
                 { key: 'number', title: '单号', dataIndex: 'number', width: 130 },
                 { key: 'date', title: '日期', dataIndex: 'date', width: 110 },
                 { key: 'summary', title: '摘要', dataIndex: 'summary', width: 220 },
-                { key: 'signed', title: '收款正／付款负', dataIndex: 'signed', money: true },
+                { key: 'signed', title: '本位币收正付负', dataIndex: 'signed', money: true },
+                ...(fx
+                  ? [
+                      {
+                        key: 'foreignSigned',
+                        title: `原币收正付负（${data.account.currency}）`,
+                        dataIndex: 'foreignSigned',
+                        money: true,
+                      },
+                    ]
+                  : []),
                 { key: 'match', title: '勾账组', dataIndex: 'matchId', width: 100 },
               ]}
             />
@@ -190,7 +219,17 @@ export default function ReconcilePage() {
                 },
                 { key: 'date', title: '日期', dataIndex: 'date', width: 110 },
                 { key: 'summary', title: '摘要', dataIndex: 'summary', width: 220 },
-                { key: 'signed', title: '借方正／贷方负', dataIndex: 'signed', money: true },
+                { key: 'signed', title: '本位币借正贷负', dataIndex: 'signed', money: true },
+                ...(fx
+                  ? [
+                      {
+                        key: 'foreignSigned',
+                        title: `原币借正贷负（${data.account.currency}）`,
+                        dataIndex: 'foreignSigned',
+                        money: true,
+                      },
+                    ]
+                  : []),
                 { key: 'match', title: '勾账组', dataIndex: 'matchId', width: 100 },
                 {
                   key: 'source',
@@ -221,6 +260,26 @@ export default function ReconcilePage() {
                   safeSum(
                     data.entries.filter((e) => lineKeys.includes(e.lineId)).map((e) => e.signed),
                   ),
+                )}
+                {fx && (
+                  <>
+                    ；原币所选出纳净额：
+                    {formatMoney(
+                      safeSum(
+                        data.documents
+                          .filter((d) => docKeys.includes(d.id))
+                          .map((d) => d.foreignSigned ?? 0),
+                      ),
+                    )}
+                    ；原币财务净额：
+                    {formatMoney(
+                      safeSum(
+                        data.entries
+                          .filter((e) => lineKeys.includes(e.lineId))
+                          .map((e) => e.foreignSigned ?? 0),
+                      ),
+                    )}
+                  </>
                 )}
               </span>
               {canMatch && (
@@ -306,7 +365,7 @@ export default function ReconcilePage() {
             <Typography.Title level={4}>截止日余额调节表</Typography.Title>
             <Alert
               type={data.adjustment.openingDifference === 0 ? 'info' : 'warning'}
-              title={`期初差额：${formatMoney(data.adjustment.openingDifference)}；调节后差额：${formatMoney(data.adjustment.difference)}`}
+              title={`本位币期初差额：${formatMoney(data.adjustment.openingDifference)}；调节后差额：${formatMoney(data.adjustment.difference)}`}
               description="公式：出纳余额＋财务未达净额＝财务余额＋出纳未达净额。此表核对同账套两种业务记录，不代表与银行外部对账完成。"
             />
             <DataTable
@@ -320,6 +379,28 @@ export default function ReconcilePage() {
                 { key: 'core', title: '财务账', dataIndex: 'core', money: true },
               ]}
             />
+            {fx && (
+              <>
+                <Typography.Title level={5}>
+                  原币余额调节表（{data.account.currency}）
+                </Typography.Title>
+                <Alert
+                  type={fx.difference === 0 && fx.openingDifference === 0 ? 'info' : 'warning'}
+                  title={`原币期初差额：${formatMoney(fx.openingDifference)}；原币调节后差额：${formatMoney(fx.difference)}`}
+                />
+                <DataTable
+                  tableId="cashier.foreign-adjustment"
+                  rowKey="key"
+                  dataSource={foreignRows}
+                  exportName="出纳原币余额调节表"
+                  columns={[
+                    { key: 'label', title: '项目', dataIndex: 'label', width: 240 },
+                    { key: 'cash', title: '出纳原币', dataIndex: 'cash', money: true },
+                    { key: 'core', title: '财务原币', dataIndex: 'core', money: true },
+                  ]}
+                />
+              </>
+            )}
             <Descriptions
               size="small"
               items={[
@@ -340,7 +421,10 @@ export default function ReconcilePage() {
                 printRows(
                   `出纳账—财务账余额调节表 ${data.account.name} ${data.cutoff} ${data.account.currency}`,
                   ['项目', '出纳账', '财务账'],
-                  adjustmentRows.map((r) => [r.label, r.cash, r.core]),
+                  [
+                    ...adjustmentRows.map((r) => [r.label, r.cash, r.core]),
+                    ...foreignRows.map((r) => [r.label, r.cash, r.core]),
+                  ],
                 )
               }
             >

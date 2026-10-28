@@ -154,7 +154,7 @@ export default function AutoMatchDrawer({
       <Alert
         type="info"
         title={`${data.account.name} · 截止 ${data.cutoff} · 已选择 ${pairs.length} 对`}
-        description="按日期列出同方向且整数分金额相等的候选。只有双方唯一的等额项目默认选中；重复金额需逐项核对日期和凭证后选择。跨多单汇总请使用手动勾账。"
+        description="按日期列出同方向且本位币金额、原币金额分别相等的候选。只有双方唯一的等额项目默认选中；重复金额需逐项核对日期和凭证后选择。跨多单汇总请使用手动勾账。"
       />
       <div>
         共 {suggestions.length} 张待勾单据，唯一候选 {uniqueCount} 对；每页 {PAGE_SIZE}{' '}
@@ -194,6 +194,18 @@ export default function AutoMatchDrawer({
             render: (_, s) => formatMoney(s.document.signed),
             exportValue: (s) => s.document.signed,
           },
+          ...(data.foreignAdjustment
+            ? [
+                {
+                  key: 'foreignAmount',
+                  title: `原币（${data.account.currency}）`,
+                  money: true,
+                  render: (_: unknown, s: (typeof suggestions)[number]) =>
+                    formatMoney(s.document.foreignSigned),
+                  exportValue: (s: (typeof suggestions)[number]) => s.document.foreignSigned,
+                },
+              ]
+            : []),
           {
             key: 'kind',
             title: '候选情况',

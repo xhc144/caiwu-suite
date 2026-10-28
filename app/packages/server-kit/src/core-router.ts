@@ -1,11 +1,13 @@
 import { z } from 'zod';
 import {
   BalanceQuerySchema,
+  CashflowPageSchema,
   BusinessError,
   CreateBookInputSchema,
   DIMENSION_TYPES,
   DIMENSION_TYPE_IDS,
   EntryFilterSchema,
+  EntryPageSchema,
   MENU_GROUPS,
   PRODUCTS,
   VoucherFilterSchema,
@@ -172,6 +174,15 @@ export const coreRouter = t.router({
     cashflow: authedProcedure
       .input(EntryFilterSchema)
       .query(({ ctx, input }) => ctx.svc.ledger.cashflow(input)),
+    cashflowPage: authedProcedure
+      .input(CashflowPageSchema)
+      .query(({ ctx, input }) => ctx.svc.ledger.cashflowPage(input)),
+    cashflowGroups: authedProcedure
+      .input(CashflowPageSchema)
+      .query(({ ctx, input }) => ctx.svc.ledger.cashflowGroups(input)),
+    cashflowDiagnostics: authedProcedure
+      .input(CashflowPageSchema)
+      .query(({ ctx, input }) => ctx.svc.ledger.cashflowDiagnostics(input)),
     balanceSides: authedProcedure
       .input(BalanceQuerySchema)
       .query(({ ctx, input }) => ctx.svc.ledger.balanceSides(input)),
@@ -181,6 +192,9 @@ export const coreRouter = t.router({
     entries: authedProcedure
       .input(EntryFilterSchema)
       .query(({ ctx, input }) => ctx.svc.ledger.entries(input)),
+    entriesPage: authedProcedure
+      .input(EntryPageSchema)
+      .query(({ ctx, input }) => ctx.svc.ledger.entriesPage(input)),
   }),
 });
 
