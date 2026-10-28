@@ -85,36 +85,39 @@ function fullBalance() {
         'deferredIncome',
         'capital',
         'development',
+        'materialVariance',
       ].includes(role)
     )
       continue;
     const parts =
-      role === 'prepaid'
-        ? [
-            { role: 'prepaid' as const, amount: 300 },
-            { role: 'noncurrentAsset' as const, amount: 200 },
-          ]
-        : role === 'advance'
+      role === 'materialVariance'
+        ? [{ role: 'raw' as const, amount: r.closing }]
+        : role === 'prepaid'
           ? [
-              { role: 'advance' as const, amount: -3100 },
-              { role: 'noncurrentLiability' as const, amount: -300 },
+              { role: 'prepaid' as const, amount: 300 },
+              { role: 'noncurrentAsset' as const, amount: 200 },
             ]
-          : role === 'bond'
+          : role === 'advance'
             ? [
-                { role: 'bond' as const, amount: 1500 },
-                { role: 'currentAsset' as const, amount: 100 },
+                { role: 'advance' as const, amount: -3100 },
+                { role: 'noncurrentLiability' as const, amount: -300 },
               ]
-            : role === 'deferredExpense'
+            : role === 'bond'
               ? [
-                  { role: 'deferredExpense' as const, amount: 2500 },
-                  { role: 'currentAsset' as const, amount: 200 },
+                  { role: 'bond' as const, amount: 1500 },
+                  { role: 'currentAsset' as const, amount: 100 },
                 ]
-              : ['longLoan', 'longPayable', 'deferredIncome'].includes(role)
+              : role === 'deferredExpense'
                 ? [
-                    { role, amount: -4000 },
-                    { role: 'currentLiability' as const, amount: r.closing + 4000 },
+                    { role: 'deferredExpense' as const, amount: 2500 },
+                    { role: 'currentAsset' as const, amount: 200 },
                   ]
-                : [{ role, amount: r.closing }];
+                : ['longLoan', 'longPayable', 'deferredIncome'].includes(role)
+                  ? [
+                      { role, amount: -4000 },
+                      { role: 'currentLiability' as const, amount: r.closing + 4000 },
+                    ]
+                  : [{ role, amount: r.closing }];
     for (const period of [202512, 202612])
       d.config.facts.push({
         period,
@@ -129,16 +132,16 @@ function fullBalance() {
 it('w_bb_proc 301全部53行两列独立手算，包含存货差异、折旧、摊销和借方税费负数', () => {
   const s = balanceSheet(fullBalance());
   const expected = [
-    100000, 200, 300, 400, 300, 600, 700, 800, 4344, 1003, 1005, 1006, 1009, 1700, 109344, 1500,
-    1700, 18000, 1900, 16100, 2100, 2200, -230, 2160, 2250, 2600, 2500, 3000, 35880, 145224, 3100,
-    3200, 3300, 3100, 3500, -360, 370, 380, 3900, 4900, 25390, 4000, 4000, 4000, 4800, 16800, 42190,
+    100000, 200, 300, 400, 300, 600, 700, 800, 4344, 899, 1005, 899, 1009, 1700, 109344, 1500, 1700,
+    18000, 1900, 16100, 2100, 2200, -230, 2160, 2250, 2600, 2500, 3000, 35880, 145224, 3100, 3200,
+    3300, 3100, 3500, -360, 370, 380, 3900, 4900, 25390, 4000, 4000, 4000, 4800, 16800, 42190,
     48000, 4900, 5000, 10300, 68200, 110390,
   ];
   expect(s.rows).toHaveLength(53);
   for (const r of s.rows)
     for (const c of [0, 1])
       expect(r.amounts[c]?.value, `行${r.line}列${c}`).toBe(expected[r.line - 1]);
-  expect(s.checks.map((c) => c.difference)).toEqual([34834, 34834]);
+  expect(s.checks.map((c) => c.difference)).toEqual([0, 34834, 0, 34834]);
 });
 it('w_bb_proc 年初与期末期限事实分别核验，余额变化拒绝', () => {
   const d = fullBalance();
@@ -155,8 +158,16 @@ it('w_bb_proc 存货有符号差异不取绝对值', () => {
       fc.integer({ min: -1000000, max: 1000000 }),
       (a, b) => {
         const d = domain();
-        addBalance(d, 'materialVariance', a);
+        const variance = addBalance(d, 'materialVariance', a);
         addBalance(d, 'goodsVariance', b);
+        for (const period of [202512, 202612])
+          d.config.facts.push({
+            period,
+            key: rowKey(variance),
+            balance: a,
+            reason: '原材料计划成本差异',
+            allocations: [{ role: 'raw', amount: a }],
+          });
         expect(balanceSheet(d).rows[8]!.amounts[0].value).toBe(a + b);
       },
     ),
