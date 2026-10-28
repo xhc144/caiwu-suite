@@ -54,6 +54,10 @@ import {
 import { api } from './api';
 import { usePayrollFilters } from './filters';
 import BulkDrawer from './BulkDrawer';
+import PersonnelBulkDrawer from './PersonnelBulkDrawer';
+import DepartmentManager from './DepartmentManager';
+import SalaryGrid from './SalaryGrid';
+import { useMoneyDrafts } from './money-drafts';
 
 const refresh = () => queryClient.invalidateQueries({ queryKey: api.pathKey() });
 function ErrorState({ error }: { error: { message: string } | null }) {
@@ -125,6 +129,13 @@ function Employees() {
   const canEdit = usePermission('payroll.hr.edit');
   const [editing, setEditing] = useState<Employee | 'new' | null>(null);
   const [department, setDepartment] = useState(false);
+  const [bulk, setBulk] = useState<'selected' | 'filtered' | null>(null);
+  const [selected, setSelected] = useState<number[]>([]);
+  const filtered = (list.data ?? []).filter(
+    (e) =>
+      (!filters.department || e.departmentId === filters.department) &&
+      (!filters.keyword || `${e.code} ${e.name}`.includes(filters.keyword)),
+  );
   const columns: DataColumn<Employee>[] = [
     { key: 'code', title: '人员编号', dataIndex: 'code', width: 120 },
     { key: 'name', title: '姓名', dataIndex: 'name', width: 120 },
@@ -151,7 +162,16 @@ function Employees() {
       extra={
         canEdit && (
           <>
-            <Button onClick={() => setDepartment(true)}>新增部门</Button>
+            <Button onClick={() => setDepartment(true)}>部门管理</Button>
+            <Button
+              disabled={!filtered.some((e) => selected.includes(e.id))}
+              onClick={() => setBulk('selected')}
+            >
+              人事统一置数（所选）
+            </Button>
+            <Button disabled={!filtered.length} onClick={() => setBulk('filtered')}>
+              人事统一置数（筛选结果）
+            </Button>
             <Button type="primary" onClick={() => setEditing('new')}>
               新增员工
             </Button>
@@ -173,50 +193,26 @@ function Employees() {
         rowKey="id"
         columns={columns}
         loading={list.isLoading}
-        dataSource={(list.data ?? []).filter(
-          (e) =>
-            (!filters.department || e.departmentId === filters.department) &&
-            (!filters.keyword || `${e.code} ${e.name}`.includes(filters.keyword)),
-        )}
+        dataSource={filtered}
+        rowSelection={{
+          selectedRowKeys: selected,
+          onChange: (keys) => setSelected(keys.map(Number)),
+        }}
       />
       {editing && <EmployeeEditor employee={editing} onClose={() => setEditing(null)} />}
-      {department && <DepartmentEditor onClose={() => setDepartment(false)} />}
+      {department && <DepartmentManager onClose={() => setDepartment(false)} />}
+      {bulk && (
+        <PersonnelBulkDrawer
+          employees={
+            bulk === 'filtered' ? filtered : filtered.filter((e) => selected.includes(e.id))
+          }
+          onClose={() => setBulk(null)}
+          onApplied={() => {
+            void refresh();
+          }}
+        />
+      )}
     </PageContainer>
-  );
-}
-function DepartmentEditor({ onClose }: { onClose: () => void }) {
-  const [form] = Form.useForm<{ code: string; name: string }>();
-  const save = useMutation(
-    api.createDepartment.mutationOptions({
-      onSuccess: () => {
-        void queryClient.invalidateQueries();
-        onClose();
-      },
-    }),
-  );
-  return (
-    <Drawer
-      open
-      title="新增 core 部门"
-      onClose={onClose}
-      extra={
-        <Button
-          loading={save.isPending}
-          onClick={() => void form.validateFields().then((v) => save.mutate(v))}
-        >
-          保存部门
-        </Button>
-      }
-    >
-      <Form form={form} layout="vertical">
-        <Form.Item name="code" label="部门编码" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-        <Form.Item name="name" label="部门名称" rules={[{ required: true }]}>
-          <Input />
-        </Form.Item>
-      </Form>
-    </Drawer>
   );
 }
 function EmployeeEditor({
@@ -515,10 +511,11 @@ function CategoryEditor({
             </>
           )}
         </Form.List>
-        <Typography.Title level={5}>安全基础公式</Typography.Title>
+        <Typography.Title level={5}>工资计算公式</Typography.Title>
         <Alert
           type="info"
-          title="仅支持稳定变量、数字、+ - * /、括号及 > < >= <= == !=；变量和结果单位为分，常数按分或倍数使用，如 base * 0.1。条件为非零时执行。日期函数尚未支持。个税由唯一内置引擎计算。"
+          title="支持稳定变量、算术、比较、and/or/not 逻辑分组，以及 abs、min、max、sum、round、trunc、floor、ceil、sign、mod、if/iif。变量与结果以分计算，如 base * 0.1；round(base,-2) 四舍五入到整元。条件非零时执行，if 与逻辑运算仅计算实际分支。个税继续按已确认的居民累计参数计算。"
+          description="日期函数为本版约定：today() 返回工资期末日期（YYYYMMDD 整数）；daybefore(日期,天数)、monthbefore(日期,月数) 返回前推日期，月末取目标月最后一天，参数须为非负整数。日期值不作金额使用，建议放在执行条件内，例如 today() >= 20260101。原版静态资料只列出函数及语法校验，未载明参数语义。"
         />
         <Form.List name="formulas">
           {(fields, { add, remove, move }) => (
@@ -694,6 +691,14 @@ const SalaryContent = memo(function SalaryContent({
     canVoucher = usePermission('payroll.voucher'),
     canExport = usePermission('payroll.export');
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [gridDirty, setGridDirty] = useState(false);
+  const changeFilters = (next: Partial<SalaryFilters>) => {
+    if (gridDirty) {
+      window.alert('请先保存或放弃表格修改，再切换工资批次或筛选条件。');
+      return;
+    }
+    setFilters(next);
+  };
   const canClose = usePermission('payroll.close'),
     canReopen = usePermission('payroll.reopen');
   const close = useMutation(api.close.mutationOptions({ onSuccess: () => void refresh() }));
@@ -748,38 +753,13 @@ const SalaryContent = memo(function SalaryContent({
           .join('<hr>'),
       });
   };
-  const columns: DataColumn<SalaryRow>[] = [
-    { key: 'code', title: '编号', dataIndex: ['employee', 'code'], width: 110 },
-    { key: 'name', title: '姓名', dataIndex: ['employee', 'name'], width: 110 },
-    { key: 'dept', title: '部门', dataIndex: ['employee', 'departmentName'], width: 110 },
-    ...(b?.category.fields ?? [])
-      .filter((f) => f.visible && !f.disabled)
-      .map((f) => ({
-        key: f.key,
-        title: f.name,
-        dataIndex: ['calculatedValues', f.key],
-        money: true,
-      })),
-    ...(['gross', 'deductions', 'taxAmount', 'net'] as const).map((k, i) => ({
-      key: k,
-      title: ['应发', '扣款', '个税', '实发'][i]!,
-      dataIndex: k,
-      money: true,
-    })),
-    {
-      key: 'detail',
-      title: '计算说明',
-      width: 120,
-      render: (_, r) => <Button onClick={() => setExplaining(r)}>查看解释</Button>,
-    },
-  ];
   return (
     <PageContainer
       title="工资管理"
       subtitle="工资批次仅计算及制证；无银行付款或税务申报操作。"
       extra={
         canEdit && (
-          <Button type="primary" onClick={() => setEditing('new')}>
+          <Button type="primary" disabled={gridDirty} onClick={() => setEditing('new')}>
             新增工资批次
           </Button>
         )
@@ -787,7 +767,7 @@ const SalaryContent = memo(function SalaryContent({
     >
       {!independent && (
         <>
-          <FilterBar initialValues={filters} onSearch={(v) => setFilters({ ...v, id: 0 })}>
+          <FilterBar initialValues={filters} onSearch={(v) => changeFilters({ ...v, id: 0 })}>
             <Form.Item name="period" label="期间">
               <PeriodPicker />
             </Form.Item>
@@ -833,7 +813,7 @@ const SalaryContent = memo(function SalaryContent({
                 render: (_, r) => (
                   <Button
                     onClick={() => {
-                      setFilters({ id: r.id });
+                      changeFilters({ id: r.id });
                       setSelected([]);
                     }}
                   >
@@ -864,13 +844,15 @@ const SalaryContent = memo(function SalaryContent({
           </Typography.Title>
           <Space wrap style={{ marginBottom: 12 }}>
             {canEdit && !b.vouchers.length && !b.closed && (
-              <Button onClick={() => setEditing(b)}>编辑工资</Button>
+              <Button disabled={gridDirty} onClick={() => setEditing(b)}>
+                编辑工资
+              </Button>
             )}
             {canCalculate && !b.vouchers.length && !b.closed && (
               <Button
                 aria-label="计算工资"
                 aria-busy={calculate.isPending}
-                disabled={calculate.isPending}
+                disabled={calculate.isPending || gridDirty}
                 loading={calculate.isPending}
                 onClick={() => calculate.mutate({ id: b.id, revision: b.revision })}
               >
@@ -878,14 +860,18 @@ const SalaryContent = memo(function SalaryContent({
               </Button>
             )}
             {canEdit && !b.vouchers.length && !b.closed && (
-              <Button onClick={() => setBulkOpen(true)}>统一置数 / 粘贴</Button>
+              <Button disabled={gridDirty} onClick={() => setBulkOpen(true)}>
+                统一置数 / 粘贴
+              </Button>
             )}
             {canClose && !b.closed && (
               <Popconfirm
                 title="确认冻结本期工资并按传递栏目建立下月？"
                 onConfirm={() => close.mutate({ id: b.id, revision: b.revision, confirmed: true })}
               >
-                <Button loading={close.isPending}>工资结账</Button>
+                <Button disabled={gridDirty} loading={close.isPending}>
+                  工资结账
+                </Button>
               </Popconfirm>
             )}
             {canReopen && b.closed && (
@@ -896,11 +882,19 @@ const SalaryContent = memo(function SalaryContent({
                 <Button loading={reopen.isPending}>工资反结账</Button>
               </Popconfirm>
             )}
-            {canVoucher && <Button onClick={() => setVoucher(true)}>凭证设置与生成</Button>}
+            {canVoucher && (
+              <Button disabled={gridDirty} onClick={() => setVoucher(true)}>
+                凭证设置与生成
+              </Button>
+            )}
             {canExport && (
               <>
-                <Button onClick={() => void output('excel')}>导出所选工资条</Button>
-                <Button onClick={() => void output('print')}>打印所选工资条</Button>
+                <Button disabled={gridDirty} onClick={() => void output('excel')}>
+                  导出所选工资条
+                </Button>
+                <Button disabled={gridDirty} onClick={() => void output('print')}>
+                  打印所选工资条
+                </Button>
               </>
             )}
             {b.vouchers.map((v) => (
@@ -943,15 +937,15 @@ const SalaryContent = memo(function SalaryContent({
               />
             </>
           )}
-          <DataTable<SalaryRow>
-            tableId="payroll.salary"
-            rowKey="employeeId"
-            dataSource={rows}
-            columns={columns}
-            rowSelection={{
-              selectedRowKeys: selected,
-              onChange: (keys) => setSelected(keys.map(Number)),
-            }}
+          <SalaryGrid
+            key={b.id}
+            batch={b}
+            department={filters.department}
+            person={filters.person}
+            selected={selected}
+            onSelectionChange={setSelected}
+            onDirtyChange={setGridDirty}
+            onExplain={setExplaining}
           />
         </>
       )}
@@ -1051,10 +1045,22 @@ function BatchEditor({
   const [categoryId, setCategoryId] = useState(
     batch === 'new' ? categories.find((c) => !c.disabled)?.id : batch.categoryId,
   );
-  const category = categories.find((c) => c.id === categoryId);
+  const [category, setEditingCategory] = useState(
+    () =>
+      categories.find((c) => c.id === categoryId) ?? (batch === 'new' ? undefined : batch.category),
+  );
   const [period, setPeriod] = useState(batch === 'new' ? defaultPeriod : batch.period);
   const [rows, setRows] = useState<RowInput[]>(batch === 'new' ? [] : batch.rows);
   const [dirty, setDirty] = useState(false);
+  const moneyDrafts = useMoneyDrafts();
+  const moneyKeys = rows.flatMap((row) => [
+    ...(category?.fields ?? [])
+      .filter((f) => f.kind === 'money' && !f.disabled)
+      .map((f) => `${row.employeeId}.values.${f.key}`),
+    ...Object.keys(taxLabels).map((k) => `${row.employeeId}.tax.${k}`),
+  ]);
+  const invalidMoney = moneyDrafts.invalidFor(moneyKeys);
+  const hasInvalidMoney = Object.keys(invalidMoney).length > 0;
   useLeaveGuard(dirty);
   const inFlight = useRef(false),
     mounted = useRef(true);
@@ -1087,6 +1093,7 @@ function BatchEditor({
   };
   const submit = () => {
     if (!category || inFlight.current) return;
+    if (!moneyDrafts.validate(moneyKeys)) return;
     inFlight.current = true;
     setSaving(true);
     save.mutate({
@@ -1116,6 +1123,17 @@ function BatchEditor({
     >
       <ErrorState error={employees.error} />
       <ErrorState error={save.error} />
+      {category && categories.find((c) => c.id === category.id)?.revision !== category.revision && (
+        <Alert type="warning" title="工资结构已变化，当前草稿已保留；请核对后重新打开编辑窗口。" />
+      )}
+      {hasInvalidMoney && (
+        <Alert
+          type="error"
+          showIcon
+          title="金额格式无效，请修正后再保存；整批工资尚未提交。"
+          description={Object.values(invalidMoney).join('；')}
+        />
+      )}
       <Space wrap>
         <label>
           工资期间{' '}
@@ -1143,7 +1161,9 @@ function BatchEditor({
             onChange={(id) => {
               if (inFlight.current) return;
               setCategoryId(id);
+              setEditingCategory(categories.find((c) => c.id === id));
               setRows([]);
+              moneyDrafts.clear();
               setDirty(true);
             }}
           />
@@ -1187,8 +1207,21 @@ function BatchEditor({
                 <label key={f.key}>
                   {f.name}
                   <MoneyInput
+                    resetKey={moneyDrafts.resetKey}
                     disabled={saving}
                     aria-label={`${r.employeeId}-${f.key}`}
+                    status={
+                      invalidMoney[`${r.employeeId}.values.${f.key}`] !== undefined
+                        ? 'error'
+                        : undefined
+                    }
+                    aria-invalid={invalidMoney[`${r.employeeId}.values.${f.key}`] !== undefined}
+                    draftText={moneyDrafts.text(`${r.employeeId}.values.${f.key}`)}
+                    onDraftStateChange={(state) => {
+                      if (inFlight.current) return;
+                      moneyDrafts.observe(`${r.employeeId}.values.${f.key}`, state);
+                      if (state && !state.valid) setDirty(true);
+                    }}
                     value={r.values[f.key] ?? 0}
                     onChange={(v) =>
                       patch(i, (r) => ({ ...r, values: { ...r.values, [f.key]: v ?? 0 } }))
@@ -1204,9 +1237,20 @@ function BatchEditor({
                 <label key={k}>
                   {taxLabels[k]}
                   <MoneyInput
+                    resetKey={moneyDrafts.resetKey}
                     disabled={saving}
                     aria-label={`${r.employeeId}-${k}`}
                     allowNegative={false}
+                    status={
+                      invalidMoney[`${r.employeeId}.tax.${k}`] !== undefined ? 'error' : undefined
+                    }
+                    aria-invalid={invalidMoney[`${r.employeeId}.tax.${k}`] !== undefined}
+                    draftText={moneyDrafts.text(`${r.employeeId}.tax.${k}`)}
+                    onDraftStateChange={(state) => {
+                      if (inFlight.current) return;
+                      moneyDrafts.observe(`${r.employeeId}.tax.${k}`, state);
+                      if (state && !state.valid) setDirty(true);
+                    }}
                     value={r.tax[k]}
                     onChange={(v) => patch(i, (r) => ({ ...r, tax: { ...r.tax, [k]: v ?? 0 } }))}
                   />
@@ -1229,6 +1273,7 @@ function BatchEditor({
             onConfirm={() => {
               if (inFlight.current) return;
               setRows(rows.filter((_, j) => j !== i));
+              moneyDrafts.forget(`${r.employeeId}.`);
               setDirty(true);
             }}
           >
@@ -1303,7 +1348,9 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
           key={JSON.stringify(q.data)}
           form={form}
           layout="vertical"
-          initialValues={q.data ?? { amountField: 'gross', allocationField: 'department' }}
+          initialValues={
+            q.data ?? { amountField: 'gross', allocationField: 'department', rules: [] }
+          }
           onValuesChange={() => {
             setPlan(null);
             setMappingDirty(true);
@@ -1341,15 +1388,123 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
             <Select options={[{ value: 'gross', label: '应发金额（工资金额项）' }]} />
           </Form.Item>
           <Form.Item name="allocationField" label="工资分配基本栏目">
-            <Select options={[{ value: 'department', label: '部门（core 基本项）' }]} />
+            <Select options={[{ value: 'department', label: '部门' }]} />
           </Form.Item>
+          <Typography.Title level={5}>自定义工资项映射</Typography.Title>
+          <p>
+            同种凭证增加规则后，该种凭证完整按下列规则生成；未设规则的种类沿用上方标准设置。每条规则按所选栏目金额同时记借方、贷方。指定部门覆盖同栏目的全部部门规则，多个栏目分别计入，请避免重复选取已含在汇总额中的明细。
+          </p>
+          <Form.List name="rules">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...rest }) => (
+                  <div
+                    key={key}
+                    style={{ border: '1px solid #ddd', padding: 12, marginBottom: 12 }}
+                  >
+                    <Space wrap align="start">
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'kind']}
+                        label="适用凭证"
+                        rules={[{ required: true }]}
+                      >
+                        <Select
+                          style={{ width: 140 }}
+                          options={[
+                            { value: 'payment', label: '工资发放' },
+                            { value: 'allocation', label: '工资分配' },
+                          ]}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'field']}
+                        label="工资金额栏目"
+                        rules={[{ required: true }]}
+                      >
+                        <Select
+                          style={{ width: 200 }}
+                          options={[
+                            { value: 'gross', label: '应发合计' },
+                            { value: 'net', label: '实发合计' },
+                            { value: 'deductions', label: '扣款合计' },
+                            { value: 'taxAmount', label: '个人所得税' },
+                            ...batch.category.fields
+                              .filter((f) => !f.disabled)
+                              .map((f) => ({
+                                value: f.key,
+                                label: `${f.name}（${f.kind === 'calculated' ? '计算项' : '录入项'}）`,
+                              })),
+                          ]}
+                        />
+                      </Form.Item>
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'departmentId']}
+                        label="适用部门（留空为全部）"
+                      >
+                        <DimensionSelect type="department" allowClear style={{ width: 180 }} />
+                      </Form.Item>
+                    </Space>
+                    <Space wrap align="start">
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'debitAccountId']}
+                        label="借方科目"
+                        rules={[{ required: true }]}
+                      >
+                        <AccountSelect style={{ width: 260 }} />
+                      </Form.Item>
+                      <Form.Item
+                        {...rest}
+                        name={[name, 'creditAccountId']}
+                        label="贷方科目"
+                        rules={[{ required: true }]}
+                      >
+                        <AccountSelect style={{ width: 260 }} />
+                      </Form.Item>
+                      <Button
+                        danger
+                        onClick={() => {
+                          remove(name);
+                          setPlan(null);
+                          setMappingDirty(true);
+                        }}
+                      >
+                        删除规则
+                      </Button>
+                    </Space>
+                  </div>
+                ))}
+                <Button
+                  onClick={() => {
+                    add({
+                      kind: 'payment',
+                      field: 'net',
+                      debitAccountId: form.getFieldValue('payableAccountId'),
+                      creditAccountId: form.getFieldValue('bankAccountId'),
+                    });
+                    setPlan(null);
+                    setMappingDirty(true);
+                  }}
+                >
+                  增加工资项映射
+                </Button>
+              </>
+            )}
+          </Form.List>
           <Button
             loading={save.isPending}
             onClick={() =>
               void form.validateFields().then((mapping) =>
                 save.mutate({
                   categoryId: batch.categoryId,
-                  mapping: { ...mapping, revision: q.data?.revision ?? 0 },
+                  mapping: {
+                    ...mapping,
+                    rules: mapping.rules ?? [],
+                    revision: q.data?.revision ?? 0,
+                  },
                 }),
               )
             }
@@ -1359,7 +1514,7 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
         </Form>
       )}
       <p>
-        仅支持按部门分配；其他必需辅助维度会阻止生成。分配：借费用、贷应付；发放：借应付、贷实发/个税/个人扣款。生成状态为待审核。
+        按人员工资快照的部门分配；所选科目如必需部门以外的辅助项目，会提示补充设置后再生成。标准分配：借费用、贷应付；标准发放：借应付、贷实发/个税/个人扣款。生成后为待审核。
       </p>
       <Space wrap>
         <Select

@@ -90,6 +90,14 @@ export const BatchSaveSchema = z.object({
 export const FilterSchema = z
   .object({ period: zPeriod.optional(), categoryId: zId.optional(), id: zId.optional() })
   .default({});
+export const VoucherMappingRuleSchema = z.object({
+  kind: z.enum(['payment', 'allocation']),
+  field: z.string().trim().min(1, '请选择工资栏目').max(30),
+  debitAccountId: zId,
+  creditAccountId: zId,
+  departmentId: zId.optional(),
+});
+export type VoucherMappingRule = z.output<typeof VoucherMappingRuleSchema>;
 export const MappingSchema = z.object({
   revision: z.number().int().nonnegative().default(0),
   payableAccountId: zId,
@@ -99,6 +107,8 @@ export const MappingSchema = z.object({
   expenseAccountId: zId,
   amountField: z.enum(['gross', 'net']),
   allocationField: z.literal('department'),
+  // 有自定义规则的凭证种类完整使用规则；其它种类仍使用上面的标准设置。
+  rules: z.array(VoucherMappingRuleSchema).max(160).default([]),
 });
 export type Mapping = z.output<typeof MappingSchema>;
 export type TaxDetail = {

@@ -1,5 +1,5 @@
 import Decimal from 'decimal.js';
-import { BusinessError } from '@caiwu/core';
+import { BusinessError, isPeriod } from '@caiwu/core';
 import type { Category, Employee, Formula, TaxDetail, TaxInput } from '../shared';
 import { TAX_RULE } from '../shared';
 export function fail(
@@ -38,10 +38,33 @@ export const sum = (values: number[]) => cents(values.reduce((a, v) => a.plus(v)
 type Node =
   | { kind: 'number'; value: string }
   | { kind: 'variable'; key: string }
-  | { kind: 'unary'; node: Node }
-  | { kind: 'binary'; op: string; left: Node; right: Node };
-/** 只有数字、稳定栏目变量、括号和白名单运算符；无代码执行或 SQL。常数/变量均以分计。 */
+  | { kind: 'unary'; op: string; node: Node }
+  | { kind: 'binary'; op: string; left: Node; right: Node }
+  | { kind: 'call'; name: string; args: Node[]; pos: number };
+export type FormulaContext = { period: number };
+const functions: Record<string, readonly [number, number]> = {
+  abs: [1, 1],
+  min: [1, 40],
+  max: [1, 40],
+  sum: [1, 40],
+  round: [1, 2],
+  trunc: [1, 2],
+  truncate: [1, 2],
+  int: [1, 1],
+  floor: [1, 1],
+  ceil: [1, 1],
+  ceiling: [1, 1],
+  sign: [1, 1],
+  mod: [2, 2],
+  if: [3, 3],
+  iif: [3, 3],
+  today: [0, 0],
+  daybefore: [2, 2],
+  monthbefore: [2, 2],
+};
+/** 数字、稳定栏目变量、白名单函数与运算符；常数和金额变量均以分计，无代码或 SQL 执行。 */
 export function parseFormula(source: string, keys: Set<string>): { ast: Node; refs: Set<string> } {
+  if (source.length > 300) fail('FORMULA', '公式第301位：公式不能超过300个字符');
   const tokens: { text: string; pos: number }[] = [];
   let offset = 0;
   while (offset < source.length) {
@@ -49,11 +72,11 @@ export function parseFormula(source: string, keys: Set<string>): { ast: Node; re
       offset++;
       continue;
     }
-    const match = /^(?:\d+(?:\.\d+)?|[a-z][a-z0-9_]*|>=|<=|==|!=|[+*/()<>-])/.exec(
+    const match = /^(?:\d+(?:\.\d+)?|[a-z][a-z0-9_]*|>=|<=|==|!=|<>|&&|\|\||[+*/%(),<>=!-])/i.exec(
       source.slice(offset),
     );
     if (!match) fail('FORMULA', `公式第${offset + 1}位：不支持的字符`);
-    tokens.push({ text: match[0], pos: offset });
+    tokens.push({ text: match[0].toLowerCase(), pos: offset });
     offset += match[0].length;
   }
   let index = 0;
@@ -62,14 +85,18 @@ export function parseFormula(source: string, keys: Set<string>): { ast: Node; re
     fail(
       'FORMULA',
       `公式第${(tokens[index]?.pos ?? source.length) + 1}位：${s}`,
-      '仅支持数字、栏目变量、+ - * /、括号及比较运算符',
+      '使用栏目变量、白名单函数、逗号及成对括号；逻辑条件可用 and、or、not',
     );
   const peek = () => tokens[index]?.text;
   const primary = (): Node => {
     const t = peek();
-    if (t === '-') {
+    if (t === 'not' && !keys.has(t)) {
       index++;
-      return { kind: 'unary', node: primary() };
+      return { kind: 'unary', op: t, node: expression(3) };
+    }
+    if (t === '-' || t === '+' || t === '!') {
+      index++;
+      return { kind: 'unary', op: t, node: primary() };
     }
     if (t === '(') {
       index++;
@@ -83,24 +110,57 @@ export function parseFormula(source: string, keys: Set<string>): { ast: Node; re
       return { kind: 'number', value: t };
     }
     if (t && /^[a-z]/.test(t)) {
-      if (!keys.has(t)) error(`未知栏目或未支持的函数 ${t}`);
-      refs.add(t);
+      const pos = tokens[index]!.pos;
       index++;
+      if (peek() === '(') {
+        const arity = Object.hasOwn(functions, t) ? functions[t]! : null;
+        if (!arity) return error(`未知函数 ${t}`);
+        index++;
+        const args: Node[] = [];
+        if (peek() !== ')') {
+          while (true) {
+            if (peek() === ',' || peek() === ')' || !peek()) error(`函数 ${t} 缺少参数`);
+            args.push(expression(0));
+            if (peek() === ')') break;
+            if (!peek()) error(`函数 ${t} 缺少右括号`);
+            if (peek() !== ',') error(`函数 ${t} 缺少逗号或右括号`);
+            index++;
+          }
+        }
+        if (args.length < arity[0] || args.length > arity[1])
+          error(
+            `函数 ${t} 需要${arity[0] === arity[1] ? arity[0] : `${arity[0]}至${arity[1]}`}个参数`,
+          );
+        index++;
+        return { kind: 'call', name: t, args, pos };
+      }
+      if (!keys.has(t)) {
+        index--;
+        error(Object.hasOwn(functions, t) ? `函数 ${t} 缺少左括号` : `未知栏目 ${t}`);
+      }
+      refs.add(t);
       return { kind: 'variable', key: t };
     }
     return error('缺少参数或运算数');
   };
   const precedence: Record<string, number> = {
-    '==': 1,
-    '!=': 1,
-    '>': 1,
-    '<': 1,
-    '>=': 1,
-    '<=': 1,
-    '+': 2,
-    '-': 2,
-    '*': 3,
-    '/': 3,
+    or: 1,
+    '||': 1,
+    and: 2,
+    '&&': 2,
+    '=': 3,
+    '==': 3,
+    '!=': 3,
+    '<>': 3,
+    '>': 3,
+    '<': 3,
+    '>=': 3,
+    '<=': 3,
+    '+': 4,
+    '-': 4,
+    '*': 5,
+    '/': 5,
+    '%': 5,
   };
   const expression = (minimum: number): Node => {
     let left = primary();
@@ -116,12 +176,111 @@ export function parseFormula(source: string, keys: Set<string>): { ast: Node; re
   if (index !== tokens.length) error('缺少运算符或多余括号');
   return { ast, refs };
 }
-export function evaluate(node: Node, values: Record<string, number>): Decimal {
+const truth = (value: boolean) => new Decimal(value ? 1 : 0);
+// 原版静态规则仅确认日期函数名与参数数目，未记录日期语义。本版约定使用
+// 工资期间月末及 YYYYMMDD 日期整数；回退月份夹到目标月末，不读取机器当前日期。
+function formulaDate(value: Decimal, failDate: () => never): Date {
+  if (!value.isInteger() || value.lt(10000101) || value.gt(99991231)) failDate();
+  const text = value.toFixed(0);
+  const year = Number(text.slice(0, 4));
+  const month = Number(text.slice(4, 6));
+  const day = Number(text.slice(6, 8));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  )
+    failDate();
+  return date;
+}
+const dateNumber = (date: Date) =>
+  new Decimal(date.getUTCFullYear() * 10000 + (date.getUTCMonth() + 1) * 100 + date.getUTCDate());
+export function evaluate(
+  node: Node,
+  values: Record<string, number>,
+  context?: FormulaContext,
+): Decimal {
+  const run = (n: Node) => evaluate(n, values, context);
   if (node.kind === 'number') return new Decimal(node.value);
   if (node.kind === 'variable') return new Decimal(values[node.key] ?? 0);
-  if (node.kind === 'unary') return evaluate(node.node, values).neg();
-  const a = evaluate(node.left, values),
-    b = evaluate(node.right, values);
+  if (node.kind === 'unary') {
+    const value = run(node.node);
+    return node.op === '-' ? value.neg() : node.op === '+' ? value : truth(value.isZero());
+  }
+  if (node.kind === 'call') {
+    const arg = (index: number) => run(node.args[index]!);
+    const invalid = (message: string): never =>
+      fail('FORMULA', `公式第${node.pos + 1}位：函数 ${node.name} ${message}`);
+    // 分支与逻辑运算均短路；未执行的除零分支不会影响满足条件的员工。
+    if (node.name === 'if' || node.name === 'iif') return arg(0).isZero() ? arg(2) : arg(1);
+    if (node.name === 'today') {
+      const period = context?.period;
+      if (!period || !isPeriod(period)) return invalid('缺少有效工资期间');
+      return dateNumber(new Date(Date.UTC(Math.trunc(period / 100), period % 100, 0)));
+    }
+    if (node.name === 'daybefore' || node.name === 'monthbefore') {
+      const date = formulaDate(arg(0), () => invalid('日期须为有效的 YYYYMMDD 整数'));
+      const offset = arg(1);
+      if (!offset.isInteger() || offset.lt(0) || offset.gt(120000))
+        return invalid('第二参数须为0至120000的整数');
+      if (node.name === 'daybefore') date.setUTCDate(date.getUTCDate() - offset.toNumber());
+      else {
+        const day = date.getUTCDate();
+        date.setUTCDate(1);
+        date.setUTCMonth(date.getUTCMonth() - offset.toNumber());
+        const last = new Date(
+          Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0),
+        ).getUTCDate();
+        date.setUTCDate(Math.min(day, last));
+      }
+      if (date.getUTCFullYear() < 1000) return invalid('回退日期超出支持范围');
+      return dateNumber(date);
+    }
+    const a = arg(0);
+    switch (node.name) {
+      case 'abs':
+        return a.abs();
+      case 'min':
+        return Decimal.min(...node.args.map(run));
+      case 'max':
+        return Decimal.max(...node.args.map(run));
+      case 'sum':
+        return node.args.reduce((total, n) => total.plus(run(n)), new Decimal(0));
+      case 'floor':
+        return a.floor();
+      case 'ceil':
+      case 'ceiling':
+        return a.ceil();
+      case 'int':
+        return a.trunc();
+      case 'sign':
+        return new Decimal(a.isZero() ? 0 : a.isPositive() ? 1 : -1);
+      case 'round':
+      case 'trunc':
+      case 'truncate': {
+        const digits = node.args.length > 1 ? arg(1) : new Decimal(0);
+        if (!digits.isInteger() || digits.lt(-12) || digits.gt(12))
+          return invalid('小数位数须为-12至12的整数');
+        const scale = new Decimal(10).pow(digits);
+        return a
+          .mul(scale)
+          .toDecimalPlaces(0, node.name === 'round' ? Decimal.ROUND_HALF_UP : Decimal.ROUND_DOWN)
+          .div(scale);
+      }
+      case 'mod': {
+        const b = arg(1);
+        if (b.isZero()) return invalid('除数为零');
+        return a.mod(b);
+      }
+      default:
+        return invalid('未支持');
+    }
+  }
+  const a = run(node.left);
+  if (node.op === 'and' || node.op === '&&') return truth(!a.isZero() && !run(node.right).isZero());
+  if (node.op === 'or' || node.op === '||') return truth(!a.isZero() || !run(node.right).isZero());
+  const b = run(node.right);
   switch (node.op) {
     case '+':
       return a.plus(b);
@@ -130,20 +289,23 @@ export function evaluate(node: Node, values: Record<string, number>): Decimal {
     case '*':
       return a.mul(b);
     case '/':
+    case '%':
       if (b.isZero()) fail('DIV_ZERO', '公式除数为零', '检查除法栏目，或设置非零执行条件');
-      return a.div(b);
+      return node.op === '/' ? a.div(b) : a.mod(b);
     case '>':
-      return new Decimal(a.gt(b) ? 1 : 0);
+      return truth(a.gt(b));
     case '<':
-      return new Decimal(a.lt(b) ? 1 : 0);
+      return truth(a.lt(b));
     case '>=':
-      return new Decimal(a.gte(b) ? 1 : 0);
+      return truth(a.gte(b));
     case '<=':
-      return new Decimal(a.lte(b) ? 1 : 0);
+      return truth(a.lte(b));
+    case '=':
     case '==':
-      return new Decimal(a.eq(b) ? 1 : 0);
+      return truth(a.eq(b));
+    case '<>':
     case '!=':
-      return new Decimal(a.eq(b) ? 0 : 1);
+      return truth(!a.eq(b));
     default:
       return fail('FORMULA', '未知运算符');
   }
@@ -191,7 +353,11 @@ export function validateCategory(c: Category | Omit<Category, 'id'>) {
     if (!f.disabled && f.kind === 'calculated' && !targets.has(f.key))
       fail('TARGET', `计算栏目 ${f.name} 缺少启用公式`);
 }
-export function computeValues(category: Category, input: Record<string, number>) {
+export function computeValues(
+  category: Category,
+  input: Record<string, number>,
+  context?: FormulaContext,
+) {
   const values: Record<string, number> = {};
   const details: string[] = [];
   const keys = new Set(category.fields.map((f) => f.key));
@@ -199,11 +365,11 @@ export function computeValues(category: Category, input: Record<string, number>)
   for (const f of category.fields)
     values[f.key] = f.disabled || f.kind === 'calculated' ? 0 : (input[f.key] ?? 0);
   for (const f of category.formulas.filter((x: Formula) => x.enabled)) {
-    if (f.condition && evaluate(parseFormula(f.condition, keys).ast, values).isZero()) {
+    if (f.condition && evaluate(parseFormula(f.condition, keys).ast, values, context).isZero()) {
       details.push(`${f.name}：条件未满足`);
       continue;
     }
-    values[f.target] = cents(evaluate(parseFormula(f.expression, keys).ast, values));
+    values[f.target] = cents(evaluate(parseFormula(f.expression, keys).ast, values, context));
     details.push(`${f.name}：${f.expression} → ${values[f.target]}分`);
   }
   const total = (role: string) =>
