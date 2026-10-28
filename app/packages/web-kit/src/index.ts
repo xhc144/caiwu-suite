@@ -29,6 +29,7 @@ export {
 export { moduleRoute } from '@caiwu/core';
 
 export * from './unsaved';
+export { SessionCommitBoundary } from './session-commit';
 
 export * from './loading';
 

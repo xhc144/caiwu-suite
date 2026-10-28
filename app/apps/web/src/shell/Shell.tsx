@@ -26,12 +26,13 @@ import {
   useBootstrap,
   useRequestActivity,
   unsavedPages,
+  SessionCommitBoundary,
 } from '@caiwu/web-kit';
 import { visibleModules } from '../modules';
 import { GlobalHotkeys } from './GlobalHotkeys';
 import { NavMenu, buildNavItems } from './NavMenu';
 import { TabsHost } from './TabsHost';
-import { listenForNativeClose, requestBeforeLeave } from './guards';
+import { listenForNativeClose, requestBeforeLeaveResult } from './guards';
 import { SearchDialog, ShortcutDialog, SessionMonitor } from './Tools';
 import { loadAppearance, saveAppearance } from './preferences';
 import { VoucherPolicyDialog } from './VoucherPolicyDialog';
@@ -82,10 +83,14 @@ export function Shell({ devMode }: { devMode: boolean }) {
       unsubscribe();
     };
   }, [identity]);
-  return ready === identity ? (
-    <ShellContent key={identity} devMode={devMode} />
-  ) : (
-    <Spin style={{ margin: 40 }} />
+  return (
+    <SessionCommitBoundary bookId={session.bookId}>
+      {ready === identity ? (
+        <ShellContent key={identity} devMode={devMode} />
+      ) : (
+        <Spin style={{ margin: 40 }} />
+      )}
+    </SessionCommitBoundary>
   );
 }
 
@@ -203,7 +208,8 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
     };
   });
   const exit = async (kind: 'user' | 'book') => {
-    if (!(await requestBeforeLeave(session.bookId))) return;
+    const leaving = await requestBeforeLeaveResult(session.bookId);
+    if (!leaving.allowed || leaving.sessionRevoked) return;
     const target = kind === 'user' ? `/login/${encodeURIComponent(session.bookId)}` : '/';
     // 先撤销并卸载旧页面；即使注销请求失败也不会恢复旧财务缓存。
     await queryClient.cancelQueries();
