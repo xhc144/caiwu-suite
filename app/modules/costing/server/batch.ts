@@ -259,7 +259,8 @@ export async function executeVoucherBatch(
             voucher.period !== row.numbering.created.period
           )
             fail('STALE', '新凭证编号与已确认的逐步映射不一致，请重新预览后确认');
-          nextExpected = advanceBatchState(
+          nextExpected = await advanceBatchState(
+            t,
             expected,
             deletion?.plan ?? null,
             row.numbering,

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { sql } from '@caiwu/db';
-import type { CoreServices } from '@caiwu/core/server';
+import { createCoreServices, type CoreServices } from '@caiwu/core/server';
 import { executeVoucherBatch, previewVoucherBatch } from '../server/batch';
 import { saveSourceCurrency, sourceCurrency } from '../server/vouchers';
 import { readInventory, type InventoryReadTables } from '../server/inventory-read';
@@ -572,6 +572,112 @@ describe('w_cb_pz：日期范围逐单制证与完整结果', () => {
       ).rejects.toThrow(/已变化/);
       expect(await t.app.svc.vouchers.get(original.id)).toEqual(changed);
       expect((await t.app.svc.vouchers.list()).total).toBe(1);
+    },
+  );
+
+  it.each([
+    ['预览后', '金额'],
+    ['预览后', '摘要'],
+    ['预览后', '同内容'],
+    ['执行中', '金额'],
+    ['执行中', '摘要'],
+    ['执行中', '同内容'],
+  ] as const)(
+    '%s 删除最大 ID 后同 actor、同时间、同版本重建的 ABA（%s）不能沿用旧确认',
+    async (phase, change) => {
+      await t.app.svc.voucherPolicy.set({
+        numbering: 'automatic',
+        renumberAfterDelete: true,
+        allowModifyOthers: true,
+      });
+      const document = await t.document('receipt', '1', '1');
+      const target = await generate(document.id, 'receipt');
+      const external = createCoreServices({
+        ...t.app.svc.ctx,
+        now: () => new Date('2026-10-28T15:00:00.000Z'),
+      });
+      const outsideInput = {
+        date: '2026-01-12',
+        voucherTypeId: await typeId(),
+        lines: [
+          { accountId: t.ids.cash, summary: '原手工凭证', debit: 200 },
+          { accountId: t.ids.sales, summary: '原手工凭证', credit: 200 },
+        ],
+      };
+      const outside = await external.vouchers.create(outsideInput);
+      expect(target).toMatchObject({ id: 1, number: 1, revision: 1 });
+      expect(outside).toMatchObject({ id: 2, number: 2, revision: 1, source: null });
+      const input = { ...(await filter()), regenerate: true };
+      const preview = await previewVoucherBatch(svc(), input);
+      const replace = async () => {
+        const deletion = await external.vouchers.previewDelete([outside.id]);
+        await external.vouchers.deleteBatch(deletion, true);
+        const replacement = await external.vouchers.create({
+          ...outsideInput,
+          lines: outsideInput.lines.map((line) => ({
+            ...line,
+            summary: change === '摘要' ? '已替换摘要' : line.summary,
+            ...(change === '金额'
+              ? {
+                  ...(line.debit == null ? {} : { debit: 900 }),
+                  ...(line.credit == null ? {} : { credit: 900 }),
+                }
+              : {}),
+          })),
+        });
+        // 真实删除、真实新增；SQLite 复用凭证和分录最大 ID，创建时间也刻意完全相同。
+        expect(replacement).toMatchObject({
+          id: outside.id,
+          number: outside.number,
+          revision: outside.revision,
+          source: null,
+          createdBy: outside.createdBy,
+          createdAt: outside.createdAt,
+          updatedAt: outside.updatedAt,
+        });
+        expect(replacement.lines.map((line) => line.id)).toEqual(
+          outside.lines.map((line) => line.id),
+        );
+        if (change === '同内容') expect(replacement).toEqual(outside);
+        return replacement;
+      };
+      const confirmation = { ...input, fingerprint: preview.fingerprint, confirmed: true };
+      if (phase === '预览后') {
+        await replace();
+        await expect(executeVoucherBatch(svc(), confirmation)).rejects.toThrow(/已变化/);
+      } else {
+        const base = svc();
+        let transactions = 0;
+        const concurrent: CoreServices = {
+          ...base,
+          async tx(fn) {
+            if (++transactions === 2) await replace();
+            return base.tx(fn);
+          },
+        };
+        const result = await executeVoucherBatch(concurrent, confirmation);
+        expect(result, JSON.stringify(result.results)).toMatchObject({
+          succeeded: 0,
+          failed: 1,
+          skipped: 0,
+        });
+        expect(result.results[0]?.message).toMatch(/已变化/);
+      }
+      expect(await t.app.svc.vouchers.get(target.id)).toEqual(target);
+      expect(await t.app.svc.vouchers.get(outside.id)).toMatchObject({ number: 2, revision: 1 });
+      expect((await t.app.svc.vouchers.list()).total).toBe(2);
+      expect(
+        (await t.api.voucherDocuments()).find((d) => d.documentId === document.id)?.sources,
+      ).toHaveLength(1);
+      const fresh = await previewVoucherBatch(svc(), input);
+      expect(
+        await executeVoucherBatch(svc(), {
+          ...input,
+          fingerprint: fresh.fingerprint,
+          confirmed: true,
+        }),
+      ).toMatchObject({ succeeded: 1, failed: 0, skipped: 0 });
+      expect((await t.app.svc.vouchers.list()).total).toBe(2);
     },
   );
 

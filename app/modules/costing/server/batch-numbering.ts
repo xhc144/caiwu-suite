@@ -13,10 +13,35 @@ type Row = {
 };
 type Input = { purpose: string; voucherTypeId: number; startNumber?: number };
 
+/** 重排只改变编号、版本及更新时间；其余完整内容与创建实例必须仍为预览时的凭证。 */
+async function voucherContentFingerprint(svc: CoreServices, id: number) {
+  const [row, lines, creation] = await Promise.all([
+    svc.db.selectFrom('voucher').selectAll().where('id', '=', id).executeTakeFirstOrThrow(),
+    svc.db
+      .selectFrom('voucher_line')
+      .selectAll()
+      .where('voucher_id', '=', id)
+      .orderBy('line_no')
+      .orderBy('id')
+      .execute(),
+    svc.db
+      .selectFrom('operation_log')
+      .select('id')
+      .where('action', '=', 'voucher.create')
+      .where('target_type', '=', 'voucher')
+      .where('target_id', '=', String(id))
+      .orderBy('id', 'desc')
+      .executeTakeFirst(),
+  ]);
+  const { number: _number, revision: _revision, updated_at: _updatedAt, ...header } = row;
+  // SQLite 最大 ID 以及毫秒时间均可复用；核心新建日志区分同内容、同时间的重建实例。
+  return digest({ header, lines, creationId: creation?.id ?? null });
+}
+
 /** 只读核心表；保留版本、来源及状态，不能把外部改动当成本批重排。 */
 export async function readBatchVouchers(svc: CoreServices, periods: number[]) {
   if (!periods.length) return [];
-  return svc.db
+  const rows = await svc.db
     .selectFrom('voucher')
     .innerJoin('voucher_type', 'voucher_type.id', 'voucher.voucher_type_id')
     .select([
@@ -36,6 +61,12 @@ export async function readBatchVouchers(svc: CoreServices, periods: number[]) {
     .where('voucher.period', 'in', periods)
     .orderBy('voucher.id')
     .execute();
+  return Promise.all(
+    rows.map(async (row) => ({
+      ...row,
+      contentFingerprint: await voucherContentFingerprint(svc, row.id),
+    })),
+  );
 }
 type Snapshot = Awaited<ReturnType<typeof readBatchVouchers>>;
 type State = Snapshot[number] & { key: string; label: string };
@@ -171,13 +202,15 @@ export async function assertBatchState(
           v.source_id,
           v.created_by,
           v.typeCode,
+          v.contentFingerprint,
         ]),
     );
   if (fingerprint(current) !== fingerprint(expected))
     fail('STALE', '凭证版本、来源或编号影响已变化，请重新预览后确认');
 }
 
-export function advanceBatchState(
+export async function advanceBatchState(
+  svc: CoreServices,
   expected: State[],
   deletion: {
     ids: number[];
@@ -185,7 +218,7 @@ export function advanceBatchState(
   } | null,
   step: NumberingStep,
   voucher: Voucher,
-): State[] {
+): Promise<State[]> {
   const next = expected
     .filter((v) => !deletion?.ids.includes(v.id))
     .map((v) => {
@@ -207,6 +240,7 @@ export function advanceBatchState(
     source_type: voucher.source?.type ?? null,
     source_id: voucher.source?.id ?? null,
     created_by: voucher.createdBy.id,
+    contentFingerprint: await voucherContentFingerprint(svc, voucher.id),
     key: step.created.key,
     label: step.created.label,
   });
