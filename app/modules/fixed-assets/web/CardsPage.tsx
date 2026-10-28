@@ -10,6 +10,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Select,
   Space,
   Typography,
@@ -25,11 +26,14 @@ import {
 } from '@caiwu/ui';
 import {
   notify,
+  queryClient,
   useCurrentPeriod,
   useDimensionItems,
   useHotkey,
   usePermission,
   useRequiredSession,
+  useTab,
+  matchHotkey,
 } from '@caiwu/web-kit';
 import { formatMoney, multiplyToCents, periodStartDate, qtyFromE6 } from '@caiwu/core';
 import type { CardInput } from '../shared';
@@ -37,9 +41,41 @@ import { api, type Outputs } from './api';
 import { Confirm, MasterSelect, refresh } from './common';
 import CardOperations from './CardOperations';
 import { useAssetDraft } from './useAssetDraft';
+import TransferDrawer from './TransferDrawer';
+import RecalculationDrawer from './RecalculationDrawer';
+import { printHtml } from '@caiwu/print';
+import { assetCardPrint } from './asset-print';
+import ListEditDrawer from './ListEditDrawer';
 type Card = Outputs['list'][number];
+/** Capture business keys before the shell's window listener; inactive tabs and text inputs retain their own keys. */
+function useAssetPriorityKey(combo: string, handler: () => void, enabled: boolean) {
+  const tab = useTab(),
+    latest = useRef(handler);
+  latest.current = handler;
+  useEffect(() => {
+    if (!enabled || !tab.active) return;
+    const listener = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.repeat ||
+        !matchHotkey(event, combo) ||
+        target?.isContentEditable ||
+        (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
+      )
+        return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      latest.current();
+    };
+    window.addEventListener('keydown', listener, true);
+    return () => window.removeEventListener('keydown', listener, true);
+  }, [combo, enabled, tab.active]);
+}
 export default function CardsPage() {
   const navigate = useNavigate();
+  const session = useRequiredSession();
   const [filters, setFilters] = useUrlFilters({
     keyword: '',
     code: '',
@@ -63,6 +99,11 @@ export default function CardsPage() {
     }),
   );
   const can = usePermission('fixed-assets.edit');
+  const [transferId, setTransferId] = useState<number | null>(null);
+  const [recalculate, setRecalculate] = useState(false);
+  const canRecalculate = usePermission('fixed-assets.depreciate');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [listEditing, setListEditing] = useState(false);
   const [edit, setEdit] = useState<{ id?: number; copy?: boolean; readOnly?: boolean } | null>(
     null,
   );
@@ -76,10 +117,65 @@ export default function CardsPage() {
     (k) => !(masters.data ?? []).some((m) => m.kind === k && !m.disabled),
   );
   const openNewCard = () => {
-    if (!can || edit || operation) return;
+    if (!can || edit || operation || transferId !== null || recalculate || listEditing) return;
     setEdit({});
   };
   useHotkey('Alt+N', openNewCard);
+  const selected = list.data?.find((c) => c.id === selectedId) ?? list.data?.[0];
+  const selectedIndex = selected ? (list.data?.findIndex((c) => c.id === selected.id) ?? 0) : 0;
+  const idle = !edit && !operation && transferId === null && !recalculate && !listEditing;
+  const deleteSelected = () => {
+    if (!selected || !can || !idle) return;
+    Modal.confirm({
+      title: `确认删除资产 ${selected.code} ${selected.name}？`,
+      content: '仅未折旧、未调整及未转移的资产可以删除。历史资产请办理注销。',
+      okText: '确认删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      cancelButtonProps: { autoInsertSpace: false },
+      onOk: () => remove.mutateAsync({ id: selected.id, confirm: true }),
+    });
+  };
+  const printSelected = async () => {
+    if (!selected || !idle) return;
+    try {
+      const detail = await queryClient.fetchQuery({
+        ...api.detail.queryOptions({ id: selected.id }),
+        staleTime: 0,
+      });
+      await printHtml(
+        assetCardPrint(detail, {
+          unit: session.book.orgName,
+          category: selected.category,
+          status: selected.status,
+          purpose: selected.purpose,
+          department: selected.department,
+        }),
+      );
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : '资产卡片打印失败');
+    }
+  };
+  useHotkey('Ctrl+A', openNewCard, { enabled: idle, allowInInput: false });
+  useAssetPriorityKey(
+    'Ctrl+K',
+    () => {
+      if (selected && can) setEdit({ id: selected.id, copy: true });
+    },
+    idle && can,
+  );
+  useHotkey('Ctrl+D', deleteSelected, { enabled: idle, allowInInput: false });
+  useHotkey('Ctrl+F', () => document.getElementById('fixed-assets-card-search')?.focus(), {
+    enabled: idle,
+    allowInInput: false,
+  });
+  useHotkey(
+    'Ctrl+Q',
+    () => void navigate(`/m/fixed-assets/queries${selected ? `?assetId=${selected.id}` : ''}`),
+    { enabled: idle, allowInInput: false },
+  );
+  useHotkey('Ctrl+P', () => void printSelected(), { enabled: idle, allowInInput: false });
+  useAssetPriorityKey('Shift+F10', () => setRecalculate(true), idle && canRecalculate);
   const columns: DataColumn<Card>[] = [
     { key: 'code', title: '设备编号', dataIndex: 'code', width: 140 },
     { key: 'name', title: '设备名称', dataIndex: 'name', width: 180 },
@@ -117,6 +213,9 @@ export default function CardsPage() {
               <Button size="small" onClick={() => setOperation({ id: c.id, kind: 'adjust' })}>
                 原值调整
               </Button>
+              <Button size="small" onClick={() => setTransferId(c.id)}>
+                资产转移
+              </Button>
               <Button size="small" onClick={() => setOperation({ id: c.id, kind: 'dispose' })}>
                 注销/撤销
               </Button>
@@ -145,11 +244,22 @@ export default function CardsPage() {
     <PageContainer
       title="固定资产台账"
       extra={
-        can && (
-          <Button type="primary" onClick={openNewCard}>
-            新增资产
-          </Button>
-        )
+        <Space>
+          {can && (
+            <Button
+              disabled={!list.data?.length || list.data.length > 500}
+              onClick={() => setListEditing(true)}
+            >
+              列表编辑
+            </Button>
+          )}
+          {canRecalculate && <Button onClick={() => setRecalculate(true)}>累计折旧重算</Button>}
+          {can && (
+            <Button type="primary" onClick={openNewCard}>
+              新增资产
+            </Button>
+          )}
+        </Space>
       }
     >
       {(missing.length > 0 || !departments.some((d) => !d.disabled && d.isLeaf)) && (
@@ -161,8 +271,8 @@ export default function CardsPage() {
         />
       )}
       <FilterBar initialValues={filters} onSearch={setFilters}>
-        <Form.Item name="keyword" label="编码/名称">
-          <Input />
+        <Form.Item name="keyword" label="编码/名称" htmlFor="fixed-assets-card-search">
+          <Input id="fixed-assets-card-search" />
         </Form.Item>
         <Form.Item name="categoryId" label="类别">
           <MasterSelect kind="category" />
@@ -177,9 +287,55 @@ export default function CardsPage() {
           <Checkbox>含已注销</Checkbox>
         </Form.Item>
       </FilterBar>
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Button
+          disabled={!list.data?.length || selectedIndex === 0}
+          onClick={() => setSelectedId(list.data?.[0]?.id ?? null)}
+        >
+          首条
+        </Button>
+        <Button
+          disabled={!list.data?.length || selectedIndex === 0}
+          onClick={() => setSelectedId(list.data?.[selectedIndex - 1]?.id ?? null)}
+        >
+          上条
+        </Button>
+        <span>
+          当前：
+          {selected
+            ? `${selectedIndex + 1} / ${list.data?.length ?? 0} ${selected.code} ${selected.name}`
+            : '没有记录'}
+        </span>
+        <Button
+          disabled={!list.data?.length || selectedIndex + 1 >= list.data.length}
+          onClick={() => setSelectedId(list.data?.[selectedIndex + 1]?.id ?? null)}
+        >
+          下条
+        </Button>
+        <Button
+          disabled={!list.data?.length || selectedIndex + 1 >= list.data.length}
+          onClick={() => setSelectedId(list.data?.at(-1)?.id ?? null)}
+        >
+          末条
+        </Button>
+        <Button
+          disabled={!selected}
+          onClick={() => selected && setEdit({ id: selected.id, readOnly: true })}
+        >
+          查看当前卡片
+        </Button>
+        <Button disabled={!selected} onClick={() => void printSelected()}>
+          打印当前卡片
+        </Button>
+      </Space>
       <DataTable
         tableId="fixed-assets-cards"
         rowKey="id"
+        rowSelection={{
+          type: 'radio',
+          selectedRowKeys: selected ? [selected.id] : [],
+          onChange: (keys) => setSelectedId(Number(keys[0])),
+        }}
         columns={columns}
         dataSource={list.data ?? []}
         loading={list.isLoading}
@@ -191,6 +347,27 @@ export default function CardsPage() {
           key={`${edit.id}-${edit.copy}-${edit.readOnly}`}
           {...edit}
           onClose={() => setEdit(null)}
+        />
+      )}
+      {transferId !== null && (
+        <TransferDrawer id={transferId} onClose={() => setTransferId(null)} />
+      )}
+      {listEditing && (
+        <ListEditDrawer rows={list.data ?? []} onClose={() => setListEditing(false)} />
+      )}
+      {recalculate && (
+        <RecalculationDrawer
+          filter={{
+            keyword: filters.keyword || undefined,
+            code: filters.code || undefined,
+            name: filters.name || undefined,
+            id: filters.id || undefined,
+            categoryId: filters.categoryId || undefined,
+            statusId: filters.statusId || undefined,
+            departmentId: filters.departmentId || undefined,
+            includeDisposed: filters.includeDisposed,
+          }}
+          onClose={() => setRecalculate(false)}
         />
       )}
       {operation && (
@@ -220,6 +397,8 @@ function CardEditor({
   const initialDate = current?.startDate ?? periodStartDate(session.book.startPeriod);
   const detail = useQuery({ ...api.detail.queryOptions({ id: id ?? 1 }), enabled: !!id });
   const masters = useQuery(api.masters.queryOptions());
+  const currencies = useQuery(api.currencies.queryOptions());
+  const { items: cardDepartments } = useDimensionItems('department');
   const [form] = Form.useForm<CardInput>();
   const create = useMutation(api.save.mutationOptions());
   const amountDrafts = useRef(new Map<'original' | 'residual', MoneyInputDraftState>());
@@ -285,6 +464,13 @@ function CardEditor({
       code: copy ? '' : c.code,
       name: c.name,
       reference: c.reference,
+      manufacturer: c.manufacturer,
+      installation: c.installation,
+      manufactured: c.manufactured,
+      machineCode: c.machine_code,
+      custodian: c.custodian,
+      currencyCode: c.currency_code,
+      foreignOriginal: c.foreign_original,
       categoryId: c.category_id,
       statusId: c.status_id,
       purposeId: c.purpose_id,
@@ -323,6 +509,24 @@ function CardEditor({
     }
   };
   useHotkey('Ctrl+S', () => !readOnly && void submit());
+  const printCard = async () => {
+    if (!d || copy) return;
+    const masterName = (id: number) => masters.data?.find((m) => m.id === id)?.name ?? '';
+    try {
+      await printHtml(
+        assetCardPrint(d, {
+          category: masterName(d.card.category_id),
+          status: masterName(d.card.status_id),
+          purpose: masterName(d.card.purpose_id),
+          department: cardDepartments.find((v) => v.id === d.card.department_id)?.name ?? '',
+          unit: session.book.orgName,
+        }),
+      );
+    } catch (e) {
+      notify.error(e instanceof Error ? e.message : '资产卡片打印失败');
+    }
+  };
+  useHotkey('Ctrl+P', () => void printCard(), { enabled: !!d && !copy });
   return (
     <Drawer
       title={
@@ -333,6 +537,7 @@ function CardEditor({
       size={850}
       footer={
         <Space>
+          {d && !copy && <Button onClick={() => void printCard()}>打印已保存卡片</Button>}
           <Button onClick={() => draft.close(onClose)}>取消</Button>
           {!readOnly && (
             <Button
@@ -363,6 +568,13 @@ function CardEditor({
           code: '',
           name: '',
           reference: '',
+          manufacturer: '',
+          installation: '',
+          manufactured: null,
+          machineCode: '',
+          custodian: '',
+          currencyCode: 'CNY',
+          foreignOriginal: '0',
           acquired: initialDate,
           useDate: initialDate,
           original: null,
@@ -459,6 +671,39 @@ function CardEditor({
           <Input />
         </Form.Item>
         <Form.Item name="model" label="规格型号">
+          <Input />
+        </Form.Item>
+        <Form.Item name="manufacturer" label="制造厂">
+          <Input maxLength={100} />
+        </Form.Item>
+        <Form.Item name="installation" label="安装地点">
+          <Input maxLength={200} />
+        </Form.Item>
+        <Form.Item
+          name="manufactured"
+          label="制造日期"
+          getValueFromEvent={(e) => (e.target as HTMLInputElement).value || null}
+        >
+          <Input type="date" />
+        </Form.Item>
+        <Form.Item name="machineCode" label="本机编号">
+          <Input maxLength={100} />
+        </Form.Item>
+        <Form.Item name="custodian" label="保管人">
+          <Input maxLength={100} />
+        </Form.Item>
+        <Form.Item name="currencyCode" label="币种">
+          <Select
+            options={currencies.data
+              ?.filter((c) => !c.disabled)
+              .map((c) => ({ value: c.code, label: `${c.code} ${c.name}` }))}
+          />
+        </Form.Item>
+        <Form.Item
+          name="foreignOriginal"
+          label="外币原值（原币金额）"
+          extra="本位币原值请在上方“原值（元）”中填写，不自动换算。"
+        >
           <Input />
         </Form.Item>
         <Form.Item name="unit" label="单位">

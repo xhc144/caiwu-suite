@@ -1,18 +1,36 @@
 import { escapeHtml, type PrintJob } from '@caiwu/print';
+import { AssetPrintSettingsSchema, type AssetPrintSettings } from '../shared';
 
 export type LabelRow = {
   code: string;
   name: string;
   department: string;
   category: string;
+  date?: string;
+  description?: string;
+  reference?: string;
 };
 export type LabelColor = 'monochrome' | 'color';
 
 /** 预览、打印及 HTML 文件共用同一标签内容与纸张尺寸。 */
-export function assetLabelsPrint(rows: readonly LabelRow[], color: LabelColor): PrintJob {
+export function assetLabelsPrint(
+  rows: readonly LabelRow[],
+  color: LabelColor,
+  settings?: AssetPrintSettings,
+): PrintJob {
   if (!rows.length) throw new Error('没有记录，无法打印及预览');
   if (color !== 'monochrome' && color !== 'color') throw new Error('请选择单色或彩色打印');
   const ink = color === 'color' ? '#164b82' : '#000000';
+  const layout = AssetPrintSettingsSchema.parse(settings ?? {});
+  const fieldNames = {
+    code: '编号',
+    name: '名称',
+    department: '部门',
+    category: '类别',
+    date: '使用日期',
+    description: '规格型号',
+    reference: '参考编号',
+  };
   return {
     title: '资产标签',
     pageSize: { widthMm: 88, heightMm: 51 },
@@ -21,13 +39,18 @@ export function assetLabelsPrint(rows: readonly LabelRow[], color: LabelColor): 
     html: rows
       .map((r, i) => {
         // 超长档案名称以较小字体容纳；打印驱动仍会检查浏览器实际排版。
-        const chars = [r.code, r.name, r.department, r.category].reduce(
-          (n, v) =>
-            n + Array.from(v).reduce((m, c) => m + ((c.codePointAt(0) ?? 0) > 255 ? 1 : 0.55), 0),
-          0,
+        const chars = layout.labelFields
+          .map((f) => r[f] ?? '')
+          .reduce(
+            (n, v) =>
+              n + Array.from(v).reduce((m, c) => m + ((c.codePointAt(0) ?? 0) > 255 ? 1 : 0.55), 0),
+            0,
+          );
+        const fontSize = Math.min(
+          layout.labelFont,
+          chars > 350 ? 6 : chars > 240 ? 7 : chars > 150 ? 8 : 12,
         );
-        const fontSize = chars > 350 ? 6 : chars > 240 ? 7 : chars > 150 ? 8 : 9;
-        return `<section${i < rows.length - 1 ? ' class="cw-page-break"' : ''}><div class="print-sheet"><div class="scaled" style="font-size:${fontSize}px"><h2>固定资产标签</h2><p><b>编号：</b>${escapeHtml(r.code)}</p><p><b>名称：</b>${escapeHtml(r.name)}</p><p><b>部门：</b>${escapeHtml(r.department)}</p><p><b>类别：</b>${escapeHtml(r.category)}</p></div></div></section>`;
+        return `<section${i < rows.length - 1 ? ' class="cw-page-break"' : ''}><div class="print-sheet"${layout.labelBorder ? ' style="border:1px solid currentColor;padding:1mm"' : ''}><div class="scaled" style="font-size:${fontSize}px"><h2>${escapeHtml(layout.labelTitle)}</h2>${layout.labelFields.map((f) => `<p><b>${fieldNames[f]}：</b>${escapeHtml(r[f])}</p>`).join('')}</div></div></section>`;
       })
       .join(''),
   };

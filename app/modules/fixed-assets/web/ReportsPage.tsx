@@ -20,6 +20,8 @@ import { getBusinessError, notify, useRequiredSession } from '@caiwu/web-kit';
 import { api, type Outputs } from './api';
 import { useAssetFilters as useUrlFilters } from './common';
 import { assetLabelsPrint } from './label-print';
+import { assetReportPrint } from './asset-print';
+import PrintSettings, { downloadAssetFile } from './PrintSettings';
 
 function reportInputError(path: PropertyKey | undefined) {
   return (
@@ -43,7 +45,10 @@ function reportInputError(path: PropertyKey | undefined) {
 }
 
 export default function ReportsPage() {
-  const year = Math.trunc(useRequiredSession().book.startPeriod / 100);
+  const session = useRequiredSession();
+  const year = Math.trunc(session.book.startPeriod / 100);
+  const settings = useQuery(api.printSettings.queryOptions());
+  const [reportPreview, setReportPreview] = useState(false);
   const [f, setF] = useUrlFilters({
     kind: 'list',
     year,
@@ -112,6 +117,14 @@ export default function ReportsPage() {
     { key: 'category', title: '类别', dataIndex: 'category', width: 150 },
     { key: 'description', title: '摘要/规格', dataIndex: 'description', width: 180 },
     { key: 'quantity', title: '数量', dataIndex: 'quantity', width: 100 },
+    { key: 'reference', title: '参考编号', dataIndex: 'reference', width: 140 },
+    { key: 'manufacturer', title: '制造厂', dataIndex: 'manufacturer', width: 140 },
+    { key: 'installation', title: '安装地点', dataIndex: 'installation', width: 160 },
+    { key: 'manufactured', title: '制造日期', dataIndex: 'manufactured', width: 120 },
+    { key: 'machineCode', title: '本机编号', dataIndex: 'machineCode', width: 140 },
+    { key: 'custodian', title: '保管人', dataIndex: 'custodian', width: 120 },
+    { key: 'currencyCode', title: '币种', dataIndex: 'currencyCode', width: 100 },
+    { key: 'foreignOriginal', title: '外币原值', dataIndex: 'foreignOriginal', width: 140 },
     {
       key: 'original',
       title: f.kind === 'distribution' ? '分布金额' : '原值/金额',
@@ -135,13 +148,13 @@ export default function ReportsPage() {
     );
   const labels =
     result?.rows.length && f.kind === 'labels' && parsed.success
-      ? assetLabelsPrint(result.rows, parsed.data.labelColor)
+      ? assetLabelsPrint(result.rows, parsed.data.labelColor, settings.data)
       : undefined;
   // 空结果不能进入标签渲染器；其余报表保留中文空态。
   const previewRow = result?.rows[page];
   const previewDocument =
     labels && previewRow && parsed.success
-      ? renderPrintDocument(assetLabelsPrint([previewRow], parsed.data.labelColor))
+      ? renderPrintDocument(assetLabelsPrint([previewRow], parsed.data.labelColor, settings.data))
       : '';
   const submit = (draft: typeof f) => {
     const checked = ReportSchema.safeParse(draft);
@@ -172,6 +185,15 @@ export default function ReportsPage() {
     setPrinting(true);
     try {
       if (labels) await printHtml(labels);
+      else if (f.kind === 'ledger' || f.kind === 'register')
+        await printHtml(
+          assetReportPrint(
+            result,
+            f.kind,
+            { unit: session.book.orgName, cutoff: f.cutoff, year: f.year },
+            settings.data,
+          ),
+        );
       else
         await printHtml({
           title: result.title,
@@ -210,6 +232,33 @@ export default function ReportsPage() {
       title="资产报表与标签"
       extra={
         <Space wrap>
+          <PrintSettings />
+          {(f.kind === 'ledger' || f.kind === 'register') && (
+            <>
+              <Button disabled={!result?.rows.length} onClick={() => setReportPreview(true)}>
+                预览账册版式
+              </Button>
+              <Button
+                disabled={!result?.rows.length}
+                onClick={() => {
+                  if (result && (f.kind === 'ledger' || f.kind === 'register'))
+                    downloadAssetFile(
+                      renderPrintDocument(
+                        assetReportPrint(
+                          result,
+                          f.kind,
+                          { unit: session.book.orgName, cutoff: f.cutoff, year: f.year },
+                          settings.data,
+                        ),
+                      ),
+                      `${result.title}.html`,
+                    );
+                }}
+              >
+                保存账册 HTML 文件
+              </Button>
+            </>
+          )}
           {f.kind === 'labels' && (
             <>
               <Button
@@ -437,6 +486,33 @@ export default function ReportsPage() {
             />
           </div>
         </div>
+      </Modal>
+      <Modal
+        open={
+          reportPreview && !!result?.rows.length && (f.kind === 'ledger' || f.kind === 'register')
+        }
+        title="固定资产账册预览"
+        width={1000}
+        onCancel={() => setReportPreview(false)}
+        footer={<Button onClick={() => setReportPreview(false)}>关闭预览</Button>}
+      >
+        <iframe
+          title="固定资产账册版式"
+          sandbox="allow-same-origin"
+          style={{ width: '100%', height: '70vh', border: '1px solid #aaa' }}
+          srcDoc={
+            result && (f.kind === 'ledger' || f.kind === 'register')
+              ? renderPrintDocument(
+                  assetReportPrint(
+                    result,
+                    f.kind,
+                    { unit: session.book.orgName, cutoff: f.cutoff, year: f.year },
+                    settings.data,
+                  ),
+                )
+              : ''
+          }
+        />
       </Modal>
     </PageContainer>
   );

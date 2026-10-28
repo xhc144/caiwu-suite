@@ -9,6 +9,8 @@ import { Confirm, refresh } from './common';
 import { createOpeningWorkbook, readOpeningWorkbook } from './opening-workbook';
 import type { Workbook } from 'exceljs';
 import { useAssetDraft } from './useAssetDraft';
+import ResetAssets from './ResetAssets';
+import RestoreResetAssets from './RestoreResetAssets';
 
 async function downloadWorkbook(workbook: Workbook, filename: string) {
   const buffer = await workbook.xlsx.writeBuffer();
@@ -138,6 +140,13 @@ export default function OpeningPage() {
             c.life_months < 30 ? '是' : '否',
             centsToYuan(c.residual),
             c.reference,
+            c.manufacturer,
+            c.installation,
+            c.manufactured ?? '',
+            c.machine_code,
+            c.custodian,
+            c.currency_code,
+            c.foreign_original,
           ],
           accessories: accessories
             .filter((a) => a.asset_id === c.id)
@@ -164,6 +173,8 @@ export default function OpeningPage() {
         description="使用年限单位是月；少于 30 月请复核并填「是」。方法码 1 为平均年限法，2 为工作量法。附属设备填入同名工作表，设备编号必须与期初卡片一致；单价保留十进制，数量最多六位小数，日期填 YYYY-MM-DD。旧单表文件仍可导入。"
       />
       <Space wrap style={{ margin: '16px 0' }}>
+        <ResetAssets />
+        <RestoreResetAssets />
         <Button
           loading={enableSubmission.isSubmitting}
           onClick={() => void enableSubmission.submit(() => enable.mutateAsync()).catch(() => {})}

@@ -46,12 +46,74 @@ CREATE TABLE fixed_assets_line (
 CREATE INDEX fixed_assets_line_asset ON fixed_assets_line(asset_id);
 `,
   },
+  {
+    id: '0002_asset_lifecycle',
+    sql: `
+CREATE TABLE fixed_assets_transfer (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, asset_id INTEGER NOT NULL REFERENCES fixed_assets_card(id),
+ date TEXT NOT NULL, from_department_id INTEGER NOT NULL REFERENCES dimension_item(id),
+ to_department_id INTEGER NOT NULL REFERENCES dimension_item(id),
+ from_purpose_id INTEGER NOT NULL REFERENCES fixed_assets_master(id),
+ to_purpose_id INTEGER NOT NULL REFERENCES fixed_assets_master(id),
+ from_status_id INTEGER NOT NULL REFERENCES fixed_assets_master(id),
+ to_status_id INTEGER NOT NULL REFERENCES fixed_assets_master(id),
+ note TEXT NOT NULL, operator TEXT NOT NULL, created_at TEXT NOT NULL
+);
+CREATE INDEX fixed_assets_transfer_asset ON fixed_assets_transfer(asset_id,date,id);
+CREATE TABLE fixed_assets_recalculation (
+ id INTEGER PRIMARY KEY AUTOINCREMENT, before_json TEXT NOT NULL, after_json TEXT NOT NULL,
+ operator TEXT NOT NULL, created_at TEXT NOT NULL, undone INTEGER NOT NULL DEFAULT 0
+);
+`,
+  },
+  {
+    id: '0003_card_details',
+    sql: `
+ALTER TABLE fixed_assets_card ADD COLUMN manufacturer TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_card ADD COLUMN installation TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_card ADD COLUMN manufactured TEXT;
+ALTER TABLE fixed_assets_card ADD COLUMN machine_code TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_card ADD COLUMN custodian TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_card ADD COLUMN currency_code TEXT NOT NULL DEFAULT 'CNY';
+ALTER TABLE fixed_assets_card ADD COLUMN foreign_original TEXT NOT NULL DEFAULT '0';
+`,
+  },
+  {
+    id: '0004_transfer_details',
+    sql: `
+ALTER TABLE fixed_assets_transfer ADD COLUMN from_installation TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_transfer ADD COLUMN to_installation TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_transfer ADD COLUMN from_custodian TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_transfer ADD COLUMN to_custodian TEXT NOT NULL DEFAULT '';
+ALTER TABLE fixed_assets_transfer ADD COLUMN from_quantity_e6 INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE fixed_assets_transfer ADD COLUMN to_quantity_e6 INTEGER NOT NULL DEFAULT 0;
+UPDATE fixed_assets_transfer SET
+ from_installation=(SELECT installation FROM fixed_assets_card WHERE id=asset_id),
+ to_installation=(SELECT installation FROM fixed_assets_card WHERE id=asset_id),
+ from_custodian=(SELECT custodian FROM fixed_assets_card WHERE id=asset_id),
+ to_custodian=(SELECT custodian FROM fixed_assets_card WHERE id=asset_id),
+ from_quantity_e6=(SELECT quantity_e6 FROM fixed_assets_card WHERE id=asset_id),
+ to_quantity_e6=(SELECT quantity_e6 FROM fixed_assets_card WHERE id=asset_id);
+`,
+  },
+  {
+    id: '0005_foreign_amount',
+    sql: `ALTER TABLE fixed_assets_card ADD COLUMN foreign_original_e6 INTEGER NOT NULL DEFAULT 0;`,
+  },
 ]);
 export type CardRow = {
   id: Generated<number>;
   code: string;
   name: string;
   reference: string;
+  manufacturer: string;
+  installation: string;
+  manufactured: string | null;
+  machine_code: string;
+  custodian: string;
+  currency_code: string;
+  foreign_original: string;
+  foreign_original_e6: number;
   category_id: number;
   status_id: number;
   purpose_id: number;
@@ -81,6 +143,34 @@ export type CardRow = {
   revision: number;
 };
 export type FixedAssetsTables = {
+  fixed_assets_transfer: {
+    id: Generated<number>;
+    asset_id: number;
+    date: string;
+    from_department_id: number;
+    to_department_id: number;
+    from_purpose_id: number;
+    to_purpose_id: number;
+    from_status_id: number;
+    to_status_id: number;
+    from_installation: string;
+    to_installation: string;
+    from_custodian: string;
+    to_custodian: string;
+    from_quantity_e6: number;
+    to_quantity_e6: number;
+    note: string;
+    operator: string;
+    created_at: string;
+  };
+  fixed_assets_recalculation: {
+    id: Generated<number>;
+    before_json: string;
+    after_json: string;
+    operator: string;
+    created_at: string;
+    undone: number;
+  };
   fixed_assets_master: {
     id: Generated<number>;
     kind: string;

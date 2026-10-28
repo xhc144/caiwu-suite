@@ -10,6 +10,7 @@ import {
 } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import { sql } from '@caiwu/db';
+import type { RawBuilder } from 'kysely';
 import { createHash } from 'node:crypto';
 import type { z } from 'zod';
 import {
@@ -17,6 +18,7 @@ import {
   CardSchema,
   QuerySchema,
   queryConditionProblem,
+  queryFields,
   ReportSchema,
   reportKinds,
   type CardInput,
@@ -24,6 +26,8 @@ import {
 import type { FixedAssetsTables } from './migrations';
 import { assetService, fail, safeSum as sumCents } from './service';
 import { buildAssetHistory, dueDate } from './history';
+import { allocationAt } from './transfers';
+import { parseQueryLogic, type QueryLogic } from '../query-logic';
 import {
   deleteAssetVoucher,
   previewAssetVoucherDeletion,
@@ -44,6 +48,13 @@ export function operations(svc: CoreServices) {
     );
     if (c.disposal_date) fail('DISPOSED', '已注销资产不能调整原值');
     if (date < c.use_date) fail('ADJUST_DATE', '调整日期不能早于使用日期');
+    const transfer = await db
+      .selectFrom('fixed_assets_transfer')
+      .select('date')
+      .where('asset_id', '=', id)
+      .where('date', '>', date)
+      .executeTakeFirst();
+    if (transfer) fail('TRANSFER_ORDER', '已有日期更晚的资产转移', '请按日期逆序处理后续业务');
     await svc.periods.assertOpen(periodOfDate(date), '调整原值');
     const later = await db
       .selectFrom('fixed_assets_line as l')
@@ -152,6 +163,15 @@ export function operations(svc: CoreServices) {
         'disposal',
       );
       await assets.assertChainInternal(c);
+      if (
+        await db
+          .selectFrom('fixed_assets_transfer')
+          .select('id')
+          .where('asset_id', '=', id)
+          .where('date', '>', date)
+          .executeTakeFirst()
+      )
+        fail('TRANSFER_ORDER', '注销日期不能早于已有资产转移', '请按日期逆序处理转移记录');
       if (c.disposal_date) fail('DISPOSED', '此资产已经注销');
       await assets.masterInternal(reasonId, 'reason');
       const reason = await db
@@ -345,6 +365,10 @@ export function operations(svc: CoreServices) {
         .selectFrom('fixed_assets_line as l')
         .innerJoin('fixed_assets_batch as b', 'b.id', 'l.batch_id')
         .innerJoin('fixed_assets_card as c', 'c.id', 'l.asset_id')
+        .innerJoin('dimension_item as qd', 'qd.id', 'l.department_id')
+        .innerJoin('fixed_assets_master as qc', 'qc.id', 'l.category_id')
+        .innerJoin('fixed_assets_master as qp', 'qp.id', 'l.purpose_id')
+        .innerJoin('fixed_assets_master as qs', 'qs.id', 'c.status_id')
         .select([
           'l.id',
           'b.period',
@@ -361,6 +385,14 @@ export function operations(svc: CoreServices) {
           'l.category_id',
           'l.purpose_id',
         ])
+        .select(
+          sql<string>`json_object('reference',c.reference,'model',c.model,'method',c.method,'useDate',c.use_date,'acquired',c.acquired,
+          'original',l.original,'residual',l.residual,'depreciation',l.before_depreciation,'months',l.before_months,'lifeMonths',c.life_months,
+          'quantity',c.quantity_e6,'totalWork',c.total_work_e6,'manufacturer',c.manufacturer,'installation',c.installation,'machineCode',c.machine_code,
+          'custodian',c.custodian,'currencyCode',c.currency_code,'foreignOriginal',c.foreign_original,'manufactured',coalesce(c.manufactured,''))`.as(
+            '_extra',
+          ),
+        )
         .where('b.period', '>=', f.from)
         .where('b.period', '<=', f.to);
       if (!f.showZero) q = q.where('l.amount', '!=', 0);
@@ -371,19 +403,78 @@ export function operations(svc: CoreServices) {
         [f.purposeId, 'l.purpose_id'],
       ] as const)
         if (v) q = q.where(col, '=', v);
+      const clauses: RawBuilder<boolean>[] = [];
       for (const c of f.conditions) {
         const col = (
-          { code: 'c.code', name: 'c.name', amount: 'l.amount', useDate: 'c.use_date' } as const
+          {
+            code: 'c.code',
+            name: 'c.name',
+            amount: 'l.amount',
+            useDate: 'c.use_date',
+            reference: 'c.reference',
+            model: 'c.model',
+            manufacturer: 'c.manufacturer',
+            installation: 'c.installation',
+            machineCode: 'c.machine_code',
+            custodian: 'c.custodian',
+            acquired: 'c.acquired',
+            manufactured: 'c.manufactured',
+            original: 'l.original',
+            residual: 'l.residual',
+            depreciation: 'l.before_depreciation',
+            months: 'l.before_months',
+            lifeMonths: 'c.life_months',
+            period: 'b.period',
+            quantity: 'c.quantity_e6',
+            work: 'l.work_e6',
+            totalWork: 'c.total_work_e6',
+            method: 'c.method',
+            currencyCode: 'c.currency_code',
+            foreignOriginal: 'c.foreign_original_e6',
+            department: 'qd.name',
+            category: 'qc.name',
+            purpose: 'qp.name',
+            status: 'qs.name',
+          } as const
         )[c.field];
         const problem = queryConditionProblem(c);
         if (problem) fail(problem.code, problem.message, problem.hint);
-        const value = c.field === 'amount' ? Number(c.value) : c.value;
-        if (c.op === 'contains')
-          q = q.where(
-            sql<boolean>`${sql.ref(col)} like ${`%${c.value.replace(/[\\%_]/g, '\\$&')}%`} escape '\\'`,
+        const type = queryFields[c.field].type;
+        const value =
+          type === 'number' || type === 'integer'
+            ? Number(c.value)
+            : type === 'decimal'
+              ? qtyToE6(c.value)
+              : c.value;
+        if (c.op === 'contains' || c.op === 'notContains')
+          clauses.push(
+            c.op === 'contains'
+              ? sql<boolean>`${sql.ref(col)} like ${`%${c.value.replace(/[\\%_]/g, '\\$&')}%`} escape '\\'`
+              : sql<boolean>`${sql.ref(col)} not like ${`%${c.value.replace(/[\\%_]/g, '\\$&')}%`} escape '\\'`,
           );
-        else q = q.where(col, { eq: '=', gt: '>', lt: '<' }[c.op] as '=' | '>' | '<', value);
+        else
+          clauses.push(
+            sql<boolean>`${sql.ref(col)} ${sql.raw({ eq: '=', ne: '!=', gt: '>', gte: '>=', lt: '<', lte: '<=' }[c.op])} ${value}`,
+          );
       }
+      let logic: QueryLogic | null;
+      try {
+        logic = parseQueryLogic(f.expression, clauses.length);
+      } catch (e) {
+        fail(
+          'QUERY_LOGIC',
+          e instanceof Error ? e.message : '组合表达式不正确',
+          '请使用条件编号、并且、或者及括号',
+        );
+      }
+      const compile = (node: QueryLogic): RawBuilder<boolean> =>
+        'condition' in node
+          ? clauses[node.condition]!
+          : node.op === 'and'
+            ? sql<boolean>`(${compile(node.left)} and ${compile(node.right)})`
+            : sql<boolean>`(${compile(node.left)} or ${compile(node.right)})`;
+      if (logic) q = q.where(compile(logic));
+      else for (const clause of clauses) q = q.where(clause);
       const [rows, masters, deps] = await Promise.all([
         q.orderBy('b.period').orderBy('c.code').execute(),
         assets.masters(),
@@ -395,6 +486,30 @@ export function operations(svc: CoreServices) {
       };
       const groups = new Map<string, number>();
       const detail = rows.map((r) => {
+        const { _extra, ...baseRow } = r;
+        const extra = JSON.parse(_extra) as Partial<{
+          reference: string;
+          model: string;
+          method: string;
+          useDate: string;
+          acquired: string;
+          original: number;
+          residual: number;
+          depreciation: number;
+          months: number;
+          lifeMonths: number;
+          quantity: string;
+          totalWork: string;
+          manufacturer: string;
+          installation: string;
+          machineCode: string;
+          custodian: string;
+          currencyCode: string;
+          foreignOriginal: string;
+          manufactured: string;
+        }>;
+        extra.quantity = qtyFromE6(Number(extra.quantity));
+        extra.totalWork = qtyFromE6(Number(extra.totalWork));
         let dep = deps.find((d) => d.id === r.department_id);
         if (f.departmentLevel === 'top') {
           const seen = new Set<number>();
@@ -415,12 +530,29 @@ export function operations(svc: CoreServices) {
         const key = department + ' / ' + category;
         groups.set(key, sumCents([groups.get(key) ?? 0, r.amount]));
         return {
-          ...r,
+          ...baseRow,
+          ...extra,
           department,
           category,
           purpose: masterName(r.purpose_id),
           work: qtyFromE6(r.work_e6),
         };
+      });
+      detail.sort((a, b) => {
+        const sorts = f.sorts.length
+          ? f.sorts
+          : [{ field: f.sortField, direction: f.sortDirection }];
+        for (const sort of sorts) {
+          const left = a[sort.field],
+            right = b[sort.field];
+          const diff = ['work', 'quantity', 'totalWork', 'foreignOriginal'].includes(sort.field)
+            ? new Decimal(String(left)).comparedTo(String(right))
+            : typeof left === 'number' && typeof right === 'number'
+              ? left - right
+              : String(left).localeCompare(String(right), 'zh-CN');
+          if (diff) return sort.direction === 'desc' ? -diff : diff;
+        }
+        return a.period - b.period || a.code.localeCompare(b.code) || a.id - b.id;
       });
       return {
         rows: detail,
@@ -438,7 +570,7 @@ export function operations(svc: CoreServices) {
         fail('LABEL_RANGE', '起始序号不能大于截止序号', '请按当前标签清单填写从小到大的序号范围');
       await svc.periods.require(periodOfDate(f.cutoff));
       const bookStart = (await svc.periods.require((await svc.book.info()).startPeriod)).startDate;
-      const [lines, changes, accessories] = await Promise.all([
+      const [lines, changes, accessories, transfers, departments, masters] = await Promise.all([
         db
           .selectFrom('fixed_assets_line as l')
           .innerJoin('fixed_assets_batch as b', 'b.id', 'l.batch_id')
@@ -447,6 +579,9 @@ export function operations(svc: CoreServices) {
           .execute(),
         db.selectFrom('fixed_assets_adjustment').selectAll().orderBy('id').execute(),
         db.selectFrom('fixed_assets_accessory').selectAll().execute(),
+        db.selectFrom('fixed_assets_transfer').selectAll().orderBy('date').orderBy('id').execute(),
+        svc.dimensions.items('department'),
+        assets.masters(),
       ]);
       const selected = all.filter(
         (c) => (!f.fromCode || c.code >= f.fromCode) && (!f.toCode || c.code <= f.toCode),
@@ -457,6 +592,14 @@ export function operations(svc: CoreServices) {
         key: string;
         serial: number;
         code: string;
+        reference: string;
+        manufacturer: string;
+        installation: string;
+        manufactured: string;
+        machineCode: string;
+        custodian: string;
+        currencyCode: string;
+        foreignOriginal: string;
         name: string;
         date: string;
         description: string;
@@ -495,14 +638,45 @@ export function operations(svc: CoreServices) {
           key: String(c.id),
           serial,
           code: c.code,
+          reference: c.reference,
+          manufacturer: c.manufacturer,
+          installation: allocationAt(
+            c,
+            transfers.filter((t) => t.asset_id === c.id),
+            f.cutoff,
+          ).installation,
+          manufactured: c.manufactured ?? '',
+          machineCode: c.machine_code,
+          custodian: allocationAt(
+            c,
+            transfers.filter((t) => t.asset_id === c.id),
+            f.cutoff,
+          ).custodian,
+          currencyCode: c.currency_code,
+          foreignOriginal: c.foreign_original,
           name: c.name,
           date: c.use_date,
           description: c.model,
           original,
           depreciation,
           net: original - depreciation,
-          quantity: c.quantity,
-          department: c.department,
+          quantity: qtyFromE6(
+            allocationAt(
+              c,
+              transfers.filter((t) => t.asset_id === c.id),
+              f.cutoff,
+            ).quantity_e6,
+          ),
+          department:
+            departments.find(
+              (d) =>
+                d.id ===
+                allocationAt(
+                  c,
+                  transfers.filter((t) => t.asset_id === c.id),
+                  f.cutoff,
+                ).department_id,
+            )?.name ?? '',
           category: c.category,
           originalChange: 0,
           depreciationChange: 0,
@@ -542,6 +716,16 @@ export function operations(svc: CoreServices) {
             changes.filter((a) => a.asset_id === c.id),
             lines.filter((l) => l.asset_id === c.id),
           ).filter((e) => e.date <= f.cutoff);
+          for (const t of transfers.filter((t) => t.asset_id === c.id && t.date <= f.cutoff))
+            events.push({
+              key: `transfer-${t.id}`,
+              date: t.date,
+              description: `资产转移：${departments.find((d) => d.id === t.from_department_id)?.name ?? ''} → ${departments.find((d) => d.id === t.to_department_id)?.name ?? ''}；${masters.find((m) => m.id === t.to_purpose_id)?.name ?? ''}；${masters.find((m) => m.id === t.to_status_id)?.name ?? ''}；${t.note}`,
+              originalChange: 0,
+              depreciationChange: 0,
+              order: 1,
+            });
+          events.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
           const yearStart = `${f.year}-01-01`;
           let value = 0,
             running = 0;
@@ -596,7 +780,15 @@ export function operations(svc: CoreServices) {
           masters = await assets.masters();
         for (const r of rows) {
           const c = all.find((c) => String(c.id) === r.key)!;
-          let d = deps.find((d) => d.id === c.department_id);
+          let d = deps.find(
+            (d) =>
+              d.id ===
+              allocationAt(
+                c,
+                transfers.filter((t) => t.asset_id === c.id),
+                f.cutoff,
+              ).department_id,
+          );
           const seen = new Set<number>();
           while (f.departmentLevel === 'top' && d?.parentId && !seen.has(d.id)) {
             seen.add(d.id);
@@ -716,6 +908,13 @@ export function operations(svc: CoreServices) {
             if (
               c.name === p.name &&
               c.reference === p.reference &&
+              c.manufacturer === p.manufacturer &&
+              c.installation === p.installation &&
+              c.manufactured === p.manufactured &&
+              c.machine_code === p.machineCode &&
+              c.custodian === p.custodian &&
+              c.currency_code === p.currencyCode &&
+              new Decimal(c.foreign_original).eq(p.foreignOriginal) &&
               c.category_id === p.categoryId &&
               c.status_id === p.statusId &&
               c.purpose_id === p.purposeId &&
@@ -800,8 +999,8 @@ export function operations(svc: CoreServices) {
       permit(svc, 'settings');
       fail(
         'RESET_UNAVAILABLE',
-        '尚未提供可恢复的资产清空流程，不能重置已有数据',
-        '可正常开通和导入期初；需要重新开始时，请新建账套并保留原账套备查',
+        '缺少受保护重置的预览、账套名称和管理员密码，不能清空资产',
+        '请在期初导入与开通页面预览重置范围，再确认受保护重置',
       );
     },
     async batchPreview(raw: z.input<typeof BatchSchema>) {
@@ -809,6 +1008,14 @@ export function operations(svc: CoreServices) {
       const p = BatchSchema.parse(raw);
       if (p.field === 'unit' && !CardSchema.shape.unit.safeParse(p.value).success)
         fail('BATCH_UNIT', '单位不能超过 20 个字', '请缩短单位后重新预览');
+      if (['name', 'reference', 'manufacturer', 'machineCode', 'model'].includes(p.field)) {
+        const schema =
+          CardSchema.shape[
+            p.field as 'name' | 'reference' | 'manufacturer' | 'machineCode' | 'model'
+          ];
+        if (!schema.safeParse(p.value).success)
+          fail('BATCH_FIELD', '修改后的文字不符合卡片字段长度或必填要求');
+      }
       if (
         p.field === 'lifeMonths' &&
         (!/^\d+$/.test(p.value) || Number(p.value) < 30 || Number(p.value) > 12000)
@@ -819,8 +1026,8 @@ export function operations(svc: CoreServices) {
         (!/^\d+$/.test(p.value) || Number(p.value) < 1 || Number(p.value) > 40)
       )
         fail('BATCH_NUMBER', '补零长度必须为 1 至 40 的整数');
-      if (p.field === 'acquired' && !isValidDate(p.value))
-        fail('BATCH_DATE', '购置日期格式应为 YYYY-MM-DD');
+      if ((p.field === 'acquired' || p.field === 'manufactured') && !isValidDate(p.value))
+        fail('BATCH_DATE', '日期格式应为 YYYY-MM-DD');
       const all = await assets.list({ includeDisposed: true }),
         rows = await assets.list(p.filter),
         codes = new Set(all.map((c) => c.code));
@@ -849,6 +1056,10 @@ export function operations(svc: CoreServices) {
           )
             throw new Error('已有折旧历史，不可改年限');
           if (p.field === 'acquired' && value > c.use_date) throw new Error('购置日期晚于使用日期');
+          if (p.field === 'acquired' && c.manufactured && value < c.manufactured)
+            throw new Error('购置日期早于制造日期');
+          if (p.field === 'manufactured' && value > c.acquired)
+            throw new Error('制造日期晚于购置日期');
         } catch (e) {
           error =
             e instanceof BusinessError
@@ -877,7 +1088,22 @@ export function operations(svc: CoreServices) {
             lifeMonths: 'life_months',
             acquired: 'acquired',
             padCode: 'code',
-          }[p.field] as 'model' | 'unit' | 'life_months' | 'acquired' | 'code';
+            name: 'name',
+            reference: 'reference',
+            manufacturer: 'manufacturer',
+            machineCode: 'machine_code',
+            manufactured: 'manufactured',
+          }[p.field] as
+            | 'model'
+            | 'unit'
+            | 'life_months'
+            | 'acquired'
+            | 'code'
+            | 'name'
+            | 'reference'
+            | 'manufacturer'
+            | 'machine_code'
+            | 'manufactured';
           await table(ts)
             .updateTable('fixed_assets_card')
             .set({
