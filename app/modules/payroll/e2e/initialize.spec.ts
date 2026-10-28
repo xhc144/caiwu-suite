@@ -4,6 +4,41 @@ import { DEFAULT_FIELDS, type Batch, type Category, type Employee } from '../sha
 
 test.describe.configure({ retries: 0 });
 
+test('w_xt_kgzb_gz 密码校验处理中预览按钮名称稳定，拒绝后可使用同一按钮重新预览', async ({
+  page,
+  request,
+}) => {
+  await loginWithNewBook(page, request, { product: 'minfei' });
+  let releaseResponse!: () => void;
+  const responseGate = new Promise<void>((resolve) => {
+    releaseResponse = resolve;
+  });
+  let previewRequests = 0;
+  await page.route('**/trpc/m.payroll.previewInitialization**', async (route) => {
+    const response = await route.fetch();
+    if (++previewRequests === 1) await responseGate;
+    await route.fulfill({ response });
+  });
+  await page.goto('/m/payroll/initialize');
+  const password = page.getByLabel('当前管理员完整密码', { exact: true });
+  const preview = page.locator('button[type="submit"]').filter({ hasText: '预览初始化影响' });
+  await password.fill('incorrect');
+  await preview.click();
+  try {
+    await expect(password).toBeDisabled();
+    await expect(preview).toBeDisabled();
+    await expect(preview).toHaveAccessibleName('预览初始化影响');
+  } finally {
+    releaseResponse();
+  }
+  await expect(page.getByText(/当前管理员密码不正确或权限已变化/).first()).toBeVisible();
+  await expect(preview).toBeEnabled();
+  await password.fill('admin');
+  await page.getByRole('button', { name: '预览初始化影响', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: '确认工资模块初始化', exact: true })).toBeVisible();
+  expect(previewRequests).toBe(2);
+});
+
 test('w_xt_kgzb_gz 保留初始化提示前期待计算，完成后重新确认并继续后期累计', async ({
   page,
   request,
