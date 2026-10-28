@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import type { Account, AccountCategory, BalanceRow, BookInfo, EntryRow } from '@caiwu/core';
+import type {
+  Account,
+  AccountCategory,
+  BalanceRow,
+  BookInfo,
+  EntryRow,
+  VoucherHeader,
+} from '@caiwu/core';
 import { RestrictionEvidenceSchema } from './restriction-evidence';
 
 export const reference = z.string().trim().min(1, '请填写原始凭据及具体条款').max(1000);
@@ -424,6 +431,10 @@ export type Configuration = z.infer<typeof ConfigurationSchema>;
 export type ActualLine = EntryRow & {
   revision: number;
   closingKind: string | null;
+  closingSource?: {
+    originalKind: string | null;
+    source: VoucherHeader['source'];
+  };
   historicalSource?: string;
   originalRevision?: number;
 };

@@ -9,6 +9,7 @@ import {
   lineIdentity,
 } from './model';
 import { mergePreStartHistory } from './history.server';
+import { nonprofitClosingKind } from './closing-source';
 
 /** 只调用核心只读服务；由公共生成事务传入同一个 svc，不另开事务或读模块私表。 */
 export async function readNonprofitSources(
@@ -62,6 +63,9 @@ export async function readNonprofitSources(
       .filter((v) => v !== null)
       .map((v) => [v.id, v]),
   );
+  const closingKinds = new Map(
+    [...vouchers].map(([id, v]) => [id, nonprofitClosingKind(v, accounts, categories)]),
+  );
   const sources: Sources = {
     book,
     accounts,
@@ -70,7 +74,12 @@ export async function readNonprofitSources(
     entries: entries.map((e) => {
       const v = vouchers.get(e.voucherId);
       if (!v) throw new Error('凭证来源已变化，请刷新后重新确认');
-      return { ...e, revision: v.revision, closingKind: v.closingKind };
+      return {
+        ...e,
+        revision: v.revision,
+        closingKind: closingKinds.get(v.id) ?? null,
+        closingSource: { originalKind: v.closingKind, source: v.source ?? null },
+      };
     }),
     from: liveStart,
     to: liveTo,
@@ -106,6 +115,7 @@ export function sourceFingerprint(s: Sources, c: Configuration) {
           date: e.date,
           dimensions: e.dimensions,
           closingKind: e.closingKind,
+          closingSource: e.closingSource,
         })),
         configuration: c,
         from: s.from,
