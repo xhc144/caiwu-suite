@@ -93,6 +93,93 @@ describe('w_xt_kgzb_1 / _2 / _3 完整重新初始化', () => {
     }
   });
 
+  it('过期预览经预检清理后，本登录仍可幂等取消；其他登录及账套拒绝，执行始终拒绝', async () => {
+    const api = app.call(server);
+    const other = await app.login();
+    const foreign = await app.runtime.bookStore.create({
+      name: '独立合成账套',
+      orgName: '独立合成单位',
+      templateId: 'demo-enterprise',
+      product: 'chengben',
+      startYear: 2026,
+      startMonth: 1,
+      adminPassword: 'admin',
+    });
+    const foreignLogin = await app
+      .core(null)
+      .auth.login({ bookId: foreign.id, userCode: 'admin', password: 'admin' });
+    const plan = await prepare();
+    const before = hash();
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(plan.expiresAt + 1);
+    try {
+      await api.reset.preflight();
+      expect(stagedFiles()).toHaveLength(0);
+      await expect(app.call(server, other).reset.cancel({ planId: plan.planId })).rejects.toThrow(
+        '不属于当前登录',
+      );
+      await expect(
+        app.call(server, foreignLogin.token).reset.cancel({ planId: plan.planId }),
+      ).rejects.toThrow('不属于当前登录');
+      await expect(api.reset.execute(execution(plan.planId))).rejects.toThrow('预览已过期');
+      expect(await api.reset.cancel({ planId: plan.planId })).toMatchObject({
+        ok: true,
+        status: 'expired',
+        stagingRetained: false,
+        cleanupPending: false,
+      });
+      expect(await api.reset.cancel({ planId: plan.planId })).toMatchObject({
+        ok: true,
+        status: 'expired',
+      });
+      await expect(api.reset.execute(execution(plan.planId))).rejects.toThrow('预览已过期');
+      expect(hash()).toBe(before);
+      expect((await app.core().auth.me()).book.id).toBe(app.book.id);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it('取消已逻辑生效但清理失败时，执行在维护前拒绝且不撤销会话；修复后可重试清理，真实保护备份完整保留', async () => {
+    const result = await app.call(server).reset.execute(execution((await prepare()).planId));
+    const token = await app.login();
+    const api = app.call(server, token);
+    const plan = await api.reset.prepare({ parameters, password: 'admin' });
+    const protection = path.join(
+      app.runtime.dataDir,
+      'core-protection',
+      app.book.id,
+      `${result.protectionId}.caiwu`,
+    );
+    const protectedBytes = readFileSync(protection);
+    const directory = path.join(app.runtime.dataDir, 'restore-staging');
+    const held = directory + '-held';
+    const maintain = vi.spyOn(app.runtime.lifecycle, 'maintainBook');
+    renameSync(directory, held);
+    mkdirSync(directory);
+    try {
+      await expect(api.reset.cancel({ planId: plan.planId })).rejects.toThrow('暂存未能清理');
+      expect(readdirSync(held).filter((file) => file.endsWith('.sqlite'))).toHaveLength(1);
+      await expect(
+        api.reset.execute({ ...execution(plan.planId), confirmBookName: parameters.name }),
+      ).rejects.toThrow('预览已过期');
+      expect(maintain).not.toHaveBeenCalled();
+      expect((await app.core(token).auth.me()).book.name).toBe(parameters.name);
+      expect(readFileSync(protection)).toEqual(protectedBytes);
+    } finally {
+      maintain.mockRestore();
+      rmSync(directory, { recursive: true });
+      renameSync(held, directory);
+    }
+    expect(await api.reset.cancel({ planId: plan.planId })).toMatchObject({
+      ok: true,
+      status: 'cancelled',
+      stagingRetained: false,
+      cleanupPending: false,
+    });
+    expect(stagedFiles()).toHaveLength(0);
+    expect(readFileSync(protection)).toEqual(protectedBytes);
+  });
+
   it('准备后实时撤销管理员，旧登录不能执行或取消，既有预览不被误删', async () => {
     const token = await app.addUser('revoked-admin', { isAdmin: true, password: 'synthetic123' });
     const api = app.call(server, token);

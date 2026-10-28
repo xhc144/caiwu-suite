@@ -93,6 +93,9 @@ function ResetEditor({
   const cancelPreview = async () => {
     const planId = activePlan.current;
     if (!planId) return;
+    // A failed/aborted cancellation may already have cancelled the server ticket.
+    // Retain its cleanup handle, but never offer execution until a new preview succeeds.
+    prepare.reset();
     await cancel.mutateAsync({ planId });
     if (activePlan.current === planId) {
       activePlan.current = null;

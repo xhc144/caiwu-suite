@@ -161,7 +161,8 @@ test('w_xt_kgzb 取消预览及离开放弃调用受管清理；清理请求失�
   await expect(
     ui.getByText('初始化暂存未能清理，请重试取消；原账套及保护副本保留', { exact: true }),
   ).toBeVisible();
-  await expect(ui.getByRole('button', { name: '执行完整重新初始化', exact: true })).toBeVisible();
+  await expect(ui.getByRole('button', { name: '执行完整重新初始化', exact: true })).toBeHidden();
+  await expect(ui.getByRole('button', { name: '取消初始化预览', exact: true })).toBeVisible();
   await ui.unroute('**/trpc/*m.system-admin.reset.cancel*');
   const cancelled = ui.waitForResponse(
     (response) => response.url().includes('m.system-admin.reset.cancel') && response.ok(),

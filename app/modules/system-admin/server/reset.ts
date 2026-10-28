@@ -25,6 +25,12 @@ type Plan = {
   cancelled?: boolean;
 };
 const plans = new WeakMap<AppRuntime, Map<string, Plan>>();
+// Keep cancellation ownership for the lifetime of this exact login, even after expiry removes
+// the executable plan. The weak session key releases receipts when that login is discarded.
+const cancellations = new WeakMap<
+  Session,
+  Map<string, { app: AppRuntime; bookId: string; replacementId: string }>
+>();
 function cleanupPlans(app: AppRuntime) {
   app.bookStore.cleanupExpiredReplacements();
   for (const [id, plan] of plans.get(app) ?? [])
@@ -175,6 +181,9 @@ export async function prepareReset(
   const entries = plans.get(app) ?? new Map<string, Plan>();
   entries.set(plan.id, plan);
   plans.set(app, entries);
+  const owned = cancellations.get(session) ?? new Map();
+  owned.set(plan.id, { app, bookId: plan.bookId, replacementId: plan.replacementId });
+  cancellations.set(session, owned);
   return {
     planId: plan.id,
     bookId: book.id,
@@ -187,15 +196,21 @@ export async function prepareReset(
 }
 
 export function cancelReset(app: AppRuntime, session: Session, planId: string) {
-  const plan = plans.get(app)?.get(planId);
-  if (!plan || plan.token !== session.token || plan.bookId !== session.bookId)
+  const receipt = cancellations.get(session)?.get(planId);
+  if (!receipt || receipt.app !== app || receipt.bookId !== session.bookId)
     fail('RESET_PLAN_EXPIRED', '初始化预览已过期或不属于当前登录');
-  const result = app.bookStore.cancelReplacement({
-    bookId: plan.bookId,
-    replacementId: plan.replacementId,
-  });
-  plan.cancelled = true;
-  return { ok: true as const, ...result };
+  try {
+    const result = app.bookStore.cancelReplacement({
+      bookId: receipt.bookId,
+      replacementId: receipt.replacementId,
+    });
+    return { ok: true as const, ...result };
+  } finally {
+    // Core cancels before removing staging; cleanup failure must not leave execution enabled.
+    const status = app.bookStore.replacementStatus(receipt.replacementId).status;
+    const plan = plans.get(app)?.get(planId);
+    if (plan && (status === 'cancelled' || status === 'expired')) plan.cancelled = true;
+  }
 }
 
 export async function executeReset(
@@ -218,6 +233,8 @@ export async function executeReset(
     cleanupPlans(app);
     fail('RESET_PLAN_EXPIRED', '初始化预览已过期或不属于当前登录');
   }
+  if (app.bookStore.replacementStatus(plan.replacementId).status !== 'prepared')
+    fail('RESET_PLAN_EXPIRED', '初始化预览已过期或已取消，请重新预览');
   if (plan.bookName !== input.confirmBookName)
     fail('RESET_CONFIRM_FAILED', '输入的账套名称与初始化目标不一致', '请准确输入当前账套名称');
   try {
