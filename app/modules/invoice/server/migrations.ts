@@ -37,8 +37,47 @@ CREATE TABLE invoice_period (
 );
 `,
   },
+  {
+    id: '0002_invoice_issue',
+    sql: `
+CREATE TABLE invoice_issue (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  invoice_id INTEGER NOT NULL UNIQUE REFERENCES invoice_document(id),
+  inventory_document_id INTEGER NOT NULL,
+  inventory_revision INTEGER NOT NULL,
+  number TEXT NOT NULL,
+  date TEXT NOT NULL,
+  revision INTEGER NOT NULL DEFAULT 1,
+  input TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
+CREATE TABLE invoice_issue_request (
+  request_key TEXT PRIMARY KEY,
+  payload_hash TEXT NOT NULL,
+  issue_id INTEGER NOT NULL REFERENCES invoice_issue(id),
+  result TEXT NOT NULL
+);
+`,
+  },
 ]);
 export type InvoiceTables = {
+  invoice_issue: {
+    id: Generated<number>;
+    invoice_id: number;
+    inventory_document_id: number;
+    inventory_revision: number;
+    number: string;
+    date: string;
+    revision: Generated<number>;
+    input: string;
+    created_at: string;
+  };
+  invoice_issue_request: {
+    request_key: string;
+    payload_hash: string;
+    issue_id: number;
+    result: string;
+  };
   invoice_batch: { id: Generated<number>; file_name: string; created_at: string };
   invoice_run: {
     id: Generated<number>;

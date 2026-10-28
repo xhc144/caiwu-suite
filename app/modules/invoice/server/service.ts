@@ -17,6 +17,7 @@ import type { CoreServices } from '@caiwu/core/server';
 import {
   InvoiceSchema,
   SettingsSchema,
+  ProcessDraftSchema,
   type Direction,
   type ImportFile,
   type Invoice,
@@ -25,11 +26,29 @@ import {
   type InvoiceInput,
   type PlanInput,
   type Settings,
+  type VoucherRole,
+  type ProcessDraft,
 } from '../shared';
 import type { InvoiceTables } from './migrations';
 import { parseWorkbook } from './import';
 
 const hash = (v: unknown) => createHash('sha256').update(JSON.stringify(v)).digest('hex');
+const draftHash = (d: ProcessDraft) =>
+  hash({
+    direction: d.direction,
+    period: d.period,
+    selected: [...d.selected].sort((a, b) => a - b),
+    values: {
+      date: d.values.date,
+      voucherTypeId: d.values.voucherTypeId,
+      mode: d.values.mode,
+      regenerate: d.values.regenerate ?? false,
+      firstNumber: d.values.firstNumber,
+      allocations: [...(d.values.allocations ?? [])].sort(
+        (a, b) => a.invoiceId - b.invoiceId || a.role.localeCompare(b.role),
+      ),
+    },
+  });
 function problem(
   code: string,
   message: string,
@@ -168,7 +187,12 @@ export function invoiceService(svc: CoreServices) {
     if (r.revision !== revision) problem('STALE', '发票已被其他操作更改，不能覆盖旧版本');
   };
   const checkEditable = async (r: Awaited<ReturnType<typeof load>>) => {
-    if (r.state !== 'draft' || r.group_id != null)
+    const issue = await db
+      .selectFrom('invoice_issue')
+      .select('id')
+      .where('invoice_id', '=', r.id)
+      .executeTakeFirst();
+    if (r.state !== 'draft' || r.group_id != null || issue)
       problem(
         'LOCKED',
         '发票已审核或已后续处理，不能直接修改或删除',
@@ -235,13 +259,11 @@ export function invoiceService(svc: CoreServices) {
         '重新选择统一末级科目',
         '/m/invoice/settings',
       );
-    if (a.currency || a.quantityUnit)
-      problem(
-        'ACCOUNT_MODE',
-        `科目 ${a.code} 启用了外币或数量核算，本版映射暂不支持`,
-        '选择本位币、无数量核算的科目，或等待逐行映射支持',
-        '/m/invoice/settings',
-      );
+    if (
+      a.currency &&
+      !(await svc.reference.currencies()).some((c) => c.code === a.currency && !c.disabled)
+    )
+      problem('FOREIGN', `科目 ${a.code} 的币种不存在或已停用`, '在基础资料中启用币种后重新预览');
     const dimensions: DimensionValues = {};
     const dimensionNames: string[] = [];
     for (const dt of DIMENSION_TYPES) {
@@ -280,6 +302,13 @@ export function invoiceService(svc: CoreServices) {
       accountName: a.fullName,
       dimensions,
       dimensionText: dimensionNames.join('；'),
+      currency: a.currency,
+      quantityUnit: a.quantityUnit,
+      enabledDimensions: DIMENSION_TYPES.filter(
+        (dt) =>
+          a.dimensions.some((d) => d.type === dt.id) ||
+          (dt.id === 'cashflow' && a.cashflowRequired),
+      ).map((dt) => ({ id: dt.id, name: dt.name })),
     };
   };
   const settlementParent = async (cfg: Settings) => {
@@ -411,6 +440,11 @@ export function invoiceService(svc: CoreServices) {
                 .where('id', '=', r.group_id)
                 .executeTakeFirst();
         const v = g?.voucher_id == null ? null : await svc.vouchers.get(g.voucher_id);
+        const issue = await db
+          .selectFrom('invoice_issue')
+          .selectAll()
+          .where('invoice_id', '=', r.id)
+          .executeTakeFirst();
         out.push({
           ...d,
           id: r.id,
@@ -422,6 +456,9 @@ export function invoiceService(svc: CoreServices) {
           voucherId: v?.id ?? null,
           voucherNo: v?.displayNo ?? null,
           voucherStatus: v ? VOUCHER_STATUS_LABELS[v.status] : null,
+          issueId: issue?.id ?? null,
+          inventoryDocumentId: issue?.inventory_document_id ?? null,
+          issueNumber: issue?.number ?? null,
         });
       }
       return out;
@@ -532,7 +569,13 @@ export function invoiceService(svc: CoreServices) {
         const t = invoiceService(tsvc);
         const rows = await t.selected(selection);
         for (const { r } of rows) {
-          if (r.group_id != null || r.state === 'generated')
+          const issue = await tsvc.db
+            .withTables<InvoiceTables>()
+            .selectFrom('invoice_issue')
+            .select('id')
+            .where('invoice_id', '=', r.id)
+            .executeTakeFirst();
+          if (r.group_id != null || r.state === 'generated' || r.state === 'issued' || issue)
             problem('LOCKED', '已后续处理，不能更改发票审核状态');
           if (r.state === to) problem('STATE', '审核状态已变化，请刷新');
           await tsvc.db
@@ -669,6 +712,60 @@ export function invoiceService(svc: CoreServices) {
       return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
     },
     settings,
+    async voucherFields(selection: Selection) {
+      const rows = await selected(selection);
+      const cfg = await settings(rows[0]!.d.direction);
+      if (!cfg) problem('SETTINGS', '尚未设置发票映射', '请先配置科目映射', '/m/invoice/settings');
+      if (rows.some(({ d }) => d.direction !== cfg.direction))
+        problem('PERIOD', '一次制证只能选择同方向发票');
+      const settlements = await settlementPlan(
+        cfg,
+        rows.map(({ d }) => d),
+      );
+      const fields = [];
+      for (const { r, d } of rows) {
+        const roles = [
+          ['business', d.amount],
+          [
+            cfg.direction === 'input' && cfg.inputTaxTreatment === 'cost' ? 'nonDeductible' : 'tax',
+            d.tax,
+          ],
+          ['settlement', d.total],
+        ] as [VoucherRole, number][];
+        for (const [role, amount] of roles) {
+          const map =
+            role === 'settlement'
+              ? settlements.maps.get(
+                  cfg.settlementMode === 'unified'
+                    ? ''
+                    : cfg.direction === 'input'
+                      ? d.sellerName
+                      : d.buyerName,
+                )!
+              : await validateMapping(cfg[role]);
+          if (!map.currency && !map.quantityUnit && !map.enabledDimensions.length) continue;
+          const exchangeRate = map.currency
+            ? await svc.reference.exchangeRate(map.currency, r.period)
+            : null;
+          const quantity =
+            map.quantityUnit &&
+            d.lines.length &&
+            d.lines.every((l) => l.unit === map.quantityUnit && l.quantity != null)
+              ? qtyFromE6(safeSum(d.lines.map((l) => qtyToE6(l.quantity!))))
+              : null;
+          fields.push({
+            invoiceId: r.id,
+            number: d.number,
+            role,
+            amount,
+            ...map,
+            exchangeRate,
+            quantity,
+          });
+        }
+      }
+      return fields;
+    },
     async saveSettings(raw: Settings) {
       return svc.tx(async (tsvc) => {
         const t = invoiceService(tsvc);
@@ -714,15 +811,35 @@ export function invoiceService(svc: CoreServices) {
         problem('PERIOD', '一次制证只能选择同方向、同归属月份的发票');
       if (
         rows.some(
-          ({ r, d }) => r.group_id != null || r.state !== 'audited' || d.invoiceStatus !== 'normal',
+          ({ r, d }) =>
+            (r.group_id != null
+              ? !input.regenerate || r.state !== 'generated'
+              : r.state !== 'audited' && r.state !== 'issued') || d.invoiceStatus !== 'normal',
         )
       )
         problem(
           'STATE',
           '只能对已审核、未制证的正常发票生成凭证',
-          '先审核发票；已制证发票请查看来源凭证',
+          '先审核发票；已转出库的销项票可在此生成收入凭证，已制证发票请查看来源凭证',
           '/m/invoice/process',
         );
+      for (const { r, d } of rows) {
+        const issue = await db
+          .selectFrom('invoice_issue')
+          .select('id')
+          .where('invoice_id', '=', r.id)
+          .executeTakeFirst();
+        if (
+          (r.state === 'issued' && (!issue || d.direction !== 'output')) ||
+          (issue && (d.direction !== 'output' || r.state === 'audited'))
+        )
+          problem(
+            'SOURCE',
+            '发票状态与出库来源关联不一致，不能生成收入凭证',
+            '核对发票与原出库单，不能用制证覆盖不完整的来源关联',
+            '/m/invoice/issue',
+          );
+      }
       const cfg = await settings(direction);
       if (!cfg)
         problem(
@@ -731,7 +848,73 @@ export function invoiceService(svc: CoreServices) {
           '先配置纳税人口径、税额处理和末级科目',
           '/m/invoice/settings',
         );
-      await svc.periods.assertOpen(periodOfDate(input.date), '生成发票凭证');
+      await svc.periods.assertWritable({
+        period: periodOfDate(input.date),
+        mode: 'business',
+        action: '生成发票凭证',
+      });
+      const replacements: {
+        groupId: number;
+        voucherId: number;
+        displayNo: string;
+        revision: number;
+        members: { id: number; revision: number }[];
+      }[] = [];
+      for (const groupId of [
+        ...new Set(rows.map(({ r }) => r.group_id).filter((id): id is number => id != null)),
+      ].sort((a, b) => a - b)) {
+        const group = await db
+          .selectFrom('invoice_group')
+          .selectAll()
+          .where('id', '=', groupId)
+          .executeTakeFirst();
+        const members = await db
+          .selectFrom('invoice_document')
+          .select(['id', 'revision'])
+          .where('group_id', '=', groupId)
+          .orderBy('id')
+          .execute();
+        if (!group || group.revoked || group.voucher_id == null)
+          problem('SOURCE', '原凭证批次已撤销或关联不完整，请刷新后核对');
+        if (members.some((m) => !rows.some(({ r }) => r.id === m.id)))
+          problem(
+            'GROUP_SELECTION',
+            '汇总凭证必须选择其全部来源发票才能重新生成',
+            '补选同一来源凭证的全部发票后重新预览',
+          );
+        const voucher = await svc.vouchers.get(group.voucher_id);
+        if (
+          !voucher ||
+          voucher.source?.module !== 'invoice' ||
+          voucher.source.type !== 'generation' ||
+          voucher.source.id !== String(groupId)
+        )
+          problem('SOURCE', '原凭证来源与发票批次不一致，不能重新生成');
+        if (voucher.status !== 'pending' && voucher.status !== 'draft')
+          problem(
+            'LOCKED',
+            `凭证 ${voucher.displayNo} 已审核或过账，不能重新生成`,
+            '先反过账并取消审核，重新选择全部来源发票',
+          );
+        replacements.push({
+          groupId,
+          voucherId: voucher.id,
+          displayNo: voucher.displayNo,
+          revision: voucher.revision,
+          members,
+        });
+      }
+      const deletionPlan = replacements.length
+        ? await svc.vouchers.previewDelete(
+            replacements.map((r) => r.voucherId),
+            input.deletionPlan?.expiresAt,
+          )
+        : null;
+      const policy = await svc.voucherPolicy.get();
+      if (policy.numbering === 'manual' && input.firstNumber == null)
+        problem('NUMBER', '账套采用手工编号，请填写起始凭证号', '核对凭证字和已有编号后重新预览');
+      if (policy.numbering === 'automatic' && input.firstNumber != null)
+        problem('NUMBER', '账套采用自动编号，无需填写起始凭证号', '清空起始凭证号后重新预览');
       const type = (await svc.reference.voucherTypes()).find(
         (v) => v.id === input.voucherTypeId && !v.disabled,
       );
@@ -743,13 +926,22 @@ export function invoiceService(svc: CoreServices) {
         cfg,
         rows.map(({ d }) => d),
       );
-      const groups = (input.mode === 'monthly' ? [rows] : rows.map((r) => [r])).map((group) => {
+      const allocations = input.allocations ?? [];
+      const allocationKeys = allocations.map((a) => `${a.invoiceId}:${a.role}`);
+      if (
+        new Set(allocationKeys).size !== allocations.length ||
+        allocations.some((a) => !rows.some(({ r }) => r.id === a.invoiceId))
+      )
+        problem('ALLOCATION', '逐票核算项重复或包含未选择发票', '重新选择发票并填写核算项');
+      const usedAllocations = new Set<string>();
+      const groups = [];
+      for (const group of input.mode === 'monthly' ? [rows] : rows.map((r) => [r])) {
         const lines: (VoucherLineInput & {
           accountCode: string;
           accountName: string;
           dimensionText: string;
         })[] = [];
-        for (const { d } of group) {
+        for (const { r, d } of group) {
           const settlement = settlements.maps.get(
             cfg.settlementMode === 'unified'
               ? ''
@@ -757,8 +949,95 @@ export function invoiceService(svc: CoreServices) {
                 ? d.sellerName
                 : d.buyerName,
           )!;
-          const add = (map: typeof business, amount: number, side: 'debit' | 'credit') => {
-            if (amount !== 0)
+          const add = async (
+            base: typeof business,
+            amount: number,
+            side: 'debit' | 'credit',
+            role: VoucherRole,
+          ) => {
+            const allocation = allocations.find((a) => a.invoiceId === r.id && a.role === role);
+            if (allocation) usedAllocations.add(`${r.id}:${role}`);
+            const map = allocation?.dimensions
+              ? await validateMapping(
+                  { accountId: base.accountId, dimensions: allocation.dimensions },
+                  base.accountId === 0
+                    ? settlements.newAccounts.find((a) => a.code === base.accountCode)
+                    : undefined,
+                )
+              : base;
+            let exchangeRate: string | null = null,
+              fcAmount: number | null = null,
+              quantity: string | null = null,
+              unitPrice: string | null = null;
+            if (map.currency) {
+              exchangeRate = allocation?.exchangeRate ?? null;
+              fcAmount = allocation?.fcAmount ?? null;
+              if (
+                exchangeRate == null ||
+                fcAmount == null ||
+                !new Decimal(exchangeRate).isPositive()
+              )
+                problem(
+                  'FOREIGN',
+                  `发票 ${d.number} 科目 ${map.accountCode} 需要填写正汇率和外币金额`,
+                  '在逐票核算项中填写后重新预览',
+                );
+              if (
+                !new Decimal(fcAmount)
+                  .mul(exchangeRate)
+                  .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+                  .eq(amount)
+              )
+                problem(
+                  'FOREIGN',
+                  `发票 ${d.number} 科目 ${map.accountCode} 的外币金额乘汇率与本币金额不符`,
+                  '核对票面原币金额与汇率；本币按四舍五入到分校验',
+                );
+              exchangeRate = normalizeDecimal(exchangeRate);
+            } else if (allocation?.fcAmount != null || allocation?.exchangeRate != null)
+              problem('FOREIGN', `科目 ${map.accountCode} 未启用外币核算，不能填写外币金额或汇率`);
+            if (map.quantityUnit) {
+              quantity =
+                allocation?.quantity ??
+                (d.lines.length &&
+                d.lines.every((l) => l.unit === map.quantityUnit && l.quantity != null)
+                  ? qtyFromE6(safeSum(d.lines.map((l) => qtyToE6(l.quantity!))))
+                  : null);
+              if (quantity == null)
+                problem(
+                  'QUANTITY',
+                  `发票 ${d.number} 科目 ${map.accountCode} 需要填写数量（${map.quantityUnit}）`,
+                  '核对单位后在逐票核算项中填写数量',
+                );
+              if (new Decimal(quantity).decimalPlaces() > 6)
+                problem('QUANTITY', '制证数量最多六位小数');
+              if (!Number.isSafeInteger(new Decimal(quantity).mul(1_000_000).toNumber()))
+                problem('QUANTITY', '制证数量超出可保存范围', '缩小数量并核对小数点');
+              quantity = qtyFromE6(qtyToE6(quantity));
+              unitPrice =
+                allocation?.unitPrice ??
+                (new Decimal(quantity).isZero()
+                  ? null
+                  : new Decimal(amount).div(100).div(quantity).toDecimalPlaces(12).toString());
+              if (unitPrice != null) unitPrice = normalizeDecimal(unitPrice);
+              if (unitPrice != null && new Decimal(unitPrice).isNegative())
+                problem('PRICE', '制证单价不能为负数');
+              if (
+                unitPrice != null &&
+                !new Decimal(quantity)
+                  .mul(unitPrice)
+                  .mul(100)
+                  .toDecimalPlaces(0, Decimal.ROUND_HALF_UP)
+                  .eq(amount)
+              )
+                problem(
+                  'PRICE',
+                  `发票 ${d.number} 科目 ${map.accountCode} 的数量乘单价与本币金额不符`,
+                  '核对金额、数量符号和本币单价',
+                );
+            } else if (allocation?.quantity != null || allocation?.unitPrice != null)
+              problem('QUANTITY', `科目 ${map.accountCode} 未启用数量核算，不能填写数量或单价`);
+            if (amount !== 0 || fcAmount || (quantity != null && qtyToE6(quantity) !== 0))
               lines.push({
                 summary: `${direction === 'input' ? '购入' : '销售'} ${d.number}`.slice(0, 200),
                 accountId: map.accountId,
@@ -766,25 +1045,72 @@ export function invoiceService(svc: CoreServices) {
                 accountName: map.accountName,
                 dimensionText: map.dimensionText,
                 dimensions: map.dimensions,
+                currency: map.currency,
+                exchangeRate,
+                fcAmount,
+                quantity,
+                unitPrice,
+                entrySide: side,
                 [side]: amount,
               });
           };
           if (direction === 'input') {
-            add(business, d.amount, 'debit');
-            add(cfg.inputTaxTreatment === 'separate' ? tax : nonDeductible, d.tax, 'debit');
-            add(settlement, d.total, 'credit');
+            await add(business, d.amount, 'debit', 'business');
+            await add(
+              cfg.inputTaxTreatment === 'separate' ? tax : nonDeductible,
+              d.tax,
+              'debit',
+              cfg.inputTaxTreatment === 'separate' ? 'tax' : 'nonDeductible',
+            );
+            await add(settlement, d.total, 'credit', 'settlement');
           } else {
-            add(settlement, d.total, 'debit');
-            add(business, d.amount, 'credit');
-            add(tax, d.tax, 'credit');
+            await add(settlement, d.total, 'debit', 'settlement');
+            await add(business, d.amount, 'credit', 'business');
+            await add(tax, d.tax, 'credit', 'tax');
           }
         }
         const debit = safeSum(lines.map((l) => l.debit ?? 0)),
           credit = safeSum(lines.map((l) => l.credit ?? 0));
         if (lines.length < 2 || debit !== credit)
           problem('BALANCE', '制证分录为空或借贷不平', '核对金额、税额及科目映射');
-        return { ids: group.map(({ r }) => r.id), lines, debit, credit };
-      });
+        const number: number | undefined =
+          input.firstNumber == null ? undefined : input.firstNumber + groups.length;
+        if (number != null && !Number.isSafeInteger(number))
+          problem('NUMBER', '本批凭证编号超出可保存范围', '减小起始号或缩小所选范围');
+        groups.push({
+          ids: group.map(({ r }) => r.id),
+          lines,
+          debit,
+          credit,
+          number,
+        });
+      }
+      if (usedAllocations.size !== allocations.length)
+        problem(
+          'ALLOCATION',
+          '逐票核算项包含本次未使用的科目用途',
+          '清除未使用的税额处理用途后重新预览',
+        );
+      if (input.firstNumber != null) {
+        const existing = await svc.vouchers.list({
+          periodFrom: periodOfDate(input.date),
+          periodTo: periodOfDate(input.date),
+          voucherTypeId: input.voucherTypeId,
+          includeVoided: true,
+          limit: 10000,
+        });
+        if (existing.total > 10000) problem('NUMBER', '当前月份凭证过多，无法完整核对手工编号');
+        if (
+          groups.some((g) =>
+            existing.items.some(
+              (v) =>
+                (deletionPlan?.impacts.find((i) => i.id === v.id)?.number ?? v.number) ===
+                  g.number && !replacements.some((r) => r.voucherId === v.id),
+            ),
+          )
+        )
+          problem('NUMBER', '起始凭证号范围已有凭证，请换用未占用的编号');
+      }
       const plan = {
         direction,
         period,
@@ -795,11 +1121,21 @@ export function invoiceService(svc: CoreServices) {
         groups,
         selection: input.selection,
         newAccounts: settlements.newAccounts,
+        allocations,
+        regenerate: input.regenerate ?? false,
+        firstNumber: input.firstNumber,
+        replacements,
+        deletionPlan,
       };
       return { ...plan, fingerprint: hash(plan) };
     },
     async generate(
-      input: PlanInput & { fingerprint: string; requestId: string; newAccountsConfirmed?: boolean },
+      input: PlanInput & {
+        fingerprint: string;
+        requestId: string;
+        newAccountsConfirmed?: boolean;
+        regenerateConfirmed?: boolean;
+      },
     ) {
       return svc.tx(async (tsvc) => {
         const t = invoiceService(tsvc);
@@ -817,6 +1153,23 @@ export function invoiceService(svc: CoreServices) {
         const plan = await t.previewVoucher(input);
         if (plan.fingerprint !== input.fingerprint)
           problem('STALE', '预览后发票或映射已改变，不能使用旧预览', '重新预览分录并确认');
+        if (plan.replacements.length) {
+          if (!input.regenerateConfirmed || !input.deletionPlan || !plan.deletionPlan)
+            problem(
+              'CONFIRM',
+              '重新生成须明确确认删除原凭证及编号影响',
+              '核对原凭证和编号变化后确认重新生成',
+            );
+          if (input.deletionPlan.fingerprint !== plan.deletionPlan.fingerprint)
+            problem('STALE', '原凭证或编号影响已变化，请重新预览');
+          await tsvc.vouchers.deleteBatch(plan.deletionPlan, true);
+          for (const replacement of plan.replacements)
+            await tdb
+              .updateTable('invoice_group')
+              .set({ revoked: 1, voucher_id: null })
+              .where('id', '=', replacement.groupId)
+              .execute();
+        }
         const createdAccounts = new Map<string, number>();
         if (plan.newAccounts.length) {
           tsvc.permissions.require('invoice.account');
@@ -839,6 +1192,8 @@ export function invoiceService(svc: CoreServices) {
                 cashflowRequired: a.cashflowRequired,
                 isPartner: a.isPartner,
                 dimensions: a.dimensions,
+                currency: a.currency,
+                quantityUnit: a.quantityUnit,
               },
               scheme,
             );
@@ -868,13 +1223,18 @@ export function invoiceService(svc: CoreServices) {
               run_id: run.id,
               voucher_id: null,
               revoked: 0,
-              data: JSON.stringify({ ids: g.ids, settings: plan.settings }),
+              data: JSON.stringify({
+                ids: g.ids,
+                settings: plan.settings,
+                allocations: plan.allocations.filter((a) => g.ids.includes(a.invoiceId)),
+              }),
             })
             .returning('id')
             .executeTakeFirstOrThrow();
           const v = await tsvc.vouchers.create({
             date: plan.date,
             voucherTypeId: plan.voucherTypeId,
+            number: g.number,
             lines: g.lines.map((l) => ({
               ...l,
               accountId: createdAccounts.get(l.accountCode) ?? l.accountId,
@@ -898,11 +1258,31 @@ export function invoiceService(svc: CoreServices) {
               .execute();
         }
         await tsvc.log.write({
-          action: 'invoice.generate',
+          action: plan.replacements.length ? 'invoice.regenerate' : 'invoice.generate',
           summary: `${plan.groups.length} 张来源凭证，发票归属 ${plan.period}，凭证日期 ${plan.date}`,
           targetType: 'invoice_run',
           targetId: run.id,
         });
+        const draftKey = `processDraft.${tsvc.user.id}`;
+        const savedDraft = ProcessDraftSchema.safeParse(await tsvc.settings.get(draftKey, null));
+        if (
+          savedDraft.success &&
+          draftHash(savedDraft.data) ===
+            draftHash({
+              direction: plan.direction,
+              period: plan.period,
+              selected: plan.selection.map((s) => s.id),
+              values: {
+                date: plan.date,
+                voucherTypeId: plan.voucherTypeId,
+                mode: plan.mode,
+                regenerate: plan.regenerate,
+                firstNumber: plan.firstNumber,
+                allocations: plan.allocations,
+              },
+            })
+        )
+          await tsvc.settings.set(draftKey, null);
         return tdb.selectFrom('invoice_group').selectAll().where('run_id', '=', run.id).execute();
       });
     },
@@ -949,11 +1329,18 @@ export function invoiceService(svc: CoreServices) {
           .set({ voucher_id: null, revoked: 1 })
           .where('id', '=', g.id)
           .execute();
-        await tdb
-          .updateTable('invoice_document')
-          .set((eb) => ({ group_id: null, state: 'audited', revision: eb('revision', '+', 1) }))
-          .where('group_id', '=', g.id)
-          .execute();
+        for (const r of docs) {
+          const issue = await tdb
+            .selectFrom('invoice_issue')
+            .select('id')
+            .where('invoice_id', '=', r.id)
+            .executeTakeFirst();
+          await tdb
+            .updateTable('invoice_document')
+            .set({ group_id: null, state: issue ? 'issued' : 'audited', revision: r.revision + 1 })
+            .where('id', '=', r.id)
+            .execute();
+        }
         await tsvc.log.write({
           action: 'invoice.revoke',
           summary: `整体撤销发票凭证 ${v.displayNo}`,
