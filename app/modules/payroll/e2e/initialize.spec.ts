@@ -3,6 +3,93 @@ import { callApi, loginWithNewBook } from '@caiwu/testkit/e2e';
 import { DEFAULT_FIELDS, type Batch, type Category, type Employee } from '../shared';
 
 test.describe.configure({ retries: 0 });
+
+test('w_xt_kgzb_gz 保留初始化提示前期待计算，完成后重新确认并继续后期累计', async ({
+  page,
+  request,
+}) => {
+  const { token } = await loginWithNewBook(page, request, { product: 'minfei' });
+  const category = await callApi<Category>(
+    request,
+    'm.payroll.saveCategory',
+    { name: '合成初始化前期待计算', fields: DEFAULT_FIELDS },
+    { token },
+  );
+  const departments = await callApi<{ id: number }[]>(request, 'm.payroll.departments', undefined, {
+    token,
+    method: 'GET',
+  });
+  const employee = await callApi<Employee>(
+    request,
+    'm.payroll.saveEmployee',
+    {
+      code: 'INIPENDING001',
+      name: '合成前期待计算人员',
+      departmentId: departments[0]!.id,
+      startDate: '2026-01-01',
+    },
+    { token },
+  );
+  await callApi(request, 'm.payroll.confirmTax', undefined, { token });
+  const batches: Batch[] = [];
+  for (const period of [202601, 202602])
+    batches.push(
+      await callApi<Batch>(
+        request,
+        'm.payroll.saveBatch',
+        {
+          period,
+          categoryId: category.id,
+          categoryRevision: category.revision,
+          rows: [
+            { employeeId: employee.id, values: { base: 1_000_000 }, tax: { confirmed: true } },
+          ],
+        },
+        { token },
+      ),
+    );
+  const read = (id: number) =>
+    callApi<Batch>(request, 'm.payroll.batch', { id }, { token, method: 'GET' });
+  await page.goto('/m/payroll/initialize');
+  await page.getByLabel('工资新启用期间', { exact: true }).click();
+  await page.locator('.ant-select-item-option').filter({ hasText: '2026年02月' }).click();
+  await page.getByRole('checkbox', { name: '保留原启用期间及以后的全部工资和档案' }).check();
+  await page.getByLabel('当前管理员完整密码', { exact: true }).fill('admin');
+  await page.getByRole('button', { name: '预览初始化影响', exact: true }).click();
+  await expect(page.getByText(/保留数据中有早于新启用期间的未计算工资批次/).first()).toBeVisible();
+  const modal = page.getByRole('dialog', { name: '确认工资模块初始化', exact: true });
+  await expect(modal).not.toBeVisible();
+  expect(await read(batches[0]!.id)).toEqual(batches[0]);
+  expect(await read(batches[1]!.id)).toEqual(batches[1]);
+  expect(
+    await callApi(request, 'm.payroll.transferBackups', undefined, { token, method: 'GET' }),
+  ).toEqual([]);
+
+  const january = await callApi<Batch>(
+    request,
+    'm.payroll.calculate',
+    { id: batches[0]!.id, revision: batches[0]!.revision },
+    { token },
+  );
+  await page.getByRole('button', { name: '预览初始化影响', exact: true }).click();
+  await expect(modal.getByText('现有 2 批，保留 2 批，删除 0 批', { exact: true })).toBeVisible();
+  await modal.getByLabel('初始化确认文字', { exact: true }).fill('初始化工资');
+  await modal.getByRole('button', { name: '确认初始化工资', exact: true }).click();
+  await expect(modal).not.toBeVisible();
+  await expect(page.getByText(/工资模块初始化完成，启用期间 202602/)).toBeVisible();
+  const february = await callApi<Batch>(
+    request,
+    'm.payroll.calculate',
+    { id: batches[1]!.id, revision: batches[1]!.revision },
+    { token },
+  );
+  expect(february.snapshots[0]!.detail).toMatchObject({
+    income: 2_000_000,
+    allocatedTax: january.snapshots[0]!.taxAmount,
+  });
+  expect(await read(january.id)).toEqual(january);
+});
+
 test('w_xt_kgzb_gz 密码与取消保护、初始化前备份、清空后界面恢复真实工资', async ({
   page,
   request,

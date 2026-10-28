@@ -14,7 +14,7 @@ beforeEach(async () => {
   app = await createTestApp({ modules: [payroll], product: 'minfei' });
 });
 afterEach(async () => app.close());
-async function setup() {
+async function setup(calculated = true) {
   const api = app.call(payroll);
   const department = (await api.departments())[0]!;
   const employee = await api.saveEmployee({
@@ -51,7 +51,9 @@ async function setup() {
       },
     ],
   });
-  const batch = await api.calculate({ id: saved.id, revision: saved.revision });
+  const batch = calculated
+    ? await api.calculate({ id: saved.id, revision: saved.revision })
+    : saved;
   const svc = app.svcFor('payroll');
   return { api, employee, category, batch, svc };
 }
@@ -61,6 +63,155 @@ const options = {
   keepArchives: false,
   password: 'admin',
 };
+
+it('w_xt_kgzb_gz 前后两期待计算时拒绝保留初始化，原日期和数据不变，完成前期后可继续计算和更正', async () => {
+  const { api, category, employee, batch, svc } = await setup(false);
+  await svc.settings.set('initializedStartPeriod', 202601);
+  const february = await api.saveBatch({
+    period: 202602,
+    categoryId: category.id,
+    categoryRevision: category.revision,
+    rows: [{ employeeId: employee.id, values: { base: 1_000_000 }, tax: { confirmed: true } }],
+  });
+  await expect(api.calculate({ id: february.id, revision: february.revision })).rejects.toThrow(
+    '存在较早的未计算批次',
+  );
+  const retain = { ...options, preserveData: true };
+  const before = await capturePayrollState(svc);
+  const raw = app.runtime.bookStore.open(app.book.id).raw;
+  const logs = raw.prepare('SELECT * FROM operation_log ORDER BY id').all();
+  await expect(api.previewInitialization(retain)).rejects.toMatchObject({
+    cause: {
+      data: {
+        code: 'PAYROLL_INITIALIZE_PENDING',
+        actions: [{ label: '打开相关工资批次', to: `/m/payroll?id=${batch.id}` }],
+      },
+    },
+  });
+  expect(await svc.settings.get('initializedStartPeriod', 0)).toBe(202601);
+  expect(await capturePayrollState(svc)).toEqual(before);
+  expect(await api.transferBackups()).toEqual([]);
+  expect(raw.prepare('SELECT * FROM operation_log ORDER BY id').all()).toEqual(logs);
+
+  const january = await api.calculate({ id: batch.id, revision: batch.revision });
+  const plan = await api.previewInitialization(retain);
+  expect(plan.retained).toEqual({ categories: 1, employees: 1, batches: 2, rows: 2 });
+  await api.applyInitialization({
+    ...retain,
+    hash: plan.hash,
+    expiresAt: plan.expiresAt,
+    confirmed: true,
+    confirmation: '初始化工资',
+  });
+  expect(await svc.settings.get('initializedStartPeriod', 0)).toBe(202602);
+  expect(await api.batch({ id: january.id })).toEqual(january);
+  expect(await api.batch({ id: february.id })).toEqual(february);
+  const calculated = await api.calculate({ id: february.id, revision: february.revision });
+  expect(calculated.snapshots[0]!.detail).toMatchObject({
+    income: 2_000_000,
+    allocatedTax: january.snapshots[0]!.taxAmount,
+  });
+  const correction = {
+    id: calculated.id,
+    revision: calculated.revision,
+    reason: '合成启用后金额更正',
+    rows: calculated.rows.map((row) => ({ ...row, values: { ...row.values, base: 1_200_000 } })),
+  };
+  const correctionPlan = await api.previewCorrection(correction);
+  const corrected = await api.applyCorrection({
+    ...correction,
+    ...correctionPlan,
+    confirmed: true,
+  });
+  expect(corrected.snapshots[0]!.detail).toMatchObject({
+    income: 2_200_000,
+    allocatedTax: january.snapshots[0]!.taxAmount,
+  });
+  expect(await api.batch({ id: january.id })).toEqual(january);
+  await expect(
+    api.previewCorrection({
+      id: january.id,
+      revision: january.revision,
+      reason: '合成启用前历史保护',
+      rows: january.rows,
+    }),
+  ).rejects.toThrow('早于启用期间');
+});
+
+it('w_xt_kgzb_gz 预览后前期变成待计算，确认事务再次拒绝且不改数据、日期、日志或副本', async () => {
+  const { api, category, batch, svc } = await setup();
+  await svc.settings.set('initializedStartPeriod', 202601);
+  const retain = { ...options, preserveData: true };
+  const plan = await api.previewInitialization(retain);
+  await api.saveBatch({ ...batch, categoryRevision: category.revision });
+  const before = await capturePayrollState(svc);
+  const raw = app.runtime.bookStore.open(app.book.id).raw;
+  const logs = raw.prepare('SELECT * FROM operation_log ORDER BY id').all();
+  await expect(
+    api.applyInitialization({
+      ...retain,
+      hash: plan.hash,
+      expiresAt: plan.expiresAt,
+      confirmed: true,
+      confirmation: '初始化工资',
+    }),
+  ).rejects.toMatchObject({ cause: { data: { code: 'PAYROLL_INITIALIZE_PENDING' } } });
+  expect(await svc.settings.get('initializedStartPeriod', 0)).toBe(202601);
+  expect(await capturePayrollState(svc)).toEqual(before);
+  expect(await api.transferBackups()).toEqual([]);
+  expect(raw.prepare('SELECT * FROM operation_log ORDER BY id').all()).toEqual(logs);
+});
+
+it.each([202602, 202603])(
+  'w_xt_kgzb_gz 已计算历史可保留，%s待计算不早于新启用期间时仍可继续业务',
+  async (period) => {
+    const { api, category, employee, batch } = await setup();
+    const pending = await api.saveBatch({
+      period,
+      categoryId: category.id,
+      categoryRevision: category.revision,
+      rows: [{ employeeId: employee.id, values: { base: 1_000_000 }, tax: { confirmed: true } }],
+    });
+    const retain = { ...options, preserveData: true };
+    const plan = await api.previewInitialization(retain);
+    await api.applyInitialization({
+      ...retain,
+      hash: plan.hash,
+      expiresAt: plan.expiresAt,
+      confirmed: true,
+      confirmation: '初始化工资',
+    });
+    const calculated = await api.calculate({ id: pending.id, revision: pending.revision });
+    expect(calculated.snapshots[0]!.detail).toMatchObject({
+      income: 2_000_000,
+      allocatedTax: batch.snapshots[0]!.taxAmount,
+    });
+    expect(await api.batch({ id: batch.id })).toEqual(batch);
+  },
+);
+
+it('w_xt_kgzb_gz 不遗漏其他类别的前期待计算工资，即使同月另有已计算历史', async () => {
+  const { api, employee, svc } = await setup();
+  const category = await api.saveCategory({ name: '合成另一类别', fields: DEFAULT_FIELDS });
+  const pending = await api.saveBatch({
+    period: 202601,
+    categoryId: category.id,
+    categoryRevision: category.revision,
+    rows: [{ employeeId: employee.id, values: { base: 200_000 }, tax: { confirmed: true } }],
+  });
+  const before = await capturePayrollState(svc);
+  await expect(api.previewInitialization({ ...options, preserveData: true })).rejects.toMatchObject(
+    {
+      cause: {
+        data: {
+          code: 'PAYROLL_INITIALIZE_PENDING',
+          actions: [{ label: '打开相关工资批次', to: `/m/payroll?id=${pending.id}` }],
+        },
+      },
+    },
+  );
+  expect(await capturePayrollState(svc)).toEqual(before);
+});
 
 it('w_xt_kgzb_gz 全清前真实回装备份，清后可恢复全部工资/数量/设置，不碰其他模块及核心档案', async () => {
   const { api, batch, svc } = await setup();

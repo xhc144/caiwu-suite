@@ -69,6 +69,17 @@ async function planInitialization(
     book.startPeriod,
   );
   const retained = retainedState(state, options);
+  // 启用前工资将只读，须先完成计算，避免保留的待计算批次锁死后续累计。
+  const pending = retained.batches
+    .filter((batch) => batch.period < options.startPeriod && !batch.calculated)
+    .sort((a, b) => a.period - b.period || a.id - b.id)[0];
+  if (pending)
+    fail(
+      'INITIALIZE_PENDING',
+      `保留数据中有早于新启用期间的未计算工资批次（${pending.period}，批次 ${pending.id}）`,
+      '先完成该批次计算，或将新启用期间调整至该批次及以前；核对历史累计后重新预览',
+      `/m/payroll?id=${pending.id}`,
+    );
   const hash = createHash('sha256')
     .update(JSON.stringify({ bookId: book.id, userId: svc.user.id, options, state, expiresAt }))
     .digest('hex');

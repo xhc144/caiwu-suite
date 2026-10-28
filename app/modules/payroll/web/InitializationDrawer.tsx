@@ -114,7 +114,9 @@ export default function InitializationDrawer() {
               >
                 保留原启用期间及以后的全部工资和档案
               </Checkbox>
-              <p>保留原工资历史及累计计税来源；新启用期间限制后续录入，不删除此前的已保留历史。</p>
+              <p>
+                保留原工资历史及累计计税来源；新启用期间以前的批次须先完成计算，此后仅供查询和累计。
+              </p>
               <Checkbox
                 checked={keepArchives || preserveData}
                 disabled={locked || preserveData}
