@@ -10,6 +10,12 @@ export default defineManifest({
     { id: 'balances.settings.edit', name: '保存余额表展示设置' },
   ],
   menu: [
+    {
+      group: 'ledger',
+      title: '现金流量试算平衡表',
+      path: '/cashflow',
+      permission: 'balances.view',
+    },
     { group: 'ledger', title: '汇总余额表', path: '/', permission: 'balances.view' },
     { group: 'ledger', title: '外币余额表', path: '/foreign', permission: 'balances.view' },
     { group: 'ledger', title: '数量余额表', path: '/quantity', permission: 'balances.view' },

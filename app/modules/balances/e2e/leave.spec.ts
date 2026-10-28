@@ -20,6 +20,10 @@ for (const [path, title] of [
     await expect(tab).toHaveAttribute('aria-selected', 'true');
     await expect(drawer).toBeVisible();
     await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
+    const leavingGuard = page.getByRole('dialog', { name: '有未保存内容', exact: true });
+    await expect(leavingGuard).toContainText(`${title}展示设置`);
+    await leavingGuard.getByRole('button', { name: /取\s*消/ }).click();
+    await expect(drawer.getByLabel('默认显示级次')).toHaveValue('-1');
     await drawer.getByRole('button', { name: '取消', exact: true }).click();
     const abandon = page.getByRole('dialog', { name: '展示设置尚未保存', exact: true });
     await expect(abandon).toBeVisible();

@@ -27,12 +27,16 @@ describe('w_zw_slye/w_zw_fhslye 数量与辅助数量', () => {
       qtyDebit: '0.000002',
       qtyCredit: '0.5',
       qtyClosing: '2.500003',
+      qtyYtdDebit: '0.000002',
+      qtyYtdCredit: '0.5',
     });
     expect(pieces.quantityTotals).toEqual({
       qtyOpening: '100.000002',
       qtyDebit: '2',
       qtyCredit: '0',
       qtyClosing: '102.000002',
+      qtyYtdDebit: '2',
+      qtyYtdCredit: '0',
     });
     expect(kg.rows.find((r) => r.accountCode === '1403')).toMatchObject({
       qtyOpening: '3.000001',

@@ -20,12 +20,21 @@ import {
   BalanceQuerySchema,
   DEFAULT_COUNTED_STATUSES,
   EntryFilterSchema,
+  EntryPageSchema,
+  CashflowPageSchema,
   UNPOSTED_COUNTED_STATUSES,
   type BalanceQuery,
   type BalanceRow,
   type EntryFilter,
   type EntryRow,
+  type EntryPageQuery,
+  type EntryPage,
   type CashflowSummary,
+  type CashflowTotals,
+  type CashflowPageQuery,
+  type CashflowPage,
+  type CashflowGroupPage,
+  type CashflowDiagnosticPage,
 } from '../../ledger';
 import { formatVoucherNo } from '../../voucher';
 import type { Account } from '../../account';
@@ -146,6 +155,47 @@ function accountMatches(
   return true;
 }
 
+function flowColumns(baseCurrency: string) {
+  const ordinary = sql<boolean>`not (${exchangeCashSql(baseCurrency)})`;
+  const conditions = {
+    cash: sql<boolean>`1`,
+    inflow: sql<boolean>`${ordinary} and l.cashflow_direction = 'inflow'`,
+    outflow: sql<boolean>`${ordinary} and l.cashflow_direction = 'outflow'`,
+    internal: sql<boolean>`${ordinary} and l.cashflow_direction = 'internal'`,
+    exchange: exchangeCashSql(baseCurrency),
+    unallocated: sql<boolean>`${ordinary} and (l.cashflow_direction is null or l.dim_cashflow is null)`,
+  };
+  return [
+    sql<string>`cast(count(*) as text)`.as('rowCount'),
+    sql<string>`cast(coalesce(sum(case when ${conditions.unallocated} then 1 else 0 end), 0) as text)`.as(
+      'unallocatedCount',
+    ),
+    ...Object.entries(conditions).flatMap(([key, condition]) => [
+      sql<string>`cast(coalesce(sum(case when ${condition} then l.debit else 0 end), 0) as text)`.as(
+        `${key}Debit`,
+      ),
+      sql<string>`cast(coalesce(sum(case when ${condition} then l.credit else 0 end), 0) as text)`.as(
+        `${key}Credit`,
+      ),
+    ]),
+  ];
+}
+
+function flowTotals(row: Record<string, unknown>): CashflowTotals {
+  const net = (key: string) =>
+    safeNumber(n(row[`${key}Debit`]) - n(row[`${key}Credit`]), '现金流量金额');
+  return {
+    rowCount: safeNumber(n(row.rowCount), '现金流量分录数'),
+    cashNet: net('cash'),
+    inflow: net('inflow'),
+    outflow: -net('outflow') || 0,
+    internalNet: net('internal'),
+    exchangeEffect: net('exchange'),
+    unallocatedNet: net('unallocated'),
+    unallocatedCount: safeNumber(n(row.unallocatedCount), '未分配现金流量分录数'),
+  };
+}
+
 export function ledgerService(ctx: ServiceContext) {
   const accounts = accountService(ctx);
 
@@ -175,6 +225,196 @@ export function ledgerService(ctx: ServiceContext) {
     return year;
   };
 
+  const assertEntryRange = async (
+    f: ReturnType<typeof EntryFilterSchema.parse>,
+    complete: boolean,
+    label = '现金流量',
+  ) => {
+    if (f.periodFrom > f.periodTo)
+      throw new BusinessError({
+        code: 'PERIOD_RANGE_INVALID',
+        message: '开始期间不能晚于结束期间',
+      });
+    if (complete) {
+      const book = await bookService(ctx).info();
+      if (f.periodFrom < book.startPeriod)
+        throw new BusinessError({
+          code: 'PERIOD_BEFORE_START',
+          message: `${formatPeriod(f.periodFrom)}早于启用期间${formatPeriod(book.startPeriod)}，无法返回完整${label}`,
+        });
+      const present = new Set(
+        (
+          await ctx.db
+            .selectFrom('period')
+            .select('period')
+            .where('period', '>=', f.periodFrom)
+            .where('period', '<=', f.periodTo)
+            .execute()
+        ).map((row) => row.period),
+      );
+      const missing: number[] = [];
+      for (let year = periodYear(f.periodFrom); year <= periodYear(f.periodTo); year++)
+        for (
+          let month = year === periodYear(f.periodFrom) ? periodMonth(f.periodFrom) : 1;
+          month <= (year === periodYear(f.periodTo) ? periodMonth(f.periodTo) : 12);
+          month++
+        ) {
+          const period = makePeriod(year, month);
+          if (!present.has(period)) missing.push(period);
+        }
+      if (missing.length)
+        throw new BusinessError({
+          code: 'LEDGER_PERIOD_MISSING',
+          message: `${label}查询缺少${missing.slice(0, 24).map(formatPeriod).join('、')}等${missing.length}个期间，不能按零计算`,
+          details: { missingPeriods: missing },
+          actions: [{ label: '去期末处理', to: '/m/period-close' }],
+        });
+    }
+  };
+
+  /** 共用过滤器：所有明细、完整合计与分组都先过滤，再截页。 */
+  const entryQuery = async (f: ReturnType<typeof EntryFilterSchema.parse>) => {
+    const statuses = f.includeUnposted ? UNPOSTED_COUNTED_STATUSES : DEFAULT_COUNTED_STATUSES;
+    let q = ctx.db
+      .selectFrom('voucher_line as l')
+      .innerJoin('voucher as v', 'v.id', 'l.voucher_id')
+      .innerJoin('voucher_type as t', 't.id', 'v.voucher_type_id')
+      .innerJoin('account as a', 'a.id', 'l.account_id')
+      .selectAll('l')
+      .select([
+        'v.date',
+        'v.number',
+        'v.status',
+        'v.source_module',
+        'v.source_type',
+        'v.source_id',
+        'v.closing_kind',
+        't.code as type_code',
+        'a.code as account_code',
+      ])
+      .where('l.period', '>=', f.periodFrom)
+      .where('l.period', '<=', f.periodTo)
+      .where('v.status', 'in', [...statuses])
+      .where('v.voided', '=', 0);
+    if (f.excludeClosing) q = q.where('v.closing_kind', 'is', null);
+    else if (f.excludeClosingKinds.length)
+      q = q.where((eb) =>
+        eb.or([
+          eb('v.closing_kind', 'is', null),
+          eb('v.closing_kind', 'not in', f.excludeClosingKinds),
+        ]),
+      );
+    if (f.accountCode) {
+      q = f.includeChildren
+        ? q.where('a.code', 'like', `${f.accountCode}%`)
+        : q.where('a.code', '=', f.accountCode);
+    }
+    if (f.accountIds) q = q.where('l.account_id', 'in', f.accountIds);
+    if (f.quantityUnit) q = q.where('a.quantity_unit', '=', f.quantityUnit);
+    if (f.currency) {
+      const baseCurrency = (await bookService(ctx).info()).baseCurrency;
+      q = q.where((eb) =>
+        f.currency === baseCurrency
+          ? eb.or([eb('l.currency_code', '=', f.currency!), eb('l.currency_code', 'is', null)])
+          : eb('l.currency_code', '=', f.currency!),
+      );
+    }
+    for (const dt of DIMENSION_TYPES) {
+      const v = f.dimensions[dt.id];
+      if (v === null) q = q.where(sql.ref(`l.${dt.column}`), 'is', null);
+      else if (v !== undefined) q = q.where(sql.ref(`l.${dt.column}`), '=', v);
+    }
+    return q;
+  };
+  const mapEntries = (
+    rows: Awaited<ReturnType<Awaited<ReturnType<typeof entryQuery>>['execute']>>,
+  ): EntryRow[] => {
+    return rows.map((r) => ({
+      voucherId: r.voucher_id,
+      lineId: r.id,
+      cashflowDirection: r.cashflow_direction,
+      entrySide: r.entry_side,
+      period: r.period,
+      date: r.date,
+      voucherTypeCode: r.type_code,
+      number: r.number,
+      displayNo: formatVoucherNo(r.type_code, r.number),
+      status: r.status,
+      lineNo: r.line_no,
+      summary: r.summary,
+      accountId: r.account_id,
+      accountCode: r.account_code,
+      dimensions: {
+        project: r.dim_project,
+        partner: r.dim_partner,
+        department: r.dim_department,
+        person: r.dim_person,
+        cashflow: r.dim_cashflow,
+      },
+      currency: r.currency_code,
+      exchangeRate: r.exchange_rate,
+      fcAmount: r.fc_amount,
+      quantity: r.quantity_e6 == null ? null : qtyFromE6(r.quantity_e6),
+      unitPrice: r.unit_price,
+      debit: r.debit,
+      credit: r.credit,
+      refNo: r.ref_no,
+      sourceModule: r.source_module,
+      sourceType: r.source_type,
+      sourceId: r.source_id,
+      closingKind: r.closing_kind,
+    }));
+  };
+
+  const cashQuery = async (f: ReturnType<typeof EntryFilterSchema.parse>) =>
+    (await entryQuery(f)).where((eb) =>
+      eb.or([eb('a.is_cash', '=', 1), eb('a.is_bank', '=', 1), eb('a.cashflow_required', '=', 1)]),
+    );
+  const orderedEntries = (q: Awaited<ReturnType<typeof entryQuery>>) =>
+    q
+      .orderBy('v.date')
+      .orderBy('t.sort')
+      .orderBy('t.id')
+      .orderBy('v.number')
+      .orderBy('l.line_no')
+      .orderBy('l.id');
+
+  const unbalancedQuery = async (
+    f: ReturnType<typeof EntryFilterSchema.parse>,
+    baseCurrency: string,
+  ) => {
+    const candidates = (await cashQuery(f))
+      .clearSelect()
+      .select('l.voucher_id')
+      .where('l.cashflow_direction', '=', 'internal')
+      .where(sql<boolean>`not (${exchangeCashSql(baseCurrency)})`)
+      .distinct();
+    // 外侧过滤仅决定候选凭证，逐凭证诊断必须读取其完整现金内部转移行。
+    return ctx.db
+      .selectFrom('voucher_line as l')
+      .innerJoin('voucher as v', 'v.id', 'l.voucher_id')
+      .innerJoin('account as a', 'a.id', 'l.account_id')
+      .select('l.voucher_id')
+      .where('l.voucher_id', 'in', candidates)
+      .where((eb) =>
+        eb.or([
+          eb('a.is_cash', '=', 1),
+          eb('a.is_bank', '=', 1),
+          eb('a.cashflow_required', '=', 1),
+        ]),
+      )
+      .where('l.cashflow_direction', '=', 'internal')
+      .where(sql<boolean>`not (${exchangeCashSql(baseCurrency)})`)
+      .groupBy('l.voucher_id')
+      .having(sql`sum(l.debit) - sum(l.credit)`, '!=', 0);
+  };
+  const diagnosticCount = async (q: Awaited<ReturnType<typeof unbalancedQuery>>) => {
+    const [row] = await aggregateRows(
+      ctx.db.selectFrom(q.as('diagnostic')).select(sql<string>`cast(count(*) as text)`.as('count')),
+    );
+    return safeNumber(n(row?.count), '内部转移异常凭证数');
+  };
+
   const self = {
     /**
      * 分录明细：按日期、凭证类型、编号、行号排序。默认只含已过账凭证，作废凭证不含。
@@ -182,100 +422,9 @@ export function ledgerService(ctx: ServiceContext) {
      */
     async entries(raw: EntryFilter, requireComplete = false): Promise<EntryRow[]> {
       const f = EntryFilterSchema.parse(raw);
-      if (f.periodFrom > f.periodTo)
-        throw new BusinessError({
-          code: 'PERIOD_RANGE_INVALID',
-          message: '开始期间不能晚于结束期间',
-        });
-      if (requireComplete) {
-        const book = await bookService(ctx).info();
-        if (f.periodFrom < book.startPeriod)
-          throw new BusinessError({
-            code: 'PERIOD_BEFORE_START',
-            message: `${formatPeriod(f.periodFrom)}早于启用期间${formatPeriod(book.startPeriod)}，无法返回完整现金流量`,
-          });
-        const present = new Set(
-          (
-            await ctx.db
-              .selectFrom('period')
-              .select('period')
-              .where('period', '>=', f.periodFrom)
-              .where('period', '<=', f.periodTo)
-              .execute()
-          ).map((row) => row.period),
-        );
-        const missing: number[] = [];
-        for (let year = periodYear(f.periodFrom); year <= periodYear(f.periodTo); year++)
-          for (
-            let month = year === periodYear(f.periodFrom) ? periodMonth(f.periodFrom) : 1;
-            month <= (year === periodYear(f.periodTo) ? periodMonth(f.periodTo) : 12);
-            month++
-          ) {
-            const period = makePeriod(year, month);
-            if (!present.has(period)) missing.push(period);
-          }
-        if (missing.length)
-          throw new BusinessError({
-            code: 'LEDGER_PERIOD_MISSING',
-            message: `现金流量查询缺少${missing.slice(0, 24).map(formatPeriod).join('、')}等${missing.length}个期间，不能按零计算`,
-            details: { missingPeriods: missing },
-            actions: [{ label: '去期末处理', to: '/m/period-close' }],
-          });
-      }
-      const statuses = f.includeUnposted ? UNPOSTED_COUNTED_STATUSES : DEFAULT_COUNTED_STATUSES;
-      let q = ctx.db
-        .selectFrom('voucher_line as l')
-        .innerJoin('voucher as v', 'v.id', 'l.voucher_id')
-        .innerJoin('voucher_type as t', 't.id', 'v.voucher_type_id')
-        .innerJoin('account as a', 'a.id', 'l.account_id')
-        .selectAll('l')
-        .select([
-          'v.date',
-          'v.number',
-          'v.status',
-          'v.source_module',
-          'v.source_type',
-          'v.source_id',
-          'v.closing_kind',
-          't.code as type_code',
-          'a.code as account_code',
-        ])
-        .where('l.period', '>=', f.periodFrom)
-        .where('l.period', '<=', f.periodTo)
-        .where('v.status', 'in', [...statuses])
-        .where('v.voided', '=', 0);
-      if (f.excludeClosing) q = q.where('v.closing_kind', 'is', null);
-      else if (f.excludeClosingKinds.length)
-        q = q.where((eb) =>
-          eb.or([
-            eb('v.closing_kind', 'is', null),
-            eb('v.closing_kind', 'not in', f.excludeClosingKinds),
-          ]),
-        );
-      if (f.accountCode) {
-        q = f.includeChildren
-          ? q.where('a.code', 'like', `${f.accountCode}%`)
-          : q.where('a.code', '=', f.accountCode);
-      }
-      if (f.accountIds?.length) q = q.where('l.account_id', 'in', f.accountIds);
-      if (f.currency) {
-        const baseCurrency = (await bookService(ctx).info()).baseCurrency;
-        q = q.where((eb) =>
-          f.currency === baseCurrency
-            ? eb.or([eb('l.currency_code', '=', f.currency!), eb('l.currency_code', 'is', null)])
-            : eb('l.currency_code', '=', f.currency!),
-        );
-      }
-      for (const dt of DIMENSION_TYPES) {
-        const v = f.dimensions[dt.id];
-        if (v != null) q = q.where(sql.ref(`l.${dt.column}`), '=', v);
-      }
-      const rows = await q
-        .orderBy('v.date')
-        .orderBy('t.sort')
-        .orderBy('t.id')
-        .orderBy('v.number')
-        .orderBy('l.line_no')
+      await assertEntryRange(f, requireComplete);
+      const q = await entryQuery(f);
+      const rows = await orderedEntries(q)
         .limit(f.limit + (requireComplete ? 1 : 0))
         .execute();
       if (requireComplete && rows.length > f.limit)
@@ -284,41 +433,33 @@ export function ledgerService(ctx: ServiceContext) {
           message: `现金流量查询超过 ${f.limit} 条分录，不能截断汇总`,
           hint: '请缩短期间范围或按辅助对象分别查询',
         });
-      return rows.map((r) => ({
-        voucherId: r.voucher_id,
-        lineId: r.id,
-        cashflowDirection: r.cashflow_direction,
-        entrySide: r.entry_side,
-        period: r.period,
-        date: r.date,
-        voucherTypeCode: r.type_code,
-        number: r.number,
-        displayNo: formatVoucherNo(r.type_code, r.number),
-        status: r.status,
-        lineNo: r.line_no,
-        summary: r.summary,
-        accountId: r.account_id,
-        accountCode: r.account_code,
-        dimensions: {
-          project: r.dim_project,
-          partner: r.dim_partner,
-          department: r.dim_department,
-          person: r.dim_person,
-          cashflow: r.dim_cashflow,
-        },
-        currency: r.currency_code,
-        exchangeRate: r.exchange_rate,
-        fcAmount: r.fc_amount,
-        quantity: r.quantity_e6 == null ? null : qtyFromE6(r.quantity_e6),
-        unitPrice: r.unit_price,
-        debit: r.debit,
-        credit: r.credit,
-        refNo: r.ref_no,
-        sourceModule: r.source_module,
-        sourceType: r.source_type,
-        sourceId: r.source_id,
-        closingKind: r.closing_kind,
-      }));
+      return mapEntries(rows);
+    },
+
+    /**
+     * 完整匹配数和有限明细页在同一快照读取，过滤先于计数与截页，旧 limit 不参与截页。
+     * 与现金流分页相同，实际期间缺失时明确拒绝。跨页导出须在 svc.tx 内循环调用。
+     */
+    async entriesPage(raw: EntryPageQuery): Promise<EntryPage> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => ledgerService({ ...ctx, db }).entriesPage(raw));
+      const f = EntryPageSchema.parse(raw);
+      await assertEntryRange(f, true, '明细账');
+      const query = await entryQuery(f);
+      const [count] = await aggregateRows(
+        query.clearSelect().select(sql<string>`cast(count(*) as text)`.as('count')),
+      );
+      const rowCount = safeNumber(n(count?.count), '明细账分录数');
+      const rows = mapEntries(
+        await orderedEntries(query).offset(f.offset).limit(f.pageSize).execute(),
+      );
+      return {
+        rows,
+        rowCount,
+        offset: f.offset,
+        pageSize: f.pageSize,
+        hasMore: f.offset + rows.length < rowCount,
+      };
     },
 
     /**
@@ -329,6 +470,8 @@ export function ledgerService(ctx: ServiceContext) {
      * 所用期间均已建立时，年结前也能跨年承接历史余额；未建期间不按零推算。
      */
     async balances(raw: BalanceQuery): Promise<BalanceRow[]> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => ledgerService({ ...ctx, db }).balances(raw));
       const q = BalanceQuerySchema.parse(raw);
       if (q.periodFrom > q.periodTo) {
         throw new BusinessError({
@@ -433,8 +576,10 @@ export function ledgerService(ctx: ServiceContext) {
           );
         for (const dt of DIMENSION_TYPES) {
           const v = q.dimensions[dt.id];
-          if (v == null) continue;
-          if (dt.id === 'cashflow') oq = oq.where(sql<boolean>`1 = 0`);
+          if (v === undefined) continue;
+          if (dt.id === 'cashflow') {
+            if (v !== null) oq = oq.where(sql<boolean>`1 = 0`);
+          } else if (v === null) oq = oq.where(sql.ref(`o.${dt.column}`), 'is', null);
           else oq = oq.where(sql.ref(`o.${dt.column}`), '=', v);
         }
         for (const r of (await aggregateRows(oq)) as Record<string, unknown>[]) {
@@ -466,8 +611,15 @@ export function ledgerService(ctx: ServiceContext) {
       }
 
       // 2. 分录发生额按区间汇总
+      // 仅复用本次快照中实际相同的聚合；未配置结转排除时发生额与账面变动同口径。
+      let lastRangeAggregate: { key: string; rows: Record<string, unknown>[] } | undefined;
       const sumLines = async (from: Period, to: Period, filterClosing = false) => {
         if (from > to) return [];
+        const effectiveClosing =
+          filterClosing && (q.excludeClosing || q.excludeClosingKinds.length > 0);
+        const key = `${from}:${to}:${effectiveClosing}`;
+        if (lastRangeAggregate?.key === key) return lastRangeAggregate.rows;
+        lastRangeAggregate = undefined;
         let lq = ctx.db
           .selectFrom('voucher_line as l')
           .innerJoin('voucher as v', 'v.id', 'l.voucher_id')
@@ -499,7 +651,7 @@ export function ledgerService(ctx: ServiceContext) {
             'in',
             all.filter((a) => a.quantityUnit === q.quantityUnit).map((a) => a.id),
           );
-        if (filterClosing) {
+        if (effectiveClosing) {
           if (q.excludeClosing) lq = lq.where('v.closing_kind', 'is', null);
           else if (q.excludeClosingKinds.length)
             lq = lq.where((eb) =>
@@ -519,9 +671,12 @@ export function ledgerService(ctx: ServiceContext) {
           );
         for (const dt of DIMENSION_TYPES) {
           const v = q.dimensions[dt.id];
-          if (v != null) lq = lq.where(sql.ref(`l.${dt.column}`), '=', v);
+          if (v === null) lq = lq.where(sql.ref(`l.${dt.column}`), 'is', null);
+          else if (v !== undefined) lq = lq.where(sql.ref(`l.${dt.column}`), '=', v);
         }
-        return (await aggregateRows(lq)) as Record<string, unknown>[];
+        const rows = (await aggregateRows(lq)) as Record<string, unknown>[];
+        lastRangeAggregate = { key, rows };
+        return rows;
       };
 
       // 起算期间到 periodFrom 前一期：并入期初
@@ -743,6 +898,90 @@ export function ledgerService(ctx: ServiceContext) {
           message: '数量余额必须选择数量单位，不能跨单位混加',
         });
       return self.balances(raw);
+    },
+    /**
+     * 同一快照中的完整合计和有限明细页。旧 limit 不影响完整合计；只有 pageSize 限制物化行数。
+     * 多页导出要在 svc.tx 的回调内连续调用，以共享一次快照。
+     */
+    async cashflowPage(raw: CashflowPageQuery): Promise<CashflowPage> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => ledgerService({ ...ctx, db }).cashflowPage(raw));
+      const f = CashflowPageSchema.parse(raw);
+      await assertEntryRange(f, true);
+      const { baseCurrency } = await bookService(ctx).info();
+      const query = await cashQuery(f);
+      const [aggregate] = await aggregateRows(
+        query.clearSelect().select(flowColumns(baseCurrency)),
+      );
+      const totals = flowTotals(aggregate!);
+      const rows = mapEntries(
+        await orderedEntries(query).offset(f.offset).limit(f.pageSize).execute(),
+      );
+      return {
+        rows,
+        totals,
+        internalUnbalancedVoucherCount: await diagnosticCount(
+          await unbalancedQuery(f, baseCurrency),
+        ),
+        rowCount: totals.rowCount,
+        offset: f.offset,
+        pageSize: f.pageSize,
+        hasMore: f.offset + rows.length < totals.rowCount,
+      };
+    },
+    /** 现金流项目汇总也分页；未指定项目为 null，排在所有具名项目之前。 */
+    async cashflowGroups(raw: CashflowPageQuery): Promise<CashflowGroupPage> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) => ledgerService({ ...ctx, db }).cashflowGroups(raw));
+      const f = CashflowPageSchema.parse(raw);
+      await assertEntryRange(f, true);
+      const { baseCurrency } = await bookService(ctx).info();
+      const query = (await cashQuery(f)).clearSelect();
+      const grouped = query.select('l.dim_cashflow').groupBy('l.dim_cashflow');
+      const [count] = await aggregateRows(
+        ctx.db
+          .selectFrom(grouped.as('groups'))
+          .select(sql<string>`cast(count(*) as text)`.as('count')),
+      );
+      const groupCount = safeNumber(n(count?.count), '现金流量项目组数');
+      const rows = await aggregateRows(
+        grouped
+          .select(flowColumns(baseCurrency))
+          .orderBy('l.dim_cashflow')
+          .offset(f.offset)
+          .limit(f.pageSize),
+      );
+      const groups = rows.map((row) => ({ cashflowId: row.dim_cashflow, ...flowTotals(row) }));
+      return {
+        groups,
+        groupCount,
+        offset: f.offset,
+        pageSize: f.pageSize,
+        hasMore: f.offset + groups.length < groupCount,
+      };
+    },
+    /** 异常凭证列表独立分页，不因诊断列表过大而物化全部凭证。 */
+    async cashflowDiagnostics(raw: CashflowPageQuery): Promise<CashflowDiagnosticPage> {
+      if (!ctx.db.isTransaction)
+        return withTransaction(ctx.db, (db) =>
+          ledgerService({ ...ctx, db }).cashflowDiagnostics(raw),
+        );
+      const f = CashflowPageSchema.parse(raw);
+      await assertEntryRange(f, true);
+      const { baseCurrency } = await bookService(ctx).info();
+      const query = await unbalancedQuery(f, baseCurrency);
+      const voucherCount = await diagnosticCount(query);
+      const rows = await aggregateRows(
+        query.orderBy('l.voucher_id').offset(f.offset).limit(f.pageSize),
+      );
+      const voucherIds = rows.map((row) => row.voucher_id);
+      return {
+        voucherIds,
+        voucherCount,
+        offset: f.offset,
+        pageSize: f.pageSize,
+        hasMore: f.offset + voucherIds.length < voucherCount,
+      };
     },
     /** Historical NULL direction stays unallocated even when the current project has direction metadata. */
     async cashflow(raw: EntryFilter): Promise<CashflowSummary> {

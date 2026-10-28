@@ -6,6 +6,7 @@ export default defineManifest({
   description: '同账套收付单、来源凭证与出纳账—财务账核对',
   products: 'all',
   permissions: [
+    { id: 'cashier.reset', name: '备份后重新初始化出纳' },
     { id: 'cashier.check.edit', name: '领用及签发支票' },
     { id: 'cashier.check.settle', name: '登记支票兑付或作废' },
     { id: 'cashier.period.close', name: '出纳结账' },
@@ -22,7 +23,7 @@ export default defineManifest({
     { group: 'cashier', title: '出纳账户与期初', path: '/accounts', permission: 'cashier.view' },
     { group: 'cashier', title: '出纳收付单', path: '/documents', permission: 'cashier.view' },
     { group: 'cashier', title: '和账务对账', path: '/reconcile', permission: 'cashier.view' },
-    { group: 'cashier', title: '出纳日记账', path: '/reports', permission: 'cashier.view' },
+    { group: 'cashier', title: '出纳日记账与汇总', path: '/reports', permission: 'cashier.view' },
   ],
   sources: [{ type: 'batch', name: '出纳生成批次', path: '/documents?batch={id}' }],
 });

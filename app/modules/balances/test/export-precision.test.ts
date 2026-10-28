@@ -36,6 +36,10 @@ function group(cents: number, currency: string, quantity = false): ReportGroup {
     fcDebit: cents,
     fcCredit: cents,
     fcClosing: cents,
+    fcYtdDebit: cents,
+    fcYtdCredit: cents,
+    qtyYtdDebit: '2.500003',
+    qtyYtdCredit: '0',
     qtyOpening: '0.000001',
     qtyDebit: '2.500003',
     qtyCredit: '0',
@@ -53,6 +57,8 @@ function group(cents: number, currency: string, quantity = false): ReportGroup {
             qtyDebit: row.qtyDebit,
             qtyCredit: row.qtyCredit,
             qtyClosing: row.qtyClosing,
+            qtyYtdDebit: row.qtyYtdDebit,
+            qtyYtdCredit: row.qtyYtdCredit,
           },
         }
       : {}),
@@ -114,7 +120,7 @@ for (const mode of ['summary', 'foreign', 'quantity'] as const) {
       const wb = await exported(report(mode, cents));
       const ws = wb.worksheets[0]!;
       for (const col of [4, 10]) assertAmount(ws.getRow(5).getCell(col), Math.abs(cents), numeric);
-      const signed = mode === 'foreign' ? [5, 6, 7, 8, 11, 12, 13, 14] : [5, 6, 7, 8];
+      const signed = mode === 'foreign' ? [5, 6, 7, 8, 11, 12, 13, 14, 15, 16] : [5, 6, 7, 8];
       for (const col of signed) {
         assertAmount(ws.getRow(5).getCell(col), cents, numeric);
         assertAmount(ws.getRow(6).getCell(col), cents, numeric);
@@ -141,7 +147,7 @@ it('w_zw_fhwbye USD/EUR 正负极值独立导出且原币不因回读错一分',
   expect(wb.worksheets[0]!.getCell('A2').text).toContain('币种：USD');
   expect(wb.worksheets[1]!.getCell('A2').text).toContain('币种：EUR');
   for (const row of [5, 6]) {
-    for (const col of [11, 12, 13, 14]) {
+    for (const col of [11, 12, 13, 14, 15, 16]) {
       expect(wb.worksheets[0]!.getRow(row).getCell(col).value).toBe('90071992547409.01');
       expect(wb.worksheets[1]!.getRow(row).getCell(col).value).toBe('-90071992547409.91');
     }

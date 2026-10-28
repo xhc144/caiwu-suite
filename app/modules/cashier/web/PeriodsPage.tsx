@@ -47,6 +47,30 @@ export default function PeriodsPage() {
                 { key: 'receipt', title: '本月收款', dataIndex: 'receipt', money: true },
                 { key: 'payment', title: '本月付款', dataIndex: 'payment', money: true },
                 { key: 'closing', title: '月末余额', dataIndex: 'closing', money: true },
+                {
+                  key: 'foreignOpening',
+                  title: '原币月初',
+                  dataIndex: 'foreignOpening',
+                  money: true,
+                },
+                {
+                  key: 'foreignReceipt',
+                  title: '原币收款',
+                  dataIndex: 'foreignReceipt',
+                  money: true,
+                },
+                {
+                  key: 'foreignPayment',
+                  title: '原币付款',
+                  dataIndex: 'foreignPayment',
+                  money: true,
+                },
+                {
+                  key: 'foreignClosing',
+                  title: '原币月末',
+                  dataIndex: 'foreignClosing',
+                  money: true,
+                },
               ]}
             />
             <Space wrap>

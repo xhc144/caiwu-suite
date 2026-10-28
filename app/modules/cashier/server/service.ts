@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { z } from 'zod';
 import {
   BusinessError,
+  convertCurrency,
   DIMENSION_TYPES,
   notFound,
   periodOfDate,
@@ -81,7 +82,7 @@ export async function assertOpen(svc: CoreServices, period: number) {
         '/m/cashier/periods',
       );
   }
-  await svc.periods.assertOpen(period, '修改出纳业务');
+  await svc.periods.assertWritable({ period, mode: 'business', action: '修改出纳业务' });
 }
 async function account(svc: CoreServices, id: number) {
   const row = await tables(svc)
@@ -149,7 +150,7 @@ function lineDimensions(a: Account, dims: DimensionValues): DimensionValues {
   }
   return out;
 }
-async function validate(svc: CoreServices, raw: DocumentInput) {
+export async function validateDocument(svc: CoreServices, raw: DocumentInput) {
   const input = DocumentSchema.parse(raw);
   if (periodOfDate(input.date) !== input.period)
     fail('DATE_PERIOD', '单据日期超出选择期间', '请将日期改为所选月份，或先切换期间');
@@ -165,6 +166,43 @@ async function validate(svc: CoreServices, raw: DocumentInput) {
       '请检查基础科目设置并保留历史关联',
       '/m/cashier/accounts',
     );
+  const book = await svc.book.info();
+  const foreign = cash.currency !== book.baseCurrency;
+  if ((core.currency ?? book.baseCurrency) !== cash.currency)
+    fail(
+      'CURRENCY',
+      '出纳账户币种与关联科目不一致',
+      '请核对账户和科目的币种设置',
+      '/m/cashier/accounts',
+    );
+  if (foreign) {
+    const currency = (await svc.reference.currencies()).find(
+      (c) => c.code === cash.currency && !c.disabled,
+    );
+    if (!currency) fail('CURRENCY', '账户币种不存在或已停用', '请先维护并启用该币种');
+    if (input.foreignAmount == null || input.exchangeRate == null)
+      fail(
+        'FOREIGN_REQUIRED',
+        '外币收付必须填写原币金额和汇率',
+        '请补充原币金额和本次收付采用的汇率',
+      );
+    let converted: number;
+    try {
+      converted = convertCurrency(input.foreignAmount, input.exchangeRate);
+    } catch {
+      fail('AMOUNT_RANGE', '折算金额超出可支持范围', '请检查原币金额和汇率，修正后重新保存');
+    }
+    if (converted <= 0)
+      fail('FOREIGN_ROUNDING', '原币金额折算后不足本位币最小金额', '请合并实际同类收付后录入');
+    if (converted !== input.amount)
+      fail(
+        'FOREIGN_CONVERSION',
+        '本位币金额与原币金额乘汇率的折算结果不一致',
+        '按四舍五入到本位币两位小数的结果填写金额',
+      );
+  } else if (input.foreignAmount != null || input.exchangeRate != null) {
+    fail('BASE_FOREIGN', '本位币账户不能填写外币金额和汇率', '清空原币字段，或选择对应的外币账户');
+  }
   const accs = [core];
   if (input.oppositeAccountId != null)
     accs.push(await svc.accounts.require(input.oppositeAccountId));
@@ -173,11 +211,13 @@ async function validate(svc: CoreServices, raw: DocumentInput) {
   for (const a of accs) {
     if (!a.isLeaf || a.disabled)
       fail('ACCOUNT_LEAF', `科目 ${a.code} ${a.name} 不是可用的末级科目`, '请选择未停用的末级科目');
-    if (a.currency || a.quantityUnit)
+    if (a.quantityUnit)
+      fail('UNSUPPORTED_ACCOUNT', `科目 ${a.code} 需要数量核算`, '请选择无数量核算的对方科目');
+    if (a.currency && a.currency !== cash.currency)
       fail(
-        'UNSUPPORTED_ACCOUNT',
-        `科目 ${a.code} 需要外币或数量核算`,
-        '当前检查点支持本位币、无数量核算科目',
+        'CURRENCY',
+        `科目 ${a.code} 核算 ${a.currency}，与出纳账户币种不一致`,
+        '请选择相同币种的外币科目或本位币科目',
       );
     for (const dt of DIMENSION_TYPES) {
       const c = a.dimensions.find((d) => d.type === dt.id);
@@ -204,6 +244,34 @@ async function buildPreview(svc: CoreServices, raw: GenerateInput) {
     (t) => t.id === input.voucherTypeId && !t.disabled,
   );
   if (!type) fail('VOUCHER_TYPE', '请选择有效的凭证字', '重新选择未停用的凭证字');
+  const policy = await svc.voucherPolicy.get();
+  if (policy.numbering === 'manual' && input.firstNumber == null)
+    fail(
+      'MANUAL_NUMBER',
+      '当前账套采用手工编号，请填写本批第一张凭证号',
+      '多张凭证会从该号开始连续编号，请先核对空余号码',
+    );
+  if (policy.numbering === 'automatic' && input.firstNumber != null)
+    fail('AUTO_NUMBER', '当前账套采用自动编号，不能指定凭证号', '请清空凭证号后重新预览');
+  const groupCount = input.mode === 'summary' ? 1 : rows.length;
+  if (input.firstNumber != null && !Number.isSafeInteger(input.firstNumber + groupCount - 1))
+    fail('NUMBER_RANGE', '本批凭证号超出可支持范围', '请检查第一张凭证号');
+  if (input.firstNumber != null) {
+    const occupied = await svc.db
+      .selectFrom('voucher')
+      .select('number')
+      .where('period', '=', p)
+      .where('voucher_type_id', '=', input.voucherTypeId)
+      .where('number', '>=', input.firstNumber)
+      .where('number', '<=', input.firstNumber + groupCount - 1)
+      .execute();
+    if (occupied.length)
+      fail(
+        'NUMBER_OCCUPIED',
+        `凭证号已使用：${occupied.map((v) => v.number).join('、')}`,
+        '请更换第一张凭证号后重新预览',
+      );
+  }
   const missing = rows.filter((r) => r.opposite_account_id == null);
   if (missing.length)
     fail(
@@ -224,22 +292,30 @@ async function buildPreview(svc: CoreServices, raw: GenerateInput) {
       core,
       opposite,
       input: data,
-    } = await validate(svc, {
+    } = await validateDocument(svc, {
       accountId: r.account_id,
       period: r.period,
       date: r.date,
       summary: r.summary,
       direction: r.direction,
       amount: r.amount,
+      foreignAmount: r.foreign_amount,
+      exchangeRate: r.exchange_rate,
       oppositeAccountId: r.opposite_account_id,
       dimensions: JSON.parse(r.dimensions_json) as DimensionValues,
       refNo: r.ref_no,
       note: r.note,
     });
     const receipt = r.direction === 'receipt';
+    const internal = opposite!.isCash || opposite!.isBank;
     const lines: VoucherLineInput[] = [
       {
         accountId: core.id,
+        currency: core.currency,
+        exchangeRate: core.currency ? data.exchangeRate : null,
+        fcAmount: core.currency ? data.foreignAmount : null,
+        entrySide: receipt ? 'debit' : 'credit',
+        cashflowDirection: internal ? 'internal' : receipt ? 'inflow' : 'outflow',
         summary: r.summary,
         debit: receipt ? r.amount : 0,
         credit: receipt ? 0 : r.amount,
@@ -249,6 +325,11 @@ async function buildPreview(svc: CoreServices, raw: GenerateInput) {
       },
       {
         accountId: opposite!.id,
+        cashflowDirection: internal ? 'internal' : null,
+        currency: opposite!.currency,
+        exchangeRate: opposite!.currency ? data.exchangeRate : null,
+        fcAmount: opposite!.currency ? data.foreignAmount : null,
+        entrySide: receipt ? 'credit' : 'debit',
         summary: r.summary,
         debit: receipt ? 0 : r.amount,
         credit: receipt ? r.amount : 0,
@@ -269,14 +350,64 @@ async function buildPreview(svc: CoreServices, raw: GenerateInput) {
   const allAccounts = await svc.accounts.list();
   return {
     total,
-    groups: groups.map((g) => ({
+    groups: groups.map((g, i) => ({
       ...g,
+      number: input.firstNumber == null ? undefined : input.firstNumber + i,
       lines: g.lines.map((l) => ({
         ...l,
         accountName: allAccounts.find((a) => a.id === l.accountId)?.fullName ?? '',
       })),
     })),
   };
+}
+
+async function revokeData(svc: CoreServices, batchId: number) {
+  const db = tables(svc);
+  const batch = await db
+    .selectFrom('cashier_batch')
+    .selectAll()
+    .where('id', '=', batchId)
+    .executeTakeFirst();
+  if (!batch?.active) fail('NO_BATCH', '该批次不存在或已经撤销', '刷新单据列表');
+  const mappings = await db
+    .selectFrom('cashier_batch_document')
+    .selectAll()
+    .where('batch_id', '=', batchId)
+    .execute();
+  await assertOpen(svc, periodOfDate(batch.date));
+  const voucherIds = new Set<number>();
+  for (const m of mappings) {
+    const row = await document(svc, m.document_id);
+    await assertOpen(svc, row.period);
+    const match = await db
+      .selectFrom('cashier_match_document')
+      .select('match_id')
+      .where('document_id', '=', row.id)
+      .executeTakeFirst();
+    if (match)
+      fail('MATCHED', '批次内有已勾账单据，不能撤销', '先取消对应勾账组', '/m/cashier/reconcile');
+    if (m.voucher_id == null) fail('SOURCE', '批次凭证关联不完整', '请保留现场并检查账套数据');
+    voucherIds.add(m.voucher_id);
+  }
+  for (const id of voucherIds) {
+    const v = await svc.vouchers.get(id);
+    if (
+      !v ||
+      v.source?.module !== 'cashier' ||
+      v.source.type !== 'batch' ||
+      v.source.id !== String(batchId)
+    )
+      fail('SOURCE', '凭证不属于本出纳生成批次', '请检查来源关联');
+    if (v.status !== 'pending' && v.status !== 'draft')
+      fail(
+        'VOUCHER_LOCKED',
+        '来源凭证已审核或过账，不能撤销生成',
+        '请先在账务处理中按正常流程处理审核或过账状态',
+        `/m/voucher-entry/edit?id=${id}`,
+      );
+  }
+  if (!voucherIds.size) fail('NO_BATCH', '该批次没有可撤销的来源凭证', '请核对批次关联');
+  return { batch, mappings, voucherIds: [...voucherIds].sort((a, b) => a - b) };
 }
 
 export function cashierService(svc: CoreServices) {
@@ -337,6 +468,7 @@ export function cashierService(svc: CoreServices) {
           'a.code',
           'a.full_name',
           'o.balance',
+          'o.foreign_balance',
           'o.period',
         ])
         .where('o.period', '=', targetPeriod)
@@ -348,6 +480,20 @@ export function cashierService(svc: CoreServices) {
         includeZero: true,
         rollup: false,
       });
+      const foreignBalances = new Map<string, Awaited<ReturnType<typeof svc.ledger.balances>>>();
+      for (const currency of new Set(
+        rows.filter((r) => r.foreign_balance != null).map((r) => r.currency),
+      ))
+        foreignBalances.set(
+          currency,
+          await svc.ledger.balances({
+            periodFrom: targetPeriod,
+            periodTo: targetPeriod,
+            currency,
+            includeZero: true,
+            rollup: false,
+          }),
+        );
       return rows.map((r) => ({
         id: r.id,
         name: r.name,
@@ -358,12 +504,18 @@ export function cashierService(svc: CoreServices) {
         disabled: !!r.disabled,
         revision: r.revision,
         opening: r.balance,
+        foreignOpening: r.foreign_balance,
+        coreForeignOpening:
+          r.foreign_balance == null
+            ? null
+            : (foreignBalances.get(r.currency)?.find((b) => b.accountId === r.core_account_id)
+                ?.fcOpening ?? 0),
         period: r.period,
         coreOpening: balances.find((b) => b.accountId === r.core_account_id)?.opening ?? 0,
       }));
     },
     async saveAccount(
-      raw: { name: string; coreAccountId: number; currency: string; opening: number },
+      raw: z.input<typeof CashAccountSchema>,
       edit?: { id: number; revision: number },
     ) {
       const input = CashAccountSchema.parse(raw);
@@ -379,11 +531,22 @@ export function cashierService(svc: CoreServices) {
             '/m/cashier/accounts',
           );
         const book = await t.book.info();
-        if (a.currency || input.currency !== book.baseCurrency)
+        const currency = (await t.reference.currencies()).find(
+          (c) => c.code === input.currency && !c.disabled,
+        );
+        if (!currency || input.currency !== (a.currency ?? book.baseCurrency))
           fail(
             'CURRENCY',
-            '当前检查点仅支持本位币出纳账户',
-            `请选择 ${book.baseCurrency} 本位币科目`,
+            '账户币种必须与关联科目的币种一致，且未停用',
+            '请选择关联科目对应的有效币种',
+            '/m/cashier/accounts',
+          );
+        const foreign = input.currency !== book.baseCurrency;
+        if (foreign !== (input.foreignOpening != null))
+          fail(
+            'FOREIGN_OPENING',
+            foreign ? '外币账户必须填写原币期初' : '本位币账户不能填写原币期初',
+            '请核对账户币种和期初金额',
             '/m/cashier/accounts',
           );
         const duplicate = await tdb
@@ -418,7 +581,8 @@ export function cashierService(svc: CoreServices) {
           const changed =
             old.core_account_id !== a.id ||
             old.currency !== input.currency ||
-            opening.balance !== input.opening;
+            opening.balance !== input.opening ||
+            opening.foreign_balance !== input.foreignOpening;
           if (changed) {
             const used = await tdb
               .selectFrom('cashier_document')
@@ -464,7 +628,7 @@ export function cashierService(svc: CoreServices) {
           if (changed)
             await tdb
               .updateTable('cashier_opening')
-              .set({ balance: input.opening })
+              .set({ balance: input.opening, foreign_balance: input.foreignOpening })
               .where('account_id', '=', old.id)
               .where('period', '=', period)
               .execute();
@@ -492,7 +656,12 @@ export function cashierService(svc: CoreServices) {
           id = row.id;
           await tdb
             .insertInto('cashier_opening')
-            .values({ account_id: id, period, balance: input.opening })
+            .values({
+              account_id: id,
+              period,
+              balance: input.opening,
+              foreign_balance: input.foreignOpening,
+            })
             .execute();
         }
         await t.log.write({
@@ -539,6 +708,8 @@ export function cashierService(svc: CoreServices) {
           'd.summary',
           'd.direction',
           'd.amount',
+          'd.foreign_amount',
+          'd.exchange_rate',
           'd.opposite_account_id',
           'd.dimensions_json',
           'd.ref_no',
@@ -595,6 +766,14 @@ export function cashierService(svc: CoreServices) {
           summary: r.summary,
           direction: r.direction,
           amount: r.amount,
+          foreignAmount: r.foreign_amount,
+          exchangeRate: r.exchange_rate,
+          foreignSigned:
+            r.foreign_amount == null
+              ? null
+              : r.direction === 'receipt'
+                ? r.foreign_amount
+                : -r.foreign_amount,
           signed: signedAmount(r),
           oppositeAccountId: r.opposite_account_id,
           oppositeName: r.opposite_code ? `${r.opposite_code} ${r.opposite_name}` : '未填写',
@@ -628,11 +807,18 @@ export function cashierService(svc: CoreServices) {
               '该新增请求对应的单据已经删除',
               '需要新单据时请重新打开新增抽屉',
             );
-          if (existing.original_json !== original)
+          // 老版本的本位币请求未保存新增的原币空字段；用当前格式规范化后比较。
+          let previous = existing.original_json;
+          try {
+            previous = JSON.stringify(DocumentSchema.parse(JSON.parse(previous)));
+          } catch {
+            fail('IDEMPOTENCY', '原新增请求内容无法核对', '请保留原单并重新打开新增抽屉');
+          }
+          if (previous !== original)
             fail('IDEMPOTENCY', '相同请求标识对应了不同单据内容', '重新打开新增抽屉后再提交');
           return { id: existing.id };
         }
-        await validate(t, input);
+        await validateDocument(t, input);
         const row = await tdb
           .insertInto('cashier_document')
           .values({
@@ -661,7 +847,7 @@ export function cashierService(svc: CoreServices) {
         const [old] = await selected(t, [{ id, revision }]);
         await protection(t, id);
         await assertOpen(t, old!.period);
-        const { input } = await validate(t, raw);
+        const { input } = await validateDocument(t, raw);
         await tables(t)
           .updateTable('cashier_document')
           .set({ ...documentValues(input), revision: revision + 1 })
@@ -698,7 +884,7 @@ export function cashierService(svc: CoreServices) {
         });
       });
     },
-    preview: (input: GenerateInput) => buildPreview(svc, input),
+    preview: (input: GenerateInput) => svc.tx((t) => buildPreview(t, input)),
     async generate(raw: GenerateInput & { requestKey: string }) {
       const input = GenerateSchema.parse(raw);
       const inputJson = JSON.stringify(input);
@@ -729,6 +915,7 @@ export function cashierService(svc: CoreServices) {
           const voucher = await t.vouchers.create({
             date: input.date,
             voucherTypeId: input.voucherTypeId,
+            number: group.number,
             lines: group.lines,
             source: { type: 'batch', id: String(batch.id) },
           });
@@ -753,59 +940,36 @@ export function cashierService(svc: CoreServices) {
         return { batchId: batch.id };
       });
     },
-    async revoke(batchId: number) {
+    async previewRevoke(batchId: number) {
+      return svc.tx(async (t) => {
+        const data = await revokeData(t, batchId);
+        return {
+          batchId,
+          voucherIds: data.voucherIds,
+          plan: await t.vouchers.previewDelete(data.voucherIds),
+        };
+      });
+    },
+    async revoke(
+      batchId: number,
+      plan?: { ids: number[]; expiresAt: number; fingerprint: string },
+    ) {
       return svc.tx(async (t) => {
         const tdb = tables(t);
-        const batch = await tdb
-          .selectFrom('cashier_batch')
-          .selectAll()
-          .where('id', '=', batchId)
-          .executeTakeFirst();
-        if (!batch?.active) fail('NO_BATCH', '该批次不存在或已经撤销', '刷新单据列表');
-        const mappings = await tdb
-          .selectFrom('cashier_batch_document')
-          .selectAll()
-          .where('batch_id', '=', batchId)
-          .execute();
-        await assertOpen(t, periodOfDate(batch.date));
-        const voucherIds = new Set<number>();
-        for (const m of mappings) {
-          const row = await document(t, m.document_id);
-          await assertOpen(t, row.period);
-          const match = await tdb
-            .selectFrom('cashier_match_document')
-            .selectAll()
-            .where('document_id', '=', row.id)
-            .executeTakeFirst();
-          if (match)
-            fail(
-              'MATCHED',
-              '批次内有已勾账单据，不能撤销',
-              '先取消对应勾账组',
-              '/m/cashier/reconcile',
-            );
-          if (m.voucher_id == null)
-            fail('SOURCE', '批次凭证关联不完整', '请保留现场并检查账套数据');
-          voucherIds.add(m.voucher_id);
-        }
-        for (const id of voucherIds) {
-          const v = await t.vouchers.get(id);
-          if (
-            !v ||
-            v.source?.module !== 'cashier' ||
-            v.source.type !== 'batch' ||
-            v.source.id !== String(batchId)
-          )
-            fail('SOURCE', '凭证不属于本出纳生成批次', '请检查来源关联');
-          if (v.status !== 'pending' && v.status !== 'draft')
-            fail(
-              'VOUCHER_LOCKED',
-              '来源凭证已审核或过账，不能撤销生成',
-              '请先在账务处理中依法处理审核或过账状态',
-              `/m/voucher-entry/edit?id=${id}`,
-            );
-          await t.vouchers.delete(id, { expectedRevision: v.revision });
-        }
+        const { mappings, voucherIds } = await revokeData(t, batchId);
+        if (
+          plan &&
+          (plan.ids.length !== voucherIds.length ||
+            [...plan.ids].sort((a, b) => a - b).some((id, i) => id !== voucherIds[i]))
+        )
+          fail('SOURCE', '删除计划与该出纳生成批次不一致', '请重新预览该批次的全部凭证');
+        if (!plan && (await t.voucherPolicy.get()).renumberAfterDelete)
+          fail(
+            'REVOKE_PREVIEW',
+            '撤销后将重排凭证编号，请先预览全部编号影响',
+            '请重新打开撤销生成预览后确认',
+          );
+        await t.vouchers.deleteBatch(plan ?? (await t.vouchers.previewDelete(voucherIds)), true);
         await tdb
           .updateTable('cashier_batch_document')
           .set({ voucher_id: null })
@@ -829,7 +993,8 @@ export function cashierService(svc: CoreServices) {
         });
       });
     },
-    reconcile: (input: { accountId: number; cutoff: string }) => reconciliation(svc, input),
+    reconcile: (input: { accountId: number; cutoff: string }) =>
+      svc.tx((t) => reconciliation(t, input)),
     async match(raw: MatchInput) {
       return svc.tx(async (t) => {
         const snapshot = await reconciliation(t, raw);
@@ -857,6 +1022,18 @@ export function cashierService(svc: CoreServices) {
         for (const d of docs) await assertOpen(t, d!.period);
         for (const l of lines) await assertOpen(t, l!.period);
         const total = safeSum(docs.map((d) => d!.signed));
+        const foreignTotal = snapshot.foreignAdjustment
+          ? safeSum(docs.map((d) => d!.foreignSigned ?? 0))
+          : null;
+        if (
+          foreignTotal != null &&
+          foreignTotal !== safeSum(lines.map((l) => l!.foreignSigned ?? 0))
+        )
+          fail(
+            'MATCH_FOREIGN_AMOUNT',
+            '出纳与财务所选原币金额不一致，不能勾账',
+            '请核对同币种的原币收付金额',
+          );
         if (total !== safeSum(lines.map((l) => l!.signed)))
           fail(
             'MATCH_AMOUNT',
@@ -869,6 +1046,7 @@ export function cashierService(svc: CoreServices) {
           .values({
             account_id: raw.accountId,
             amount: total,
+            foreign_amount: foreignTotal,
             created_at: t.ctx.now().toISOString(),
           })
           .returning('id')
@@ -916,10 +1094,10 @@ export function cashierService(svc: CoreServices) {
               '请重新预览',
               '/m/cashier/reconcile',
             );
-          if (d.signed !== e.signed)
+          if (d.signed !== e.signed || d.foreignSigned !== e.foreignSigned)
             fail(
               'MATCH_AMOUNT',
-              '自动勾账要求每对单据和分录的方向、整数分金额完全相等',
+              '自动勾账要求每对单据和分录方向一致，本位币及原币金额分别相等',
               '请改用手动多对多等额勾账',
               '/m/cashier/reconcile',
             );
@@ -930,6 +1108,7 @@ export function cashierService(svc: CoreServices) {
             .values({
               account_id: input.accountId,
               amount: d.signed,
+              foreign_amount: d.foreignSigned,
               created_at: t.ctx.now().toISOString(),
             })
             .returning('id')
@@ -1003,6 +1182,8 @@ function documentValues(input: ReturnType<typeof DocumentSchema.parse>) {
     summary: input.summary,
     direction: input.direction,
     amount: input.amount,
+    foreign_amount: input.foreignAmount,
+    exchange_rate: input.exchangeRate,
     opposite_account_id: input.oppositeAccountId,
     dimensions_json: JSON.stringify(input.dimensions),
     ref_no: input.refNo,
@@ -1017,13 +1198,9 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
   const a = await account(svc, input.accountId);
   const core = await svc.accounts.require(a.core_account_id);
   const book = await svc.book.info();
-  if (core.currency || a.currency !== book.baseCurrency)
-    fail(
-      'CURRENCY',
-      '账户币种配置与当前本位币核对范围不一致',
-      '请检查账户历史配置，当前不支持混合币种核对',
-      '/m/cashier/accounts',
-    );
+  if ((core.currency ?? book.baseCurrency) !== a.currency)
+    fail('CURRENCY', '账户币种与关联科目不一致', '请检查账户币种设置', '/m/cashier/accounts');
+  const foreign = a.currency !== book.baseCurrency;
   const opening = await tables(svc)
     .selectFrom('cashier_opening')
     .selectAll()
@@ -1036,6 +1213,7 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
     periodFrom: period,
     periodTo: 999912,
     accountIds: [core.id],
+    currency: a.currency,
     includeUnposted: false,
     limit: 200000,
   });
@@ -1055,6 +1233,7 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
     .execute();
   const entries: (EntryRow & {
     signed: number;
+    foreignSigned: number | null;
     revision: number;
     matchId: number | null;
     sourceTo: string | null;
@@ -1069,6 +1248,12 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
     entries.push({
       ...entry,
       signed: safeSum([entry.debit, -entry.credit]),
+      foreignSigned:
+        foreign && entry.fcAmount != null
+          ? (entry.entrySide ?? (entry.debit > 0 ? 'debit' : 'credit')) === 'debit'
+            ? entry.fcAmount
+            : -entry.fcAmount
+          : null,
       revision: v!.revision,
       matchId: m?.match_id ?? null,
       sourceTo:
@@ -1087,6 +1272,10 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
       es.length === mappings.length &&
       safeSum(ds.map((d) => d.signed)) === g.amount &&
       safeSum(es.map((e) => e.signed)) === g.amount &&
+      (!foreign ||
+        (g.foreign_amount != null &&
+          safeSum(ds.map((d) => d.foreignSigned ?? 0)) === g.foreign_amount &&
+          safeSum(es.map((e) => e.foreignSigned ?? 0)) === g.foreign_amount)) &&
       es.every(
         (e) => mappings.find((m) => m.line_id === e.lineId)?.voucher_revision === e.revision,
       );
@@ -1116,6 +1305,7 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
     accountCodes: [core.code],
     rollup: false,
     includeZero: true,
+    currency: a.currency,
   });
   const coreOpening = coreBalances.find((b) => b.accountId === core.id)?.opening ?? 0;
   const cashBalance = safeSum([opening.balance, ...cutoffDocs.map((d) => d.signed)]);
@@ -1124,8 +1314,39 @@ async function reconciliation(svc: CoreServices, input: { accountId: number; cut
   const coreOutstanding = safeSum(unmatchedEntries.map((e) => e.signed));
   const adjustedCash = safeSum([cashBalance, coreOutstanding]);
   const adjustedCore = safeSum([coreBalance, cashOutstanding]);
+  const foreignAdjustment = foreign
+    ? (() => {
+        const cashOpening = opening.foreign_balance;
+        if (cashOpening == null) fail('FOREIGN_OPENING', '外币账户缺少原币期初', '请检查账户期初');
+        if (cutoffEntries.some((e) => e.foreignSigned == null))
+          fail('FOREIGN_MISSING', '财务分录缺少原币金额，不能完整核对', '请核对来源凭证的外币金额');
+        const coreOpening = coreBalances.find((b) => b.accountId === core.id)?.fcOpening ?? 0;
+        const cashBalance = safeSum([cashOpening, ...cutoffDocs.map((d) => d.foreignSigned ?? 0)]);
+        const coreBalance = safeSum([
+          coreOpening,
+          ...cutoffEntries.map((e) => e.foreignSigned ?? 0),
+        ]);
+        const cashOutstanding = safeSum(unmatchedDocs.map((d) => d.foreignSigned ?? 0));
+        const coreOutstanding = safeSum(unmatchedEntries.map((e) => e.foreignSigned ?? 0));
+        const adjustedCash = safeSum([cashBalance, coreOutstanding]);
+        const adjustedCore = safeSum([coreBalance, cashOutstanding]);
+        return {
+          cashOpening,
+          coreOpening,
+          openingDifference: safeSum([cashOpening, -coreOpening]),
+          cashBalance,
+          coreBalance,
+          cashOutstanding,
+          coreOutstanding,
+          adjustedCash,
+          adjustedCore,
+          difference: safeSum([adjustedCash, -adjustedCore]),
+        };
+      })()
+    : null;
   return {
-    account: { id: a.id, name: a.name, currency: a.currency },
+    account: { id: a.id, name: a.name, currency: a.currency, baseCurrency: book.baseCurrency },
+    foreignAdjustment,
     period,
     cutoff: input.cutoff,
     documents: cutoffDocs,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { inferRouterOutputs } from '@trpc/server';
 import type { BalancesRouter } from '../server/router';
 import { useLocation } from 'react-router';
@@ -11,12 +11,12 @@ import {
   Empty,
   Form,
   Input,
+  Modal,
   Select,
   Space,
   Spin,
   Typography,
 } from 'antd';
-import { printHtml } from '@caiwu/print';
 import type { Account } from '@caiwu/core';
 import {
   getBusinessError,
@@ -24,7 +24,9 @@ import {
   queryClient,
   showError,
   usePermission,
+  useHotkey,
   useRequiredSession,
+  useUnsavedChanges,
 } from '@caiwu/web-kit';
 import {
   ActionAlert,
@@ -40,9 +42,10 @@ import {
   DisplaySchema,
   SettingsSchema,
   detailUrl,
-  outputRows,
+  locateRows,
   reportCaption,
   reportTitle,
+  reportTables,
   groupCaption,
   type OutputRow,
   type Report,
@@ -50,7 +53,8 @@ import {
   type Settings,
 } from '../shared';
 import { api } from './api';
-import { exportReport, columnsFor, reportHtml } from './output';
+import { exportReport, columnsFor } from './output';
+import BalancePrintDialog from './BalancePrintDialog';
 import { useBalanceFilters } from './use-balance-filters';
 
 export default function BalancesPage() {
@@ -89,6 +93,9 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
     dimension: filters.dimension as '' | 'project' | 'partner' | 'department' | 'person',
     dimensionFrom: filters.dimensionFrom,
     dimensionTo: filters.dimensionTo,
+    dimensionChildren: filters.dimensionChildren,
+    dimensionLevel: filters.dimensionLevel,
+    dimensionOrder: filters.dimensionOrder as 'dimension' | 'account',
   };
   const report = useQuery(api.query.queryOptions(input, { meta: { silent: true } }));
   const canExport = usePermission('balances.export');
@@ -97,6 +104,8 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
   const [settingsSnapshot, setSettingsSnapshot] = useState(metadata.settings);
   const [openingSettings, setOpeningSettings] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [printReport, setPrintReport] = useState<Report | null>(null);
+  const [locate, setLocate] = useState('');
   const expanded = filters.expanded
     .split(',')
     .map(Number)
@@ -132,12 +141,7 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
       });
       queryClient.setQueryData(api.query.queryKey(input), data);
       if (kind === 'excel') await exportReport(data, level, expanded);
-      else
-        await printHtml({
-          title,
-          html: reportHtml(data, level, expanded),
-          orientation: 'landscape',
-        });
+      else setPrintReport(data);
     } catch (error) {
       showError(error);
     } finally {
@@ -145,6 +149,13 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
     }
   };
 
+  useHotkey(
+    'Ctrl+P',
+    () => {
+      if (canExport && !busy && report.data && !report.isFetching) void runOutput('print');
+    },
+    { allowInInput: false },
+  );
   return (
     <PageContainer
       title={title}
@@ -275,6 +286,38 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
             <Typography.Text type="secondary">
               范围为空取全部，按编码含两端；每个辅助项分别列示。
             </Typography.Text>
+            <Checkbox
+              checked={filters.dimensionChildren}
+              onChange={(e) => setFilters({ dimensionChildren: e.target.checked })}
+            >
+              选中父项时包含下级
+            </Checkbox>
+            <label>
+              辅助显示级次{' '}
+              <select
+                aria-label="辅助显示级次"
+                value={filters.dimensionLevel}
+                onChange={(e) => setFilters({ dimensionLevel: Number(e.target.value) })}
+              >
+                <option value={0}>各明细项</option>
+                {Array.from({ length: 20 }, (_, i) => (
+                  <option key={i + 1} value={i + 1}>
+                    {i + 1} 级汇总
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              排列方式{' '}
+              <select
+                aria-label="排列方式"
+                value={filters.dimensionOrder}
+                onChange={(e) => setFilters({ dimensionOrder: e.target.value })}
+              >
+                <option value="dimension">按辅助项</option>
+                <option value="account">按科目</option>
+              </select>
+            </label>
           </>
         )}
       </Space>
@@ -349,6 +392,26 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
           期间为空取当前工作期间；科目范围为空取全部。
         </Typography.Text>
       </Space>
+      <Space style={{ margin: '12px 0' }} wrap>
+        <Input.Search
+          aria-label="余额结果定位"
+          placeholder="科目编码或名称，可查折叠下级"
+          allowClear
+          onSearch={setLocate}
+          style={{ width: 320 }}
+        />
+        <Typography.Text type="secondary">
+          定位只筛选显示行，原范围合计、导出和打印条件不变。
+        </Typography.Text>
+      </Space>
+      {report.data &&
+        Math.floor(report.data.periodFrom / 100) !== Math.floor(report.data.periodTo / 100) && (
+          <ActionAlert
+            type="info"
+            title="查询跨越会计年度"
+            description="期初与期末连续承接；本年累计仅包含结束期间所在年度。"
+          />
+        )}
       {report.isError ? (
         <QueryError error={report.error} retry={() => void report.refetch()} />
       ) : !report.data ? (
@@ -366,10 +429,12 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
               }
             />
           )}
-          {report.data.groups.map((group) => (
+          {reportTables(report.data, level, expanded, locate).map(({ group, rows }, index) => (
             <BalanceTable
-              key={JSON.stringify([group.currency, group.unit, group.dimension?.id])}
+              key={JSON.stringify([group.currency, group.unit, group.dimension?.id, index])}
               group={group}
+              orderedRows={report.data.order === 'account' ? rows : undefined}
+              locate={locate}
               report={report.data}
               level={level}
               expanded={expanded}
@@ -386,12 +451,27 @@ function BalanceContent({ metadata }: { metadata: Meta }) {
           ))}
         </>
       )}
+      {printReport && (
+        <BalancePrintDialog
+          report={printReport}
+          level={level}
+          expanded={expanded}
+          onClose={() => setPrintReport(null)}
+        />
+      )}
       {settingsOpen && (
         <SettingsDrawer
+          title={title}
           settings={settingsSnapshot}
           onClose={() => setSettingsOpen(false)}
           onSaved={(s) => {
-            setFilters({ level: s.display.level, onlyActivity: s.display.onlyActivity });
+            setFilters({
+              level: s.display.level,
+              onlyActivity: s.display.onlyActivity,
+              dimensionChildren: s.display.dimensionChildren ?? false,
+              dimensionLevel: s.display.dimensionLevel ?? 0,
+              dimensionOrder: s.display.dimensionOrder ?? 'dimension',
+            });
             void queryClient.invalidateQueries({ queryKey: api.metadata.queryKey() });
             setSettingsOpen(false);
           }}
@@ -428,23 +508,42 @@ function AccountRangeSelect({
 
 function BalanceTable({
   group,
+  orderedRows,
   report,
+  locate,
   level,
   expanded,
   loading,
   onToggle,
 }: {
   group: ReportGroup;
+  orderedRows?: OutputRow[];
   report: Report;
+  locate: string;
   level: number;
   expanded: number[];
   loading: boolean;
   onToggle: (id: number) => void;
 }) {
+  const [drill, setDrill] = useState<OutputRow | null>(null);
+  const rowGroup = (row: OutputRow) => row.outputGroup ?? group;
   const canDrill = (row: OutputRow) =>
     row.source &&
-    (!group.dimension || group.dimension.id != null) &&
+    (!rowGroup(row).dimension || rowGroup(row).dimension!.id != null) &&
     (report.mode !== 'quantity' || row.source.isLeaf);
+  const target = (row: OutputRow, memberId?: number | null) => {
+    const g = rowGroup(row);
+    const dimensions = { ...row.source!.dimensions };
+    if (g.dimension && memberId != null)
+      dimensions[g.dimension.type as keyof typeof dimensions] = memberId;
+    return detailUrl(report, { ...row.source!, dimensions }, g.currency);
+  };
+  const openDetail = (row: OutputRow) => {
+    if (!canDrill(row)) return;
+    const members = rowGroup(row).dimension?.members;
+    if (members && members.length > 1) setDrill(row);
+    else window.location.assign(target(row, members?.[0]?.id));
+  };
   const columns: DataColumn<OutputRow>[] = columnsFor(report).map((c) => ({
     key: c.key,
     title: c.title,
@@ -455,6 +554,7 @@ function BalanceTable({
       if (c.key === 'code' && r.source) {
         const source = r.source;
         const hasChildren =
+          !orderedRows &&
           level !== -1 &&
           (level === 0 || source.level < level) &&
           group.rows.some((v) => v.parentId === source.accountId);
@@ -480,7 +580,7 @@ function BalanceTable({
         balanceDisplay(r.source[c.key], r.source).reverse;
       return (
         <span style={reverse ? { color: '#cf1322' } : undefined}>
-          {c.money && typeof value === 'number' ? <MoneyText value={value} /> : value}
+          {c.money && typeof value === 'number' ? <MoneyText value={value} /> : (value ?? '—')}
           {reverse && '（逆向）'}
         </span>
       );
@@ -491,15 +591,20 @@ function BalanceTable({
     title: '操作',
     width: 100,
     render: (_, r) =>
-      canDrill(r) && (
+      canDrill(r) &&
+      ((rowGroup(r).dimension?.members?.length ?? 0) > 1 ? (
+        <Button type="link" aria-label={`明细 ${r.code}`} onClick={() => setDrill(r)}>
+          明细
+        </Button>
+      ) : (
         <Button
           type="link"
           aria-label={`明细 ${r.code}`}
-          href={detailUrl(report, r.source!, group.currency)}
+          href={target(r, rowGroup(r).dimension?.members?.[0]?.id)}
         >
           明细
         </Button>
-      ),
+      )),
   });
   return (
     <section
@@ -507,6 +612,11 @@ function BalanceTable({
     >
       <Typography.Paragraph>{reportCaption(report, group.currency)}</Typography.Paragraph>
       {groupCaption(group) && <Typography.Paragraph>{groupCaption(group)}</Typography.Paragraph>}
+      {group.rows.some((r) => r.dimensionYtdMissing) && (
+        <Typography.Paragraph type="warning">
+          启用前原币、数量累计缺少来源，累计列显示“—”；请勿按零使用。
+        </Typography.Paragraph>
+      )}
       {group.dimension?.id === null && (
         <Typography.Paragraph type="secondary">
           未指定辅助项的余额单独列示；当前明细账接口不能精确过滤空辅助项，暂不提供该组钻取。
@@ -529,22 +639,38 @@ function BalanceTable({
         tableId={`balances.${report.mode}`}
         rowKey="key"
         columns={columns}
-        dataSource={outputRows(group, level, expanded)}
+        dataSource={orderedRows ?? locateRows(group, level, expanded, locate)}
         loading={loading}
         onRow={(row) => ({
-          onDoubleClick: () =>
-            canDrill(row) && window.location.assign(detailUrl(report, row.source!, group.currency)),
+          onDoubleClick: () => openDetail(row),
         })}
       />
+      <Modal title="选择辅助分项明细" open={!!drill} onCancel={() => setDrill(null)} footer={null}>
+        <p>本行汇总了以下辅助分项。选择一个分项，按其实际辅助项追查明细。</p>
+        {drill &&
+          rowGroup(drill).dimension?.members?.map((member) => (
+            <p key={member.id ?? 'empty'}>
+              {member.id == null ? (
+                '未指定辅助项：当前明细账尚不支持精确查询空辅助项。'
+              ) : (
+                <a href={target(drill, member.id)}>
+                  {member.code} {member.name}
+                </a>
+              )}
+            </p>
+          ))}
+      </Modal>
     </section>
   );
 }
 
 function SettingsDrawer({
+  title,
   settings,
   onClose,
   onSaved,
 }: {
+  title: string;
   settings: Settings;
   onClose: () => void;
   onSaved: (settings: Settings) => void;
@@ -570,7 +696,10 @@ function SettingsDrawer({
     return { base: settings, display: settings.display, restored: false };
   });
   const [draft, setDraft] = useState(initial.display);
-  const dirty = JSON.stringify(draft) !== JSON.stringify(initial.base.display);
+  const [base, setBase] = useState(initial.base);
+  const latestDraft = useRef(draft);
+  latestDraft.current = draft;
+  const dirty = JSON.stringify(draft) !== JSON.stringify(base.display);
   const save = useMutation(api.saveSettings.mutationOptions({ meta: { silent: true } }));
   const clearDraft = () => {
     try {
@@ -581,20 +710,12 @@ function SettingsDrawer({
   };
   useEffect(() => {
     try {
-      if (dirty)
-        sessionStorage.setItem(storageKey, JSON.stringify({ base: initial.base, display: draft }));
+      if (dirty) sessionStorage.setItem(storageKey, JSON.stringify({ base, display: draft }));
       else sessionStorage.removeItem(storageKey);
     } catch {
       /* 禁用存储时靠关闭确认保护当前编辑 */
     }
-  }, [dirty, draft, initial.base, storageKey]);
-  useEffect(() => {
-    const beforeUnload = (event: BeforeUnloadEvent) => {
-      if (dirty) event.preventDefault();
-    };
-    window.addEventListener('beforeunload', beforeUnload);
-    return () => window.removeEventListener('beforeunload', beforeUnload);
-  }, [dirty]);
+  }, [dirty, draft, base, storageKey]);
   const close = () => {
     if (save.isPending) return;
     if (!dirty) {
@@ -613,15 +734,34 @@ function SettingsDrawer({
       });
   };
   const submit = async () => {
+    if (save.isPending) return false;
+    const snapshot = draft;
     try {
-      const saved = await save.mutateAsync({ revision: initial.base.revision, display: draft });
+      const saved = await save.mutateAsync({ revision: base.revision, display: snapshot });
+      setBase(saved);
+      if (JSON.stringify(latestDraft.current) !== JSON.stringify(snapshot)) {
+        notify.info('已保存提交时的展示设置，之后的新修改仍保留，请再次保存');
+        return false;
+      }
       clearDraft();
       onSaved(saved);
       notify.success('展示设置已保存');
+      return true;
     } catch {
       /* 在抽屉中提示原因，保留当前编辑值和草稿 */
+      return false;
     }
   };
+  useUnsavedChanges({
+    title: `${title}展示设置`,
+    dirty,
+    version: JSON.stringify([base.revision, draft]),
+    save: submit,
+    discard: () => {
+      clearDraft();
+      onClose();
+    },
+  });
   return (
     <Drawer
       open
@@ -665,6 +805,46 @@ function SettingsDrawer({
         >
           默认只显示有发生额
         </Checkbox>
+      </p>
+      <p>
+        <Checkbox
+          checked={draft.dimensionChildren ?? false}
+          onChange={(e) => setDraft({ ...draft, dimensionChildren: e.target.checked })}
+        >
+          默认包含辅助父项的下级
+        </Checkbox>
+      </p>
+      <p>
+        <label>
+          默认辅助显示级次{' '}
+          <select
+            aria-label="默认辅助显示级次"
+            value={draft.dimensionLevel ?? 0}
+            onChange={(e) => setDraft({ ...draft, dimensionLevel: Number(e.target.value) })}
+          >
+            <option value={0}>各明细项</option>
+            {Array.from({ length: 20 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>
+                {i + 1} 级汇总
+              </option>
+            ))}
+          </select>
+        </label>
+      </p>
+      <p>
+        <label>
+          默认辅助排列{' '}
+          <select
+            aria-label="默认辅助排列"
+            value={draft.dimensionOrder ?? 'dimension'}
+            onChange={(e) =>
+              setDraft({ ...draft, dimensionOrder: e.target.value as 'dimension' | 'account' })
+            }
+          >
+            <option value="dimension">按辅助项</option>
+            <option value="account">按科目</option>
+          </select>
+        </label>
       </p>
       {save.isError && <QueryError error={save.error} />}
     </Drawer>

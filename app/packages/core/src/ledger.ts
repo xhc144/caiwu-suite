@@ -8,8 +8,8 @@ import type { Period } from './period';
 
 const zDimFilter = z
   .object(
-    Object.fromEntries(DIMENSION_TYPE_IDS.map((t) => [t, zId.optional()])) as {
-      [K in DimensionTypeId]: z.ZodOptional<typeof zId>;
+    Object.fromEntries(DIMENSION_TYPE_IDS.map((t) => [t, zId.nullable().optional()])) as {
+      [K in DimensionTypeId]: z.ZodOptional<z.ZodNullable<typeof zId>>;
     },
   )
   .default({});
@@ -22,6 +22,9 @@ export const EntryFilterSchema = z.object({
   accountCode: z.string().optional(),
   includeChildren: z.boolean().default(true),
   accountIds: z.array(zId).optional(),
+  /** 只取科目档案中与此单位完全一致的分录；在明细截页前过滤。 */
+  quantityUnit: z.string().min(1).max(80).optional(),
+  /** 缺省维度不筛选，显式 null 精确匹配未指定的辅助项。 */
   dimensions: zDimFilter,
   /** 指定账套本位币时同时包含未标币种（NULL）的本位币行。 */
   currency: z.string().optional(),
@@ -34,6 +37,57 @@ export const EntryFilterSchema = z.object({
   limit: z.number().int().min(1).max(200_000).default(50_000),
 });
 export type EntryFilter = z.input<typeof EntryFilterSchema>;
+
+/** 每次只物化一页，行数始终覆盖全部匹配分录，不使用旧 limit 字段截断。 */
+export const EntryPageSchema = EntryFilterSchema.extend({
+  offset: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0),
+  pageSize: z.number().int().min(1).max(5_000).default(200),
+});
+export type EntryPageQuery = z.input<typeof EntryPageSchema>;
+export interface EntryPage {
+  rows: EntryRow[];
+  rowCount: number;
+  offset: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+export const CashflowPageSchema = EntryPageSchema;
+export type CashflowPageQuery = z.input<typeof CashflowPageSchema>;
+
+export interface CashflowTotals {
+  rowCount: number;
+  cashNet: number;
+  inflow: number;
+  outflow: number;
+  internalNet: number;
+  exchangeEffect: number;
+  unallocatedNet: number;
+  unallocatedCount: number;
+}
+export interface CashflowPage {
+  rows: EntryRow[];
+  totals: CashflowTotals;
+  internalUnbalancedVoucherCount: number;
+  rowCount: number;
+  offset: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+export interface CashflowGroupPage {
+  groups: (CashflowTotals & { cashflowId: number | null })[];
+  groupCount: number;
+  offset: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+export interface CashflowDiagnosticPage {
+  voucherIds: number[];
+  voucherCount: number;
+  offset: number;
+  pageSize: number;
+  hasMore: boolean;
+}
 
 export interface EntryRow {
   cashflowDirection?: CashflowDirection | null;

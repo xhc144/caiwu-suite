@@ -82,6 +82,30 @@ async function code(p: Promise<unknown>) {
 }
 
 describe('出纳真实闭环', () => {
+  it('w_cn_lr_add 外币升级后旧本位币请求仍能安全幂等重试，内容变化继续拒绝', async () => {
+    const input = { ...base(), requestKey: randomUUID() };
+    const saved = await api.createDocument(input);
+    const db = app.svc.db.withTables<CashierTables>();
+    const row = await db
+      .selectFrom('cashier_document')
+      .select('original_json')
+      .where('id', '=', saved.id)
+      .executeTakeFirstOrThrow();
+    const legacy = JSON.parse(row.original_json) as Record<string, unknown>;
+    delete legacy.foreignAmount;
+    delete legacy.exchangeRate;
+    await db
+      .updateTable('cashier_document')
+      .set({ original_json: JSON.stringify(legacy) })
+      .where('id', '=', saved.id)
+      .execute();
+    expect(await api.createDocument(input)).toEqual(saved);
+    expect(await code(api.createDocument({ ...input, summary: '变更后的内容' }))).toBe(
+      'CASHIER_IDEMPOTENCY',
+    );
+    expect(await all()).toHaveLength(1);
+  });
+
   it('w_cn_xtcsh 重复启用保留账户、期初、单据、凭证和勾账', async () => {
     await create();
     await api.generate({ ...(await generation()), requestKey: randomUUID() });
@@ -105,7 +129,7 @@ describe('出纳真实闭环', () => {
     });
     expect((await app.svc.opening.list(2026))[0]!.balance).toBe(100000);
   });
-  it('w_cn_xtcsh 无启用状态拒绝保存；无效账户、重复科目、外币拒绝', async () => {
+  it('w_cn_xtcsh 无启用状态拒绝保存；无效账户、重复科目及缺原币期初拒绝', async () => {
     expect(
       await code(
         api.saveAccount({
@@ -131,7 +155,7 @@ describe('出纳真实闭环', () => {
           },
         }),
       ),
-    ).toBe('CASHIER_CURRENCY');
+    ).toBe('CASHIER_FOREIGN_OPENING');
     await app.svcFor('cashier').settings.set('enabledPeriod', null);
     expect(await code(create())).toBe('CASHIER_NOT_ENABLED');
   });

@@ -110,6 +110,19 @@ CREATE TABLE cashier_check (
 );
 `,
   },
+  {
+    id: '0004_cashier_foreign_currency',
+    sql: `
+ALTER TABLE cashier_opening ADD COLUMN foreign_balance INTEGER;
+ALTER TABLE cashier_document ADD COLUMN foreign_amount INTEGER CHECK(foreign_amount > 0);
+ALTER TABLE cashier_document ADD COLUMN exchange_rate TEXT;
+ALTER TABLE cashier_month_balance ADD COLUMN foreign_opening INTEGER;
+ALTER TABLE cashier_month_balance ADD COLUMN foreign_receipt INTEGER;
+ALTER TABLE cashier_month_balance ADD COLUMN foreign_payment INTEGER;
+ALTER TABLE cashier_month_balance ADD COLUMN foreign_closing INTEGER;
+ALTER TABLE cashier_match ADD COLUMN foreign_amount INTEGER;
+`,
+  },
 ]);
 
 export type CashierTables = {
@@ -135,7 +148,12 @@ export type CashierTables = {
     used: Generated<number>;
     revision: Generated<number>;
   };
-  cashier_opening: { account_id: number; period: number; balance: number };
+  cashier_opening: {
+    account_id: number;
+    period: number;
+    balance: number;
+    foreign_balance: Generated<number | null>;
+  };
   cashier_period: {
     period: number;
     closed: Generated<number>;
@@ -150,6 +168,10 @@ export type CashierTables = {
     receipt: number;
     payment: number;
     closing: number;
+    foreign_opening: Generated<number | null>;
+    foreign_receipt: Generated<number | null>;
+    foreign_payment: Generated<number | null>;
+    foreign_closing: Generated<number | null>;
   };
   cashier_batch: {
     id: Generated<number>;
@@ -170,6 +192,8 @@ export type CashierTables = {
     summary: string;
     direction: 'receipt' | 'payment';
     amount: number;
+    foreign_amount: Generated<number | null>;
+    exchange_rate: Generated<string | null>;
     opposite_account_id: number | null;
     dimensions_json: string;
     ref_no: string;
@@ -177,7 +201,13 @@ export type CashierTables = {
     revision: Generated<number>;
   };
   cashier_batch_document: { batch_id: number; document_id: number; voucher_id: number | null };
-  cashier_match: { id: Generated<number>; account_id: number; amount: number; created_at: string };
+  cashier_match: {
+    id: Generated<number>;
+    account_id: number;
+    amount: number;
+    foreign_amount: Generated<number | null>;
+    created_at: string;
+  };
   cashier_match_document: { document_id: number; match_id: number };
   cashier_match_line: { line_id: number; match_id: number; voucher_revision: number };
 };

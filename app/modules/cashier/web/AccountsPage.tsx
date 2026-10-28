@@ -1,8 +1,14 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Button, Drawer, Form, Input, InputNumber, Select, Space, Tag } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { balanceSide, formatMoney } from '@caiwu/core';
-import { useCurrentPeriod, usePermission, useRequiredSession } from '@caiwu/web-kit';
+import {
+  coreApi,
+  useAccounts,
+  useCurrentPeriod,
+  usePermission,
+  useRequiredSession,
+} from '@caiwu/web-kit';
 import {
   AccountSelect,
   DataTable,
@@ -16,6 +22,8 @@ import {
 import { safeSum } from '../shared';
 import { api, refresh, type CashAccount } from './api';
 import { CashierNav, QueryState } from './common';
+import { useCashierEditor } from './useCashierEditor';
+import ResetDrawer from './ResetDrawer';
 
 export default function AccountsPage() {
   const status = useQuery(api.status.queryOptions());
@@ -24,6 +32,8 @@ export default function AccountsPage() {
   const [filters, setFilters] = useUrlFilters({ year: 0 });
   const list = useQuery(api.accounts.queryOptions({ year: filters.year || undefined }));
   const canEdit = usePermission('cashier.account.edit');
+  const canReset = usePermission('cashier.reset');
+  const [resetting, setResetting] = useState(false);
   const enable = useMutation(api.enable.mutationOptions({ onSuccess: () => void refresh() }));
   const disable = useMutation(api.setDisabled.mutationOptions({ onSuccess: () => void refresh() }));
   const [period, setPeriod] = useState<number>();
@@ -46,6 +56,13 @@ export default function AccountsPage() {
       money: true,
       render: (_, r) =>
         `${balanceSide(r.opening, 'debit').side} ${formatMoney(Math.abs(r.opening))}`,
+    },
+    { key: 'foreignOpening', title: '原币期初', dataIndex: 'foreignOpening', money: true },
+    {
+      key: 'coreForeignOpening',
+      title: '账务原币期初（只读）',
+      dataIndex: 'coreForeignOpening',
+      money: true,
     },
     { key: 'coreOpening', title: '账务期初（只读）', dataIndex: 'coreOpening', money: true },
     {
@@ -92,9 +109,16 @@ export default function AccountsPage() {
       extra={
         canEdit &&
         status.data?.period && (
-          <Button type="primary" onClick={() => setEditing('new')}>
-            新增账户
-          </Button>
+          <Space>
+            <Button type="primary" onClick={() => setEditing('new')}>
+              新增账户
+            </Button>
+            {canReset && (
+              <Button danger onClick={() => setResetting(true)}>
+                重新初始化出纳
+              </Button>
+            )}
+          </Space>
         )
       }
     >
@@ -148,6 +172,7 @@ export default function AccountsPage() {
           locale={{ emptyText: '请先启用出纳，再新增现金或银行账户' }}
         />
       </QueryState>
+      {resetting && <ResetDrawer onClose={() => setResetting(false)} />}
       {editing && <AccountDrawer account={editing} onClose={() => setEditing(null)} />}
     </PageContainer>
   );
@@ -164,51 +189,108 @@ function AccountDrawer({
     coreAccountId: number;
     currency: string;
     opening: number;
+    foreignOpening: number | null;
   }>();
   const { book } = useRequiredSession();
-  const save = useMutation(
-    api.saveAccount.mutationOptions({
-      onSuccess: () => {
-        void refresh();
-        onClose();
-      },
-    }),
+  const { byId } = useAccounts();
+  const currencies = useQuery(coreApi.reference.currencies.queryOptions());
+  const selectedCurrency =
+    Form.useWatch('currency', form) ?? (account === 'new' ? book.baseCurrency : account.currency);
+  const edit = useRef(
+    account === 'new' ? undefined : { id: account.id, revision: account.revision },
   );
+  const save = useMutation(api.saveAccount.mutationOptions());
+  const editor = useCashierEditor({
+    form,
+    title: '出纳账户与期初',
+    fields: selectedCurrency === book.baseCurrency ? ['opening'] : ['opening', 'foreignOpening'],
+    onClose,
+    onSave: async (values) => {
+      const data = {
+        ...values,
+        foreignOpening: values.currency === book.baseCurrency ? null : values.foreignOpening,
+      };
+      const result = await save.mutateAsync({ data, edit: edit.current });
+      edit.current = { id: result.id, revision: (edit.current?.revision ?? 0) + 1 };
+      void refresh();
+    },
+  });
   return (
     <Drawer
       open
       title={account === 'new' ? '新增出纳账户' : '修改账户配置'}
-      onClose={onClose}
+      onClose={editor.close}
       size={480}
     >
-      <Alert type="info" title="使用后关联科目、币种、期初不可改；停用保留历史。当前支持本位币。" />
+      <Alert
+        type="info"
+        title="使用后关联科目、币种、期初不可改；停用保留历史。外币账户同时保存原币和本位币期初。"
+      />
+      {editor.savedEarlier && (
+        <Alert type="info" title="先前内容已保存，保存期间的新修改仍未保存。" />
+      )}
       <Form
         form={form}
         layout="vertical"
-        initialValues={account === 'new' ? { currency: book.baseCurrency, opening: 0 } : account}
-        onFinish={(data) =>
-          save.mutate({
-            data,
-            edit: account === 'new' ? undefined : { id: account.id, revision: account.revision },
-          })
+        initialValues={
+          account === 'new'
+            ? { currency: book.baseCurrency, opening: 0, foreignOpening: null }
+            : account
         }
+        onValuesChange={(changed) => {
+          editor.changed();
+          if (changed.coreAccountId != null) {
+            const currency = byId.get(changed.coreAccountId)?.currency ?? book.baseCurrency;
+            if (currency === book.baseCurrency) editor.money.reset('foreignOpening');
+            form.setFieldsValue({
+              currency,
+              foreignOpening:
+                currency === book.baseCurrency ? null : (form.getFieldValue('foreignOpening') ?? 0),
+            });
+          }
+        }}
+        onFinish={() => void editor.save()}
       >
         <Form.Item name="name" label="账户名称" rules={[{ required: true }]}>
           <Input autoFocus maxLength={80} />
         </Form.Item>
         <Form.Item name="coreAccountId" label="关联现金银行科目" rules={[{ required: true }]}>
-          <AccountSelect filter={(a) => (a.isCash || a.isBank) && a.isLeaf && !a.currency} />
+          <AccountSelect filter={(a) => (a.isCash || a.isBank) && a.isLeaf && !a.disabled} />
         </Form.Item>
         <Form.Item name="currency" label="币种" rules={[{ required: true }]}>
-          <Select options={[{ value: book.baseCurrency, label: book.baseCurrency }]} />
+          <Select
+            options={currencies.data
+              ?.filter((c) => !c.disabled)
+              .map((c) => ({ value: c.code, label: `${c.code} ${c.name}` }))}
+          />
         </Form.Item>
-        <Form.Item name="opening" label="出纳期初（借正贷负）" rules={[{ required: true }]}>
-          <MoneyInput />
+        <Form.Item
+          name="opening"
+          label="出纳期初（借正贷负）"
+          rules={[{ required: true }, editor.money.rule('opening')]}
+        >
+          <MoneyInput {...editor.money.input('opening')} />
         </Form.Item>
-        <Button type="primary" htmlType="submit" loading={save.isPending}>
+        {selectedCurrency !== book.baseCurrency && (
+          <Form.Item
+            name="foreignOpening"
+            label="原币期初（借正贷负）"
+            rules={[{ required: true }, editor.money.rule('foreignOpening')]}
+          >
+            <MoneyInput {...editor.money.input('foreignOpening')} />
+          </Form.Item>
+        )}
+        <Button
+          type="primary"
+          htmlType="submit"
+          aria-label="保存账户"
+          loading={editor.isSubmitting}
+        >
           保存账户
         </Button>
+        <Button onClick={editor.close}>取消</Button>
       </Form>
+      {editor.holder}
     </Drawer>
   );
 }

@@ -177,7 +177,7 @@ it('w_cn_lr_qc_nf 十二月原子建立下一年独立期初，默认账户不�
   expect((await api.periods()).current).toBe(202612);
   await expect(api.accounts({ year: 2027 })).rejects.toThrow('尚未');
   expect(await db().selectFrom('cashier_opening').selectAll().execute()).toEqual([
-    { account_id: accountId, period: 202601, balance: 100000 },
+    { account_id: accountId, period: 202601, balance: 100000, foreign_balance: null },
   ]);
   expect(await api.documents({})).toEqual(docs);
   await close();

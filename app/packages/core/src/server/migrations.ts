@@ -302,4 +302,12 @@ ALTER TABLE dimension_item ADD COLUMN revision INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE account ADD COLUMN closing_rule TEXT CHECK(closing_rule IN ('none','profit','retained-earnings','year-retained-earnings','clearing','seasonal-allocation'));
 `,
   },
+  {
+    id: '0004_voucher_line_query_index',
+    // 相关科目 EXISTS 必须同时定位科目与当前凭证，避免逐凭证重复扫描该科目全部分录。
+    // 原 UNIQUE(voucher_id,line_no) 继续负责凭证明细及摘要查询；不改任何已发布迁移或业务数据。
+    sql: `
+CREATE INDEX voucher_line_account_voucher ON voucher_line(account_id, voucher_id);
+`,
+  },
 ]);

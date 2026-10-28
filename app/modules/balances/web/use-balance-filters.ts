@@ -16,6 +16,9 @@ type Filters = {
   dimension: string;
   dimensionFrom: string;
   dimensionTo: string;
+  dimensionChildren: boolean;
+  dimensionLevel: number;
+  dimensionOrder: string;
 };
 
 /**
@@ -41,6 +44,9 @@ export function useBalanceFilters(
     dimension: auxiliary ? 'project' : '',
     dimensionFrom: '',
     dimensionTo: '',
+    dimensionChildren: settings.display.dimensionChildren ?? false,
+    dimensionLevel: settings.display.dimensionLevel ?? 0,
+    dimensionOrder: settings.display.dimensionOrder ?? 'dimension',
   });
   const [filters, setFilters] = useState(url);
   const latest = useRef(filters);

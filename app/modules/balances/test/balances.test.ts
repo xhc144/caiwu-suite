@@ -4,7 +4,15 @@ import { BusinessError, type BalanceRow } from '@caiwu/core';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import balancesServer from '../server';
 import { balancesService, sumLeaves } from '../server/service';
-import { balanceDisplay, detailUrl, outputRows, parseDimensions, visibleRows } from '../shared';
+import {
+  balanceDisplay,
+  detailUrl,
+  outputRows,
+  parseDimensions,
+  visibleRows,
+  locateRows,
+} from '../shared';
+import { reportHtml } from '../web/output';
 import { seedBalanceCases, seedForeignZeroBaseCase, seedForeignRedActivityCase } from './fixtures';
 
 let app: TestApp;
@@ -579,4 +587,24 @@ it('w_zw_ye fast-check：真实随机平衡凭证，默认/含未过账合计分
     ),
     { numRuns: 15 },
   );
+});
+
+it('w_zw_ye_kmxz 指定打印仅保留显示科目，不把原范围合计冒充选中合计；定位可命中折叠下级', async () => {
+  await seedBalanceCases(app.svc);
+  const report = await app.call(balancesServer).query(range);
+  const group = report.groups[0]!;
+  const bank = group.rows.find((r) => r.accountCode === '100201')!;
+  const html = reportHtml(
+    report,
+    0,
+    group.rows.map((r) => r.accountId),
+    [bank.accountId],
+  );
+  expect(html).toContain('<td>100201</td>');
+  expect(html).not.toContain('<td>1002</td>');
+  expect(html).not.toContain('<td>合计</td>');
+  expect(html).toContain('不另列选中科目合计');
+  const located = locateRows(group, 1, [], '100201');
+  expect(located.map((r) => r.code)).toEqual(['100201', '合计']);
+  expect(located.at(-1)!.debit).toBe(group.totals.debit);
 });

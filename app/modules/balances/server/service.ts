@@ -1,5 +1,6 @@
 import { BusinessError, Decimal, type Account, type BalanceRow } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
+import { dimensionAncestors, mergeAuxiliaryRows } from './auxiliary';
 import {
   QuerySchema,
   SettingsSchema,
@@ -38,6 +39,8 @@ export function sumLeaves(rows: BalanceRow[]): Totals {
     fcDebit: 0,
     fcCredit: 0,
     fcClosing: 0,
+    fcYtdDebit: 0,
+    fcYtdCredit: 0,
   };
   for (const r of rows.filter((r) => r.isLeaf)) {
     t.openingDebit += Math.max(r.opening, 0);
@@ -55,7 +58,9 @@ export function sumLeaves(rows: BalanceRow[]): Totals {
       'fcClosing',
     ] as const)
       t[k] += r[k];
-    for (const value of Object.values(t))
+    for (const key of ['fcYtdDebit', 'fcYtdCredit'] as const)
+      t[key] = t[key] == null || r[key] == null ? null : t[key] + r[key];
+    for (const value of Object.values(t).filter((v) => v != null))
       if (!Number.isSafeInteger(value))
         problem(
           'BALANCES_AMOUNT_OVERFLOW',
@@ -70,6 +75,7 @@ export function sumLeaves(rows: BalanceRow[]): Totals {
 function quantityTree(leaves: BalanceRow[], accounts: Account[], selectedIds: Set<number>) {
   const byId = new Map(accounts.map((a) => [a.id, a]));
   const rows = new Map<number, BalanceRow>();
+  const mixedUnits = new Set<number>();
   for (const leaf of leaves) {
     rows.set(leaf.accountId, { ...leaf });
     let parent = byId.get(leaf.accountId)?.parentId;
@@ -104,7 +110,27 @@ function quantityTree(leaves: BalanceRow[], accounts: Account[], selectedIds: Se
             if (!Number.isSafeInteger(old[key]))
               problem('BALANCES_AMOUNT_OVERFLOW', '余额超出安全整数范围', '请缩小查询范围');
           }
-          for (const key of quantityKeys) old[key] = new Decimal(old[key]).add(leaf[key]).toFixed();
+          for (const key of ['fcYtdDebit', 'fcYtdCredit'] as const) {
+            old[key] = old[key] == null || leaf[key] == null ? null : old[key] + leaf[key];
+            if (old[key] != null && !Number.isSafeInteger(old[key]))
+              problem('BALANCES_AMOUNT_OVERFLOW', '累计金额超出安全范围', '请缩小查询范围');
+          }
+          if (mixedUnits.has(parent) || old.quantityUnit !== leaf.quantityUnit) {
+            // 金额表仍须展示跨数量单位的父科目金额，数量不能相加。
+            mixedUnits.add(parent);
+            old.quantityUnit = null;
+            for (const key of quantityKeys) old[key] = '0';
+            old.qtyYtdDebit = null;
+            old.qtyYtdCredit = null;
+          } else {
+            for (const key of ['qtyYtdDebit', 'qtyYtdCredit'] as const)
+              old[key] =
+                old[key] == null || leaf[key] == null
+                  ? null
+                  : new Decimal(old[key]).add(leaf[key]).toFixed();
+            for (const key of quantityKeys)
+              old[key] = new Decimal(old[key]).add(leaf[key]).toFixed();
+          }
         }
       }
       parent = account.parentId;
@@ -114,15 +140,28 @@ function quantityTree(leaves: BalanceRow[], accounts: Account[], selectedIds: Se
 }
 
 function sumQuantities(rows: BalanceRow[]): QuantityTotals {
-  return Object.fromEntries(
-    quantityKeys.map((key) => [
-      key,
-      rows
-        .filter((r) => r.isLeaf)
-        .reduce((n, row) => n.add(row[key]), new Decimal(0))
-        .toFixed(),
-    ]),
-  ) as QuantityTotals;
+  return {
+    ...(Object.fromEntries(
+      quantityKeys.map((key) => [
+        key,
+        rows
+          .filter((r) => r.isLeaf)
+          .reduce((n, row) => n.add(row[key]), new Decimal(0))
+          .toFixed(),
+      ]),
+    ) as QuantityTotals),
+    ...Object.fromEntries(
+      (['qtyYtdDebit', 'qtyYtdCredit'] as const).map((key) => [
+        key,
+        rows.some((r) => r.isLeaf && r[key] == null)
+          ? null
+          : rows
+              .filter((r) => r.isLeaf)
+              .reduce((n, r) => n.add(r[key] ?? 0), new Decimal(0))
+              .toFixed(),
+      ]),
+    ),
+  };
 }
 
 export function balancesService(svc: CoreServices) {
@@ -200,6 +239,16 @@ export function balancesService(svc: CoreServices) {
         }
         const byId = new Map(accounts.map((a) => [a.id, a]));
         const dimensionItems = q.dimension ? await svc.dimensions.items(q.dimension) : [];
+        const dimensionById = new Map(dimensionItems.map((item) => [item.id, item]));
+        const dimensionPaths = new Map<number, ReturnType<typeof dimensionAncestors>>();
+        const dimensionPath = (id: number) => {
+          let path = dimensionPaths.get(id);
+          if (!path) {
+            path = dimensionAncestors(id, dimensionItems, dimensionById);
+            dimensionPaths.set(id, path);
+          }
+          return path;
+        };
         if (!q.dimension && (q.dimensionFrom || q.dimensionTo))
           problem(
             'BALANCES_DIMENSION_TYPE_REQUIRED',
@@ -219,12 +268,22 @@ export function balancesService(svc: CoreServices) {
             '开始辅助项编码大于结束辅助项编码',
             '交换辅助项范围后重新查询',
           );
-        const selectedDimensionIds = new Set(
+        const directDimensionIds = new Set(
           dimensionItems
             .filter(
               (item) =>
                 (!q.dimensionFrom || item.code >= q.dimensionFrom) &&
                 (!q.dimensionTo || item.code <= q.dimensionTo),
+            )
+            .map((item) => item.id),
+        );
+        const selectedDimensionIds = new Set(
+          dimensionItems
+            .filter(
+              (item) =>
+                directDimensionIds.has(item.id) ||
+                (q.dimensionChildren &&
+                  dimensionPath(item.id).some((parent) => directDimensionIds.has(parent.id))),
             )
             .map((item) => item.id),
         );
@@ -276,11 +335,13 @@ export function balancesService(svc: CoreServices) {
           const coreRows = await svc.ledger.balances({
             periodFrom,
             periodTo,
+            accountCodes: selectedLeaves.map((account) => account.code),
             currency: currency || undefined,
             dimensions: dims,
             groupBy: q.dimension ? [q.dimension] : [],
             includeUnposted: q.includeUnposted,
-            rollup: q.mode !== 'quantity',
+            // 取精确末级余额后组装展示树，金额父行不能被不同数量单位阻断。
+            rollup: false,
             // 汇总表保留零科目；外币的非零原币行由已修复的 core 零行判断保留。
             includeZero: q.mode !== 'foreign',
           });
@@ -305,6 +366,8 @@ export function balancesService(svc: CoreServices) {
                   r.fcDebit,
                   r.fcCredit,
                   r.fcClosing,
+                  r.fcYtdDebit ?? 0,
+                  r.fcYtdCredit ?? 0,
                 ].some((value) => value !== 0)),
           );
           for (const row of selected)
@@ -331,13 +394,22 @@ export function balancesService(svc: CoreServices) {
             string,
             { rows: BalanceRow[]; unit?: string; dimension?: ReportGroup['dimension'] }
           >();
+          const partitionMemberIds = new Map<string, Set<number | null>>();
           for (const row of selected) {
             const unit = q.mode === 'quantity' ? byId.get(row.accountId)!.quantityUnit! : undefined;
-            const dimensionId = q.dimension ? (row.dimensions[q.dimension] ?? null) : null;
+            const originalDimensionId = q.dimension ? (row.dimensions[q.dimension] ?? null) : null;
+            const path =
+              q.dimensionLevel > 0 && originalDimensionId != null
+                ? dimensionPath(originalDimensionId)
+                : [];
+            const dimensionId =
+              q.dimensionLevel > 0 && path.length
+                ? path[Math.min(q.dimensionLevel, path.length) - 1]!.id
+                : originalDimensionId;
             const key = JSON.stringify([unit, dimensionId]);
             let part = partitions.get(key);
             if (!part) {
-              const item = dimensionItems.find((item) => item.id === dimensionId);
+              const item = dimensionById.get(dimensionId ?? -1);
               part = {
                 rows: [],
                 ...(unit != null ? { unit } : {}),
@@ -348,11 +420,22 @@ export function balancesService(svc: CoreServices) {
                         id: dimensionId,
                         code: item?.code ?? '',
                         name: item?.name ?? '未指定辅助项',
+                        members: [],
                       },
                     }
                   : {}),
               };
               partitions.set(key, part);
+              partitionMemberIds.set(key, new Set());
+            }
+            if (part.dimension && !partitionMemberIds.get(key)!.has(originalDimensionId)) {
+              partitionMemberIds.get(key)!.add(originalDimensionId);
+              const member = dimensionById.get(originalDimensionId ?? -1);
+              part.dimension.members!.push({
+                id: originalDimensionId,
+                code: member?.code ?? '',
+                name: member?.name ?? '未指定辅助项',
+              });
             }
             part.rows.push(row);
           }
@@ -364,8 +447,8 @@ export function balancesService(svc: CoreServices) {
               (a.dimension?.code ?? '').localeCompare(b.dimension?.code ?? '') ||
               (a.unit ?? '').localeCompare(b.unit ?? ''),
           )) {
-            const rows =
-              q.mode === 'quantity' ? quantityTree(part.rows, accounts, selectedIds) : part.rows;
+            const merged = mergeAuxiliaryRows(part.rows);
+            const rows = quantityTree(merged, accounts, selectedIds);
             groups.push({
               currency,
               ...part,
@@ -395,7 +478,8 @@ export function balancesService(svc: CoreServices) {
           includeUnposted: q.includeUnposted,
           mode: q.mode,
           auxiliary: !!q.dimension,
-          scope: `科目范围：${q.codeFrom || '最前'}—${q.codeTo || '最后'}（结束科目含其实际下级）；合计取范围内末级科目${q.dimension ? `；辅助范围：${q.dimensionFrom || '最前'}—${q.dimensionTo || '最后'}（按编码含两端）` : ''}`,
+          order: q.dimensionOrder,
+          scope: `科目范围：${q.codeFrom || '最前'}—${q.codeTo || '最后'}（结束科目含其实际下级）；合计取范围内末级科目${q.dimension ? `；辅助范围：${q.dimensionFrom || '最前'}—${q.dimensionTo || '最后'}（按编码含两端${q.dimensionChildren ? '，包含实际下级' : ''}）；辅助级次：${q.dimensionLevel || '各明细项'}；排列：${q.dimensionOrder === 'account' ? '按科目' : '按辅助项'}` : ''}`,
           groups,
         };
       });

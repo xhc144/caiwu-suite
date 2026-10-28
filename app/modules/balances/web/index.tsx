@@ -4,6 +4,11 @@ import manifest from '../manifest';
 
 export default defineWebModule(manifest, {
   routes: [
+    {
+      path: '/cashflow',
+      title: '现金流量试算平衡表',
+      component: lazy(() => import('./CashflowPage')),
+    },
     { path: '/', title: '汇总余额表', component: lazy(() => import('./BalancesPage')) },
     { path: '/foreign', title: '外币余额表', component: lazy(() => import('./BalancesPage')) },
     { path: '/quantity', title: '数量余额表', component: lazy(() => import('./BalancesPage')) },

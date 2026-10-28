@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   BusinessError,
+  Decimal,
   balanceSide,
   formatMoney,
   zId,
@@ -38,6 +39,9 @@ export const QuerySchema = z.object({
     .default(''),
   dimensionFrom: z.string().trim().max(40).default(''),
   dimensionTo: z.string().trim().max(40).default(''),
+  dimensionChildren: z.boolean().default(false),
+  dimensionLevel: z.number().int().min(0).max(20).default(0),
+  dimensionOrder: z.enum(['dimension', 'account']).default('dimension'),
   periodFrom: zPeriod.optional(),
   periodTo: zPeriod.optional(),
   codeFrom: z.string().trim().max(40).default(''),
@@ -51,6 +55,9 @@ export type QueryInput = z.input<typeof QuerySchema>;
 export const DisplaySchema = z.object({
   level: z.number().int().min(-1).max(20).default(1),
   onlyActivity: z.boolean().default(false),
+  dimensionChildren: z.boolean().optional(),
+  dimensionLevel: z.number().int().min(0).max(20).optional(),
+  dimensionOrder: z.enum(['dimension', 'account']).optional(),
 });
 export const SettingsSchema = z.object({
   revision: z.number().int().nonnegative(),
@@ -77,16 +84,27 @@ export type Totals = {
   fcDebit: number;
   fcCredit: number;
   fcClosing: number;
+  fcYtdDebit: number | null;
+  fcYtdCredit: number | null;
 };
 export const quantityKeys = ['qtyOpening', 'qtyDebit', 'qtyCredit', 'qtyClosing'] as const;
-export type QuantityTotals = Record<(typeof quantityKeys)[number], string>;
+export type QuantityTotals = Record<(typeof quantityKeys)[number], string> & {
+  qtyYtdDebit?: string | null;
+  qtyYtdCredit?: string | null;
+};
 export type ReportGroup = {
   currency: string;
   rows: ReportRow[];
   totals: Totals;
   unit?: string;
   quantityTotals?: QuantityTotals;
-  dimension?: { type: string; id: number | null; code: string; name: string };
+  dimension?: {
+    type: string;
+    id: number | null;
+    code: string;
+    name: string;
+    members?: { id: number | null; code: string; name: string }[];
+  };
 };
 export type Report = {
   periodFrom: number;
@@ -98,6 +116,7 @@ export type Report = {
   includeUnposted: boolean;
   mode: 'summary' | 'foreign' | 'quantity';
   auxiliary?: boolean;
+  order?: 'dimension' | 'account';
   scope: string;
 };
 
@@ -167,6 +186,9 @@ export function groupCaption(group: ReportGroup): string {
 export type OutputRow = {
   key: string;
   source?: ReportRow;
+  auxiliaryCode?: string;
+  auxiliaryName?: string;
+  outputGroup?: ReportGroup;
   code: string;
   name: string;
   openingSide: string;
@@ -181,6 +203,11 @@ export type OutputRow = {
   fcDebit: number;
   fcCredit: number;
   fcClosing: number;
+  fcYtdDebit?: number | null;
+  fcYtdCredit?: number | null;
+  qtyYtdDebit?: string | null;
+  qtyYtdCredit?: string | null;
+  closingUnitPrice?: string;
   qtyOpening?: string;
   qtyDebit?: string;
   qtyCredit?: string;
@@ -206,6 +233,13 @@ export function outputRows(group: ReportGroup, level: number, expanded: number[]
     fcDebit: r.fcDebit,
     fcCredit: r.fcCredit,
     fcClosing: r.fcClosing,
+    fcYtdDebit: r.fcYtdDebit,
+    fcYtdCredit: r.fcYtdCredit,
+    qtyYtdDebit: r.qtyYtdDebit,
+    qtyYtdCredit: r.qtyYtdCredit,
+    closingUnitPrice: new Decimal(r.qtyClosing).isZero()
+      ? '—'
+      : new Decimal(r.closing).div(100).div(r.qtyClosing).toFixed(6),
     ...(group.quantityTotals ? Object.fromEntries(quantityKeys.map((key) => [key, r[key]])) : {}),
   }));
   const t = group.totals;
@@ -221,4 +255,61 @@ export function outputRows(group: ReportGroup, level: number, expanded: number[]
     ...group.quantityTotals,
   });
   return rows;
+}
+
+/** 定位查询可命中折叠的下级；原查询范围及其末级合计保持不变。 */
+export function locateRows(
+  group: ReportGroup,
+  level: number,
+  expanded: number[],
+  text: string,
+): OutputRow[] {
+  const query = text.trim().toLocaleLowerCase();
+  if (!query) return outputRows(group, level, expanded);
+  return outputRows(
+    group,
+    0,
+    group.rows.map((r) => r.accountId),
+  ).filter(
+    (r) =>
+      r.key === 'total' ||
+      r.code.toLocaleLowerCase().includes(query) ||
+      r.name.toLocaleLowerCase().includes(query),
+  );
+}
+
+/** 只重排已取出的余额，不重新查询或重复累计父子科目。 */
+export function reportTables(report: Report, level: number, expanded: number[], search = '') {
+  if (report.order !== 'account' || !report.auxiliary)
+    return report.groups.map((group) => ({
+      group,
+      rows: locateRows(group, level, expanded, search),
+    }));
+  const tables = new Map<string, { group: ReportGroup; rows: OutputRow[] }>();
+  report.groups.forEach((group, index) => {
+    const key = JSON.stringify([group.currency, group.unit]);
+    let table = tables.get(key);
+    if (!table) {
+      table = { group: { ...group, dimension: undefined, rows: [] }, rows: [] };
+      tables.set(key, table);
+    }
+    table.group.rows.push(...group.rows);
+    table.rows.push(
+      ...locateRows(group, level, expanded, search).map((row) => ({
+        ...row,
+        key: `${index}:${row.key}`,
+        auxiliaryCode: group.dimension?.code ?? '',
+        auxiliaryName: group.dimension?.name ?? '',
+        outputGroup: group,
+      })),
+    );
+  });
+  for (const table of tables.values())
+    table.rows.sort(
+      (a, b) =>
+        Number(!a.source) - Number(!b.source) ||
+        a.code.localeCompare(b.code) ||
+        (a.auxiliaryCode ?? '').localeCompare(b.auxiliaryCode ?? ''),
+    );
+  return [...tables.values()];
 }
