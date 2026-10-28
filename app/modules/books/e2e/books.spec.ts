@@ -43,7 +43,7 @@ test('w_login / w_xt_kgzb / w_tzjl：UI创建66科目 → 壳登录 → A-B-A隔
   await wizard.getByLabel('管理员姓名').fill('小企业管理员');
   await wizard.getByLabel('管理员密码').fill('small-pass');
   await wizard.getByRole('button', { name: '下一步' }).click();
-  await wizard.getByRole('radio', { name: /小企业会计准则/ }).check();
+  await wizard.locator('input[type="radio"][value="books-small-business"]').check();
   await expect(wizard).toContainText('small-appendix.pdf');
   await wizard.getByRole('button', { name: '下一步' }).click();
   await wizard.getByLabel('科目级次', { exact: true }).fill('3-2-2');

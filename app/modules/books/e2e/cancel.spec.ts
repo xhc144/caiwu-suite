@@ -10,7 +10,7 @@ async function fillValidWizard(wizard: Locator, name: string) {
   await wizard.getByLabel('管理员姓名', { exact: true }).fill('取消测试管理员');
   await wizard.getByLabel('管理员密码', { exact: true }).fill('synthetic-cancel-pass');
   await wizard.getByRole('button', { name: '下一步', exact: true }).click();
-  await wizard.getByRole('radio', { name: /小企业会计准则/ }).check();
+  await wizard.locator('input[type="radio"][value="books-small-business"]').check();
   await wizard.getByRole('button', { name: '下一步', exact: true }).click();
   await wizard.getByLabel('科目级次', { exact: true }).fill('4-2-2');
   await wizard.getByRole('button', { name: '下一步', exact: true }).click();
