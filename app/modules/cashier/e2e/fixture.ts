@@ -18,11 +18,19 @@ export type CashierFixture = {
   baseURL: string;
   withServices: <T>(bookId: string, action: (svc: CoreServices) => Promise<T>) => Promise<T>;
 };
-export const test = base.extend<{ cashier: CashierFixture }>({
-  cashier: async ({ browser }, use) => {
+export const test = base.extend<{
+  cashier: CashierFixture;
+  cashierHost: 'complete' | 'without-reset-protection';
+}>({
+  cashierHost: ['complete', { option: true }],
+  cashier: async ({ browser, cashierHost }, use) => {
     // 夹具独占目录和由操作系统分配的端口；绝不读取全局 E2E 数据目录。
     const dataDir = await mkdtemp(path.join(tmpdir(), 'cashier-e2e-'));
-    const server = spawn(process.execPath, ['--import', 'tsx', 'apps/server/src/main.ts'], {
+    const entry =
+      cashierHost === 'without-reset-protection'
+        ? 'apps/server/e2e/reset-unavailable-server.ts'
+        : 'apps/server/src/main.ts';
+    const server = spawn(process.execPath, ['--import', 'tsx', entry], {
       cwd: process.cwd(),
       env: {
         ...process.env,
