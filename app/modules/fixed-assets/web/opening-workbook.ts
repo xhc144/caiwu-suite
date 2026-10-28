@@ -25,6 +25,13 @@ export const openingHeaders = [
   '少于30月已复核（是/否）',
   '预计残值（元，可空）',
   '参考编号',
+  '制造厂',
+  '安装地点',
+  '制造日期',
+  '本机编号',
+  '保管人',
+  '币种',
+  '外币原值',
 ];
 export const accessoryHeaders = ['设备编号', '附属编号', '附属名称', '数量', '单价（元）', '说明'];
 type Accessory = NonNullable<CardInput['accessories']>[number];
@@ -75,7 +82,12 @@ function requireHeaders(sheet: Worksheet, headers: string[]) {
     throw new Error(`${sheet.name}列名不符，请使用本页 Excel 模板`);
   sheet.eachRow((row) => {
     row.eachCell((cell, column) => {
-      if (column > headers.length && cell.text.trim())
+      if (
+        column > headers.length &&
+        (cell.text.trim() ||
+          cell.formula ||
+          (cell.value && typeof cell.value === 'object' && 'error' in cell.value))
+      )
         throw new Error(`${sheet.name}第 ${row.number} 行存在模板外数据，请核对后再导入`);
     });
   });
@@ -85,7 +97,8 @@ function requireHeaders(sheet: Worksheet, headers: string[]) {
 export function readOpeningWorkbook(workbook: Workbook, refs: References) {
   const main = workbook.worksheets[0];
   if (!main) throw new Error('工作簿没有工作表');
-  requireHeaders(main, openingHeaders);
+  const expanded = cellText(main, main.getRow(1), 23) !== '';
+  requireHeaders(main, expanded ? openingHeaders : openingHeaders.slice(0, 22));
   for (const sheet of workbook.worksheets.slice(1))
     if (sheet.name !== '附属设备' && sheet.actualRowCount)
       throw new Error(`工作表「${sheet.name}」含未识别数据，请按模板整理，避免遗漏`);
@@ -115,11 +128,18 @@ export function readOpeningWorkbook(workbook: Workbook, refs: References) {
       totalWork: v(15) || '0',
       openingWork: v(16) || '0',
       model: v(17),
-      unit: v(18) || '台',
+      unit: expanded ? v(18) : v(18) || '台',
       quantity: v(19) || '1',
       confirmShortLife: v(20) === '是',
       residual: v(21) ? (parseMoney(v(21)) ?? -1) : undefined,
       reference: v(22),
+      manufacturer: v(23),
+      installation: v(24),
+      manufactured: v(25) || null,
+      machineCode: v(26),
+      custodian: v(27),
+      currencyCode: v(28) || 'CNY',
+      foreignOriginal: v(29) || '0',
       accessories: [],
     };
     rows.push({ row: index, data });

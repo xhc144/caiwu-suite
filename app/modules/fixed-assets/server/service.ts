@@ -27,6 +27,7 @@ import {
 } from '../shared';
 import type { FixedAssetsTables } from './migrations';
 import { departmentService } from './departments';
+import { allocationAt } from './transfers';
 import {
   deleteAssetVoucher,
   previewAssetVoucherDeletion,
@@ -296,6 +297,14 @@ export function assetService(svc: CoreServices) {
     if (p.method === '1' && p.lifeMonths < 30 && !p.confirmShortLife)
       fail('SHORT_LIFE', `使用年限为 ${p.lifeMonths} 月，少于 30 月`, '复核单位为月后勾选确认');
     if (p.acquired > p.useDate) fail('DATE_ORDER', '购置日期不能晚于使用日期');
+    if (p.manufactured && p.manufactured > p.acquired)
+      fail('MANUFACTURED_DATE', '制造日期不能晚于购置日期');
+    if (p.currencyCode !== 'CNY') {
+      const currency = (await svc.reference.currencies()).find((c) => c.code === p.currencyCode);
+      if (!currency || currency.disabled)
+        fail('CURRENCY', '外币币种不存在或已停用', '请先维护币种，原值仍按本位币填写');
+    } else if (new Decimal(p.foreignOriginal).gt(0))
+      fail('CURRENCY', '本位币资产不能同时填写外币原值', '请选择外币币种或将外币原值清零');
     const residual =
       p.residual ?? assertCents(new Decimal(p.original).mul(p.rate).toDecimalPlaces(0).toNumber());
     if (residual > p.original || p.openingDepreciation > p.original - residual)
@@ -393,10 +402,26 @@ export function assetService(svc: CoreServices) {
         .select('id')
         .where('asset_id', '=', old.id)
         .executeTakeFirst();
+      const transfer = await db
+        .selectFrom('fixed_assets_transfer')
+        .select('id')
+        .where('asset_id', '=', old.id)
+        .executeTakeFirst();
       if (p.original !== old.original)
         fail('USE_ADJUSTMENT', '原值变更请使用原值调整', '在卡片操作中选择原值调整');
       if (
-        (history || changes || old.opening_depreciation) &&
+        transfer &&
+        (p.installation !== old.installation ||
+          p.custodian !== old.custodian ||
+          qtyToE6(p.quantity) !== old.quantity_e6)
+      )
+        fail(
+          'HISTORY',
+          '资产已有转移记录，地点、保管人和数量变更请使用资产转移',
+          '请保留按日期记录的转移历史',
+        );
+      if (
+        (history || changes || transfer || old.opening_depreciation) &&
         (residual !== old.residual ||
           p.method !== old.method ||
           p.lifeMonths !== old.life_months ||
@@ -417,6 +442,14 @@ export function assetService(svc: CoreServices) {
       code: p.code,
       name: p.name,
       reference: p.reference,
+      manufacturer: p.manufacturer,
+      installation: p.installation,
+      manufactured: p.manufactured,
+      machine_code: p.machineCode,
+      custodian: p.custodian,
+      currency_code: p.currencyCode,
+      foreign_original: p.foreignOriginal,
+      foreign_original_e6: qtyToE6(p.foreignOriginal),
       category_id: p.categoryId,
       status_id: p.statusId,
       purpose_id: p.purposeId,
@@ -586,6 +619,25 @@ export function assetService(svc: CoreServices) {
             '请将此档案停用；已有卡片和历史记录保留',
             '/m/fixed-assets/masters',
           );
+        const historic = await tdb
+          .selectFrom('fixed_assets_line')
+          .select('id')
+          .where((eb) => eb.or([eb('category_id', '=', id), eb('purpose_id', '=', id)]))
+          .executeTakeFirst();
+        const transfer = await tdb
+          .selectFrom('fixed_assets_transfer')
+          .select('id')
+          .where((eb) =>
+            eb.or([
+              eb('from_purpose_id', '=', id),
+              eb('to_purpose_id', '=', id),
+              eb('from_status_id', '=', id),
+              eb('to_status_id', '=', id),
+            ]),
+          )
+          .executeTakeFirst();
+        if (historic || transfer)
+          fail('MASTER_USED', `${m.name} 被资产历史记录使用，不能删除`, '请停用该档案并保留历史');
         if (!confirm) fail('CONFIRM', '删除未使用档案需要确认');
         await tdb.deleteFrom('fixed_assets_master').where('id', '=', id).execute();
         await assetService(ts).logInternal('master.delete', id);
@@ -676,6 +728,14 @@ export function assetService(svc: CoreServices) {
           .where('asset_id', '=', id)
           .executeTakeFirst();
         if (adj) fail('ADJUSTED', '资产存在原值调整，不能删除', '先逆序删除原值调整');
+        if (
+          await tdb
+            .selectFrom('fixed_assets_transfer')
+            .select('id')
+            .where('asset_id', '=', id)
+            .executeTakeFirst()
+        )
+          fail('TRANSFER_HISTORY', '资产存在转移记录，不能删除', '请使用注销保留资产历史');
         if (!confirm) fail('CONFIRM', '删除资产需要确认');
         await ts.periods.assertOpen(
           Math.max((await ts.book.info()).startPeriod, periodOfDate(c.use_date)),
@@ -754,6 +814,7 @@ export function assetService(svc: CoreServices) {
         .selectAll()
         .where('period', '=', period)
         .execute();
+      const transfers = await db.selectFrom('fixed_assets_transfer').selectAll().execute();
       const rows = [];
       for (const c of cards) {
         await assertChain(c);
@@ -768,7 +829,12 @@ export function assetService(svc: CoreServices) {
           fail('WORK_EXCEEDS', `${c.code} 本月工作量超过剩余总工作量`);
         if (c.original < c.depreciation + c.residual)
           fail('INVALID_BALANCE', `${c.code} 原值小于累计折旧与残值之和`);
-        const status = await master(c.status_id, 'status', true);
+        const allocation = allocationAt(
+          c,
+          transfers.filter((t) => t.asset_id === c.id),
+          periodEndDate(period),
+        );
+        const status = await master(allocation.status_id, 'status', true);
         const base = {
           assetId: c.id,
           code: c.code,
@@ -782,8 +848,8 @@ export function assetService(svc: CoreServices) {
           original: c.original,
           residual: c.residual,
           categoryId: c.category_id,
-          purposeId: c.purpose_id,
-          departmentId: c.department_id,
+          purposeId: allocation.purpose_id,
+          departmentId: allocation.department_id,
           revision: c.revision,
           issue: '',
           blocking: false,
@@ -977,6 +1043,12 @@ export function assetService(svc: CoreServices) {
             .where('asset_id', '=', c.id)
             .where('date', '>=', periodEndDate(b.period))
             .executeTakeFirst();
+          const transfer = await tdb
+            .selectFrom('fixed_assets_transfer')
+            .select('id')
+            .where('asset_id', '=', c.id)
+            .where('date', '>', periodEndDate(b.period))
+            .executeTakeFirst();
           if (
             c.original !== l.original ||
             c.residual !== l.residual ||
@@ -984,7 +1056,8 @@ export function assetService(svc: CoreServices) {
             c.months !== l.before_months + l.month_count ||
             c.work_e6 !== l.before_work_e6 + l.work_e6 ||
             c.disposal_date ||
-            changes
+            changes ||
+            transfer
           )
             fail(
               'REVERSE_ORDER',

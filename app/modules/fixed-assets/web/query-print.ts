@@ -1,7 +1,14 @@
 import { formatMoney } from '@caiwu/core';
 import { escapeHtml } from '@caiwu/print';
 import type { Outputs } from './api';
-import { queryFields, queryOperators, type QueryCondition } from '../shared';
+import {
+  queryFields,
+  queryOperators,
+  queryDisplayLabels,
+  queryMoneyColumns,
+  type QueryCondition,
+} from '../shared';
+import { parseQueryLogic, queryLogicText } from '../query-logic';
 
 /** 输出当前成功查询的完整结果；用户输入只作为转义后的正文。 */
 export function depreciationPrint(
@@ -12,11 +19,16 @@ export function depreciationPrint(
     departmentLevel: string;
     categoryLevel: string;
     conditions?: QueryCondition[];
+    expression?: string;
+    displayColumns?: (keyof typeof queryDisplayLabels)[];
+    hideRepeated?: boolean;
+    sortField?: keyof typeof queryDisplayLabels;
+    sortDirection?: 'asc' | 'desc';
   },
   kind: 'detail' | 'distribution',
 ) {
   const title = kind === 'detail' ? '折旧查询' : '折旧分布表';
-  const rows =
+  let rows =
     kind === 'detail'
       ? result.rows.map((r) => [
           String(r.period),
@@ -31,13 +43,26 @@ export function depreciationPrint(
         ])
       : result.distribution.map((r) => [r.group, formatMoney(r.amount)]);
   if (!rows.length) throw new Error('没有记录，无法打印及预览');
-  const columns =
+  let columns =
     kind === 'detail'
       ? ['月份', '设备编号', '设备名称', '部门', '类别', '用途', '月工作量', '折旧额（元）', '说明']
       : ['部门 / 资产类别', '折旧额（元）'];
+  if (kind === 'detail' && range.displayColumns) {
+    const fields = range.displayColumns;
+    columns = fields.map((f) => (f === 'amount' ? '折旧额（元）' : queryDisplayLabels[f]));
+    rows = result.rows.map((r, index) =>
+      fields.map((f) =>
+        queryMoneyColumns.includes(f as (typeof queryMoneyColumns)[number])
+          ? formatMoney(Number(r[f] ?? 0))
+          : range.hideRepeated && index > 0 && result.rows[index - 1]?.[f] === r[f]
+            ? ''
+            : String(r[f] ?? ''),
+      ),
+    );
+  }
   const grouping = `${range.departmentLevel === 'top' ? '部门大类' : '明细部门'} / ${range.categoryLevel === 'top' ? '资产大类' : '资产细类'}`;
   const conditions = range.conditions?.length
-    ? `<p>全部同时满足：${range.conditions.map((c) => escapeHtml(`${queryFields[c.field].label} ${queryOperators[c.op]} ${c.field === 'amount' ? formatMoney(Number(c.value)) : c.value}`)).join('；')}</p>`
+    ? `<p>${range.expression ? '条件：' : '全部同时满足：'}${range.conditions.map((c, i) => escapeHtml(`${range.expression ? `${i + 1}：` : ''}${queryFields[c.field].label} ${queryOperators[c.op]} ${queryFields[c.field].type === 'number' ? formatMoney(Number(c.value)) : c.value}`)).join('；')}</p>${range.expression ? `<p>组合：${escapeHtml(queryLogicText(parseQueryLogic(range.expression, range.conditions.length)!))}</p>` : ''}`
     : '';
   return {
     title,

@@ -1,21 +1,29 @@
 import { useAssetFilters as useUrlFilters } from './common';
-import { useEffect, useMemo, useState } from 'react';
-import { skipToken, useQuery } from '@tanstack/react-query';
-import { Alert, Button, Checkbox, Form, Input, InputNumber, Select, Space } from 'antd';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query';
+import { Alert, Button, Checkbox, Form, Input, InputNumber, Select, Space, Modal } from 'antd';
 import {
   DataTable,
   DimensionSelect,
   MoneyInput,
   PageContainer,
   type MoneyInputProps,
+  type DataColumn,
 } from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
 import { getBusinessError, notify, useRequiredSession } from '@caiwu/web-kit';
 import { printHtml } from '@caiwu/print';
 import { depreciationPrint } from './query-print';
-import { api } from './api';
+import { api, type Outputs } from './api';
 import { Confirm, MasterSelect } from './common';
-import { MAX_QUERY_CONDITIONS, queryFields, queryOperators, type QueryCondition } from '../shared';
+import {
+  MAX_QUERY_CONDITIONS,
+  queryFields,
+  queryOperators,
+  queryDisplayLabels,
+  queryMoneyColumns,
+  type QueryCondition,
+} from '../shared';
 import {
   queryDefaults,
   queryUrlDefaults,
@@ -32,6 +40,7 @@ export function QueryAmountInput({
   value?: string;
   onChange?: (value: string) => void;
 }) {
+  const invalidDraft = useRef<string | undefined>(undefined);
   const cents =
     value && /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : null;
   return (
@@ -39,6 +48,13 @@ export function QueryAmountInput({
       {...props}
       allowNegative={false}
       value={cents}
+      draftText={invalidDraft.current}
+      onDraftStateChange={(state) => {
+        if (state) {
+          invalidDraft.current = state.valid ? undefined : state.text;
+          if (!state.valid && state.text !== value) onChange?.(state.text);
+        }
+      }}
       onChange={(next) => onChange?.(next == null ? '' : String(next))}
     />
   );
@@ -77,6 +93,10 @@ export default function QueriesPage() {
   );
   const q = useQuery(api.query.queryOptions(parsed.input ?? skipToken, { meta: { silent: true } }));
   const cards = useQuery(api.list.queryOptions({ includeDisposed: true }));
+  const definitions = useQuery(api.queryDefinitions.queryOptions());
+  const saveDefinition = useMutation(api.saveQueryDefinition.mutationOptions());
+  const removeDefinition = useMutation(api.removeQueryDefinition.mutationOptions());
+  const [definitionName, setDefinitionName] = useState('');
   const queryError = q.error ? getBusinessError(q.error) : null;
   const rawError =
     formError ??
@@ -113,8 +133,122 @@ export default function QueriesPage() {
       notify.error(error instanceof Error ? error.message : '打印失败，请重试');
     }
   };
+  const allColumns: DataColumn<Outputs['query']['rows'][number]>[] = Object.entries(
+    queryDisplayLabels,
+  ).map(([key, title]) => ({
+    key,
+    title,
+    dataIndex: key,
+    width: key === 'name' ? 170 : key === 'issue' ? 220 : 130,
+    money: queryMoneyColumns.includes(key as (typeof queryMoneyColumns)[number]),
+    ...(!queryMoneyColumns.includes(key as (typeof queryMoneyColumns)[number]) &&
+    parsed.input?.hideRepeated
+      ? {
+          render: (_: unknown, row: Outputs['query']['rows'][number], index: number) => {
+            const field = key as keyof typeof queryDisplayLabels;
+            return index > 0 && result?.rows[index - 1]?.[field] === row[field] ? '' : row[field];
+          },
+        }
+      : {}),
+  }));
+  const detailColumns = (parsed.input?.displayColumns ?? Object.keys(queryDisplayLabels)).map(
+    (key) => allColumns.find((c) => c.key === key)!,
+  );
   return (
     <PageContainer title="折旧查询与分布">
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Button
+          onClick={() =>
+            Modal.confirm({
+              title: '是否查询本年度全部资产单据？',
+              content: '将清除当前资产、部门和综合条件，并包含零折旧记录。',
+              okText: '包含所有单据',
+              cancelText: '保留当前条件',
+              onOk: () => {
+                Modal.confirm({
+                  title: '全量刷新可能需要较长时间',
+                  content: '可先按月份或资产定位查询。确认继续全量刷新？',
+                  okText: '继续全量刷新',
+                  cancelText: '返回定位查询',
+                  onOk: () => {
+                    const defaults = { ...queryDefaults(year), showZero: true };
+                    form.resetFields();
+                    form.setFieldsValue(defaults);
+                    submit(defaults);
+                  },
+                });
+              },
+            })
+          }
+        >
+          刷新全部单据
+        </Button>
+        <Select
+          aria-label="已保存查询"
+          placeholder="选择已保存查询"
+          style={{ width: 240 }}
+          value={definitionName || undefined}
+          options={definitions.data?.items.map((x) => ({ value: x.name, label: x.name }))}
+          onSelect={(name) => {
+            const d = definitions.data?.items.find((x) => x.name === name);
+            if (d) {
+              setDefinitionName(name);
+              form.resetFields();
+              form.setFieldsValue(d.query);
+              submit(d.query);
+            }
+          }}
+        />
+        <Input
+          aria-label="查询定义名称"
+          placeholder="查询定义名称"
+          value={definitionName}
+          maxLength={60}
+          style={{ width: 220 }}
+          onChange={(e) => setDefinitionName(e.target.value)}
+        />
+        <Button
+          disabled={!definitionName.trim() || !definitions.data}
+          loading={saveDefinition.isPending}
+          onClick={() => {
+            const checked = validateQuery(form.getFieldsValue(true));
+            if (!checked.input) {
+              setFormError(checked.error);
+              return;
+            }
+            if (definitions.data)
+              void saveDefinition
+                .mutateAsync({
+                  name: definitionName.trim(),
+                  query: checked.input,
+                  revision: definitions.data.revision,
+                })
+                .then(() => {
+                  notify.success('查询定义已保存');
+                  void definitions.refetch();
+                })
+                .catch(() => {});
+          }}
+        >
+          保存查询定义
+        </Button>
+        <Confirm
+          danger
+          title="确认删除当前查询定义？"
+          onConfirm={async () => {
+            if (!definitions.data || !definitionName) return;
+            await removeDefinition.mutateAsync({
+              name: definitionName,
+              revision: definitions.data.revision,
+              confirm: true,
+            });
+            setDefinitionName('');
+            void definitions.refetch();
+          }}
+        >
+          删除查询定义
+        </Confirm>
+      </Space>
       <Form<QueryDraft>
         form={form}
         layout="inline"
@@ -187,7 +321,9 @@ export default function QueriesPage() {
                         onChange={(field: QueryCondition['field']) => {
                           if (
                             queryFields[field].type !== 'text' &&
-                            form.getFieldValue(['conditions', name, 'op']) === 'contains'
+                            ['contains', 'notContains'].includes(
+                              form.getFieldValue(['conditions', name, 'op']) as string,
+                            )
                           )
                             form.setFieldValue(['conditions', name, 'op'], 'eq');
                         }}
@@ -205,7 +341,10 @@ export default function QueriesPage() {
                                 aria-label={`条件 ${index + 1} 操作符`}
                                 style={{ width: 160 }}
                                 options={Object.entries(queryOperators)
-                                  .filter(([op]) => type === 'text' || op !== 'contains')
+                                  .filter(
+                                    ([op]) =>
+                                      type === 'text' || !['contains', 'notContains'].includes(op),
+                                  )
                                   .map(([value, label]) => ({
                                     value,
                                     label:
@@ -253,6 +392,98 @@ export default function QueriesPage() {
                   }}
                 >
                   增加条件
+                </Button>
+              </>
+            )}
+          </Form.List>
+          <Form.Item
+            name="expression"
+            label="条件组合"
+            extra="留空时全部并且。可填：(1 或者 2) 并且 3；括号可嵌套，每条条件都须引用。"
+            style={{ marginTop: 12 }}
+          >
+            <Input
+              aria-label="条件组合表达式"
+              placeholder="例如：(1 或者 2) 并且 3"
+              maxLength={500}
+              style={{ width: 520 }}
+            />
+          </Form.Item>
+          <Space wrap>
+            <Form.Item name="displayColumns" label="显示列及顺序">
+              <Select
+                mode="multiple"
+                style={{ minWidth: 400 }}
+                options={Object.entries(queryDisplayLabels).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item name="sortField" label="排序字段">
+              <Select
+                style={{ width: 150 }}
+                options={Object.entries(queryDisplayLabels).map(([value, label]) => ({
+                  value,
+                  label,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item name="sortDirection" label="顺序">
+              <Select
+                style={{ width: 100 }}
+                options={[
+                  { value: 'asc', label: '升序' },
+                  { value: 'desc', label: '降序' },
+                ]}
+              />
+            </Form.Item>
+            <Form.Item name="hideRepeated" valuePropName="checked">
+              <Checkbox>显示及打印隐藏连续重复文字</Checkbox>
+            </Form.Item>
+          </Space>
+          <Form.List name="sorts">
+            {(fields, { add, remove }) => (
+              <>
+                <p>多字段排序（按从上至下的优先级；留空时使用上方排序）</p>
+                {fields.map(({ key, name }, index) => (
+                  <Space key={key} wrap>
+                    <Form.Item name={[name, 'field']} label={`排序 ${index + 1}`}>
+                      <Select
+                        style={{ width: 180 }}
+                        options={Object.entries(queryDisplayLabels).map(([value, label]) => ({
+                          value,
+                          label,
+                        }))}
+                      />
+                    </Form.Item>
+                    <Form.Item name={[name, 'direction']}>
+                      <Select
+                        style={{ width: 100 }}
+                        options={[
+                          { value: 'asc', label: '升序' },
+                          { value: 'desc', label: '降序' },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Button
+                      onClick={() => {
+                        remove(name);
+                        setDirty(true);
+                      }}
+                    >
+                      删除排序 {index + 1}
+                    </Button>
+                  </Space>
+                ))}
+                <Button
+                  disabled={fields.length >= 5}
+                  onClick={() => {
+                    add({ field: 'code', direction: 'asc' });
+                    setDirty(true);
+                  }}
+                >
+                  增加排序
                 </Button>
               </>
             )}
@@ -354,17 +585,7 @@ export default function QueriesPage() {
                 : '没有符合筛选条件的折旧记录',
         }}
         exportName={result?.rows.length ? '折旧查询' : undefined}
-        columns={[
-          { key: 'period', title: '月份', dataIndex: 'period', width: 100 },
-          { key: 'code', title: '编号', dataIndex: 'code', width: 120 },
-          { key: 'name', title: '设备', dataIndex: 'name', width: 170 },
-          { key: 'department', title: '部门', dataIndex: 'department', width: 130 },
-          { key: 'category', title: '类别', dataIndex: 'category', width: 150 },
-          { key: 'purpose', title: '用途', dataIndex: 'purpose', width: 130 },
-          { key: 'work', title: '月工作量', dataIndex: 'work', width: 120 },
-          { key: 'amount', title: '折旧额', dataIndex: 'amount', money: true },
-          { key: 'issue', title: '跳过或说明', dataIndex: 'issue', width: 220 },
-        ]}
+        columns={detailColumns}
       />
       <p>明细合计：{result ? formatMoney(result.total) : '—'} 元</p>
       <DataTable
