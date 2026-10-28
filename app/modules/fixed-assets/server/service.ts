@@ -914,19 +914,19 @@ export function assetService(svc: CoreServices) {
         .orderBy('period', 'desc')
         .execute();
       return Promise.all(
-        rows.map(async (b) => ({
-          ...b,
-          total: sumCents(
-            (
-              await db
-                .selectFrom('fixed_assets_line')
-                .select('amount')
-                .where('batch_id', '=', b.id)
-                .execute()
-            ).map((l) => l.amount),
-          ),
-          voucher: b.voucher_id ? await svc.vouchers.get(b.voucher_id) : null,
-        })),
+        rows.map(async (b) => {
+          const lines = await db
+            .selectFrom('fixed_assets_line')
+            .select('amount')
+            .where('batch_id', '=', b.id)
+            .execute();
+          return {
+            ...b,
+            total: sumCents(lines.map((l) => l.amount)),
+            requiresVoucher: lines.some((l) => l.amount !== 0),
+            voucher: b.voucher_id ? await svc.vouchers.get(b.voucher_id) : null,
+          };
+        }),
       );
     },
     async cancelPreview(id: number) {

@@ -84,8 +84,10 @@ export default function DepreciationPage() {
                 ? '已审核'
                 : '已过账'}
           </Button>
-        ) : (
+        ) : b.requiresVoucher ? (
           '未生成'
+        ) : (
+          '本月无需制证'
         ),
     },
     {
@@ -95,7 +97,9 @@ export default function DepreciationPage() {
       width: 320,
       render: (_, b) => (
         <Space>
-          {canVoucher && <Button onClick={() => setVoucherId(b.id)}>凭证预览/生成</Button>}
+          {canVoucher && b.requiresVoucher && (
+            <Button onClick={() => setVoucherId(b.id)}>凭证预览/生成</Button>
+          )}
           {canCancel && (
             <Button danger onClick={() => setCancelId(b.id)}>
               取消此月折旧

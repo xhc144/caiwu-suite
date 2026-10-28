@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Alert, Button, Checkbox, Drawer, Form, Input, Space } from 'antd';
-import { DataTable, MoneyInput } from '@caiwu/ui';
+import { DataTable, MoneyInput, type MoneyInputDraftState } from '@caiwu/ui';
 import { formatMoney, periodEndDate } from '@caiwu/core';
 import {
   notify,
@@ -43,6 +43,8 @@ export default function CardOperations({
     dispose = useMutation(api.dispose.mutationOptions()),
     undo = useMutation(api.undoDisposal.mutationOptions());
   const otherSubmission = useSubmission();
+  const amountDraft = useRef<MoneyInputDraftState | null>(null);
+  const [amountError, setAmountError] = useState<string>();
   const c = data?.card;
   const undoPreview = useQuery({
     ...api.undoDisposalPreview.queryOptions({ id }),
@@ -51,6 +53,12 @@ export default function CardOperations({
   const draft = useAssetDraft({
     title: kind === 'adjust' ? '原值调整' : '注销资产',
     discard: onClose,
+    validate: () => {
+      if (kind === 'adjust' && amountDraft.current?.valid === false) {
+        setAmountError('调整后原值金额格式不正确，请修正后再保存');
+        throw new Error('请先修正金额输入后再保存');
+      }
+    },
     save: async () => {
       if (!c || !data) return false;
       if (kind === 'adjust') {
@@ -133,11 +141,32 @@ export default function CardOperations({
                 onChange={(e) => change(() => setDate(e.target.value))}
               />
             </Form.Item>
-            <Form.Item label="调整后原值（元）" htmlFor="fixed-assets-adjust-value">
+            <Form.Item
+              label="调整后原值（元）"
+              htmlFor="fixed-assets-adjust-value"
+              validateStatus={amountError ? 'error' : undefined}
+              help={amountError}
+            >
               <MoneyInput
                 id="fixed-assets-adjust-value"
                 value={value}
                 onChange={(v) => change(() => setValue(v))}
+                draftText={amountDraft.current?.text}
+                onDraftStateChange={(state) => {
+                  if (!state) return;
+                  const previous = amountDraft.current;
+                  if (
+                    previous?.text === state.text &&
+                    previous.valid === state.valid &&
+                    previous.value === state.value
+                  )
+                    return;
+                  amountDraft.current = state;
+                  setAmountError(
+                    state.valid ? undefined : '调整后原值金额格式不正确，请修正后再保存',
+                  );
+                  if (!state.valid || previous?.valid === false) draft.changed();
+                }}
               />
             </Form.Item>
             <Form.Item label="调整说明" htmlFor="fixed-assets-adjust-note">

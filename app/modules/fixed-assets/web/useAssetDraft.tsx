@@ -6,6 +6,7 @@ import { useSubmission, useUnsavedChanges } from '@caiwu/web-kit';
 export function useAssetDraft(input: {
   title: string;
   save: () => Promise<boolean | void>;
+  validate?: () => void;
   discard?: () => Promise<void> | void;
 }) {
   const state = useRef({ dirty: false, version: 0 });
@@ -23,14 +24,20 @@ export function useAssetDraft(input: {
     state.current = { dirty: false, version: state.current.version + 1 };
     update();
   };
-  const save = () =>
-    submission.submit(async () => {
+  const save = () => {
+    try {
+      latest.current.validate?.();
+    } catch (error) {
+      return Promise.reject(error);
+    }
+    return submission.submit(async () => {
       const version = state.current.version;
       const result = await latest.current.save();
       if (result === false || state.current.version !== version) return false;
       clear();
       return true;
     });
+  };
   const discard = async () => {
     await latest.current.discard?.();
     clear();

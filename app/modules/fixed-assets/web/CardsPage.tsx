@@ -21,6 +21,7 @@ import {
   MoneyInput,
   PageContainer,
   type DataColumn,
+  type MoneyInputDraftState,
 } from '@caiwu/ui';
 import {
   notify,
@@ -221,6 +222,8 @@ function CardEditor({
   const masters = useQuery(api.masters.queryOptions());
   const [form] = Form.useForm<CardInput>();
   const create = useMutation(api.save.mutationOptions());
+  const amountDrafts = useRef(new Map<'original' | 'residual', MoneyInputDraftState>());
+  const amountLabels = { original: '原值', residual: '预计残值' };
   const hydrated = useRef(false);
   const persisted = useRef<{ id?: number; revision?: number }>({
     id: copy ? undefined : id,
@@ -228,6 +231,20 @@ function CardEditor({
   const draft = useAssetDraft({
     title: copy ? '复制新增资产' : id ? '修改资产卡片' : '新增资产卡片',
     discard: onClose,
+    validate: () => {
+      const invalid = (['original', 'residual'] as const).filter(
+        (name) => amountDrafts.current.get(name)?.valid === false,
+      );
+      if (invalid.length) {
+        form.setFields(
+          invalid.map((name) => ({
+            name,
+            errors: [`${amountLabels[name]}金额格式不正确，请修正后再保存`],
+          })),
+        );
+        throw new Error('请先修正金额输入后再保存');
+      }
+    },
     save: async () => {
       if (readOnly || (id && !hydrated.current)) return false;
       const data = structuredClone(await form.validateFields());
@@ -240,6 +257,24 @@ function CardEditor({
       void refresh();
     },
   });
+  const amountInput = (name: 'original' | 'residual', state: MoneyInputDraftState | null) => {
+    if (!state) return;
+    const previous = amountDrafts.current.get(name);
+    if (
+      previous?.text === state.text &&
+      previous.valid === state.valid &&
+      previous.value === state.value
+    )
+      return;
+    amountDrafts.current.set(name, state);
+    form.setFields([
+      {
+        name,
+        errors: state.valid ? [] : [`${amountLabels[name]}金额格式不正确，请修正后再保存`],
+      },
+    ]);
+    if (!state.valid || previous?.valid === false) draft.changed();
+  };
   const d = detail.data;
   useEffect(() => {
     if (!d || hydrated.current) return;
@@ -389,13 +424,22 @@ function CardEditor({
           <Input type="date" />
         </Form.Item>
         <Form.Item name="original" label="原值（元）" rules={[{ required: true }]}>
-          <MoneyInput allowNegative={false} disabled={!!persisted.current.id} />
+          <MoneyInput
+            allowNegative={false}
+            disabled={!!persisted.current.id || draft.saving}
+            draftText={amountDrafts.current.get('original')?.text}
+            onDraftStateChange={(state) => amountInput('original', state)}
+          />
         </Form.Item>
         <Form.Item name="rate" label="残值率（0 至 1）" rules={[{ required: true }]}>
           <Input />
         </Form.Item>
         <Form.Item name="residual" label="预计残值（元，留空按率计算）">
-          <MoneyInput allowNegative={false} />
+          <MoneyInput
+            allowNegative={false}
+            draftText={amountDrafts.current.get('residual')?.text}
+            onDraftStateChange={(state) => amountInput('residual', state)}
+          />
         </Form.Item>
         <Form.Item name="method" label="折旧方法" rules={[{ required: true }]}>
           <Select
