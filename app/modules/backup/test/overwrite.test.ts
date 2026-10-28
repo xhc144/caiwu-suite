@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
+import type * as Fs from 'node:fs/promises';
+import type { CoreServices } from '@caiwu/core/server';
 import path from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -8,6 +10,23 @@ import backupServer from '../server';
 import { waitForJobs } from '../server/service';
 import { directory, packagePath, validatePackage } from '../server/files';
 
+const snapshotFault = vi.hoisted(() => ({ mode: null as 'length' | 'digest' | null }));
+vi.mock('node:fs/promises', async (original) => {
+  const actual = await original<typeof Fs>();
+  return {
+    ...actual,
+    readFile: async (...args: Parameters<typeof actual.readFile>) => {
+      const result = await actual.readFile(...args);
+      if (snapshotFault.mode && String(args[0]).endsWith('.checking') && Buffer.isBuffer(result)) {
+        if (snapshotFault.mode === 'length') return result.subarray(0, result.length - 1);
+        const changed = Buffer.from(result);
+        changed[changed.length - 1] = (changed[changed.length - 1] ?? 0) ^ 1;
+        return changed;
+      }
+      return result;
+    },
+  };
+});
 let app: TestApp;
 const caller = (a: TestApp, token?: string) => a.call(backupServer, token);
 let api: ReturnType<typeof caller>;
@@ -16,6 +35,7 @@ beforeEach(async () => {
   api = caller(app);
 });
 afterEach(async () => {
+  snapshotFault.mode = null;
   vi.restoreAllMocks();
   await waitForJobs(app.runtime);
   await app.close();
@@ -53,7 +73,20 @@ it('w_hf：完整覆盖保留目标ID与名称、回退整数金额、保留保�
     bookId: app.book.id,
   });
   expect(protection.available).toBe(true);
+  const authorizedServices: CoreServices[] = [];
+  const maintain = app.runtime.lifecycle.maintainBook.bind(app.runtime.lifecycle);
+  vi.spyOn(app.runtime.lifecycle, 'maintainBook').mockImplementationOnce((input) =>
+    maintain({
+      ...input,
+      authorize: async (svc) => {
+        authorizedServices.push(svc);
+        await input.authorize(svc);
+      },
+    }),
+  );
   const result = await api.restore({ planId: p.id, text: p.confirmation, password: 'admin' });
+  expect(authorizedServices).toHaveLength(2);
+  expect(authorizedServices[0]).not.toBe(authorizedServices[1]);
   expect(result).toMatchObject({
     bookId: app.book.id,
     name: app.book.name,
@@ -189,3 +222,21 @@ it('w_hf：另一电脑的备份覆盖本机账套，暂存绑定来源ID与目�
     await machine.close();
   }
 });
+
+it.each(['length', 'digest'] as const)(
+  'w_hf：已校验快照暂存前%s变化，禁止调用共享暂存；原账与保护包保留',
+  async (mode) => {
+    const p = await preview();
+    const stage = vi.spyOn(app.runtime.bookStore, 'prepareReplacement');
+    snapshotFault.mode = mode;
+    await expect(api.prepareOverwrite({ planId: p.id })).rejects.toThrow(
+      '已校验快照在暂存前发生变化',
+    );
+    snapshotFault.mode = null;
+    expect(stage).not.toHaveBeenCalled();
+    expect(amounts(app.runtime.bookStore.open(app.book.id).raw)).toHaveLength(2);
+    const protection = (await api.list()).find((row) => row.kind === 'pre-restore')!;
+    expect(protection.status).toBe('valid');
+    expect(await api.verify({ id: protection.id })).toMatchObject({ type: 'pre-restore' });
+  },
+);

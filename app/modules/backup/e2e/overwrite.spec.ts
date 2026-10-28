@@ -44,6 +44,20 @@ test('w_hf：备份后改数据，页面预览、保护备份、覆盖并重新�
   await page.getByRole('button', { name: '先生成恢复前保护备份', exact: true }).click();
   await expect(page.getByText(/保护备份：backups\//)).toBeVisible();
   await page.getByLabel('恢复确认文字', { exact: true }).fill(`覆盖 ${original.bookName}`);
+  await page.getByLabel('管理员密码', { exact: true }).fill('错误密码');
+  await expect(confirm).toBeEnabled();
+  await confirm.click();
+  await expect(page.getByText('管理员密码不正确或账号已停用', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('管理员密码', { exact: true })).toHaveValue('');
+  await expect(confirm).toBeDisabled();
+  const unchanged = await api<{ config: { intervalMinutes: number } }>(
+    'm.backup.overview',
+    undefined,
+    'GET',
+  );
+  expect(unchanged.config.intervalMinutes).toBe(121);
+  await page.getByRole('button', { name: '先生成恢复前保护备份', exact: true }).click();
+  await expect(page.getByText(/保护备份：backups\//)).toBeVisible();
   await page.getByLabel('管理员密码', { exact: true }).fill('admin');
   await expect(confirm).toBeEnabled();
   await confirm.click();

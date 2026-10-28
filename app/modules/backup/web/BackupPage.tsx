@@ -177,6 +177,11 @@ function BackupPage() {
         setResult(r);
         setPassword('');
       },
+      onError: () => {
+        setPassword('');
+        setProtection(null);
+        refresh();
+      },
     }),
   );
   const prune = useMutation(

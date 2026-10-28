@@ -831,15 +831,20 @@ export function backupService(ctx: Context) {
           const checked = await verify(plan.backup_id);
           try {
             if (checked.digest !== plan.digest) throw fail('CHANGED', '备份在预览后发生变化');
-            const revision = fingerprint();
             const bytes = await readFile(checked.snapshot);
+            if (
+              bytes.length !== checked.metadata.length ||
+              createHash('sha256').update(bytes).digest('hex') !== checked.metadata.sha256
+            )
+              throw fail('CHANGED', '已校验快照在暂存前发生变化，覆盖未执行');
+            const revision = fingerprint();
             const expiresAt = Math.min(Date.now() + 5 * 60_000, Date.parse(plan.expires_at));
             const replacementInput = {
               sourceBookId: checked.metadata.book.id,
               bookId: ctx.book.id,
               bytes,
-              length: bytes.length,
-              sha256: createHash('sha256').update(bytes).digest('hex'),
+              length: checked.metadata.length,
+              sha256: checked.metadata.sha256,
               expectedRevision: revision,
               expiresAt,
             };
@@ -906,18 +911,25 @@ export function backupService(ctx: Context) {
           const protection = await load(plan.protection_id);
           const checkedProtection = await verify(protection.id);
           await rm(checkedProtection.snapshot);
+          const runtime = ctx.app;
+          const targetId = ctx.book.id;
+          const actorId = ctx.user.id;
+          const actorName = ctx.user.name;
+          const sessionToken = ctx.session.token;
+          const clock = runtime.now;
           // 升级维护后原请求 svc/连接已撤销，只能使用共享层给出的新服务和新连接。
           try {
-            await ctx.app.lifecycle.maintainBook({
-              token: ctx.session.token,
-              bookId: ctx.book.id,
+            await runtime.lifecycle.maintainBook({
+              token: sessionToken,
+              bookId: targetId,
               permission: 'backup.restore',
               confirmation: {
-                bookId: ctx.book.id,
+                bookId: targetId,
                 bookName: plan.target_name,
                 password: input.password,
               },
               authorize: async (svc) => {
+                svc.permissions.require('backup.restore');
                 svc.permissions.require('backup.create');
                 svc.permissions.require('backup.verify');
                 const current = await svc.db
@@ -928,15 +940,19 @@ export function backupService(ctx: Context) {
                   .executeTakeFirst();
                 if (
                   !current ||
-                  current.owner_id !== ctx.book.id ||
-                  current.user_id !== ctx.user.id ||
+                  current.owner_id !== targetId ||
+                  current.user_id !== actorId ||
+                  current.purpose !== 'overwrite' ||
+                  current.target_id !== targetId ||
+                  current.target_name !== plan.target_name ||
+                  current.backup_id !== plan.backup_id ||
                   current.status !== 'ready' ||
-                  current.expires_at <= now() ||
+                  current.expires_at <= clock().toISOString() ||
                   current.digest !== plan.digest ||
                   current.protection_id !== protection.id
                 )
                   throw fail('EXPIRED', '恢复计划已变化或过期，请重新预览');
-                if (prepared.revision !== ctx.app.bookStore.revision(ctx.book.id))
+                if (prepared.revision !== runtime.bookStore.revision(targetId))
                   throw fail('TARGET_CHANGED', '目标账套在确认后发生变化，请重新预览并备份');
               },
               plan: {
@@ -944,6 +960,11 @@ export function backupService(ctx: Context) {
                 replacementId: prepared.replacementId,
                 validate: async (book, signal) => {
                   signal.throwIfAborted();
+                  if (book.id !== targetId)
+                    throw fail(
+                      'TARGET_CHANGED',
+                      '恢复后的账套身份与覆盖目标不符，正在回滚保护副本',
+                    );
                   // 只保留本机刚生成的保护包登记，不能继承源机器的文件路径和恢复计划。
                   await book.db.transaction().execute(async (tx) => {
                     await tx.withTables<BackupTables>().deleteFrom('backup_plan').execute();
@@ -955,7 +976,7 @@ export function backupService(ctx: Context) {
                       .execute();
                     await tx
                       .updateTable('book_info')
-                      .set({ name: plan.target_name, updated_at: now() })
+                      .set({ name: plan.target_name, updated_at: clock().toISOString() })
                       .where('id', '=', 1)
                       .execute();
                     await tx
@@ -970,14 +991,14 @@ export function backupService(ctx: Context) {
                     await tx
                       .insertInto('operation_log')
                       .values({
-                        at: now(),
+                        at: clock().toISOString(),
                         user_id: null,
-                        user_name: ctx.user.name,
+                        user_name: actorName,
                         module: 'backup',
                         action: 'backup.restore.overwrite',
                         summary: `从完整备份覆盖账套「${plan.target_name}」；恢复前保护备份 ${protection.id}；请重新登录`,
                         target_type: 'book',
-                        target_id: ctx.book.id,
+                        target_id: targetId,
                         detail: null,
                       })
                       .execute();
@@ -999,7 +1020,7 @@ export function backupService(ctx: Context) {
               '请重新登录核对账套；如账套已隔离，请先修复存储，再由管理员恢复保护副本',
             );
           } finally {
-            state(ctx.app).overwrites.delete(plan.id);
+            state(runtime).overwrites.delete(plan.id);
           }
           return {
             bookId: plan.target_id,
