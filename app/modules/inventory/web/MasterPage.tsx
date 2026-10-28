@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button, Checkbox, Drawer, Form, Input, Modal, Select, Space, Typography } from 'antd';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AccountSelect, FilterBar, PageContainer, useUrlFilters } from '@caiwu/ui';
-import { useAccounts, usePermission } from '@caiwu/web-kit';
-import type { ProductInput } from '../shared';
+import { useAccounts, useHotkey, usePermission, useTab } from '@caiwu/web-kit';
+import type { BulkField, ProductInput } from '../shared';
 import { api } from './api';
 import { InventoryNavigation } from './common';
 import { Field, Grid, TextField, mayDiscard, useCatalog, useRefresh, useUnsaved } from './common';
@@ -22,14 +22,17 @@ const blank: ProductInput = {
   disabled: false,
 };
 export default function MasterPage() {
+  const { active } = useTab();
   const { byId: accounts } = useAccounts();
   const [f, setF] = useUrlFilters({ keyword: '' });
   const products = useQuery(api.products.queryOptions({ keyword: f.keyword }));
   const { warehouses } = useCatalog();
   const can = usePermission('inventory.edit');
   const refresh = useRefresh();
+  const client = useQueryClient();
   const [editing, setEditing] = useState<ProductInput | null>(null),
     [dirty, setDirty] = useState(false),
+    [warehouseDirty, setWarehouseDirty] = useState(false),
     [selected, setSelected] = useState<number[]>([]);
   const [w, setW] = useState<{
     id?: number;
@@ -39,42 +42,117 @@ export default function MasterPage() {
     kind: 'warehouse' | 'workshop';
     disabled: boolean;
   } | null>(null);
-  const [bulkField, setBulkField] = useState<
-      'receiptPrice' | 'issuePrice' | 'planPrice' | 'allocationFactor' | 'disabled' | 'unit'
-    >('receiptPrice'),
+  const [bulkField, setBulkField] = useState<BulkField>('receiptPrice'),
     [bulkValue, setBulkValue] = useState('');
+  const bulkValueAt = (p: ProductInput) => {
+    if (bulkField === 'inventoryAccountCode')
+      return accounts.get(p.inventoryAccountId ?? 0)?.code ?? '';
+    if (bulkField === 'salesAccountCode') return accounts.get(p.salesAccountId ?? 0)?.code ?? '';
+    const value = p[bulkField];
+    return typeof value === 'boolean' ? (value ? '停用' : '启用') : (value ?? '');
+  };
   const save = useMutation(api.saveProduct.mutationOptions()),
     saveW = useMutation(api.saveWarehouse.mutationOptions()),
     remove = useMutation(api.removeProducts.mutationOptions()),
+    removeW = useMutation(api.removeWarehouse.mutationOptions()),
     bulk = useMutation(api.bulk.mutationOptions());
-  useUnsaved(dirty);
+  const latestProduct = useRef(editing);
+  latestProduct.current = editing;
+  const latestWarehouse = useRef(w);
+  latestWarehouse.current = w;
   const edit = (patch: Partial<ProductInput>) => {
     setEditing((p) => (p ? { ...p, ...patch } : p));
     setDirty(true);
   };
   const collection = (products.data ?? []).filter((p) => selected.includes(p.id));
   const saveProduct = async () => {
-    if (!editing) return;
+    if (!editing || save.isPending) return false;
     const v = { ...editing };
     if (/^0+(\.0+)?$/.test(v.allocationFactor ?? '')) {
-      if (!window.confirm('费用分摊系数为零，确认使用 1 吗？')) return;
+      if (!window.confirm('费用分摊系数为零，确认使用 1 吗？')) return false;
       v.confirmZeroFactor = true;
     }
-    await save.mutateAsync(v);
-    setDirty(false);
-    setEditing(null);
+    const saved = await save.mutateAsync(v);
+    if (latestProduct.current === editing) {
+      setDirty(false);
+      setEditing(null);
+    } else {
+      setEditing((current) =>
+        current ? { ...current, id: saved.id, revision: saved.revision } : current,
+      );
+    }
     await refresh();
+    return true;
   };
+  const saveWarehouse = async () => {
+    if (!w || saveW.isPending) return false;
+    const id = await saveW.mutateAsync(w);
+    if (latestWarehouse.current === w) {
+      setW(null);
+      setWarehouseDirty(false);
+    } else {
+      setW((current) => (current ? { ...current, id, revision: (w.revision ?? 0) + 1 } : current));
+    }
+    await refresh();
+    return true;
+  };
+  useUnsaved(dirty, {
+    pending: save.isPending,
+    title: `产品档案${editing?.code ? `：${editing.code}` : ''}`,
+    version: JSON.stringify(editing),
+    save: saveProduct,
+    discard: () => {
+      setEditing(null);
+      setDirty(false);
+    },
+  });
+  useUnsaved(warehouseDirty, {
+    pending: saveW.isPending,
+    title: `仓库档案${w?.code ? `：${w.code}` : ''}`,
+    version: JSON.stringify(w),
+    save: saveWarehouse,
+    discard: () => {
+      setW(null);
+      setWarehouseDirty(false);
+    },
+  });
+  useHotkey('Ctrl+S', () => {
+    if (!can) return;
+    if (w) void saveWarehouse();
+    else if (editing) void saveProduct();
+  });
+  const productRows = products.data ?? [];
+  const index = productRows.findIndex((p) => p.id === editing?.id);
+  const moveProduct = (at: number) => {
+    const p = productRows[at];
+    if (!p || save.isPending || w || !mayDiscard(dirty)) return;
+    setEditing(p);
+    setDirty(false);
+  };
+  useHotkey('Ctrl+Home', () => moveProduct(0), { enabled: !w, allowInInput: false });
+  useHotkey('Ctrl+End', () => moveProduct(productRows.length - 1), {
+    enabled: !w,
+    allowInInput: false,
+  });
+  useHotkey('ArrowUp', () => moveProduct(index - 1), {
+    enabled: index > 0 && !w,
+    allowInInput: false,
+  });
+  useHotkey('ArrowDown', () => moveProduct(index + 1), {
+    enabled: index >= 0 && index < productRows.length - 1 && !w,
+    allowInInput: false,
+  });
   return (
     <PageContainer
       title="产品与仓库"
-      subtitle="产品编号可修改；既有单据始终引用稳定产品 ID。"
+      subtitle="修改产品编号后，既有单据仍保留与该产品的关联。"
       extra={
         <Space>
           {can && (
             <Button
               type="primary"
               onClick={() => {
+                if (save.isPending || !mayDiscard(dirty)) return;
                 setEditing({ ...blank });
                 setDirty(false);
               }}
@@ -153,6 +231,7 @@ export default function MasterPage() {
               can && (
                 <Button
                   onClick={() => {
+                    if (save.isPending || !mayDiscard(dirty)) return;
                     setEditing(p);
                     setDirty(false);
                   }}
@@ -191,34 +270,61 @@ export default function MasterPage() {
               <Select
                 aria-label="批量字段"
                 value={bulkField}
-                onChange={setBulkField}
+                onChange={(field) => {
+                  setBulkField(field);
+                  setBulkValue('');
+                  bulk.reset();
+                }}
                 options={[
                   { value: 'receiptPrice', label: '默认入库价' },
                   { value: 'issuePrice', label: '默认出库价' },
                   { value: 'planPrice', label: '计划价' },
                   { value: 'allocationFactor', label: '分摊系数' },
-                  { value: 'disabled', label: '停用 true/false' },
+                  { value: 'disabled', label: '停用状态' },
                   { value: 'unit', label: '单位' },
+                  { value: 'name', label: '产品名称' },
+                  { value: 'specification', label: '规格' },
+                  { value: 'inventoryAccountCode', label: '存货科目编码' },
+                  { value: 'salesAccountCode', label: '销售科目编码' },
                 ]}
               />
-              <Input
-                aria-label="批量数值"
-                value={bulkValue}
-                onChange={(e) => {
-                  setBulkValue(e.target.value);
-                  bulk.reset();
-                }}
-              />
+              {bulkField === 'disabled' ? (
+                <Select
+                  aria-label="批量停用状态"
+                  value={bulkValue || undefined}
+                  options={[
+                    { value: 'false', label: '启用' },
+                    { value: 'true', label: '停用' },
+                  ]}
+                  onChange={(value) => {
+                    setBulkValue(value);
+                    bulk.reset();
+                  }}
+                />
+              ) : (
+                <Input
+                  aria-label="批量数值"
+                  value={bulkValue}
+                  onChange={(e) => {
+                    setBulkValue(e.target.value);
+                    bulk.reset();
+                  }}
+                />
+              )}
               <Button
                 disabled={!collection.length}
-                onClick={() =>
+                onClick={() => {
+                  const zero = bulkField === 'allocationFactor' && /^0+(\.0+)?$/.test(bulkValue);
+                  if (zero && !window.confirm('费用分摊系数为零，确认对所选产品改用 1 吗？'))
+                    return;
                   bulk.mutate({
                     products: collection.map((p) => ({ id: p.id, revision: p.revision })),
                     field: bulkField,
                     value: bulkValue,
                     confirmed: false,
-                  })
-                }
+                    confirmZeroFactor: zero,
+                  });
+                }}
               >
                 批量预览
               </Button>
@@ -228,13 +334,14 @@ export default function MasterPage() {
       />
       <Modal
         title="批量修改预览"
-        open={!!bulk.data}
+        open={active && !!bulk.data}
         onCancel={() => bulk.reset()}
+        confirmLoading={bulk.isPending}
         onOk={async () => {
+          const previewed = bulk.variables;
+          if (!previewed || !bulk.data) return;
           await bulk.mutateAsync({
-            products: collection.map((p) => ({ id: p.id, revision: p.revision })),
-            field: bulkField,
-            value: bulkValue,
+            ...previewed,
             confirmed: true,
           });
           bulk.reset();
@@ -243,24 +350,28 @@ export default function MasterPage() {
         okText="确认修改"
         cancelText="取消"
       >
-        <pre>
-          {JSON.stringify(
-            bulk.data?.map((c) => ({
-              产品: c.before.code,
-              原值: c.before[bulkField],
-              新值: c.after[bulkField],
-            })),
-            null,
-            2,
-          )}
-        </pre>
+        <Grid
+          id="bulk-products-preview"
+          title="批量修改预览"
+          rows={(bulk.data ?? []).map((c) => ({
+            productCode: c.before.code,
+            before: bulkValueAt(c.before),
+            after: bulkValueAt(c.after),
+          }))}
+          columns={[
+            { key: 'productCode', title: '产品编号', dataIndex: 'productCode' },
+            { key: 'before', title: '原值', dataIndex: 'before' },
+            { key: 'after', title: '新值', dataIndex: 'after' },
+          ]}
+        />
       </Modal>
       <Typography.Title level={4}>仓库 / 车间</Typography.Title>
       {can && (
         <Button
           onClick={() => {
+            if (saveW.isPending || !mayDiscard(warehouseDirty)) return;
             setW({ code: '', name: '', kind: 'warehouse', disabled: false });
-            setDirty(false);
+            setWarehouseDirty(false);
           }}
         >
           新增仓库
@@ -291,36 +402,85 @@ export default function MasterPage() {
             noExport: true,
             render: (_, r) =>
               can && (
-                <Button
-                  onClick={() => {
-                    setW({ ...r, disabled: !!r.disabled });
-                    setDirty(false);
-                  }}
-                >
-                  编辑仓库
-                </Button>
+                <Space>
+                  <Button
+                    onClick={() => {
+                      if (saveW.isPending || !mayDiscard(warehouseDirty)) return;
+                      setW({ ...r, disabled: !!r.disabled });
+                      setWarehouseDirty(false);
+                    }}
+                  >
+                    编辑仓库
+                  </Button>
+                  <Button
+                    danger
+                    loading={removeW.isPending}
+                    onClick={async () => {
+                      if (w?.id === r.id && !mayDiscard(warehouseDirty)) return;
+                      if (
+                        !window.confirm(
+                          `确认删除未使用的仓库 ${r.code} ${r.name}？已有业务的仓库请改为停用。`,
+                        )
+                      )
+                        return;
+                      await removeW.mutateAsync({
+                        id: r.id,
+                        revision: r.revision,
+                        confirmed: true,
+                      });
+                      if (w?.id === r.id) {
+                        setW(null);
+                        setWarehouseDirty(false);
+                      }
+                      await refresh();
+                    }}
+                  >
+                    删除仓库
+                  </Button>
+                </Space>
               ),
           },
         ]}
       />
       <Drawer
+        mask={false}
         title={editing?.id ? '编辑产品 / 修改编号' : '新增产品'}
-        open={!!editing}
+        open={active && !!editing}
         onClose={() => {
-          if (mayDiscard(dirty)) {
+          if (!save.isPending && mayDiscard(dirty)) {
             setEditing(null);
             setDirty(false);
           }
         }}
         size={620}
         extra={
-          <Button type="primary" loading={save.isPending} onClick={() => void saveProduct()}>
-            保存产品
-          </Button>
+          <Space>
+            <Button
+              disabled={!editing?.id || save.isPending}
+              onClick={async () => {
+                if (!window.confirm('恢复本行将放弃未保存的修改，重新读取当前产品，确认吗？'))
+                  return;
+                const current = (await client.fetchQuery(api.products.queryOptions({}))).find(
+                  (p) => p.id === editing?.id,
+                );
+                if (!current) {
+                  window.alert('产品已不存在，请刷新产品列表');
+                  return;
+                }
+                setEditing(current);
+                setDirty(false);
+              }}
+            >
+              恢复本行
+            </Button>
+            <Button type="primary" loading={save.isPending} onClick={() => void saveProduct()}>
+              保存产品
+            </Button>
+          </Space>
         }
       >
         {editing && (
-          <Form layout="vertical">
+          <Form layout="vertical" disabled={save.isPending}>
             <TextField label="产品编号" value={editing.code} onChange={(code) => edit({ code })} />
             <TextField label="产品名称" value={editing.name} onChange={(name) => edit({ name })} />
             <TextField
@@ -365,39 +525,29 @@ export default function MasterPage() {
         )}
       </Drawer>
       <Drawer
+        mask={false}
         title="仓库维护"
-        open={!!w}
+        open={active && !!w}
         onClose={() => {
-          if (mayDiscard(dirty)) {
+          if (!saveW.isPending && mayDiscard(warehouseDirty)) {
             setW(null);
-            setDirty(false);
+            setWarehouseDirty(false);
           }
         }}
         extra={
-          <Button
-            type="primary"
-            loading={saveW.isPending}
-            onClick={async () => {
-              if (w) {
-                await saveW.mutateAsync(w);
-                setW(null);
-                setDirty(false);
-                await refresh();
-              }
-            }}
-          >
+          <Button type="primary" loading={saveW.isPending} onClick={() => void saveWarehouse()}>
             保存仓库
           </Button>
         }
       >
         {w && (
-          <Form layout="vertical">
+          <Form layout="vertical" disabled={saveW.isPending}>
             <TextField
               label="仓库编码"
               value={w.code}
               onChange={(code) => {
                 setW({ ...w, code });
-                setDirty(true);
+                setWarehouseDirty(true);
               }}
             />
             <TextField
@@ -405,7 +555,7 @@ export default function MasterPage() {
               value={w.name}
               onChange={(name) => {
                 setW({ ...w, name });
-                setDirty(true);
+                setWarehouseDirty(true);
               }}
             />
             <Field label="仓库类型">
@@ -414,7 +564,7 @@ export default function MasterPage() {
                 value={w.kind}
                 onChange={(kind) => {
                   setW({ ...w, kind });
-                  setDirty(true);
+                  setWarehouseDirty(true);
                 }}
                 options={[
                   { value: 'warehouse', label: '仓库' },
@@ -426,7 +576,7 @@ export default function MasterPage() {
               checked={w.disabled}
               onChange={(e) => {
                 setW({ ...w, disabled: e.target.checked });
-                setDirty(true);
+                setWarehouseDirty(true);
               }}
             >
               停用仓库

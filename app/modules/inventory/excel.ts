@@ -1,16 +1,30 @@
 import { BusinessError, centsToYuan } from '@caiwu/core';
 import { openingCents } from './opening';
 
-export type InventoryImportKind = 'products' | 'opening' | 'document';
+export type InventoryImportKind = 'products' | 'opening' | 'document' | 'contracts';
 type Column = {
   key: string;
   title: string;
   aliases?: readonly string[];
-  type?: 'taxBasis' | 'disabled' | 'id' | 'openingBasis' | 'cents';
+  type?: 'taxBasis' | 'disabled' | 'id' | 'openingBasis' | 'cents' | 'contractStatus';
   required?: boolean;
 };
 /** One column contract for the import guide, downloadable template and round-trip export. */
 export const INVENTORY_IMPORT_COLUMNS: Record<InventoryImportKind, readonly Column[]> = {
+  contracts: [
+    { key: 'number', title: '合同号', required: true },
+    { key: 'warehouseCode', title: '仓库编码', required: true },
+    { key: 'supplierCode', title: '供应商编码', required: true },
+    { key: 'date', title: '合同日期', required: true },
+    { key: 'dueDate', title: '交期' },
+    { key: 'agent', title: '经办人' },
+    { key: 'note', title: '合同说明' },
+    { key: 'status', title: '执行状态', type: 'contractStatus' },
+    { key: 'productCode', title: '产品编号', required: true },
+    { key: 'quantity', title: '数量', required: true },
+    { key: 'unitPrice', title: '单价（元）', required: true },
+    { key: 'lineNote', title: '明细说明' },
+  ],
   products: [
     { key: 'code', title: '产品编号', required: true },
     { key: 'name', title: '产品名称', aliases: ['名称'] },
@@ -68,6 +82,19 @@ export function requireImportKeys(kind: InventoryImportKind, row: Record<string,
 }
 function readCell(column: Column, value: string | number | boolean | null): unknown {
   const s = String(value ?? '').trim();
+  if (column.type === 'contractStatus') {
+    const status: Record<string, string> = {
+      '': 'open',
+      执行中: 'open',
+      已完成: 'completed',
+      已取消: 'cancelled',
+      open: 'open',
+      completed: 'completed',
+      cancelled: 'cancelled',
+    };
+    if (!(s in status)) return inputError('合同执行状态须填写执行中、已完成或已取消');
+    return status[s];
+  }
   if (column.type === 'openingBasis') {
     if (s === '数量×单价' || s === 'unitPrice') return 'unitPrice';
     if (s === '直接金额' || s === 'amount') return 'amount';
@@ -171,6 +198,12 @@ export function importExportColumns(kind: InventoryImportKind) {
         }
         if (c.type === 'taxBasis') return value === true ? '是' : value === false ? '否' : null;
         if (c.type === 'disabled') return value === true ? '停用' : value === false ? '启用' : null;
+        if (c.type === 'contractStatus')
+          return (
+            { open: '执行中', completed: '已完成', cancelled: '已取消' }[
+              String(value) as 'open' | 'completed' | 'cancelled'
+            ] ?? null
+          );
         return typeof value === 'string' || typeof value === 'number' ? value : null;
       },
     }));

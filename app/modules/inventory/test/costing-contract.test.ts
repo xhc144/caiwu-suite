@@ -480,6 +480,9 @@ it('w_cb_hz：半分尾差与零数量残值调整单列，盘亏后正式结存
   await api().saveDocument({
     ...(await api().copyDocument({ id: issueId })),
     id: issueId,
+    // 本例修改原单，复制草稿的来源不能指回本单自身。
+    sourceType: null,
+    sourceId: null,
     revision: issue.revision,
     number: 'S1',
     lines: [{ productCode: 'P1', quantity: '1', unitPrice: '10' }],
@@ -537,4 +540,17 @@ it('共享契约：没有前月正式批次时不伪造月初数，遗留不一�
     .where('id', '=', 1)
     .execute();
   await expect(commit(await input())).rejects.toThrow(/连续核算/);
+});
+
+it('w_cb_pz：发票来源出库不得重复生成收入凭证，关联失败回滚新凭证', async () => {
+  await app.svc.db
+    .withTables<InventoryTables>()
+    .updateTable('inventory_document')
+    .set({ source_type: 'invoice', source_id: 100 })
+    .where('id', '=', issueId)
+    .execute();
+  const before = await app.svc.vouchers.list({});
+  await expect(link(issueId, 'revenue', 500)).rejects.toThrow(/收入凭证应在发票业务办理/);
+  expect(await app.svc.vouchers.list({})).toEqual(before);
+  expect((await api().document({ id: issueId })).voucherSources).toEqual([]);
 });

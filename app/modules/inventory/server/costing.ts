@@ -714,6 +714,12 @@ export function inventoryCosting(svc: CoreServices) {
       const input = VoucherSourceSchema.parse(raw);
       await checkBook(input.bookId);
       const d = await document(input.documentId, input.expectedRevision);
+      if (d.source_type === 'invoice' && input.purpose === 'revenue')
+        fail(
+          'INVOICE_REVENUE',
+          '这张出库单来自发票，收入凭证应在发票业务办理',
+          '请勿从库存或成本业务重复生成发票收入凭证',
+        );
       await svc.periods.assertOpen(d.period, '关联来源凭证');
       if (
         (input.purpose === 'receipt' && d.kind !== 'receipt') ||

@@ -20,6 +20,8 @@ export default defineManifest({
     { group: 'inventory', title: '库存期初', path: '/opening', permission: 'inventory.view' },
     { group: 'inventory', title: '入库单管理', path: '/receipts', permission: 'inventory.view' },
     { group: 'inventory', title: '出库单管理', path: '/issues', permission: 'inventory.view' },
+    { group: 'inventory', title: '仓库调拨', path: '/transfers', permission: 'inventory.view' },
+    { group: 'inventory', title: '单据综合查询', path: '/query', permission: 'inventory.view' },
     { group: 'inventory', title: '采购合同', path: '/contracts', permission: 'inventory.view' },
     { group: 'inventory', title: '库存与台账', path: '/stock', permission: 'inventory.view' },
     { group: 'inventory', title: '月末盘点', path: '/counts', permission: 'inventory.view' },
