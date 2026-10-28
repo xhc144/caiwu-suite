@@ -1,10 +1,19 @@
 import { createHash } from 'node:crypto';
 import type { CoreServices } from '@caiwu/core/server';
-import { isPeriod, isValidDate, periodEndDate, periodStartDate, periodOfDate } from '@caiwu/core';
+import {
+  Decimal,
+  isPeriod,
+  isValidDate,
+  nextPeriod,
+  periodEndDate,
+  periodStartDate,
+  periodOfDate,
+  type InventorySnapshot as SharedInventorySnapshot,
+} from '@caiwu/core';
 import { sql } from '@caiwu/db';
 import { fail, integer } from './math';
 
-/** c53bf14 的库存只读投影。禁止通过此适配器写库存或 import 库存模块。 */
+/** 库存只读投影；正式承接和批次链由共享库存快照提供。禁止在此写库存。 */
 export type InventoryReadTables = {
   inventory_control: {
     id: number;
@@ -156,9 +165,44 @@ export async function readInventory(svc: CoreServices, through: number) {
     counts,
     countLines,
   };
-  return { ...data, fingerprint: digest(data) };
+  const sharedSnapshot = await svc.inventory.snapshot(through);
+  return { ...data, sharedSnapshot, fingerprint: sharedSnapshot.fingerprint };
 }
 export type InventorySnapshot = Awaited<ReturnType<typeof readInventory>>;
+
+/** 只认从启用月连续承接到控制行锚点的真实正式批次。 */
+export function verifiedBatches(snapshot: SharedInventorySnapshot): Map<string, number> {
+  const active = snapshot.batches.filter((b) => b.status === 'calculated');
+  const byId = new Map(active.map((b) => [b.id, b]));
+  const verified = new Map<string, number>();
+  let batch = snapshot.control.costBatch ? byId.get(snapshot.control.costBatch) : undefined;
+  if (
+    !batch ||
+    batch.period !== snapshot.control.costPeriod ||
+    snapshot.control.costCutoffDate !== periodEndDate(batch.period)
+  )
+    return verified;
+  while (batch) {
+    if (verified.has(batch.id)) return new Map();
+    verified.set(batch.id, batch.period);
+    if (batch.previous_batch_id == null) {
+      if (batch.period !== snapshot.startPeriod) return new Map();
+      break;
+    }
+    const previous = byId.get(batch.previous_batch_id);
+    if (!previous || nextPeriod(previous.period) !== batch.period) return new Map();
+    batch = previous;
+  }
+  return verified.size === active.length ? verified : new Map();
+}
+
+export function quantityE6(value: string): number {
+  const scaled = new Decimal(value).mul(1_000_000);
+  if (!scaled.isInteger()) fail('QUANTITY', '库存数量超过六位小数');
+  const result = scaled.toNumber();
+  integer(result);
+  return result;
+}
 
 export function isUnverifiedHistory(
   snapshot: InventorySnapshot,
@@ -171,17 +215,19 @@ export function isUnverifiedHistory(
   );
 }
 
-/** 目前只有控制行所指的当月批次可核验；历史月份需要共享 snapshot 提供批次链证明。 */
+/** 由正式批次链验证历史成本；头、行、期间和月末截止必须同时匹配。 */
 export function officialCost(
   snapshot: InventorySnapshot,
   doc: InventoryReadTables['inventory_document'],
   line: InventoryReadTables['inventory_line'],
 ): number | null {
-  const currentPeriod = snapshot.control.cost_period;
-  // 全局最新批次既不能证明历史批次，也不能否定历史批次。没有历史链时保持未知。
-  if (!isPeriod(currentPeriod) || !isPeriod(doc.period) || doc.period !== currentPeriod)
+  if (
+    !isPeriod(doc.period) ||
+    !doc.calculation_batch ||
+    verifiedBatches(snapshot.sharedSnapshot).get(doc.calculation_batch) !== doc.period
+  )
     return null;
-  const cutoff = periodEndDate(currentPeriod);
+  const cutoff = periodEndDate(doc.period);
   if (
     doc.kind !== 'issue' ||
     line.document_id !== doc.id ||
@@ -193,9 +239,6 @@ export function officialCost(
     doc.calculation_batch !== line.calculation_batch ||
     doc.calculation_period !== doc.period ||
     line.calculation_period !== doc.period ||
-    !snapshot.control.cost_batch ||
-    doc.calculation_batch !== snapshot.control.cost_batch ||
-    snapshot.control.cost_cutoff_date !== cutoff ||
     doc.calculation_cutoff_date !== cutoff ||
     line.outbound_cost_cents == null
   )

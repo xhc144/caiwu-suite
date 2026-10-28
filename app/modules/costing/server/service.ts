@@ -1,8 +1,10 @@
-import { BusinessError, nextPeriod, periodOfDate, sumCents } from '@caiwu/core';
+import { nextPeriod, periodOfDate, sumCents } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { z } from 'zod';
 import {
   CalculationSchema,
+  type CommitCalculationSchema,
+  type CancelCalculationSchema,
   CancelWorksheetSchema,
   ReportSchema,
   SaveWorksheetSchema,
@@ -19,23 +21,7 @@ import {
 } from './inventory-read';
 import { calculate } from './calculation';
 import { fail, integer, quantity } from './math';
-
-export function sharedContractRequired(): never {
-  throw new BusinessError({
-    code: 'COSTING_SHARED_CONTRACT_REQUIRED',
-    message: '正式成本核算和出入库凭证尚未开放，不能提交',
-    hint: '当前可保存成本试算和查看凭证预览，正式功能开放后再核算入账',
-    details: {
-      required: [
-        'inventory.snapshot',
-        'inventory.commitCosting',
-        'inventory.cancelCosting',
-        'inventory.lockVoucherSource',
-        'inventory.releaseVoucherSource',
-      ],
-    },
-  });
-}
+import { commitCalculation, cancelCalculation, previewCancelCalculation } from './formal';
 
 export function costingService(svc: CoreServices) {
   const db = svc.db.withTables<CostingTables>();
@@ -43,6 +29,11 @@ export function costingService(svc: CoreServices) {
     async context() {
       svc.permissions.require('costing.view');
       const inventory = await inventoryReader(svc);
+      const current = (await svc.periods.current())?.period ?? (await svc.book.info()).startPeriod;
+      const shared = await svc.inventory.snapshot(current);
+      const latestBatch = shared.batches.find(
+        (b) => b.id === shared.control.costBatch && b.status === 'calculated',
+      );
       return {
         currentPeriod: (await svc.periods.current())?.period ?? (await svc.book.info()).startPeriod,
         warehouses: await inventory
@@ -50,8 +41,13 @@ export function costingService(svc: CoreServices) {
           .select(['id', 'code', 'name'])
           .orderBy('code')
           .execute(),
-        canCommit: false as const,
-        reason: '正式成本核算尚未开放',
+        nextCalculationPeriod: shared.control.costPeriod
+          ? nextPeriod(shared.control.costPeriod)
+          : shared.startPeriod,
+        latestBatch: latestBatch
+          ? { id: latestBatch.id, period: latestBatch.period, revision: latestBatch.revision }
+          : null,
+        canCommit: true as const,
       };
     },
     async preview(raw: CalculationInput): Promise<CalculationResult> {
@@ -92,7 +88,11 @@ export function costingService(svc: CoreServices) {
       const input = SaveWorksheetSchema.parse(raw);
       return svc.tx(async (t) => {
         const tdb = t.db.withTables<CostingTables>();
-        await t.periods.assertOpen(input.period, '保存成本试算');
+        await t.periods.assertWritable({
+          period: input.period,
+          mode: 'business',
+          action: '保存成本试算',
+        });
         const snapshot = await readInventory(t, input.period);
         if (snapshot.fingerprint !== input.fingerprint)
           fail('STALE', '来源数据已变化，不能保存旧试算', '请重新试算并核对结果');
@@ -149,7 +149,11 @@ export function costingService(svc: CoreServices) {
         if (row.revision !== input.revision)
           fail('REVISION', '试算版本已经变化', '请刷新列表后再操作');
         if (row.status !== 'preview') fail('CANCELLED', '这份试算已经取消');
-        await t.periods.assertOpen(row.period, '取消成本试算');
+        await t.periods.assertWritable({
+          period: row.period,
+          mode: 'business',
+          action: '取消成本试算',
+        });
         await tdb
           .updateTable('costing_worksheet')
           .set({
@@ -168,20 +172,14 @@ export function costingService(svc: CoreServices) {
         return { id: row.id, revision: row.revision + 1 };
       });
     },
-    async commit(raw: CalculationInput) {
-      svc.permissions.require('costing.calculate');
-      const input = CalculationSchema.parse(raw);
-      await svc.periods.assertOpen(input.period, '成本核算');
-      return sharedContractRequired();
+    commit(raw: z.input<typeof CommitCalculationSchema>) {
+      return commitCalculation(svc, raw);
     },
-    async cancelCalculation() {
-      svc.permissions.require('costing.calculate');
-      const start = (await svc.book.info()).startPeriod;
-      const snapshot = await svc.tx((t) => readInventory(t, start));
-      if (!snapshot.control.cost_period || snapshot.control.cost_period < start)
-        fail('INITIAL_PERIOD', '已到初始开账日期，没有可以取消的成本核算');
-      await svc.periods.assertOpen(snapshot.control.cost_period, '取消成本核算');
-      return sharedContractRequired();
+    previewCancelCalculation() {
+      return previewCancelCalculation(svc);
+    },
+    cancelCalculation(raw?: z.input<typeof CancelCalculationSchema>) {
+      return cancelCalculation(svc, raw);
     },
     async profit(raw: z.input<typeof ReportSchema>) {
       svc.permissions.require('costing.view');
@@ -203,7 +201,7 @@ export function costingService(svc: CoreServices) {
             (input.productTo && product.code > input.productTo)
           )
             continue;
-          // 当月需要完整月末批次证据；历史月份的批次链尚未接入，保持未知。
+          // 历史月份由库存正式批次链核验，试算不能成为成本依据。
           const cost = officialCost(snapshot, doc, line);
           rows.push({
             id: line.id,
@@ -231,6 +229,7 @@ export function costingService(svc: CoreServices) {
         const missing = rows.filter((r) => r.costCents == null).length;
         return {
           rows,
+          orgName: (await t.book.info()).orgName,
           totals: {
             revenueCents: sumCents(rows.map((r) => r.revenueCents)),
             taxCents: sumCents(rows.map((r) => r.taxCents)),

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isPeriod, zDate, zId } from '@caiwu/core';
+import { isPeriod, VoucherSourceSchema, zDate, zId } from '@caiwu/core';
 
 export const CalculationSchema = z.object({
   period: z.number().int().refine(isPeriod, '请选择有效的核算年月'),
@@ -8,6 +8,17 @@ export const CalculationSchema = z.object({
 export type CalculationInput = z.input<typeof CalculationSchema>;
 export const SaveWorksheetSchema = CalculationSchema.extend({
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/, '请先重新试算'),
+});
+export const CommitCalculationSchema = SaveWorksheetSchema.extend({
+  requestKey: z.string().min(8).max(100),
+  confirmed: z.boolean(),
+});
+export const CancelCalculationSchema = z.object({
+  batchId: z.string().min(1),
+  revision: z.number().int().positive(),
+  fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  confirmed: z.boolean(),
+  voucherDeletion: VoucherSourceSchema.shape.voucherDeletion.optional(),
 });
 export const CancelWorksheetSchema = z.object({
   id: zId,
@@ -27,11 +38,35 @@ export const ReportSchema = z
     (v) => !v.productFrom || !v.productTo || v.productTo >= v.productFrom,
     '产品截止编号不能小于起始编号',
   );
-export const VoucherPreviewSchema = z.object({
-  documentId: zId,
-  purpose: z.enum(['receipt', 'revenue', 'cost']),
+export const VoucherTargetSchema = z
+  .object({
+    documentId: zId.optional(),
+    countId: zId.optional(),
+    purpose: z.enum(['receipt', 'revenue', 'cost', 'count']),
+  })
+  .refine(
+    (v) => (v.purpose === 'count' ? !!v.countId && !v.documentId : !!v.documentId && !v.countId),
+    '请选择与凭证用途一致的来源单据或盘点表',
+  );
+export const VoucherPreviewSchema = VoucherTargetSchema.safeExtend({
   taxAccountId: zId.optional(),
   revenueAccountId: zId.optional(),
+  adjustmentAccountId: zId.optional(),
+});
+export const GenerateVoucherSchema = VoucherPreviewSchema.safeExtend({
+  voucherTypeId: zId,
+  number: z.number().int().positive().optional(),
+  fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+  expectedRevision: z.number().int().positive(),
+  confirmed: z.boolean(),
+});
+export const DeleteVoucherSchema = VoucherTargetSchema.safeExtend({
+  expectedRevision: z.number().int().positive(),
+  confirmed: z.boolean(),
+  voucherDeletion: VoucherSourceSchema.shape.voucherDeletion.optional(),
+});
+export const RegenerateVoucherSchema = GenerateVoucherSchema.safeExtend({
+  voucherDeletion: VoucherSourceSchema.shape.voucherDeletion.optional(),
 });
 
 export type CostRow = {

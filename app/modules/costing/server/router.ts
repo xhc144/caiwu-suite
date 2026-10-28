@@ -4,14 +4,26 @@ import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
   CalculationSchema,
+  CommitCalculationSchema,
+  CancelCalculationSchema,
   CancelWorksheetSchema,
   ReportSchema,
   SaveWorksheetSchema,
   VoucherPreviewSchema,
+  GenerateVoucherSchema,
+  DeleteVoucherSchema,
+  RegenerateVoucherSchema,
+  VoucherTargetSchema,
 } from '../shared';
 import { costingService } from './service';
-import { generateVoucher, previewVoucher } from './vouchers';
-import { inventoryReader } from './inventory-read';
+import {
+  generateVoucher,
+  previewVoucher,
+  listVoucherDocuments,
+  previewVoucherDelete,
+  deleteVoucher,
+  regenerateVoucher,
+} from './vouchers';
 
 const m = moduleKit(manifest);
 const view = m.procedure.meta({ permission: 'costing.view' });
@@ -20,14 +32,7 @@ const calculation = m.procedure.meta({ permission: 'costing.calculate' });
 const voucher = m.procedure.meta({ permission: 'costing.voucher' });
 
 export const costingRouter = m.router({
-  voucherDocuments: voucher.query(async ({ ctx }) =>
-    (await inventoryReader(ctx.svc))
-      .selectFrom('inventory_document')
-      .select(['id', 'number', 'date', 'kind', 'category'])
-      .orderBy('date', 'desc')
-      .orderBy('id', 'desc')
-      .execute(),
-  ),
+  voucherDocuments: voucher.query(({ ctx }) => listVoucherDocuments(ctx.svc)),
   context: view.query(({ ctx }) => costingService(ctx.svc).context()),
   preview: view
     .input(CalculationSchema)
@@ -43,15 +48,29 @@ export const costingRouter = m.router({
     .input(CancelWorksheetSchema)
     .mutation(({ ctx, input }) => costingService(ctx.svc).cancelWorksheet(input)),
   commit: calculation
-    .input(CalculationSchema)
+    .input(CommitCalculationSchema)
     .mutation(({ ctx, input }) => costingService(ctx.svc).commit(input)),
-  cancelCalculation: calculation.mutation(({ ctx }) => costingService(ctx.svc).cancelCalculation()),
+  previewCancelCalculation: calculation.query(({ ctx }) =>
+    costingService(ctx.svc).previewCancelCalculation(),
+  ),
+  cancelCalculation: calculation
+    .input(CancelCalculationSchema.optional())
+    .mutation(({ ctx, input }) => costingService(ctx.svc).cancelCalculation(input)),
   profit: view.input(ReportSchema).query(({ ctx, input }) => costingService(ctx.svc).profit(input)),
   previewVoucher: voucher
     .input(VoucherPreviewSchema)
     .query(({ ctx, input }) => previewVoucher(ctx.svc, input)),
   generateVoucher: voucher
-    .input(VoucherPreviewSchema)
+    .input(GenerateVoucherSchema)
     .mutation(({ ctx, input }) => generateVoucher(ctx.svc, input)),
+  previewVoucherDelete: voucher
+    .input(VoucherTargetSchema)
+    .query(({ ctx, input }) => previewVoucherDelete(ctx.svc, input)),
+  deleteVoucher: voucher
+    .input(DeleteVoucherSchema)
+    .mutation(({ ctx, input }) => deleteVoucher(ctx.svc, input)),
+  regenerateVoucher: voucher
+    .input(RegenerateVoucherSchema)
+    .mutation(({ ctx, input }) => regenerateVoucher(ctx.svc, input)),
 });
 export type CostingRouter = typeof costingRouter;
