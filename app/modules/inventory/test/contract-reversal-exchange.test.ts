@@ -782,3 +782,80 @@ it('w_ck_ck：两条领用退回来源链需要不同周转库存时，回溯选
   expect(result.savedIds).toHaveLength(6);
   expect((await target.api.stock({ warehouseId: target.warehouseId }))[0]?.balance).toBe('1');
 });
+
+it.each([true, false])(
+  'w_ck_ck：真实52单净零历史，大额领用需要2=%s，预检有界返回且普通合法多链可导入',
+  async (needsTwo) => {
+    const s = await setup();
+    await s.api.saveOpening({
+      warehouseId: s.warehouseId,
+      revision: 0,
+      rows: [{ productCode: 'P1', quantity: '2', unitPrice: '2.5' }],
+    });
+    await target.api.saveOpening({
+      warehouseId: target.warehouseId,
+      revision: 0,
+      rows: [{ productCode: 'P1', quantity: '1', unitPrice: '2.5' }],
+    });
+    const ids: number[] = [];
+    for (let i = 0; i < 26; i++) {
+      const quantity = i === 25 && needsTwo ? '2' : '1';
+      const issued = await s.api.saveDocument({
+        requestKey: randomUUID(),
+        kind: 'issue',
+        warehouseId: s.warehouseId,
+        number: `LOAN-${i}`,
+        date: '2026-01-10',
+        category: '领用',
+        costAccountId: s.costAccountId,
+        lines: [{ productCode: 'P1', quantity, unitPrice: '2.5' }],
+      });
+      const returned = await s.api.reverseDocument({
+        id: issued.id,
+        revision: issued.revision,
+        requestKey: randomUUID(),
+        number: `RETURN-${i}`,
+        date: '2026-01-11',
+        accountId: s.accountId,
+        unitPrices: ['2.5'],
+        confirmed: true,
+      });
+      ids.push(issued.id, returned.id);
+    }
+    const file = await s.api.exportDocuments({ ids });
+    expect(file.documents).toHaveLength(52);
+    expect(file.documents.reduce((n, d) => n + d.lines.length, 0)).toBe(52);
+    const input = {
+      file: JSON.parse(JSON.stringify(file)) as ExchangeFile,
+      requestKey: randomUUID(),
+    };
+    const limited = target.a.call(
+      server,
+      await target.a.addUser('bounded-importer', {
+        permissions: ['inventory.view', 'inventory.import', 'inventory.edit'],
+      }),
+    );
+    const before = await snapshot(target, input.requestKey);
+    const start = performance.now();
+    const p = await limited.importDocumentsPreview(input);
+    const ms = performance.now() - start;
+    console.log(JSON.stringify({ fixture: '52单52行净零历史', needsTwo, previewMs: ms }));
+    expect(ms).toBeLessThan(2000);
+    expect(p.errors).toEqual([]);
+    expect(await snapshot(target, input.requestKey)).toEqual(before);
+    if (needsTwo) {
+      expect(p.shortages).toMatchObject([
+        { number: 'LOAN-25', current: '1', requested: '2', difference: '1' },
+      ]);
+      await expect(
+        limited.importDocuments({ ...input, confirmation: p.confirmation }),
+      ).rejects.toThrow(/权限/);
+      expect(await snapshot(target, input.requestKey)).toEqual(before);
+    } else {
+      expect(p.shortages).toEqual([]);
+      const saved = await limited.importDocuments({ ...input, confirmation: p.confirmation });
+      expect(saved.savedIds).toHaveLength(52);
+      expect((await target.api.stock({ warehouseId: target.warehouseId }))[0]?.balance).toBe('1');
+    }
+  },
+);

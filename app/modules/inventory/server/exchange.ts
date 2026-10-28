@@ -20,7 +20,7 @@ import type { DocumentInput } from '../shared';
 import type { InventoryTables } from './migrations';
 import { e6, fail, inventoryService, quantity } from './service';
 import { priceLine } from '../math';
-import { nonnegativeImportOrder } from './import-order';
+import { IMPORT_ORDER_INCOMPLETE, nonnegativeImportOrder } from './import-order';
 import {
   assertContractWithinPlan,
   contractFulfillment,
@@ -697,6 +697,7 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
             return {
               key: d.key,
               parent: sources.get(d.key)?.imported,
+              reversalOf: reversalByKey.get(d.key)?.relation.originalKey,
               kind: d.kind,
               quantities: [...totals],
               priority: priority(d),
@@ -704,6 +705,12 @@ export async function importDocuments(svc: CoreServices, raw: ExchangeImportInpu
           }),
           stock,
         );
+        if (retry === IMPORT_ORDER_INCOMPLETE)
+          fail(
+            'EXCHANGE_ORDER_COMPLEX',
+            '单据来源关联较复杂，本次自动排序预检尚未完成，未保存任何数据',
+            '请先分批转入来源单据及完整反冲对，再重新预览；本次不会按负库存办理',
+          );
         if (retry) {
           ordered.splice(
             0,
