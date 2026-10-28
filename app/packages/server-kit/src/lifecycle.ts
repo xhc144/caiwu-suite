@@ -215,7 +215,8 @@ export class RuntimeLifecycle {
           const info = await svc.book.info();
           if (
             !confirmation ||
-            confirmation.bookId !== info.id ||
+            confirmation.bookId !== input.bookId ||
+            info.id !== input.bookId ||
             confirmation.bookName !== info.name ||
             !(await authenticateUser(book.db, user.code, confirmation.password))
           )

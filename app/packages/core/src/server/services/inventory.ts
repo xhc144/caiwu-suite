@@ -4,11 +4,16 @@ import { BusinessError } from '../../errors';
 import { nextPeriod, periodEndDate } from '../../period';
 import type {
   InventoryCostingCapability,
+  InventoryCapability,
+  InventoryDocumentInput,
   InventoryService,
   InventorySnapshot,
   CostingCommitInput,
   CostingCancelInput,
   VoucherSourceInput,
+  InvoiceIssueInput,
+  InvoiceIssueSaveInput,
+  InvoiceIssueReferencesInput,
 } from '../../inventory';
 import { assertServiceScope } from '../service-scope';
 import type { CoreServices } from './index';
@@ -166,10 +171,14 @@ function assertHistory(snapshot: InventorySnapshot): void {
 
 export function inventoryService(svc: CoreServices): InventoryService {
   const transaction = transactions.getStore();
-  const assertBound = () => {
+  const assertBound = (allowInvoice = false) => {
     assertServiceScope(svc.ctx.scope);
     assertCoreServiceTransaction(svc);
-    if (svc.moduleId !== 'costing' && svc.moduleId !== 'inventory')
+    if (
+      svc.moduleId !== 'costing' &&
+      svc.moduleId !== 'inventory' &&
+      !(allowInvoice && svc.moduleId === 'invoice')
+    )
       fail('COST_OWNER', '库存核算只能由库存或成本模块调用', '请从库存或成本功能重新操作');
     if (
       svc.db.isTransaction &&
@@ -187,8 +196,27 @@ export function inventoryService(svc: CoreServices): InventoryService {
         '请使用当前 svc.tx 回调传入的服务',
       );
   };
-  const provider = () => {
-    assertBound();
+  const assertInvoice = () => {
+    assertBound(true);
+    if (svc.moduleId !== 'invoice')
+      fail('INVENTORY_INVOICE_OWNER', '发票转出库只能由发票模块调用', '请从发票转出库功能重新操作');
+  };
+  const assertNormalInvoice = (input: InvoiceIssueInput) => {
+    if (input.redLetter)
+      fail(
+        'INVENTORY_INVOICE_RED_UNSUPPORTED',
+        '暂不支持红字发票退货转库存，未生成正向出库单',
+        '请保留原红字发票，待退货入库流程支持后处理',
+      );
+  };
+  const missingInvoiceProvider = () =>
+    fail(
+      'INVENTORY_INVOICE_PROVIDER_MISSING',
+      '当前库存服务尚未提供发票转出库能力',
+      '请启用支持发票转出库的库存服务后重试',
+    );
+  const provider = (allowInvoice = false) => {
+    assertBound(allowInvoice);
     const factory = svc.ctx.providers?.inventory;
     if (!factory)
       fail(
@@ -199,6 +227,34 @@ export function inventoryService(svc: CoreServices): InventoryService {
     return factory(svc);
   };
   return Object.freeze({
+    async invoiceIssueReferences(input: InvoiceIssueReferencesInput) {
+      try {
+        assertInvoice();
+        svc.permissions.require('invoice.voucher');
+        const inventory = provider(true);
+        if (typeof inventory.invoiceIssueReferences !== 'function') missingInvoiceProvider();
+        const result = await inventory.invoiceIssueReferences!(input);
+        assertInvoice();
+        return result;
+      } catch (error) {
+        if (transaction?.active) recordBridgeFailure(transaction, error);
+        throw error;
+      }
+    },
+    async previewInvoiceIssue(input: InvoiceIssueInput) {
+      try {
+        assertInvoice();
+        assertNormalInvoice(input);
+        const inventory = provider(true);
+        if (typeof inventory.previewInvoiceIssue !== 'function') missingInvoiceProvider();
+        const result = await inventory.previewInvoiceIssue!(input);
+        assertInvoice();
+        return result;
+      } catch (error) {
+        if (transaction?.active) recordBridgeFailure(transaction, error);
+        throw error;
+      }
+    },
     async snapshot(period: number) {
       try {
         const result = await provider().snapshot(period);
@@ -209,25 +265,27 @@ export function inventoryService(svc: CoreServices): InventoryService {
         throw error;
       }
     },
-    with<T>(run: (inventory: InventoryCostingCapability) => Promise<T>): Promise<T> {
+    with<T>(run: (inventory: InventoryCapability) => Promise<T>): Promise<T> {
       return registerInventoryWith(svc, async () => {
-        assertBound();
+        assertBound(true);
         if (!svc.db.isTransaction || !isInDatabaseTransaction())
           fail(
             'TRANSACTION_REQUIRED',
             '写库存成本必须在 svc.tx 回调内执行',
             '请调用 svc.tx(t => t.inventory.with(...))',
           );
-        return provider().with(async (inventory) => {
+        const factory = provider(true);
+        const withCapability = async (inventory?: InventoryCostingCapability) => {
           const callback = { svc, active: true };
           return callbacks.run(callback, async () => {
             const pending = new Set<Promise<unknown>>();
             const guard =
-              <A extends unknown[], R>(method: (...args: A) => Promise<R>) =>
+              <A extends unknown[], R>(method: (...args: A) => Promise<R>, invoice = false) =>
               async (...args: A): Promise<R> => {
                 let result: Promise<R> | undefined;
                 try {
-                  assertBound();
+                  if (invoice) assertInvoice();
+                  else assertBound();
                   if (!callback.active || callbacks.getStore() !== callback)
                     fail(
                       'INVENTORY_SCOPE_EXPIRED',
@@ -244,31 +302,40 @@ export function inventoryService(svc: CoreServices): InventoryService {
                   if (result) pending.delete(result);
                 }
               };
-            const capability: InventoryCostingCapability = Object.freeze({
-              saveDocument: guard(inventory.saveDocument),
-              removeDocument: guard(inventory.removeDocument),
-              snapshot: guard((period: number) => inventory.snapshot(period)),
+            const capability: InventoryCapability = Object.freeze({
+              saveInvoiceIssue: guard(async (input: InvoiceIssueSaveInput) => {
+                assertNormalInvoice(input.input);
+                if (typeof factory.saveInvoiceIssue !== 'function') missingInvoiceProvider();
+                return factory.saveInvoiceIssue!(input);
+              }, true),
+              saveDocument: guard((input: InventoryDocumentInput) =>
+                inventory!.saveDocument(input),
+              ),
+              removeDocument: guard((input: { id: number; revision: number; confirmed: boolean }) =>
+                inventory!.removeDocument(input),
+              ),
+              snapshot: guard((period: number) => inventory!.snapshot(period)),
               commitCosting: guard(async (input: CostingCommitInput) => {
-                assertHistory(await inventory.snapshot(input.period));
-                return inventory.commitCosting(input);
+                assertHistory(await inventory!.snapshot(input.period));
+                return inventory!.commitCosting(input);
               }),
               cancelCosting: guard(async (input: CostingCancelInput) => {
                 // snapshot 的期间仅用于读取完整批次链，不替代库存工厂的期间/状态检查。
                 const period =
                   (await svc.periods.current())?.period ?? (await svc.book.info()).startPeriod;
-                assertHistory(await inventory.snapshot(period));
-                return inventory.cancelCosting(input);
+                assertHistory(await inventory!.snapshot(period));
+                return inventory!.cancelCosting(input);
               }),
               lockVoucherSource: guard((input: VoucherSourceInput) =>
-                inventory.lockVoucherSource(input),
+                inventory!.lockVoucherSource(input),
               ),
               releaseVoucherSource: guard((input: VoucherSourceInput) =>
-                inventory.releaseVoucherSource(input),
+                inventory!.releaseVoucherSource(input),
               ),
             });
             try {
               const result = await run(capability);
-              assertBound();
+              assertBound(true);
               if (pending.size)
                 fail(
                   'INVENTORY_OPERATION_PENDING',
@@ -282,7 +349,12 @@ export function inventoryService(svc: CoreServices): InventoryService {
               await Promise.allSettled([...pending]);
             }
           });
-        });
+        };
+        if (svc.moduleId === 'invoice') {
+          if (typeof factory.saveInvoiceIssue !== 'function') missingInvoiceProvider();
+          return withCapability();
+        }
+        return factory.with(withCapability);
       });
     },
   });

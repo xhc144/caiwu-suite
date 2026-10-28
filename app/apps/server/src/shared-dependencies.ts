@@ -82,8 +82,8 @@ export function withSharedDependencies<R extends ServerModule>(module: R): R {
             ];
           },
         ],
-        periodDependencies: [
-          ...(module.providers?.periodDependencies ?? []),
+        // 模块声明掌握零折旧等业务语义；仅未声明时保留旧宿主规则。
+        periodDependencies: module.providers?.periodDependencies ?? [
           async (ctx, input) => {
             if (input.mode !== 'year-close') return [];
             const rows = await ctx.db

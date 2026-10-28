@@ -33,6 +33,32 @@ import type { ServiceContext } from '../context';
 import { accountService } from './accounts';
 import { bookService } from './basic';
 
+function isExchangeCashEntry(row: EntryRow, account: Account | undefined, baseCurrency: string) {
+  return (
+    row.sourceModule === 'period-close' &&
+    row.sourceType === 'exchange' &&
+    row.closingKind === 'exchange' &&
+    row.sourceId === String(row.period) &&
+    (account?.isCash || account?.isBank) &&
+    row.currency != null &&
+    row.currency !== baseCurrency &&
+    row.currency === account.currency &&
+    row.fcAmount === 0
+  );
+}
+
+/** 与 isExchangeCashEntry 同口径；完整凭证内部转移诊断也须排除汇率折算行。 */
+const exchangeCashSql = (baseCurrency: string) => sql<boolean>`
+  coalesce(v.source_module, '') = 'period-close'
+  AND coalesce(v.source_type, '') = 'exchange'
+  AND coalesce(v.closing_kind, '') = 'exchange'
+  AND coalesce(v.source_id, '') = cast(l.period AS text)
+  AND (a.is_cash = 1 OR a.is_bank = 1)
+  AND coalesce(l.currency_code, '') NOT IN ('', ${baseCurrency})
+  AND coalesce(a.currency_code, '') = coalesce(l.currency_code, '')
+  AND l.fc_amount IS 0
+`;
+
 interface Accum {
   accountId: number;
   dims: DimensionValues;
@@ -208,6 +234,9 @@ export function ledgerService(ctx: ServiceContext) {
           'v.number',
           'v.status',
           'v.source_module',
+          'v.source_type',
+          'v.source_id',
+          'v.closing_kind',
           't.code as type_code',
           'a.code as account_code',
         ])
@@ -286,6 +315,9 @@ export function ledgerService(ctx: ServiceContext) {
         credit: r.credit,
         refNo: r.ref_no,
         sourceModule: r.source_module,
+        sourceType: r.source_type,
+        sourceId: r.source_id,
+        closingKind: r.closing_kind,
       }));
     },
 
@@ -717,14 +749,23 @@ export function ledgerService(ctx: ServiceContext) {
       if (!ctx.db.isTransaction)
         return withTransaction(ctx.db, (db) => ledgerService({ ...ctx, db }).cashflow(raw));
       const entries = await self.entries({ ...raw, limit: 200_000 }, true);
+      const { baseCurrency } = await bookService(ctx).info();
       const accounts = new Map((await accountService(ctx).list()).map((a) => [a.id, a]));
       const rows = entries.filter((row) => {
         const account = accounts.get(row.accountId);
         return account?.isCash || account?.isBank || account?.cashflowRequired;
       });
+      const exchangeRows = new Set(
+        rows
+          .filter((row) => isExchangeCashEntry(row, accounts.get(row.accountId), baseCurrency))
+          .map((row) => row.lineId),
+      );
+      const ordinary = (row: EntryRow) => !exchangeRows.has(row.lineId);
       const candidates = [
         ...new Set(
-          rows.filter((row) => row.cashflowDirection === 'internal').map((row) => row.voucherId),
+          rows
+            .filter((row) => ordinary(row) && row.cashflowDirection === 'internal')
+            .map((row) => row.voucherId),
         ),
       ];
       const unbalanced = new Set<number>();
@@ -734,6 +775,7 @@ export function ledgerService(ctx: ServiceContext) {
         const complete = await ctx.db
           .selectFrom('voucher_line as l')
           .innerJoin('account as a', 'a.id', 'l.account_id')
+          .innerJoin('voucher as v', 'v.id', 'l.voucher_id')
           .select('l.voucher_id')
           .select(sql<string>`cast(sum(l.debit) - sum(l.credit) as text)`.as('net'))
           .where('l.voucher_id', 'in', candidates.slice(offset, offset + 500))
@@ -745,6 +787,7 @@ export function ledgerService(ctx: ServiceContext) {
             ]),
           )
           .where('l.cashflow_direction', '=', 'internal')
+          .where(sql<boolean>`not (${exchangeCashSql(baseCurrency)})`)
           .groupBy('l.voucher_id')
           .execute();
         for (const voucher of complete)
@@ -758,14 +801,16 @@ export function ledgerService(ctx: ServiceContext) {
           '现金流量金额',
         );
       const unallocated = rows.filter(
-        (row) => row.cashflowDirection == null || row.dimensions.cashflow == null,
+        (row) =>
+          ordinary(row) && (row.cashflowDirection == null || row.dimensions.cashflow == null),
       );
       return {
         rows,
         cashNet: total(() => true),
-        inflow: total((row) => row.cashflowDirection === 'inflow'),
-        outflow: -total((row) => row.cashflowDirection === 'outflow'),
-        internalNet: total((row) => row.cashflowDirection === 'internal'),
+        inflow: total((row) => ordinary(row) && row.cashflowDirection === 'inflow'),
+        outflow: 0 - total((row) => ordinary(row) && row.cashflowDirection === 'outflow'),
+        internalNet: total((row) => ordinary(row) && row.cashflowDirection === 'internal'),
+        exchangeEffect: total((row) => exchangeRows.has(row.lineId)),
         unallocatedNet: total((row) => unallocated.includes(row)),
         unallocatedCount: unallocated.length,
         internalUnbalancedVouchers: candidates.filter((id) => unbalanced.has(id)),

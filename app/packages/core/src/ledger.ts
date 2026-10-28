@@ -60,6 +60,9 @@ export interface EntryRow {
   credit: Cents;
   refNo: string | null;
   sourceModule: string | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  closingKind?: string | null;
 }
 
 /**
@@ -144,6 +147,8 @@ export interface CashflowSummary {
   inflow: number;
   outflow: number;
   internalNet: number;
+  /** 外币现金/银行账面折算变动，借正贷负；不是经营、投资或筹资收付。 */
+  exchangeEffect: number;
   unallocatedNet: number;
   unallocatedCount: number;
   internalUnbalancedVouchers: number[];

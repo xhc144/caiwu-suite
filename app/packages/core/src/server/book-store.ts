@@ -107,10 +107,25 @@ type DirectoryState = {
   creations: Map<string, { requestHash: string; task: Promise<BookInfo> }>;
 };
 const directories = new Map<string, DirectoryState>();
+type ReplacementTicket = {
+  bookId: string;
+  file: string;
+  digest: string;
+  length: number;
+  expectedRevision: string;
+  expiresAt: number;
+  status: 'prepared' | 'applying' | 'done' | 'failed' | 'cancelled' | 'expired';
+  protectionId?: string;
+  fileIdentity: { ino: number; dev: number };
+  directoryIdentity: { ino: number; dev: number };
+  stagingRemoved: boolean;
+  timer?: ReturnType<typeof setTimeout>;
+  cleanupError?: unknown;
+};
 
 /**
  * 账套文件的管理：列出、新建、打开（缓存连接并执行迁移）、关闭。
- * 一个账套 = 一个 SQLite 文件。close/pathOf 不授权移动文件；删除、覆盖当前仍不支持。
+ * 一个账套 = 一个 SQLite 文件。覆盖只能经受管恢复票据和独占维护；close/pathOf 不授权移动文件。
  */
 export class BookStore {
   readonly booksDir: string;
@@ -122,19 +137,7 @@ export class BookStore {
   #lease: DataDirectoryLease | null;
   #closingAll: Promise<void> | null = null;
   #disposed = false;
-  readonly #replacements = new Map<
-    string,
-    {
-      bookId: string;
-      file: string;
-      digest: string;
-      length: number;
-      expectedRevision: string;
-      expiresAt: number;
-      status: 'prepared' | 'applying' | 'done' | 'failed';
-      protectionId?: string;
-    }
-  >();
+  readonly #replacements = new Map<string, ReplacementTicket>();
   #disposeAfterClose = false;
   readonly #known = new Set<string>();
 
@@ -180,15 +183,24 @@ export class BookStore {
     return this.#operations.run(() => this.#list());
   }
 
-  async #list(): Promise<BookSummary[]> {
+  /** 内部收据/幂等发现：任一受管账套未能读取即拒绝；随后逐账套读取仍须 withBook。 */
+  async listStrict(): Promise<BookSummary[]> {
+    this.#ensureLease();
+    return this.#operations.run(() => this.#list(true));
+  }
+
+  async #list(strict = false): Promise<BookSummary[]> {
     const out: BookSummary[] = [];
     for (const name of readdirSync(this.booksDir)) {
       const m = /^(.+)\.caiwu$/.exec(name);
-      if (!m || !BookStore.isValidId(m[1]!)) continue;
+      if (!m || !BookStore.isValidId(m[1]!)) {
+        if (strict && name.endsWith('.caiwu')) throw bookScanError();
+        continue;
+      }
       const id = m[1]!;
       const file = path.join(this.booksDir, name);
       try {
-        if (lstatSync(file).isSymbolicLink()) continue;
+        if (!strict && lstatSync(file).isSymbolicLink()) continue;
         this.#gate(id).assertAvailable();
         const raw =
           this.#open.get(id)?.raw ?? new Database(file, { readonly: true, fileMustExist: true });
@@ -198,6 +210,7 @@ export class BookStore {
           const last = raw
             .prepare("SELECT value FROM book_setting WHERE scope = 'core' AND key = 'lastOpenedAt'")
             .get() as { value: string } | undefined;
+          if (strict && (!row || row.book_id !== id)) throw bookScanError(id);
           if (row) {
             out.push({
               ...toBookInfo(row),
@@ -208,7 +221,11 @@ export class BookStore {
         } finally {
           if (!this.#open.has(id)) raw.close();
         }
-      } catch {
+      } catch (error) {
+        if (strict) {
+          if (error instanceof BusinessError) throw error;
+          throw bookScanError(id);
+        }
         // 损坏或不是账套的文件：不出现在列表里
       }
     }
@@ -313,14 +330,25 @@ export class BookStore {
   /** Stage verified bytes under a managed UUID. The ticket binds target contents and expires. */
   async prepareReplacement(input: {
     bookId: string;
+    /** 已校验备份元数据中的源账套 ID；省略时只接受目标账套自己的备份。 */
+    sourceBookId?: string;
     bytes: Uint8Array;
     length: number;
     sha256: string;
     expectedRevision: string;
     expiresAt: number;
   }) {
-    return this.withBook(input.bookId, async () => {
-      if (input.expiresAt <= Date.now() || input.expiresAt > Date.now() + 300_000)
+    return this.withBook(input.bookId, async (book) => {
+      this.cleanupExpiredReplacements();
+      assertRestoreDatabase(book.raw, input.bookId);
+      const sourceBookId = input.sourceBookId ?? input.bookId;
+      if (!BookStore.isValidId(sourceBookId))
+        throw new BusinessError({ code: 'RESTORE_BOOK', message: '备份源账套编号无效' });
+      if (
+        !Number.isFinite(input.expiresAt) ||
+        input.expiresAt <= Date.now() ||
+        input.expiresAt > Date.now() + 300_000
+      )
         throw new BusinessError({
           code: 'RESTORE_PLAN_EXPIRED',
           message: '恢复确认已过期，请重新预览',
@@ -348,7 +376,7 @@ export class BookStore {
       try {
         source = new Database(file, { fileMustExist: true });
         source.pragma('trusted_schema = OFF');
-        assertRestoreDatabase(source);
+        assertRestoreDatabase(source, sourceBookId);
         const known = new Map(
           this.#allMigrations().flatMap((set) =>
             set.migrations.map(
@@ -371,22 +399,45 @@ export class BookStore {
               message: `备份迁移 ${row.scope}/${row.id} 与当前程序不兼容`,
             });
         runMigrations(source, this.#allMigrations());
+        assertRestoreDatabase(source, sourceBookId);
         source.prepare('UPDATE book_info SET book_id=? WHERE id=1').run(input.bookId);
         source.pragma('wal_checkpoint(TRUNCATE)');
         source.pragma('journal_mode = DELETE');
-        assertRestoreDatabase(source);
+        assertRestoreDatabase(source, input.bookId);
         source.close();
         source = undefined;
+        if (input.expiresAt <= Date.now())
+          throw new BusinessError({
+            code: 'RESTORE_PLAN_EXPIRED',
+            message: '恢复确认已过期，请重新预览',
+          });
         const digest = createHash('sha256').update(readFileSync(file)).digest('hex');
-        this.#replacements.set(id, {
+        const stat = lstatSync(file),
+          parent = lstatSync(dir);
+        const ticket: ReplacementTicket = {
           bookId: input.bookId,
           file,
           digest,
-          length: lstatSync(file).size,
+          length: stat.size,
           expectedRevision: input.expectedRevision,
           expiresAt: input.expiresAt,
           status: 'prepared',
-        });
+          fileIdentity: { ino: stat.ino, dev: stat.dev },
+          directoryIdentity: { ino: parent.ino, dev: parent.dev },
+          stagingRemoved: false,
+        };
+        this.#replacements.set(id, ticket);
+        ticket.timer = setTimeout(
+          () => {
+            try {
+              this.#expireReplacement(ticket);
+            } catch {
+              /* 状态暴露 cleanupPending；显式清理或释放目录时重试。 */
+            }
+          },
+          Math.max(1, input.expiresAt - Date.now()),
+        );
+        ticket.timer.unref();
         return { replacementId: id, bookId: input.bookId, expiresAt: input.expiresAt };
       } catch (error) {
         source?.close();
@@ -408,7 +459,109 @@ export class BookStore {
       status: ticket.status,
       protectionId: ticket.protectionId ?? null,
       relogin: ticket.status === 'done',
+      stagingRetained: !ticket.stagingRemoved,
+      cleanupPending: ticket.cleanupError != null,
     };
+  }
+
+  /** 只取消本实例受管票据；重复取消幂等，正在应用或隔离诊断中的暂存不可删除。 */
+  cancelReplacement(input: { bookId: string; replacementId: string }) {
+    this.#ensureLease();
+    const ticket = this.#replacements.get(input.replacementId);
+    if (!ticket || ticket.bookId !== input.bookId)
+      throw new BusinessError({
+        code: 'RESTORE_PLAN_MISSING',
+        message: '恢复计划不存在，请重新预览',
+      });
+    if (ticket.status === 'applying')
+      throw new BusinessError({
+        code: 'RESTORE_PLAN_BUSY',
+        message: '恢复正在应用，不能取消或删除暂存',
+      });
+    if (this.#retainFailedReplacement(ticket))
+      throw new BusinessError({
+        code: 'RESTORE_PLAN_QUARANTINED',
+        message: '恢复及回滚未完成，暂存和保护副本保留用于隔离修复',
+      });
+    this.#expireReplacement(ticket);
+    if (ticket.status === 'prepared') ticket.status = 'cancelled';
+    this.#removeReplacementStaging(ticket);
+    return this.replacementStatus(input.replacementId);
+  }
+
+  /** 只处理本实例登记且已过期的票据；不枚举磁盘文件，不碰 applying 或保护副本。 */
+  cleanupExpiredReplacements(): { expired: number } {
+    this.#ensureLease();
+    let expired = 0;
+    for (const ticket of this.#replacements.values()) {
+      const prepared = ticket.status === 'prepared';
+      this.#expireReplacement(ticket);
+      if (prepared && ticket.status === 'expired') expired++;
+    }
+    return { expired };
+  }
+
+  #expireReplacement(ticket: ReplacementTicket): void {
+    if (ticket.status === 'prepared' && ticket.expiresAt <= Date.now()) ticket.status = 'expired';
+    if (ticket.status === 'expired') this.#removeReplacementStaging(ticket);
+  }
+
+  #retainFailedReplacement(ticket: ReplacementTicket): boolean {
+    return (
+      ticket.status === 'failed' &&
+      this.#directory.quarantines.get(ticket.bookId)?.protection ===
+        path.join(
+          path.dirname(this.booksDir),
+          'core-protection',
+          ticket.bookId,
+          `${ticket.protectionId}.caiwu`,
+        )
+    );
+  }
+
+  #removeReplacementStaging(ticket: ReplacementTicket): void {
+    if (ticket.status === 'applying')
+      throw new BusinessError({ code: 'RESTORE_PLAN_BUSY', message: '恢复正在应用，不能清理暂存' });
+    if (this.#retainFailedReplacement(ticket)) return;
+    clearTimeout(ticket.timer);
+    ticket.timer = undefined;
+    if (ticket.stagingRemoved) return;
+    try {
+      const parent = lstatSync(path.dirname(ticket.file));
+      if (
+        !parent.isDirectory() ||
+        parent.isSymbolicLink() ||
+        parent.ino !== ticket.directoryIdentity.ino ||
+        parent.dev !== ticket.directoryIdentity.dev
+      )
+        throw new Error('受管暂存目录身份已变化');
+      let stat;
+      try {
+        stat = lstatSync(ticket.file);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        ticket.stagingRemoved = true;
+        ticket.cleanupError = undefined;
+        return;
+      }
+      if (
+        !stat.isFile() ||
+        stat.isSymbolicLink() ||
+        stat.ino !== ticket.fileIdentity.ino ||
+        stat.dev !== ticket.fileIdentity.dev
+      )
+        throw new Error('受管暂存文件身份已变化');
+      rmSync(ticket.file, { force: true });
+      ticket.stagingRemoved = true;
+      ticket.cleanupError = undefined;
+    } catch (error) {
+      ticket.cleanupError = error;
+      throw new BusinessError({
+        code: 'RESTORE_STAGING_CLEANUP',
+        message: '恢复暂存未能清理，请保留保护备份并检查受管暂存目录',
+        hint: '请修正受管目录后重试清理；程序不会删除身份不明的文件',
+      });
+    }
   }
 
   #managedDirectory(...segments: string[]): string {
@@ -434,6 +587,7 @@ export class BookStore {
     // after failed rollback must not depend on another filesystem lookup.
     const gate = this.#gate(id);
     const ticket = this.#replacements.get(replacementId);
+    if (ticket) this.#expireReplacement(ticket);
     if (
       !ticket ||
       ticket.bookId !== id ||
@@ -444,29 +598,39 @@ export class BookStore {
         code: 'RESTORE_PLAN_EXPIRED',
         message: '恢复计划不存在、已使用或过期，请重新预览',
       });
-    if (this.revision(id) !== ticket.expectedRevision)
-      throw new BusinessError({
-        code: 'RESTORE_TARGET_CHANGED',
-        message: '目标账套已变化，覆盖未执行',
-      });
-    const sourceStat = lstatSync(ticket.file);
-    if (
-      !sourceStat.isFile() ||
-      sourceStat.isSymbolicLink() ||
-      sourceStat.nlink !== 1 ||
-      sourceStat.size !== ticket.length ||
-      createHash('sha256').update(readFileSync(ticket.file)).digest('hex') !== ticket.digest
-    )
-      throw new BusinessError({
-        code: 'RESTORE_DIGEST',
-        message: '恢复暂存文件已变化，覆盖未执行',
-      });
+    try {
+      assertRestoreDatabase(book.raw, id);
+      if (this.revision(id) !== ticket.expectedRevision)
+        throw new BusinessError({
+          code: 'RESTORE_TARGET_CHANGED',
+          message: '目标账套已变化，覆盖未执行',
+        });
+      const sourceStat = lstatSync(ticket.file);
+      if (
+        !sourceStat.isFile() ||
+        sourceStat.isSymbolicLink() ||
+        sourceStat.nlink !== 1 ||
+        sourceStat.size !== ticket.length ||
+        createHash('sha256').update(readFileSync(ticket.file)).digest('hex') !== ticket.digest
+      )
+        throw new BusinessError({
+          code: 'RESTORE_DIGEST',
+          message: '恢复暂存文件已变化，覆盖未执行',
+        });
+    } catch (error) {
+      ticket.status = 'failed';
+      try {
+        this.#removeReplacementStaging(ticket);
+      } catch (cleanupError) {
+        throw new AggregateError([error, cleanupError], '恢复未执行且暂存清理未完成，原账套保留', {
+          cause: cleanupError,
+        });
+      }
+      throw error;
+    }
     ticket.status = 'applying';
     const protectionId = randomUUID();
-    const protection = path.join(
-      this.#managedDirectory('core-protection', id),
-      `${protectionId}.caiwu`,
-    );
+    let protection = '';
     let replaced = false;
     let protectionMetadata: { length: number; sha256: string } | undefined;
     const verify = (file: string, expected: { length: number; sha256: string }) => {
@@ -507,7 +671,7 @@ export class BookStore {
         });
       const source = new Database(from, { readonly: true, fileMustExist: true });
       try {
-        assertRestoreDatabase(source);
+        assertRestoreDatabase(source, id);
         await source.backup(to, {
           progress: () => {
             abort?.throwIfAborted();
@@ -520,6 +684,10 @@ export class BookStore {
     };
     try {
       signal.throwIfAborted();
+      protection = path.join(
+        this.#managedDirectory('core-protection', id),
+        `${protectionId}.caiwu`,
+      );
       await book.raw.backup(protection, {
         progress: () => {
           signal.throwIfAborted();
@@ -528,7 +696,7 @@ export class BookStore {
       });
       const backup = new Database(protection, { readonly: true, fileMustExist: true });
       try {
-        assertRestoreDatabase(backup);
+        assertRestoreDatabase(backup, id);
       } finally {
         backup.close();
       }
@@ -556,22 +724,22 @@ export class BookStore {
       replaced = true;
       await copy(ticket.file, this.pathOf(id), signal);
       const reopened = this.open(id);
-      assertRestoreDatabase(reopened.raw);
+      assertRestoreDatabase(reopened.raw, id);
       await validate?.(reopened, signal);
       signal.throwIfAborted();
+      assertRestoreDatabase(reopened.raw, id);
       ticket.status = 'done';
-      rmSync(ticket.file, { force: true });
     } catch (error) {
-      ticket.status = 'failed';
       if (replaced) {
         try {
           await this.#closeConnections(id);
           await copy(protection, this.pathOf(id));
           const restored = this.open(id);
-          assertRestoreDatabase(restored.raw);
+          assertRestoreDatabase(restored.raw, id);
         } catch (rollbackError) {
           // The replacement has been rejected and rollback is uncertain. Never admit
           // this database again merely because the exclusive callback has finished.
+          ticket.status = 'failed';
           this.#directory.quarantines.set(id, { protection, metadata: protectionMetadata! });
           gate.block();
           const marker = `${book.file}.quarantine.json`;
@@ -593,8 +761,20 @@ export class BookStore {
       } else {
         this.open(id);
       }
+      ticket.status = 'failed';
+      try {
+        this.#removeReplacementStaging(ticket);
+      } catch (cleanupError) {
+        throw new AggregateError(
+          [error, cleanupError],
+          '恢复失败且暂存清理未完成，原账套及保护副本保留',
+          { cause: cleanupError },
+        );
+      }
       throw error;
     }
+    // 恢复已验证提交。清理失败单独报告，不能把清理故障当作数据恢复失败再回滚。
+    this.#removeReplacementStaging(ticket);
   }
 
   /** Host recovery only: authenticate against the original protection copy while the target stays isolated. */
@@ -632,7 +812,7 @@ export class BookStore {
           });
         const source = new Database(quarantine.protection, { readonly: true, fileMustExist: true });
         try {
-          assertRestoreDatabase(source);
+          assertRestoreDatabase(source, id);
           const info = source.prepare('SELECT book_id, name FROM book_info WHERE id=1').get() as {
             book_id: string;
             name: string;
@@ -663,9 +843,9 @@ export class BookStore {
           await source.backup(this.pathOf(id));
           const restored = new Database(this.pathOf(id), { fileMustExist: true });
           try {
-            assertRestoreDatabase(restored);
+            assertRestoreDatabase(restored, id);
             runMigrations(restored, this.#allMigrations());
-            assertRestoreDatabase(restored);
+            assertRestoreDatabase(restored, id);
           } finally {
             restored.close();
           }
@@ -760,6 +940,11 @@ export class BookStore {
               await this.#closeConnections(id);
             });
           }
+          if (!this.#opts.exclusiveServer || this.#disposeAfterClose)
+            for (const ticket of this.#replacements.values()) {
+              if (ticket.status === 'prepared') ticket.status = 'cancelled';
+              this.#removeReplacementStaging(ticket);
+            }
         } finally {
           end();
         }
@@ -1086,6 +1271,15 @@ function bookCloseError(error: unknown): unknown {
   return error;
 }
 
+function bookScanError(bookId?: string): BusinessError {
+  return new BusinessError({
+    code: 'BOOK_SCAN_INCOMPLETE',
+    message: '账套未能完整读取，已停止本次账套扫描',
+    hint: '请等待账套维护结束或修复无法读取的账套后重试',
+    details: { bookId: bookId ?? null },
+  });
+}
+
 function maintenanceError(reason: 'busy' | 'timeout' | 'revoked'): BusinessError {
   return new BusinessError({
     code:
@@ -1119,7 +1313,7 @@ function toBookInfo(row: CoreDB['book_info']): BookInfo {
   };
 }
 
-function assertRestoreDatabase(raw: Database.Database): void {
+function assertRestoreDatabase(raw: Database.Database, expectedBookId: string): void {
   // Match the established backup validator; do not introduce a weaker restore route.
   const unsupported = raw
     .prepare(
@@ -1140,4 +1334,10 @@ function assertRestoreDatabase(raw: Database.Database): void {
     { book_id: string } | undefined;
   if (!row || !BookStore.isValidId(row.book_id))
     throw new BusinessError({ code: 'RESTORE_BOOK', message: '备份账套信息无效' });
+  if (row.book_id !== expectedBookId)
+    throw new BusinessError({
+      code: 'RESTORE_BOOK_MISMATCH',
+      message: '账套文件身份与确认的源账套或目标账套不符，恢复未完成',
+      hint: '请重新核对备份来源及目标账套，保留原账套和保护备份',
+    });
 }
