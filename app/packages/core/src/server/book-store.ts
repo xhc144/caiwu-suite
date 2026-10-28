@@ -180,15 +180,24 @@ export class BookStore {
     return this.#operations.run(() => this.#list());
   }
 
-  async #list(): Promise<BookSummary[]> {
+  /** 内部收据/幂等发现：任一受管账套未能读取即拒绝；随后逐账套读取仍须 withBook。 */
+  async listStrict(): Promise<BookSummary[]> {
+    this.#ensureLease();
+    return this.#operations.run(() => this.#list(true));
+  }
+
+  async #list(strict = false): Promise<BookSummary[]> {
     const out: BookSummary[] = [];
     for (const name of readdirSync(this.booksDir)) {
       const m = /^(.+)\.caiwu$/.exec(name);
-      if (!m || !BookStore.isValidId(m[1]!)) continue;
+      if (!m || !BookStore.isValidId(m[1]!)) {
+        if (strict && name.endsWith('.caiwu')) throw bookScanError();
+        continue;
+      }
       const id = m[1]!;
       const file = path.join(this.booksDir, name);
       try {
-        if (lstatSync(file).isSymbolicLink()) continue;
+        if (!strict && lstatSync(file).isSymbolicLink()) continue;
         this.#gate(id).assertAvailable();
         const raw =
           this.#open.get(id)?.raw ?? new Database(file, { readonly: true, fileMustExist: true });
@@ -198,6 +207,7 @@ export class BookStore {
           const last = raw
             .prepare("SELECT value FROM book_setting WHERE scope = 'core' AND key = 'lastOpenedAt'")
             .get() as { value: string } | undefined;
+          if (strict && (!row || row.book_id !== id)) throw bookScanError(id);
           if (row) {
             out.push({
               ...toBookInfo(row),
@@ -208,7 +218,11 @@ export class BookStore {
         } finally {
           if (!this.#open.has(id)) raw.close();
         }
-      } catch {
+      } catch (error) {
+        if (strict) {
+          if (error instanceof BusinessError) throw error;
+          throw bookScanError(id);
+        }
         // 损坏或不是账套的文件：不出现在列表里
       }
     }
@@ -1098,6 +1112,15 @@ function bookCloseError(error: unknown): unknown {
       hint: '请由开启事务的代码显式提交或回滚后重试',
     });
   return error;
+}
+
+function bookScanError(bookId?: string): BusinessError {
+  return new BusinessError({
+    code: 'BOOK_SCAN_INCOMPLETE',
+    message: '账套未能完整读取，已停止本次账套扫描',
+    hint: '请等待账套维护结束或修复无法读取的账套后重试',
+    details: { bookId: bookId ?? null },
+  });
 }
 
 function maintenanceError(reason: 'busy' | 'timeout' | 'revoked'): BusinessError {
