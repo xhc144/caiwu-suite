@@ -136,7 +136,11 @@ export function voucherService(ctx: ServiceContext) {
     const normalized = normalizeRows(input.lines);
     const lines = draft ? normalized.rows.filter((l) => l.accountId != null) : normalized.rows;
 
-    if (!draft && lines.length < 2) problems.push({ line: 0, message: '凭证至少要有两行分录' });
+    // 零本币调整可仅一行；非零原币/落库数量及借贷侧仍须通过下面的逐行校验。
+    const singleZeroBaseLine =
+      lines.length === 1 && lines[0]!.debit === 0 && lines[0]!.credit === 0;
+    if (!draft && lines.length < 2 && !singleZeroBaseLine)
+      problems.push({ line: 0, message: '凭证至少要有两行分录' });
     if (reversal && reversal.lines.length !== lines.length)
       problems.push({ line: 0, message: '冲销凭证必须完整保留原凭证的全部分录' });
 
