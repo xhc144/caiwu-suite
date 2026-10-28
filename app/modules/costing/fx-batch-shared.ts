@@ -40,3 +40,15 @@ export const ExecuteBatchVoucherSchema = BatchVoucherSchema.safeExtend({
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
   confirmed: z.boolean(),
 });
+
+export type BatchNumberingStep = {
+  deleted: { key: string; label: string; period: number; displayNo: string } | null;
+  impacts: {
+    key: string;
+    label: string;
+    period: number;
+    oldNumber: number | null;
+    number: number;
+  }[];
+  created: { key: string; label: string; period: number; number: number };
+};

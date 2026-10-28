@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { sql } from '@caiwu/db';
+import type { CoreServices } from '@caiwu/core/server';
 import { executeVoucherBatch, previewVoucherBatch } from '../server/batch';
 import { saveSourceCurrency, sourceCurrency } from '../server/vouchers';
 import { readInventory, type InventoryReadTables } from '../server/inventory-read';
@@ -388,6 +389,391 @@ describe('w_cb_pz：日期范围逐单制证与完整结果', () => {
   async function filter(purpose: 'receipt' | 'revenue' | 'cost' = 'receipt') {
     return { from: '2026-01-01', to: '2026-02-28', purpose, voucherTypeId: await typeId() };
   }
+  it.each([
+    [false, 2],
+    [false, 3],
+    [true, 2],
+    [true, 3],
+  ] as const)('删除后重排=%s，%i 张真实入库凭证在同一批内全部重新生成', async (renumber, count) => {
+    await t.app.svc.voucherPolicy.set({
+      numbering: 'automatic',
+      renumberAfterDelete: renumber,
+      allowModifyOthers: true,
+    });
+    const documents: Awaited<ReturnType<typeof t.document>>[] = [];
+    for (let i = 0; i < count; i++) {
+      const document = await t.document('receipt', '1', String(i + 1));
+      documents.push(document);
+      await generate(document.id, 'receipt');
+    }
+    const input = { ...(await filter()), regenerate: true };
+    const preview = await previewVoucherBatch(svc(), input);
+    expect(preview.rows.map((r) => r.action)).toEqual(documents.map(() => 'regenerate'));
+    const result = await executeVoucherBatch(svc(), {
+      ...input,
+      fingerprint: preview.fingerprint,
+      confirmed: true,
+    });
+    expect(result, JSON.stringify(result.results)).toMatchObject({
+      succeeded: count,
+      failed: 0,
+      skipped: 0,
+    });
+    expect((await t.app.svc.vouchers.list()).total).toBe(count);
+    for (const document of documents) {
+      expect(
+        (await t.api.voucherDocuments()).find((d) => d.documentId === document.id)?.sources,
+      ).toHaveLength(1);
+    }
+  });
+
+  it('三张重生成预览含后续对本批新凭证的完整映射，未确认时不写入', async () => {
+    await t.app.svc.voucherPolicy.set({
+      numbering: 'automatic',
+      renumberAfterDelete: true,
+      allowModifyOthers: true,
+    });
+    const documents: Awaited<ReturnType<typeof t.document>>[] = [];
+    const originals: Awaited<ReturnType<typeof generate>>[] = [];
+    for (let i = 0; i < 3; i++) {
+      const document = await t.document('receipt', '1', String(i + 1));
+      documents.push(document);
+      originals.push(await generate(document.id, 'receipt'));
+    }
+    const input = { ...(await filter()), regenerate: true };
+    const before = await t.app.svc.vouchers.list();
+    const inventoryBefore = (await readInventory(svc(), 202602)).fingerprint;
+    const preview = await previewVoucherBatch(svc(), input);
+    const mappings = preview.rows.map((row) =>
+      row.numbering!.impacts.map(({ key, oldNumber, number }) => [key, oldNumber, number]),
+    );
+    expect(mappings).toEqual([
+      [
+        [`voucher:${originals[1]!.id}`, 2, 1],
+        [`voucher:${originals[2]!.id}`, 3, 2],
+      ],
+      [
+        [`voucher:${originals[2]!.id}`, 2, 1],
+        [`new:receipt:${documents[0]!.id}`, 3, 2],
+      ],
+      [
+        [`new:receipt:${documents[0]!.id}`, 2, 1],
+        [`new:receipt:${documents[1]!.id}`, 3, 2],
+      ],
+    ]);
+    expect(preview.rows.map((row) => row.numbering!.created.number)).toEqual([3, 3, 3]);
+    await expect(
+      executeVoucherBatch(svc(), { ...input, fingerprint: preview.fingerprint, confirmed: false }),
+    ).rejects.toThrow(/确认/);
+    expect(await t.app.svc.vouchers.list()).toEqual(before);
+    expect((await readInventory(svc(), 202602)).fingerprint).toBe(inventoryBefore);
+    const result = await executeVoucherBatch(svc(), {
+      ...input,
+      fingerprint: preview.fingerprint,
+      confirmed: true,
+    });
+    expect(result.succeeded).toBe(3);
+    expect(result.results.map((row) => row.displayNo)).toEqual(originals.map((v) => v.displayNo));
+    for (let i = 0; i < 3; i++) {
+      const voucher = (await t.app.svc.vouchers.list()).items.find(
+        (v) => v.source?.id === String(documents[i]!.id),
+      );
+      expect(voucher).toMatchObject({ number: i + 1, revision: 3 - i });
+    }
+  });
+
+  it('混合首次生成与重生成跨月执行，后项映射包含前项新凭证且保留各月编号', async () => {
+    await t.app.svc.voucherPolicy.set({
+      numbering: 'automatic',
+      renumberAfterDelete: true,
+      allowModifyOthers: true,
+    });
+    const first = await t.document('receipt', '1', '1', { date: '2026-01-05' });
+    const second = await t.document('receipt', '1', '2', { date: '2026-01-06' });
+    const third = await t.document('receipt', '1', '3', { date: '2026-02-06' });
+    await generate(second.id, 'receipt');
+    await generate(third.id, 'receipt');
+    const input = { ...(await filter()), regenerate: true };
+    const preview = await previewVoucherBatch(svc(), input);
+    expect(preview.rows.map((row) => row.action)).toEqual(['generate', 'regenerate', 'regenerate']);
+    expect(preview.rows[1]!.numbering!.impacts).toEqual([
+      expect.objectContaining({ key: `new:receipt:${first.id}`, oldNumber: 2, number: 1 }),
+    ]);
+    const result = await executeVoucherBatch(svc(), {
+      ...input,
+      fingerprint: preview.fingerprint,
+      confirmed: true,
+    });
+    expect(result).toMatchObject({ succeeded: 3, failed: 0, skipped: 0 });
+    const vouchers = (await t.app.svc.vouchers.list()).items;
+    expect(vouchers.find((v) => v.source?.id === String(first.id))).toMatchObject({
+      period: 202601,
+      number: 1,
+      revision: 2,
+    });
+    expect(vouchers.find((v) => v.source?.id === String(second.id))).toMatchObject({
+      period: 202601,
+      number: 2,
+    });
+    expect(vouchers.find((v) => v.source?.id === String(third.id))).toMatchObject({
+      period: 202602,
+      number: 1,
+    });
+    expect(vouchers).toHaveLength(3);
+  });
+
+  it('手工编号同时启用删除后重排时按已确认步骤保存，结果反映后续重排后的最终字号', async () => {
+    for (let i = 0; i < 3; i++) {
+      const document = await t.document('receipt', '1', String(i + 1));
+      await generate(document.id, 'receipt');
+    }
+    await t.app.svc.voucherPolicy.set({
+      numbering: 'manual',
+      renumberAfterDelete: true,
+      allowModifyOthers: true,
+    });
+    const input = { ...(await filter()), regenerate: true, startNumber: 10 };
+    const preview = await previewVoucherBatch(svc(), input);
+    expect(preview.rows.map((r) => r.numbering!.created.number)).toEqual([10, 11, 12]);
+    const result = await executeVoucherBatch(svc(), {
+      ...input,
+      fingerprint: preview.fingerprint,
+      confirmed: true,
+    });
+    expect(result).toMatchObject({ succeeded: 3, failed: 0, skipped: 0 });
+    for (const row of result.results)
+      expect(await t.app.svc.vouchers.get(row.voucherId!)).toMatchObject({
+        displayNo: row.displayNo,
+      });
+    expect(
+      (await t.app.svc.vouchers.list()).items.map((v) => v.number).sort((a, b) => a! - b!),
+    ).toEqual([1, 2, 12]);
+  });
+
+  it.each([false, true])(
+    '重排=%s 时预览后外部同号修改仍拒绝旧确认',
+    async (renumberAfterDelete) => {
+      await t.app.svc.voucherPolicy.set({
+        numbering: 'automatic',
+        renumberAfterDelete,
+        allowModifyOthers: true,
+      });
+      const document = await t.document('receipt', '1', '1');
+      const original = await generate(document.id, 'receipt');
+      const input = { ...(await filter()), regenerate: true };
+      const preview = await previewVoucherBatch(svc(), input);
+      const changed = await svc().vouchers.update(
+        original.id,
+        { ...original, source: original.source ?? undefined, note: '预览后外部修改' },
+        { expectedRevision: original.revision },
+      );
+      await expect(
+        executeVoucherBatch(svc(), { ...input, fingerprint: preview.fingerprint, confirmed: true }),
+      ).rejects.toThrow(/已变化/);
+      expect(await t.app.svc.vouchers.get(original.id)).toEqual(changed);
+      expect((await t.app.svc.vouchers.list()).total).toBe(1);
+    },
+  );
+
+  it.each(['内容', '编号', '审核', '新增'] as const)(
+    '执行中外部%s变化不会混入本批重排或自动扩大确认',
+    async (change) => {
+      await t.app.svc.voucherPolicy.set({
+        numbering: 'automatic',
+        renumberAfterDelete: true,
+        allowModifyOthers: true,
+      });
+      const documents: Awaited<ReturnType<typeof t.document>>[] = [];
+      for (let i = 0; i < 2; i++) {
+        const document = await t.document('receipt', '1', String(i + 1));
+        documents.push(document);
+        await generate(document.id, 'receipt');
+      }
+      // 非本批来源的凭证也在完整删除影响集合内；即使分录金额和本单 links 不变也要拒绝。
+      const outside = await t.app.svc.vouchers.create({
+        date: '2026-01-12',
+        voucherTypeId: await typeId(),
+        lines: [
+          { accountId: t.ids.cash, summary: '外部凭证', debit: 100 },
+          { accountId: t.ids.sales, summary: '外部凭证', credit: 100 },
+        ],
+      });
+      const input = { ...(await filter()), regenerate: true };
+      const preview = await previewVoucherBatch(svc(), input);
+      const base = svc();
+      let transactions = 0;
+      const concurrent: CoreServices = {
+        ...base,
+        async tx(fn) {
+          if (++transactions === 3) {
+            const current = (await t.app.svc.vouchers.get(outside.id))!;
+            if (change === '内容')
+              await t.app.svc.vouchers.update(
+                current.id,
+                { ...current, source: undefined, note: '外部修改', lines: current.lines },
+                { expectedRevision: current.revision },
+              );
+            if (change === '编号') {
+              const plan = await t.app.svc.vouchers.previewNumbers([
+                { id: current.id, number: 10 },
+              ]);
+              await t.app.svc.vouchers.setNumbers(plan.updates, { plan, confirmed: true });
+            }
+            if (change === '审核')
+              await t.app.svc.vouchers.changeStatus({ ids: [current.id], to: 'audited' });
+            if (change === '新增')
+              await t.app.svc.vouchers.create({
+                ...current,
+                number: undefined,
+                source: undefined,
+                lines: current.lines,
+              });
+          }
+          return base.tx(fn);
+        },
+      };
+      const result = await executeVoucherBatch(concurrent, {
+        ...input,
+        fingerprint: preview.fingerprint,
+        confirmed: true,
+      });
+      expect(result).toMatchObject({ succeeded: 1, failed: 1, skipped: 0 });
+      expect(result.results[1]).toMatchObject({
+        status: 'failed',
+        message: expect.stringContaining('已变化'),
+      });
+      const secondLink = (await t.api.voucherDocuments()).find(
+        (d) => d.documentId === documents[1]!.id,
+      )!.sources[0]!;
+      expect(await t.app.svc.vouchers.get(secondLink.voucherId)).toMatchObject({
+        source: { id: String(documents[1]!.id) },
+        number: 1,
+        revision: 2,
+      });
+      expect((await t.app.svc.vouchers.list()).total).toBe(change === '新增' ? 4 : 3);
+    },
+  );
+
+  it('批量预览后外部改动未关联来源，即使金额不变也要求重新预览', async () => {
+    await t.app.svc.voucherPolicy.set({
+      numbering: 'automatic',
+      renumberAfterDelete: true,
+      allowModifyOthers: true,
+    });
+    const first = await t.document('receipt', '1', '1', { date: '2026-01-05' });
+    const second = await t.document('receipt', '1', '2', { date: '2026-01-06' });
+    await generate(first.id, 'receipt');
+    const input = { ...(await filter()), regenerate: true };
+    const preview = await previewVoucherBatch(svc(), input);
+    const base = svc();
+    let transactions = 0;
+    const concurrent: CoreServices = {
+      ...base,
+      async tx(fn) {
+        if (++transactions === 3)
+          await base.tx((tx) =>
+            tx.inventory.with((inventory) =>
+              inventory.saveDocument({
+                id: second.id,
+                revision: second.revision,
+                requestKey: randomUUID(),
+                kind: 'receipt',
+                warehouseId: t.warehouseId,
+                number: '外部改过来源单号',
+                date: '2026-01-06',
+                category: '采购',
+                accountId: t.ids.cash,
+                costAccountId: t.ids.cost,
+                taxRate: '0',
+                lines: [{ productCode: 'P1', quantity: '1', unitPrice: '2' }],
+              }),
+            ),
+          );
+        return base.tx(fn);
+      },
+    };
+    const result = await executeVoucherBatch(concurrent, {
+      ...input,
+      fingerprint: preview.fingerprint,
+      confirmed: true,
+    });
+    expect(result).toMatchObject({ succeeded: 1, failed: 1, skipped: 0 });
+    expect(result.results[1]?.message).toMatch(/来源或凭证已变化/);
+    expect((await t.app.svc.vouchers.list()).total).toBe(1);
+    expect(
+      (await t.api.voucherDocuments()).find((d) => d.documentId === second.id)?.sources,
+    ).toEqual([]);
+  });
+
+  it('重生成中间项真实写入失败回滚重排，偏离预览的后项需重预览，重试后无重复制证', async () => {
+    await t.app.svc.voucherPolicy.set({
+      numbering: 'automatic',
+      renumberAfterDelete: true,
+      allowModifyOthers: true,
+    });
+    const documents: Awaited<ReturnType<typeof t.document>>[] = [];
+    const originals: Awaited<ReturnType<typeof generate>>[] = [];
+    for (let i = 0; i < 3; i++) {
+      const document = await t.document('receipt', '1', String(i + 1), {
+        date: `2026-01-0${i + 5}`,
+      });
+      documents.push(document);
+      originals.push(await generate(document.id, 'receipt'));
+    }
+    await sql
+      .raw(
+        `CREATE TRIGGER costing_batch_regenerate_failure BEFORE INSERT ON inventory_voucher_source WHEN NEW.document_id=${documents[1]!.id} BEGIN SELECT RAISE(ABORT, '合成重生成失败'); END`,
+      )
+      .execute(t.app.svc.db);
+    const input = { ...(await filter()), regenerate: true };
+    const preview = await previewVoucherBatch(svc(), input);
+    const result = await executeVoucherBatch(svc(), {
+      ...input,
+      fingerprint: preview.fingerprint,
+      confirmed: true,
+    });
+    expect(result).toMatchObject({ succeeded: 1, failed: 2, skipped: 0 });
+    expect(result.results[1]?.message).toMatch(/合成重生成失败/);
+    expect(result.results[2]?.message).toMatch(/逐步映射不一致/);
+    expect(await t.app.svc.vouchers.get(originals[1]!.id)).toMatchObject({
+      number: 1,
+      revision: 2,
+      debitTotal: 200,
+    });
+    expect(await t.app.svc.vouchers.get(originals[2]!.id)).toMatchObject({
+      number: 2,
+      revision: 2,
+      debitTotal: 300,
+    });
+    await expect(
+      executeVoucherBatch(svc(), { ...input, fingerprint: preview.fingerprint, confirmed: true }),
+    ).rejects.toThrow(/已变化/);
+    expect((await t.app.svc.vouchers.list()).total).toBe(3);
+    await sql.raw('DROP TRIGGER costing_batch_regenerate_failure').execute(t.app.svc.db);
+    const retryInput = { ...input, from: '2026-01-06' };
+    const retry = await previewVoucherBatch(svc(), retryInput);
+    expect(
+      await executeVoucherBatch(svc(), {
+        ...retryInput,
+        fingerprint: retry.fingerprint,
+        confirmed: true,
+      }),
+    ).toMatchObject({ succeeded: 2, failed: 0, skipped: 0 });
+    const ordinary = { ...input, regenerate: false };
+    const last = await previewVoucherBatch(svc(), ordinary);
+    expect(
+      await executeVoucherBatch(svc(), {
+        ...ordinary,
+        fingerprint: last.fingerprint,
+        confirmed: true,
+      }),
+    ).toMatchObject({ succeeded: 0, failed: 0, skipped: 3 });
+    expect((await t.app.svc.vouchers.list()).total).toBe(3);
+    for (const document of documents)
+      expect(
+        (await t.api.voucherDocuments()).find((d) => d.documentId === document.id)?.sources,
+      ).toHaveLength(1);
+  });
   it('逐条列出失败、已生成跳过与审核跳过，只有成功项使用手工起始编号', async () => {
     await t.document('receipt', '1', '1', { date: '2026-01-05', taxRate: '13' });
     const good = await t.document('receipt', '1', '1', { date: '2026-01-10' });

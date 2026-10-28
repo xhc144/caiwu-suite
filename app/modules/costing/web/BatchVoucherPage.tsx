@@ -18,6 +18,7 @@ import { AccountSelect, PageContainer } from '@caiwu/ui';
 import { BatchVoucherSchema } from '../fx-batch-shared';
 import { api } from './api';
 import DeletionImpact from './DeletionImpact';
+import BatchNumbering from './BatchNumbering';
 import type { z } from 'zod';
 
 type BatchInput = z.input<typeof BatchVoucherSchema>;
@@ -281,7 +282,11 @@ function BatchEditor({
                         },
                       ]}
                     />
-                    {row.deletion && <DeletionImpact plan={row.deletion.plan} />}
+                    {row.numbering ? (
+                      <BatchNumbering step={row.numbering} />
+                    ) : row.deletion ? (
+                      <DeletionImpact plan={row.deletion.plan} />
+                    ) : null}
                   </>
                 ),
               }}
@@ -326,6 +331,7 @@ function BatchEditor({
       </Space>
       <Modal
         title="确认批量生成凭证"
+        width={900}
         open={confirming}
         onCancel={() => setConfirming(false)}
         okText="确认执行"
@@ -344,6 +350,30 @@ function BatchEditor({
           将按已预览的分录处理 {ready}{' '}
           张来源单据。已生成、跳过及失败的结果会逐张列出；修改失败项后可重新预览继续。
         </Typography.Paragraph>
+        {preview.data?.rows.some((row) => row.numbering) && (
+          <Space
+            orientation="vertical"
+            style={{ width: '100%', maxHeight: '60vh', overflowY: 'auto' }}
+          >
+            <Alert
+              type="warning"
+              showIcon
+              title="请核对以下逐步编号映射后确认执行"
+              description="按前项全部成功的顺序展示完整影响；某项失败导致后续映射变化时，相关单据需重新预览确认。"
+            />
+            {preview.data.rows.map(
+              (row, index) =>
+                row.numbering && (
+                  <div key={row.key} style={{ width: '100%' }}>
+                    <Typography.Title level={5}>
+                      第 {index + 1} 项：{row.number}
+                    </Typography.Title>
+                    <BatchNumbering step={row.numbering} />
+                  </div>
+                ),
+            )}
+          </Space>
+        )}
       </Modal>
     </PageContainer>
   );

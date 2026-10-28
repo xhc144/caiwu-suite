@@ -1,10 +1,22 @@
-import { periodOfDate } from '@caiwu/core';
+import { formatVoucherNo, periodOfDate } from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import type { z } from 'zod';
-import { BatchVoucherSchema, ExecuteBatchVoucherSchema } from '../fx-batch-shared';
+import {
+  BatchVoucherSchema,
+  ExecuteBatchVoucherSchema,
+  type BatchNumberingStep,
+} from '../fx-batch-shared';
 import { digest } from './inventory-read';
 import { fail } from './math';
 import { requireCostingOwner } from './owner';
+import {
+  advanceBatchState,
+  assertBatchDeletion,
+  assertBatchState,
+  expectedBatchLinks,
+  initialBatchState,
+  planBatchNumbering,
+} from './batch-numbering';
 import {
   generateVoucher,
   listVoucherDocuments,
@@ -26,6 +38,7 @@ type BatchRow = {
   message: string;
   preview: Preview | null;
   deletion: Deletion | null;
+  numbering: BatchNumberingStep | null;
 };
 
 function semantics(preview: Preview) {
@@ -86,6 +99,7 @@ async function buildBatch(svc: CoreServices, input: BatchInput) {
       message: '按来源日期生成凭证',
       preview: null,
       deletion: null,
+      numbering: null,
     };
     const link = document.sources.find((s) => s.purpose === input.purpose);
     if (input.purpose === 'receipt' && document.productionOwned) {
@@ -122,15 +136,19 @@ async function buildBatch(svc: CoreServices, input: BatchInput) {
     }
     rows.push(row);
   }
+  const numbering = await planBatchNumbering(svc, rows, input, policy);
+  for (const row of rows) row.numbering = numbering.steps.get(row.key) ?? null;
   return {
     rows,
     policy,
+    numbering,
     fingerprint: digest({
       bookId: snapshot.bookId,
       actorId: svc.user.id,
       moduleId: svc.moduleId,
       input,
       policy,
+      vouchers: numbering.initial,
       rows: rows.map((r) => ({
         ...r,
         preview: r.preview ? semantics(r.preview) : null,
@@ -147,7 +165,10 @@ export async function previewVoucherBatch(
   requireCostingOwner(svc);
   svc.permissions.require('costing.voucher');
   const input = BatchVoucherSchema.parse(raw);
-  return svc.tx((t) => buildBatch(t, input));
+  return svc.tx(async (t) => {
+    const { numbering: _numbering, ...preview } = await buildBatch(t, input);
+    return preview;
+  });
 }
 
 /** 每张来源单据独立事务；错误和跳过逐条返回，成功项才消耗手工编号。 */
@@ -173,6 +194,7 @@ export async function executeVoucherBatch(
     displayNo?: string;
   }[] = [];
   let nextNumber = input.startNumber;
+  let expected = initialBatchState(plan.numbering.initial);
   for (const row of plan.rows) {
     if (row.action === 'skip' || row.action === 'failed') {
       results.push({
@@ -185,9 +207,10 @@ export async function executeVoucherBatch(
       continue;
     }
     try {
-      const voucher = await svc.tx(async (t) => {
+      const saved = await svc.tx(async (t) => {
         if (digest(await t.voucherPolicy.get()) !== digest(plan.policy))
           fail('STALE', '凭证编号策略已经变化，请重新预览');
+        if (row.numbering) await assertBatchState(t, plan.numbering, expected);
         const target = {
           documentId: row.documentId,
           countId: row.countId,
@@ -197,7 +220,11 @@ export async function executeVoucherBatch(
           adjustmentAccountId: input.adjustmentAccountId,
         };
         const current = await previewVoucher(t, target);
-        if (!row.preview || semantics(current) !== semantics(row.preview))
+        const approved = row.preview && {
+          ...row.preview,
+          links: expectedBatchLinks(row.preview.links, expected),
+        };
+        if (!approved || semantics(current) !== semantics(approved))
           fail('STALE', '本张来源或凭证已变化，请重新预览');
         const generation = {
           ...target,
@@ -207,17 +234,43 @@ export async function executeVoucherBatch(
           fingerprint: current.fingerprint,
           confirmed: true,
         };
-        if (row.action === 'regenerate') {
-          const deletion = await previewVoucherDelete(t, target);
-          if (digest(deletion.plan.impacts) !== digest(row.deletion?.plan.impacts))
+        const deletion = row.action === 'regenerate' ? await previewVoucherDelete(t, target) : null;
+        if (deletion) {
+          if (row.numbering) assertBatchDeletion(expected, row.numbering, deletion.plan);
+          else if (digest(deletion.plan.impacts) !== digest(row.deletion?.plan.impacts))
             fail('STALE', '删除后的编号影响已经变化，请重新预览本单后重试');
-          return regenerateVoucher(t, {
-            ...generation,
-            voucherDeletion: { plan: deletion.plan, confirmed: true },
-          });
         }
-        return generateVoucher(t, generation);
+        if (
+          row.numbering &&
+          plan.policy.numbering === 'manual' &&
+          nextNumber !== row.numbering.created.number
+        )
+          fail('STALE', '前项失败后编号与已确认的逐步映射不一致，请重新预览后确认');
+        const voucher = deletion
+          ? await regenerateVoucher(t, {
+              ...generation,
+              voucherDeletion: { plan: deletion.plan, confirmed: true },
+            })
+          : await generateVoucher(t, generation);
+        let nextExpected = expected;
+        if (row.numbering) {
+          if (
+            voucher.number !== row.numbering.created.number ||
+            voucher.period !== row.numbering.created.period
+          )
+            fail('STALE', '新凭证编号与已确认的逐步映射不一致，请重新预览后确认');
+          nextExpected = advanceBatchState(
+            expected,
+            deletion?.plan ?? null,
+            row.numbering,
+            voucher,
+          );
+          await assertBatchState(t, plan.numbering, nextExpected);
+        }
+        return { voucher, nextExpected };
       });
+      const { voucher } = saved;
+      expected = saved.nextExpected;
       results.push({
         key: row.key,
         number: row.number,
@@ -237,6 +290,12 @@ export async function executeVoucherBatch(
         message: errorMessage(error),
       });
     }
+  }
+  // 后续步骤可能重排本批先前保存的凭证，结果应显示最后一次成功事务后的字号。
+  for (const result of results) {
+    const state = expected.find((v) => v.key === `new:${result.key}`);
+    if (result.voucherId != null && state)
+      result.displayNo = formatVoucherNo(state.typeCode, state.number);
   }
   return {
     results,

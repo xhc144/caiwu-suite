@@ -195,3 +195,58 @@ test('w_cb_pz：批量销售收入显式跳过合成发票来源，保留其收�
   expect(listed.find((d) => d.documentId === invoice.id)?.sources).toEqual([]);
   expect((await t.get<{ total: number }>('core.vouchers.list', {})).total).toBe(1);
 });
+
+test('w_cb_pz：三张入库重生成先确认逐步完整映射，取消不写入，确认后全部成功', async ({
+  page,
+  request,
+}) => {
+  const t = await fixture(page, request);
+  await t.post('core.voucherPolicy.set', {
+    numbering: 'automatic',
+    renumberAfterDelete: true,
+    allowModifyOthers: true,
+  });
+  const documents: { id: number; revision: number }[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const document = await t.document(`REGENERATE-${i}`, `2026-01-0${i + 4}`, String(i));
+    documents.push(document);
+    await t.generate(document.id);
+  }
+  const before = await t.get<{ total: number; items: { id: number; revision: number }[] }>(
+    'core.vouchers.list',
+    {},
+  );
+  await page.goto('/m/costing/voucher-batch');
+  await page.getByRole('checkbox', { name: '重新生成已有未审核凭证', exact: true }).check();
+  await page.getByRole('button', { name: '预览批量凭证', exact: true }).click();
+  await expect(
+    page.getByText('待执行 3 张；展开单据核对分录和删除编号影响。', { exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: '确认批量处理', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '确认批量生成凭证', exact: true });
+  await expect(dialog.getByText('请核对以下逐步编号映射后确认执行', { exact: true })).toBeVisible();
+  for (let i = 1; i <= 3; i++)
+    await expect(
+      dialog.getByRole('heading', { name: `第 ${i} 项：REGENERATE-${i}`, exact: true }),
+    ).toBeVisible();
+  // 第二、第三步都必须展示前面本批新生成的凭证，不能沿用最初的单张删除映射。
+  const firstNew = dialog
+    .getByRole('row')
+    .filter({ hasText: '本批第 1 张新凭证（来源 REGENERATE-1）' });
+  await expect(firstNew).toHaveCount(2);
+  await expect(firstNew.nth(0).getByRole('cell').nth(2)).toHaveText('3');
+  await expect(firstNew.nth(0).getByRole('cell').nth(3)).toHaveText('2');
+  await expect(firstNew.nth(1).getByRole('cell').nth(2)).toHaveText('2');
+  await expect(firstNew.nth(1).getByRole('cell').nth(3)).toHaveText('1');
+  await dialog.getByRole('button', { name: '返回核对', exact: true }).click();
+  expect(await t.get('core.vouchers.list', {})).toEqual(before);
+  await page.getByRole('button', { name: '确认批量处理', exact: true }).click();
+  await dialog.getByRole('button', { name: '确认执行', exact: true }).click();
+  await expect(page.getByText('成功 3 张，失败 0 张，跳过 0 张', { exact: true })).toBeVisible();
+  expect((await t.get<{ total: number }>('core.vouchers.list', {})).total).toBe(3);
+  const listed = await t.get<{ documentId?: number; sources: { voucherId: number }[] }[]>(
+    'm.costing.voucherDocuments',
+  );
+  for (const document of documents)
+    expect(listed.find((d) => d.documentId === document.id)?.sources).toHaveLength(1);
+});
