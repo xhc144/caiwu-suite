@@ -7,7 +7,8 @@ import Database from 'better-sqlite3';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createTestApp, seedVouchers, type TestApp } from '@caiwu/testkit';
 import backupServer from '../server';
-import { waitForJobs } from '../server/service';
+import { backupService, waitForJobs } from '../server/service';
+import { TRANSFER_LIMIT } from '../shared';
 import { directory, packagePath, validatePackage } from '../server/files';
 
 const snapshotFault = vi.hoisted(() => ({ mode: null as 'length' | 'digest' | null }));
@@ -103,13 +104,13 @@ it('w_hf：完整覆盖保留目标ID与名称、回退整数金额、保留保�
   expect(app.runtime.sessions.get(observer)).toBeNull();
   const fresh = caller(app, await app.login());
   const rows = await fresh.list();
-  expect(rows).toHaveLength(1);
-  expect(rows[0]).toMatchObject({
+  expect(rows.map((row) => row.id).sort()).toEqual([p.backup_id, protection.protectionId].sort());
+  expect(rows.find((row) => row.id === protection.protectionId)).toMatchObject({
     id: protection.protectionId,
     kind: 'pre-restore',
     status: 'valid',
   });
-  const row = rows[0]!;
+  const row = rows.find((row) => row.id === protection.protectionId)!;
   const checked = await validatePackage(
     packagePath(await directory(app.runtime.dataDir, app.book.id, row.directory), row.id),
     app.runtime,
@@ -240,3 +241,141 @@ it.each(['length', 'digest'] as const)(
     expect(await api.verify({ id: protection.id })).toMatchObject({ type: 'pre-restore' });
   },
 );
+
+it('w_hf：跨机覆盖清除源机器失效路径，保留本机手动、自动、上传及历史保护目录，大包仍可直接恢复', async () => {
+  const machine = await createTestApp({ modules: [backupServer] });
+  try {
+    let destination = caller(machine);
+    await seedVouchers(machine.svc, [
+      {
+        date: '2026-01-05',
+        lines: [
+          { account: '1001', debit: 22222 },
+          { account: '6603', credit: 22222 },
+        ],
+      },
+    ]);
+    const targetRaw = machine.runtime.bookStore.open(machine.book.id).raw;
+    const largeLog = targetRaw
+      .prepare('INSERT INTO operation_log(at,module,action,summary,detail) VALUES (?,?,?,?,?)')
+      .run(
+        new Date().toISOString(),
+        'backup',
+        'backup.test.large',
+        '合成大包',
+        'x'.repeat(33 * 1024 * 1024),
+      );
+    const manual = await destination.create({ requestId: randomUUID(), name: '本机大包手动备份' });
+    await waitForJobs(machine.runtime);
+    const manualBefore = (await destination.list()).find((row) => row.id === manual.id)!;
+    expect(manualBefore.bytes).toBeGreaterThan(TRANSFER_LIMIT);
+    targetRaw.prepare('DELETE FROM operation_log WHERE id=?').run(largeLog.lastInsertRowid);
+    targetRaw.exec('VACUUM');
+    const token = await machine.login();
+    const localSvc = machine.svcFor('backup');
+    const local = backupService({
+      app: machine.runtime,
+      book: machine.runtime.bookStore.open(machine.book.id),
+      session: machine.runtime.sessions.get(token)!,
+      user: localSvc.ctx.user,
+      svc: localSvc,
+      moduleId: 'backup',
+    });
+    const automatic = await local.create(
+      { requestId: randomUUID(), name: '本机自动备份' },
+      'automatic',
+      true,
+    );
+    const historical = await local.create(
+      { requestId: randomUUID(), name: '本机历史保护' },
+      'pre-restore',
+      true,
+    );
+
+    await seed(12345);
+    const sourceRaw = app.runtime.bookStore.open(app.book.id).raw;
+    // 与本机手动包故意使用相同ID，但源记录指向源机器的非法路径；不能覆盖本机登记。
+    sourceRaw
+      .prepare(
+        'INSERT INTO backup_item(id,owner_id,request_id,name,directory,kind,status,created_at,digest) VALUES (?,?,?,?,?,?,?,?,?)',
+      )
+      .run(
+        manual.id,
+        app.book.id,
+        randomUUID(),
+        '源机器失效引用',
+        '../源机器旧目录',
+        'manual',
+        'valid',
+        new Date().toISOString(),
+        '0'.repeat(64),
+      );
+    const stalePlan = randomUUID();
+    sourceRaw
+      .prepare(
+        'INSERT INTO backup_plan(id,owner_id,user_id,backup_id,digest,target_id,target_name,purpose,expires_at,status,fingerprint,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      )
+      .run(
+        stalePlan,
+        app.book.id,
+        1,
+        manual.id,
+        '0'.repeat(64),
+        randomUUID(),
+        '源机器旧计划',
+        'copy',
+        '2030-01-01T00:00:00.000Z',
+        'ready',
+        '',
+        new Date().toISOString(),
+      );
+    const source = await api.create({ requestId: randomUUID(), name: '跨机来源包' });
+    await waitForJobs(app.runtime);
+    const portable = await api.download({ id: source.id });
+    const imported = await destination.upload({ name: '本机上传来源包', base64: portable.base64 });
+    const before = await destination.list();
+    expect(before.map((row) => row.id).sort()).toEqual(
+      [manual.id, automatic.id, historical.id, imported.id].sort(),
+    );
+    const plan = await destination.preview({ id: imported.id, purpose: 'overwrite' });
+    const protection = await destination.prepareOverwrite({ planId: plan.id });
+    await destination.restore({ planId: plan.id, text: plan.confirmation, password: 'admin' });
+    destination = caller(machine, await machine.login());
+    const retained = await destination.list();
+    expect(retained.map((row) => row.id).sort()).toEqual(
+      [...before.map((row) => row.id), protection.protectionId].sort(),
+    );
+    for (const row of before) expect(retained.find((saved) => saved.id === row.id)).toEqual(row);
+    expect(
+      retained.every((row) => row.owner_id === machine.book.id && row.status === 'valid'),
+    ).toBe(true);
+    expect(retained.some((row) => row.directory.includes('源机器'))).toBe(false);
+    const replaced = machine.runtime.bookStore.open(machine.book.id);
+    expect(replaced.raw.prepare('SELECT count(*) n FROM backup_plan').get()).toEqual({ n: 0 });
+    expect(amounts(replaced.raw)).toEqual([{ debit_total: 12345 }]);
+    await expect(destination.download({ id: manual.id })).rejects.toThrow('32 MiB');
+    for (const row of retained) {
+      destination = caller(machine, await machine.login());
+      expect(await destination.verify({ id: row.id })).toMatchObject({
+        book: { id: row.metadata!.book.id },
+      });
+      const copy = await destination.preview({
+        id: row.id,
+        purpose: 'copy',
+        name: `本机历史-${row.kind}-${row.id.slice(0, 8)}`,
+      });
+      const restored = await destination.restore({
+        planId: copy.id,
+        text: copy.confirmation,
+        password: 'admin',
+      });
+      expect(restored.bookId).not.toBe(machine.book.id);
+      const book = machine.runtime.bookStore.open(restored.bookId);
+      expect(amounts(book.raw)).toEqual([{ debit_total: row.kind === 'imported' ? 12345 : 22222 }]);
+      expect(book.raw.prepare('SELECT count(*) n FROM backup_item').get()).toEqual({ n: 0 });
+    }
+  } finally {
+    await waitForJobs(machine.runtime);
+    await machine.close();
+  }
+});

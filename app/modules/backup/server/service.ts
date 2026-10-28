@@ -48,7 +48,13 @@ type Protection = {
   available: boolean;
   expiresAt: string;
 };
-type Overwrite = { revision: string; replacementId?: string; protection?: Protection };
+type LocalBackup = Readonly<BackupTables['backup_item']>;
+type Overwrite = {
+  revision: string;
+  replacementId?: string;
+  protection?: Protection;
+  localBackups?: readonly LocalBackup[];
+};
 type Job = { bookId: string; abort: AbortController; promise: Promise<void>; progress: number };
 type Terminal = { status: 'failed' | 'cancelled'; reason: string };
 type FinalFailure = {
@@ -188,6 +194,28 @@ export async function waitForJobs(app: AppRuntime, bookId?: string, signal?: Abo
     signal?.throwIfAborted();
   } finally {
     signal?.removeEventListener('abort', abort);
+  }
+}
+
+/** 仅接受替换前目标本机的登记；源机器快照中的目录和文件登记不参与保留。 */
+async function verifiedLocalBackup(app: AppRuntime, bookId: string, row: LocalBackup) {
+  if (row.owner_id !== bookId || row.status !== 'valid')
+    throw fail('CATALOG', '本机备份登记不属于覆盖目标或尚未校验通过');
+  const file = packagePath(await directory(app.dataDir, bookId, row.directory), row.id);
+  const checked = await validatePackage(file, app);
+  try {
+    if (checked.digest !== row.digest)
+      throw fail('CHANGED', '本机备份与登记摘要不符，覆盖未完成', '请重新校验本机备份后再预览恢复');
+    return Object.freeze({
+      ...row,
+      metadata: JSON.stringify(checked.metadata),
+      bytes: checked.bytes,
+      digest: checked.digest,
+      reason: '',
+      progress: 100,
+    });
+  } finally {
+    await rm(checked.snapshot, { force: true });
   }
 }
 
@@ -837,6 +865,20 @@ export function backupService(ctx: Context) {
               createHash('sha256').update(bytes).digest('hex') !== checked.metadata.sha256
             )
               throw fail('CHANGED', '已校验快照在暂存前发生变化，覆盖未执行');
+            const localRows = await db
+              .selectFrom('backup_item')
+              .selectAll()
+              .where('owner_id', '=', ctx.book.id)
+              .where('status', '=', 'valid')
+              .execute();
+            const localBackups: LocalBackup[] = [];
+            for (const row of localRows)
+              localBackups.push(await verifiedLocalBackup(ctx.app, ctx.book.id, row));
+            if (
+              !localBackups.some((row) => row.id === plan.backup_id) ||
+              !localBackups.some((row) => row.id === protection.id)
+            )
+              throw fail('CATALOG', '恢复来源或保护备份登记已变化，请重新预览');
             const revision = fingerprint();
             const expiresAt = Math.min(Date.now() + 5 * 60_000, Date.parse(plan.expires_at));
             const replacementInput = {
@@ -861,6 +903,7 @@ export function backupService(ctx: Context) {
               revision,
               replacementId: ticket.replacementId,
               protection: result,
+              localBackups: Object.freeze(localBackups),
             });
             return result;
           } finally {
@@ -902,7 +945,7 @@ export function backupService(ctx: Context) {
           if (!plan.protection_id) throw fail('PROTECTION', '尚未完成恢复前保护备份');
           ctx.svc.permissions.require('backup.create');
           const prepared = state(ctx.app).overwrites.get(plan.id);
-          if (!prepared?.replacementId || !prepared.protection)
+          if (!prepared?.replacementId || !prepared.protection || !prepared.localBackups)
             throw fail('PROTECTION', '覆盖准备已失效，请重新预览并生成保护备份');
           if (Date.parse(prepared.protection.expiresAt) <= Date.now())
             throw fail('EXPIRED', '覆盖确认已过期，请重新预览');
@@ -911,6 +954,7 @@ export function backupService(ctx: Context) {
           const protection = await load(plan.protection_id);
           const checkedProtection = await verify(protection.id);
           await rm(checkedProtection.snapshot);
+          const localBackups = prepared.localBackups;
           const runtime = ctx.app;
           const targetId = ctx.book.id;
           const actorId = ctx.user.id;
@@ -965,14 +1009,19 @@ export function backupService(ctx: Context) {
                       'TARGET_CHANGED',
                       '恢复后的账套身份与覆盖目标不符，正在回滚保护副本',
                     );
-                  // 只保留本机刚生成的保护包登记，不能继承源机器的文件路径和恢复计划。
+                  // 排空后再次校验冻结的本机文件；任一变化由共享维护流程回滚。
+                  for (const row of localBackups) {
+                    signal.throwIfAborted();
+                    await verifiedLocalBackup(runtime, targetId, row);
+                  }
+                  // 丢弃源机器登记，只重建替换前已验证的目标本机目录（含来源及历史保护）。
                   await book.db.transaction().execute(async (tx) => {
                     await tx.withTables<BackupTables>().deleteFrom('backup_plan').execute();
                     await tx.withTables<BackupTables>().deleteFrom('backup_item').execute();
                     await tx
                       .withTables<BackupTables>()
                       .insertInto('backup_item')
-                      .values(protection)
+                      .values(localBackups)
                       .execute();
                     await tx
                       .updateTable('book_info')
