@@ -1,4 +1,16 @@
-import { Alert, Button, Checkbox, Empty, Form, Modal, Select, Space, Spin, Tag } from 'antd';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Empty,
+  Form,
+  Modal,
+  Pagination,
+  Select,
+  Space,
+  Spin,
+  Tag,
+} from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -6,11 +18,12 @@ import { formatPeriod } from '@caiwu/core';
 import { printHtml } from '@caiwu/print';
 import { queryClient, useCurrentPeriod, usePeriods, usePermission } from '@caiwu/web-kit';
 import { FilterBar, PageContainer, downloadBlob, useUrlFilters } from '@caiwu/ui';
-import type { GenerateSchema } from '../shared';
+import { METRIC_LABELS, type GenerateSchema } from '../shared';
+import { displayValue } from './format';
 import type { z } from 'zod';
 import { api } from './api';
 import { ReportGrid } from './Grid';
-import { reportHtml } from './print';
+import { reportPrintJob } from './print';
 
 type Pending = {
   input: z.input<typeof GenerateSchema>;
@@ -42,6 +55,7 @@ export default function ViewPage() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [working, setWorking] = useState(false);
   const [exportError, setExportError] = useState('');
+  const [sourcePage, setSourcePage] = useState(1);
   const generate = useMutation(
     api.generate.mutationOptions({
       onSuccess: (r, input) => {
@@ -82,11 +96,7 @@ export default function ViewPage() {
         setExportError('所选期间还没有生成有效结果，请先生成报表');
         return;
       }
-      if (print)
-        await printHtml({
-          title: `${data.snapshot.template.name}-${data.snapshot.period}`,
-          html: reportHtml(data.snapshot),
-        });
+      if (print) await printHtml(reportPrintJob(data.snapshot));
       else
         downloadBlob(
           new Blob([Uint8Array.from(atob(data.base64), (c) => c.charCodeAt(0))], {
@@ -191,7 +201,11 @@ export default function ViewPage() {
                   style={{ marginBottom: 8 }}
                   type={c.status === 'pass' ? 'success' : c.status === 'fail' ? 'warning' : 'error'}
                   title={`${c.name}：${c.status === 'pass' ? '通过' : c.status === 'fail' ? '不通过' : '错误'}`}
-                  description={`差额 ${c.difference ?? '无法计算'}；阈值 ${c.tolerance}（金额为分）${c.reason ? `；${c.reason}` : ''}`}
+                  description={
+                    c.condition !== undefined
+                      ? `${c.condition}；${c.reason ?? ''}`
+                      : `差额 ${c.difference ?? '无法计算'}；阈值 ${c.tolerance}（金额为分）${c.reason ? `；${c.reason}` : ''}`
+                  }
                 />
               ))}
             </>
@@ -199,23 +213,104 @@ export default function ViewPage() {
           <p>
             本次依赖定义：{s.dependencies.map((d) => `${d.code}（版本${d.revision}）`).join('、')}
           </p>
-          <Space wrap>
-            {s.template.cells
-              .filter((c) => c.kind === 'formula')
-              .map((c) => {
-                const m = /BALANCE\("(\d+)"/.exec(c.source);
-                return (
-                  m && (
-                    <Link
-                      key={c.address}
-                      to={`/m/ledgers/detail?account=${m[1]}&from=${s.period}&to=${s.period}`}
-                    >
-                      {c.address} 查看科目 {m[1]} 明细
-                    </Link>
-                  )
-                );
-              })}
-          </Space>
+          {s.sources ? (
+            <details open>
+              <summary>取数来源与明细</summary>
+              <p>
+                下列数值来自本次生成快照；明细入口按相同科目、期间、币种和辅助条件查看当前账务。
+              </p>
+              <div style={{ overflowX: 'auto' }}>
+                <table aria-label="逐项取数来源">
+                  <thead>
+                    <tr>
+                      <th>报表单元格</th>
+                      <th>科目及指标</th>
+                      <th>期间</th>
+                      <th>辅助及币种</th>
+                      <th>取数值</th>
+                      <th>账务明细</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s.sources
+                      .slice(
+                        (Math.min(sourcePage, Math.max(1, Math.ceil(s.sources.length / 50))) - 1) *
+                          50,
+                        Math.min(sourcePage, Math.max(1, Math.ceil(s.sources.length / 50))) * 50,
+                      )
+                      .map((trace, index) => {
+                        const query = new URLSearchParams({
+                          account: trace.input.account,
+                          from: String(trace.periodFrom),
+                          to: String(trace.periodTo),
+                        });
+                        if (Object.keys(trace.dimensions).length)
+                          query.set('dims', JSON.stringify(trace.dimensions));
+                        if (trace.input.unit === 'foreignCents')
+                          query.set('currency', trace.input.currency);
+                        if (s.includeUnposted) query.set('includeUnposted', '1');
+                        return (
+                          <tr key={index}>
+                            <td>
+                              {trace.reportCode} / {trace.address}
+                            </td>
+                            <td>
+                              {trace.input.account} {METRIC_LABELS[trace.input.metric]}
+                            </td>
+                            <td>
+                              {trace.periodFrom}至{trace.periodTo}
+                            </td>
+                            <td>
+                              {trace.input.item || '无辅助条件'} / {trace.input.currency}
+                            </td>
+                            <td>
+                              {displayValue({
+                                address: trace.address,
+                                value: trace.value,
+                                unit: trace.input.unit,
+                                currency: trace.input.currency,
+                              })}
+                            </td>
+                            <td>
+                              <Link to={`/m/ledgers/detail?${query.toString()}`}>
+                                {trace.address} 查看科目 {trace.input.account} 明细
+                              </Link>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+              {s.sources.length > 50 && (
+                <Pagination
+                  current={Math.min(sourcePage, Math.ceil(s.sources.length / 50))}
+                  pageSize={50}
+                  total={s.sources.length}
+                  showSizeChanger={false}
+                  onChange={setSourcePage}
+                />
+              )}
+            </details>
+          ) : (
+            <Space wrap>
+              {s.template.cells
+                .filter((c) => c.kind === 'formula')
+                .map((c) => {
+                  const m = /BALANCE\("(\d+)"/.exec(c.source);
+                  return (
+                    m && (
+                      <Link
+                        key={c.address}
+                        to={`/m/ledgers/detail?account=${m[1]}&from=${s.period}&to=${s.period}`}
+                      >
+                        {c.address} 查看科目 {m[1]} 明细
+                      </Link>
+                    )
+                  );
+                })}
+            </Space>
+          )}
         </>
       ) : (
         !snapshot.isLoading && <Empty description="所选期间和口径尚未生成报表" />

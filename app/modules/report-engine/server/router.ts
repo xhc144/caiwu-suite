@@ -14,6 +14,7 @@ import {
   StatutoryOutputSchema,
   StatutorySaveSchema,
   StatutoryScopeSchema,
+  StructureChangesSchema,
 } from '../shared';
 import { statutoryService } from './statutory-service';
 import { reportService } from './service';
@@ -24,6 +25,12 @@ const m = moduleKit(manifest);
 const selection = z
   .object({ id: zId, period: zPeriod, includeUnposted: z.boolean().default(false) })
   .strict();
+const statutoryEditorInput = StatutoryDefinitionSchema.extend({
+  id: zId.optional(),
+  period: zPeriod,
+  scope: StatutoryScopeSchema,
+  options: z.json().optional(),
+}).strict();
 export const reportRouter = m.router({
   statutory: m.router({
     catalog: m.procedure
@@ -38,15 +45,13 @@ export const reportRouter = m.router({
       .query(({ ctx, input }) => statutoryService(ctx.svc).get(input.id)),
     editor: m.procedure
       .meta({ permission: 'report-engine.view' })
-      .input(
-        StatutoryDefinitionSchema.extend({
-          id: zId.optional(),
-          period: zPeriod,
-          scope: StatutoryScopeSchema,
-          options: z.json().optional(),
-        }).strict(),
-      )
+      .input(statutoryEditorInput)
       .query(({ ctx, input }) => statutoryService(ctx.svc).editor(input)),
+    // 完整草稿通过请求体读取，避免 GET 地址长度限制；不持久化任何配置。
+    editorDraft: m.procedure
+      .meta({ permission: 'report-engine.view' })
+      .input(statutoryEditorInput)
+      .mutation(({ ctx, input }) => statutoryService(ctx.svc).editor(input)),
     save: m.procedure
       .meta({ permission: 'report-engine.edit' })
       .input(StatutorySaveSchema)
@@ -105,9 +110,21 @@ export const reportRouter = m.router({
     ),
   save: m.procedure
     .meta({ permission: 'report-engine.edit' })
-    .input(IdentitySchema.extend({ template: ReportTemplateSchema }).strict())
+    .input(
+      IdentitySchema.extend({
+        template: ReportTemplateSchema,
+        confirmShrink: z.boolean().default(false),
+        structureChanges: StructureChangesSchema.default([]),
+      }).strict(),
+    )
     .mutation(({ ctx, input }) =>
-      reportService(ctx.svc).save(input.id, input.expectedRevision, input.template),
+      reportService(ctx.svc).save(
+        input.id,
+        input.expectedRevision,
+        input.template,
+        input.confirmShrink,
+        input.structureChanges,
+      ),
     ),
   remove: m.procedure
     .meta({ permission: 'report-engine.edit' })

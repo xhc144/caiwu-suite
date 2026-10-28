@@ -12,9 +12,11 @@ import {
 } from '@caiwu/web-kit';
 import { PageContainer, downloadBlob, useUrlFilters } from '@caiwu/ui';
 import type { StatutoryProfile } from '../shared';
-import { api } from './api';
+import { api, statutoryEditorOptions } from './api';
 import { StatutoryConfiguration, StatutoryResult } from './statutory-registry';
 import { useStatutoryDraft } from './statutory-draft';
+import { createEnterpriseDraftBridge } from './enterprise-draft';
+import type { EnterpriseConfig } from '../templates/enterprise/model';
 
 type Selection = {
   id: number;
@@ -78,12 +80,16 @@ function StatutoryEditor({
   const [working, setWorking] = useState(false);
   const [pending, setPending] = useState<{ requestId: string; count: number } | null>(null);
   const [draftEpoch, setDraftEpoch] = useState(0);
+  const enterpriseDraft = useRef(
+    createEnterpriseDraftBridge(savedConfig?.period ?? selection.period),
+  );
   const draft = useStatutoryDraft(`法定报表：${name}`, () => {
     setCode(profile?.code ?? selection.code);
     setName(profile?.name ?? selection.name);
     setPeriod(savedConfig?.period ?? selection.period);
     setScope(savedConfig?.scope ?? selection.scope);
     setOptions(undefined);
+    enterpriseDraft.current.reset(savedConfig?.period ?? selection.period);
     setDraftEpoch((epoch) => epoch + 1);
   });
   const canEdit = usePermission('report-engine.edit');
@@ -92,7 +98,7 @@ function StatutoryEditor({
   const periods = usePeriods();
   const valid = !!identity.definitionId && !!identity.reportKey;
   const editor = useQuery({
-    ...api.statutory.editor.queryOptions({ ...identity, id: profile?.id, period, scope, options }),
+    ...statutoryEditorOptions({ ...identity, id: profile?.id, period, scope, options }),
     enabled: valid,
     staleTime: 0,
     placeholderData: (previous) => previous,
@@ -100,7 +106,15 @@ function StatutoryEditor({
   const lastEditor = useRef(editor.data);
   useLayoutEffect(() => {
     if (editor.data) lastEditor.current = editor.data;
-  }, [editor.data]);
+    if (
+      editor.data &&
+      !editor.isPlaceholderData &&
+      !editor.isError &&
+      identity.definitionId === 'enterprise-2019-appendix2'
+    ) {
+      enterpriseDraft.current.acceptSource((editor.data.configuration as EnterpriseConfig).period);
+    }
+  }, [editor.data, editor.isPlaceholderData, editor.isError, identity.definitionId]);
   const editorData = editor.data ?? lastEditor.current;
   const snapshot = useQuery({
     ...api.statutory.snapshot.queryOptions({ id: profile?.id ?? 0, period }),
@@ -296,10 +310,17 @@ function StatutoryEditor({
                   source={editorData.source}
                   onDirtyChange={draft.markDirty}
                   onSaveReady={draft.registerSave}
+                  onDraftChange={(configuration) =>
+                    enterpriseDraft.current.publish(configuration as EnterpriseConfig)
+                  }
                   onPeriodChange={(p, s) => {
                     setPeriod(p);
                     setScope(s);
-                    setOptions(undefined);
+                    setOptions(
+                      identity.definitionId === 'enterprise-2019-appendix2'
+                        ? enterpriseDraft.current.options()
+                        : undefined,
+                    );
                     setPending(null);
                     draft.markDirty(true);
                   }}
@@ -328,13 +349,29 @@ function StatutoryEditor({
                     if (editor.isError || !editor.data)
                       throw new Error('来源读取失败，请先选择有效期间并重试');
                     await draft.persist(async () => {
+                      // 以这次提交的完整草稿重建来源，不用旧配置覆盖临时编辑；保存仍执行严格校验。
+                      const rebuilt =
+                        identity.definitionId === 'enterprise-2019-appendix2'
+                          ? await queryClient.fetchQuery({
+                              ...statutoryEditorOptions({
+                                ...identity,
+                                id: profile?.id,
+                                period,
+                                scope,
+                                options: enterpriseDraft.current.options(
+                                  configuration as EnterpriseConfig,
+                                ),
+                              }),
+                              staleTime: 0,
+                            })
+                          : { configuration, source: editorData.source };
                       const saved = await save.mutateAsync({
                         ...identity,
                         id: profile?.id,
                         expectedRevision: profile?.revision,
                         code,
                         name,
-                        configuration,
+                        configuration: rebuilt.configuration,
                       });
                       queryClient.setQueryData(
                         api.statutory.editor.queryKey({
@@ -344,7 +381,7 @@ function StatutoryEditor({
                           scope,
                           options,
                         }),
-                        { configuration: saved.configuration, source: editorData.source },
+                        { configuration: saved.configuration, source: rebuilt.source },
                       );
                       setProfile(saved);
                       queryClient.setQueryData(api.statutory.get.queryKey({ id: saved.id }), saved);

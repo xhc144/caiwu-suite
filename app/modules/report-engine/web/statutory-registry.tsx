@@ -38,6 +38,7 @@ export function StatutoryConfiguration(
       scope: 'month' | 'yearToDate' | 'annual',
     ): void;
     onGenerate(): Promise<void>;
+    onDraftChange?(configuration: StatutoryProfile['configuration']): void;
   } & StatutoryDraftCallbacks,
 ) {
   if (props.definitionId === 'small-business')
@@ -61,6 +62,7 @@ export function StatutoryConfiguration(
     return <p>所选报表暂不可用，请返回列表。</p>;
   return (
     <EnterpriseConfiguration
+      {...{ onDraftChange: props.onDraftChange }}
       initial={props.configuration as EnterpriseConfig}
       source={props.source as SourceData}
       onSave={props.onSave}

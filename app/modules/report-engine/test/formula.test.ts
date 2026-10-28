@@ -16,6 +16,12 @@ const context: FormulaContext = {
   tick: () => {},
 };
 describe('w_bb_def_help / w_bb_proc 白名单公式', () => {
+  it.each(['S01("1001")', 'w1()', 'F(1)', 'S(2,"1001")'])(
+    'w_bb_def_help 旧函数 %s 缺少说明时给出可操作的迁移提示，不猜测取数',
+    (source) => {
+      expect(() => parseFormula(source)).toThrow(/旧版函数.*缺少.*F8.*重新选择科目和取数指标/);
+    },
+  );
   it.each([
     'SUM(1,2',
     '(1+2))',
@@ -60,7 +66,7 @@ describe('w_bb_def_help / w_bb_proc 白名单公式', () => {
     expect(finalize(value('9007199254740991', 'cents')).amount.toFixed()).toBe('9007199254740991');
     expect(() => finalize(value('9007199254740992', 'cents'))).toThrow(/安全/);
   });
-  it('w_bb_def_help 新签名为向导和后端共用，拒绝缺币种、缺辅助、臆造累计或现金流期初', () => {
+  it('w_bb_def_help 新签名为向导和后端共用，拒绝缺币种、缺辅助或现金流期初，接受真实累计指标', () => {
     const input = {
       account: '1001',
       metric: 'closing',
@@ -71,10 +77,22 @@ describe('w_bb_def_help / w_bb_proc 白名单公式', () => {
       item: '',
     } as const;
     expect(() => parseFormula(balanceFormula(input))).not.toThrow();
+    for (const unit of ['foreignCents', 'quantity'] as const)
+      for (const metric of ['ytdDebit', 'ytdCredit'] as const)
+        expect(() =>
+          parseFormula(
+            balanceFormula({
+              ...input,
+              unit,
+              metric,
+              currency: unit === 'foreignCents' ? 'USD' : 'CNY',
+            }),
+          ),
+        ).not.toThrow();
     for (const patch of [
       { currency: '' },
       { dimension: 'project' },
-      { unit: 'foreignCents', metric: 'ytdDebit' },
+      { unit: 'foreignCents', currency: '' },
       { dimension: 'cashflow', item: 'CF01' },
     ])
       expect(BalanceFunctionSchema.safeParse({ ...input, ...patch }).success).toBe(false);

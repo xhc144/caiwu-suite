@@ -96,6 +96,11 @@ export function parseFormula(source: string): Ast {
     if (t.type === 'string') return node({ type: 'string', source: t.text });
     if (t.type === 'word') {
       if (take('(')) {
+        if (/^[SWF]\d*$/.test(t.text))
+          throw new FormulaError(
+            `旧版函数 ${t.text} 缺少可核对的函数说明，无法确定取数含义；请按 F8 重新选择科目和取数指标，生成新公式`,
+            t.pos,
+          );
         if (!['SUM', 'REF', 'BALANCE'].includes(t.text))
           throw new FormulaError(`未知函数 ${t.text}`, t.pos);
         const args: Ast[] = [];

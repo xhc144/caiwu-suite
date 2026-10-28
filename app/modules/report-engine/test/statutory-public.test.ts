@@ -314,7 +314,10 @@ it('w_bb_main/proc/saveas 所有公共入口按权限拒绝；真实xlsx及A4来
   expect(xlsx.snapshotId).toBe(print.snapshotId);
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(Uint8Array.from(Buffer.from(xlsx.data, 'base64')).buffer);
-  expect(wb.worksheets.length).toBeGreaterThanOrEqual(4);
+  expect(wb.worksheets).toHaveLength(3);
+  expect(wb.worksheets.every((sheet) => sheet.getCell('A1').text.startsWith('资产负债表 · '))).toBe(
+    true,
+  );
   expect(wb.worksheets[0]!.pageSetup.paperSize).toBe(9);
   expect(wb.worksheets[0]!.getCell('B5').value).toBe(1000);
   expect(print.printJob?.css).toContain('size:A4');
