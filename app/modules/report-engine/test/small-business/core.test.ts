@@ -123,7 +123,7 @@ it('w_bb_proc 年报12月策略、配置revision、未过账确认、来源改�
   );
   expect(() => assertSameSource(before, changed)).toThrow(/已改变/);
   const bad = structuredClone(fresh);
-  bad.statements[0].checks[0]!.difference = 1;
+  bad.statements[0].checks.find((check) => check.line === 53)!.difference = 1;
   expect(() => assertSmallBusinessOutput(bad)).toThrow(/行53.*差额/);
 }, 20000);
 it('w_bb_proc 首年无上年和上年比较数据缺失区分', async () => {

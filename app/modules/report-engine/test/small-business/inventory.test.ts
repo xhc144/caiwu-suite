@@ -5,7 +5,9 @@ import {
   prepareSmallBusiness,
   saveConfiguration,
   assertSmallBusinessOutput,
+  smallBusinessConfigurationData,
 } from '../../templates/small-business/statutory.server';
+import { rowKey } from '../../templates/small-business/configuration';
 let app: TestApp | undefined;
 afterEach(async () => {
   await app?.close();
@@ -79,10 +81,25 @@ it('w_bb_proc 动态母科目、新增末级、停用历史科目、非标准存
     svc.tx((t) => prepareSmallBusiness(t, { period: 202612, mode: 'annual' })),
   ).rejects.toThrow(/1499.*未指定/);
   config.mappings['1499'] = { role: 'otherInventory', reason: '真实新增的其他存货母科目' };
+  const variance = (
+    await svc.ledger.balances({ periodFrom: 202612, periodTo: 202612, rollup: false })
+  ).find((r) => r.accountCode === '1404')!;
+  config.facts.push({
+    period: 202612,
+    key: rowKey(variance),
+    balance: -25,
+    reason: '期末材料成本差异对应原材料',
+    allocations: [{ role: 'raw', amount: -25 }],
+  });
   await confirm(100147);
   p = await svc.tx((t) => prepareSmallBusiness(t, { period: 202612, mode: 'annual' }));
   assertSmallBusinessOutput(p);
   expect(p.statements[0].rows[8]!.amounts[0].value).toBe(147);
-  expect(p.statements[0].rows[9]!.amounts[0].value).toBe(177);
+  expect(p.statements[0].rows[9]!.amounts[0].value).toBe(152);
+  expect(p.statements[0].rows[11]!.amounts[0].value).toBe(-10);
   expect(p.statements[0].rows[50]!.amounts[0].value).toBe(260712);
+  const form = await smallBusinessConfigurationData(svc, 202612);
+  expect(
+    form.analysisRows.find((row) => row.period === 202612 && row.row.accountCode === '1404'),
+  ).toMatchObject({ balance: -25, destinations: ['raw', 'turnover', 'otherInventory'] });
 }, 20000);

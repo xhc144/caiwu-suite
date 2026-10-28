@@ -9,6 +9,13 @@ import { fileURLToPath } from 'node:url';
 import ExcelJS from 'exceljs';
 import { completeCoreBook } from '../../test/small-business/core-fixture';
 import {
+  fixedYearBook,
+  yearOpening,
+  yearBalanceMovement,
+  yearIncomeUnit,
+  yearCashUnit,
+} from '../../test/small-business/year-fixture';
+import {
   prepareSmallBusiness,
   assertSmallBusinessOutput,
   smallBusinessConfigurationData,
@@ -45,12 +52,12 @@ test.afterAll(async () => {
   if (temporary) await rm(temporary, { recursive: true, force: true });
 });
 
-test('w_bb_saveas 本域真实组件下载xlsx并经打印入口渲染A4 PDF（公共管理页接线另验）', async ({
+test('w_bb_saveas 全年固定账套三表两列逐行下载xlsx并经打印入口渲染A4 PDF', async ({
   page,
   browser,
 }, info) => {
   test.setTimeout(60000);
-  const { app, svc } = await completeCoreBook();
+  const { app, svc } = await fixedYearBook();
   try {
     const prepared = await svc.tx((t) =>
       prepareSmallBusiness(t, { period: 202612, mode: 'annual' }),
@@ -72,20 +79,18 @@ test('w_bb_saveas 本域真实组件下载xlsx并经打印入口渲染A4 PDF（�
     });
     await page.addScriptTag({ path: bundle });
     await page.evaluate((data) => window.mountSmallBusiness(data), { prepared, workbooks, jobs });
-    const income = [
-      600012, 240012, 336, 12, 24, 36, 48, 60, 72, 84, 28824, 13212, 15612, 57636, 18012, 19212,
-      20412, 20400, 20400, 24012, 276816, 27612, 27612, 162060, 30012, 31212, 32412, 33612, 34812,
-      142368, 12012, 130356,
-    ];
-    const bs = [
-      360712, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 360712, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-      0, 360712, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 100000, 0, 0, 260712, 360712,
-      360712,
-    ];
+    const bs = [234, 156].map((units) =>
+      yearOpening.map((value, row) => value + yearBalanceMovement[row]! * units),
+    );
+    const income = [78, 156].map((units) => yearIncomeUnit.map((value) => value * units));
     const cash = [
-      600012, 27612, 240012, 0, 12348, 248520, 126744, 0, 24012, 0, 0, 0, 24012, 0, 0, 0, 20400, 0,
-      -20400, 130356, 230356, 360712,
-    ];
+      [78, 156],
+      [156, 0],
+    ].map(([units, before]) => [
+      ...yearCashUnit.map((value) => value * units!),
+      2100000 + 8381 * before!,
+      2100000 + 8381 * (before! + units!),
+    ]);
     for (const [index, statement] of prepared.statements.entries()) {
       await page.getByRole('button', { name: statement.name, exact: true }).click();
       const downloadPromise = page.waitForEvent('download');
@@ -102,11 +107,16 @@ test('w_bb_saveas 本域真实组件下载xlsx并经打印入口渲染A4 PDF（�
       expect(ws.pageSetup.printTitlesRow).toBe('1:3');
       expect(ws.getCell('A2').value).toContain('测试单位有限公司');
       const expected = [bs, income, cash][index]!;
-      for (let row = 0; row < expected.length; row++) {
-        expect(ws.getCell(row + 4, 3).value, `${statement.code}行${row + 1}`).toBe(
-          expected[row]! / 100,
-        );
-        expect(typeof ws.getCell(row + 4, 4).value).toBe('number');
+      for (const [column, values] of expected.entries())
+        for (const [row, value] of values.entries())
+          expect(
+            ws.getCell(row + 4, column + 3).value,
+            `${statement.code}行${row + 1}列${column + 1}`,
+          ).toBe(value / 100);
+      if (index === 0) {
+        expect(ws.getCell('A57').value).toBe('减：已归还投资');
+        expect(ws.getCell('C57').value).toBe(20);
+        expect(ws.getCell('D57').value).toBe(20);
       }
       await page.evaluate(() => {
         window.smallPrintedDocument = undefined;
@@ -132,8 +142,10 @@ test('w_bb_saveas 本域真实组件下载xlsx并经打印入口渲染A4 PDF（�
         const compact = text.replace(/\s/g, '');
         expect(compact).toContain(statement.rows[0]!.label.replace(/\s/g, ''));
         expect(compact).toContain(statement.rows.at(-1)!.label.replace(/\s/g, ''));
-        expect(compact).toContain((expected[0]! / 100).toFixed(2));
-        expect(compact).toContain((expected.at(-1)! / 100).toFixed(2));
+        for (const values of expected) {
+          expect(compact).toContain((values[0]! / 100).toFixed(2));
+          expect(compact).toContain((values.at(-1)! / 100).toFixed(2));
+        }
         for (const part of text.split('\f').filter((p) => p.trim())) {
           expect(part).toContain('测试单位有限公司');
           expect(part).toContain('2026-12-31');

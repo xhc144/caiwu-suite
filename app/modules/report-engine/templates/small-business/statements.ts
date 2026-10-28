@@ -111,6 +111,7 @@ function rows(labels: readonly string[]): StatementRow[] {
   return labels.map((label, i) => ({ line: i + 1, label, amounts: [amount(0, '尚未计算'), null] }));
 }
 const analyzed: Role[] = [
+  'materialVariance',
   'prepaid',
   'advance',
   'bond',
@@ -123,6 +124,7 @@ const analyzed: Role[] = [
   'development',
 ];
 export const analysisDestinations: Partial<Record<Role, Role[]>> = {
+  materialVariance: ['raw', 'turnover', 'otherInventory'],
   prepaid: ['prepaid', 'noncurrentAsset'],
   advance: ['advance', 'noncurrentLiability'],
   bond: ['bond', 'currentAsset'],
@@ -333,6 +335,7 @@ export function balanceSheet(data: DomainData): Statement {
         '全部存货组成按借正贷负相加，差异不取绝对值',
       ),
     );
+    set(12, combine([b('goods'), b('goodsVariance')], '库存商品成本加有符号商品进销差价'));
     const equation = (line: number, terms: [number, number][]) =>
       set(
         line,
@@ -383,6 +386,19 @@ export function balanceSheet(data: DomainData): Statement {
         [52, 1],
       ]);
     }
+    result.checks.push({
+      name: `${result.columns[column]}存货不小于其中明细合计`,
+      column,
+      line: 9,
+      difference: Math.max(
+        0,
+        sum([
+          ...[10, 11, 12, 13].map((line) => result.rows[line - 1]!.amounts[column]!.value),
+          -result.rows[8]!.amounts[column]!.value,
+        ]),
+      ),
+      sources: result.rows[8]!.amounts[column]!.sources,
+    });
     result.checks.push({
       name: `${result.columns[column]}资产与负债权益平衡`,
       column,
@@ -581,9 +597,10 @@ export function cashflowStatement(
       if (!signed) continue;
       const allocation = data.config.cashAllocations[String(e.lineId)];
       const voucher = byVoucher.get(e.voucherId)!;
-      const pure = voucher.every(
-        (v) => data.roles.get(v.accountCode) === 'money' && included(v, data),
-      );
+      // 启用前分类是按日期归集的历史记录，不是含完整对方分录的真实凭证。
+      const pure =
+        e.voucherId > 0 &&
+        voucher.every((v) => data.roles.get(v.accountCode) === 'money' && included(v, data));
       const parts = allocation?.parts ?? (pure ? [{ line: 0, amount: signed }] : undefined);
       if (!parts)
         problem(
@@ -603,9 +620,35 @@ export function cashflowStatement(
           `${e.displayNo} 第${e.lineNo}行分配合计与实际现金收付不相等`,
           String(e.lineId),
         );
+      if (pure && parts.some((p) => p.line !== 0 && p.amount !== 0))
+        problem(
+          'INTERNAL_PROJECT',
+          `${e.displayNo} 仅在可支付现金账户之间转存，请全部归入内部转存`,
+          String(e.lineId),
+        );
+      const internalParts = parts.filter((p) => p.line === 0);
+      if (
+        internalParts.some((p) => p.amount !== 0 && Math.sign(p.amount) !== Math.sign(signed)) ||
+        Math.abs(sum(internalParts.map((p) => p.amount))) > Math.abs(signed)
+      )
+        problem(
+          'INTERNAL_SPLIT',
+          `${e.displayNo} 第${e.lineNo}行内部划转必须与真实收付同向且不得超过该行金额`,
+          String(e.lineId),
+        );
       for (const p of parts) {
         if (p.line === 0) {
-          if (!pure)
+          if (p.amount === 0) continue;
+          if (
+            !pure &&
+            !voucher.some(
+              (v) =>
+                v.lineId !== e.lineId &&
+                data.roles.get(v.accountCode) === 'money' &&
+                included(v, data) &&
+                Math.sign(sum([v.debit, -v.credit])) === -Math.sign(signed),
+            )
+          )
             problem(
               'INTERNAL',
               `${e.displayNo} 含非现金科目，不能全部作为内部划转`,
