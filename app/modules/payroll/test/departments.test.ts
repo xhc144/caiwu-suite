@@ -222,12 +222,12 @@ it('w_gz_bmwh 人员调出后仍检查旧计算快照、重算前快照及部门
   });
   const mapping = await api.previewDepartmentDelete({ id: department.id });
   expect(mapping.references).toContainEqual({
-    category: '工资凭证部门映射',
+    category: '工资凭证辅助核算映射',
     count: 1,
     to: '/m/payroll',
   });
   await expect(api.deleteDepartment({ ...mapping, confirmed: true })).rejects.toThrow(
-    '工资凭证部门映射',
+    '工资凭证辅助核算映射',
   );
   expect(await app.svc.dimensions.get(department.id)).not.toBeNull();
 });

@@ -14,8 +14,21 @@ export default defineManifest({
     ['close', '工资结账'],
     ['reopen', '工资反结账'],
     ['export', '导出及打印工资'],
+    ['initialize', '初始化工资模块'],
   ].map(([id, name]) => ({ id: `payroll.${id}`, name: name! })),
   menu: [
+    {
+      group: 'payroll',
+      title: '工资转入与模块备份',
+      path: '/transfer',
+      permission: 'payroll.salary.edit',
+    },
+    {
+      group: 'payroll',
+      title: '工资系统初始化',
+      path: '/initialize',
+      permission: 'payroll.initialize',
+    },
     { group: 'payroll', title: '工资综合查询', path: '/query', permission: 'payroll.salary.view' },
     { group: 'payroll', title: '工资管理', path: '/', permission: 'payroll.salary.view' },
     { group: 'payroll', title: '人事档案', path: '/employees', permission: 'payroll.hr.view' },

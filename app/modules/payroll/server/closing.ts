@@ -1,9 +1,11 @@
 import type { CoreServices } from '@caiwu/core/server';
-import { periodOfDate } from '@caiwu/core';
+import { employedInPeriod } from '../shared-hr';
 import { TaxInputSchema, type RowInput } from '../shared';
 import { fail } from './engine';
 import { payrollService } from './service';
 import type { PayrollTables } from './migrations';
+import { assertReopenPeriodOpen } from './reopen-period';
+import { assertPayrollStart } from './start-period';
 export async function closePayroll(
   svc: CoreServices,
   id: number,
@@ -15,6 +17,7 @@ export async function closePayroll(
     const s = payrollService(t),
       db = t.db.withTables<PayrollTables>(),
       b = await s.batch(id);
+    await assertPayrollStart(t, b.period);
     if (b.closed)
       return {
         batch: b,
@@ -31,6 +34,7 @@ export async function closePayroll(
     if (!b.calculated) fail('NOT_CALCULATED', '未计算工资不能结账', '先计算并核对工资');
     await t.periods.assertOpen(b.period, '工资结账');
     const next = b.period % 100 === 12 ? (Math.trunc(b.period / 100) + 1) * 100 + 1 : b.period + 1;
+    await assertPayrollStart(t, next);
     const nextExists = await db
       .selectFrom('payroll_batch')
       .select('id')
@@ -50,14 +54,27 @@ export async function closePayroll(
       rows: RowInput[] = [];
     for (const r of b.snapshots) {
       const e = people.find((e) => e.id === r.employeeId)!;
-      if (e.disabled || (e.endDate && periodOfDate(e.endDate) < next)) continue;
+      if (e.disabled || !employedInPeriod(e, next)) continue;
       const values: Record<string, number> = {};
+      const quantities: Record<string, string> = {};
       for (const f of category.fields)
         if (f.carry && !f.disabled && f.kind === 'money')
           values[f.key] = r.calculatedValues[f.key] ?? 0;
+        else if (
+          f.carry &&
+          !f.disabled &&
+          f.kind === 'quantity' &&
+          r.calculatedQuantities?.[f.key] !== undefined
+        )
+          quantities[f.key] = r.calculatedQuantities[f.key]!;
       const tax =
         next % 100 === 1 ? TaxInputSchema.parse({}) : { ...r.tax, exempt: 0, confirmed: false };
-      rows.push({ employeeId: r.employeeId, values, tax });
+      rows.push({
+        employeeId: r.employeeId,
+        values,
+        tax,
+        ...(Object.keys(quantities).length ? { quantities } : {}),
+      });
     }
     let nextId: number | null = null;
     if (rows.length) {
@@ -111,6 +128,7 @@ export async function reopenPayroll(
       db = t.db.withTables<PayrollTables>(),
       b = await s.batch(id),
       book = await t.book.info();
+    await assertPayrollStart(t, b.period);
     if (!b.closed || b.period < book.startPeriod)
       fail('REOPEN_START', '已到工资启用边界，没有可反结账的该月', '只选择本模块最近的已结月份');
     if (b.revision !== revision) fail('STALE', '工资批次已修改', '刷新后重试');
@@ -130,7 +148,7 @@ export async function reopenPayroll(
         '保留真实记账金额；先按账务权限处理凭证',
         `/m/voucher-entry/edit?id=${b.vouchers.find((v) => v.status === 'audited' || v.status === 'posted')!.id}`,
       );
-    await t.periods.assertOpen(b.period, '工资反结账');
+    await assertReopenPeriodOpen(t, b.period);
     if (latest.next_batch_id) {
       const next = await s.batch(latest.next_batch_id);
       if (next.revision !== 1 || next.calculated || next.closed || next.vouchers.length)

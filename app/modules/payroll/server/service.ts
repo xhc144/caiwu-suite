@@ -1,21 +1,38 @@
 import { createHash } from 'node:crypto';
-import { periodOfDate, type VoucherLineInput } from '@caiwu/core';
+import {
+  periodOfDate,
+  DIMENSION_TYPES,
+  type DimensionValues,
+  type VoucherLineInput,
+} from '@caiwu/core';
 import type { CoreServices } from '@caiwu/core/server';
 import {
   BatchSaveSchema,
   CategorySchema,
   EmployeeSchema,
-  MappingSchema,
   TAX_RULE,
   type Batch,
   type Category,
   type Employee,
   type RowInput,
-  type SalaryRow,
 } from '../shared';
 import type { z } from 'zod';
 import type { PayrollTables } from './migrations';
-import { calculateTax, computeValues, fail, sum, validateCategory } from './engine';
+import { fail, sum, validateCategory } from './engine';
+import { assertPayrollStart } from './start-period';
+import { calculateSalarySnapshot } from './calculation';
+import { assertTaxConfirmed, historicalTaxRule } from './historical-tax';
+import { loadHrData, assertEmployeeDatesMatchProfile, syncSingleEmployment } from './hr';
+import {
+  quantityFromE6,
+  quantityToE6,
+  encodeSalaryRow,
+  decodeSalaryRow,
+  encodeSalaryRows,
+  decodeSalaryRows,
+} from '../quantity';
+import { VoucherMappingSchema } from '../shared-voucher';
+import { aggregatePayrollLines, validateVoucherAuxiliaries } from './voucher-extra';
 const decode = <T>(s: string): T => JSON.parse(s) as T;
 export function payrollService(svc: CoreServices) {
   const db = svc.db.withTables<PayrollTables>();
@@ -36,12 +53,15 @@ export function payrollService(svc: CoreServices) {
       .executeTakeFirst();
     if (!row) fail('NOT_FOUND', '人员不存在', '刷新人员列表');
     const dept = await svc.dimensions.get(row.department_id);
-    return {
-      ...decode<Employee>(row.data),
+    const employee = { ...decode<Employee>(row.data), id: row.id, revision: row.revision };
+    const enriched = {
+      ...employee,
+      employmentSpells: (await loadHrData(svc, employee)).employmentSpells,
       id: row.id,
       revision: row.revision,
       departmentName: dept?.name ?? '部门已停用',
     };
+    return enriched;
   };
   const batchRow = async (id: number) => {
     const b = await db
@@ -58,6 +78,7 @@ export function payrollService(svc: CoreServices) {
   const assertMutable = async (id: number, revision: number) => {
     const b = await batchRow(id);
     requireRevision(b.revision, revision);
+    await assertPayrollStart(svc, b.period);
     const link = await db
       .selectFrom('payroll_voucher')
       .select('voucher_id')
@@ -70,7 +91,7 @@ export function payrollService(svc: CoreServices) {
         '未审核凭证可先在来源处确认撤销；已审核凭证须保持来源金额',
         link ? `/m/voucher-entry/edit?id=${link.voucher_id}` : '/m/payroll',
       );
-    // 后续已计算批次引用本批累计，必须从最近批次逐笔撤回；首版不提供隐式级联重算。
+    // 普通保存不得静默改写已被引用的累计数；前期更正经独立预览及原子级联完成。
     const later = await db
       .selectFrom('payroll_batch as b')
       .innerJoin('payroll_row as r', 'r.batch_id', 'b.id')
@@ -90,7 +111,7 @@ export function payrollService(svc: CoreServices) {
       fail(
         'DEPENDENT',
         '后续工资批次已引用本批累计，不能覆盖历史',
-        '首版不支持前期更正，请先核对最近批次',
+        '请使用前期更正，预览并确认后续批次的级联重算',
         `/m/payroll?id=${later.id}`,
       );
     await svc.periods.assertOpen(b.period, '修改工资');
@@ -126,6 +147,13 @@ export function payrollService(svc: CoreServices) {
         if (id) {
           const old = await payrollService(t).category(id);
           requireRevision(old.revision, c.revision);
+          if (
+            (old.taxMode ?? 'builtin') !== (c.taxMode ?? 'builtin') ||
+            (c.taxMode === 'custom' &&
+              JSON.stringify({ fields: old.fields, formulas: old.formulas }) !==
+                JSON.stringify({ fields: c.fields, formulas: c.formulas }))
+          )
+            t.permissions.require('payroll.tax.configure');
           const used = await td
             .selectFrom('payroll_batch')
             .select('id')
@@ -148,6 +176,7 @@ export function payrollService(svc: CoreServices) {
             .where('id', '=', id)
             .execute();
         } else {
+          if (c.taxMode === 'custom') t.permissions.require('payroll.tax.configure');
           id = (
             await td
               .insertInto('payroll_category')
@@ -166,6 +195,7 @@ export function payrollService(svc: CoreServices) {
       return svc.tx(async (t) => {
         const td = t.db.withTables<PayrollTables>();
         const existing = e.id ? await payrollService(t).employee(e.id) : null;
+        if (existing) assertEmployeeDatesMatchProfile(existing, e);
         const dept = await t.dimensions.get(e.departmentId);
         if (
           !dept ||
@@ -205,7 +235,7 @@ export function payrollService(svc: CoreServices) {
             fail(
               'EMPLOYMENT_HISTORY',
               '任职日期变更会改变已计算历史的任职月数',
-              '前期更正尚不支持；保留历史起日，离职日期不能改到已计算期间以前',
+              '保留已计算月份的原任职记录；离职日期不能改到已计算期间以前',
             );
           await td
             .updateTable('payroll_employee')
@@ -230,6 +260,7 @@ export function payrollService(svc: CoreServices) {
               .returning('id')
               .executeTakeFirstOrThrow()
           ).id;
+        await syncSingleEmployment(t, { ...e, id } as Employee);
         return payrollService(t).employee(id);
       });
     },
@@ -264,10 +295,42 @@ export function payrollService(svc: CoreServices) {
         .selectAll()
         .where('batch_id', '=', id)
         .execute();
+      const sources = await svc.db
+        .selectFrom('voucher')
+        .select('id')
+        .where('source_module', '=', 'payroll')
+        .where('source_type', '=', 'batch')
+        .where('source_id', '=', String(id))
+        .execute();
+      if (
+        sources.length !== links.length ||
+        new Set(links.map((link) => link.voucher_id)).size !== links.length ||
+        sources.some((source) => !links.some((link) => link.voucher_id === source.id))
+      )
+        fail(
+          'SOURCE',
+          '工资凭证来源关联不一致，不能继续处理该批次',
+          '请由管理员核对工资批次与来源凭证；保留原数据，不自动采纳或删除异常来源',
+        );
+      const quantities = await db
+        .selectFrom('payroll_quantity')
+        .selectAll()
+        .where('batch_id', '=', id)
+        .execute();
       const vouchers = await Promise.all(
         links.map(async (l) => {
           const v = await svc.vouchers.get(l.voucher_id);
           if (!v) fail('SOURCE', '工资凭证关联缺失', '请联系管理员检查账套');
+          if (
+            v.source?.module !== 'payroll' ||
+            v.source.type !== 'batch' ||
+            v.source.id !== String(id)
+          )
+            fail(
+              'SOURCE',
+              '工资凭证来源关联不一致，不能继续处理该批次',
+              '请由管理员核对工资批次与来源凭证；保留原数据，不自动修补关联',
+            );
           return { kind: l.kind, id: v.id, number: v.displayNo, status: v.status };
         }),
       );
@@ -279,11 +342,22 @@ export function payrollService(svc: CoreServices) {
         category: decode<Category>(b.category_json),
         calculated: !!b.calculated,
         closed: !!b.closed,
-        rows: rows.map((r) => decode<RowInput>(r.input_json)),
-        previous: decode<SalaryRow[]>(b.previous_json),
+        rows: rows.map((r) => {
+          const row = decode<RowInput>(r.input_json);
+          const own = quantities.filter((q) => q.employee_id === r.employee_id);
+          return own.length
+            ? {
+                ...row,
+                quantities: Object.fromEntries(
+                  own.map((q) => [q.field_key, quantityFromE6(q.quantity_e6)]),
+                ),
+              }
+            : row;
+        }),
+        previous: decodeSalaryRows(b.previous_json),
         snapshots: rows
           .filter((r) => r.snapshot_json)
-          .map((r) => decode<SalaryRow>(r.snapshot_json!)),
+          .map((r) => decodeSalaryRow(r.snapshot_json!)),
         vouchers,
       };
     },
@@ -296,13 +370,15 @@ export function payrollService(svc: CoreServices) {
         requireRevision(c.revision, input.categoryRevision);
         if (c.disabled) fail('CATEGORY_DISABLED', '工资类别已停用');
         validateCategory(c);
-        const book = await t.book.info();
-        if (input.period < book.startPeriod) fail('START_PERIOD', '工资期间早于启用期间');
+        await assertPayrollStart(t, input.period);
         await t.periods.assertOpen(input.period, '保存工资');
         if (new Set(input.rows.map((r) => r.employeeId)).size !== input.rows.length)
           fail('DUPLICATE_ROW', '同一批次不能重复录入同一人员');
         const keys = new Set(
           c.fields.filter((f) => !f.disabled && f.kind === 'money').map((f) => f.key),
+        );
+        const quantityKeys = new Set(
+          c.fields.filter((f) => !f.disabled && f.kind === 'quantity').map((f) => f.key),
         );
         for (const r of input.rows) {
           const e = await s.employee(r.employeeId);
@@ -327,6 +403,8 @@ export function payrollService(svc: CoreServices) {
             );
           for (const k of Object.keys(r.values))
             if (!keys.has(k)) fail('FIELDS', `栏目 ${k} 不可录入`);
+          for (const k of Object.keys(r.quantities ?? {}))
+            if (!quantityKeys.has(k)) fail('FIELDS', `数量栏目 ${k} 不可录入`);
         }
         let id = input.id;
         if (id) {
@@ -337,7 +415,7 @@ export function payrollService(svc: CoreServices) {
           await td
             .updateTable('payroll_batch')
             .set({
-              previous_json: JSON.stringify(last.calculated ? last.snapshots : last.previous),
+              previous_json: encodeSalaryRows(last.calculated ? last.snapshots : last.previous),
               revision: old.revision + 1,
               category_json: JSON.stringify(c),
               calculated: 0,
@@ -374,16 +452,28 @@ export function payrollService(svc: CoreServices) {
               .executeTakeFirstOrThrow()
           ).id;
         }
-        for (const r of input.rows)
+        for (const r of input.rows) {
+          const { quantities: quantityInput, ...moneyInput } = r;
           await td
             .insertInto('payroll_row')
             .values({
               batch_id: id,
               employee_id: r.employeeId,
-              input_json: JSON.stringify(r),
+              input_json: JSON.stringify(moneyInput),
               snapshot_json: null,
             })
             .execute();
+          for (const [field, value] of Object.entries(quantityInput ?? {}))
+            await td
+              .insertInto('payroll_quantity')
+              .values({
+                batch_id: id,
+                employee_id: r.employeeId,
+                field_key: field,
+                quantity_e6: quantityToE6(value),
+              })
+              .execute();
+        }
         await t.log.write({
           action: 'payroll.salary.save',
           summary: `保存工资批次 ${id}`,
@@ -399,14 +489,9 @@ export function payrollService(svc: CoreServices) {
         const s = payrollService(t),
           td = t.db.withTables<PayrollTables>();
         const b = await s.assertMutable(id, revision);
-        if ((await t.settings.get('taxVersion', '')) !== TAX_RULE.version)
-          fail(
-            'UNVERIFIED_TAX',
-            '尚未确认本账套计税范围与参数',
-            '由计税参数权限人员核对来源并确认',
-            '/m/payroll/tax',
-          );
         const batch = await s.batch(id);
+        if (batch.category.taxMode !== 'custom')
+          await assertTaxConfirmed(t, b.period, TAX_RULE.version);
         validateCategory(batch.category);
         const all = await td
           .selectFrom('payroll_batch as b')
@@ -437,67 +522,16 @@ export function payrollService(svc: CoreServices) {
           fail('ORDER', '存在较早的未计算批次', '先计算较早批次', `/m/payroll?id=${pending.id}`);
         for (const r of batch.rows) {
           const employee = await s.employee(r.employeeId);
-          const prior = all
-            .filter((x) => x.employee_id === r.employeeId)
-            .map((x) => ({ period: x.period, row: decode<SalaryRow>(x.snapshot_json!) }));
-          for (const p of prior) {
-            if (
-              p.row.tax.openingIncome !== r.tax.openingIncome ||
-              p.row.tax.openingTax !== r.tax.openingTax
-            )
-              fail(
-                'OPENING_CHANGED',
-                '同年本单位期初收入或已扣税与历史不一致',
-                '前期更正尚不支持，请保留原期初数',
-              );
-            if (
-              p.period === b.period &&
-              (['special', 'additional', 'other', 'relief', 'confirmed'] as const).some(
-                (k) => p.row.tax[k] !== r.tax[k],
-              )
-            )
-              fail(
-                'MONTH_DEDUCTION',
-                '同人同月跨类别的累计扣除必须一致',
-                '复用本月已确认的累计扣除，不能重复享受',
-              );
-            if (
-              p.row.employee.policy !== employee.policy ||
-              p.row.employee.qualificationYear !== employee.qualificationYear
-            )
-              fail('POLICY_CHANGED', '同年计税方式已被历史批次使用', '前期计税方式更正尚不支持');
-          }
-          const computed = computeValues(batch.category, r.values, { period: b.period });
-          const income = sum([
-            r.tax.openingIncome,
-            computed.gross,
-            ...prior.map((p) => p.row.gross),
-          ]);
-          const exempt = sum([r.tax.exempt, ...prior.map((p) => p.row.tax.exempt)]);
-          if (income < 0 || exempt > income)
-            fail('TAX_BASE', '累计收入不能为负且累计免税收入不能超过收入');
-          const detail = calculateTax(
-            employee,
+          const snapshot = calculateSalarySnapshot(
+            batch.category,
             b.period,
-            r.tax,
-            income,
-            exempt,
-            sum(prior.map((p) => p.row.taxAmount)),
-          );
-          const snapshot: SalaryRow = {
-            ...r,
+            r,
             employee,
-            calculatedValues: computed.values,
-            formulaDetails: computed.details,
-            gross: computed.gross,
-            deductions: computed.deductions,
-            taxAmount: detail.currentTax,
-            net: sum([computed.gross, -computed.deductions, -detail.currentTax]),
-            detail,
-          };
+            all.map((x) => ({ period: x.period, row: decodeSalaryRow(x.snapshot_json!) })),
+          );
           await td
             .updateTable('payroll_row')
-            .set({ snapshot_json: JSON.stringify(snapshot) })
+            .set({ snapshot_json: encodeSalaryRow(snapshot) })
             .where('batch_id', '=', id)
             .where('employee_id', '=', r.employeeId)
             .execute();
@@ -509,7 +543,13 @@ export function payrollService(svc: CoreServices) {
           .execute();
         await t.log.write({
           action: 'payroll.salary.calculate',
-          summary: `计算工资批次 ${id}，税参数 ${TAX_RULE.version}`,
+          summary: `计算工资批次 ${id}，税参数 ${
+            batch.category.taxMode === 'custom'
+              ? `custom-formula-${batch.category.id}-${batch.category.revision}`
+              : b.period < 201901
+                ? historicalTaxRule(b.period).version
+                : TAX_RULE.version
+          }`,
           targetType: 'payroll_batch',
           targetId: id,
         });
@@ -527,14 +567,14 @@ export function payrollService(svc: CoreServices) {
       return self.taxConfig();
     },
     async mapping(categoryId: number) {
-      const saved = await svc.settings.get<z.input<typeof MappingSchema> | null>(
+      const saved = await svc.settings.get<z.input<typeof VoucherMappingSchema> | null>(
         `mapping.${categoryId}`,
         null,
       );
-      return saved ? MappingSchema.parse(saved) : null;
+      return saved ? VoucherMappingSchema.parse(saved) : null;
     },
-    async saveMapping(categoryId: number, raw: z.input<typeof MappingSchema>) {
-      const input = MappingSchema.parse(raw);
+    async saveMapping(categoryId: number, raw: z.input<typeof VoucherMappingSchema>) {
+      const input = VoucherMappingSchema.parse(raw);
       if (input.amountField !== 'gross' || input.allocationField !== 'department')
         fail(
           'MAPPING_TYPE',
@@ -543,12 +583,13 @@ export function payrollService(svc: CoreServices) {
         );
       return svc.tx(async (t) => {
         const category = await payrollService(t).category(categoryId);
+        await validateVoucherAuxiliaries(t, input);
         const fields = new Set([
           'gross',
           'net',
           'deductions',
           'taxAmount',
-          ...category.fields.filter((f) => !f.disabled).map((f) => f.key),
+          ...category.fields.filter((f) => !f.disabled && f.kind !== 'quantity').map((f) => f.key),
         ]);
         const seen = new Set<string>();
         for (const rule of input.rules ?? []) {
@@ -614,7 +655,8 @@ export function payrollService(svc: CoreServices) {
           '查看已有凭证，未审核可确认撤销后重新预览',
         );
       if (periodOfDate(date) !== b.period) fail('VOUCHER_DATE', '凭证日期必须属于工资期间');
-      await svc.periods.assertOpen(b.period, '生成工资凭证');
+      await assertPayrollStart(svc, b.period);
+      await svc.periods.assertWritable({ period: b.period, action: '生成工资凭证' });
       const mapping = await self.mapping(b.categoryId);
       if (!mapping) fail('MAPPING', '缺少工资凭证设置', '先选择应付、银行、个税、扣款及费用科目');
       if (mapping.amountField !== 'gross' || mapping.allocationField !== 'department')
@@ -623,11 +665,17 @@ export function payrollService(svc: CoreServices) {
         type = types.find((t) => !t.disabled);
       if (!type) fail('VOUCHER_TYPE', '没有可用凭证类型');
       const accounts = await svc.accounts.list();
-      const departments = await svc.dimensions.items('department');
+      const auxiliaryItems = (
+        await Promise.all(DIMENSION_TYPES.map((type) => svc.dimensions.items(type.id)))
+      ).flat();
       const lines: VoucherLineInput[] = [];
       const problems: string[] = [];
       const rules = (mapping.rules ?? []).filter((rule) => rule.kind === kind);
-      const fields = new Map(b.category.fields.filter((f) => !f.disabled).map((f) => [f.key, f]));
+      const fields = new Map(
+        b.category.fields
+          .filter((f) => !f.disabled && f.kind !== 'quantity')
+          .map((f) => [f.key, f]),
+      );
       for (const rule of rules)
         if (
           !['gross', 'net', 'deductions', 'taxAmount'].includes(rule.field) &&
@@ -635,33 +683,53 @@ export function payrollService(svc: CoreServices) {
         )
           problems.push(`工资栏目 ${rule.field} 不在本批次启用栏目内`);
       for (const r of b.snapshots) {
-        if (r.gross < 0 || r.deductions < 0 || r.net < 0)
-          problems.push(`${r.employee.code} 实发、应发或扣款为负，凭证不支持负额调整`);
         const line = (accountId: number, debit: number, credit: number, fieldName = '') => {
           if (!debit && !credit) return;
+          if (!Number.isSafeInteger(debit) || !Number.isSafeInteger(credit)) {
+            problems.push(`${r.employee.code} 的工资金额格式或范围无效，请检查并重新计算`);
+            return;
+          }
           const a = accounts.find((a) => a.id === accountId);
           if (!a || !a.isLeaf || a.disabled) {
             problems.push('科目不存在、停用或非末级');
             return;
           }
-          if (a.dimensions.some((d) => d.required && d.type !== 'department'))
-            problems.push(`科目 ${a.code} 需要部门以外的辅助维度，工资映射尚不支持`);
           if (a.currency || a.quantityUnit)
             problems.push(`科目 ${a.code} 需要外币或数量，工资映射只提供本位币金额`);
-          const department = a.dimensions.some((d) => d.type === 'department')
-            ? r.employee.departmentId
-            : null;
-          if (department) {
-            const item = departments.find((d) => d.id === department);
-            if (!item || item.disabled || !item.isLeaf)
-              problems.push(`${r.employee.code} 的工资快照部门已停用或不再是末级部门`);
+          const auxiliary =
+            mapping.auxiliaries.find(
+              (x) => x.accountId === accountId && x.employeeId === r.employeeId,
+            ) ??
+            mapping.auxiliaries.find(
+              (x) => x.accountId === accountId && x.employeeId === undefined,
+            );
+          const dimensions: DimensionValues = {};
+          for (const type of DIMENSION_TYPES) {
+            const config = a.dimensions.find((d) => d.type === type.id);
+            const explicit = auxiliary?.values[type.id];
+            const itemId =
+              explicit ??
+              (type.id === 'department' && config
+                ? r.employee.departmentId
+                : config?.defaultItemId) ??
+              null;
+            if (itemId != null && type.id !== 'cashflow' && !config)
+              problems.push(`科目 ${a.code} 未启用${type.name}核算，请调整凭证设置`);
+            if (itemId == null && config?.required)
+              problems.push(`科目 ${a.code} 需要${type.name}，请补充辅助核算设置`);
+            if (itemId != null) {
+              const item = auxiliaryItems.find((d) => d.id === itemId);
+              if (!item || item.typeId !== type.id || item.disabled || !item.isLeaf)
+                problems.push(`${r.employee.code} 的${type.name}已停用、不存在或不是末级档案`);
+            }
+            dimensions[type.id] = itemId;
           }
           lines.push({
             summary: `${b.period}工资${kind === 'payment' ? '发放' : '分配'} ${r.employee.code}${fieldName ? ` ${fieldName}` : ''}`,
             accountId,
             debit,
             credit,
-            dimensions: { department },
+            dimensions,
           });
         };
         if (rules.length) {
@@ -679,10 +747,8 @@ export function payrollService(svc: CoreServices) {
             };
             const value = builtins[field]?.value ?? r.calculatedValues[field];
             const name = builtins[field]?.name ?? fields.get(field)?.name ?? field;
-            if (value === undefined || !Number.isSafeInteger(value) || value < 0) {
-              problems.push(
-                `${r.employee.code} 的${name}缺少有效金额或为负数，请检查工资并重新计算`,
-              );
+            if (value === undefined || !Number.isSafeInteger(value)) {
+              problems.push(`${r.employee.code} 的${name}缺少有效金额，请检查工资并重新计算`);
               continue;
             }
             line(rule.debitAccountId, value, 0, name);
@@ -698,11 +764,16 @@ export function payrollService(svc: CoreServices) {
           line(mapping.deductionAccountId, 0, r.deductions);
         }
       }
-      const debit = sum(lines.map((l) => l.debit ?? 0)),
-        credit = sum(lines.map((l) => l.credit ?? 0));
+      const grouped = aggregatePayrollLines(
+        lines,
+        `${b.period}工资${kind === 'payment' ? '发放' : '分配'}汇总`,
+      );
+      const debit = sum(grouped.lines.map((l) => l.debit ?? 0)),
+        credit = sum(grouped.lines.map((l) => l.credit ?? 0));
       if (debit !== credit) problems.push('借贷金额不平');
-      if (!debit) problems.push('没有可制证的非零工资');
-      if (lines.length > 999) problems.push('分录超过999条，请按类别拆分工资范围');
+      if (!grouped.lines.length) problems.push('没有可制证的非零工资');
+      if (grouped.lines.length > 999)
+        problems.push('同科目及辅助核算汇总后仍超过999条，请按类别拆分工资范围');
       if (problems.length)
         fail('VOUCHER_PLAN', [...new Set(problems)].join('；'), '调整设置或工资后重新计算并预览');
       // 配置、科目属性、工资版本、日期、种类均绑定计划；设置变化后旧计划无法确认。
@@ -715,13 +786,13 @@ export function payrollService(svc: CoreServices) {
             date,
             mapping,
             accounts,
-            departments,
+            auxiliaryItems,
             types,
             lines,
           }),
         )
         .digest('hex');
-      return { hash, lines, debit, credit, voucherTypeId: type.id };
+      return { hash, ...grouped, debit, credit, voucherTypeId: type.id };
     },
     async generate(input: {
       id: number;
@@ -760,7 +831,22 @@ export function payrollService(svc: CoreServices) {
         return s.batch(input.id);
       });
     },
-    async revoke(id: number, revision: number, kind: 'payment' | 'allocation', confirmed: boolean) {
+    async previewRevoke(id: number, revision: number, kind: 'payment' | 'allocation') {
+      const b = await self.batch(id);
+      requireRevision(b.revision, revision);
+      const link = b.vouchers.find((v) => v.kind === kind);
+      if (!link) fail('NOT_FOUND', '该种类尚未生成凭证');
+      await assertPayrollStart(svc, b.period);
+      await svc.periods.assertWritable({ period: b.period, action: '撤销工资凭证' });
+      return svc.vouchers.previewDelete([link.id]);
+    },
+    async revoke(
+      id: number,
+      revision: number,
+      kind: 'payment' | 'allocation',
+      confirmed: boolean,
+      deletionPlan?: { ids: number[]; expiresAt: number; fingerprint: string },
+    ) {
       if (!confirmed) fail('CONFIRM', '撤销工资凭证须确认', '确认删除未审核凭证，再修改来源工资');
       return svc.tx(async (t) => {
         const s = payrollService(t),
@@ -771,13 +857,18 @@ export function payrollService(svc: CoreServices) {
         if (!link) fail('NOT_FOUND', '该种类尚未生成凭证');
         const v = await t.vouchers.get(link.id);
         if (!v) fail('SOURCE', '来源凭证缺失');
+        await assertPayrollStart(t, b.period);
+        await t.periods.assertWritable({ period: b.period, action: '撤销工资凭证' });
+        if (deletionPlan && (deletionPlan.ids.length !== 1 || deletionPlan.ids[0] !== v.id))
+          fail('PLAN_STALE', '撤销预览与当前工资凭证不一致', '重新预览删除及编号影响');
         // 先解除模块自身外键；core 删除失败会整笔回滚。
         await td
           .deleteFrom('payroll_voucher')
           .where('batch_id', '=', id)
           .where('kind', '=', kind)
           .execute();
-        await t.vouchers.delete(v.id, { expectedRevision: v.revision });
+        if (deletionPlan) await t.vouchers.deleteBatch(deletionPlan, true);
+        else await t.vouchers.delete(v.id, { expectedRevision: v.revision });
         await td
           .updateTable('payroll_batch')
           .set({ revision: revision + 1 })

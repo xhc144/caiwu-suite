@@ -2,6 +2,8 @@ import Decimal from 'decimal.js';
 import { BusinessError, isPeriod } from '@caiwu/core';
 import type { Category, Employee, Formula, TaxDetail, TaxInput } from '../shared';
 import { TAX_RULE } from '../shared';
+import { calculateHistoricalTax } from './historical-tax';
+import { employmentMonths } from '../shared-hr';
 export function fail(
   code: string,
   message: string,
@@ -198,7 +200,7 @@ const dateNumber = (date: Date) =>
   new Decimal(date.getUTCFullYear() * 10000 + (date.getUTCMonth() + 1) * 100 + date.getUTCDate());
 export function evaluate(
   node: Node,
-  values: Record<string, number>,
+  values: Record<string, Decimal.Value>,
   context?: FormulaContext,
 ): Decimal {
   const run = (n: Node) => evaluate(n, values, context);
@@ -319,13 +321,37 @@ export function validateCategory(c: Category | Omit<Category, 'id'>) {
   )
     fail('FIELDS', '栏目变量使用了保留字', '换一个稳定变量名');
   if (keys.size !== c.fields.length) fail('FIELDS', '栏目变量重复');
+  for (const field of c.fields) {
+    if ((field.kind === 'quantity' || field.kind === 'basic') && field.role !== 'memo')
+      fail('FIELDS', `栏目「${field.name}」不是金额，请设为备查，再用计算项换算为工资`);
+    if (field.kind === 'basic' && !field.basicSource)
+      fail('FIELDS', `基本资料栏目「${field.name}」须选择人事来源`);
+  }
   const formulas = c.formulas.filter((f) => f.enabled);
-  if (formulas.some((f) => f.tax))
+  const taxFormulas = formulas.filter((f) => f.tax);
+  if (taxFormulas.length > 1)
+    fail('TAX_FORMULA', '计税公式只能有一条', '保留一条启用的计税公式，其余取消计税标志');
+  if (c.taxMode === 'custom' && taxFormulas.length !== 1)
     fail(
       'TAX_FORMULA',
-      '累计预扣已由内置税引擎执行，不能再定义计税公式',
-      '取消自定义公式的计税标志',
+      '自定义计税须且只能有一条启用的计税公式',
+      '增加一个备查计算栏目，并将唯一税公式结果写入该栏',
     );
+  if (c.taxMode !== 'custom' && taxFormulas.length)
+    fail(
+      'TAX_FORMULA',
+      '内置税制不能同时启用自定义计税公式',
+      '明确选择自定义计税方式，或取消公式的计税标志',
+    );
+  for (const formula of taxFormulas) {
+    const target = c.fields.find((f) => f.key === formula.target);
+    if (!target || target.kind !== 'calculated' || target.role !== 'memo' || target.disabled)
+      fail(
+        'TAX_FORMULA',
+        '计税公式目标必须是启用的备查计算栏目',
+        '个税由实发工资统一扣减，不能再作为应发或个人扣款重复计入',
+      );
+  }
   const targets = new Set<string>();
   const seen = new Set<string>();
   const allTargets = new Set(formulas.map((f) => f.target));
@@ -340,6 +366,8 @@ export function validateCategory(c: Category | Omit<Category, 'id'>) {
     for (const ref of [...p.refs, ...(cond?.refs ?? [])]) {
       if (c.fields.find((x) => x.key === ref)?.disabled)
         fail('FIELDS', `公式引用了停用栏目 ${ref}`);
+      if (c.fields.find((x) => x.key === ref)?.kind === 'basic')
+        fail('FIELDS', `公式不能对基本资料栏目 ${ref} 运算`);
       if (allTargets.has(ref) && !seen.has(ref))
         fail(
           'CYCLE',
@@ -357,19 +385,34 @@ export function computeValues(
   category: Category,
   input: Record<string, number>,
   context?: FormulaContext,
+  quantities: Record<string, string> = {},
 ) {
   const values: Record<string, number> = {};
+  const formulaValues: Record<string, Decimal.Value> = {};
   const details: string[] = [];
   const keys = new Set(category.fields.map((f) => f.key));
   for (const k of Object.keys(input)) if (!keys.has(k)) fail('FIELDS', `未知工资栏目 ${k}`);
-  for (const f of category.fields)
+  for (const f of category.fields) {
+    if (f.kind === 'quantity') {
+      formulaValues[f.key] = f.disabled ? '0' : (quantities[f.key] ?? '0');
+      continue;
+    }
+    if (f.kind === 'basic') continue;
     values[f.key] = f.disabled || f.kind === 'calculated' ? 0 : (input[f.key] ?? 0);
+    formulaValues[f.key] = values[f.key]!;
+  }
   for (const f of category.formulas.filter((x: Formula) => x.enabled)) {
-    if (f.condition && evaluate(parseFormula(f.condition, keys).ast, values, context).isZero()) {
+    if (
+      f.condition &&
+      evaluate(parseFormula(f.condition, keys).ast, formulaValues, context).isZero()
+    ) {
       details.push(`${f.name}：条件未满足`);
       continue;
     }
-    values[f.target] = cents(evaluate(parseFormula(f.expression, keys).ast, values, context));
+    values[f.target] = cents(
+      evaluate(parseFormula(f.expression, keys).ast, formulaValues, context),
+    );
+    formulaValues[f.target] = values[f.target]!;
     details.push(`${f.name}：${f.expression} → ${values[f.target]}分`);
   }
   const total = (role: string) =>
@@ -404,6 +447,8 @@ export function calculateTax(
   exempt: number,
   allocatedTax: number,
 ): TaxDetail {
+  if (period < 201901)
+    return calculateHistoricalTax(employee, period, tax, income, exempt, allocatedTax);
   if (employee.taxKind !== 'resident')
     fail(
       'UNSUPPORTED_TAX',
@@ -419,17 +464,7 @@ export function calculateTax(
     );
   const year = Math.trunc(period / 100),
     month = period % 100;
-  const startYear = Number(employee.startDate.slice(0, 4)),
-    startMonth = Number(employee.startDate.slice(5, 7));
-  const endPeriod = employee.endDate
-    ? Number(employee.endDate.slice(0, 7).replace('-', ''))
-    : period;
-  const first = startYear < year ? 1 : startYear === year ? startMonth : 13;
-  const last = Math.min(
-    month,
-    endPeriod < year * 100 + 1 ? 0 : endPeriod >= year * 100 + 12 ? 12 : endPeriod % 100,
-  );
-  const months = Math.max(0, last - first + 1);
+  const months = employmentMonths(employee, period);
   if (months === 0)
     fail(
       'EMPLOYMENT',

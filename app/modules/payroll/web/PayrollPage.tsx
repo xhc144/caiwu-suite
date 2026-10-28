@@ -10,6 +10,7 @@ import {
   Form,
   Input,
   InputNumber,
+  Modal,
   Popconfirm,
   Select,
   Space,
@@ -21,9 +22,17 @@ import {
   formatMoney,
   periodEndDate,
   VOUCHER_STATUS_LABELS,
+  DIMENSION_TYPES,
   type VoucherLineInput,
 } from '@caiwu/core';
-import { queryClient, usePermission, useAccounts } from '@caiwu/web-kit';
+import {
+  queryClient,
+  usePermission,
+  useAccounts,
+  useHotkey,
+  useUnsavedChanges,
+  useDimensionItems,
+} from '@caiwu/web-kit';
 import {
   AccountSelect,
   DataTable,
@@ -36,7 +45,9 @@ import {
   type DataColumn,
   type ExcelColumn,
 } from '@caiwu/ui';
-import { escapeHtml, printHtml } from '@caiwu/print';
+import { type PrintJob } from '@caiwu/print';
+import { printPayrollJob } from './print-job';
+import PayrollPrintPreview from './PayrollPrintPreview';
 import {
   DEFAULT_FIELDS,
   TAX_RULE,
@@ -46,18 +57,33 @@ import {
   type Employee,
   type Field,
   type Formula,
-  type Mapping,
   type RowInput,
   type SalaryRow,
   type TaxInput,
 } from '../shared';
 import { api } from './api';
+import type { VoucherMapping } from '../shared-voucher';
+import VoucherAuxiliaryFields from './VoucherAuxiliaryFields';
+import RevokeVoucher from './RevokeVoucher';
 import { usePayrollFilters } from './filters';
 import BulkDrawer from './BulkDrawer';
+import ExcelImportDrawer from './ExcelImportDrawer';
+import TransferOriginNotice from './TransferOriginNotice';
 import PersonnelBulkDrawer from './PersonnelBulkDrawer';
+import PersonnelBasicBulkDrawer from './PersonnelBasicBulkDrawer';
 import DepartmentManager from './DepartmentManager';
 import SalaryGrid from './SalaryGrid';
 import { useMoneyDrafts } from './money-drafts';
+import HistoryDrawer from './HistoryDrawer';
+import HistoryTaxSettings from './HistoryTaxSettings';
+import PersonnelExtras, {
+  PersonnelFieldEditor,
+  PersonnelDelete,
+  PersonnelOutput,
+} from './PersonnelExtras';
+import QuantityInput from './QuantityInput';
+import { useQuantityDrafts } from './quantity-drafts';
+import ClosingOptions from './ClosingOptions';
 
 const refresh = () => queryClient.invalidateQueries({ queryKey: api.pathKey() });
 function ErrorState({ error }: { error: { message: string } | null }) {
@@ -130,11 +156,59 @@ function Employees() {
   const [editing, setEditing] = useState<Employee | 'new' | null>(null);
   const [department, setDepartment] = useState(false);
   const [bulk, setBulk] = useState<'selected' | 'filtered' | null>(null);
+  const [basicBulk, setBasicBulk] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
+  const [details, setDetails] = useState<Employee | null>(null);
+  const [deleting, setDeleting] = useState<Employee | null>(null);
+  const [basicFields, setBasicFields] = useState(false);
+  const [currentId, setCurrentId] = useState<number>();
+  const [locate, setLocate] = useState('');
+  const [locateError, setLocateError] = useState('');
   const filtered = (list.data ?? []).filter(
     (e) =>
       (!filters.department || e.departmentId === filters.department) &&
       (!filters.keyword || `${e.code} ${e.name}`.includes(filters.keyword)),
+  );
+  const current = filtered.find((e) => e.id === currentId) ?? filtered[0];
+  const moveRecord = (step: number) => {
+    const index = filtered.findIndex((e) => e.id === current?.id);
+    const next = filtered[Math.max(0, Math.min(filtered.length - 1, index + step))];
+    if (next) setCurrentId(next.id);
+  };
+  const browsing =
+    !editing && !details && !deleting && !basicFields && !bulk && !basicBulk && !department;
+  useHotkey(
+    'Ctrl+Q',
+    () => document.querySelector<HTMLInputElement>('[aria-label="定位人员"]')?.focus(),
+    { enabled: browsing },
+  );
+  useHotkey(
+    'Ctrl+Home',
+    () => {
+      if (filtered[0]) setCurrentId(filtered[0].id);
+    },
+    { enabled: browsing, allowInInput: false },
+  );
+  useHotkey(
+    'Ctrl+End',
+    () => {
+      const last = filtered[filtered.length - 1];
+      if (last) setCurrentId(last.id);
+    },
+    { enabled: browsing, allowInInput: false },
+  );
+  useHotkey('ArrowUp', () => moveRecord(-1), { enabled: browsing, allowInInput: false });
+  useHotkey('ArrowDown', () => moveRecord(1), { enabled: browsing, allowInInput: false });
+  useHotkey('Ctrl+A', () => setEditing('new'), {
+    enabled: browsing && canEdit,
+    allowInInput: false,
+  });
+  useHotkey(
+    'Ctrl+D',
+    () => {
+      if (current) setDeleting(current);
+    },
+    { enabled: browsing && canEdit, allowInInput: false },
   );
   const columns: DataColumn<Employee>[] = [
     { key: 'code', title: '人员编号', dataIndex: 'code', width: 120 },
@@ -151,8 +225,17 @@ function Employees() {
     {
       key: 'actions',
       title: '操作',
-      width: 120,
-      render: (_, r) => canEdit && <Button onClick={() => setEditing(r)}>修改 / 停用</Button>,
+      width: 360,
+      render: (_, r) =>
+        canEdit && (
+          <Space wrap>
+            <Button onClick={() => setEditing(r)}>修改 / 停用</Button>
+            <Button onClick={() => setDetails(r)}>基本资料 / 任职</Button>
+            <Button danger onClick={() => setDeleting(r)}>
+              删除
+            </Button>
+          </Space>
+        ),
     },
   ];
   return (
@@ -163,6 +246,13 @@ function Employees() {
         canEdit && (
           <>
             <Button onClick={() => setDepartment(true)}>部门管理</Button>
+            <Button onClick={() => setBasicFields(true)}>基本资料栏目</Button>
+            <Button
+              disabled={!filtered.some((e) => selected.includes(e.id))}
+              onClick={() => setBasicBulk(true)}
+            >
+              自定义资料统一置数（所选）
+            </Button>
             <Button
               disabled={!filtered.some((e) => selected.includes(e.id))}
               onClick={() => setBulk('selected')}
@@ -188,18 +278,104 @@ function Employees() {
         </Form.Item>
       </FilterBar>
       <ErrorState error={list.error} />
+      <Space wrap style={{ marginBottom: 12 }}>
+        <Button loading={list.isFetching} onClick={() => void list.refetch()}>
+          刷新人事档案
+        </Button>
+        <Input.Search
+          aria-label="定位人员"
+          placeholder="输入人员编号或姓名定位"
+          value={locate}
+          onChange={(e) => setLocate(e.target.value)}
+          onSearch={() => {
+            const found = filtered.find(
+              (e) => e.code === locate.trim() || e.name === locate.trim(),
+            );
+            if (found) {
+              setLocateError('');
+              setCurrentId(found.id);
+              setDetails(found);
+            } else setLocateError('当前筛选范围没有该人员，请核对完整编号或姓名。');
+          }}
+          enterButton="定位查询"
+        />
+        <Button disabled={!filtered.length} onClick={() => setCurrentId(filtered[0]!.id)}>
+          首记录
+        </Button>
+        <Button
+          disabled={!filtered.length || filtered[0]?.id === (currentId ?? filtered[0]?.id)}
+          onClick={() =>
+            setCurrentId(
+              filtered[Math.max(0, filtered.findIndex((e) => e.id === currentId) - 1)]!.id,
+            )
+          }
+        >
+          上一记录
+        </Button>
+        <Button
+          disabled={!filtered.length || filtered[filtered.length - 1]?.id === currentId}
+          onClick={() =>
+            setCurrentId(
+              filtered[
+                Math.min(
+                  filtered.length - 1,
+                  Math.max(
+                    0,
+                    filtered.findIndex((e) => e.id === currentId),
+                  ) + 1,
+                )
+              ]!.id,
+            )
+          }
+        >
+          下一记录
+        </Button>
+        <Button
+          disabled={!filtered.length}
+          onClick={() => setCurrentId(filtered[filtered.length - 1]!.id)}
+        >
+          末记录
+        </Button>
+        <Typography.Text>当前人员：{current?.name ?? '无'}</Typography.Text>
+        <Button
+          disabled={!current || !canEdit}
+          onClick={() => {
+            if (current) setEditing(current);
+          }}
+        >
+          修改当前人员
+        </Button>
+        <PersonnelOutput
+          ids={filtered.filter((e) => selected.includes(e.id)).map((e) => e.id)}
+          hotkeys={browsing}
+        />
+      </Space>
+      {locateError && <Alert type="warning" title={locateError} />}
       <DataTable
         tableId="payroll.employees"
         rowKey="id"
         columns={columns}
         loading={list.isLoading}
         dataSource={filtered}
+        onRow={(record) => ({
+          onClick: () => setCurrentId(record.id),
+          style: record.id === current?.id ? { backgroundColor: '#e6f4ff' } : undefined,
+        })}
         rowSelection={{
           selectedRowKeys: selected,
           onChange: (keys) => setSelected(keys.map(Number)),
         }}
       />
       {editing && <EmployeeEditor employee={editing} onClose={() => setEditing(null)} />}
+      {details && <PersonnelExtras employee={details} onClose={() => setDetails(null)} />}
+      {deleting && <PersonnelDelete employee={deleting} onClose={() => setDeleting(null)} />}
+      {basicFields && <PersonnelFieldEditor onClose={() => setBasicFields(false)} />}
+      {basicBulk && (
+        <PersonnelBasicBulkDrawer
+          employees={filtered.filter((e) => selected.includes(e.id))}
+          onClose={() => setBasicBulk(false)}
+        />
+      )}
       {department && <DepartmentManager onClose={() => setDepartment(false)} />}
       {bulk && (
         <PersonnelBulkDrawer
@@ -224,16 +400,47 @@ function EmployeeEditor({
 }) {
   const [form] = Form.useForm<Employee>();
   const [dirty, setDirty] = useState(false);
-  useLeaveGuard(dirty);
+  const inFlight = useRef(false);
   const save = useMutation(
     api.saveEmployee.mutationOptions({
+      onError: () => {
+        void refresh();
+      },
       onSuccess: () => {
+        setDirty(false);
         void refresh();
         onClose();
       },
     }),
   );
+  const submit = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      const v = await form.validateFields();
+      await save.mutateAsync({
+        ...v,
+        endDate: v.endDate || null,
+        qualificationYear: v.qualificationYear ?? null,
+        ...(employee === 'new' ? {} : { id: employee.id, revision: employee.revision }),
+      });
+    } finally {
+      inFlight.current = false;
+    }
+  };
+  useHotkey('Ctrl+S', () => void submit().catch(() => {}));
+  useUnsavedChanges({
+    title: employee === 'new' ? '新增人事档案' : `${employee.name}的人事档案`,
+    dirty: dirty || save.isPending,
+    save: submit,
+    discard: () => {
+      if (inFlight.current) throw new Error('人事档案正在保存，请等待完成后再离开');
+      setDirty(false);
+      onClose();
+    },
+  });
   const close = () => {
+    if (inFlight.current) return;
     if (!dirty || window.confirm('有未保存的人事资料，确认放弃？')) onClose();
   };
   return (
@@ -246,16 +453,7 @@ function EmployeeEditor({
         <Button
           type="primary"
           loading={save.isPending}
-          onClick={() =>
-            void form.validateFields().then((v) =>
-              save.mutate({
-                ...v,
-                endDate: v.endDate || null,
-                qualificationYear: v.qualificationYear ?? null,
-                ...(employee === 'new' ? {} : { id: employee.id, revision: employee.revision }),
-              }),
-            )
-          }
+          onClick={() => void submit().catch(() => {})}
         >
           保存员工
         </Button>
@@ -263,6 +461,7 @@ function EmployeeEditor({
     >
       <Form
         form={form}
+        disabled={save.isPending}
         layout="vertical"
         initialValues={
           employee === 'new'
@@ -271,6 +470,7 @@ function EmployeeEditor({
         }
         onValuesChange={() => setDirty(true)}
       >
+        <ErrorState error={save.error} />
         <Form.Item
           name="code"
           label="人员编号"
@@ -389,6 +589,7 @@ function CategoryEditor({
   onClose: () => void;
 }) {
   const [form] = Form.useForm<Category>();
+  const canConfigureTax = usePermission('payroll.tax.configure');
   const [dirty, setDirty] = useState(false);
   useLeaveGuard(dirty);
   const save = useMutation(
@@ -428,7 +629,9 @@ function CategoryEditor({
         form={form}
         layout="vertical"
         initialValues={
-          category === 'new' ? { fields: DEFAULT_FIELDS, formulas: [], disabled: false } : category
+          category === 'new'
+            ? { fields: DEFAULT_FIELDS, formulas: [], disabled: false, taxMode: 'builtin' }
+            : { taxMode: 'builtin', ...category }
         }
         onValuesChange={() => setDirty(true)}
       >
@@ -438,6 +641,19 @@ function CategoryEditor({
         <Form.Item name="disabled" valuePropName="checked">
           <Checkbox>停用类别</Checkbox>
         </Form.Item>
+        <Form.Item name="taxMode" label="计税方式">
+          <Select
+            disabled={!canConfigureTax}
+            options={[
+              { value: 'builtin', label: '按工资期间适用内置税制' },
+              { value: 'custom', label: '使用本类别唯一自定义计税公式' },
+            ]}
+          />
+        </Form.Item>
+        <Alert
+          type="info"
+          title="自定义计税由会计人员核对适用税制和公式，须有计税参数权限。仅勾选一条计税公式，目标选备查计算栏目；结果以分表示，并由实发工资统一扣除一次。自定义方式不代表使用或确认官方内置税表。"
+        />
         <Typography.Title level={5}>栏目（按显示顺序）</Typography.Title>
         <Form.List name="fields">
           {(fields, { add, remove }) => (
@@ -458,9 +674,37 @@ function CategoryEditor({
                   <Form.Item name={[f.name, 'kind']} label="类型">
                     <Select
                       style={{ width: 110 }}
+                      onChange={(kind) => {
+                        if (kind === 'quantity' || kind === 'basic')
+                          form.setFieldValue(['fields', f.name, 'role'], 'memo');
+                      }}
                       options={[
                         { value: 'money', label: '金额录入' },
                         { value: 'calculated', label: '计算项' },
+                        { value: 'quantity', label: '数量录入' },
+                        { value: 'basic', label: '人事基本项' },
+                      ]}
+                    />
+                  </Form.Item>
+                  <Form.Item name={[f.name, 'unit']} label="单位">
+                    <Input style={{ width: 90 }} maxLength={20} />
+                  </Form.Item>
+                  <Form.Item name={[f.name, 'width']} label="显示宽度">
+                    <InputNumber min={60} max={600} precision={0} />
+                  </Form.Item>
+                  <Form.Item name={[f.name, 'description']} label="栏目说明">
+                    <Input style={{ width: 150 }} maxLength={200} />
+                  </Form.Item>
+                  <Form.Item name={[f.name, 'basicSource']} label="基本项来源">
+                    <Select
+                      allowClear
+                      style={{ width: 120 }}
+                      options={[
+                        { value: 'code', label: '人员编号' },
+                        { value: 'name', label: '姓名' },
+                        { value: 'departmentName', label: '部门名称' },
+                        { value: 'startDate', label: '任职日期' },
+                        { value: 'endDate', label: '离职日期' },
                       ]}
                     />
                   </Form.Item>
@@ -514,7 +758,11 @@ function CategoryEditor({
         <Typography.Title level={5}>工资计算公式</Typography.Title>
         <Alert
           type="info"
-          title="支持稳定变量、算术、比较、and/or/not 逻辑分组，以及 abs、min、max、sum、round、trunc、floor、ceil、sign、mod、if/iif。变量与结果以分计算，如 base * 0.1；round(base,-2) 四舍五入到整元。条件非零时执行，if 与逻辑运算仅计算实际分支。个税继续按已确认的居民累计参数计算。"
+          title="数量最多保留六位小数，按栏目单位参与公式；金额变量仍以分计算。例如 hours * rate，hours 为工时、rate 为每小时金额，可得到整数分工资。数量及人事基本项须设为备查，人事资料不能直接参与算术。"
+        />
+        <Alert
+          type="info"
+          title="支持稳定变量、算术、比较、and/or/not 逻辑分组，以及 abs、min、max、sum、round、trunc、floor、ceil、sign、mod、if/iif。金额变量与结果以分计算，如 base * 0.1；round(base,-2) 四舍五入到整元。条件非零时执行，if 与逻辑运算仅计算实际分支。个税按上方明确选择的方式计算。"
           description="日期函数为本版约定：today() 返回工资期末日期（YYYYMMDD 整数）；daybefore(日期,天数)、monthbefore(日期,月数) 返回前推日期，月末取目标月最后一天，参数须为非负整数。日期值不作金额使用，建议放在执行条件内，例如 today() >= 20260101。原版静态资料只列出函数及语法校验，未载明参数语义。"
         />
         <Form.List name="formulas">
@@ -551,6 +799,9 @@ function CategoryEditor({
                   <Space>
                     <Form.Item name={[f.name, 'enabled']} valuePropName="checked">
                       <Checkbox>启用</Checkbox>
+                    </Form.Item>
+                    <Form.Item name={[f.name, 'tax']} valuePropName="checked">
+                      <Checkbox disabled={!canConfigureTax}>本类别计税公式</Checkbox>
                     </Form.Item>
                     <Button disabled={f.name === 0} onClick={() => move(f.name, f.name - 1)}>
                       上移
@@ -639,6 +890,7 @@ function TaxSettings() {
           <Button loading={confirm.isPending}>确认本账套计税参数</Button>
         </Popconfirm>
       )}
+      <HistoryTaxSettings />
     </PageContainer>
   );
 }
@@ -691,6 +943,9 @@ const SalaryContent = memo(function SalaryContent({
     canVoucher = usePermission('payroll.voucher'),
     canExport = usePermission('payroll.export');
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [closingOptionsOpen, setClosingOptionsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [gridDirty, setGridDirty] = useState(false);
   const changeFilters = (next: Partial<SalaryFilters>) => {
     if (gridDirty) {
@@ -714,7 +969,9 @@ const SalaryContent = memo(function SalaryContent({
       (!filters.department || r.employee.departmentId === filters.department) &&
       (!filters.person || `${r.employee.code} ${r.employee.name}`.includes(filters.person)),
   );
-  const output = async (mode: 'excel' | 'print') => {
+  const [printPreview, setPrintPreview] = useState<{ job: PrintJob; pages: number } | null>(null);
+  const [printError, setPrintError] = useState('');
+  const output = async (mode: 'excel' | 'print' | 'preview') => {
     if (!b) return;
     const data = await queryClient.fetchQuery({
       ...api.exportRows.queryOptions({
@@ -731,8 +988,13 @@ const SalaryContent = memo(function SalaryContent({
         .filter((f) => f.print && !f.disabled)
         .map((f) => ({
           title: f.name,
-          money: true,
-          value: (r: SalaryRow) => r.calculatedValues[f.key] ?? 0,
+          money: f.kind !== 'quantity' && f.kind !== 'basic',
+          value: (r: SalaryRow) =>
+            f.kind === 'quantity'
+              ? (r.calculatedQuantities?.[f.key] ?? '0')
+              : f.kind === 'basic'
+                ? String(f.basicSource ? (r.employee[f.basicSource] ?? '') : '')
+                : (r.calculatedValues[f.key] ?? 0),
         })),
       ...(['gross', 'deductions', 'taxAmount', 'net'] as const).map((k, i) => ({
         title: ['应发', '扣款', '个税', '实发'][i]!,
@@ -742,16 +1004,30 @@ const SalaryContent = memo(function SalaryContent({
     ];
     if (mode === 'excel')
       await exportToExcel({ fileName: `工资条-${data.period}`, columns, rows: data.rows });
-    else
-      await printHtml({
-        title: `工资条 ${data.period}`,
-        html: data.rows
-          .map(
-            (r) =>
-              `<h3>${data.period} ${escapeHtml(data.category.name)} 工资条</h3><table>${columns.map((c) => `<tr><th>${escapeHtml(c.title)}</th><td>${escapeHtml(c.money ? formatMoney(c.value(r) as number) : c.value(r))}</td></tr>`).join('')}</table>`,
-          )
-          .join('<hr>'),
+    else {
+      const fresh = await queryClient.fetchQuery({
+        ...api.printReport.queryOptions({
+          mode: 'slips',
+          report: {
+            categoryId: data.category.id,
+            from: data.period,
+            to: data.period,
+            employeeIds: data.rows.map((row) => row.employeeId),
+            columns: ['gross'],
+            kind: 'table',
+          },
+        }),
+        staleTime: 0,
       });
+      if (mode === 'preview') setPrintPreview(fresh);
+      else await printPayrollJob(fresh.job);
+    }
+  };
+  const runOutput = (mode: 'excel' | 'print' | 'preview') => {
+    setPrintError('');
+    void output(mode).catch((error: unknown) =>
+      setPrintError(error instanceof Error ? error.message : String(error)),
+    );
   };
   return (
     <PageContainer
@@ -843,6 +1119,11 @@ const SalaryContent = memo(function SalaryContent({
                   : '待计算'}
           </Typography.Title>
           <Space wrap style={{ marginBottom: 12 }}>
+            {canEdit && canCalculate && b.calculated && (
+              <Button disabled={gridDirty} onClick={() => setHistoryOpen(true)}>
+                前期更正 / 更正记录
+              </Button>
+            )}
             {canEdit && !b.vouchers.length && !b.closed && (
               <Button disabled={gridDirty} onClick={() => setEditing(b)}>
                 编辑工资
@@ -864,6 +1145,11 @@ const SalaryContent = memo(function SalaryContent({
                 统一置数 / 粘贴
               </Button>
             )}
+            {canEdit && !b.vouchers.length && !b.closed && (
+              <Button disabled={gridDirty} onClick={() => setImportOpen(true)}>
+                Excel 工资转入
+              </Button>
+            )}
             {canClose && !b.closed && (
               <Popconfirm
                 title="确认冻结本期工资并按传递栏目建立下月？"
@@ -882,6 +1168,11 @@ const SalaryContent = memo(function SalaryContent({
                 <Button loading={reopen.isPending}>工资反结账</Button>
               </Popconfirm>
             )}
+            {((canClose && !b.closed) || (canReopen && b.closed)) && (
+              <Button disabled={gridDirty} onClick={() => setClosingOptionsOpen(true)}>
+                {b.closed ? '保留下月反结账' : '已有下月合并传递'}
+              </Button>
+            )}
             {canVoucher && (
               <Button disabled={gridDirty} onClick={() => setVoucher(true)}>
                 凭证设置与生成
@@ -889,10 +1180,13 @@ const SalaryContent = memo(function SalaryContent({
             )}
             {canExport && (
               <>
-                <Button disabled={gridDirty} onClick={() => void output('excel')}>
+                <Button disabled={gridDirty} onClick={() => runOutput('excel')}>
                   导出所选工资条
                 </Button>
-                <Button disabled={gridDirty} onClick={() => void output('print')}>
+                <Button disabled={gridDirty} onClick={() => runOutput('preview')}>
+                  预览所选工资条
+                </Button>
+                <Button disabled={gridDirty} onClick={() => runOutput('print')}>
                   打印所选工资条
                 </Button>
               </>
@@ -937,6 +1231,7 @@ const SalaryContent = memo(function SalaryContent({
               />
             </>
           )}
+          <TransferOriginNotice batchId={b.id} />
           <SalaryGrid
             key={b.id}
             batch={b}
@@ -970,11 +1265,32 @@ const SalaryContent = memo(function SalaryContent({
           onSaved={() => void refresh()}
         />
       )}
+      {closingOptionsOpen && b && (
+        <ClosingOptions
+          key={`${b.id}.${b.revision}`}
+          batch={b}
+          onClose={() => setClosingOptionsOpen(false)}
+        />
+      )}
+      {importOpen && b && (
+        <ExcelImportDrawer
+          batch={b}
+          onClose={() => setImportOpen(false)}
+          onSaved={() => void refresh()}
+        />
+      )}
       {voucher && b && <VoucherEditor key={b.id} batch={b} onClose={() => setVoucher(false)} />}
+      {historyOpen && b && (
+        <HistoryDrawer key={b.id} batch={b} onClose={() => setHistoryOpen(false)} />
+      )}
+      {printError && <Alert type="error" title={printError} />}
+      {printPreview && (
+        <PayrollPrintPreview output={printPreview} onClose={() => setPrintPreview(null)} />
+      )}
       {explaining && (
         <Drawer
           open
-          title={`${explaining.employee.name} 累计预扣解释`}
+          title={`${explaining.employee.name} 计税计算说明`}
           size={580}
           onClose={() => setExplaining(null)}
         >
@@ -1053,6 +1369,13 @@ function BatchEditor({
   const [rows, setRows] = useState<RowInput[]>(batch === 'new' ? [] : batch.rows);
   const [dirty, setDirty] = useState(false);
   const moneyDrafts = useMoneyDrafts();
+  const quantityDrafts = useQuantityDrafts();
+  const quantityKeys = rows.flatMap((row) =>
+    (category?.fields ?? [])
+      .filter((f) => f.kind === 'quantity' && !f.disabled)
+      .map((f) => `${row.employeeId}.${f.key}`),
+  );
+  const invalidQuantity = quantityDrafts.invalidFor(quantityKeys);
   const moneyKeys = rows.flatMap((row) => [
     ...(category?.fields ?? [])
       .filter((f) => f.kind === 'money' && !f.disabled)
@@ -1094,6 +1417,7 @@ function BatchEditor({
   const submit = () => {
     if (!category || inFlight.current) return;
     if (!moneyDrafts.validate(moneyKeys)) return;
+    if (!quantityDrafts.validate(quantityKeys)) return;
     inFlight.current = true;
     setSaving(true);
     save.mutate({
@@ -1123,6 +1447,13 @@ function BatchEditor({
     >
       <ErrorState error={employees.error} />
       <ErrorState error={save.error} />
+      {Object.keys(invalidQuantity).length > 0 && (
+        <Alert
+          type="error"
+          title="数量格式无效，请输入最多六位小数；整批工资尚未提交。"
+          description={Object.values(invalidQuantity).join('；')}
+        />
+      )}
       {category && categories.find((c) => c.id === category.id)?.revision !== category.revision && (
         <Alert type="warning" title="工资结构已变化，当前草稿已保留；请核对后重新打开编辑窗口。" />
       )}
@@ -1193,7 +1524,13 @@ function BatchEditor({
       </p>
       <Alert
         type="info"
-        title="专项/附加/其他/减免是本单位本年截至本月累计数；期初只填本单位未进入本系统的当年历史，不含系统内批次或其他单位。税前专项扣除与工资个人扣款分别录入。同月跨类别累计扣除须一致。"
+        title={
+          category?.taxMode === 'custom'
+            ? '本类别按自定义计税公式计算，公式只读取工资栏目。下方扣除及期初资料不自动改变自定义公式结果；需要参与公式的依据请定义为工资备查金额栏目，并在公式中引用。'
+            : period < 201901
+              ? '历史工资按实际取得月份录入。专项、其他扣除及减免按当月数填写；2019年前无专项附加或年度期初累计，同月跨类别扣除保持一致。'
+              : '专项/附加/其他/减免是本单位本年截至本月累计数；期初只填本单位未进入本系统的当年历史，不含系统内批次或其他单位。税前专项扣除与工资个人扣款分别录入。同月跨类别累计扣除须一致。'
+        }
       />
       {rows.map((r, i) => (
         <div key={r.employeeId} style={{ border: '1px solid #ddd', padding: 12, marginTop: 12 }}>
@@ -1201,6 +1538,39 @@ function BatchEditor({
             {employees.data?.find((e) => e.id === r.employeeId)?.name ?? r.employeeId}
           </Typography.Title>
           <Space wrap>
+            {category?.fields
+              .filter((f) => f.kind === 'quantity' && !f.disabled)
+              .map((f) => (
+                <label key={f.key}>
+                  {f.unit ? `${f.name}（${f.unit}）` : f.name}
+                  <QuantityInput
+                    aria-label={`${r.employeeId}-${f.key}`}
+                    disabled={saving}
+                    value={r.quantities?.[f.key]}
+                    draftText={quantityDrafts.text(`${r.employeeId}.${f.key}`)}
+                    status={
+                      invalidQuantity[`${r.employeeId}.${f.key}`] !== undefined
+                        ? 'error'
+                        : undefined
+                    }
+                    onDraftChange={(text) => {
+                      if (!inFlight.current) {
+                        quantityDrafts.observe(`${r.employeeId}.${f.key}`, text);
+                        setDirty(true);
+                      }
+                    }}
+                    onChange={(value) =>
+                      patch(i, (row) => {
+                        const quantities = { ...row.quantities };
+                        if (value === undefined) delete quantities[f.key];
+                        else quantities[f.key] = value;
+                        const { quantities: _old, ...rest } = row;
+                        return Object.keys(quantities).length ? { ...rest, quantities } : rest;
+                      })
+                    }
+                  />
+                </label>
+              ))}
             {category?.fields
               .filter((f) => f.kind === 'money' && !f.disabled)
               .map((f) => (
@@ -1231,7 +1601,7 @@ function BatchEditor({
               ))}
           </Space>
           <details>
-            <summary style={{ cursor: 'pointer', padding: 8 }}>累计扣除及期初税额</summary>
+            <summary style={{ cursor: 'pointer', padding: 8 }}>计税依据、扣除及期初税额</summary>
             <Space wrap>
               {(Object.keys(taxLabels) as (keyof typeof taxLabels)[]).map((k) => (
                 <label key={k}>
@@ -1265,7 +1635,11 @@ function BatchEditor({
               patch(i, (r) => ({ ...r, tax: { ...r.tax, confirmed: e.target.checked } }))
             }
           >
-            已核对本单位累计扣除、专项附加资格和期初税额
+            {category?.taxMode === 'custom'
+              ? '已核对自定义计税公式及本次工资资料'
+              : period < 201901
+                ? '已核对本月扣除及历史适用税制'
+                : '已核对本单位累计扣除、专项附加资格和期初税额'}
           </Checkbox>
           <Popconfirm
             disabled={saving}
@@ -1287,38 +1661,117 @@ function BatchEditor({
   );
 }
 function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }) {
-  const [form] = Form.useForm<Mapping>();
+  const q = useQuery({
+    ...api.mapping.queryOptions({ categoryId: batch.categoryId }),
+    refetchOnMount: 'always',
+  });
+  if (q.isLoading || (!q.isFetchedAfterMount && q.isFetching))
+    return (
+      <Drawer open size="large" title="工资凭证设置与生成" onClose={onClose}>
+        <Spin />
+      </Drawer>
+    );
+  if (q.error && q.data === undefined)
+    return (
+      <Drawer open size="large" title="工资凭证设置与生成" onClose={onClose}>
+        <ErrorState error={q.error} />
+      </Drawer>
+    );
+  return (
+    <VoucherEditorLoaded
+      batch={batch}
+      latestMapping={q.data ?? null}
+      latestError={q.error}
+      onClose={onClose}
+    />
+  );
+}
+function VoucherEditorLoaded({
+  batch,
+  latestMapping,
+  latestError,
+  onClose,
+}: {
+  batch: Batch;
+  latestMapping: VoucherMapping | null;
+  latestError: { message: string } | null;
+  onClose: () => void;
+}) {
+  const [form] = Form.useForm<VoucherMapping>();
   const { byId } = useAccounts();
-  const q = useQuery(api.mapping.queryOptions({ categoryId: batch.categoryId }));
+  const { byId: auxiliaryById } = useDimensionItems();
+  const [mappingSnapshot, setMappingSnapshot] = useState(latestMapping);
+  const [categorySnapshot] = useState(batch.category);
+  const mappingInFlight = useRef<Promise<boolean> | null>(null);
+  const [mappingSaving, setMappingSaving] = useState(false);
+  const [closeRequested, setCloseRequested] = useState(false);
   const [kind, setKind] = useState<'payment' | 'allocation'>('payment'),
     [date, setDate] = useState(periodEndDate(batch.period));
   const [plan, setPlan] = useState<{
     hash: string;
     lines: VoucherLineInput[];
+    aggregated?: boolean;
+    originalLineCount?: number;
     debit: number;
     credit: number;
   } | null>(null);
   const [working, setWorking] = useState(false);
   const [mappingDirty, setMappingDirty] = useState(false);
-  const save = useMutation(
-    api.saveMapping.mutationOptions({
-      onSuccess: () => {
+  const save = useMutation(api.saveMapping.mutationOptions());
+  const saveMappingDraft = (): Promise<boolean> => {
+    if (mappingInFlight.current) return mappingInFlight.current;
+    setMappingSaving(true);
+    const pending = (async () => {
+      try {
+        const values = await form.validateFields();
+        const saved = await save.mutateAsync({
+          categoryId: batch.categoryId,
+          mapping: {
+            ...values,
+            rules: values.rules ?? [],
+            auxiliaries: values.auxiliaries ?? [],
+            revision: mappingSnapshot?.revision ?? 0,
+          },
+        });
+        setMappingSnapshot(saved);
+        form.setFieldsValue(saved);
         setPlan(null);
         setMappingDirty(false);
+        queryClient.setQueryData(api.mapping.queryKey({ categoryId: batch.categoryId }), saved);
         void refresh();
-      },
-    }),
-  );
+        return true;
+      } catch {
+        return false;
+      } finally {
+        mappingInFlight.current = null;
+        setMappingSaving(false);
+      }
+    })();
+    mappingInFlight.current = pending;
+    return pending;
+  };
+  const discardMapping = () => {
+    if (mappingInFlight.current) return;
+    form.resetFields();
+    setMappingDirty(false);
+    onClose();
+  };
+  useUnsavedChanges({
+    title: `${batch.period} ${categorySnapshot.name} 凭证设置`,
+    dirty: mappingDirty,
+    save: saveMappingDraft,
+    discard: discardMapping,
+  });
+  useHotkey('Ctrl+S', () => {
+    if (mappingDirty) void saveMappingDraft();
+  });
+  const closeMapping = () => {
+    if (mappingInFlight.current) return;
+    if (mappingDirty) setCloseRequested(true);
+    else onClose();
+  };
   const generate = useMutation(
     api.generate.mutationOptions({
-      onSuccess: () => {
-        void refresh();
-        onClose();
-      },
-    }),
-  );
-  const revoke = useMutation(
-    api.revoke.mutationOptions({
       onSuccess: () => {
         void refresh();
         onClose();
@@ -1339,186 +1792,225 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
     }
   };
   return (
-    <Drawer open size="large" title="工资凭证设置与生成" onClose={onClose}>
-      <ErrorState error={q.error} />
-      {q.isLoading ? (
-        <Spin />
-      ) : (
-        <Form
-          key={JSON.stringify(q.data)}
-          form={form}
-          layout="vertical"
-          initialValues={
-            q.data ?? { amountField: 'gross', allocationField: 'department', rules: [] }
+    <Drawer open size="large" title="工资凭证设置与生成" onClose={closeMapping}>
+      <Modal
+        title="凭证设置尚未保存"
+        open={closeRequested}
+        onCancel={() => {
+          if (!mappingSaving) setCloseRequested(false);
+        }}
+        footer={null}
+        destroyOnHidden
+      >
+        <p>当前凭证设置已修改，请保存、放弃或继续编辑。</p>
+        <Space>
+          <Button disabled={mappingSaving} onClick={() => setCloseRequested(false)}>
+            继续编辑凭证设置
+          </Button>
+          <Button danger disabled={mappingSaving} onClick={discardMapping}>
+            放弃并关闭凭证设置
+          </Button>
+          <Button
+            type="primary"
+            loading={mappingSaving}
+            onClick={() => {
+              void saveMappingDraft().then((saved) => {
+                if (saved) onClose();
+              });
+            }}
+          >
+            保存并关闭凭证设置
+          </Button>
+        </Space>
+      </Modal>
+      <ErrorState error={latestError} />
+      <ErrorState error={save.error} />
+      {(latestMapping?.revision ?? 0) !== (mappingSnapshot?.revision ?? 0) && (
+        <Alert
+          type="warning"
+          title="凭证设置已变化，当前编辑内容已保留；重新打开前请先核对并保存或放弃。"
+        />
+      )}
+      {batch.category.revision !== categorySnapshot.revision && (
+        <Alert type="warning" title="工资结构已变化，当前编辑栏目已保留；请核对后重新打开。" />
+      )}
+      <Form
+        form={form}
+        disabled={mappingSaving || working || generate.isPending}
+        layout="vertical"
+        initialValues={
+          mappingSnapshot ?? {
+            amountField: 'gross',
+            allocationField: 'department',
+            rules: [],
+            auxiliaries: [],
           }
-          onValuesChange={() => {
+        }
+        onValuesChange={() => {
+          setPlan(null);
+          setMappingDirty(true);
+        }}
+      >
+        <Space wrap>
+          {(
+            [
+              'payableAccountId',
+              'bankAccountId',
+              'taxAccountId',
+              'deductionAccountId',
+              'expenseAccountId',
+            ] as const
+          ).map((k, i) => (
+            <Form.Item
+              key={k}
+              name={k}
+              label={
+                [
+                  '应付工资科目',
+                  '银行或现金科目',
+                  '个税贷方科目',
+                  '个人扣款贷方科目',
+                  '费用分配借方科目',
+                ][i]
+              }
+              rules={[{ required: true }]}
+            >
+              <AccountSelect style={{ width: 260 }} />
+            </Form.Item>
+          ))}
+        </Space>
+        <Form.Item name="amountField" label="应付工资金额栏目">
+          <Select options={[{ value: 'gross', label: '应发金额（工资金额项）' }]} />
+        </Form.Item>
+        <Form.Item name="allocationField" label="工资分配基本栏目">
+          <Select options={[{ value: 'department', label: '部门' }]} />
+        </Form.Item>
+        <Typography.Title level={5}>自定义工资项映射</Typography.Title>
+        <p>
+          同种凭证增加规则后，该种凭证完整按下列规则生成；未设规则的种类沿用上方标准设置。每条规则按所选栏目金额同时记借方、贷方。指定部门覆盖同栏目的全部部门规则，多个栏目分别计入，请避免重复选取已含在汇总额中的明细。
+        </p>
+        <Form.List name="rules">
+          {(fields, { add, remove }) => (
+            <>
+              {fields.map(({ key, name, ...rest }) => (
+                <div key={key} style={{ border: '1px solid #ddd', padding: 12, marginBottom: 12 }}>
+                  <Space wrap align="start">
+                    <Form.Item
+                      {...rest}
+                      name={[name, 'kind']}
+                      label="适用凭证"
+                      rules={[{ required: true }]}
+                    >
+                      <Select
+                        style={{ width: 140 }}
+                        options={[
+                          { value: 'payment', label: '工资发放' },
+                          { value: 'allocation', label: '工资分配' },
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      {...rest}
+                      name={[name, 'field']}
+                      label="工资金额栏目"
+                      rules={[{ required: true }]}
+                    >
+                      <Select
+                        style={{ width: 200 }}
+                        options={[
+                          { value: 'gross', label: '应发合计' },
+                          { value: 'net', label: '实发合计' },
+                          { value: 'deductions', label: '扣款合计' },
+                          { value: 'taxAmount', label: '个人所得税' },
+                          ...categorySnapshot.fields
+                            .filter((f) => !f.disabled && f.kind !== 'quantity')
+                            .map((f) => ({
+                              value: f.key,
+                              label: `${f.name}（${f.kind === 'calculated' ? '计算项' : '录入项'}）`,
+                            })),
+                        ]}
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      {...rest}
+                      name={[name, 'departmentId']}
+                      label="适用部门（留空为全部）"
+                    >
+                      <DimensionSelect type="department" allowClear style={{ width: 180 }} />
+                    </Form.Item>
+                  </Space>
+                  <Space wrap align="start">
+                    <Form.Item
+                      {...rest}
+                      name={[name, 'debitAccountId']}
+                      label="借方科目"
+                      rules={[{ required: true }]}
+                    >
+                      <AccountSelect style={{ width: 260 }} />
+                    </Form.Item>
+                    <Form.Item
+                      {...rest}
+                      name={[name, 'creditAccountId']}
+                      label="贷方科目"
+                      rules={[{ required: true }]}
+                    >
+                      <AccountSelect style={{ width: 260 }} />
+                    </Form.Item>
+                    <Button
+                      danger
+                      onClick={() => {
+                        remove(name);
+                        setPlan(null);
+                        setMappingDirty(true);
+                      }}
+                    >
+                      删除规则
+                    </Button>
+                  </Space>
+                </div>
+              ))}
+              <Button
+                onClick={() => {
+                  add({
+                    kind: 'payment',
+                    field: 'net',
+                    debitAccountId: form.getFieldValue('payableAccountId'),
+                    creditAccountId: form.getFieldValue('bankAccountId'),
+                  });
+                  setPlan(null);
+                  setMappingDirty(true);
+                }}
+              >
+                增加工资项映射
+              </Button>
+            </>
+          )}
+        </Form.List>
+        <VoucherAuxiliaryFields
+          employees={batch.snapshots.map((r) => r.employee)}
+          onChange={() => {
             setPlan(null);
             setMappingDirty(true);
           }}
+        />
+        <Button loading={mappingSaving} onClick={() => void saveMappingDraft()}>
+          保存凭证设置
+        </Button>
+        <Popconfirm
+          title="确认放弃本次凭证设置修改？"
+          disabled={mappingSaving || !mappingDirty}
+          onConfirm={discardMapping}
         >
-          <Space wrap>
-            {(
-              [
-                'payableAccountId',
-                'bankAccountId',
-                'taxAccountId',
-                'deductionAccountId',
-                'expenseAccountId',
-              ] as const
-            ).map((k, i) => (
-              <Form.Item
-                key={k}
-                name={k}
-                label={
-                  [
-                    '应付工资科目',
-                    '银行或现金科目',
-                    '个税贷方科目',
-                    '个人扣款贷方科目',
-                    '费用分配借方科目',
-                  ][i]
-                }
-                rules={[{ required: true }]}
-              >
-                <AccountSelect style={{ width: 260 }} />
-              </Form.Item>
-            ))}
-          </Space>
-          <Form.Item name="amountField" label="应付工资金额栏目">
-            <Select options={[{ value: 'gross', label: '应发金额（工资金额项）' }]} />
-          </Form.Item>
-          <Form.Item name="allocationField" label="工资分配基本栏目">
-            <Select options={[{ value: 'department', label: '部门' }]} />
-          </Form.Item>
-          <Typography.Title level={5}>自定义工资项映射</Typography.Title>
-          <p>
-            同种凭证增加规则后，该种凭证完整按下列规则生成；未设规则的种类沿用上方标准设置。每条规则按所选栏目金额同时记借方、贷方。指定部门覆盖同栏目的全部部门规则，多个栏目分别计入，请避免重复选取已含在汇总额中的明细。
-          </p>
-          <Form.List name="rules">
-            {(fields, { add, remove }) => (
-              <>
-                {fields.map(({ key, name, ...rest }) => (
-                  <div
-                    key={key}
-                    style={{ border: '1px solid #ddd', padding: 12, marginBottom: 12 }}
-                  >
-                    <Space wrap align="start">
-                      <Form.Item
-                        {...rest}
-                        name={[name, 'kind']}
-                        label="适用凭证"
-                        rules={[{ required: true }]}
-                      >
-                        <Select
-                          style={{ width: 140 }}
-                          options={[
-                            { value: 'payment', label: '工资发放' },
-                            { value: 'allocation', label: '工资分配' },
-                          ]}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        {...rest}
-                        name={[name, 'field']}
-                        label="工资金额栏目"
-                        rules={[{ required: true }]}
-                      >
-                        <Select
-                          style={{ width: 200 }}
-                          options={[
-                            { value: 'gross', label: '应发合计' },
-                            { value: 'net', label: '实发合计' },
-                            { value: 'deductions', label: '扣款合计' },
-                            { value: 'taxAmount', label: '个人所得税' },
-                            ...batch.category.fields
-                              .filter((f) => !f.disabled)
-                              .map((f) => ({
-                                value: f.key,
-                                label: `${f.name}（${f.kind === 'calculated' ? '计算项' : '录入项'}）`,
-                              })),
-                          ]}
-                        />
-                      </Form.Item>
-                      <Form.Item
-                        {...rest}
-                        name={[name, 'departmentId']}
-                        label="适用部门（留空为全部）"
-                      >
-                        <DimensionSelect type="department" allowClear style={{ width: 180 }} />
-                      </Form.Item>
-                    </Space>
-                    <Space wrap align="start">
-                      <Form.Item
-                        {...rest}
-                        name={[name, 'debitAccountId']}
-                        label="借方科目"
-                        rules={[{ required: true }]}
-                      >
-                        <AccountSelect style={{ width: 260 }} />
-                      </Form.Item>
-                      <Form.Item
-                        {...rest}
-                        name={[name, 'creditAccountId']}
-                        label="贷方科目"
-                        rules={[{ required: true }]}
-                      >
-                        <AccountSelect style={{ width: 260 }} />
-                      </Form.Item>
-                      <Button
-                        danger
-                        onClick={() => {
-                          remove(name);
-                          setPlan(null);
-                          setMappingDirty(true);
-                        }}
-                      >
-                        删除规则
-                      </Button>
-                    </Space>
-                  </div>
-                ))}
-                <Button
-                  onClick={() => {
-                    add({
-                      kind: 'payment',
-                      field: 'net',
-                      debitAccountId: form.getFieldValue('payableAccountId'),
-                      creditAccountId: form.getFieldValue('bankAccountId'),
-                    });
-                    setPlan(null);
-                    setMappingDirty(true);
-                  }}
-                >
-                  增加工资项映射
-                </Button>
-              </>
-            )}
-          </Form.List>
-          <Button
-            loading={save.isPending}
-            onClick={() =>
-              void form.validateFields().then((mapping) =>
-                save.mutate({
-                  categoryId: batch.categoryId,
-                  mapping: {
-                    ...mapping,
-                    rules: mapping.rules ?? [],
-                    revision: q.data?.revision ?? 0,
-                  },
-                }),
-              )
-            }
-          >
-            保存凭证设置
-          </Button>
-        </Form>
-      )}
+          <Button disabled={mappingSaving || !mappingDirty}>放弃凭证设置修改</Button>
+        </Popconfirm>
+      </Form>
       <p>
-        按人员工资快照的部门分配；所选科目如必需部门以外的辅助项目，会提示补充设置后再生成。标准分配：借费用、贷应付；标准发放：借应付、贷实发/个税/个人扣款。生成后为待审核。
+        按人员工资快照和辅助设置生成。负额以原借贷方向红字记入；超过999条时按科目、辅助、方向及正负分别汇总。标准分配：借费用、贷应付；标准发放：借应付、贷实发/个税/个人扣款。生成后为待审核。
       </p>
       <Space wrap>
         <Select
           aria-label="凭证种类"
+          disabled={mappingSaving || working || generate.isPending}
           value={kind}
           onChange={(v) => {
             setKind(v);
@@ -1531,6 +2023,7 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
         />
         <Input
           aria-label="凭证日期"
+          disabled={mappingSaving || working || generate.isPending}
           type="date"
           value={date}
           onChange={(e) => {
@@ -1540,7 +2033,7 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
         />
         <Button
           loading={working}
-          disabled={mappingDirty || save.isPending}
+          disabled={mappingDirty || mappingSaving || generate.isPending}
           onClick={() => void preview()}
         >
           预览凭证
@@ -1548,6 +2041,12 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
       </Space>
       {plan && (
         <>
+          {plan.aggregated && (
+            <Alert
+              type="info"
+              title={`原始 ${plan.originalLineCount} 条分录已按科目及辅助核算合并为 ${plan.lines.length} 条，工资明细保留。`}
+            />
+          )}
           <DataTable
             tableId="payroll.plan"
             rowKey={(_, i) => i!}
@@ -1562,6 +2061,17 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
                   const a = byId.get(line.accountId ?? 0);
                   return a ? `${a.code} ${a.name}` : '';
                 },
+              },
+              {
+                key: 'auxiliary',
+                title: '辅助核算',
+                width: 260,
+                render: (_, line) =>
+                  DIMENSION_TYPES.flatMap((type) => {
+                    const id = line.dimensions?.[type.id];
+                    const item = id == null ? null : auxiliaryById.get(id);
+                    return item ? [`${type.name}：${item.code} ${item.name}`] : [];
+                  }).join('；'),
               },
               { key: 'debit', title: '借方', dataIndex: 'debit', money: true },
               { key: 'credit', title: '贷方', dataIndex: 'credit', money: true },
@@ -1593,21 +2103,16 @@ function VoucherEditor({ batch, onClose }: { batch: Batch; onClose: () => void }
           <Link to={`/m/voucher-entry/edit?id=${v.id}`}>
             {v.number}（{VOUCHER_STATUS_LABELS[v.status as keyof typeof VOUCHER_STATUS_LABELS]}）
           </Link>{' '}
-          <Popconfirm
-            title="撤销并删除此未审核凭证？已审核或过账会被阻止。"
-            onConfirm={() =>
-              revoke.mutate({
-                id: batch.id,
-                revision: batch.revision,
-                kind: v.kind as 'payment' | 'allocation',
-                confirmed: true,
-              })
-            }
-          >
-            <Button danger loading={revoke.isPending}>
-              撤销{v.kind === 'payment' ? '发放' : '分配'}凭证
-            </Button>
-          </Popconfirm>
+          <RevokeVoucher
+            disabled={mappingDirty || mappingSaving || working || generate.isPending}
+            id={batch.id}
+            revision={batch.revision}
+            kind={v.kind as 'payment' | 'allocation'}
+            onSuccess={() => {
+              void refresh();
+              onClose();
+            }}
+          />
         </p>
       ))}
     </Drawer>
