@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router';
@@ -7,12 +7,14 @@ import {
   sessionStore,
   useRequiredSession,
   useSession,
+  unsavedPages,
   type SessionState,
 } from '@caiwu/web-kit';
 import { Shell } from './Shell';
 import type * as WebKit from '@caiwu/web-kit';
 
 const pending = new Map<string, (value: string) => void>();
+const logout = vi.hoisted(() => vi.fn(async () => ({ ok: true })));
 vi.mock('../modules', () => ({ visibleModules: () => [] }));
 vi.mock('./Tools', () => ({
   SearchDialog: () => null,
@@ -37,7 +39,7 @@ vi.mock('@caiwu/web-kit', async (importOriginal) => {
             },
           }),
         },
-        logout: { mutationOptions: () => ({ mutationFn: async () => ({ ok: true }) }) },
+        logout: { mutationOptions: () => ({ mutationFn: logout }) },
       },
     },
   };
@@ -77,8 +79,67 @@ afterEach(() => {
   sessionStore.set(null);
   queryClient.clear();
   pending.clear();
+  unsavedPages.pages.clear();
+  logout.mockClear();
 });
 describe('会话与财务缓存隔离', () => {
+  it('改密最后阶段及异步跳登录期间阻止重入，完成后不再用旧令牌logout', async () => {
+    sessionStore.set(initial);
+    let finishLogin!: () => void;
+    const saved = vi.fn();
+    const registration = unsavedPages.register({
+      bookId: initial.bookId,
+      tabKey: '密码',
+      title: '自改密码',
+      dirty: true,
+      savePhase: 'session',
+      save: async (context) =>
+        context!.commit(async () => {
+          saved();
+          registration.update({
+            bookId: initial.bookId,
+            tabKey: '密码',
+            title: '自改密码',
+            dirty: false,
+            save: async () => true,
+          });
+          context!.afterLeave(
+            () =>
+              new Promise<void>((resolve) => {
+                finishLogin = () => {
+                  sessionStore.set(null);
+                  resolve();
+                };
+              }),
+          );
+          return { sessionRevoked: true };
+        }),
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <Harness />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByText('等待当前身份数据');
+    fireEvent.keyDown(window, { altKey: true, key: 'x' });
+    fireEvent.click(await screen.findByRole('button', { name: '保存并继续' }));
+    await waitFor(() => expect(saved).toHaveBeenCalledOnce());
+    expect(screen.getByRole('status', { name: '正在保存登录信息' })).toBeVisible();
+    fireEvent.keyDown(window, { altKey: true, key: 'x' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(saved).toHaveBeenCalledOnce();
+    expect(logout).not.toHaveBeenCalled();
+    await act(async () => {
+      finishLogin();
+    });
+    expect(screen.getByText('登录页')).toBeVisible();
+    expect(logout).not.toHaveBeenCalled();
+    expect(unsavedPages.isSessionCommitPending(initial.bookId)).toBe(false);
+  });
   it('账套/令牌变化撤销旧查询，跨账套同ID晚返回不污染新身份', async () => {
     sessionStore.set(initial);
     await act(async () => {
