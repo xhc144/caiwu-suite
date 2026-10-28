@@ -16,6 +16,7 @@ import { queryClient } from '@caiwu/web-kit';
 import { DataTable, MoneyInput } from '@caiwu/ui';
 import type { Batch } from '../shared';
 import { api } from './api';
+import { useMoneyDrafts } from './money-drafts';
 export default function BulkDrawer({
   batch,
   selected,
@@ -48,6 +49,10 @@ export default function BulkDrawer({
   const inFlight = useRef(false),
     mounted = useRef(true);
   const [phase, setPhase] = useState<'preview' | 'apply' | null>(null);
+  const moneyDrafts = useMoneyDrafts();
+  const moneyKeys = mode === 'bulk' ? ['value'] : [];
+  const invalidMoney = moneyDrafts.invalidFor(moneyKeys);
+  const hasInvalidMoney = Object.keys(invalidMoney).length > 0;
   const locked = phase !== null;
   useEffect(() => {
     mounted.current = true;
@@ -136,6 +141,7 @@ export default function BulkDrawer({
     };
   };
   const preview = async () => {
+    if (mode === 'bulk' && !moneyDrafts.validate(moneyKeys)) return;
     if (!begin('preview')) return;
     setPlan(null);
     setError('');
@@ -158,6 +164,7 @@ export default function BulkDrawer({
     }
   };
   const apply = async () => {
+    if (mode === 'bulk' && !moneyDrafts.validate(moneyKeys)) return;
     if (!plan || !begin('apply')) return;
     setError('');
     try {
@@ -218,9 +225,17 @@ export default function BulkDrawer({
               }}
             />
             <MoneyInput
+              resetKey={moneyDrafts.resetKey}
               aria-label="统一金额"
               disabled={locked}
               value={value}
+              status={hasInvalidMoney ? 'error' : undefined}
+              aria-invalid={hasInvalidMoney}
+              draftText={moneyDrafts.text('value')}
+              onDraftStateChange={(state) => {
+                if (inFlight.current) return;
+                if (moneyDrafts.observe('value', state)) setPlan(null);
+              }}
               onChange={(v) => {
                 if (inFlight.current) return;
                 setValue(v ?? 0);
@@ -234,6 +249,7 @@ export default function BulkDrawer({
                 if (inFlight.current) return;
                 setOnlyEmpty(e.target.checked);
                 setValue(0);
+                moneyDrafts.clear();
                 setPlan(null);
               }}
             >
@@ -267,6 +283,13 @@ export default function BulkDrawer({
         </Button>
       </p>
       {error && <Alert type="error" title={error} />}
+      {mode === 'bulk' && hasInvalidMoney && (
+        <Alert
+          type="error"
+          title="金额格式无效，请修正后再预览或保存。"
+          description={Object.values(invalidMoney).join('；')}
+        />
+      )}
       {plan && (
         <>
           <DataTable

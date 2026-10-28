@@ -5,6 +5,7 @@ import { queryClient, useHotkey, usePermission, useUnsavedChanges } from '@caiwu
 import { DataTable, MoneyInput, MoneyText, type DataColumn } from '@caiwu/ui';
 import type { Batch, RowInput, SalaryRow } from '../shared';
 import { api } from './api';
+import { useMoneyDrafts } from './money-drafts';
 
 type GridRow = {
   employeeId: number;
@@ -42,15 +43,26 @@ export default function SalaryGrid({
   const [saving, setSaving] = useState(false);
   const inFlight = useRef<Promise<boolean> | null>(null);
   const mutation = useMutation(api.saveBatch.mutationOptions());
-  const version = JSON.stringify(draft.rows);
-  const dirty = version !== JSON.stringify(draft.base.rows);
+  const moneyDrafts = useMoneyDrafts();
+  const clearMoneyDrafts = moneyDrafts.clear;
+  const moneyKeys = draft.rows.flatMap((row) =>
+    draft.base.category.fields
+      .filter((f) => f.kind === 'money' && !f.disabled)
+      .map((f) => `${row.employeeId}.${f.key}`),
+  );
+  const invalidMoney = moneyDrafts.invalidFor(moneyKeys);
+  const hasInvalidMoney = Object.keys(invalidMoney).length > 0;
+  const version = JSON.stringify({ rows: draft.rows, invalid: invalidMoney });
+  const dirty = JSON.stringify(draft.rows) !== JSON.stringify(draft.base.rows) || hasInvalidMoney;
   const editable = canEdit && !batch.closed && !batch.vouchers.length;
   const changedElsewhere = batch.revision !== draft.base.revision;
 
   useEffect(() => {
-    if (!dirty && !inFlight.current && draft.base !== batch)
+    if (!dirty && !inFlight.current && draft.base !== batch) {
       setDraft({ base: batch, rows: copyRows(batch.rows) });
-  }, [batch, dirty, draft.base]);
+      clearMoneyDrafts();
+    }
+  }, [batch, dirty, draft.base, clearMoneyDrafts]);
   useLayoutEffect(() => {
     onDirtyChange(dirty || saving);
   }, [dirty, saving, onDirtyChange]);
@@ -59,10 +71,12 @@ export default function SalaryGrid({
   const discard = () => {
     if (inFlight.current) return;
     setDraft({ base: batch, rows: copyRows(batch.rows) });
+    moneyDrafts.clear();
     mutation.reset();
   };
   const saveDraft = (): Promise<boolean> => {
     if (inFlight.current) return inFlight.current;
+    if (!moneyDrafts.validate(moneyKeys)) return Promise.resolve(false);
     if (!dirty) return Promise.resolve(true);
     if (!editable) return Promise.resolve(false);
     setSaving(true);
@@ -77,6 +91,7 @@ export default function SalaryGrid({
           rows: draft.rows,
         });
         setDraft({ base: saved, rows: copyRows(saved.rows) });
+        clearMoneyDrafts();
         queryClient.setQueryData(api.batch.queryKey({ id: saved.id }), saved);
         void queryClient.invalidateQueries({ queryKey: api.pathKey() });
         return true;
@@ -134,9 +149,19 @@ export default function SalaryGrid({
           field.kind === 'money' ? (
             editable ? (
               <MoneyInput
+                resetKey={moneyDrafts.resetKey}
+                draftText={moneyDrafts.text(`${row.employeeId}.${field.key}`)}
                 aria-label={`工资-${row.employeeId}-${field.key}`}
                 value={row.input.values[field.key] ?? null}
                 disabled={saving}
+                status={
+                  invalidMoney[`${row.employeeId}.${field.key}`] !== undefined ? 'error' : undefined
+                }
+                aria-invalid={invalidMoney[`${row.employeeId}.${field.key}`] !== undefined}
+                onDraftStateChange={(state) => {
+                  if (inFlight.current) return;
+                  moneyDrafts.observe(`${row.employeeId}.${field.key}`, state);
+                }}
                 onChange={(value) => {
                   if (inFlight.current) return;
                   setDraft((current) => ({
@@ -223,6 +248,14 @@ export default function SalaryGrid({
         />
       )}
       {mutation.error && <Alert type="error" showIcon title={mutation.error.message} />}
+      {hasInvalidMoney && (
+        <Alert
+          type="error"
+          showIcon
+          title="金额格式无效，请修正后再保存；整批工资尚未提交。"
+          description={Object.values(invalidMoney).join('；')}
+        />
+      )}
       {people.error && <Alert type="error" showIcon title={people.error.message} />}
       <DataTable<GridRow>
         tableId="payroll.salary"

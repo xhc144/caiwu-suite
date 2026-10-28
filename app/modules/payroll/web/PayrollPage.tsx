@@ -57,6 +57,7 @@ import BulkDrawer from './BulkDrawer';
 import PersonnelBulkDrawer from './PersonnelBulkDrawer';
 import DepartmentManager from './DepartmentManager';
 import SalaryGrid from './SalaryGrid';
+import { useMoneyDrafts } from './money-drafts';
 
 const refresh = () => queryClient.invalidateQueries({ queryKey: api.pathKey() });
 function ErrorState({ error }: { error: { message: string } | null }) {
@@ -1044,10 +1045,22 @@ function BatchEditor({
   const [categoryId, setCategoryId] = useState(
     batch === 'new' ? categories.find((c) => !c.disabled)?.id : batch.categoryId,
   );
-  const category = categories.find((c) => c.id === categoryId);
+  const [category, setEditingCategory] = useState(
+    () =>
+      categories.find((c) => c.id === categoryId) ?? (batch === 'new' ? undefined : batch.category),
+  );
   const [period, setPeriod] = useState(batch === 'new' ? defaultPeriod : batch.period);
   const [rows, setRows] = useState<RowInput[]>(batch === 'new' ? [] : batch.rows);
   const [dirty, setDirty] = useState(false);
+  const moneyDrafts = useMoneyDrafts();
+  const moneyKeys = rows.flatMap((row) => [
+    ...(category?.fields ?? [])
+      .filter((f) => f.kind === 'money' && !f.disabled)
+      .map((f) => `${row.employeeId}.values.${f.key}`),
+    ...Object.keys(taxLabels).map((k) => `${row.employeeId}.tax.${k}`),
+  ]);
+  const invalidMoney = moneyDrafts.invalidFor(moneyKeys);
+  const hasInvalidMoney = Object.keys(invalidMoney).length > 0;
   useLeaveGuard(dirty);
   const inFlight = useRef(false),
     mounted = useRef(true);
@@ -1080,6 +1093,7 @@ function BatchEditor({
   };
   const submit = () => {
     if (!category || inFlight.current) return;
+    if (!moneyDrafts.validate(moneyKeys)) return;
     inFlight.current = true;
     setSaving(true);
     save.mutate({
@@ -1109,6 +1123,17 @@ function BatchEditor({
     >
       <ErrorState error={employees.error} />
       <ErrorState error={save.error} />
+      {category && categories.find((c) => c.id === category.id)?.revision !== category.revision && (
+        <Alert type="warning" title="工资结构已变化，当前草稿已保留；请核对后重新打开编辑窗口。" />
+      )}
+      {hasInvalidMoney && (
+        <Alert
+          type="error"
+          showIcon
+          title="金额格式无效，请修正后再保存；整批工资尚未提交。"
+          description={Object.values(invalidMoney).join('；')}
+        />
+      )}
       <Space wrap>
         <label>
           工资期间{' '}
@@ -1136,7 +1161,9 @@ function BatchEditor({
             onChange={(id) => {
               if (inFlight.current) return;
               setCategoryId(id);
+              setEditingCategory(categories.find((c) => c.id === id));
               setRows([]);
+              moneyDrafts.clear();
               setDirty(true);
             }}
           />
@@ -1180,8 +1207,21 @@ function BatchEditor({
                 <label key={f.key}>
                   {f.name}
                   <MoneyInput
+                    resetKey={moneyDrafts.resetKey}
                     disabled={saving}
                     aria-label={`${r.employeeId}-${f.key}`}
+                    status={
+                      invalidMoney[`${r.employeeId}.values.${f.key}`] !== undefined
+                        ? 'error'
+                        : undefined
+                    }
+                    aria-invalid={invalidMoney[`${r.employeeId}.values.${f.key}`] !== undefined}
+                    draftText={moneyDrafts.text(`${r.employeeId}.values.${f.key}`)}
+                    onDraftStateChange={(state) => {
+                      if (inFlight.current) return;
+                      moneyDrafts.observe(`${r.employeeId}.values.${f.key}`, state);
+                      if (state && !state.valid) setDirty(true);
+                    }}
                     value={r.values[f.key] ?? 0}
                     onChange={(v) =>
                       patch(i, (r) => ({ ...r, values: { ...r.values, [f.key]: v ?? 0 } }))
@@ -1197,9 +1237,20 @@ function BatchEditor({
                 <label key={k}>
                   {taxLabels[k]}
                   <MoneyInput
+                    resetKey={moneyDrafts.resetKey}
                     disabled={saving}
                     aria-label={`${r.employeeId}-${k}`}
                     allowNegative={false}
+                    status={
+                      invalidMoney[`${r.employeeId}.tax.${k}`] !== undefined ? 'error' : undefined
+                    }
+                    aria-invalid={invalidMoney[`${r.employeeId}.tax.${k}`] !== undefined}
+                    draftText={moneyDrafts.text(`${r.employeeId}.tax.${k}`)}
+                    onDraftStateChange={(state) => {
+                      if (inFlight.current) return;
+                      moneyDrafts.observe(`${r.employeeId}.tax.${k}`, state);
+                      if (state && !state.valid) setDirty(true);
+                    }}
                     value={r.tax[k]}
                     onChange={(v) => patch(i, (r) => ({ ...r, tax: { ...r.tax, [k]: v ?? 0 } }))}
                   />
@@ -1222,6 +1273,7 @@ function BatchEditor({
             onConfirm={() => {
               if (inFlight.current) return;
               setRows(rows.filter((_, j) => j !== i));
+              moneyDrafts.forget(`${r.employeeId}.`);
               setDirty(true);
             }}
           >
