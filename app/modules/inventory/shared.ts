@@ -10,6 +10,7 @@ export const signedQuantity = z
   .trim()
   .regex(/^-?\d{1,9}(\.\d{1,6})?$/, '数量必须为十进制数，最多六位小数');
 export const Kind = z.enum(['receipt', 'issue']);
+export const InvoiceKind = z.enum(['none', 'ordinary', 'special']);
 export const ProductSchema = z.object({
   id: zId.optional(),
   revision: z.number().int().positive().optional(),
@@ -55,6 +56,7 @@ export const DocumentSchema = z.object({
   accountId: zId.nullable().default(null),
   costAccountId: zId.nullable().default(null),
   taxRate: decimal.default('0'),
+  invoiceKind: InvoiceKind.default('none'),
   lines: z.array(LineSchema).max(1000),
   sourceType: z.enum(['contract', 'document']).nullable().default(null),
   sourceId: zId.nullable().default(null),
@@ -94,6 +96,8 @@ export const FilterSchema = z
   .object({
     warehouseId: zId.optional(),
     productCode: text.optional(),
+    productFrom: text.optional(),
+    productTo: text.optional(),
     keyword: text.optional(),
     id: zId.optional(),
     from: zDate.optional(),
@@ -105,7 +109,11 @@ export const FilterSchema = z
     hideZero: z.boolean().optional(),
   })
   .strict()
-  .refine((v) => !v.from || !v.to || v.to >= v.from, '截止日期不能早于起始日期');
+  .refine((v) => !v.from || !v.to || v.to >= v.from, '截止日期不能早于起始日期')
+  .refine(
+    (v) => !v.productFrom || !v.productTo || v.productTo >= v.productFrom,
+    '截止产品编号不能小于起始产品编号',
+  );
 export const CountSchema = z.object({
   warehouseId: zId,
   period: z.number().int(),
@@ -130,6 +138,14 @@ export const ContractSchema = z.object({
 export const SettingsSchema = z.object({
   numberRule: z.enum(['daily', 'monthly', 'sequence']),
   autoRefresh: z.boolean(),
+  quantityDigits: z.number().int().min(0).max(6).default(6),
+  priceDigits: z.number().int().min(0).max(6).default(6),
+  ordinaryTaxRate: decimal
+    .refine((v) => Number(v) <= 100, '默认普票税率应在 0 到 100 之间')
+    .default('0'),
+  specialTaxRate: decimal
+    .refine((v) => Number(v) <= 100, '默认专票税率应在 0 到 100 之间')
+    .default('0'),
 });
 export const BulkSchema = z.object({
   products: z
@@ -143,12 +159,19 @@ export const BulkSchema = z.object({
     'allocationFactor',
     'disabled',
     'unit',
+    'name',
+    'specification',
+    'inventoryAccountCode',
+    'salesAccountCode',
   ]),
   value: z.string().max(100),
   confirmed: z.boolean().default(false),
+  confirmZeroFactor: z.boolean().default(false),
 });
+export type BulkField = z.infer<typeof BulkSchema>['field'];
 export type ProductInput = z.input<typeof ProductSchema>;
 export type DocumentInput = z.input<typeof DocumentSchema>;
 export type Filter = z.infer<typeof FilterSchema>;
 export type OpeningInput = z.input<typeof OpeningSchema>;
 export type ContractInput = z.input<typeof ContractSchema>;
+export type Settings = z.infer<typeof SettingsSchema>;

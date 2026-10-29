@@ -7,6 +7,8 @@ export default defineWebModule(manifest, {
     { path: '/opening', title: '库存期初', component: lazy(() => import('./OpeningPage')) },
     { path: '/receipts', title: '入库单管理', component: lazy(() => import('./DocumentPage')) },
     { path: '/issues', title: '出库单管理', component: lazy(() => import('./DocumentPage')) },
+    { path: '/transfers', title: '仓库调拨', component: lazy(() => import('./TransferPage')) },
+    { path: '/query', title: '单据综合查询', component: lazy(() => import('./QueryPage')) },
     { path: '/contracts', title: '采购合同', component: lazy(() => import('./ContractPage')) },
     { path: '/stock', title: '库存与台账', component: lazy(() => import('./StockPage')) },
     { path: '/counts', title: '月末盘点', component: lazy(() => import('./CountPage')) },

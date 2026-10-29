@@ -6,9 +6,10 @@ import { DocumentSchema, OpeningSchema, ProductSchema } from '../shared';
 import { requireImportKeys } from '../excel';
 import { openingValue } from '../opening';
 import { fail, inventoryService } from './service';
+import { importContracts } from './contract-exchange';
 const key = randomBytes(32);
 export const ImportSchema = z.object({
-  kind: z.enum(['products', 'opening', 'document']),
+  kind: z.enum(['products', 'opening', 'document', 'contracts']),
   rows: z.array(z.record(z.string(), z.unknown())).min(1).max(1000),
   rowNumbers: z.array(z.number().int().min(2)).max(1000).optional(),
   warehouseId: zId.optional(),
@@ -36,6 +37,7 @@ export async function importInventory(
       s = inventoryService(t);
     t.permissions.require('inventory.edit');
     t.permissions.require('inventory.import');
+    if (v.kind === 'contracts') return importContracts(t, v, commit);
     const products = await s.products();
     const seen = new Set<string>();
     const rows = [];

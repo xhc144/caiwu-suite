@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { App, Alert, Button, Checkbox, Drawer, Form, Input, Select, Space } from 'antd';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'react-router';
 import { AccountSelect, FilterBar, PageContainer, useUrlFilters, exportToExcel } from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
-import { useHotkey, usePermission } from '@caiwu/web-kit';
+import { useHotkey, usePermission, useTab } from '@caiwu/web-kit';
 import { importExportColumns } from '../excel';
 import { api } from './api';
 import { InventoryNavigation } from './common';
@@ -22,8 +23,11 @@ import {
   useUnsaved,
 } from './common';
 import ImportButton from './ImportButton';
+import DocumentExchange from './DocumentExchange';
+import ReversalButton from './ReversalButton';
 import type { DocumentInput } from '../shared';
 export default function DocumentPage() {
+  const { active } = useTab();
   const { modal } = App.useApp();
   const location = useLocation(),
     navigate = useInventoryNavigate(),
@@ -55,15 +59,17 @@ export default function DocumentPage() {
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState<DocumentInput | null>(null),
     [dirty, setDirty] = useState(false);
+  const editingRef = useRef(editing);
+  editingRef.current = editing;
   const canEdit = usePermission('inventory.edit'),
     canAudit = usePermission('inventory.audit');
+  const canAccounts = usePermission('masterdata.view');
   const refresh = useRefresh();
   const save = useMutation(api.saveDocument.mutationOptions()),
     preview = useMutation(api.previewDocument.mutationOptions()),
     remove = useMutation(api.removeDocument.mutationOptions()),
     audit = useMutation(api.audit.mutationOptions()),
     next = useMutation(api.nextNumber.mutationOptions());
-  useUnsaved(dirty);
   const change = (patch: Partial<DocumentInput>) => {
     setEditing((p) => (p ? { ...p, ...patch } : p));
     setDirty(true);
@@ -71,6 +77,7 @@ export default function DocumentPage() {
   };
   const openDocument = useCallback(
     async (id: number) => {
+      if (submitting.current) return;
       if (!mayDiscard(dirty)) return;
       const d = await client.fetchQuery(api.document.queryOptions({ id }));
       setEditing({
@@ -87,8 +94,10 @@ export default function DocumentPage() {
         accountId: d.account_id,
         costAccountId: d.cost_account_id,
         taxRate: d.tax_rate,
-        sourceType: d.source_type as DocumentInput['sourceType'],
-        sourceId: d.source_id,
+        invoiceKind: d.invoice_kind,
+        sourceType:
+          d.source_type === 'invoice' ? null : (d.source_type as DocumentInput['sourceType']),
+        sourceId: d.source_type === 'invoice' ? null : d.source_id,
         lines: d.lines.map((l) => ({
           productCode: l.productCode,
           quantity: l.quantity,
@@ -117,6 +126,7 @@ export default function DocumentPage() {
         });
   }, [f.id, location.search, client, openDocument]);
   const create = () => {
+    if (submitting.current) return;
     if (!mayDiscard(dirty)) return;
     setEditing({
       requestKey: crypto.randomUUID(),
@@ -130,13 +140,15 @@ export default function DocumentPage() {
       accountId: null,
       costAccountId: null,
       taxRate: '0',
+      invoiceKind: 'none',
       lines: [newLine()],
     });
     setDirty(false);
     preview.reset();
   };
-  const submit = async () => {
-    if (!editing || submitting.current) return;
+  const submit = async (): Promise<boolean> => {
+    if (!editing || submitting.current) return false;
+    const snapshot = editing;
     submitting.current = true;
     setSaving(true);
     try {
@@ -168,21 +180,43 @@ export default function DocumentPage() {
             },
           }),
         );
-        if (!agreed) return;
+        if (!agreed) return false;
         confirmation = p.confirmation;
       }
       const saved = await save.mutateAsync({ ...editing, negativeConfirmation: confirmation });
-      setDirty(false);
-      setEditing(null);
+      if (editingRef.current !== snapshot) {
+        setEditing((draft) =>
+          draft
+            ? { ...draft, id: saved.id, revision: saved.revision, requestKey: crypto.randomUUID() }
+            : draft,
+        );
+        await refresh();
+        return false;
+      }
+      flushSync(() => {
+        setDirty(false);
+        setEditing(null);
+        setSaving(false);
+      });
       loaded.current = '';
       setF({ id: 0 });
       await refresh();
-      return saved;
+      return true;
     } finally {
       submitting.current = false;
       setSaving(false);
     }
   };
+  useUnsaved(dirty, {
+    pending: saving,
+    title: kind === 'receipt' ? '入库单管理' : '出库单管理',
+    version: JSON.stringify(editing),
+    save: submit,
+    discard: () => {
+      setEditing(null);
+      setDirty(false);
+    },
+  });
   useHotkey('Ctrl+S', () => {
     if (editing && canEdit) void submit();
   });
@@ -194,30 +228,70 @@ export default function DocumentPage() {
   const locked =
     !!h &&
     (h.audited_by != null ||
+      h.source_type === 'invoice' ||
+      !!h.transfer ||
+      !!h.reversal ||
       h.voucher_id != null ||
       h.calculation_status !== 'uncalculated' ||
       !!(context?.control.cost_cutoff_date && h.date <= context.control.cost_cutoff_date) ||
       !!(context?.current?.startDate && h.date < context.current.startDate));
   const close = () => {
+    if (saving) return;
     if (mayDiscard(dirty)) {
       setEditing(null);
       setDirty(false);
       setF({ id: 0 });
     }
   };
+  const list = query.data ?? [];
+  const currentIndex = list.findIndex((d) => d.id === editing?.id);
+  const move = (index: number) => {
+    const id = list[index]?.id;
+    if (id && !saving) void openDocument(id);
+  };
+  const copy = async (id: number) => {
+    if (submitting.current || !mayDiscard(dirty)) return;
+    setEditing(await client.fetchQuery(api.copyDocument.queryOptions({ id })));
+    setDirty(true);
+    preview.reset();
+  };
+  useHotkey('Ctrl+A', create, { enabled: canEdit && !saving, allowInInput: false });
+  useHotkey(
+    'Ctrl+K',
+    () => {
+      if (editing?.id) void copy(editing.id);
+    },
+    { enabled: canEdit && !!editing?.id && !saving, allowInInput: false },
+  );
+  useHotkey('Ctrl+Home', () => move(0), { enabled: list.length > 0, allowInInput: false });
+  useHotkey('Ctrl+End', () => move(list.length - 1), {
+    enabled: list.length > 0,
+    allowInInput: false,
+  });
+  useHotkey('ArrowUp', () => move(currentIndex - 1), {
+    enabled: currentIndex > 0,
+    allowInInput: false,
+  });
+  useHotkey('ArrowDown', () => move(currentIndex + 1), {
+    enabled: currentIndex >= 0 && currentIndex < list.length - 1,
+    allowInInput: false,
+  });
   return (
     <PageContainer
       title={kind === 'receipt' ? '入库单管理' : '出库单管理'}
-      subtitle="单据保存即计入库存；审核是仓库状态。会计凭证与成本核算由后续成本模块提供。"
+      subtitle="保存即计入库存；反冲保留原单，调拨成对处理。成本核算与会计凭证可在成本业务中办理。"
       extra={
         canEdit && (
-          <Button type="primary" disabled={!warehouseId} onClick={create}>
+          <Button type="primary" disabled={!warehouseId || saving} onClick={create}>
             新增{kind === 'receipt' ? '入库单' : '出库单'}
           </Button>
         )
       }
     >
       <InventoryNavigation />
+      {canAccounts && (
+        <Button onClick={() => void navigate('/m/masterdata/accounts')}>维护会计科目</Button>
+      )}
       <FilterBar initialValues={f} onSearch={(v) => setF({ ...v, id: 0 })}>
         <Form.Item label="当前仓库">
           <WarehouseSelect
@@ -239,6 +313,12 @@ export default function DocumentPage() {
         </Form.Item>
       </FilterBar>
       {query.error && <Alert type="error" title={query.error.message} />}
+      <DocumentExchange
+        documents={query.data ?? []}
+        onImported={() => {
+          loaded.current = '';
+        }}
+      />
       <Grid
         id={kind}
         title={kind === 'receipt' ? '入库单浏览' : '出库单浏览'}
@@ -248,6 +328,14 @@ export default function DocumentPage() {
           { key: 'date', title: '日期', dataIndex: 'date', width: 110 },
           { key: 'warehouse_name', title: '仓库', dataIndex: 'warehouse_name' },
           { key: 'category', title: '类别', dataIndex: 'category' },
+          {
+            key: 'invoice_kind',
+            title: '发票种类',
+            exportValue: (d) =>
+              ({ none: '不指定', ordinary: '普通发票', special: '增值税专用发票' })[d.invoice_kind],
+            render: (_, d) =>
+              ({ none: '不指定', ordinary: '普通发票', special: '增值税专用发票' })[d.invoice_kind],
+          },
           { key: 'operator', title: '操作人', dataIndex: 'operator' },
           { key: 'summary', title: '摘要', dataIndex: 'summary', width: 220 },
           {
@@ -289,21 +377,35 @@ export default function DocumentPage() {
             render: (_, d) => (
               <Space wrap>
                 <Button onClick={() => void openDocument(d.id)}>查看/编辑</Button>
-                {canEdit && (
+                {d.source_type === 'invoice' && (
                   <Button
-                    onClick={async () => {
-                      if (!mayDiscard(dirty)) return;
-                      setEditing(
-                        await client.fetchQuery(api.copyDocument.queryOptions({ id: d.id })),
-                      );
-                      setDirty(true);
-                      preview.reset();
-                    }}
+                    onClick={() => void navigate(`/m/invoice/process?invoiceId=${d.source_id}`)}
                   >
-                    复制新增
+                    查看来源发票
                   </Button>
                 )}
-                {canAudit && (
+                {d.transfer && (
+                  <Button
+                    onClick={() => void navigate(`/m/inventory/transfers?id=${d.transfer!.id}`)}
+                  >
+                    查看调拨
+                  </Button>
+                )}
+                {d.reversal && (
+                  <span>{d.reversal.original_document_id === d.id ? '已反冲' : '反冲单'}</span>
+                )}
+                {canEdit && d.source_type !== 'invoice' && !d.transfer && !d.reversal && (
+                  <ReversalButton
+                    id={d.id}
+                    onSaved={() => {
+                      loaded.current = '';
+                    }}
+                  />
+                )}
+                {canEdit && d.source_type !== 'invoice' && (
+                  <Button onClick={() => void copy(d.id)}>复制新增</Button>
+                )}
+                {canAudit && !d.transfer && (
                   <Button
                     loading={audit.isPending}
                     onClick={async () => {
@@ -318,23 +420,26 @@ export default function DocumentPage() {
                     {d.audited_by ? '取消审核' : '审核'}
                   </Button>
                 )}
-                {canEdit && (
-                  <Button
-                    danger
-                    onClick={async () => {
-                      if (window.confirm(`确认删除单据 ${d.number} 及其库存影响？`)) {
-                        await remove.mutateAsync({
-                          id: d.id,
-                          revision: d.revision,
-                          confirmed: true,
-                        });
-                        await refresh();
-                      }
-                    }}
-                  >
-                    删除
-                  </Button>
-                )}
+                {canEdit &&
+                  d.source_type !== 'invoice' &&
+                  !d.transfer &&
+                  d.reversal?.original_document_id !== d.id && (
+                    <Button
+                      danger
+                      onClick={async () => {
+                        if (window.confirm(`确认删除单据 ${d.number} 及其库存影响？`)) {
+                          await remove.mutateAsync({
+                            id: d.id,
+                            revision: d.revision,
+                            confirmed: true,
+                          });
+                          await refresh();
+                        }
+                      }}
+                    >
+                      删除
+                    </Button>
+                  )}
               </Space>
             ),
           },
@@ -346,12 +451,15 @@ export default function DocumentPage() {
             ? `单据 ${editing.number}`
             : `新增${editing?.kind === 'receipt' ? '入库单' : '出库单'}`
         }
-        open={!!editing}
+        open={!!editing && active}
         size="large"
+        mask={false}
         onClose={close}
         extra={
           <Space>
-            <Button onClick={close}>返回</Button>
+            <Button disabled={saving} onClick={close}>
+              返回
+            </Button>
             {canEdit && !locked && (
               <Button type="primary" loading={saving} onClick={() => void submit()}>
                 保存单据
@@ -363,40 +471,33 @@ export default function DocumentPage() {
         {editing && (
           <>
             <Space>
-              <Button
-                disabled={!editing.id}
-                onClick={() => {
-                  const list = query.data ?? [];
-                  const i = list.findIndex((d) => d.id === editing.id);
-                  const id = list[i - 1]?.id;
-                  if (id) void openDocument(id);
-                }}
-              >
+              <Button disabled={currentIndex <= 0 || saving} onClick={() => move(0)}>
+                第一张
+              </Button>
+              <Button disabled={currentIndex <= 0 || saving} onClick={() => move(currentIndex - 1)}>
                 上一张
               </Button>
               <Button
-                disabled={!editing.id}
-                onClick={() => {
-                  const list = query.data ?? [];
-                  const i = list.findIndex((d) => d.id === editing.id);
-                  const id = list[i + 1]?.id;
-                  if (id) void openDocument(id);
-                }}
+                disabled={currentIndex < 0 || currentIndex >= list.length - 1 || saving}
+                onClick={() => move(currentIndex + 1)}
               >
                 下一张
               </Button>
+              <Button
+                disabled={currentIndex < 0 || currentIndex >= list.length - 1 || saving}
+                onClick={() => move(list.length - 1)}
+              >
+                最后一张
+              </Button>
               <span>
-                版本 {editing.revision ?? '新单'}；审核 {h?.audited_by ? '已审核' : '未审核'}；核算{' '}
+                审核 {h?.audited_by ? '已审核' : '未审核'}；核算{' '}
                 {h?.calculation_status === 'calculated' ? '已核算' : '未核算'}
               </span>
             </Space>
             {locked && (
-              <Alert
-                type="warning"
-                title="单据有审核、凭证或核算锁，当前仅查看。服务端同样校验锁定状态。"
-              />
+              <Alert type="warning" title="单据已有审核、凭证、核算或关联记录，当前仅供查看。" />
             )}
-            <Form layout="vertical" disabled={locked || !canEdit}>
+            <Form layout="vertical" disabled={locked || !canEdit || saving}>
               <Field label="单据仓库">
                 <WarehouseSelect
                   value={editing.warehouseId}
@@ -467,16 +568,52 @@ export default function DocumentPage() {
                   />
                 </Field>
               )}
-              <TextField
-                label="税率（%）"
-                value={editing.taxRate}
-                onChange={(taxRate) => change({ taxRate })}
-              />
-              <LineEditor
-                taxRate={editing.taxRate}
-                lines={editing.lines}
-                onChange={(lines) => change({ lines })}
-              />
+              {h?.source_type !== 'invoice' && (
+                <Field label="发票种类">
+                  <Select
+                    aria-label="发票种类"
+                    value={editing.invoiceKind ?? 'none'}
+                    options={[
+                      { value: 'none', label: '不指定' },
+                      { value: 'ordinary', label: '普通发票' },
+                      { value: 'special', label: '增值税专用发票' },
+                    ]}
+                    onChange={(invoiceKind) => {
+                      const rate =
+                        invoiceKind === 'special'
+                          ? context?.settings.specialTaxRate
+                          : invoiceKind === 'ordinary'
+                            ? context?.settings.ordinaryTaxRate
+                            : '0';
+                      if (
+                        !editing.id &&
+                        editing.taxRate !== '0' &&
+                        editing.taxRate !== rate &&
+                        !window.confirm(
+                          `改选发票种类将带入默认税率 ${rate ?? '0'}%，确认替换本单税率？`,
+                        )
+                      )
+                        return;
+                      change({ invoiceKind, ...(!editing.id ? { taxRate: rate ?? '0' } : {}) });
+                    }}
+                  />
+                </Field>
+              )}
+              {h?.source_type !== 'invoice' && (
+                <TextField
+                  label="税率（%）"
+                  value={editing.taxRate}
+                  onChange={(taxRate) => change({ taxRate })}
+                />
+              )}
+              {h?.source_type !== 'invoice' && (
+                <LineEditor
+                  warehouseId={editing.warehouseId}
+                  taxRate={editing.taxRate}
+                  lines={editing.lines}
+                  onChange={(lines) => change({ lines })}
+                />
+              )}
             </Form>
             {!locked && (
               <Button loading={preview.isPending} onClick={() => preview.mutate(editing)}>
@@ -505,23 +642,25 @@ export default function DocumentPage() {
                 title={`单据明细-${h.number}`}
                 rows={h.lines}
                 toolbar={
-                  <Button
-                    onClick={() =>
-                      void exportToExcel({
-                        fileName: `单据可回导明细-${h.number}`,
-                        columns: importExportColumns('document'),
-                        rows: h.lines.map((l) => ({
-                          productCode: l.productCode,
-                          quantity: l.quantity,
-                          unitPrice: l.unitPrice,
-                          priceIncludesTax: l.priceIncludesTax,
-                          note: l.note,
-                        })),
-                      })
-                    }
-                  >
-                    导出可回导明细
-                  </Button>
+                  h.source_type !== 'invoice' && (
+                    <Button
+                      onClick={() =>
+                        void exportToExcel({
+                          fileName: `单据可回导明细-${h.number}`,
+                          columns: importExportColumns('document'),
+                          rows: h.lines.map((l) => ({
+                            productCode: l.productCode,
+                            quantity: l.quantity,
+                            unitPrice: l.unitPrice,
+                            priceIncludesTax: l.priceIncludesTax,
+                            note: l.note,
+                          })),
+                        })
+                      }
+                    >
+                      导出可回导明细
+                    </Button>
+                  )
                 }
                 columns={[
                   { key: 'productCode', title: '产品编号', dataIndex: 'productCode' },
@@ -529,6 +668,12 @@ export default function DocumentPage() {
                   { key: 'quantity', title: '数量', dataIndex: 'quantity' },
                   { key: 'unit_price', title: '不含税单价', dataIndex: 'unit_price' },
                   { key: 'tax_unit_price', title: '含税单价', dataIndex: 'tax_unit_price' },
+                  {
+                    key: 'tax_rate',
+                    title: '税率（%）',
+                    exportValue: (l) => l.tax_rate ?? h.tax_rate,
+                    render: (_, l) => l.tax_rate ?? h.tax_rate,
+                  },
                   { key: 'net_cents', title: '金额', dataIndex: 'net_cents', money: true },
                   { key: 'tax_cents', title: '税额', dataIndex: 'tax_cents', money: true },
                   { key: 'gross_cents', title: '价税合计', dataIndex: 'gross_cents', money: true },

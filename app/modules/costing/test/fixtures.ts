@@ -13,6 +13,8 @@ type InventoryFixtures = {
     name: string;
     inventoryAccountId: number;
     salesAccountId: number;
+    allocationFactor?: string;
+    unit?: string;
   }): Promise<number>;
   saveOpening(input: {
     warehouseId: number;

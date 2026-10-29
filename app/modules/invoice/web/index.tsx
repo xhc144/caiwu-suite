@@ -6,6 +6,7 @@ export default defineWebModule(manifest, {
     { path: '/input', title: '进项发票', component: lazy(() => import('./InvoicePage')) },
     { path: '/output', title: '销项发票', component: lazy(() => import('./InvoicePage')) },
     { path: '/process', title: '发票处理', component: lazy(() => import('./ProcessPage')) },
+    { path: '/issue', title: '发票转出库', component: lazy(() => import('./IssuePage')) },
     { path: '/settings', title: '发票参数设置', component: lazy(() => import('./SettingsPage')) },
     { path: '/vat', title: '增值税比对', component: lazy(() => import('./VatPage')) },
     { path: '/summary', title: '发票汇总', component: lazy(() => import('./SummaryPage')) },

@@ -12,8 +12,15 @@ import {
   SettingsSchema,
   VatSchema,
   SummarySchema,
+  ProcessDraftSchema,
+  IssueOptionsSchema,
+  IssueSaveSchema,
+  IssueDraftSchema,
+  RevokeTargetSchema,
+  RevokeSchema,
 } from '../shared';
 import { invoiceService } from './service';
+import { invoiceIssueService } from './issue-service';
 const m = moduleKit(manifest);
 const procedure = m.procedure.use(async ({ ctx, next }) => {
   const book = await ctx.svc.book.info();
@@ -32,6 +39,38 @@ const periodInput = z.object({
   confirmed: z.boolean(),
 });
 export const invoiceRouter = m.router({
+  issueReferences: procedure
+    .meta({ permission: 'invoice.issue' })
+    .input(z.object({ invoiceId: zId.optional() }).optional().default({}))
+    .query(({ ctx, input }) => invoiceIssueService(ctx.svc).references(input)),
+  issueDetails: procedure
+    .meta({ permission: 'invoice.issue' })
+    .input(z.object({ invoiceId: zId, invoiceRevision: z.number().int().positive() }))
+    .query(({ ctx, input }) =>
+      invoiceIssueService(ctx.svc).details(input.invoiceId, input.invoiceRevision),
+    ),
+  previewIssue: procedure
+    .meta({ permission: 'invoice.issue' })
+    .input(IssueOptionsSchema)
+    .mutation(({ ctx, input }) => invoiceIssueService(ctx.svc).preview(input)),
+  saveIssue: procedure
+    .meta({ permission: 'invoice.issue' })
+    .input(IssueSaveSchema)
+    .mutation(({ ctx, input }) => invoiceIssueService(ctx.svc).save(input)),
+  issueSources: procedure
+    .meta({ permission: 'invoice.view' })
+    .query(({ ctx }) => invoiceIssueService(ctx.svc).list()),
+  issueDraft: procedure
+    .meta({ permission: 'invoice.issue' })
+    .query(async ({ ctx }) =>
+      IssueDraftSchema.nullable().parse(
+        await ctx.svc.settings.get(`issueDraft.${ctx.svc.user.id}`, null),
+      ),
+    ),
+  saveIssueDraft: procedure
+    .meta({ permission: 'invoice.issue' })
+    .input(IssueDraftSchema.nullable())
+    .mutation(({ ctx, input }) => ctx.svc.settings.set(`issueDraft.${ctx.svc.user.id}`, input)),
   list: procedure
     .meta({ permission: 'invoice.view' })
     .input(FilterSchema)
@@ -97,6 +136,21 @@ export const invoiceRouter = m.router({
     .meta({ permission: 'invoice.voucher' })
     .input(PlanSchema)
     .query(({ ctx, input }) => invoiceService(ctx.svc).previewVoucher(input)),
+  voucherFields: procedure
+    .meta({ permission: 'invoice.voucher' })
+    .input(SelectionSchema)
+    .query(({ ctx, input }) => invoiceService(ctx.svc).voucherFields(input)),
+  processDraft: procedure
+    .meta({ permission: 'invoice.voucher' })
+    .query(async ({ ctx }) =>
+      ProcessDraftSchema.nullable().parse(
+        await ctx.svc.settings.get(`processDraft.${ctx.svc.user.id}`, null),
+      ),
+    ),
+  saveProcessDraft: procedure
+    .meta({ permission: 'invoice.voucher' })
+    .input(ProcessDraftSchema.nullable())
+    .mutation(({ ctx, input }) => ctx.svc.settings.set(`processDraft.${ctx.svc.user.id}`, input)),
   generate: procedure
     .meta({ permission: 'invoice.voucher' })
     .input(
@@ -104,6 +158,7 @@ export const invoiceRouter = m.router({
         fingerprint: z.string().length(64),
         requestId: z.uuid(),
         newAccountsConfirmed: z.boolean().default(false),
+        regenerateConfirmed: z.boolean().default(false),
       }),
     )
     .mutation(({ ctx, input }) => invoiceService(ctx.svc).generate(input)),
@@ -111,11 +166,13 @@ export const invoiceRouter = m.router({
     .meta({ permission: 'invoice.view' })
     .input(z.object({ id: zId.optional() }))
     .query(({ ctx, input }) => invoiceService(ctx.svc).groups(input.id)),
+  previewRevoke: procedure
+    .meta({ permission: 'invoice.voucher' })
+    .input(RevokeTargetSchema)
+    .query(({ ctx, input }) => invoiceService(ctx.svc).previewRevoke(input)),
   revoke: procedure
     .meta({ permission: 'invoice.voucher' })
-    .input(
-      z.object({ id: zId, expectedRevision: z.number().int().positive(), confirmed: z.boolean() }),
-    )
+    .input(RevokeSchema)
     .mutation(({ ctx, input }) => invoiceService(ctx.svc).revoke(input)),
   vat: procedure
     .meta({ permission: 'invoice.view' })

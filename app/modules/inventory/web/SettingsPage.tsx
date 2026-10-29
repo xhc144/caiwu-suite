@@ -1,22 +1,35 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Select, Space } from 'antd';
 import { useMutation } from '@tanstack/react-query';
 import { PageContainer } from '@caiwu/ui';
 import { usePermission } from '@caiwu/web-kit';
 import { api } from './api';
+import type { Settings } from '../shared';
 import { InventoryNavigation } from './common';
-import { useCatalog, useRefresh, useUnsaved } from './common';
+import { Field, TextField, useCatalog, useRefresh, useUnsaved } from './common';
 export default function SettingsPage() {
   const { context } = useCatalog();
-  const [draft, setDraft] = useState<{
-    numberRule: 'daily' | 'monthly' | 'sequence';
-    autoRefresh: boolean;
-  } | null>(null);
+  const [draft, setDraft] = useState<Settings | null>(null);
   const current = draft ?? context?.settings;
   const can = usePermission('inventory.settings');
   const save = useMutation(api.saveSettings.mutationOptions());
   const refresh = useRefresh();
-  useUnsaved(!!draft);
+  const latest = useRef(draft);
+  latest.current = draft;
+  const submit = async () => {
+    if (!draft || save.isPending) return false;
+    await save.mutateAsync(draft);
+    if (latest.current === draft) setDraft(null);
+    await refresh();
+    return true;
+  };
+  useUnsaved(!!draft, {
+    pending: save.isPending,
+    title: '仓库设置',
+    version: JSON.stringify(draft),
+    save: submit,
+    discard: () => setDraft(null),
+  });
   return (
     <PageContainer
       title="仓库设置"
@@ -24,10 +37,10 @@ export default function SettingsPage() {
     >
       <InventoryNavigation />
       {current && (
-        <Space>
+        <Space wrap align="start">
           <Select
             aria-label="单据编号规则"
-            disabled={!can}
+            disabled={!can || save.isPending}
             value={current.numberRule}
             onChange={(numberRule) => setDraft({ ...current, numberRule })}
             options={[
@@ -37,21 +50,49 @@ export default function SettingsPage() {
             ]}
           />
           <Checkbox
-            disabled={!can}
+            disabled={!can || save.isPending}
             checked={current.autoRefresh}
             onChange={(e) => setDraft({ ...current, autoRefresh: e.target.checked })}
           >
             单据自动刷新
           </Checkbox>
+          <Field label="数量显示小数位数">
+            <Select
+              aria-label="数量显示小数位数"
+              disabled={!can || save.isPending}
+              value={current.quantityDigits}
+              options={Array.from({ length: 7 }, (_, value) => ({ value, label: String(value) }))}
+              onChange={(quantityDigits) => setDraft({ ...current, quantityDigits })}
+            />
+          </Field>
+          <Field label="单价显示小数位数">
+            <Select
+              aria-label="单价显示小数位数"
+              disabled={!can || save.isPending}
+              value={current.priceDigits}
+              options={Array.from({ length: 7 }, (_, value) => ({ value, label: String(value) }))}
+              onChange={(priceDigits) => setDraft({ ...current, priceDigits })}
+            />
+          </Field>
+          <TextField
+            label="默认普票税率（%）"
+            value={current.ordinaryTaxRate}
+            onChange={(ordinaryTaxRate) => {
+              if (can && !save.isPending) setDraft({ ...current, ordinaryTaxRate });
+            }}
+          />
+          <TextField
+            label="默认专票税率（%）"
+            value={current.specialTaxRate}
+            onChange={(specialTaxRate) => {
+              if (can && !save.isPending) setDraft({ ...current, specialTaxRate });
+            }}
+          />
           <Button
             type="primary"
             disabled={!can || !draft}
             loading={save.isPending}
-            onClick={async () => {
-              await save.mutateAsync(current);
-              setDraft(null);
-              await refresh();
-            }}
+            onClick={() => void submit()}
           >
             保存设置
           </Button>
@@ -59,7 +100,7 @@ export default function SettingsPage() {
       )}
       <Alert
         type="info"
-        title="成本核算、取消核算、成本与收入凭证、收入成本利润表由 W2-01 提供。破坏性初始化、历史税率修复与数据整理未开通。"
+        title="显示精度只影响表格、打印和表格导出；输入与计算保留原始精度。默认税率仅在新单选择发票种类时带入，已有单据不改写。成本与凭证请在成本核算功能办理。"
       />
     </PageContainer>
   );
