@@ -44,8 +44,56 @@ CREATE TABLE analysis_contract_line (
 CREATE INDEX analysis_contract_line_contract ON analysis_contract_line(contract_id);
 `,
   },
+  {
+    id: '0003_analysis_definitions_results',
+    sql: `
+CREATE TABLE analysis_definition (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  code TEXT NOT NULL UNIQUE,
+  name TEXT NOT NULL,
+  rows_json TEXT NOT NULL,
+  revision INTEGER NOT NULL CHECK(revision > 0)
+);
+CREATE TABLE analysis_result (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  definition_id INTEGER REFERENCES analysis_definition(id) ON DELETE RESTRICT,
+  kind TEXT NOT NULL CHECK(kind IN ('trend', 'custom')),
+  name TEXT NOT NULL,
+  sheet_json TEXT NOT NULL,
+  period_from INTEGER NOT NULL,
+  period_to INTEGER NOT NULL,
+  revision INTEGER NOT NULL CHECK(revision > 0),
+  updated_by INTEGER NOT NULL REFERENCES app_user(id),
+  updated_at TEXT NOT NULL
+);
+CREATE INDEX analysis_result_definition ON analysis_result(definition_id);
+`,
+  },
+  {
+    id: '0004_analysis_contract_second_remark',
+    sql: `ALTER TABLE analysis_contract ADD COLUMN remark2 TEXT NOT NULL DEFAULT '';`,
+  },
 ]);
 export type AnalysisTables = {
+  analysis_definition: {
+    id: Generated<number>;
+    code: string;
+    name: string;
+    rows_json: string;
+    revision: number;
+  };
+  analysis_result: {
+    id: Generated<number>;
+    definition_id: number | null;
+    kind: 'trend' | 'custom';
+    name: string;
+    sheet_json: string;
+    period_from: number;
+    period_to: number;
+    revision: number;
+    updated_by: number;
+    updated_at: string;
+  };
   analysis_aging_config: { user_id: number; bounds_json: string; revision: number };
   analysis_shortcut: { kind: string; account_code: string; revision: number };
   analysis_contract: {
@@ -60,6 +108,7 @@ export type AnalysisTables = {
     opening: number;
     description: string;
     remark: string;
+    remark2: string;
     created_by: number;
     reviewed_by: number | null;
     revision: number;

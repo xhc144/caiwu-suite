@@ -11,10 +11,110 @@ import {
   ContractVersionSchema,
 } from '../contracts';
 import { contractService } from './contracts';
+import {
+  CustomFilterSchema,
+  DefinitionInputSchema,
+  SaveResultSchema,
+  ConfirmRemoveSchema,
+  AnalysisSheetSchema,
+} from '../custom';
+import { definitionService, resultService } from './custom';
+import { exportAnalysisSheet } from './export';
+import { CopySourceSchema, CopyDefinitionSchema } from '../copy';
+import { copyService } from './copy';
+import { ContractImportPreviewSchema, ContractImportCommitSchema } from '../contract-transfer';
+import { contractTransferService } from './contract-transfer';
+import { ComparisonFilterSchema } from '../comparison';
+import { comparisonService } from './comparison';
 
 const m = moduleKit(manifest);
 export const analysisRouter = m.router({
+  comparison: m.router({
+    calculate: m.procedure
+      .meta({ permission: 'analysis.view' })
+      .input(ComparisonFilterSchema)
+      .query(({ ctx, input }) => comparisonService(ctx.svc).calculate(input)),
+    export: m.procedure
+      .meta({ permission: 'analysis.export' })
+      .input(ComparisonFilterSchema)
+      .query(({ ctx, input }) => comparisonService(ctx.svc).export(input)),
+  }),
+  definitions: m.router({
+    sources: m.procedure
+      .meta({ permission: 'analysis.definition.edit' })
+      .input(CopySourceSchema)
+      .mutation(({ ctx, input }) => copyService(ctx.app, ctx.svc).sources(input)),
+    copy: m.procedure
+      .meta({ permission: 'analysis.definition.edit' })
+      .input(CopyDefinitionSchema)
+      .mutation(({ ctx, input }) => copyService(ctx.app, ctx.svc).copy(input)),
+    list: m.procedure
+      .meta({ permission: 'analysis.view' })
+      .query(({ ctx }) => definitionService(ctx.svc).list()),
+    get: m.procedure
+      .meta({ permission: 'analysis.view' })
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ ctx, input }) => definitionService(ctx.svc).get(input.id)),
+    save: m.procedure
+      .meta({ permission: 'analysis.definition.edit' })
+      .input(DefinitionInputSchema)
+      .mutation(({ ctx, input }) => definitionService(ctx.svc).save(input)),
+    remove: m.procedure
+      .meta({ permission: 'analysis.definition.edit' })
+      .input(ConfirmRemoveSchema)
+      .mutation(({ ctx, input }) => definitionService(ctx.svc).remove(input)),
+    calculate: m.procedure
+      .meta({ permission: 'analysis.view' })
+      .input(CustomFilterSchema)
+      .query(({ ctx, input }) => definitionService(ctx.svc).calculate(input)),
+  }),
+  results: m.router({
+    list: m.procedure
+      .meta({ permission: 'analysis.view' })
+      .query(({ ctx }) => resultService(ctx.svc).list()),
+    get: m.procedure
+      .meta({ permission: 'analysis.view' })
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ ctx, input }) => resultService(ctx.svc).get(input.id)),
+    trend: m.procedure
+      .meta({ permission: 'analysis.view' })
+      .input(TrendFilterSchema)
+      .query(({ ctx, input }) => resultService(ctx.svc).trend(input)),
+    save: m.procedure
+      .meta({ permission: 'analysis.definition.edit' })
+      .input(SaveResultSchema)
+      .mutation(({ ctx, input }) => resultService(ctx.svc).save(input)),
+    remove: m.procedure
+      .meta({ permission: 'analysis.definition.edit' })
+      .input(ConfirmRemoveSchema)
+      .mutation(({ ctx, input }) => resultService(ctx.svc).remove(input)),
+    export: m.procedure
+      .meta({ permission: 'analysis.export' })
+      .input(z.object({ name: z.string().trim().min(1).max(100), sheet: AnalysisSheetSchema }))
+      .mutation(async ({ ctx, input }) => {
+        ctx.svc.permissions.require('analysis.view');
+        return { base64: await exportAnalysisSheet(input.name, input.sheet) };
+      }),
+  }),
   contracts: m.router({
+    exportLines: m.procedure
+      .meta({ permission: 'analysis.export' })
+      .input(z.object({ id: z.number().int().positive() }))
+      .query(({ ctx, input }) => contractTransferService(ctx.svc).exportLines(input.id)),
+    previewImport: m.procedure
+      .meta({ permission: 'analysis.contract.edit' })
+      .input(ContractImportPreviewSchema)
+      .mutation(({ ctx, input }) => contractTransferService(ctx.svc).previewImport(input)),
+    importArchive: m.procedure
+      .meta({ permission: 'analysis.contract.edit' })
+      .input(ContractImportCommitSchema)
+      .mutation(({ ctx, input }) => contractTransferService(ctx.svc).importArchive(input)),
+    archive: m.procedure
+      .meta({ permission: 'analysis.contract.view' })
+      .query(({ ctx }) => contractTransferService(ctx.svc).archive()),
+    exportArchive: m.procedure
+      .meta({ permission: 'analysis.export' })
+      .query(({ ctx }) => contractTransferService(ctx.svc).exportArchive()),
     list: m.procedure
       .meta({ permission: 'analysis.contract.view' })
       .query(({ ctx }) => contractService(ctx.svc).list()),
