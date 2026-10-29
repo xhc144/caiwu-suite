@@ -1,0 +1,201 @@
+{
+  "status": "LOCAL_DRAFT_ONLY_NOT_APPROVED_NOT_PUBLISHED",
+  "batches": [
+    {
+      "id": "01",
+      "title": "环境与桌面旧路线",
+      "archive_commit_sha": null,
+      "first_parent": "ACTUAL_MAIN_AT_FUTURE_PUBLICATION",
+      "additional_parent_shas": [
+        "16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa",
+        "6e861283ab2e536fb8b988ebf3626a4a2694a61e",
+        "f5f1616837c21783cc7cd0af19f2ac48aba8c70e"
+      ],
+      "branches": [
+        "claude/elegant-sagan-91n3gs",
+        "codex/testkit-windows-stdio-20261027",
+        "worker/w2-desktop-updates-20261026"
+      ],
+      "tree_policy": "first-parent tree + archive docs additions only",
+      "suggested_message": "archive(history): 保全旧开发路线 01（仅历史留存，未作功能合并或验收）"
+    },
+    {
+      "id": "02",
+      "title": "账套交互与凭证旧路线",
+      "archive_commit_sha": null,
+      "first_parent": "PREVIOUS_ARCHIVE_BATCH_COMMIT",
+      "additional_parent_shas": [
+        "af7d398f4abba60006babeb62edb40729b038e8a",
+        "2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27",
+        "2ac6cf96294e7a1788f4ea461171abfdbb0de9f7",
+        "ef0bcf9e77211b890d9150f11c46e8f9a5620371",
+        "2ba1e8a799f5d1295795a58528cb462445e38c36"
+      ],
+      "branches": [
+        "codex/books-modal-cancel-20261027",
+        "fix/balances-modal-confirm-20261027",
+        "fix/voucher-entry-stale-autosave",
+        "w2-10-voucher-book-gaps",
+        "codex/w2-native-voucher-preflight-20261026"
+      ],
+      "tree_policy": "first-parent tree + archive docs additions only",
+      "suggested_message": "archive(history): 保全旧开发路线 02（仅历史留存，未作功能合并或验收）"
+    },
+    {
+      "id": "03",
+      "title": "库存与成本旧路线",
+      "archive_commit_sha": null,
+      "first_parent": "PREVIOUS_ARCHIVE_BATCH_COMMIT",
+      "additional_parent_shas": [
+        "d4133a63d15368f92b4dc6af4522cfe146d67c91",
+        "48c1d3d4354e3bff8ddb1af7481702910d820cf6",
+        "a77023af2eda4d4099704dd8beb8a0027f32609c",
+        "ed770fb2517b9ea5d90cb9bafa7121955cf22671",
+        "cd47d15a7b83278378a309a761e1fd26b1edabdb"
+      ],
+      "branches": [
+        "codex/costing-real-voucher-20261027-4b3bbdd",
+        "codex/inventory-provider-format-20261026",
+        "codex/inventory-provider-format-final-20261026",
+        "codex/w2-costing-formal-release-20261026",
+        "codex/w2-inventory-costing-bridge"
+      ],
+      "tree_policy": "first-parent tree + archive docs additions only",
+      "suggested_message": "archive(history): 保全旧开发路线 03（仅历史留存，未作功能合并或验收）"
+    },
+    {
+      "id": "04",
+      "title": "企业及小企业报表旧路线",
+      "archive_commit_sha": null,
+      "first_parent": "PREVIOUS_ARCHIVE_BATCH_COMMIT",
+      "additional_parent_shas": [
+        "cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b",
+        "b45f491c5491f3dff6d1f27f4a7dada4e5eb5145",
+        "91e8e30435923db730881c9fa765f883364d2028",
+        "6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94",
+        "100fdcf71b365cd1ac364f3007911810aea3336b"
+      ],
+      "branches": [
+        "codex/report-profile-gates-20261026",
+        "codex/w2-02-enterprise-purchase-20261026",
+        "codex/w2-02-enterprise-statements",
+        "codex/w2-03-small-business-20261026",
+        "codex/w2-14-report-ui-20261026"
+      ],
+      "tree_policy": "first-parent tree + archive docs additions only",
+      "suggested_message": "archive(history): 保全旧开发路线 04（仅历史留存，未作功能合并或验收）"
+    },
+    {
+      "id": "05",
+      "title": "民非与共享取数旧路线",
+      "archive_commit_sha": null,
+      "first_parent": "PREVIOUS_ARCHIVE_BATCH_COMMIT",
+      "additional_parent_shas": [
+        "7388834962dcfa3e96dac5adb37ea6104c8aaa3f",
+        "bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790",
+        "c9f886ae8523215418aa13963f5db98ab489e844"
+      ],
+      "branches": [
+        "codex/w2-04-nonprofit-20261026",
+        "codex/w3-nonprofit-classified-20261026",
+        "codex/w2-shared-report-query"
+      ],
+      "tree_policy": "first-parent tree + archive docs additions only",
+      "suggested_message": "archive(history): 保全旧开发路线 05（仅历史留存，未作功能合并或验收）"
+    },
+    {
+      "id": "06",
+      "title": "账簿、模板与导入旧路线",
+      "archive_commit_sha": null,
+      "first_parent": "PREVIOUS_ARCHIVE_BATCH_COMMIT",
+      "additional_parent_shas": [
+        "ad7176449a3cf28c4e04fe2572cdf090dc7bfacf",
+        "e682c8bb60e85b87836828df7931722eb9992ce0",
+        "5714c533405f612ea05b754b9ed2d846e49d8f49",
+        "567a47cf386d08bbfd933435b46260a339c3d6ae"
+      ],
+      "branches": [
+        "codex/w2-12-ledgers-20261026",
+        "codex/w2-22-legacy-import-20261026",
+        "codex/wave1-m08-multicolumn-20261026",
+        "w2-06/templates-official-validation"
+      ],
+      "tree_policy": "first-parent tree + archive docs additions only",
+      "suggested_message": "archive(history): 保全旧开发路线 06（仅历史留存，未作功能合并或验收）"
+    }
+  ],
+  "publish_rules": {
+    "first_parent": "Actual approved current main at future publication, then preceding archive commit",
+    "additional_parents": "Exactly each batch frozen head list; no protected or active head",
+    "tree": "Copy the actual first-parent tree and add only new archive docs; all existing blobs and modes remain byte-identical",
+    "moving_main": "Pause, refresh actual main, rebuild/review the docs-only archival proposal without overwriting production, then update the draft PR through its owner; never directly update main.",
+    "moving_old_ref": "Retain ref; the archived frozen head does not preserve newer commits at a moved ref",
+    "delete_gate": "Only after final archive tip is reachable from main and each frozen head is confirmed an ancestor; root rechecks current ref/open PR/writer before any deletion",
+    "active_integration_order": "PR159 and PR161 are actually merged in b4f296e; other active wave3/new templates work remains protected. Archive parents must wait for active integration/owner coordination.",
+    "publication_route": "Only a draft PR targeting main; root independent review; then normal merge commit with merge_method=merge and expected_head_sha=reviewed_PR_head. Direct main ref update is forbidden."
+  },
+  "publication_receipt_proposal": {
+    "status": "NOT_CREATED",
+    "parent": "FINAL_ARCHIVE_BATCH_COMMIT_A6",
+    "additional_parent_shas": [],
+    "tree_policy": "A6 tree plus one new docs receipt file only",
+    "records": [
+      "actual baseline main SHA/tree",
+      "A1 through A6 SHA/tree and each frozen head coverage",
+      "read-only graph/tree verification performed before draft PR review; main changes only through the independently reviewed normal PR merge"
+    ],
+    "does_not_preclaim": [
+      "receipt own SHA in its own tree",
+      "draft PR review completion",
+      "normal PR merge success",
+      "branch ref deletion success"
+    ],
+    "reason": "A commit cannot embed its own content-derived SHA as a literal in the same committed tree; later additive docs or operation records capture outcomes."
+  },
+  "latest_observed_status": {
+    "observed_at": "2026-10-29 00:40:00 UTC",
+    "main": {
+      "head": "b4f296e3a64d1603aaa993506dc7a79fa63140f6",
+      "tree": "e9981ccf60fde85f91b4c9ce28f60df41011d9fe",
+      "parents": [
+        "1c8e9615e6fbe9d442b801ca0dd720ce3b927528",
+        "59210b09dfb283f951dbe9c9a3d87dd7795700fc"
+      ]
+    },
+    "prs": [
+      {
+        "number": 146,
+        "state": "open",
+        "merged": false,
+        "head": "wave3/costing-completion",
+        "head_sha": "bfd047c1fcd7141f37e56def234314aea0d1a801",
+        "merge_commit_sha": "770fe63d740447107b1f2a14fa135d42048414b9",
+        "merged_at": null
+      },
+      {
+        "number": 159,
+        "state": "closed",
+        "merged": true,
+        "head": "wave3/system-initialization-next",
+        "head_sha": "7510bcb8937591c688e66db03112baa9c765b8ca",
+        "merge_commit_sha": "1c8e9615e6fbe9d442b801ca0dd720ce3b927528",
+        "merged_at": "2026-10-29T00:32:48Z"
+      },
+      {
+        "number": 161,
+        "state": "closed",
+        "merged": true,
+        "head": "wave3/inventory-invoice-costing-reviewed",
+        "head_sha": "59210b09dfb283f951dbe9c9a3d87dd7795700fc",
+        "merge_commit_sha": "b4f296e3a64d1603aaa993506dc7a79fa63140f6",
+        "merged_at": "2026-10-29T00:35:00Z"
+      }
+    ],
+    "source": "GitHub connector read-only metadata",
+    "archive_status": "LOCAL_DRAFT_ONLY",
+    "publication_route": "draft PR -> root independent review -> normal merge commit; no direct main ref update",
+    "protected_new_template_owner": "wave3/templates-next"
+  },
+  "required_PR_merge_method": "merge",
+  "direct_main_ref_update_permitted": false
+}

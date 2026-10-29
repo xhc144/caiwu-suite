@@ -1,0 +1,227 @@
+{
+  "observed_at": "2026-10-29 00:33:26 UTC",
+  "main": {
+    "head": "dd4df52d9a70033f24630c5074755c8419a857c8",
+    "tree": "7e06d17ea0d6b6483e4266ddcc52216c6d62cf60",
+    "app_tree": "a3b5c1e2749fd044922c5b4c451be3aeff127d6e"
+  },
+  "remote_branch_count": 42,
+  "branches": [
+    {
+      "name": "claude/elegant-sagan-91n3gs",
+      "head": "16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa"
+    },
+    {
+      "name": "codex/books-modal-cancel-20261027",
+      "head": "af7d398f4abba60006babeb62edb40729b038e8a"
+    },
+    {
+      "name": "codex/costing-real-voucher-20261027-4b3bbdd",
+      "head": "d4133a63d15368f92b4dc6af4522cfe146d67c91"
+    },
+    {
+      "name": "codex/inventory-provider-format-20261026",
+      "head": "48c1d3d4354e3bff8ddb1af7481702910d820cf6"
+    },
+    {
+      "name": "codex/inventory-provider-format-final-20261026",
+      "head": "a77023af2eda4d4099704dd8beb8a0027f32609c"
+    },
+    {
+      "name": "codex/m21-shutdown-integration-20261026",
+      "head": "05f0b9121c1e763d2deaf39fe158fe91dd4fd5ef"
+    },
+    {
+      "name": "codex/report-profile-gates-20261026",
+      "head": "cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b"
+    },
+    {
+      "name": "codex/testkit-windows-stdio-20261027",
+      "head": "6e861283ab2e536fb8b988ebf3626a4a2694a61e"
+    },
+    {
+      "name": "codex/w2-02-enterprise-purchase-20261026",
+      "head": "b45f491c5491f3dff6d1f27f4a7dada4e5eb5145"
+    },
+    {
+      "name": "codex/w2-02-enterprise-statements",
+      "head": "91e8e30435923db730881c9fa765f883364d2028"
+    },
+    {
+      "name": "codex/w2-03-small-business-20261026",
+      "head": "6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94"
+    },
+    {
+      "name": "codex/w2-04-nonprofit-20261026",
+      "head": "7388834962dcfa3e96dac5adb37ea6104c8aaa3f"
+    },
+    {
+      "name": "codex/w2-12-ledgers-20261026",
+      "head": "ad7176449a3cf28c4e04fe2572cdf090dc7bfacf"
+    },
+    {
+      "name": "codex/w2-14-report-ui-20261026",
+      "head": "100fdcf71b365cd1ac364f3007911810aea3336b"
+    },
+    {
+      "name": "codex/w2-22-legacy-import-20261026",
+      "head": "e682c8bb60e85b87836828df7931722eb9992ce0"
+    },
+    {
+      "name": "codex/w2-costing-formal-release-20261026",
+      "head": "ed770fb2517b9ea5d90cb9bafa7121955cf22671"
+    },
+    {
+      "name": "codex/w2-inventory-costing-bridge",
+      "head": "cd47d15a7b83278378a309a761e1fd26b1edabdb"
+    },
+    {
+      "name": "codex/w2-native-voucher-preflight-20261026",
+      "head": "2ba1e8a799f5d1295795a58528cb462445e38c36"
+    },
+    {
+      "name": "codex/w2-shared-report-query",
+      "head": "c9f886ae8523215418aa13963f5db98ab489e844"
+    },
+    {
+      "name": "codex/w3-nonprofit-classified-20261026",
+      "head": "bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790"
+    },
+    {
+      "name": "codex/wave1-m08-multicolumn-20261026",
+      "head": "5714c533405f612ea05b754b9ed2d846e49d8f49"
+    },
+    {
+      "name": "codex/wave1-m21-desktop-db-validation",
+      "head": "377109bc21921ea13b30448a593f7db690d77fe9"
+    },
+    {
+      "name": "fix/balances-modal-confirm-20261027",
+      "head": "2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27"
+    },
+    {
+      "name": "fix/voucher-entry-stale-autosave",
+      "head": "2ac6cf96294e7a1788f4ea461171abfdbb0de9f7"
+    },
+    {
+      "name": "main",
+      "head": "dd4df52d9a70033f24630c5074755c8419a857c8"
+    },
+    {
+      "name": "w2-06/templates-official-validation",
+      "head": "567a47cf386d08bbfd933435b46260a339c3d6ae"
+    },
+    {
+      "name": "w2-10-voucher-book-gaps",
+      "head": "ef0bcf9e77211b890d9150f11c46e8f9a5620371"
+    },
+    {
+      "name": "wave3/analysis-completion",
+      "head": "ea16219cc50de4e868f3d92ff46982727bf7093a"
+    },
+    {
+      "name": "wave3/analysis-next",
+      "head": "41a57bfeb22c3b14afa4b09ec0e66265e3391b76"
+    },
+    {
+      "name": "wave3/backup-next",
+      "head": "966514b885ee98c952b80d98fa15fb5fe8fd1694"
+    },
+    {
+      "name": "wave3/costing-completion",
+      "head": "bfd047c1fcd7141f37e56def234314aea0d1a801"
+    },
+    {
+      "name": "wave3/costing-next",
+      "head": "328c3f618f25e3a2707608901a5f03ddfb7d77e8"
+    },
+    {
+      "name": "wave3/inventory-completion",
+      "head": "e13c7070d27f47cf338d9eb1149a88c7b4463f77"
+    },
+    {
+      "name": "wave3/inventory-invoice-costing-reviewed",
+      "head": "b1023777594490c079fcbc1fd5246c63d3c7aed1"
+    },
+    {
+      "name": "wave3/inventory-next",
+      "head": "9253ab0fd77df0f5a46c05f11f4d38f18d0b36f8"
+    },
+    {
+      "name": "wave3/invoice-completion",
+      "head": "275e65d17463a6d41f3d52fff68a5a099ce7906f"
+    },
+    {
+      "name": "wave3/invoice-next",
+      "head": "0327b6b11caf3ad171d6996a0de467733888abd5"
+    },
+    {
+      "name": "wave3/system-initialization-completion",
+      "head": "584aa384cbd0481f3e5009cf2b7214f043111c1c"
+    },
+    {
+      "name": "wave3/system-initialization-next",
+      "head": "7510bcb8937591c688e66db03112baa9c765b8ca"
+    },
+    {
+      "name": "wave3/templates-next",
+      "head": "a0ecd8d854572a9f03020b068ebb2818a4e4131d"
+    },
+    {
+      "name": "wave3/voucher-workbench",
+      "head": "5f8eeb54aa9c41781e4d741b5c732e5c8fd70888"
+    },
+    {
+      "name": "worker/w2-desktop-updates-20261026",
+      "head": "f5f1616837c21783cc7cd0af19f2ac48aba8c70e"
+    }
+  ],
+  "open_prs": [
+    {
+      "number": 161,
+      "head": "wave3/inventory-invoice-costing-reviewed",
+      "head_sha": "b1023777594490c079fcbc1fd5246c63d3c7aed1",
+      "state": "open"
+    },
+    {
+      "number": 159,
+      "head": "wave3/system-initialization-next",
+      "head_sha": "7510bcb8937591c688e66db03112baa9c765b8ca",
+      "state": "open"
+    },
+    {
+      "number": 146,
+      "head": "wave3/costing-completion",
+      "head_sha": "bfd047c1fcd7141f37e56def234314aea0d1a801",
+      "state": "open"
+    }
+  ],
+  "inventory_only_not_archive_parent_set": true,
+  "archive_scope_names": [
+    "claude/elegant-sagan-91n3gs",
+    "codex/books-modal-cancel-20261027",
+    "codex/costing-real-voucher-20261027-4b3bbdd",
+    "codex/inventory-provider-format-20261026",
+    "codex/inventory-provider-format-final-20261026",
+    "codex/report-profile-gates-20261026",
+    "codex/testkit-windows-stdio-20261027",
+    "codex/w2-02-enterprise-purchase-20261026",
+    "codex/w2-02-enterprise-statements",
+    "codex/w2-03-small-business-20261026",
+    "codex/w2-04-nonprofit-20261026",
+    "codex/w2-12-ledgers-20261026",
+    "codex/w2-14-report-ui-20261026",
+    "codex/w2-22-legacy-import-20261026",
+    "codex/w2-costing-formal-release-20261026",
+    "codex/w2-inventory-costing-bridge",
+    "codex/w2-native-voucher-preflight-20261026",
+    "codex/w2-shared-report-query",
+    "codex/w3-nonprofit-classified-20261026",
+    "codex/wave1-m08-multicolumn-20261026",
+    "fix/balances-modal-confirm-20261027",
+    "fix/voucher-entry-stale-autosave",
+    "w2-06/templates-official-validation",
+    "w2-10-voucher-book-gaps",
+    "worker/w2-desktop-updates-20261026"
+  ]
+}

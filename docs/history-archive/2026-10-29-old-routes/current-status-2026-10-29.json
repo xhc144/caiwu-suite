@@ -1,0 +1,44 @@
+{
+  "observed_at": "2026-10-29 00:40:00 UTC",
+  "main": {
+    "head": "b4f296e3a64d1603aaa993506dc7a79fa63140f6",
+    "tree": "e9981ccf60fde85f91b4c9ce28f60df41011d9fe",
+    "parents": [
+      "1c8e9615e6fbe9d442b801ca0dd720ce3b927528",
+      "59210b09dfb283f951dbe9c9a3d87dd7795700fc"
+    ]
+  },
+  "prs": [
+    {
+      "number": 146,
+      "state": "open",
+      "merged": false,
+      "head": "wave3/costing-completion",
+      "head_sha": "bfd047c1fcd7141f37e56def234314aea0d1a801",
+      "merge_commit_sha": "770fe63d740447107b1f2a14fa135d42048414b9",
+      "merged_at": null
+    },
+    {
+      "number": 159,
+      "state": "closed",
+      "merged": true,
+      "head": "wave3/system-initialization-next",
+      "head_sha": "7510bcb8937591c688e66db03112baa9c765b8ca",
+      "merge_commit_sha": "1c8e9615e6fbe9d442b801ca0dd720ce3b927528",
+      "merged_at": "2026-10-29T00:32:48Z"
+    },
+    {
+      "number": 161,
+      "state": "closed",
+      "merged": true,
+      "head": "wave3/inventory-invoice-costing-reviewed",
+      "head_sha": "59210b09dfb283f951dbe9c9a3d87dd7795700fc",
+      "merge_commit_sha": "b4f296e3a64d1603aaa993506dc7a79fa63140f6",
+      "merged_at": "2026-10-29T00:35:00Z"
+    }
+  ],
+  "source": "GitHub connector read-only metadata",
+  "archive_status": "LOCAL_DRAFT_ONLY",
+  "publication_route": "draft PR -> root independent review -> normal merge commit; no direct main ref update",
+  "protected_new_template_owner": "wave3/templates-next"
+}

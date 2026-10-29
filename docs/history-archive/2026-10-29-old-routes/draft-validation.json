@@ -1,0 +1,193 @@
+{
+  "status": "LOCAL_DRAFT_ONLY",
+  "scope_head_count": 25,
+  "batches": [
+    3,
+    5,
+    5,
+    5,
+    3,
+    4
+  ],
+  "scope_owned_paths": 1612,
+  "unique_non_main_commits": 157,
+  "active_wave3_heads_in_archived_non_main_commit_set": [],
+  "new_files_outside_docs": [],
+  "tracked_app_or_workflow_changes": [],
+  "remote_write_calls": 0,
+  "git_commit_or_merge_operations": 0,
+  "git_ref_writes": 0,
+  "tests_run": 0,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 12300,
+      "sha256": "db7debf951aad437aa72a9cfc5272949602a3b8bcb65e8f38ddd9d3003bce946"
+    },
+    {
+      "path": "batch-plan.json",
+      "bytes": 8918,
+      "sha256": "1ddf450468cb441a5fff3ebac0fae856de14caff08fe2761050a4c6ae1c27a2c"
+    },
+    {
+      "path": "branches/claude__elegant-sagan-91n3gs.md",
+      "bytes": 2761,
+      "sha256": "41900627178d17d4b4c32c23b3178686f4a57e6e960dbdf6346fdf232a923f94"
+    },
+    {
+      "path": "branches/codex__books-modal-cancel-20261027.md",
+      "bytes": 9099,
+      "sha256": "8769bf1b5e7832a104cec45cb013bbb3e374919ef3a87c87d2c0936179a5ee80"
+    },
+    {
+      "path": "branches/codex__costing-real-voucher-20261027-4b3bbdd.md",
+      "bytes": 37194,
+      "sha256": "91f5db32fde64ce68749cd6b542c75f87b66414a8f8d54177964b4fff77a91e4"
+    },
+    {
+      "path": "branches/codex__inventory-provider-format-20261026.md",
+      "bytes": 12946,
+      "sha256": "7003a827e835f5fa542667842f619f059e490c1016fb0c4f9446d2cca2ba2e51"
+    },
+    {
+      "path": "branches/codex__inventory-provider-format-final-20261026.md",
+      "bytes": 12958,
+      "sha256": "a8dd0fd6d9817a536638392fd8864900f77db51da19cf5219bcd638756c239e8"
+    },
+    {
+      "path": "branches/codex__report-profile-gates-20261026.md",
+      "bytes": 25697,
+      "sha256": "8d714cc80f5c5daf2c9e75904a1ca6ff1521d1b830554730d7bda915c8d491b8"
+    },
+    {
+      "path": "branches/codex__testkit-windows-stdio-20261027.md",
+      "bytes": 40123,
+      "sha256": "59e1e2fafaf02d931a4aa497b6def82749423ac6d78f096072dbc0ed47f811e5"
+    },
+    {
+      "path": "branches/codex__w2-02-enterprise-purchase-20261026.md",
+      "bytes": 10139,
+      "sha256": "c96074adbd36b689419df25fc8a790a815158888391ea05a83c52950c9933cb2"
+    },
+    {
+      "path": "branches/codex__w2-02-enterprise-statements.md",
+      "bytes": 7007,
+      "sha256": "cf415b1c2a4d91dd34572a54315821ded90916830fcc5f2c504fa5aefdc5a54e"
+    },
+    {
+      "path": "branches/codex__w2-03-small-business-20261026.md",
+      "bytes": 10539,
+      "sha256": "7de21af9ea9a05f5a4616b871614d19053c99e8d14a53d4173ad1e3c49f1cc53"
+    },
+    {
+      "path": "branches/codex__w2-04-nonprofit-20261026.md",
+      "bytes": 8062,
+      "sha256": "73c4f4f8e06d22a397bab946d4bf97bf6a156d8d1de6f16619218c951c669351"
+    },
+    {
+      "path": "branches/codex__w2-12-ledgers-20261026.md",
+      "bytes": 6933,
+      "sha256": "653a49a9169459bd6fd7f61441821233d06200542a2d035f85cc3c497f226f96"
+    },
+    {
+      "path": "branches/codex__w2-14-report-ui-20261026.md",
+      "bytes": 7287,
+      "sha256": "dc19c9a966176dfebbd338972aca5ca0d5d22563274c86da2b65bd44dc2573cc"
+    },
+    {
+      "path": "branches/codex__w2-22-legacy-import-20261026.md",
+      "bytes": 6807,
+      "sha256": "0bd86a10db68e1a9dab0aab64561e86dfe774308dd6eeec976d4c7e05370f605"
+    },
+    {
+      "path": "branches/codex__w2-costing-formal-release-20261026.md",
+      "bytes": 16370,
+      "sha256": "c9ed02f1b20ebd92a4dd1b84869e6836331937ab130be8dcf3593ea60514d84b"
+    },
+    {
+      "path": "branches/codex__w2-inventory-costing-bridge.md",
+      "bytes": 12932,
+      "sha256": "c60396114a8803ec314743a1bfcf22795306ace8f7961d91b50ea2c1fac60326"
+    },
+    {
+      "path": "branches/codex__w2-native-voucher-preflight-20261026.md",
+      "bytes": 10163,
+      "sha256": "ecd3438d16dc1a28d5de5bff807cb877ff847b99acb14daf1dac905195340d2b"
+    },
+    {
+      "path": "branches/codex__w2-shared-report-query.md",
+      "bytes": 4710,
+      "sha256": "c109dab9c32380a4dcd4f10f0bc5d189482c522e6d0d409ae80d5ebb1d5a61ab"
+    },
+    {
+      "path": "branches/codex__w3-nonprofit-classified-20261026.md",
+      "bytes": 11229,
+      "sha256": "91db4ba3097b626a4537dd3eb2992f9084337a7597665c5f43172fa4b141f7e9"
+    },
+    {
+      "path": "branches/codex__wave1-m08-multicolumn-20261026.md",
+      "bytes": 3595,
+      "sha256": "7faf486afc40b166f36d89c78ecb5a77bd321bbb1856cd02b9e18aec8a04eafe"
+    },
+    {
+      "path": "branches/fix__balances-modal-confirm-20261027.md",
+      "bytes": 40167,
+      "sha256": "25b69731423920d3482737f031536d342820a9d2ecc59b0fbb84f63ad3b3b2d7"
+    },
+    {
+      "path": "branches/fix__voucher-entry-stale-autosave.md",
+      "bytes": 2617,
+      "sha256": "866653a44317ca19054677dedd6500f1b672d05097606050457d4ca3a0095b9f"
+    },
+    {
+      "path": "branches/w2-06__templates-official-validation.md",
+      "bytes": 3287,
+      "sha256": "04f0abeaa7ec6c9d9231080e8b495d33e37a13ef013f50b5bed271fc584473ce"
+    },
+    {
+      "path": "branches/w2-10-voucher-book-gaps.md",
+      "bytes": 4856,
+      "sha256": "f58dc01f243f89c0c366d789bb8f9e7fc3856f7ad9cb92e0fcf9cd81bf062fcb"
+    },
+    {
+      "path": "branches/worker__w2-desktop-updates-20261026.md",
+      "bytes": 4781,
+      "sha256": "f949889976f0422083f522f973af713a4a52139ed89ef34bea2f8dcbefa12231"
+    },
+    {
+      "path": "branches.tsv",
+      "bytes": 5243,
+      "sha256": "9ac86b5ba813061389f6e0a3bdb318cf1f93591db08a8f7beaa9ad24ea31251e"
+    },
+    {
+      "path": "current-status-2026-10-29.json",
+      "bytes": 1470,
+      "sha256": "5d05fe7e4871d06a6d74371b0eb1efad096af153dd41f5625ab31c7e17f60d47"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 1145349,
+      "sha256": "6e598267ccd5fca403db787f2d7f5cd7ce3e9f94122f1ae747b200db58d136b6"
+    },
+    {
+      "path": "path-differences.tsv",
+      "bytes": 462047,
+      "sha256": "f5fb0ded34a6ac6e52e8d24f0c62044a6128e21e84793a2197bb1ad0eed96eab"
+    },
+    {
+      "path": "ref-snapshot.json",
+      "bytes": 6940,
+      "sha256": "8d6dcd1ab6aafedb3a0e3716825852d01aaca2cbb24020934687a3d0a10a806a"
+    },
+    {
+      "path": "remaining-work.md",
+      "bytes": 4205,
+      "sha256": "bda7dfba81593d0c3067a81a2b0d612c54a1f2682e700da8d84639867a5664d8"
+    }
+  ],
+  "updated_at": "2026-10-29 00:51:19 UTC",
+  "original_dd4_ref_snapshot_sha256_unchanged": "8d6dcd1ab6aafedb3a0e3716825852d01aaca2cbb24020934687a3d0a10a806a",
+  "latest_status_head": "b4f296e3a64d1603aaa993506dc7a79fa63140f6",
+  "direct_main_ref_update_permitted": false,
+  "required_publication_route": "draft PR -> root independent review -> normal merge commit"
+}
