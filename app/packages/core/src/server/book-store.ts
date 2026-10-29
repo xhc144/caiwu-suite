@@ -74,6 +74,8 @@ export interface BookStoreOptions {
   /** 打开账套时要执行的迁移（core 在前）。用函数是为了让模块列表晚于 BookStore 创建也能生效。 */
   migrationSets: () => readonly MigrationSet[];
   templates: TemplateRegistry;
+  /** 新建宿主的纯校验；内部初始化暂存库不注册此用户建账策略。 */
+  validateCreation?: (input: CreateBookInput) => void;
   modules?: ModuleLookup;
   now?: () => Date;
   maintenanceStarted?: (bookId: string) => void;
@@ -995,6 +997,7 @@ export class BookStore {
   async create(raw: CreateBookInput): Promise<BookInfo> {
     this.#ensureLease();
     const input = CreateBookInputSchema.parse(raw);
+    this.#opts.validateCreation?.(input);
     if (!input.requestKey) return this.#operations.run(() => this.#create(input));
     const requestKey = input.requestKey;
     const requestHash = createHash('sha256').update(JSON.stringify(input)).digest('hex');

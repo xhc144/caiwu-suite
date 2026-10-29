@@ -18,12 +18,13 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { createTRPCClient, httpLink } from '@trpc/client';
 import type { CoreShell } from '@caiwu/server-kit';
 import { coreApi, appToken, notify, queryClient, showError } from '@caiwu/web-kit';
-import { parseCodeScheme, productName, type BookInfo } from '@caiwu/core';
+import { BusinessError, parseCodeScheme, productName, type BookInfo } from '@caiwu/core';
 import small from '../templates/small-business.json';
 import { primaryCharts, offeredTemplates } from '../chart';
 import { validateScheme, WizardSchema, type WizardInput } from '../shared';
 import TemplatePreview from './TemplatePreview';
 import { mapChart } from '../chart-scheme';
+import type { TemplateCreation } from './template-creation';
 
 const localTemplates = primaryCharts;
 
@@ -92,9 +93,11 @@ async function verifyBook(book: BookInfo, input: WizardInput) {
 export default function Wizard({
   onClose,
   onCreated,
+  templateCreation,
 }: {
   onClose: () => void;
   onCreated: (id: string) => void;
+  templateCreation?: TemplateCreation;
 }) {
   const { modal } = App.useApp();
   const templates = useQuery(coreApi.books.templates.queryOptions());
@@ -116,6 +119,7 @@ export default function Wizard({
     codeScheme: '4-2-2',
     startYear: new Date().getFullYear(),
     startMonth: 1,
+    facts: undefined,
   }));
   const [form] = Form.useForm<WizardInput>();
   const values = Form.useWatch([], form) as WizardInput | undefined;
@@ -242,6 +246,7 @@ export default function Wizard({
       }
       const local = localTemplates.find((t) => t.id === input.templateId);
       if (local) validateScheme(local, input.codeScheme);
+      templateCreation?.validate(input);
       setFailure('');
       const actualInput = { ...input, requestKey };
       const book = await create.mutateAsync(actualInput);
@@ -264,6 +269,7 @@ export default function Wizard({
         notify.error(first?.errors[0] ?? '请检查填写内容');
       }
       if (e instanceof Error) {
+        if (e instanceof BusinessError && e.data.code.startsWith('TEMPLATE_')) setStep(3);
         setFailure(e.message);
         showError(e);
       }
@@ -289,10 +295,16 @@ export default function Wizard({
       );
       const local = localTemplates.find((t) => t.id === values?.templateId);
       if (step === 2 && local) validateScheme(local, values?.codeScheme ?? '');
+      if (step === 3 && templateCreation)
+        templateCreation.validate(WizardSchema.parse(form.getFieldsValue(true)));
+      setFailure('');
       if (!closing.current && !cancellation.current && !busy.current)
         setStep(Math.min(step + 1, 4));
     } catch (e) {
-      if (e instanceof Error) showError(e);
+      if (e instanceof Error) {
+        setFailure(e.message);
+        showError(e);
+      }
     }
   };
   const summary = (
@@ -397,13 +409,14 @@ export default function Wizard({
         form={form}
         layout="vertical"
         disabled={!open || confirming || !!created || create.isPending || checking}
-        onValuesChange={(_, current: WizardInput) =>
+        onValuesChange={(_, current: WizardInput) => {
+          setFailure('');
           setDirty(
             Object.entries(initialValues).some(
               ([key, value]) => (current as unknown as Record<string, unknown>)[key] !== value,
             ),
-          )
-        }
+          );
+        }}
         initialValues={initialValues}
       >
         <div hidden={step !== 0}>
@@ -466,6 +479,8 @@ export default function Wizard({
           >
             <Radio.Group
               onChange={(e) => {
+                form.setFieldValue('facts', undefined);
+                setFailure('');
                 const t = templates.data?.find((t) => t.id === e.target.value);
                 if (!t) return;
                 try {
@@ -538,6 +553,17 @@ export default function Wizard({
             <InputNumber min={1} max={12} />
           </Form.Item>
         </div>
+        {templateCreation && (
+          <div hidden={step !== 3 && step !== 4}>
+            <Form.Item name="facts" label="制度适用条件">
+              <templateCreation.Fields
+                templateId={values?.templateId ?? ''}
+                startYear={values?.startYear ?? Number.NaN}
+                startMonth={values?.startMonth ?? Number.NaN}
+              />
+            </Form.Item>
+          </div>
+        )}
       </Form>
       <Typography.Title level={5}>创建前复核</Typography.Title>
       {summary}

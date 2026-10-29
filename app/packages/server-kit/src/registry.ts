@@ -1,6 +1,6 @@
 import type { AnyTRPCRouter } from '@trpc/server';
 import { orderByDependencies, type MigrationSet } from '@caiwu/db';
-import type { ModuleManifest } from '@caiwu/core';
+import type { CreateBookInput, ModuleManifest } from '@caiwu/core';
 import type { CoreServiceProviders, ModuleLookup } from '@caiwu/core/server';
 import type { ServerModule } from './module';
 
@@ -97,10 +97,18 @@ export class ModuleRegistry {
       .map((m) => ({ scope: m.manifest.id, migrations: m.migrations }));
   }
 
-  templates(): { source: string; templates: readonly unknown[] }[] {
+  templates(): {
+    source: string;
+    templates: readonly unknown[];
+    validateCreation?: (input: CreateBookInput) => void;
+  }[] {
     return this.modules
       .filter((m) => m.templates.length)
-      .map((m) => ({ source: m.manifest.id, templates: m.templates }));
+      .map((m) => ({
+        source: m.manifest.id,
+        templates: m.templates,
+        validateCreation: m.validateBookCreation,
+      }));
   }
 }
 

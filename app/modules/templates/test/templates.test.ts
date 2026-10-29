@@ -161,11 +161,15 @@ it('工会适用范围独立：县级以上45项、基层主要表24项；不混
   }
 });
 
-it('正式模式注册所有制度模板，无菜单、写接口或迁移；全局重复ID拒绝', () => {
+it('正式模式注册所有制度模板；只提供适用性查询及复用核心事务的建账入口；全局重复ID拒绝', () => {
   const modules = new ModuleRegistry([templatesServer]);
   const registry = new TemplateRegistry({ devMode: false });
   for (const entry of modules.templates()) registry.register(entry.source, entry.templates);
-  expect(registry.list().map((t) => t.id)).toEqual(templates.map((t) => t.id));
+  expect(registry.list().map((t) => t.id)).toEqual(
+    [...templates]
+      .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+      .map((t) => t.id),
+  );
   for (const expected of expectedTemplates) {
     expect(registry.get(expected.id).devOnly).toBe(false);
   }
@@ -173,7 +177,12 @@ it('正式模式注册所有制度模板，无菜单、写接口或迁移；全�
   expect(templatesServer.manifest.menu).toEqual([]);
   expect(templatesServer.manifest.permissions).toEqual([]);
   expect(templatesServer.migrations).toEqual([]);
-  expect(listProcedures(templatesServer.router)).toEqual([]);
+  expect(listProcedures(templatesServer.router)).toEqual([
+    { path: 'creationPolicies', type: 'query', meta: undefined },
+    { path: 'originalCatalog', type: 'query', meta: undefined },
+    { path: 'checkCreation', type: 'query', meta: undefined },
+    { path: 'createBook', type: 'mutation', meta: { noPermission: true } },
+  ]);
   expect(() => registry.register('another-provider', [templates[0]])).toThrow(
     /nonprofit-2026 重复：templates 和 another-provider/,
   );

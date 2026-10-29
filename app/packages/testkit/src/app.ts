@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { AnyTRPCRouter } from '@trpc/server';
 import { createCoreServices, loadServiceUser, type CoreServices } from '@caiwu/core/server';
-import type { BookInfo, ProductId } from '@caiwu/core';
+import type { BookInfo, CreateBookInput, ProductId } from '@caiwu/core';
 import {
   buildAppRouter,
   coreRouter,
@@ -20,6 +20,7 @@ export interface TestAppOptions {
   startYear?: number;
   startMonth?: number;
   templateId?: string;
+  facts?: CreateBookInput['facts'];
   seed?: boolean;
 }
 
@@ -75,6 +76,7 @@ export async function createTestApp(opts: TestAppOptions = {}): Promise<TestApp>
     name: '测试账套',
     orgName: '测试单位有限公司',
     templateId: opts.templateId ?? 'demo-enterprise',
+    facts: opts.facts,
     product: opts.product ?? 'chengben',
     startYear: opts.startYear ?? 2026,
     startMonth: opts.startMonth ?? 1,

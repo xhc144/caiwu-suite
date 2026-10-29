@@ -52,6 +52,15 @@ for (const example of cases)
       await wizard.getByLabel('科目级次', { exact: true }).fill(scheme);
       await wizard.getByRole('button', { name: '下一步' }).click();
       await wizard.getByLabel('启用年份', { exact: true }).fill('2026');
+      if (example.id.startsWith('financing-guarantee-')) {
+        await wizard
+          .getByRole('radio', {
+            name: example.id.includes('cas25') ? '保险合同准则' : '金融工具确认和计量准则',
+            exact: true,
+          })
+          .check();
+        for (const checkbox of await wizard.getByRole('checkbox').all()) await checkbox.check();
+      }
       await wizard.getByRole('button', { name: '下一步' }).click();
       await wizard.getByRole('button', { name: '创建', exact: true }).click();
       await expect(page).toHaveURL(/\/login\//);
