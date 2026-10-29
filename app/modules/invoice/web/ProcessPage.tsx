@@ -328,6 +328,7 @@ export default function ProcessPage() {
             预览分录
           </Button>
           <Button
+            aria-label="保存制证输入"
             onClick={() => {
               void persistDraft().catch(() => undefined);
             }}

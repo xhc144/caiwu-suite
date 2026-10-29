@@ -518,6 +518,7 @@ export default function IssuePage() {
           )}
           <Space wrap>
             <Button
+              aria-label="预览出库单"
               htmlType="submit"
               type="primary"
               loading={preview.isPending}
