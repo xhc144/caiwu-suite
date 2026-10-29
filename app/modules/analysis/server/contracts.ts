@@ -121,6 +121,9 @@ export function contractService(svc: CoreServices) {
         status: voucher.status,
         voided: voucher.voided,
         accountCode: line.accountCode,
+        debit: line.debit,
+        credit: line.credit,
+        currency: line.currency ?? '本位币',
         summary: line.summary,
         amount: cents(row.kind === 'receipt' ? line.debit - line.credit : line.credit - line.debit),
       });
@@ -228,6 +231,7 @@ export function contractService(svc: CoreServices) {
           opening: input.opening,
           description: input.description,
           remark: input.remark,
+          remark2: input.remark2,
           revision: (current?.revision ?? 0) + 1,
         };
         const saved = current

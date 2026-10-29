@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import { Alert, Button, Checkbox, Form, Select, Space } from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
@@ -9,6 +9,7 @@ import {
   useAccounts,
   usePermission,
   useRequiredSession,
+  useHotkey,
 } from '@caiwu/web-kit';
 import {
   AccountSelect,
@@ -22,6 +23,7 @@ import {
 import { SHORTCUT_NAMES, ShortcutSchema, TrendFilterSchema, type TrendRow } from '../shared';
 import { api } from './api';
 import AnalysisChart from './AnalysisChart';
+import ResultEditor, { type ResultDraft } from './ResultEditor';
 import {
   downloadWorkbook,
   NoPermission,
@@ -72,6 +74,17 @@ function TrendPage() {
   const query = useQuery({ ...api.trend.queryOptions(input), enabled: canView && parsed.success });
   const report = query.data;
   const [exporting, setExporting] = useState(false);
+  const [resultDraft, setResultDraft] = useState<ResultDraft>();
+  const chartHost = useRef<HTMLDivElement>(null);
+  useHotkey(
+    'Ctrl+P',
+    () => {
+      const choice = chartHost.current?.querySelector<HTMLInputElement>('[aria-label="图形"]');
+      choice?.scrollIntoView({ block: 'center' });
+      choice?.focus();
+    },
+    { enabled: !resultDraft },
+  );
   const metricName =
     filters.metric === 'balance'
       ? '期末余额'
@@ -349,7 +362,32 @@ function TrendPage() {
           {shortcuts.isError && (
             <ReportError error={shortcuts.error} retry={() => void shortcuts.refetch()} />
           )}
-          <Space>
+          <Space wrap>
+            {canEdit && (
+              <Button
+                disabled={!report || query.isFetching}
+                onClick={() => {
+                  if (report)
+                    void queryClient
+                      .fetchQuery({
+                        ...api.results.trend.queryOptions(report.filter),
+                        staleTime: 0,
+                      })
+                      .then((sheet) =>
+                        setResultDraft({
+                          revision: 0,
+                          name: `${report.filter.accountCode}-${report.filter.period}-${report.filter.mode === 'annual' ? '年度分析' : '月度分析'}`,
+                          sheet,
+                        }),
+                      )
+                      .catch(showError);
+                }}
+              >
+                编辑并保存结果
+              </Button>
+            )}
+            <Link to="/m/analysis/results">已保存分析结果</Link>
+            <Link to="/m/analysis/custom">自定义分析表</Link>
             {canExport && (
               <>
                 <Button
@@ -384,8 +422,18 @@ function TrendPage() {
                   : '按所选末级科目合计计算'}
                 ；快照：{report.generatedAt}
               </p>
-              <AnalysisChart labels={chartLabels} values={chartValues} />
+              <div ref={chartHost}>
+                <AnalysisChart
+                  labels={chartLabels}
+                  values={chartValues}
+                  title={`${filters.accountCode} ${filters.period} 科目分析图形`}
+                  description={`${metricName}；${filters.scope === 'operating' ? '经营口径' : '原始总账'}；${filters.includeUnposted ? '包含未过账' : '仅已过账'}`}
+                />
+              </div>
             </>
+          )}
+          {resultDraft && (
+            <ResultEditor initial={resultDraft} onClose={() => setResultDraft(undefined)} />
           )}
           <DataTable<TrendRow>
             tableId="analysis.trend"

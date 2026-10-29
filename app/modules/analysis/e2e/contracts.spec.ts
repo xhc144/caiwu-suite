@@ -60,8 +60,11 @@ test('w_ht_htda→审核→w_ht_pz明确关联→w_ht_httj金额、Excel与原�
   await editor.getByLabel('合同金额', { exact: true }).fill('1000');
   await editor.getByLabel('期初收付款').fill('100');
   await editor.getByLabel('合同说明').fill('交付说明；到期日未提供');
-  page.once('dialog', (dialog) => dialog.dismiss());
   await page.keyboard.press('Escape');
+  await page
+    .getByRole('dialog', { name: '合同尚未保存', exact: true })
+    .getByRole('button', { name: '继续编辑', exact: true })
+    .click();
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel('合同名称')).toHaveValue('浏览器合成合同');
   await editor.getByRole('button', { name: '保存合同', exact: true }).click();

@@ -886,8 +886,19 @@ export function backupService(ctx: Context) {
               .where('status', '=', 'valid')
               .execute();
             const localBackups: LocalBackup[] = [];
-            for (const row of localRows)
-              localBackups.push(await verifiedLocalBackup(ctx.app, ctx.book.id, row));
+            for (const row of localRows) {
+              try {
+                localBackups.push(await verifiedLocalBackup(ctx.app, ctx.book.id, row));
+              } catch (error) {
+                const reason = fileError(error);
+                if (row.id === plan.backup_id || row.id === protection.id) throw reason;
+                throw fail(
+                  'HISTORY',
+                  `本机历史备份「${row.name}」未通过校验，覆盖准备已停止`,
+                  `原因：${reason.message}。请取消本次恢复，在备份列表对「${row.name}」（${row.created_at}）点击「校验」。该项标记为「校验失败」后，从本次完好来源重新「恢复预览」。原账套与备份文件均保留。`,
+                );
+              }
+            }
             if (
               !localBackups.some((row) => row.id === plan.backup_id) ||
               !localBackups.some((row) => row.id === protection.id)

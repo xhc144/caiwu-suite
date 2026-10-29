@@ -14,6 +14,7 @@ export const ContractInputSchema = z.object({
   opening: zCents.refine((n) => n >= 0, '期初收付款不能为负'),
   description: z.string().max(4000).default(''),
   remark: z.string().max(500).default(''),
+  remark2: z.string().max(500).default(''),
 });
 export type ContractInput = z.input<typeof ContractInputSchema>;
 export const ContractVersionSchema = z.object({

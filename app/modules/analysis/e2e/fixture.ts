@@ -8,7 +8,7 @@ import { createRuntime } from '@caiwu/server-kit';
 import { createCoreServices, loadServiceUser, type CoreServices } from '@caiwu/core/server';
 import analysis from '../server';
 
-type Isolated = {
+export type Isolated = {
   origin: string;
   request: APIRequestContext;
   seed: (bookId: string, fn: (svc: CoreServices) => Promise<void>) => Promise<void>;
