@@ -20,7 +20,7 @@ import {
   useUrlFilters,
   type DataColumn,
 } from '@caiwu/ui';
-import { notify, usePermission } from '@caiwu/web-kit';
+import { notify, usePermission, useRequiredSession } from '@caiwu/web-kit';
 import {
   ReferenceKindSchema,
   type ReferenceInput,
@@ -28,7 +28,7 @@ import {
   type ReferenceRow,
 } from '../shared';
 import { api } from './api';
-import { ExcelActions, refresh, run, useConfirm, useUnsaved } from './common';
+import { ExcelActions, refresh, run, useConfirm, useUnsaved, draftVersion } from './common';
 
 const kindNames: Record<ReferenceKind, string> = {
   voucherTypes: '凭证类型',
@@ -145,14 +145,14 @@ export default function ReferencePage() {
         <Alert
           style={{ marginBottom: 16 }}
           type="info"
-          title="简称用于凭证头显示，全称用于说明。借贷必有、必无科目等约束暂未提供，不影响现有 core 的保存校验。"
+          title="简称用于凭证头显示，全称用于说明。借贷必有、必无科目等约束暂未提供，保存时仍会检查借贷平衡、期间与科目。"
         />
       )}
       {kind === 'currencies' && (
         <Alert
           style={{ marginBottom: 16 }}
           type="info"
-          title="本页仅维护币种和期间汇率，不改变账套本位币。当前共享层凭证核算以 CNY 为本位币。"
+          title="本页维护币种和各期间适用汇率；账套本位币为人民币。"
         />
       )}
       <FilterBar
@@ -200,6 +200,7 @@ function ReferenceDrawer({
 }) {
   const [form] = Form.useForm<ReferenceInput>();
   const [dirty, setDirty] = useState(false);
+  const version = draftVersion(Form.useWatch([], form));
   const save = useMutation(api.reference.save.mutationOptions());
   const isNew = item === 'new';
   const submit = async () => {
@@ -210,10 +211,15 @@ function ReferenceDrawer({
     onClose();
     notify.success('已保存');
   };
-  const unsaved = useUnsaved(dirty, submit, () => {
-    form.resetFields();
-    setDirty(false);
-  });
+  const unsaved = useUnsaved(
+    dirty,
+    submit,
+    () => {
+      form.resetFields();
+      setDirty(false);
+    },
+    { title: '参考档案', version },
+  );
   return (
     <>
       <Drawer
@@ -225,7 +231,7 @@ function ReferenceDrawer({
           <Space>
             <Button onClick={() => unsaved.guard(onClose)}>取消</Button>
             {canEdit && (
-              <Button type="primary" loading={save.isPending} onClick={() => run(submit())}>
+              <Button type="primary" loading={unsaved.isSaving} onClick={() => run(unsaved.save())}>
                 保存
               </Button>
             )}
@@ -237,7 +243,7 @@ function ReferenceDrawer({
           layout="vertical"
           initialValues={isNew ? { kind, sort: 0, disabled: false } : { ...item, kind }}
           onValuesChange={() => setDirty(true)}
-          disabled={!canEdit}
+          disabled={!canEdit || unsaved.isSaving}
         >
           <Form.Item
             name="code"
@@ -301,81 +307,95 @@ function RatesDrawer({
   canEdit: boolean;
   onClose: () => void;
 }) {
+  const { book } = useRequiredSession();
   const [form] = Form.useForm<{ period: number; rate: string; accountId: number | null }>();
-  const [applicable, setApplicable] = useState<number>(202601);
+  const [dirty, setDirty] = useState(false);
+  const version = draftVersion(Form.useWatch([], form));
+  const [applicable, setApplicable] = useState<number>(book.startPeriod);
   const rates = useQuery(api.reference.rates.queryOptions({ currency }));
   const rate = useQuery(
     api.reference.applicableRate.queryOptions({ currency, period: applicable }),
   );
   const save = useMutation(api.reference.saveRate.mutationOptions());
+  const submit = async () => {
+    const v = await form.validateFields();
+    await save.mutateAsync({ ...v, currency, accountId: v.accountId ?? null });
+    setDirty(false);
+    await refresh();
+    notify.success('汇率已保存');
+  };
+  const unsaved = useUnsaved(
+    dirty,
+    submit,
+    () => {
+      form.resetFields();
+      form.setFieldValue('accountId', rates.data?.accountId ?? null);
+      setDirty(false);
+    },
+    { title: `${currency} 期间汇率`, version },
+  );
   useEffect(() => {
     if (rates.data && !form.isFieldTouched('accountId'))
       form.setFieldValue('accountId', rates.data.accountId);
   }, [form, rates.data]);
   return (
-    <Drawer
-      open
-      title={`${currency} 期间汇率`}
-      size={600}
-      onClose={onClose}
-      footer={
-        canEdit && (
-          <Button
-            type="primary"
-            onClick={() =>
-              run(
-                (async () => {
-                  const v = await form.validateFields();
-                  await save.mutateAsync({ ...v, currency, accountId: v.accountId ?? null });
-                  await refresh();
-                  notify.success('汇率已保存');
-                })(),
-              )
-            }
-          >
-            保存汇率
-          </Button>
-        )
-      }
-    >
-      <Typography.Paragraph>适用规则：查询期间或之前最近一次设置的汇率。</Typography.Paragraph>
-      <Space>
-        <Typography.Text>查询期间</Typography.Text>
-        <InputNumber
-          aria-label="查询汇率期间"
-          value={applicable}
-          onChange={(v) => v && setApplicable(v)}
-        />
-        <Typography.Text>适用汇率：{rate.data ?? '未设置'}</Typography.Text>
-      </Space>
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{ period: 202601, accountId: rates.data?.accountId ?? null }}
-        disabled={!canEdit}
+    <>
+      <Drawer
+        open
+        title={`${currency} 期间汇率`}
+        size={600}
+        onClose={() => unsaved.guard(onClose)}
+        footer={
+          <Space>
+            <Button disabled={unsaved.isSaving} onClick={() => unsaved.guard(onClose)}>
+              取消
+            </Button>
+            {canEdit && (
+              <Button type="primary" loading={unsaved.isSaving} onClick={() => run(unsaved.save())}>
+                保存汇率
+              </Button>
+            )}
+          </Space>
+        }
       >
-        <Form.Item name="period" label="期间（年月）" rules={[{ required: true }]}>
-          <InputNumber />
-        </Form.Item>
-        <Form.Item name="rate" label="十进制汇率" rules={[{ required: true }]}>
-          <Input placeholder="7.123456" />
-        </Form.Item>
-        <Form.Item name="accountId" label="汇兑损益科目">
-          <AccountSelect allowClear />
-        </Form.Item>
-        {rates.data?.accountId && (
-          <Typography.Paragraph>当前汇兑损益科目 ID：{rates.data.accountId}</Typography.Paragraph>
-        )}
-      </Form>
-      <DataTable
-        tableId="masterdata.rates"
-        rowKey="period"
-        columns={[
-          { key: 'period', title: '期间', dataIndex: 'period', width: 120 },
-          { key: 'rate', title: '汇率', dataIndex: 'rate', width: 200 },
-        ]}
-        dataSource={rates.data?.rates ?? []}
-      />
-    </Drawer>
+        <Typography.Paragraph>适用规则：查询期间或之前最近一次设置的汇率。</Typography.Paragraph>
+        <Space>
+          <Typography.Text>查询期间</Typography.Text>
+          <InputNumber
+            aria-label="查询汇率期间"
+            value={applicable}
+            onChange={(v) => v && setApplicable(v)}
+          />
+          <Typography.Text>适用汇率：{rate.data ?? '未设置'}</Typography.Text>
+        </Space>
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ period: book.startPeriod, accountId: rates.data?.accountId ?? null }}
+          disabled={!canEdit || unsaved.isSaving}
+          onValuesChange={() => setDirty(true)}
+        >
+          <Form.Item name="period" label="期间（年月）" rules={[{ required: true }]}>
+            <InputNumber />
+          </Form.Item>
+          <Form.Item name="rate" label="汇率" rules={[{ required: true }]}>
+            <Input placeholder="7.123456" />
+          </Form.Item>
+          <Form.Item name="accountId" label="汇兑损益科目">
+            <AccountSelect allowClear />
+          </Form.Item>
+        </Form>
+        <DataTable
+          tableId="masterdata.rates"
+          rowKey="period"
+          columns={[
+            { key: 'period', title: '期间', dataIndex: 'period', width: 120 },
+            { key: 'rate', title: '汇率', dataIndex: 'rate', width: 200 },
+          ]}
+          dataSource={rates.data?.rates ?? []}
+        />
+      </Drawer>
+      {unsaved.dialog}
+    </>
   );
 }

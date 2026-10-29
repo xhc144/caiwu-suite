@@ -8,17 +8,22 @@ import { createTestBook, seedVouchers } from '@caiwu/testkit';
 import { callApi, E2E_APP_TOKEN } from '@caiwu/testkit/e2e';
 import { spawnLocalServer } from '@caiwu/testkit/local-server';
 import path from 'node:path';
+import { writeFileSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 type IsolatedBook = {
   bookId: string;
+  dataDir: string;
   voucherId: number;
   token: string;
   request: APIRequestContext;
   baseURL: string;
+  advanceClock?: (milliseconds: number) => void;
 };
 
-export const test = base.extend<{ isolated: IsolatedBook }>({
-  isolated: async ({ page }, use) => {
+export const test = base.extend<{ isolated: IsolatedBook; controlledClock: boolean }>({
+  controlledClock: [false, { option: true }],
+  isolated: async ({ page, controlledClock }, use) => {
     const book = await createTestBook();
     let service: ReturnType<typeof spawnLocalServer> | undefined;
     let request: APIRequestContext | undefined;
@@ -46,9 +51,23 @@ export const test = base.extend<{ isolated: IsolatedBook }>({
         quantity: '0.25',
       });
       await book.store.closeAll(); // 在服务取得独占目录租约前关闭造数连接。
+      const offsetFile = path.join(book.dataDir, 'clock-offset.txt');
+      const entry = controlledClock ? path.join(book.dataDir, 'controlled-clock.mjs') : undefined;
+      if (entry) {
+        writeFileSync(offsetFile, '0');
+        writeFileSync(
+          entry,
+          `import { readFileSync } from 'node:fs';
+const realNow = Date.now.bind(Date);
+Date.now = () => realNow() + Number(readFileSync(${JSON.stringify(offsetFile)}, 'utf8'));
+await import(${JSON.stringify(pathToFileURL(path.resolve('apps/server/src/main.ts')).href)});
+`,
+        );
+      }
       service = spawnLocalServer({
         dataDir: book.dataDir,
         shutdownProtocol: 'native',
+        entry,
         env: {
           CAIWU_PORT: '0',
           CAIWU_TOKEN: E2E_APP_TOKEN,
@@ -76,10 +95,14 @@ export const test = base.extend<{ isolated: IsolatedBook }>({
       );
       await use({
         bookId: book.info.id,
+        dataDir: book.dataDir,
         voucherId: voucher!.id,
         token: session.token,
         request,
         baseURL,
+        advanceClock: controlledClock
+          ? (milliseconds) => writeFileSync(offsetFile, String(milliseconds))
+          : undefined,
       });
     } finally {
       await request?.dispose();

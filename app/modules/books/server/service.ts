@@ -69,6 +69,7 @@ export function booksService(
   hooks: FileHooks = {},
 ) {
   const s = state(app);
+  // 内部收据发现依赖共享 listStrict；不使用会略过维护账套的界面列表。
   const store = app.bookStore;
   const serialize = async <T>(id: string, fn: () => Promise<T>): Promise<T> => {
     const previous = s.locks.get(id) ?? Promise.resolve();
@@ -188,32 +189,33 @@ export function booksService(
           actorUserId: actor.userId,
           name: input.name,
         });
-        for (const b of await store.list()) {
-          const db = new Database(store.pathOf(b.id), { readonly: true, fileMustExist: true });
-          try {
-            const row = db
-              .prepare("SELECT value FROM book_setting WHERE scope='books' AND key='copyReceipt'")
-              .get() as { value: string } | undefined;
-            if (row?.value === receipt) return b;
-            if (row) {
-              const prior = JSON.parse(row.value) as {
-                requestId: string;
-                actorBookId: string;
-                actorUserId: number;
-              };
-              if (
-                prior.requestId === input.requestId &&
-                prior.actorBookId === actor.bookId &&
-                prior.actorUserId === actor.userId
-              )
-                throw problem(
-                  'BOOKS_COPY_CONFLICT',
-                  '此复制请求已使用其它名称或来源完成',
-                  '请刷新列表查看复制品；另建复制品时重新打开复制对话框',
-                );
-            }
-          } finally {
-            db.close();
+        for (const b of await store.listStrict()) {
+          // 列表返回后账套仍可能进入维护；查询须重新取得受管租约。
+          const row = await store.withBook(b.id, async (scanned) =>
+            scanned.db
+              .selectFrom('book_setting')
+              .select('value')
+              .where('scope', '=', 'books')
+              .where('key', '=', 'copyReceipt')
+              .executeTakeFirst(),
+          );
+          if (row?.value === receipt) return b;
+          if (row) {
+            const prior = JSON.parse(row.value) as {
+              requestId: string;
+              actorBookId: string;
+              actorUserId: number;
+            };
+            if (
+              prior.requestId === input.requestId &&
+              prior.actorBookId === actor.bookId &&
+              prior.actorUserId === actor.userId
+            )
+              throw problem(
+                'BOOKS_COPY_CONFLICT',
+                '此复制请求已使用其它名称或来源完成',
+                '请刷新列表查看复制品；另建复制品时重新打开复制对话框',
+              );
           }
         }
         const id = randomUUID();

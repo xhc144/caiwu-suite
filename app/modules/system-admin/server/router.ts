@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BusinessError, zId } from '@caiwu/core';
+import { BusinessError, zId, zDate } from '@caiwu/core';
 import { moduleKit } from '@caiwu/server-kit';
 import manifest from '../manifest';
 import {
@@ -10,14 +10,28 @@ import {
   PermissionSchema,
   UserCreateSchema,
   UserUpdateSchema,
+  ResetPrepareSchema,
+  ResetParametersSchema,
+  ResetExecuteSchema,
 } from '../shared';
 import { adminService, requireAdmin } from './service';
 import { listLogs } from './logs';
 import { collectAudit, textFile } from './audit';
 import { runChecks } from './checks';
+import { operationDate, setOperationDate } from './operation-date';
+import { resetPreflight, prepareReset, executeReset, cancelReset } from './reset';
 
 const m = moduleKit(manifest);
 export const systemAdminRouter = m.router({
+  operationDate: m.router({
+    get: m.procedure
+      .meta({ noPermission: true })
+      .query(({ ctx }) => operationDate(ctx.svc, ctx.session)),
+    set: m.procedure
+      .meta({ noPermission: true })
+      .input(z.object({ date: zDate }))
+      .mutation(({ ctx, input }) => setOperationDate(ctx.svc, ctx.session, input.date)),
+  }),
   users: m.router({
     list: m.procedure
       .meta({ permission: 'system-admin.users.manage' })
@@ -155,54 +169,42 @@ export const systemAdminRouter = m.router({
       ),
   }),
   reset: m.router({
-    preflight: m.procedure.meta({ permission: 'system-admin.reset' }).query(({ ctx }) =>
-      ctx.svc.tx(async (tsvc) => {
-        await requireAdmin(tsvc);
-        const book = await tsvc.book.info();
-        const tables = [
-          'account',
-          'voucher',
-          'voucher_line',
-          'opening_balance',
-          'dimension_item',
-          'currency',
-          'period',
-          'operation_log',
-          'app_user',
-        ] as const;
-        const counts: Record<string, number> = {};
-        for (const table of tables)
-          counts[table] = Number(
-            (
-              await tsvc.db
-                .selectFrom(table)
-                .select(tsvc.db.fn.countAll<number>().as('count'))
-                .executeTakeFirstOrThrow()
-            ).count,
-          );
-        return {
-          book,
-          periods: await tsvc.periods.list(),
-          template: ctx.app.templates.list().find((t) => t.id === book.templateId) ?? null,
-          counts,
-          executable: false as const,
-          reason:
-            '现有账套维护仅支持重连，删除及覆盖仍被核心拒绝；尚无包含完整在线备份和恢复校验的原子重置服务。执行入口禁用，尚未备份或更改数据。',
-          impact:
-            '重置可能删除全部凭证、期初、科目、辅助档案及报表，并影响已加载模块的业务引用。必须完整备份、校验备份可恢复并两次确认。新建账套请使用账套管理。',
-        };
-      }),
-    ),
+    preflight: m.procedure
+      .meta({ permission: 'system-admin.reset' })
+      .query(({ ctx }) => ctx.svc.tx((svc) => resetPreflight(svc, ctx.app))),
+    saveDraft: m.procedure
+      .meta({ permission: 'system-admin.reset' })
+      .input(ResetParametersSchema)
+      .mutation(({ ctx, input }) =>
+        ctx.svc.tx(async (svc) => {
+          await requireAdmin(svc);
+          await svc.settings.set('resetDraft', input);
+          await svc.log.write({
+            action: 'system-admin.reset.draft',
+            summary: '保存系统初始化参数（未执行初始化）',
+          });
+          return { ok: true };
+        }),
+      ),
+    prepare: m.procedure
+      .meta({ permission: 'system-admin.reset' })
+      .input(ResetPrepareSchema)
+      .mutation(({ ctx, input }) =>
+        prepareReset(ctx.svc, ctx.app, ctx.session, input.parameters, input.password),
+      ),
     execute: m.procedure
       .meta({ permission: 'system-admin.reset' })
-      .input(z.object({ confirmBookName: z.string(), confirmed: z.boolean() }))
-      .mutation(async ({ ctx }) => {
+      .input(ResetExecuteSchema)
+      .mutation(async ({ ctx, input }) => {
         await requireAdmin(ctx.svc);
-        throw new BusinessError({
-          code: 'RESET_UNAVAILABLE',
-          message: '系统初始化执行尚未开放',
-          hint: '需要核心支持破坏性独占维护、完整在线备份及恢复校验和原子重置服务；当前没有数据被修改',
-        });
+        return executeReset(ctx.app, ctx.session, input);
+      }),
+    cancel: m.procedure
+      .meta({ permission: 'system-admin.reset' })
+      .input(z.object({ planId: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireAdmin(ctx.svc);
+        return cancelReset(ctx.app, ctx.session, input.planId);
       }),
     adjustStartDate: m.procedure
       .meta({ permission: 'system-admin.reset' })
@@ -211,7 +213,7 @@ export const systemAdminRouter = m.router({
         throw new BusinessError({
           code: 'RESET_UNAVAILABLE',
           message: '开账日期调整及自动修复尚未开放',
-          hint: '必须先具备备份与安全维护服务，不能绕过审核和过账锁',
+          hint: '当前支持完整重新初始化；保留已有业务的开账日期迁移尚未实现',
         });
       }),
   }),

@@ -348,7 +348,11 @@ export function openingService(svc: CoreServices) {
       };
     },
     save(year: number, changes: Change[]) {
-      return svc.tx((tsvc) => applyChanges(tsvc, year, changes));
+      return svc.tx(async (tsvc) => {
+        await applyChanges(tsvc, year, changes);
+        const keys = new Set(changes.map((change) => openingKey(change.data)));
+        return (await tsvc.opening.list(year)).filter((row) => keys.has(openingKey(row)));
+      });
     },
     async remove(input: { year: number; id: number; confirmed: boolean; expected: string }) {
       return svc.tx(async (tsvc) => {

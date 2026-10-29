@@ -3,14 +3,21 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { coreApi, getBusinessError, queryClient, sessionStore } from '@caiwu/web-kit';
+import { api } from './api';
 
 export default function LoginPage({ bookId }: { bookId: string }) {
   const navigate = useNavigate();
   const books = useQuery(coreApi.books.list.queryOptions());
   const book = books.data?.find((b) => b.id === bookId);
+  const startDate = book
+    ? `${String(book.startPeriod).slice(0, 4)}-${String(book.startPeriod).slice(4)}-01`
+    : '';
+  const today = new Date().toISOString().slice(0, 10);
   const login = useMutation(coreApi.auth.login.mutationOptions({ meta: { silent: true } }));
+  const date = useMutation(api.operationDate.set.mutationOptions({ meta: { silent: true } }));
+  const logout = useMutation(coreApi.auth.logout.mutationOptions({ meta: { silent: true } }));
   const inFlight = useRef(false);
-  const submit = async (v: { userCode: string; password?: string }) => {
+  const submit = async (v: { userCode: string; password?: string; operationDate: string }) => {
     if (inFlight.current || !book) return;
     inFlight.current = true;
     try {
@@ -27,6 +34,16 @@ export default function LoginPage({ bookId }: { bookId: string }) {
         user: result.user,
         book: result.book,
       });
+      try {
+        await date.mutateAsync({ date: v.operationDate });
+      } catch (error) {
+        try {
+          await logout.mutateAsync();
+        } finally {
+          sessionStore.set(null);
+        }
+        throw error;
+      }
       void navigate('/home', { replace: true });
     } catch (error) {
       if (getBusinessError(error)?.code === 'BOOK_NOT_FOUND') await books.refetch();
@@ -63,7 +80,10 @@ export default function LoginPage({ bookId }: { bookId: string }) {
             </Typography.Paragraph>
             <Form
               layout="vertical"
-              initialValues={{ userCode: 'admin' }}
+              initialValues={{
+                userCode: 'admin',
+                operationDate: today < startDate ? startDate : today,
+              }}
               onFinish={(v) => void submit(v)}
             >
               <Form.Item
@@ -76,16 +96,43 @@ export default function LoginPage({ bookId }: { bookId: string }) {
               <Form.Item name="password" label="密码">
                 <Input.Password autoComplete="current-password" maxLength={64} />
               </Form.Item>
-              {login.error && (
+              <Form.Item
+                name="operationDate"
+                label="操作日期"
+                rules={[
+                  { required: true, message: '请选择操作日期' },
+                  ({ getFieldValue }) => ({
+                    validator: (_, value: string) => {
+                      return value && value >= startDate && getFieldValue('operationDate') === value
+                        ? Promise.resolve()
+                        : Promise.reject(new Error(`操作日期不得早于 ${startDate}`));
+                    },
+                  }),
+                ]}
+              >
+                <Input type="date" min={startDate} />
+              </Form.Item>
+              {(login.error || date.error) && (
                 <Alert
                   style={{ marginBottom: 16 }}
                   type="error"
                   showIcon
-                  title={getBusinessError(login.error)?.message ?? '登录未成功，请重试'}
-                  description="请核对用户编号和密码；忘记密码请联系管理员。"
+                  title={
+                    getBusinessError(date.error ?? login.error)?.message ?? '登录未成功，请重试'
+                  }
+                  description={
+                    date.error
+                      ? '请修正操作日期后重试，输入仍保留。'
+                      : '请核对用户编号和密码；忘记密码请联系管理员。'
+                  }
                 />
               )}
-              <Button block type="primary" htmlType="submit" loading={login.isPending}>
+              <Button
+                block
+                type="primary"
+                htmlType="submit"
+                loading={login.isPending || date.isPending || logout.isPending}
+              >
                 登录
               </Button>
             </Form>

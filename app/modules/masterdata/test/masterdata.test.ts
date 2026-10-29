@@ -773,6 +773,36 @@ describe('参考档案与Excel', () => {
     const eur = (await api.reference.list({ kind: 'currencies' })).find((r) => r.code === 'EUR')!;
     await api.reference.remove({ kind: 'currencies', id: eur.id, code: eur.code, confirmed: true });
   });
+  it('w_xt_fbwh：保存期间汇率与汇兑科目同事务写日志；日志失败两项均回滚，允许预设未来汇率', async () => {
+    const accountId = (await app.svc.accounts.require('6603')).id;
+    await api.reference.saveRate({ currency: 'USD', period: 202712, rate: '7.234567', accountId });
+    const log = await app.svc.db
+      .selectFrom('operation_log')
+      .selectAll()
+      .where('action', '=', 'masterdata.exchangeRate.save')
+      .executeTakeFirstOrThrow();
+    expect(log.target_id).toBe('USD:202712');
+    expect(JSON.parse(log.detail!)).toMatchObject({
+      currency: 'USD',
+      period: 202712,
+      rate: '7.234567',
+      accountId,
+    });
+    const raw = app.runtime.bookStore.open(app.book.id).raw;
+    raw.exec(
+      "CREATE TEMP TRIGGER masterdata_test_log_failure BEFORE INSERT ON operation_log BEGIN SELECT RAISE(ABORT, '合成日志失败'); END",
+    );
+    try {
+      await expect(
+        api.reference.saveRate({ currency: 'USD', period: 202712, rate: '8', accountId: null }),
+      ).rejects.toThrow();
+    } finally {
+      raw.exec('DROP TRIGGER masterdata_test_log_failure');
+    }
+    const rates = await api.reference.rates({ currency: 'USD' });
+    expect(rates.accountId).toBe(accountId);
+    expect(rates.rates.find((r) => r.period === 202712)?.rate).toBe('7.234567');
+  });
   it('w_xt_zy：摘要编码唯一、拼音共享、分类快捷检索、次数保存不丢', async () => {
     const row = (await api.reference.list({ kind: 'summaries' }))[0]!;
     await app.svc.db

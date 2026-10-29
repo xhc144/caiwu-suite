@@ -262,3 +262,53 @@ it('w_xt_ye：fast-check真实数据库Excel往返可逆、重复覆盖不双计
     { numRuns: 12 },
   );
 });
+
+it('w_xt_ye：上级只汇总同币种外币及同单位数量，不把美元欧元或千克件相加', async () => {
+  const all = await app.svc.accounts.list();
+  const parent = all.find((a) => a.code === '1002')!;
+  const leaves = all.filter((a) => a.parentId === parent.id);
+  const first = { ...leaves[0]!, quantityUnit: '千克' };
+  const second = { ...leaves[1]!, quantityUnit: '件' };
+  const rows: SavedRow[] = [first, second].map((a, i) => ({
+    id: i + 1,
+    year: 2026,
+    accountId: a.id,
+    dimensions: {},
+    currency: i ? 'EUR' : 'USD',
+    balance: 100,
+    ytdDebit: 0,
+    ytdCredit: 0,
+    fcBalance: 101,
+    quantity: '1.234567',
+  }));
+  const mixed = accountTree([parent, first, second], rows)[0]!;
+  expect(mixed.balance).toBe(200);
+  expect(mixed.fcBalance).toBeNull();
+  expect(mixed.quantity).toBeNull();
+  expect(new Set(mixed.foreignCurrencies)).toEqual(new Set(['USD', 'EUR']));
+  expect(new Set(mixed.quantityUnits)).toEqual(new Set(['千克', '件']));
+  expect(mixed.children?.map((c) => c.quantity)).toEqual(['1.234567', '1.234567']);
+  const same = accountTree(
+    [parent, first, { ...second, quantityUnit: '千克' }],
+    rows.map((r) => ({ ...r, currency: 'USD' })),
+  )[0]!;
+  expect(same.fcBalance).toBe(202);
+  expect(same.quantity).toBe('2.469134');
+});
+
+it('w_xt_ye：保存返回同一事务内的实际记录版本，新增后可按版本修改原行', async () => {
+  const account = await app.svc.accounts.require('1001');
+  const [created] = await api().save({
+    year: 2026,
+    changes: [{ data: { year: 2026, accountId: account.id, balance: 100 } }],
+  });
+  expect(created).toMatchObject({ balance: 100, accountId: account.id });
+  const [updated] = await api().save({
+    year: 2026,
+    changes: [
+      { id: created!.id, expected: rowVersion(created!), data: { ...created!, balance: 200 } },
+    ],
+  });
+  expect(updated).toMatchObject({ id: created!.id, balance: 200 });
+  expect((await api().list({ year: 2026 })).rows).toHaveLength(1);
+});

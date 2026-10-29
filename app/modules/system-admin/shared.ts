@@ -95,3 +95,25 @@ export type CheckItem = {
   suggestion: string;
   to?: string;
 };
+
+export const ResetParametersSchema = z.object({
+  name: z.string().trim().min(1, '账套名称不能为空').max(60),
+  orgName: z.string().trim().min(1, '单位名称不能为空').max(100),
+  templateId: z.string().min(1, '请选择会计制度'),
+  codeScheme: z.string().min(1, '请填写科目级次').max(40),
+  startYear: z.number().int().min(2000).max(2100),
+  startMonth: z.number().int().min(1).max(12),
+  numbering: z.enum(['automatic', 'manual']).default('automatic'),
+});
+export const ResetPrepareSchema = z.object({
+  parameters: ResetParametersSchema,
+  password: z.string().max(64),
+});
+export const ResetExecuteSchema = z.object({
+  planId: z.string().uuid(),
+  confirmBookName: z.string().min(1),
+  password: z.string().max(64),
+  confirmed: z.literal(true),
+  confirmation: z.literal('重新初始化'),
+});
+export type ResetParameters = z.output<typeof ResetParametersSchema>;

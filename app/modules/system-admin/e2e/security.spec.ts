@@ -144,7 +144,7 @@ test('w_login → w_xt_users → w_grant → w_pass：真实 UI 授权、直接 
   await ui.close();
 });
 
-test('w_bf_98001 / w_xt_kgzb：预览、取消、真实下载和只读初始化', async ({
+test('w_bf_98001 / w_xt_kgzb：预览、取消、真实下载和初始化参数预览', async ({
   page,
   context,
   request,
@@ -169,9 +169,10 @@ test('w_bf_98001 / w_xt_kgzb：预览、取消、真实下载和只读初始化'
   expect(() => JSON.parse(file) as unknown).not.toThrow();
   expect(file).not.toMatch(/password_hash|scrypt\$|token/);
   await ui.goto('/m/system-admin/reset');
-  await expect(ui.getByText('初始化执行未开放', { exact: true })).toBeVisible();
-  await expect(ui.getByRole('button', { name: '执行初始化（待安全服务）' })).toBeDisabled();
-  await expect(ui.getByRole('main').getByText('E2E 测试单位', { exact: true })).toBeVisible();
+  await expect(ui.getByText('初始化会清除当前账套全部业务数据', { exact: true })).toBeVisible();
+  await expect(ui.getByRole('button', { name: '预览初始化内容' })).toBeEnabled();
+  await expect(ui.getByRole('button', { name: '执行完整重新初始化' })).toHaveCount(0);
+  await expect(ui.getByLabel('单位名称', { exact: true })).toHaveValue('E2E 测试单位');
   await ui.close();
 });
 

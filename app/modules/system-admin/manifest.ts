@@ -15,11 +15,17 @@ export default defineManifest({
     { id: 'system-admin.logs.view', name: '查看操作日志' },
     { id: 'system-admin.audit.export', name: '导出通用审计资料' },
     { id: 'system-admin.check', name: '运行综合检查' },
-    { id: 'system-admin.reset', name: '系统初始化预检' },
+    { id: 'system-admin.reset', name: '系统初始化' },
   ],
   menu: [
     { group: 'system', title: '用户管理', path: '/users', permission: 'system-admin.users.manage' },
     { group: 'system', title: '自改密码', path: '/password', permission: 'system-admin.password' },
+    {
+      group: 'system',
+      title: '操作日期',
+      path: '/operation-date',
+      permission: 'system-admin.view',
+    },
     { group: 'system', title: '切换用户', path: '/switch', permission: 'system-admin.view' },
     { group: 'system', title: '操作日志', path: '/logs', permission: 'system-admin.logs.view' },
     {
@@ -35,6 +41,6 @@ export default defineManifest({
       path: '/audit',
       permission: 'system-admin.audit.export',
     },
-    { group: 'system', title: '系统初始化预检', path: '/reset', permission: 'system-admin.reset' },
+    { group: 'system', title: '系统初始化', path: '/reset', permission: 'system-admin.reset' },
   ],
 });

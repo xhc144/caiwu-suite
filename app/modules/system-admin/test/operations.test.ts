@@ -354,21 +354,41 @@ describe('w_xt_kgzb / w_zh_zhjc_kzrq 初始化保护', () => {
     expect(preflight.counts.voucher).toBe(2);
     expect(preflight.counts.voucher_line).toBe(4);
     expect(preflight.periods).toHaveLength(12);
-    expect(preflight.executable).toBe(false);
+    expect(preflight.executable).toBe(true);
     expect(await app.svc.vouchers.list({})).toEqual(before);
   });
-  it('w_xt_kgzb / _2 / _3 缺独占锁和完整备份服务时禁用执行，不能绕过凭证审核/过账锁', async () => {
+  it('w_xt_kgzb / _2 / _3 缺有效预览计划不能执行，不能绕过凭证审核/过账锁', async () => {
     const vs = await vouchers();
     const before = await app.svc.vouchers.get(vs[0]!.id);
     expect(
-      (await error(api().reset.execute({ confirmBookName: app.book.name, confirmed: true }))).code,
-    ).toBe('RESET_UNAVAILABLE');
+      (
+        await error(
+          api().reset.execute({
+            planId: '00000000-0000-4000-8000-000000000000',
+            confirmBookName: app.book.name,
+            confirmed: true,
+            confirmation: '重新初始化',
+            password: 'admin',
+          }),
+        )
+      ).code,
+    ).toBe('RESET_PLAN_EXPIRED');
     expect(
-      (await error(api().reset.execute({ confirmBookName: 'wrong', confirmed: false }))).code,
-    ).toBe('RESET_UNAVAILABLE');
+      (
+        await error(
+          api().reset.execute({
+            planId: '00000000-0000-4000-8000-000000000000',
+            confirmBookName: 'wrong',
+            confirmed: true,
+            confirmation: '重新初始化',
+            password: 'admin',
+          }),
+        )
+      ).code,
+    ).toBe('RESET_PLAN_EXPIRED');
     expect((await error(api().reset.adjustStartDate())).code).toBe('RESET_UNAVAILABLE');
     expect(await app.svc.vouchers.get(vs[0]!.id)).toEqual(before);
-    expect((await api().reset.preflight()).reason).toContain('尚未备份或更改数据');
+    expect((await api().reset.preflight()).reason).toContain('再次确认');
   });
   it('w_xt_kgzb 管理员资格与专用权限均检查，非管理员不能执行或预检', async () => {
     const token = await app.addUser('viewer', { permissions: ['system-admin.reset'] });
@@ -376,9 +396,13 @@ describe('w_xt_kgzb / w_zh_zhjc_kzrq 初始化保护', () => {
     expect(
       (
         await error(
-          app
-            .call(server, token)
-            .reset.execute({ confirmBookName: app.book.name, confirmed: true }),
+          app.call(server, token).reset.execute({
+            planId: '00000000-0000-4000-8000-000000000000',
+            confirmBookName: app.book.name,
+            confirmed: true,
+            confirmation: '重新初始化',
+            password: 'admin',
+          }),
         )
       ).code,
     ).toBe('FORBIDDEN');

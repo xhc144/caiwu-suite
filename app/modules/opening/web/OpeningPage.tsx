@@ -16,7 +16,7 @@ import {
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { balanceSide, formatMoney, type Account, type DimensionValues } from '@caiwu/core';
+import { balanceSide, formatMoney, Decimal, type Account, type DimensionValues } from '@caiwu/core';
 import type { PrintJob } from '@caiwu/print';
 import {
   getBusinessError,
@@ -26,6 +26,7 @@ import {
   usePermission,
   useSession,
   useTab,
+  useUnsavedChanges,
 } from '@caiwu/web-kit';
 import {
   AccountSelect,
@@ -40,6 +41,7 @@ import {
   PrintSchema,
   exactSum,
   openingDimensions,
+  openingKey,
   rowVersion,
   yearStart,
   type Change,
@@ -69,6 +71,7 @@ interface Persisted {
   year: number;
   draft: Draft;
   dirty: boolean;
+  baseline?: string | null;
 }
 const emptyDraft = (): Draft => ({
   side: '借',
@@ -79,6 +82,25 @@ const emptyDraft = (): Draft => ({
   quantity: '0',
   dimensions: {},
 });
+function draftContent(value: Draft) {
+  let quantity = value.quantity || '0';
+  try {
+    quantity = new Decimal(quantity).toFixed();
+  } catch {
+    /* 保留无效输入以便修正。 */
+  }
+  return JSON.stringify([
+    value.accountId ?? null,
+    ...openingDimensions.map((d) => value.dimensions?.[d.id] ?? null),
+    value.currency || null,
+    value.amount ?? null,
+    value.side,
+    value.ytdDebit ?? 0,
+    value.ytdCredit ?? 0,
+    value.fcBalance ?? 0,
+    quantity,
+  ]);
+}
 function restoreDraft(key: string): Persisted | null {
   try {
     return JSON.parse(sessionStorage.getItem(key) ?? 'null') as Persisted | null;
@@ -118,6 +140,8 @@ export default function OpeningPage() {
   const [saveError, setSaveError] = useState('');
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
+  const draftRevision = useRef(0);
+  const draftBaseline = useRef(restored?.baseline ?? null);
   const [form] = Form.useForm<Draft>();
   const data = list.data;
   const scopedItem = data?.items.find(
@@ -168,32 +192,40 @@ export default function OpeningPage() {
   const [exporting, setExporting] = useState(false);
   const [printJob, setPrintJob] = useState<PrintJob | null>(null);
   const [preparingPrint, setPreparingPrint] = useState(false);
+  const editing = draft != null;
   const readOnly = !canEdit || !!data?.locked || !!data?.posted;
   const containerRef = useRef<HTMLDivElement>(null);
-  const bypass = useRef(false);
 
   useEffect(() => {
-    if (draft && dirty)
+    if (draft && (dirty || saving))
       sessionStorage.setItem(
         storageKey,
-        JSON.stringify({ year: editYear, draft, dirty } satisfies Persisted),
+        JSON.stringify({
+          year: editYear,
+          draft,
+          dirty,
+          baseline: draftBaseline.current,
+        } satisfies Persisted),
       );
     else sessionStorage.removeItem(storageKey);
-  }, [draft, dirty, editYear, storageKey]);
+  }, [draft, dirty, saving, editYear, storageKey]);
   useEffect(() => {
     if (!filters.year && year) setFilters({ year });
   }, [filters.year, year, setFilters]);
-  useEffect(() => {
-    if (draft) form.setFieldsValue(draft);
-  }, [draft, form]);
   const requestLeave = useCallback(
     (action: () => void) => {
+      if (savingRef.current) {
+        notify.warning('正在保存期初，请等待保存结果后再关闭。');
+        return;
+      }
       if (dirty) setLeave(() => action);
       else action();
     },
     [dirty],
   );
   const closeDraft = () => {
+    draftRevision.current++;
+    draftBaseline.current = null;
     setDraft(null);
     setDirty(false);
     setSaveError('');
@@ -204,6 +236,7 @@ export default function OpeningPage() {
     savingRef.current = true;
     setSaving(true);
     try {
+      const submittedRevision = draftRevision.current;
       const values = await form.validateFields();
       if (!values.accountId) {
         notify.warning('请先选择要增加的科目');
@@ -233,9 +266,37 @@ export default function OpeningPage() {
           quantity: values.quantity || '0',
         },
       };
-      await saveMutation.mutateAsync({ year: editYear, changes: [change] });
+      const savedRows = await saveMutation.mutateAsync({ year: editYear, changes: [change] });
+      if (draftRevision.current !== submittedRevision) {
+        // 以同一提交事务返回的行版本绑定新记录，不依赖随后刷新是否成功。
+        draftBaseline.current = draftContent(values);
+        const currentValues = form.getFieldsValue(true) as Draft;
+        if (draftContent(currentValues) === draftBaseline.current) {
+          closeDraft();
+          void refresh();
+          return true;
+        }
+        setDirty(true);
+        const row = savedRows.find((r) => openingKey(r) === openingKey(change.data));
+        if (row)
+          setDraft((current) => {
+            if (!current?.accountId) return current;
+            const key = openingKey({
+              year: editYear,
+              accountId: current.accountId,
+              dimensions: current.dimensions,
+              currency: current.currency || null,
+            });
+            return key === openingKey(row)
+              ? { ...current, id: row.id, expected: rowVersion(row) }
+              : current;
+          });
+        setSaveError('本次内容已保存，保存期间的新修改仍未保存，请核对后再次保存。');
+        void refresh();
+        return false;
+      }
       closeDraft();
-      await refresh();
+      void refresh();
       notify.success('期初已保存，请查看试算结果');
       return true;
     } catch (error) {
@@ -254,53 +315,48 @@ export default function OpeningPage() {
   });
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!editing) return;
     const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty && !saving) return;
       event.preventDefault();
       event.returnValue = '';
     };
-    const click = (event: MouseEvent) => {
-      if (bypass.current || !tab.active || !(event.target instanceof Element)) return;
-      // 壳尚无关闭拦截 API；在本模块内保护常用菜单、标签切换和关闭按钮。
-      const element = event.target.closest<HTMLElement>(
-        'a, [role="menuitem"], [role="tab"], .ant-tabs-tab-remove',
-      );
-      if (
-        !element ||
-        containerRef.current?.contains(element) ||
-        element.closest('.ant-modal,.ant-drawer')
-      )
-        return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      requestLeave(() => {
-        bypass.current = true;
-        element.click();
-        bypass.current = false;
-      });
-    };
     const key = (event: KeyboardEvent) => {
-      if (!tab.active || bypass.current) return;
-      if (
-        (event.ctrlKey && event.key === 'F4') ||
-        event.key === 'F5' ||
-        (event.ctrlKey && event.key.toLowerCase() === 'r')
-      ) {
+      if (!tab.active || event.isComposing || event.keyCode === 229) return;
+      if (event.ctrlKey && event.key === 'F4') {
         event.preventDefault();
         event.stopImmediatePropagation();
-        requestLeave(() => (event.key === 'F4' ? tab.close() : window.location.reload()));
+        tab.close();
+        return;
+      }
+      if (event.key === 'F5' || (event.ctrlKey && event.key.toLowerCase() === 'r')) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        requestLeave(() => window.location.reload());
       }
     };
     window.addEventListener('beforeunload', beforeUnload);
-    document.addEventListener('click', click, true);
     window.addEventListener('keydown', key, true);
     return () => {
       window.removeEventListener('beforeunload', beforeUnload);
-      document.removeEventListener('click', click, true);
       window.removeEventListener('keydown', key, true);
     };
-  }, [dirty, requestLeave, tab]);
+  }, [editing, dirty, saving, requestLeave, tab]);
+  useUnsavedChanges({
+    title: `${editYear || year} 年期初余额`,
+    dirty: dirty || saving,
+    version: draftRevision.current,
+    save,
+    discard: () => {
+      if (savingRef.current) {
+        notify.warning('正在保存期初，请等待保存结果后再关闭。');
+        throw new Error('期初保存尚未完成');
+      }
+      closeDraft();
+    },
+  });
   function start(a?: Account, row?: SavedRow) {
+    draftRevision.current++;
     const next: Draft = row
       ? {
           id: row.id,
@@ -324,6 +380,7 @@ export default function OpeningPage() {
               ? { [dimensionView.id]: scopedItem.id }
               : {},
         };
+    draftBaseline.current = draftContent(next);
     form.resetFields();
     form.setFieldsValue(next);
     setDraft(next);
@@ -391,8 +448,7 @@ export default function OpeningPage() {
           {
             key: 'fcBalance',
             title: '外币启用余额',
-            dataIndex: 'fcBalance',
-            money: true,
+            render: (_, a) => (a.fcBalance == null ? '不同币种不合计' : formatMoney(a.fcBalance)),
           } satisfies DataColumn<SummaryRow>,
         ]
       : []),
@@ -401,8 +457,9 @@ export default function OpeningPage() {
           {
             key: 'quantity',
             title: '启用数量',
-            dataIndex: 'quantity',
-            width: 120,
+            render: (_, a) =>
+              a.quantity == null ? '不同单位不合计' : `${a.quantity} ${a.quantityUnits[0] ?? ''}`,
+            width: 160,
           } satisfies DataColumn<SummaryRow>,
         ]
       : []),
@@ -519,7 +576,7 @@ export default function OpeningPage() {
     }
   }
   async function previewPrint() {
-    if (dirty || preparingPrint || !data) return;
+    if (dirty || saving || preparingPrint || !data) return;
     setPreparingPrint(true);
     try {
       const input = PrintSchema.parse({ ...filters, year });
@@ -662,7 +719,11 @@ export default function OpeningPage() {
               <Button loading={exporting} onClick={() => void exportFile()}>
                 导出 Excel
               </Button>
-              <Button loading={preparingPrint} disabled={dirty} onClick={() => void previewPrint()}>
+              <Button
+                loading={preparingPrint}
+                disabled={dirty || saving}
+                onClick={() => void previewPrint()}
+              >
                 打印预览
               </Button>
               {canImport && (
@@ -787,7 +848,7 @@ export default function OpeningPage() {
                 <Button
                   key={a.id}
                   onClick={() =>
-                    setFilters({ account: a.code, dimension: '', currency: '', quantity: false })
+                    setFilter({ account: a.code, dimension: '', currency: '', quantity: false })
                   }
                 >
                   定位 {a.code} {a.name}
@@ -821,8 +882,10 @@ export default function OpeningPage() {
           layout="vertical"
           initialValues={draft ?? {}}
           onValuesChange={(_, values) => {
-            setDraft({ ...draft, ...values });
-            setDirty(true);
+            draftRevision.current++;
+            const next = { ...draft, ...values };
+            setDraft(next);
+            setDirty(draftBaseline.current == null || draftContent(next) !== draftBaseline.current);
           }}
         >
           <Form.Item
@@ -853,6 +916,17 @@ export default function OpeningPage() {
                   fcBalance: 0,
                   quantity: '0',
                 });
+                draftRevision.current++;
+                const next: Draft = {
+                  ...draft,
+                  ...form.getFieldsValue(true),
+                  id: draft?.id,
+                  expected: draft?.expected,
+                };
+                setDraft(next);
+                setDirty(
+                  draftBaseline.current == null || draftContent(next) !== draftBaseline.current,
+                );
               }}
             />
           </Form.Item>

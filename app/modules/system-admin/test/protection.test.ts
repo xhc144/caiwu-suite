@@ -40,7 +40,7 @@ describe('w_grant / w_xt_kgzb 事务及破坏性维护保护', () => {
     }
   });
 
-  it('w_xt_kgzb_2 / _3 现有 core 删除/覆盖维护先拒绝；确认文字不能越过备份及原子重置缺口', async () => {
+  it('w_xt_kgzb_2 / _3 缺受管票据的删除/覆盖先拒绝；确认文字不能代替初始化计划', async () => {
     const [voucher] = await seedVouchers(app.svcFor('system-admin'), [
       {
         date: '2026-01-10',
@@ -89,17 +89,20 @@ describe('w_grant / w_xt_kgzb 事务及破坏性维护保护', () => {
         }),
       ).rejects.toMatchObject({ data: { code: 'DESTRUCTIVE_MAINTENANCE_UNAVAILABLE' } });
     expect(prepared).toBe(false);
-    for (const [confirmBookName, confirmed] of [
-      [app.book.name, true],
-      ['wrong', false],
-    ] as const)
+    for (const confirmBookName of [app.book.name, 'wrong'])
       await expect(
-        app.call(server).reset.execute({ confirmBookName, confirmed }),
-      ).rejects.toMatchObject({ cause: { data: { code: 'RESET_UNAVAILABLE' } } });
+        app.call(server).reset.execute({
+          planId: '00000000-0000-4000-8000-000000000000',
+          confirmBookName,
+          confirmed: true,
+          confirmation: '重新初始化',
+          password: 'admin',
+        }),
+      ).rejects.toMatchObject({ cause: { data: { code: 'RESET_PLAN_EXPIRED' } } });
     await expect(app.call(server).reset.adjustStartDate()).rejects.toMatchObject({
       cause: { data: { code: 'RESET_UNAVAILABLE' } },
     });
-    expect((await app.call(server).reset.preflight()).executable).toBe(false);
+    expect((await app.call(server).reset.preflight()).executable).toBe(true);
     expect(await snapshot()).toEqual(before);
     expect((await app.core().auth.me()).book.id).toBe(app.book.id);
     await expect(app.svc.vouchers.delete(source.id)).rejects.toMatchObject({

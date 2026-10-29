@@ -1,9 +1,18 @@
 import { App, Button, Drawer, Modal, Space, Typography, Upload } from 'antd';
 import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useMutation } from '@tanstack/react-query';
 import type { DimensionTypeId } from '@caiwu/core';
 import { downloadBlob, DataTable, type DataColumn } from '@caiwu/ui';
-import { getBusinessError, notify, queryClient, usePermission, useTab } from '@caiwu/web-kit';
+import {
+  getBusinessError,
+  notify,
+  queryClient,
+  usePermission,
+  useSubmission,
+  useTab,
+  useUnsavedChanges,
+} from '@caiwu/web-kit';
 import type { Confirmation, ExcelInput, ImportPreview, ImportRow, ReferenceKind } from '../shared';
 import { api } from './api';
 
@@ -37,12 +46,40 @@ export async function collectConfirmations(
   return keys;
 }
 
-/** 页内取消/刷新可保存、放弃或继续。浏览器关闭/重载由 beforeunload 保留原生保护。 */
-export function useUnsaved(dirty: boolean, save: () => Promise<void>, discard?: () => void) {
+/** 空文本、清空的选择项与未填写字段等价，避免改回空值仍被认为未保存。 */
+export function draftVersion(values: unknown): string {
+  return (
+    JSON.stringify(values, (_key, value: unknown) =>
+      value === '' || value === null ? undefined : value,
+    ) ?? ''
+  );
+}
+
+/** 页内抽屉和壳共用同一份草稿；保存失败保持输入，提交期间不允许重复保存或放弃。 */
+export function useUnsaved(
+  dirty: boolean,
+  save: () => Promise<void>,
+  discard: () => void,
+  options: { title: string; version: string },
+) {
   const [leave, setLeave] = useState<null | (() => void)>(null);
   const tab = useTab();
-  const dirtyRef = useRef(dirty);
-  dirtyRef.current = dirty;
+  const submission = useSubmission();
+  const cleanVersion = useRef(options.version);
+  if (!dirty) cleanVersion.current = options.version;
+  const hasChanges = dirty && options.version !== cleanVersion.current;
+  const dirtyRef = useRef(hasChanges);
+  dirtyRef.current = hasChanges;
+  const submit = () => submission.submit(save);
+  useUnsavedChanges({
+    ...options,
+    dirty: hasChanges,
+    save: submit,
+    discard: () => {
+      if (submission.isSubmitting) throw new Error('正在保存，请等待完成');
+      discard();
+    },
+  });
   useEffect(() => {
     const unload = (e: BeforeUnloadEvent) => {
       if (dirtyRef.current) {
@@ -55,7 +92,15 @@ export function useUnsaved(dirty: boolean, save: () => Promise<void>, discard?: 
   }, []);
   useEffect(() => {
     const keydown = (e: KeyboardEvent) => {
-      if (!dirtyRef.current || !tab.active || e.altKey || e.shiftKey) return;
+      if (
+        !dirtyRef.current ||
+        !tab.active ||
+        e.isComposing ||
+        e.keyCode === 229 ||
+        e.altKey ||
+        e.shiftKey
+      )
+        return;
       const close = e.ctrlKey && e.key === 'F4';
       const reload = e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r');
       if (close || reload) {
@@ -68,22 +113,35 @@ export function useUnsaved(dirty: boolean, save: () => Promise<void>, discard?: 
     return () => window.removeEventListener('keydown', keydown, true);
   }, [tab]);
   return {
-    guard: (action: () => void) => (dirty ? setLeave(() => action) : action()),
+    save: submit,
+    isSaving: submission.isSubmitting,
+    guard: (action: () => void) => {
+      if (submission.isSubmitting) return;
+      if (hasChanges) setLeave(() => action);
+      else action();
+    },
     dialog: (
       <Modal
         open={leave != null}
         title="有未保存的修改"
-        onCancel={() => setLeave(null)}
+        closable={!submission.isSubmitting}
+        maskClosable={!submission.isSubmitting}
+        onCancel={() => !submission.isSubmitting && setLeave(null)}
         footer={
           <Space>
-            <Button onClick={() => setLeave(null)}>继续编辑</Button>
+            <Button disabled={submission.isSubmitting} onClick={() => setLeave(null)}>
+              继续编辑
+            </Button>
             <Button
               danger
+              disabled={submission.isSubmitting}
               onClick={() => {
                 const next = leave;
                 dirtyRef.current = false;
-                discard?.();
-                setLeave(null);
+                flushSync(() => {
+                  discard();
+                  setLeave(null);
+                });
                 next?.();
               }}
             >
@@ -91,11 +149,12 @@ export function useUnsaved(dirty: boolean, save: () => Promise<void>, discard?: 
             </Button>
             <Button
               type="primary"
+              loading={submission.isSubmitting}
               onClick={() =>
                 run(
-                  save().then(() => {
+                  submit().then(() => {
                     const next = leave;
-                    setLeave(null);
+                    flushSync(() => setLeave(null));
                     next?.();
                   }),
                 )

@@ -1,8 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, App, Button, Card, Space } from 'antd';
+import { useNavigate } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { buildTemplateView, type PrintView } from '@caiwu/print';
-import { notify, queryClient, usePermission, useSession } from '@caiwu/web-kit';
+import {
+  notify,
+  queryClient,
+  useHotkey,
+  usePermission,
+  useSession,
+  useSubmission,
+  useUnsavedChanges,
+} from '@caiwu/web-kit';
 import { DataTable, PageContainer, useUrlFilters, type DataColumn } from '@caiwu/ui';
 import { formatMoney } from '@caiwu/core';
 import { defaultSettings, TemplateSchema, TEMPLATE_FIELDS, type PrintTemplate } from '../shared';
@@ -24,6 +33,7 @@ const blank = (): PrintTemplate => ({
   ],
 });
 export default function FormatsPage() {
+  const navigate = useNavigate();
   const [selection, setSelection] = useUrlFilters({ voucherId: 0 });
   const canPrintVoucher = usePermission('print-settings.voucher.print');
   const voucher = useQuery(
@@ -41,16 +51,11 @@ export default function FormatsPage() {
     [preview, setPreview] = useState<PrintView>();
   const canEdit = usePermission('print-settings.format.edit');
   const { modal } = App.useApp();
-  const dirty = !!editing && JSON.stringify(editing) !== original;
-  useEffect(() => {
-    if (!dirty) return;
-    const prevent = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-    window.addEventListener('beforeunload', prevent);
-    return () => window.removeEventListener('beforeunload', prevent);
-  }, [dirty]);
+  const current = useRef(editing);
+  current.current = editing;
+  const version = JSON.stringify(editing);
+  const dirty = !!editing && (revision == null || version !== original);
+  const { submit, isSubmitting } = useSubmission();
   const refresh = () => queryClient.invalidateQueries({ queryKey: api.formats.queryKey() });
   const save = useMutation(
     api.saveFormat.mutationOptions({
@@ -62,19 +67,43 @@ export default function FormatsPage() {
   );
   const remove = useMutation(api.removeFormat.mutationOptions({ onSuccess: () => void refresh() }));
   const copy = useMutation(api.copyFormat.mutationOptions({ onSuccess: () => void refresh() }));
-  const persist = async () => {
-    const result = TemplateSchema.safeParse(editing);
-    if (!result.success) {
-      notify.error(result.error.issues[0]?.message ?? '格式数据缺失');
-      return false;
-    }
-    const values = await save.mutateAsync({ data: result.data, revision });
-    const stored = values.find((x) => x.code === result.data.code)!;
-    setRevision(stored.revision);
-    setOriginal(JSON.stringify(result.data));
-    return true;
-  };
+  const persist = () =>
+    submit(async () => {
+      const snapshot = JSON.stringify(current.current);
+      const result = TemplateSchema.safeParse(current.current);
+      if (!result.success) {
+        notify.error(result.error.issues[0]?.message ?? '格式数据缺失');
+        return false;
+      }
+      const values = await save.mutateAsync({ data: result.data, revision });
+      const stored = values.find((x) => x.code === result.data.code)!;
+      setRevision(stored.revision);
+      setOriginal(JSON.stringify(result.data));
+      if (JSON.stringify(current.current) !== snapshot) return false;
+      // 同步显示保存时规范化的名称，避免首尾空格被误判为未保存。
+      current.current = result.data;
+      setEditing(result.data);
+      return true;
+    });
+  useUnsavedChanges({
+    title: '特殊打印格式',
+    dirty,
+    version,
+    save: persist,
+    discard: async () => {
+      await submit(async () => true);
+      setEditing(null);
+    },
+  });
+  useHotkey(
+    'Ctrl+S',
+    () => {
+      void persist().catch(() => {});
+    },
+    { enabled: !!editing },
+  );
   const guard = (next: () => void) => {
+    if (isSubmitting) return;
     void continueAfterEdit(
       dirty,
       () =>
@@ -210,7 +239,15 @@ export default function FormatsPage() {
       extra={
         <Space>
           {canEdit && <Button onClick={() => open()}>新建格式</Button>}
-          <Button onClick={() => guard(() => window.location.assign('/m/print-settings/preview'))}>
+          <Button
+            onClick={() =>
+              guard(() => {
+                setEditing(null);
+                setPreview(undefined);
+                void navigate('/m/print-settings/preview');
+              })
+            }
+          >
             返回打印
           </Button>
         </Space>
@@ -251,7 +288,7 @@ export default function FormatsPage() {
                 type="number"
                 min={0}
                 max={99}
-                disabled={revision != null}
+                disabled={revision != null || isSubmitting}
                 value={editing.code}
                 onChange={(e) => update({ code: Number(e.target.value) })}
               />
@@ -381,11 +418,17 @@ export default function FormatsPage() {
             >
               增加单元格
             </Button>
-            <Button type="primary" loading={save.isPending} onClick={() => void persist()}>
+            <Button
+              type="primary"
+              loading={isSubmitting}
+              onClick={() => void persist().catch(() => {})}
+            >
               保存格式
             </Button>
             <Button onClick={() => show(editing)}>预览定义</Button>
-            <Button onClick={() => guard(() => setEditing(null))}>关闭定义</Button>
+            <Button disabled={isSubmitting} onClick={() => guard(() => setEditing(null))}>
+              关闭定义
+            </Button>
           </Space>
         </Card>
       )}

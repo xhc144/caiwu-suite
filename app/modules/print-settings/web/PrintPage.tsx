@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Card, Space } from 'antd';
+import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import {
   buildLedgerBookView,
@@ -16,6 +17,7 @@ import SettingsEditor from './SettingsEditor';
 import Preview from './Preview';
 import './print.css';
 export default function PrintPage() {
+  const navigate = useNavigate();
   const [f, setF] = useUrlFilters({
     mode: 'voucher',
     from: 202601,
@@ -115,10 +117,16 @@ export default function PrintPage() {
       subtitle="使用当前账套实际数据。预览缩放不会改变打印比例。"
       extra={
         <Space>
-          <Button href="/m/print-settings/formats">特殊打印格式</Button>
-          {canSettings && (
-            <Button onClick={() => setSettingsOpen(!settingsOpen)}>打印格式设置</Button>
-          )}
+          <Button
+            href="/m/print-settings/formats"
+            onClick={(event) => {
+              event.preventDefault();
+              void navigate('/m/print-settings/formats');
+            }}
+          >
+            特殊打印格式
+          </Button>
+          {canSettings && <Button onClick={() => setSettingsOpen(true)}>打印格式设置</Button>}
         </Space>
       }
     >

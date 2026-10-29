@@ -30,7 +30,15 @@ import {
 import { notify, queryClient, useAccounts, usePermission } from '@caiwu/web-kit';
 import type { AccountInput } from '../shared';
 import { api } from './api';
-import { collectConfirmations, ExcelActions, refresh, run, useConfirm, useUnsaved } from './common';
+import {
+  collectConfirmations,
+  ExcelActions,
+  refresh,
+  run,
+  useConfirm,
+  useUnsaved,
+  draftVersion,
+} from './common';
 
 const auxTypes = DIMENSION_TYPES.filter((d) => d.id !== 'cashflow');
 type AuxType = 'project' | 'partner' | 'department' | 'person';
@@ -298,6 +306,7 @@ function AccountDrawer({
 }) {
   const [form] = Form.useForm<Values>();
   const [dirty, setDirty] = useState(false);
+  const version = draftVersion(Form.useWatch([], form));
   const info = useQuery(api.info.queryOptions());
   const save = useMutation(api.accounts.save.mutationOptions());
   const ask = useConfirm();
@@ -350,10 +359,15 @@ function AccountDrawer({
     notify.success('科目已保存');
     onClose();
   };
-  const unsaved = useUnsaved(dirty, submit, () => {
-    form.resetFields();
-    setDirty(false);
-  });
+  const unsaved = useUnsaved(
+    dirty,
+    submit,
+    () => {
+      form.resetFields();
+      setDirty(false);
+    },
+    { title: '科目档案', version },
+  );
   return (
     <>
       <Drawer
@@ -366,7 +380,7 @@ function AccountDrawer({
           <Space>
             <Button onClick={() => unsaved.guard(onClose)}>取消</Button>
             {canEdit && (
-              <Button type="primary" loading={save.isPending} onClick={() => run(submit())}>
+              <Button type="primary" loading={unsaved.isSaving} onClick={() => run(unsaved.save())}>
                 保存
               </Button>
             )}
@@ -378,7 +392,7 @@ function AccountDrawer({
           layout="vertical"
           initialValues={defaults}
           onValuesChange={() => setDirty(true)}
-          disabled={!canEdit}
+          disabled={!canEdit || unsaved.isSaving}
         >
           <Row gutter={16}>
             <Col span={12}>
@@ -487,6 +501,8 @@ function AccountDrawer({
 
 function BatchDrawer({ onClose }: { onClose: () => void }) {
   const [form] = Form.useForm<{ parentId: number; start: number; names: string }>();
+  const [dirty, setDirty] = useState(false);
+  const version = draftVersion(Form.useWatch([], form));
   const [preview, setPreview] = useState<AccountInput[]>([]);
   const [snapshot, setSnapshot] = useState<{
     parentId: number;
@@ -505,155 +521,191 @@ function BatchDrawer({ onClose }: { onClose: () => void }) {
         .map((n) => n.trim())
         .filter(Boolean),
     };
-    setPreview(await previewBatch.mutateAsync(data));
+    const rows = await previewBatch.mutateAsync(data);
+    setPreview(rows);
     setSnapshot(data);
+    return { rows, data };
   };
+  const submit = async () => {
+    const prepared = snapshot ? { rows: preview, data: snapshot } : await previewRows();
+    const warnings = (
+      await Promise.all(
+        prepared.rows.map((a) => queryClient.fetchQuery(api.accounts.preview.queryOptions(a))),
+      )
+    ).flatMap((p) => p.warnings);
+    const duplicates = prepared.rows
+      .filter((a, i) => prepared.rows.some((b, j) => j < i && b.name === a.name))
+      .map((a) => ({
+        key: `duplicateName:${a.code}`,
+        message: `批内名称 ${a.name} 重复，仍单独建立 ${a.code}？`,
+      }));
+    const confirmations = await collectConfirmations(
+      [
+        ...warnings,
+        ...duplicates,
+        { key: 'batch', message: '确认按预览整批建立？任何失败都将撤销全部。' },
+      ],
+      ask,
+    );
+    if (!confirmations) throw new Error('用户取消确认');
+    await save.mutateAsync({ ...prepared.data, confirmations });
+    setDirty(false);
+    await refresh();
+    onClose();
+  };
+  const unsaved = useUnsaved(
+    dirty,
+    submit,
+    () => {
+      form.resetFields();
+      setDirty(false);
+      setSnapshot(null);
+      setPreview([]);
+    },
+    { title: '批量增加下级科目', version },
+  );
   return (
-    <Drawer
-      open
-      title="批量增加下级"
-      size={640}
-      onClose={onClose}
-      footer={
-        <Space>
-          <Button onClick={() => run(previewRows())}>预览编码</Button>
-          <Button
-            type="primary"
-            disabled={!snapshot}
-            onClick={() =>
-              run(
-                (async () => {
-                  if (!snapshot) return;
-                  const warnings = (
-                    await Promise.all(
-                      preview.map((a) =>
-                        queryClient.fetchQuery(api.accounts.preview.queryOptions(a)),
-                      ),
-                    )
-                  ).flatMap((p) => p.warnings);
-                  const duplicates = preview
-                    .filter((a, i) => preview.some((b, j) => j < i && b.name === a.name))
-                    .map((a) => ({
-                      key: `duplicateName:${a.code}`,
-                      message: `批内名称 ${a.name} 重复，仍单独建立 ${a.code}？`,
-                    }));
-                  const confirmations = await collectConfirmations(
-                    [
-                      ...warnings,
-                      ...duplicates,
-                      { key: 'batch', message: '确认按预览整批建立？任何失败都将撤销全部。' },
-                    ],
-                    ask,
-                  );
-                  if (!confirmations) return;
-                  await save.mutateAsync({ ...snapshot, confirmations });
-                  await refresh();
-                  onClose();
-                })(),
-              )
-            }
-          >
-            确认批量增加
-          </Button>
-        </Space>
-      }
-    >
-      <Alert
-        type="info"
-        title="继承父级核算属性与默认项；父级已有凭证或期初时不允许直接增加下级。"
-      />
-      <Form
-        form={form}
-        layout="vertical"
-        initialValues={{ start: 1 }}
-        onValuesChange={() => {
-          setSnapshot(null);
-          setPreview([]);
-        }}
+    <>
+      <Drawer
+        open
+        title="批量增加下级"
+        size={640}
+        onClose={() => unsaved.guard(onClose)}
+        footer={
+          <Space>
+            <Button
+              disabled={unsaved.isSaving}
+              loading={previewBatch.isPending}
+              onClick={() => run(previewRows())}
+            >
+              预览编码
+            </Button>
+            <Button
+              type="primary"
+              disabled={!snapshot}
+              loading={unsaved.isSaving}
+              onClick={() => run(unsaved.save())}
+            >
+              确认批量增加
+            </Button>
+          </Space>
+        }
       >
-        <Form.Item name="parentId" label="父级科目" rules={[{ required: true }]}>
-          <AccountSelect leafOnly={false} />
-        </Form.Item>
-        <Form.Item name="start" label="起始序号" rules={[{ required: true }]}>
-          <InputNumber min={0} />
-        </Form.Item>
-        <Form.Item name="names" label="下级名称（每行一个）" rules={[{ required: true }]}>
-          <Input.TextArea rows={7} />
-        </Form.Item>
-      </Form>
-      <DataTable
-        tableId="masterdata.batch"
-        rowKey="code"
-        columns={[
-          { key: 'code', title: '将创建编码', dataIndex: 'code', width: 180 },
-          { key: 'name', title: '名称', dataIndex: 'name', width: 260 },
-        ]}
-        dataSource={preview}
-      />
-    </Drawer>
+        <Alert
+          type="info"
+          title="继承父级核算属性与默认项；父级已有凭证或期初时不允许直接增加下级。"
+        />
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ start: 1 }}
+          disabled={unsaved.isSaving || previewBatch.isPending}
+          onValuesChange={() => {
+            setDirty(true);
+            setSnapshot(null);
+            setPreview([]);
+          }}
+        >
+          <Form.Item name="parentId" label="父级科目" rules={[{ required: true }]}>
+            <AccountSelect leafOnly={false} />
+          </Form.Item>
+          <Form.Item name="start" label="起始序号" rules={[{ required: true }]}>
+            <InputNumber min={0} />
+          </Form.Item>
+          <Form.Item name="names" label="下级名称（每行一个）" rules={[{ required: true }]}>
+            <Input.TextArea rows={7} />
+          </Form.Item>
+        </Form>
+        <DataTable
+          tableId="masterdata.batch"
+          rowKey="code"
+          columns={[
+            { key: 'code', title: '将创建编码', dataIndex: 'code', width: 180 },
+            { key: 'name', title: '名称', dataIndex: 'name', width: 260 },
+          ]}
+          dataSource={preview}
+        />
+      </Drawer>
+      {unsaved.dialog}
+    </>
   );
 }
 
 function MoneyDrawer({ onClose }: { onClose: () => void }) {
   const [form] = Form.useForm<{ accountId: number; kind: 'cash' | 'bank' | 'other' }>();
+  const [dirty, setDirty] = useState(false);
+  const version = draftVersion(Form.useWatch([], form));
   const roots = useQuery(api.accounts.moneyRoots.queryOptions());
   const { byId } = useAccounts();
   const save = useMutation(api.accounts.confirmMoneyRoot.mutationOptions());
   const ask = useConfirm();
   const { message } = App.useApp();
+  const submit = async () => {
+    const v = await form.validateFields();
+    if (
+      !(await ask(
+        '确认所选一级科目在本账套中属于现金、银行存款或其他货币资金？这将允许该层级的货币资金标志。',
+      ))
+    )
+      throw new Error('用户取消确认');
+    await save.mutateAsync({ ...v, confirmed: true });
+    setDirty(false);
+    await refresh();
+    void message.success('范围已确认');
+  };
+  const unsaved = useUnsaved(
+    dirty,
+    submit,
+    () => {
+      form.resetFields();
+      setDirty(false);
+    },
+    { title: '货币资金范围', version },
+  );
   return (
-    <Drawer
-      open
-      title="本账套货币资金范围"
-      size={600}
-      onClose={onClose}
-      footer={
-        <Button
-          type="primary"
-          onClick={() =>
-            run(
-              (async () => {
-                const v = await form.validateFields();
-                if (
-                  !(await ask(
-                    '确认所选一级科目在本账套中属于现金、银行存款或其他货币资金？这将允许该层级的货币资金标志。',
-                  ))
-                )
-                  return;
-                await save.mutateAsync({ ...v, confirmed: true });
-                await refresh();
-                void message.success('范围已确认');
-              })(),
-            )
-          }
-        >
-          确认层级语义
-        </Button>
-      }
-    >
-      <Typography.Paragraph>
-        初始范围只取制度模板明确标记的现金/银行一级科目。其他货币资金需人工确认，不按编号推断。
-      </Typography.Paragraph>
-      {roots.data?.map((r) => (
-        <Typography.Paragraph key={r.account_id}>
-          {byId.get(r.account_id)?.code} {byId.get(r.account_id)?.name}（
-          {{ cash: '现金', bank: '银行存款', other: '其他货币资金' }[r.kind]}）
+    <>
+      <Drawer
+        open
+        title="本账套货币资金范围"
+        size={600}
+        onClose={() => unsaved.guard(onClose)}
+        footer={
+          <Button type="primary" loading={unsaved.isSaving} onClick={() => run(unsaved.save())}>
+            确认层级语义
+          </Button>
+        }
+      >
+        <Typography.Paragraph>
+          初始范围只取制度模板明确标记的现金/银行一级科目。其他货币资金需人工确认，不按编号推断。
         </Typography.Paragraph>
-      ))}
-      <Form form={form} layout="vertical" initialValues={{ kind: 'other' }}>
-        <Form.Item name="accountId" label="一级资产科目" rules={[{ required: true }]}>
-          <AccountSelect leafOnly={false} filter={(a) => a.level === 1} />
-        </Form.Item>
-        <Form.Item name="kind" label="资金类别">
-          <Select
-            options={[
-              { value: 'cash', label: '现金' },
-              { value: 'bank', label: '银行存款' },
-              { value: 'other', label: '其他货币资金' },
-            ]}
-          />
-        </Form.Item>
-      </Form>
-    </Drawer>
+        {roots.data?.map((r) => (
+          <Typography.Paragraph key={r.account_id}>
+            {byId.get(r.account_id)?.code} {byId.get(r.account_id)?.name}（
+            {{ cash: '现金', bank: '银行存款', other: '其他货币资金' }[r.kind]}）
+          </Typography.Paragraph>
+        ))}
+        <Form
+          form={form}
+          layout="vertical"
+          initialValues={{ kind: 'other' }}
+          disabled={unsaved.isSaving}
+          onValuesChange={() => setDirty(true)}
+        >
+          <Form.Item name="accountId" label="一级资产科目" rules={[{ required: true }]}>
+            <AccountSelect leafOnly={false} filter={(a) => a.level === 1} />
+          </Form.Item>
+          <Form.Item name="kind" label="资金类别">
+            <Select
+              options={[
+                { value: 'cash', label: '现金' },
+                { value: 'bank', label: '银行存款' },
+                { value: 'other', label: '其他货币资金' },
+              ]}
+            />
+          </Form.Item>
+        </Form>
+      </Drawer>
+      {unsaved.dialog}
+    </>
   );
 }
