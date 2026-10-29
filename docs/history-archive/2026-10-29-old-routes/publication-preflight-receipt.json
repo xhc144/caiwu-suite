@@ -1,0 +1,1083 @@
+{
+  "purpose": "Historical reachability preservation only; not a functional integration or acceptance result",
+  "state_at_receipt_construction": "A1 through A6 objects and proposal branch have been created and read back. No PR has been created by this owner; main is unchanged; no source ref has been deleted.",
+  "observed_at": "2026-10-29 04:36:03 UTC",
+  "repository": "xhc144/caiwu-suite",
+  "proposal_branch": {
+    "name": "archive/old-routes-20261029",
+    "head_before_this_receipt": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+    "created_and_read_back_at": "2026-10-29 04:35:05 UTC",
+    "receipt_own_commit_and_subsequent_ref_update_not_preclaimed": true
+  },
+  "baseline": {
+    "commit": "c51e2ecdcd2276b01662ecad4f1c90cafcca518e",
+    "tree": "8f87cbbf807724ec9f51300e9de18ea24bac2c53",
+    "parents": [
+      "b4f296e3a64d1603aaa993506dc7a79fa63140f6",
+      "d8fa4aa665f8dd8df7d66c425660ac03076d7125"
+    ],
+    "app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+    "prebranch_main_recheck": "c51e2ecdcd2276b01662ecad4f1c90cafcca518e"
+  },
+  "source_ref_preflight": {
+    "snapshot": {
+      "observed_at": "2026-10-29 04:35:01 UTC",
+      "main": "c51e2ecdcd2276b01662ecad4f1c90cafcca518e",
+      "branches": [
+        {
+          "name": "claude/elegant-sagan-91n3gs",
+          "head": "16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa"
+        },
+        {
+          "name": "codex/books-modal-cancel-20261027",
+          "head": "af7d398f4abba60006babeb62edb40729b038e8a"
+        },
+        {
+          "name": "codex/costing-real-voucher-20261027-4b3bbdd",
+          "head": "d4133a63d15368f92b4dc6af4522cfe146d67c91"
+        },
+        {
+          "name": "codex/inventory-provider-format-20261026",
+          "head": "48c1d3d4354e3bff8ddb1af7481702910d820cf6"
+        },
+        {
+          "name": "codex/inventory-provider-format-final-20261026",
+          "head": "a77023af2eda4d4099704dd8beb8a0027f32609c"
+        },
+        {
+          "name": "codex/m21-shutdown-integration-20261026",
+          "head": "05f0b9121c1e763d2deaf39fe158fe91dd4fd5ef"
+        },
+        {
+          "name": "codex/report-profile-gates-20261026",
+          "head": "cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b"
+        },
+        {
+          "name": "codex/testkit-windows-stdio-20261027",
+          "head": "6e861283ab2e536fb8b988ebf3626a4a2694a61e"
+        },
+        {
+          "name": "codex/w2-02-enterprise-purchase-20261026",
+          "head": "b45f491c5491f3dff6d1f27f4a7dada4e5eb5145"
+        },
+        {
+          "name": "codex/w2-02-enterprise-statements",
+          "head": "91e8e30435923db730881c9fa765f883364d2028"
+        },
+        {
+          "name": "codex/w2-03-small-business-20261026",
+          "head": "6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94"
+        },
+        {
+          "name": "codex/w2-04-nonprofit-20261026",
+          "head": "7388834962dcfa3e96dac5adb37ea6104c8aaa3f"
+        },
+        {
+          "name": "codex/w2-12-ledgers-20261026",
+          "head": "ad7176449a3cf28c4e04fe2572cdf090dc7bfacf"
+        },
+        {
+          "name": "codex/w2-14-report-ui-20261026",
+          "head": "100fdcf71b365cd1ac364f3007911810aea3336b"
+        },
+        {
+          "name": "codex/w2-22-legacy-import-20261026",
+          "head": "e682c8bb60e85b87836828df7931722eb9992ce0"
+        },
+        {
+          "name": "codex/w2-costing-formal-release-20261026",
+          "head": "ed770fb2517b9ea5d90cb9bafa7121955cf22671"
+        },
+        {
+          "name": "codex/w2-inventory-costing-bridge",
+          "head": "cd47d15a7b83278378a309a761e1fd26b1edabdb"
+        },
+        {
+          "name": "codex/w2-native-voucher-preflight-20261026",
+          "head": "2ba1e8a799f5d1295795a58528cb462445e38c36"
+        },
+        {
+          "name": "codex/w2-shared-report-query",
+          "head": "c9f886ae8523215418aa13963f5db98ab489e844"
+        },
+        {
+          "name": "codex/w3-nonprofit-classified-20261026",
+          "head": "bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790"
+        },
+        {
+          "name": "codex/wave1-m08-multicolumn-20261026",
+          "head": "5714c533405f612ea05b754b9ed2d846e49d8f49"
+        },
+        {
+          "name": "codex/wave1-m21-desktop-db-validation",
+          "head": "377109bc21921ea13b30448a593f7db690d77fe9"
+        },
+        {
+          "name": "fix/balances-modal-confirm-20261027",
+          "head": "2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27"
+        },
+        {
+          "name": "fix/voucher-entry-stale-autosave",
+          "head": "2ac6cf96294e7a1788f4ea461171abfdbb0de9f7"
+        },
+        {
+          "name": "main",
+          "head": "c51e2ecdcd2276b01662ecad4f1c90cafcca518e"
+        },
+        {
+          "name": "w2-06/templates-official-validation",
+          "head": "567a47cf386d08bbfd933435b46260a339c3d6ae"
+        },
+        {
+          "name": "w2-10-voucher-book-gaps",
+          "head": "ef0bcf9e77211b890d9150f11c46e8f9a5620371"
+        },
+        {
+          "name": "wave3/analysis-completion",
+          "head": "ea16219cc50de4e868f3d92ff46982727bf7093a"
+        },
+        {
+          "name": "wave3/analysis-next",
+          "head": "41a57bfeb22c3b14afa4b09ec0e66265e3391b76"
+        },
+        {
+          "name": "wave3/backup-analysis-reviewed",
+          "head": "0d42f50667b52f2a22c45355e8e490bb54819ac9"
+        },
+        {
+          "name": "wave3/backup-next",
+          "head": "966514b885ee98c952b80d98fa15fb5fe8fd1694"
+        },
+        {
+          "name": "wave3/voucher-workbench",
+          "head": "5f8eeb54aa9c41781e4d741b5c732e5c8fd70888"
+        },
+        {
+          "name": "worker/w2-desktop-updates-20261026",
+          "head": "f5f1616837c21783cc7cd0af19f2ac48aba8c70e"
+        }
+      ],
+      "open_PRs": [
+        {
+          "number": 164,
+          "head": "wave3/backup-analysis-reviewed",
+          "head_sha": "0d42f50667b52f2a22c45355e8e490bb54819ac9"
+        }
+      ],
+      "frozen_refs_unchanged": true
+    },
+    "all_25_frozen_refs_unchanged": true,
+    "no_open_PR_on_any_of_the_25_source_refs": true,
+    "writer_evidence": "Root assigned the exclusive frozen archive owner; all observed source refs remained fixed, none has an open PR, and known activity belongs to excluded wave3/other owners. GitHub ordinary metadata has no separate writer roster."
+  },
+  "frozen_document_status_notice": "The accompanying README, batch-plan, manifest, ref-snapshot, current-status and draft-validation retain their original dated dd4/b4 audit snapshots and LOCAL_DRAFT/NOT_PUBLISHED values. Those frozen values are not assertions about this later proposal publication. This receipt records only actions already completed to the proposal branch.",
+  "original_frozen_manifest": {
+    "utf8_bytes": 1145349,
+    "sha256": "6e598267ccd5fca403db787f2d7f5cd7ce3e9f94122f1ae747b200db58d136b6",
+    "local_original_not_modified": true
+  },
+  "published_manifest": {
+    "method": "JSON.stringify(JSON.parse(original_utf8)); no indentation; no trailing newline; all data preserved",
+    "utf8_bytes": 810352,
+    "sha256": "241ab03d9ed3b492f10f0ef05dc5b1b16e64b6db90f2a0a97d3c2517c22bf33a",
+    "git_blob": "2bb1751f5da6b45099a9e8e39e30c9b4f9dd0d6d",
+    "all_fields_round_trip_deep_equal": true,
+    "retained_counts": {
+      "branches": 25,
+      "owned_paths": 1612,
+      "protected_candidate_matches": 904,
+      "historical_same_path_witnesses": 277,
+      "per_branch_commit_memberships": 693,
+      "deduplicated_commit_shas": 157
+    },
+    "legacy_draft_validation_notice": "The frozen validation lists the original uncompressed manifest bytes/hash. Only the manifest publication representation differs; use the published_manifest values in this receipt for its remote byte check. All other 33 frozen files retain exact original bytes."
+  },
+  "batches": [
+    {
+      "id": "01",
+      "commit": "4a97ca1034e41e364c1c7eeafc8506c50d6be2f8",
+      "tree": "5274daf087780399d06dc4d9bb1051e8631c80cf",
+      "parents": [
+        "c51e2ecdcd2276b01662ecad4f1c90cafcca518e",
+        "16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa",
+        "6e861283ab2e536fb8b988ebf3626a4a2694a61e",
+        "f5f1616837c21783cc7cd0af19f2ac48aba8c70e"
+      ],
+      "message": "archive(history): 保全旧开发路线 01（仅历史留存，未作功能合并或验收）",
+      "verification": {
+        "root_tree": "5274daf087780399d06dc4d9bb1051e8631c80cf",
+        "app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+        "docs_tree": "ec9d3761d4a42df6cc7493a0b7829a8f63e0e007",
+        "archive_tree": "8dfe4d8bcd11de359f447af72a8071ef148ca1ba",
+        "file_count": 12,
+        "existing_root_and_docs_subtrees_unchanged": true
+      }
+    },
+    {
+      "id": "02",
+      "commit": "22afb96eae4d7e3452746e18892fa2f2b154f7cd",
+      "tree": "c9c1b86585a3c9044c112eaf16928ac900f042e7",
+      "parents": [
+        "4a97ca1034e41e364c1c7eeafc8506c50d6be2f8",
+        "af7d398f4abba60006babeb62edb40729b038e8a",
+        "2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27",
+        "2ac6cf96294e7a1788f4ea461171abfdbb0de9f7",
+        "ef0bcf9e77211b890d9150f11c46e8f9a5620371",
+        "2ba1e8a799f5d1295795a58528cb462445e38c36"
+      ],
+      "message": "archive(history): 保全旧开发路线 02（仅历史留存，未作功能合并或验收）",
+      "verification": {
+        "root_tree": "c9c1b86585a3c9044c112eaf16928ac900f042e7",
+        "app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+        "docs_tree": "5b6e8a097d4fb9621427d4b3b85e0f4683246000",
+        "archive_tree": "4f86f8e328fd8b98892915c4f55be753d824e4fe",
+        "file_count": 17,
+        "existing_root_and_docs_subtrees_unchanged": true
+      }
+    },
+    {
+      "id": "03",
+      "commit": "76b2613da6d6d346c1efbbd006bffff9cd24dc64",
+      "tree": "c38521589b5ed1bfe0d0ceaf4360d5ccec4405ff",
+      "parents": [
+        "22afb96eae4d7e3452746e18892fa2f2b154f7cd",
+        "d4133a63d15368f92b4dc6af4522cfe146d67c91",
+        "48c1d3d4354e3bff8ddb1af7481702910d820cf6",
+        "a77023af2eda4d4099704dd8beb8a0027f32609c",
+        "ed770fb2517b9ea5d90cb9bafa7121955cf22671",
+        "cd47d15a7b83278378a309a761e1fd26b1edabdb"
+      ],
+      "message": "archive(history): 保全旧开发路线 03（仅历史留存，未作功能合并或验收）",
+      "verification": {
+        "root_tree": "c38521589b5ed1bfe0d0ceaf4360d5ccec4405ff",
+        "app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+        "docs_tree": "2fdfcc0450658c24c94b2de61b112782b9ecbba6",
+        "archive_tree": "ab575b4b597741d4391c52dd408a3d9ebcfd2a09",
+        "file_count": 22,
+        "existing_root_and_docs_subtrees_unchanged": true
+      }
+    },
+    {
+      "id": "04",
+      "commit": "0d89bd9399558c076825c2705a68b3136b8ae159",
+      "tree": "4d79ace29f42eb13921b1d58290c080d89427e8d",
+      "parents": [
+        "76b2613da6d6d346c1efbbd006bffff9cd24dc64",
+        "cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b",
+        "b45f491c5491f3dff6d1f27f4a7dada4e5eb5145",
+        "91e8e30435923db730881c9fa765f883364d2028",
+        "6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94",
+        "100fdcf71b365cd1ac364f3007911810aea3336b"
+      ],
+      "message": "archive(history): 保全旧开发路线 04（仅历史留存，未作功能合并或验收）",
+      "verification": {
+        "root_tree": "4d79ace29f42eb13921b1d58290c080d89427e8d",
+        "app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+        "docs_tree": "d9d518c92a034db1d9e502072474b5f0ed5c5643",
+        "archive_tree": "26e5b811e6f330a4e6e1d95278d38ee2415e8014",
+        "file_count": 27,
+        "existing_root_and_docs_subtrees_unchanged": true
+      }
+    },
+    {
+      "id": "05",
+      "commit": "fff34b836dcdd5b74fdefd8e9bcbf64531d9adab",
+      "tree": "d911e9bf399c651e5765193a65e17e29fa13ca65",
+      "parents": [
+        "0d89bd9399558c076825c2705a68b3136b8ae159",
+        "7388834962dcfa3e96dac5adb37ea6104c8aaa3f",
+        "bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790",
+        "c9f886ae8523215418aa13963f5db98ab489e844"
+      ],
+      "message": "archive(history): 保全旧开发路线 05（仅历史留存，未作功能合并或验收）",
+      "verification": {
+        "root_tree": "d911e9bf399c651e5765193a65e17e29fa13ca65",
+        "app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+        "docs_tree": "a7cba193bccd7d22ea9a26c34ea2c56b1c24368d",
+        "archive_tree": "c45c4d7b95a69184089f48f44bc02d96384f4185",
+        "file_count": 30,
+        "existing_root_and_docs_subtrees_unchanged": true
+      }
+    },
+    {
+      "id": "06",
+      "commit": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "tree": "dc7a31b504173480491218080637635bc9d1ee2c",
+      "parents": [
+        "fff34b836dcdd5b74fdefd8e9bcbf64531d9adab",
+        "ad7176449a3cf28c4e04fe2572cdf090dc7bfacf",
+        "e682c8bb60e85b87836828df7931722eb9992ce0",
+        "5714c533405f612ea05b754b9ed2d846e49d8f49",
+        "567a47cf386d08bbfd933435b46260a339c3d6ae"
+      ],
+      "message": "archive(history): 保全旧开发路线 06（仅历史留存，未作功能合并或验收）",
+      "verification": {
+        "root_tree": "dc7a31b504173480491218080637635bc9d1ee2c",
+        "app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+        "docs_tree": "63598a3a8bc88e8723eb22aa6d33f59844066793",
+        "archive_tree": "af6fa56d1f14735bacf4436db5b5a29ee26b031e",
+        "file_count": 34,
+        "existing_root_and_docs_subtrees_unchanged": true
+      }
+    }
+  ],
+  "frozen_file_readbacks": [
+    {
+      "path": "README.md",
+      "blob": "0bd197577cea472d728c59a5a4aa614e57a8625d",
+      "utf8_bytes": 12300,
+      "sha256": "db7debf951aad437aa72a9cfc5272949602a3b8bcb65e8f38ddd9d3003bce946",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "batch-plan.json",
+      "blob": "eaea383d8a71173ba6fcec20c86f249edfee1d84",
+      "utf8_bytes": 8918,
+      "sha256": "1ddf450468cb441a5fff3ebac0fae856de14caff08fe2761050a4c6ae1c27a2c",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches.tsv",
+      "blob": "8643f691f14f39def6154f06baa9195f489ac49b",
+      "utf8_bytes": 5243,
+      "sha256": "9ac86b5ba813061389f6e0a3bdb318cf1f93591db08a8f7beaa9ad24ea31251e",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/claude__elegant-sagan-91n3gs.md",
+      "blob": "747d98d167f5a4f9803be38eaeeb0b8ac54ba5be",
+      "utf8_bytes": 2761,
+      "sha256": "41900627178d17d4b4c32c23b3178686f4a57e6e960dbdf6346fdf232a923f94",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__books-modal-cancel-20261027.md",
+      "blob": "59c1c2c40f99a340c5e2320c0a5e7669a2247a2c",
+      "utf8_bytes": 9099,
+      "sha256": "8769bf1b5e7832a104cec45cb013bbb3e374919ef3a87c87d2c0936179a5ee80",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__costing-real-voucher-20261027-4b3bbdd.md",
+      "blob": "80157b9b9fcdf384ae4bf5ee87b1354214907327",
+      "utf8_bytes": 37194,
+      "sha256": "91f5db32fde64ce68749cd6b542c75f87b66414a8f8d54177964b4fff77a91e4",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__inventory-provider-format-20261026.md",
+      "blob": "b8b3766f144de9a12170c3157bf6c445c7dc4d19",
+      "utf8_bytes": 12946,
+      "sha256": "7003a827e835f5fa542667842f619f059e490c1016fb0c4f9446d2cca2ba2e51",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__inventory-provider-format-final-20261026.md",
+      "blob": "a207dd129c321647c83811d2516ee2465c4b7544",
+      "utf8_bytes": 12958,
+      "sha256": "a8dd0fd6d9817a536638392fd8864900f77db51da19cf5219bcd638756c239e8",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__report-profile-gates-20261026.md",
+      "blob": "a0a3d5742cc19f94887b1e8d8b147cdcfed28cda",
+      "utf8_bytes": 25697,
+      "sha256": "8d714cc80f5c5daf2c9e75904a1ca6ff1521d1b830554730d7bda915c8d491b8",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__testkit-windows-stdio-20261027.md",
+      "blob": "ad0da1e7b0216199b2d151fc27bb701397f19f4d",
+      "utf8_bytes": 40123,
+      "sha256": "59e1e2fafaf02d931a4aa497b6def82749423ac6d78f096072dbc0ed47f811e5",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-02-enterprise-purchase-20261026.md",
+      "blob": "652898245ed359f7061af5d4315113c0344bbb5b",
+      "utf8_bytes": 10139,
+      "sha256": "c96074adbd36b689419df25fc8a790a815158888391ea05a83c52950c9933cb2",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-02-enterprise-statements.md",
+      "blob": "ee16df356bacd4b1b74a16a45571e02124e52c7d",
+      "utf8_bytes": 7007,
+      "sha256": "cf415b1c2a4d91dd34572a54315821ded90916830fcc5f2c504fa5aefdc5a54e",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-03-small-business-20261026.md",
+      "blob": "4a885d3c88937ac96b3a63cd3db3f944fe7670ca",
+      "utf8_bytes": 10539,
+      "sha256": "7de21af9ea9a05f5a4616b871614d19053c99e8d14a53d4173ad1e3c49f1cc53",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-04-nonprofit-20261026.md",
+      "blob": "d423acc96fe01d19f4fbdf9cad29c3919b0816c9",
+      "utf8_bytes": 8062,
+      "sha256": "73c4f4f8e06d22a397bab946d4bf97bf6a156d8d1de6f16619218c951c669351",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-12-ledgers-20261026.md",
+      "blob": "d50f334572f6d04f25a5a74214b7888269146b36",
+      "utf8_bytes": 6933,
+      "sha256": "653a49a9169459bd6fd7f61441821233d06200542a2d035f85cc3c497f226f96",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-14-report-ui-20261026.md",
+      "blob": "467168877bd419b0baf58fad5442e37dd4b357e8",
+      "utf8_bytes": 7287,
+      "sha256": "dc19c9a966176dfebbd338972aca5ca0d5d22563274c86da2b65bd44dc2573cc",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-22-legacy-import-20261026.md",
+      "blob": "ab3e767c3fa47aa04a3915fb3bc8a82199460f41",
+      "utf8_bytes": 6807,
+      "sha256": "0bd86a10db68e1a9dab0aab64561e86dfe774308dd6eeec976d4c7e05370f605",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-costing-formal-release-20261026.md",
+      "blob": "2e8d8dd2bf0e5ea3594cf7a98eccf567f2bfa6e6",
+      "utf8_bytes": 16370,
+      "sha256": "c9ed02f1b20ebd92a4dd1b84869e6836331937ab130be8dcf3593ea60514d84b",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-inventory-costing-bridge.md",
+      "blob": "8f9ac78d9e5c2a9b60c0bb79e3cd9d45303d9f7b",
+      "utf8_bytes": 12932,
+      "sha256": "c60396114a8803ec314743a1bfcf22795306ace8f7961d91b50ea2c1fac60326",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-native-voucher-preflight-20261026.md",
+      "blob": "756a078d94fda7d4f1cc4a581d0aae8a421d5637",
+      "utf8_bytes": 10163,
+      "sha256": "ecd3438d16dc1a28d5de5bff807cb877ff847b99acb14daf1dac905195340d2b",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w2-shared-report-query.md",
+      "blob": "8753573ee65dacb59f23496e7c7a811e2d0fda35",
+      "utf8_bytes": 4710,
+      "sha256": "c109dab9c32380a4dcd4f10f0bc5d189482c522e6d0d409ae80d5ebb1d5a61ab",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__w3-nonprofit-classified-20261026.md",
+      "blob": "c96d260b68494612c4c6e7b4c2b5434200c072cf",
+      "utf8_bytes": 11229,
+      "sha256": "91db4ba3097b626a4537dd3eb2992f9084337a7597665c5f43172fa4b141f7e9",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/codex__wave1-m08-multicolumn-20261026.md",
+      "blob": "1a172479ab0655fee69e4eef2f617be2447a1af7",
+      "utf8_bytes": 3595,
+      "sha256": "7faf486afc40b166f36d89c78ecb5a77bd321bbb1856cd02b9e18aec8a04eafe",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/fix__balances-modal-confirm-20261027.md",
+      "blob": "470833e0fd8e94ce27804cc963836f3474db7948",
+      "utf8_bytes": 40167,
+      "sha256": "25b69731423920d3482737f031536d342820a9d2ecc59b0fbb84f63ad3b3b2d7",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/fix__voucher-entry-stale-autosave.md",
+      "blob": "d83a2f9df46ec015d877b36e7da211c037592554",
+      "utf8_bytes": 2617,
+      "sha256": "866653a44317ca19054677dedd6500f1b672d05097606050457d4ca3a0095b9f",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/w2-06__templates-official-validation.md",
+      "blob": "a3eceb8cc7dda9314f6ec1582380200261608149",
+      "utf8_bytes": 3287,
+      "sha256": "04f0abeaa7ec6c9d9231080e8b495d33e37a13ef013f50b5bed271fc584473ce",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/w2-10-voucher-book-gaps.md",
+      "blob": "a860b92dc7ea68e9f49f045955af7f159b6f51cd",
+      "utf8_bytes": 4856,
+      "sha256": "f58dc01f243f89c0c366d789bb8f9e7fc3856f7ad9cb92e0fcf9cd81bf062fcb",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "branches/worker__w2-desktop-updates-20261026.md",
+      "blob": "662b2c15784adc4f2e00eb7acd31c3a6bf88af43",
+      "utf8_bytes": 4781,
+      "sha256": "f949889976f0422083f522f973af713a4a52139ed89ef34bea2f8dcbefa12231",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "current-status-2026-10-29.json",
+      "blob": "bf88cfb55e3efbb90443b1bcd4ccc84422923940",
+      "utf8_bytes": 1470,
+      "sha256": "5d05fe7e4871d06a6d74371b0eb1efad096af153dd41f5625ab31c7e17f60d47",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "draft-validation.json",
+      "blob": "bd3b17a5a3b99295d6fc1f16cebdb10340c2aa68",
+      "utf8_bytes": 6604,
+      "sha256": "86772867df77a514703312c43c58675bad7c8f15596b417046092ae7b6d10db8",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "manifest.json",
+      "blob": "2bb1751f5da6b45099a9e8e39e30c9b4f9dd0d6d",
+      "utf8_bytes": 810352,
+      "sha256": "241ab03d9ed3b492f10f0ef05dc5b1b16e64b6db90f2a0a97d3c2517c22bf33a",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "path-differences.tsv",
+      "blob": "536ce95f221c822bd0f15199bad29a68f5868b91",
+      "utf8_bytes": 462047,
+      "sha256": "f5fb0ded34a6ac6e52e8d24f0c62044a6128e21e84793a2197bb1ad0eed96eab",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "ref-snapshot.json",
+      "blob": "8a79e8871d30d2d7417d2706b3070296f5b44f8f",
+      "utf8_bytes": 6940,
+      "sha256": "8d6dcd1ab6aafedb3a0e3716825852d01aaca2cbb24020934687a3d0a10a806a",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    },
+    {
+      "path": "remaining-work.md",
+      "blob": "0c268708f8945226aa2861e8b5f95018f00ac1e3",
+      "utf8_bytes": 4205,
+      "sha256": "bda7dfba81593d0c3067a81a2b0d612c54a1f2682e700da8d84639867a5664d8",
+      "full_remote_content_strictly_equal_to_frozen_publication_text": true
+    }
+  ],
+  "frozen_head_restoration_and_A6_ancestry": [
+    {
+      "name": "claude/elegant-sagan-91n3gs",
+      "restore_head": "16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa",
+      "restore_tree": "6c3aa6637ecfb59a17c5fb779fe275842c431e1d",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 374,
+      "merge_base": "16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/16d9f94b3d3397db3a3f9d9cd4eec01bd4bca5aa"
+    },
+    {
+      "name": "codex/books-modal-cancel-20261027",
+      "restore_head": "af7d398f4abba60006babeb62edb40729b038e8a",
+      "restore_tree": "c5a733653140df4ccdf7160593ac4a1420918c1d",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "af7d398f4abba60006babeb62edb40729b038e8a",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 293,
+      "merge_base": "af7d398f4abba60006babeb62edb40729b038e8a",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...af7d398f4abba60006babeb62edb40729b038e8a",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/af7d398f4abba60006babeb62edb40729b038e8a"
+    },
+    {
+      "name": "codex/costing-real-voucher-20261027-4b3bbdd",
+      "restore_head": "d4133a63d15368f92b4dc6af4522cfe146d67c91",
+      "restore_tree": "b328a75f3e48ec91da83b662014b8d6f54a9cea4",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "d4133a63d15368f92b4dc6af4522cfe146d67c91",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 200,
+      "merge_base": "d4133a63d15368f92b4dc6af4522cfe146d67c91",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...d4133a63d15368f92b4dc6af4522cfe146d67c91",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/d4133a63d15368f92b4dc6af4522cfe146d67c91"
+    },
+    {
+      "name": "codex/inventory-provider-format-20261026",
+      "restore_head": "48c1d3d4354e3bff8ddb1af7481702910d820cf6",
+      "restore_tree": "268700579e134d57fd0ba258764328c6250f1fe8",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "48c1d3d4354e3bff8ddb1af7481702910d820cf6",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 301,
+      "merge_base": "48c1d3d4354e3bff8ddb1af7481702910d820cf6",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...48c1d3d4354e3bff8ddb1af7481702910d820cf6",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/48c1d3d4354e3bff8ddb1af7481702910d820cf6"
+    },
+    {
+      "name": "codex/inventory-provider-format-final-20261026",
+      "restore_head": "a77023af2eda4d4099704dd8beb8a0027f32609c",
+      "restore_tree": "9afb7468aecf104ca2a27ca6b411bda7f6c21ac5",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "a77023af2eda4d4099704dd8beb8a0027f32609c",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 301,
+      "merge_base": "a77023af2eda4d4099704dd8beb8a0027f32609c",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...a77023af2eda4d4099704dd8beb8a0027f32609c",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/a77023af2eda4d4099704dd8beb8a0027f32609c"
+    },
+    {
+      "name": "codex/report-profile-gates-20261026",
+      "restore_head": "cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b",
+      "restore_tree": "57958be9f6fd4a9b400c980c8a54ed330a26f6a4",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 241,
+      "merge_base": "cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/cef90b1e2d4c5ab480dc5b3b2eb0d9779a15405b"
+    },
+    {
+      "name": "codex/testkit-windows-stdio-20261027",
+      "restore_head": "6e861283ab2e536fb8b988ebf3626a4a2694a61e",
+      "restore_tree": "edda9a06d9ac898b7f9b9c1750e7e9b79d32a786",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "6e861283ab2e536fb8b988ebf3626a4a2694a61e",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 193,
+      "merge_base": "6e861283ab2e536fb8b988ebf3626a4a2694a61e",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...6e861283ab2e536fb8b988ebf3626a4a2694a61e",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/6e861283ab2e536fb8b988ebf3626a4a2694a61e"
+    },
+    {
+      "name": "codex/w2-02-enterprise-purchase-20261026",
+      "restore_head": "b45f491c5491f3dff6d1f27f4a7dada4e5eb5145",
+      "restore_tree": "d1bbd5b93a9ba912e2558ffc8d2b7604a4d306b2",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "b45f491c5491f3dff6d1f27f4a7dada4e5eb5145",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 287,
+      "merge_base": "b45f491c5491f3dff6d1f27f4a7dada4e5eb5145",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...b45f491c5491f3dff6d1f27f4a7dada4e5eb5145",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/b45f491c5491f3dff6d1f27f4a7dada4e5eb5145"
+    },
+    {
+      "name": "codex/w2-02-enterprise-statements",
+      "restore_head": "91e8e30435923db730881c9fa765f883364d2028",
+      "restore_tree": "c8ea82a8145d42872178369c0a9a42ee6991c6e7",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "91e8e30435923db730881c9fa765f883364d2028",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 360,
+      "merge_base": "91e8e30435923db730881c9fa765f883364d2028",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...91e8e30435923db730881c9fa765f883364d2028",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/91e8e30435923db730881c9fa765f883364d2028"
+    },
+    {
+      "name": "codex/w2-03-small-business-20261026",
+      "restore_head": "6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94",
+      "restore_tree": "4d90c2a42cfb80c948a89983c227f03029855472",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 289,
+      "merge_base": "6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/6b9d2c6c17b3a10c5bbfc0694a17d172c1f59d94"
+    },
+    {
+      "name": "codex/w2-04-nonprofit-20261026",
+      "restore_head": "7388834962dcfa3e96dac5adb37ea6104c8aaa3f",
+      "restore_tree": "f5b67769dfa586afcf344db7aeb6ce0445ef112e",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "7388834962dcfa3e96dac5adb37ea6104c8aaa3f",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 359,
+      "merge_base": "7388834962dcfa3e96dac5adb37ea6104c8aaa3f",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...7388834962dcfa3e96dac5adb37ea6104c8aaa3f",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/7388834962dcfa3e96dac5adb37ea6104c8aaa3f"
+    },
+    {
+      "name": "codex/w2-12-ledgers-20261026",
+      "restore_head": "ad7176449a3cf28c4e04fe2572cdf090dc7bfacf",
+      "restore_tree": "352fcf9ec7e49ff2535ad570a67900212c4e87aa",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "ad7176449a3cf28c4e04fe2572cdf090dc7bfacf",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 361,
+      "merge_base": "ad7176449a3cf28c4e04fe2572cdf090dc7bfacf",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...ad7176449a3cf28c4e04fe2572cdf090dc7bfacf",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/ad7176449a3cf28c4e04fe2572cdf090dc7bfacf"
+    },
+    {
+      "name": "codex/w2-14-report-ui-20261026",
+      "restore_head": "100fdcf71b365cd1ac364f3007911810aea3336b",
+      "restore_tree": "0f0264633d9fea284a779c1242021a9c9dc5a64c",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "100fdcf71b365cd1ac364f3007911810aea3336b",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 358,
+      "merge_base": "100fdcf71b365cd1ac364f3007911810aea3336b",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...100fdcf71b365cd1ac364f3007911810aea3336b",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/100fdcf71b365cd1ac364f3007911810aea3336b"
+    },
+    {
+      "name": "codex/w2-22-legacy-import-20261026",
+      "restore_head": "e682c8bb60e85b87836828df7931722eb9992ce0",
+      "restore_tree": "9973169839c8e4f0eeebdaec7e797b35a48fbc9f",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "e682c8bb60e85b87836828df7931722eb9992ce0",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 362,
+      "merge_base": "e682c8bb60e85b87836828df7931722eb9992ce0",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...e682c8bb60e85b87836828df7931722eb9992ce0",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/e682c8bb60e85b87836828df7931722eb9992ce0"
+    },
+    {
+      "name": "codex/w2-costing-formal-release-20261026",
+      "restore_head": "ed770fb2517b9ea5d90cb9bafa7121955cf22671",
+      "restore_tree": "9b7ac43f6bb6c9bd1fca72999806afa9965e1886",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "ed770fb2517b9ea5d90cb9bafa7121955cf22671",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 275,
+      "merge_base": "ed770fb2517b9ea5d90cb9bafa7121955cf22671",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...ed770fb2517b9ea5d90cb9bafa7121955cf22671",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/ed770fb2517b9ea5d90cb9bafa7121955cf22671"
+    },
+    {
+      "name": "codex/w2-inventory-costing-bridge",
+      "restore_head": "cd47d15a7b83278378a309a761e1fd26b1edabdb",
+      "restore_tree": "242194a4c78f2a5edca32ca26fc3addc3b491c5f",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "cd47d15a7b83278378a309a761e1fd26b1edabdb",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 302,
+      "merge_base": "cd47d15a7b83278378a309a761e1fd26b1edabdb",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...cd47d15a7b83278378a309a761e1fd26b1edabdb",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/cd47d15a7b83278378a309a761e1fd26b1edabdb"
+    },
+    {
+      "name": "codex/w2-native-voucher-preflight-20261026",
+      "restore_head": "2ba1e8a799f5d1295795a58528cb462445e38c36",
+      "restore_tree": "874c47eddf786f402a2d61a391e8cdced4073e61",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "2ba1e8a799f5d1295795a58528cb462445e38c36",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 288,
+      "merge_base": "2ba1e8a799f5d1295795a58528cb462445e38c36",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...2ba1e8a799f5d1295795a58528cb462445e38c36",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/2ba1e8a799f5d1295795a58528cb462445e38c36"
+    },
+    {
+      "name": "codex/w2-shared-report-query",
+      "restore_head": "c9f886ae8523215418aa13963f5db98ab489e844",
+      "restore_tree": "e5712e0e20312806b4132ef8d475134023501638",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "c9f886ae8523215418aa13963f5db98ab489e844",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 365,
+      "merge_base": "c9f886ae8523215418aa13963f5db98ab489e844",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...c9f886ae8523215418aa13963f5db98ab489e844",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/c9f886ae8523215418aa13963f5db98ab489e844"
+    },
+    {
+      "name": "codex/w3-nonprofit-classified-20261026",
+      "restore_head": "bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790",
+      "restore_tree": "34e4e7655b02840e4971ec8b1ad36c7a49454597",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 287,
+      "merge_base": "bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/bbc44a65dfbaef81fc948b1a7f9fcba9d8b07790"
+    },
+    {
+      "name": "codex/wave1-m08-multicolumn-20261026",
+      "restore_head": "5714c533405f612ea05b754b9ed2d846e49d8f49",
+      "restore_tree": "ca9ba374ac8c25afb4d94257f6c21709476f2005",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "5714c533405f612ea05b754b9ed2d846e49d8f49",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 368,
+      "merge_base": "5714c533405f612ea05b754b9ed2d846e49d8f49",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...5714c533405f612ea05b754b9ed2d846e49d8f49",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/5714c533405f612ea05b754b9ed2d846e49d8f49"
+    },
+    {
+      "name": "fix/balances-modal-confirm-20261027",
+      "restore_head": "2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27",
+      "restore_tree": "508d79fa9b8255b7779d2e45050810505bd143b8",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 200,
+      "merge_base": "2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/2d2eaccdeb0cb80bca42fa7fafadcb824b2bbd27"
+    },
+    {
+      "name": "fix/voucher-entry-stale-autosave",
+      "restore_head": "2ac6cf96294e7a1788f4ea461171abfdbb0de9f7",
+      "restore_tree": "adfdd2642fc7534c1e9e26de67f0291e41008d1e",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "2ac6cf96294e7a1788f4ea461171abfdbb0de9f7",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 369,
+      "merge_base": "2ac6cf96294e7a1788f4ea461171abfdbb0de9f7",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...2ac6cf96294e7a1788f4ea461171abfdbb0de9f7",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/2ac6cf96294e7a1788f4ea461171abfdbb0de9f7"
+    },
+    {
+      "name": "w2-06/templates-official-validation",
+      "restore_head": "567a47cf386d08bbfd933435b46260a339c3d6ae",
+      "restore_tree": "bf6a6beb393b7b8a92532a6f26e764c562f61a1a",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "567a47cf386d08bbfd933435b46260a339c3d6ae",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 368,
+      "merge_base": "567a47cf386d08bbfd933435b46260a339c3d6ae",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...567a47cf386d08bbfd933435b46260a339c3d6ae",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/567a47cf386d08bbfd933435b46260a339c3d6ae"
+    },
+    {
+      "name": "w2-10-voucher-book-gaps",
+      "restore_head": "ef0bcf9e77211b890d9150f11c46e8f9a5620371",
+      "restore_tree": "56bacd7c9a56f1f75c6a6c3b462b83ca52f8a0eb",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "ef0bcf9e77211b890d9150f11c46e8f9a5620371",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 341,
+      "merge_base": "ef0bcf9e77211b890d9150f11c46e8f9a5620371",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...ef0bcf9e77211b890d9150f11c46e8f9a5620371",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/ef0bcf9e77211b890d9150f11c46e8f9a5620371"
+    },
+    {
+      "name": "worker/w2-desktop-updates-20261026",
+      "restore_head": "f5f1616837c21783cc7cd0af19f2ac48aba8c70e",
+      "restore_tree": "cf0535979122278fc5ebd2cb8f8d76e584dea33a",
+      "base": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+      "head": "f5f1616837c21783cc7cd0af19f2ac48aba8c70e",
+      "status": "behind",
+      "ahead_by": 0,
+      "behind_by": 361,
+      "merge_base": "f5f1616837c21783cc7cd0af19f2ac48aba8c70e",
+      "compare_url": "https://github.com/xhc144/caiwu-suite/compare/3cea6dfa7573fea98bae58fa8901b557a19582e8...f5f1616837c21783cc7cd0af19f2ac48aba8c70e",
+      "source_tree_url": "https://github.com/xhc144/caiwu-suite/tree/f5f1616837c21783cc7cd0af19f2ac48aba8c70e"
+    }
+  ],
+  "production_tree_proof": {
+    "method": "Read back each root and docs tree; require every pre-existing root entry other than docs to retain identical mode/type/SHA, and every pre-existing docs entry to retain identical mode/type/SHA. The only added docs entry is history-archive, absent in the baseline. Read back all archive files and require their expected blob/mode. Identical subtree SHA preserves every existing descendant without reading prohibited old source or resources.",
+    "unchanged_root_entries": [
+      {
+        "path": ".ai-handoff",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "65e74071fb7f2edb272f36c5a75f30b857bfdb7f"
+      },
+      {
+        "path": ".github",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "f8bcf5930f722920b1bee4edb0359a32a5328fbb"
+      },
+      {
+        "path": ".gitignore",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "f384c18b2cb26d7a0c22c80fc411f73348df0b6e"
+      },
+      {
+        "path": "AGENTS.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "a7a9ca6ec97b1fcc0bde4f5b5b2c25bc402ccc64"
+      },
+      {
+        "path": "Caiwu.slnx",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4e06978172e4af4eb9f8084dd48ccd571252d64c"
+      },
+      {
+        "path": "Directory.Build.props",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "30e7dcbd0d070960d035322125d3b88d3b7d868f"
+      },
+      {
+        "path": "NuGet.Config",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "4d736c19ec5ff475609182bf1152633c566d1458"
+      },
+      {
+        "path": "README.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "bbddec4cbb4b0140165718275778cffeb61253df"
+      },
+      {
+        "path": "app",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "ca1793406bbea7eb01145eda5b0d1e1644e90113"
+      },
+      {
+        "path": "global.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "81732150ad356ff05f2c0af064d80d570fbcc195"
+      },
+      {
+        "path": "packaging-next",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "6e7e995208ba857ffbc3834bf4cbfd9f8e858609"
+      },
+      {
+        "path": "packaging",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "f822947c043bf87d5581237161fc0772b71be2db"
+      },
+      {
+        "path": "rules",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "d685b55b016f899a5cab6c81083a897d0c76605c"
+      },
+      {
+        "path": "src",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "72357220e9ca1f14532944f073ac723e739ed286"
+      },
+      {
+        "path": "tests",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "da265082d7acf8c68bfd0ea5f386dad3cd925603"
+      },
+      {
+        "path": "tools",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "384fe50ce49206e30e89c3999a21d0fe9d8f670e"
+      }
+    ],
+    "unchanged_existing_docs_entries": [
+      {
+        "path": "BUILD_STATUS.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "abd58074497afa7816a5ccdb32b7f6ae326b1521"
+      },
+      {
+        "path": "DELIVERY_STATUS.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "9486ca3d0571a2d039c20248628736ce242fab1e"
+      },
+      {
+        "path": "IMPLEMENTATION_CONTRACT.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "61c47cce43b1de385236e494d1d768804eb60b7b"
+      },
+      {
+        "path": "acceptance",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "4ae2d36b16509777a1fe6e5106423ed40c4dc0f9"
+      },
+      {
+        "path": "contracts-v1.1-draft-edit-token.md",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "62cd1c7f3530846a6ddd27c99b3bbeeed9d06ee9"
+      },
+      {
+        "path": "original-analysis",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "4567abc60f555e4a5e5a99fdd6a6a880ad708e49"
+      },
+      {
+        "path": "reference-static",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "e70e1166b0a0a450931a78d052b9a31737afc6ae"
+      },
+      {
+        "path": "reference-ui",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "d599f0b537e632d54e106f7df36ae0b19c5c9af3"
+      },
+      {
+        "path": "rewrite",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "e24b09848bb9f00a261300ec17cd659920c9340e"
+      },
+      {
+        "path": "sdk-metadata.json",
+        "mode": "100644",
+        "type": "blob",
+        "sha": "8065bde9d3d99dff048a36e17f6fdf8706616463"
+      },
+      {
+        "path": "user-guide",
+        "mode": "040000",
+        "type": "tree",
+        "sha": "ce0eea74ba9ec18db9a620db148b56480fcbf764"
+      }
+    ],
+    "A6_tree": "dc7a31b504173480491218080637635bc9d1ee2c",
+    "A6_app_tree": "ca1793406bbea7eb01145eda5b0d1e1644e90113",
+    "all_existing_production_paths_unchanged": true,
+    "all_existing_docs_paths_unchanged": true
+  },
+  "receipt_commit_constraints": {
+    "first_parent": "3cea6dfa7573fea98bae58fa8901b557a19582e8",
+    "additional_parents": [],
+    "tree_base": "dc7a31b504173480491218080637635bc9d1ee2c",
+    "only_added_path": "docs/history-archive/2026-10-29-old-routes/publication-preflight-receipt.json",
+    "all_34_frozen_published_blobs_and_modes_must_remain_identical": true
+  },
+  "remaining_work_and_merge_base_risk": "Additional historical parents change ancestry and future merge-base; an ordinary later merge may treat old business changes as already included. Future restoration of old business requires explicit patch transplantation and real review. All original unfinished feature lists and remaining-work.md remain intact; no feature or acceptance is marked complete by this archive.",
+  "exclusions": "No old business tree was used as a base. No old source/resources, installer, secrets, real data or workflow contents were copied or modified. PR164 and the rejected voucher payload are excluded. All wave3 active/result branches and the two separately handled m21 routes are outside this 25-head parent list.",
+  "later_actions_not_claimed_or_authorized_here": [
+    "root draft PR creation",
+    "root independent review completion",
+    "ready or approval",
+    "PR merge",
+    "main ref movement",
+    "source ref deletion",
+    "tests or functional acceptance"
+  ],
+  "tests_run": 0
+}
