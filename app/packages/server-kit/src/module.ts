@@ -1,6 +1,6 @@
 import type { AnyTRPCRouter } from '@trpc/server';
 import type { Migration } from '@caiwu/db';
-import type { ModuleManifest } from '@caiwu/core';
+import type { CreateBookInput, ModuleManifest } from '@caiwu/core';
 import type { CoreServiceProviders } from '@caiwu/core/server';
 import { moduleProcedure } from './procedures';
 import { t } from './trpc';
@@ -14,6 +14,8 @@ export interface ServerModule<R extends AnyTRPCRouter = AnyTRPCRouter> {
   migrations: readonly Migration[];
   /** 模块提供的会计制度模板（JSON 对象） */
   templates: readonly unknown[];
+  /** 本模块静态模板的新建前校验；运行时登记的模板须同时登记其校验。 */
+  validateBookCreation?: (input: CreateBookInput) => void;
   lifecycle?: RuntimeHooks;
   providers?: CoreServiceProviders;
 }
@@ -24,6 +26,7 @@ export function defineServerModule<R extends AnyTRPCRouter>(
     router: R;
     migrations?: readonly Migration[];
     templates?: readonly unknown[];
+    validateBookCreation?: (input: CreateBookInput) => void;
     lifecycle?: RuntimeHooks;
     providers?: CoreServiceProviders;
   },
@@ -33,6 +36,7 @@ export function defineServerModule<R extends AnyTRPCRouter>(
     router: def.router,
     migrations: def.migrations ?? [],
     templates: def.templates ?? [],
+    validateBookCreation: def.validateBookCreation,
     lifecycle: def.lifecycle,
     providers: def.providers,
   });

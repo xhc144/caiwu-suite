@@ -2,7 +2,8 @@ import { Alert, Form, Input, InputNumber, Modal, Radio, Select, Space, Typograph
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { PRODUCTS, type CreateBookInput, type ProductId } from '@caiwu/core';
-import { coreApi, notify } from '@caiwu/web-kit';
+import { coreApi, notify, showError } from '@caiwu/web-kit';
+import { templateCreation } from '../template-creation';
 
 interface FormValues {
   name: string;
@@ -13,6 +14,7 @@ interface FormValues {
   startMonth: number;
   codeScheme: string;
   adminPassword?: string;
+  facts?: CreateBookInput['facts'];
 }
 
 /** 新建账套（简易版）。账套管理模块会提供完整的向导。 */
@@ -29,6 +31,8 @@ export function CreateBookDialog({
   const templates = useQuery({ ...coreApi.books.templates.queryOptions(), enabled: open });
   const create = useMutation(coreApi.books.create.mutationOptions());
   const templateId = Form.useWatch('templateId', form);
+  const startYear = Form.useWatch('startYear', form);
+  const startMonth = Form.useWatch('startMonth', form);
   const template = templates.data?.find((t) => t.id === templateId);
 
   useEffect(() => {
@@ -49,12 +53,16 @@ export function CreateBookDialog({
       onCancel={onClose}
       destroyOnHidden
       onOk={() =>
-        void form.validateFields().then(async (v) => {
-          const input: CreateBookInput = { ...v, adminPassword: v.adminPassword ?? '' };
-          const book = await create.mutateAsync(input);
-          notify.success(`账套「${book.name}」已创建，管理员编号 admin`);
-          onCreated(book.id);
-        })
+        void form
+          .validateFields()
+          .then(async (v) => {
+            const input: CreateBookInput = { ...v, adminPassword: v.adminPassword ?? '' };
+            templateCreation.validate(input);
+            const book = await create.mutateAsync(input);
+            notify.success(`账套「${book.name}」已创建，管理员编号 admin`);
+            onCreated(book.id);
+          })
+          .catch(showError)
       }
     >
       <Form<FormValues>
@@ -84,6 +92,7 @@ export function CreateBookDialog({
           extra={template?.description}
         >
           <Select
+            onChange={() => form.setFieldValue('facts', undefined)}
             loading={templates.isLoading}
             options={(templates.data ?? []).map((t) => ({
               value: t.id,
@@ -125,6 +134,13 @@ export function CreateBookDialog({
               />
             </Form.Item>
           </Space.Compact>
+        </Form.Item>
+        <Form.Item name="facts" label="制度适用条件">
+          <templateCreation.Fields
+            templateId={templateId ?? ''}
+            startYear={startYear ?? Number.NaN}
+            startMonth={startMonth ?? Number.NaN}
+          />
         </Form.Item>
         <Form.Item
           name="codeScheme"

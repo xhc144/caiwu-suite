@@ -7,8 +7,9 @@ import { coreApi, queryClient, useSession } from '@caiwu/web-kit';
 import { filterBooks, moveBookSelection, selectedBook } from '../shared';
 import Wizard from './Wizard';
 import { switchBook } from './session';
+import type { TemplateCreation } from './template-creation';
 
-export default function BookPicker() {
+export default function BookPicker({ templateCreation }: { templateCreation?: TemplateCreation }) {
   const session = useSession();
   const [ready, setReady] = useState(false);
   useEffect(() => {
@@ -34,10 +35,10 @@ export default function BookPicker() {
       </div>
     );
   if (!ready) return <Spin />;
-  return <PickerContent />;
+  return <PickerContent templateCreation={templateCreation} />;
 }
 
-function PickerContent() {
+function PickerContent({ templateCreation }: { templateCreation?: TemplateCreation }) {
   const navigate = useNavigate();
   const books = useQuery(coreApi.books.list.queryOptions());
   const [keyword, setKeyword] = useState('');
@@ -154,6 +155,7 @@ function PickerContent() {
         </Typography.Paragraph>
         {creating && (
           <Wizard
+            templateCreation={templateCreation}
             onClose={() => setCreating(false)}
             onCreated={(id) => {
               setCreating(false);
