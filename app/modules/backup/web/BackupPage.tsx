@@ -1,4 +1,4 @@
-import { memo, useRef, useState } from 'react';
+import { memo, useRef, useState, useSyncExternalStore } from 'react';
 import {
   Alert,
   Button,
@@ -25,6 +25,8 @@ import {
 import { DEFAULT_SETTINGS, TRANSFER_LIMIT, type BackupSettings } from '../shared';
 import type { BackupListItem } from '../server/service';
 import { api } from './api';
+import { batchQueue, type Plan } from './batch';
+import { batchClient } from './batch-client';
 
 const labels: Record<string, string> = {
   running: '正在备份',
@@ -44,26 +46,6 @@ const regimeNames: Record<string, string> = {
   nonprofit: '民间非营利组织会计制度',
 };
 const size = (v: number) => `${(v / 1024 / 1024).toFixed(2)} MiB`;
-type Plan = {
-  id: string;
-  target_id: string;
-  target_name: string;
-  confirmation: string;
-  purpose: string;
-  metadata: NonNullable<BackupListItem['metadata']>;
-  status: string;
-  expires_at: string;
-  targetBook: { name: string; startPeriod: number };
-  targetPeriod: number | null;
-};
-type BatchRow = {
-  key: string;
-  name: string;
-  status: string;
-  backupId?: string;
-  plan?: Plan;
-  error?: string;
-};
 function base64(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -81,17 +63,36 @@ function BackupPage() {
   });
   const [name, setName] = useState('完整备份');
   const requestId = useRef(crypto.randomUUID());
-  const [purpose, setPurpose] = useState<'copy' | 'overwrite'>('copy');
-  const [copyName, setCopyName] = useState('');
-  const [plan, setPlan] = useState<Plan | null>(null);
-  const [text, setText] = useState('');
-  const [password, setPassword] = useState('');
-  const [protection, setProtection] = useState<{
+  const batchState = useSyncExternalStore(
+    batchQueue.subscribe,
+    batchQueue.getSnapshot,
+    batchQueue.getSnapshot,
+  );
+  const { plan, rows: batch, running: uploading, purpose, copyName } = batchState;
+  const setPurpose = batchQueue.setPurpose;
+  const setCopyName = batchQueue.setCopyName;
+  const setPlan = batchQueue.setPlan;
+  const [textInput, setTextInput] = useState<{ plan: Plan | null; value: string }>({
+    plan: null,
+    value: '',
+  });
+  const [passwordInput, setPasswordInput] = useState<{ plan: Plan | null; value: string }>({
+    plan: null,
+    value: '',
+  });
+  const text = textInput.plan === plan ? textInput.value : '';
+  const password = passwordInput.plan === plan ? passwordInput.value : '';
+  const setText = (value: string) => setTextInput({ plan: batchQueue.getSnapshot().plan, value });
+  const setPassword = (value: string) =>
+    setPasswordInput({ plan: batchQueue.getSnapshot().plan, value });
+  const [storedProtection, setProtection] = useState<{
+    plan: Plan;
     location: string;
     createdAt: string;
     available: boolean;
     expiresAt: string;
   } | null>(null);
+  const protection = storedProtection?.plan === plan ? storedProtection : null;
   const [result, setResult] = useState<{
     bookId: string;
     name: string;
@@ -101,9 +102,6 @@ function BackupPage() {
   const [deletion, setDeletion] = useState<BackupListItem | null>(null);
   const [deleteText, setDeleteText] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
-  const [batch, setBatch] = useState<BatchRow[]>([]);
-  const cancelled = useRef(false);
-  const [uploading, setUploading] = useState(false);
   const canCreate = usePermission('backup.create'),
     canVerify = usePermission('backup.verify'),
     canExport = usePermission('backup.export'),
@@ -145,7 +143,6 @@ function BackupPage() {
       },
     }),
   );
-  const upload = useMutation(api.upload.mutationOptions());
   const preview = useMutation(
     api.preview.mutationOptions({
       onSuccess: (p) => {
@@ -158,18 +155,20 @@ function BackupPage() {
   );
   const cancelPlan = useMutation(
     api.cancelPlan.mutationOptions({
-      onSuccess: () => {
-        setPlan(null);
-        setProtection(null);
+      onSuccess: (_result, input) => {
+        if (batchQueue.getSnapshot().plan?.id === input.id) setProtection(null);
+        batchQueue.planCancelled(input.id);
       },
     }),
   );
   const prepare = useMutation(
     api.prepareOverwrite.mutationOptions({
-      onSuccess: (p) => {
-        setProtection(p);
+      onSuccess: (p, input) => {
+        const selected = batchQueue.getSnapshot().plan;
+        if (selected?.id === input.planId) setProtection({ ...p, plan: selected });
         refresh();
       },
+      onError: refresh,
     }),
   );
   const restore = useMutation(
@@ -295,70 +294,31 @@ function BackupPage() {
       ),
     },
   ];
-  const updateBatch = (key: string, patch: Partial<BatchRow>) =>
-    setBatch((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  const readFiles = async (files: File[]) => {
-    cancelled.current = false;
-    setUploading(true);
-    const rows = files.map((f) => ({ key: crypto.randomUUID(), name: f.name, status: '等待预检' }));
-    setBatch(rows);
-    const sourceIds = new Set<string>();
-    try {
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i]!,
-          row = rows[i]!;
-        if (cancelled.current) {
-          updateBatch(row.key, { status: '已取消未开始项' });
-          continue;
-        }
-        if (file.size > TRANSFER_LIMIT) {
-          updateBatch(row.key, {
-            status: '拒绝',
-            error: '文件超过 32 MiB，暂不能从浏览器上传',
-          });
-          continue;
-        }
-        updateBatch(row.key, { status: '上传并校验中' });
-        try {
-          const item = await upload.mutateAsync({
-            name: file.name.replace(/\.caiwubak$/i, '').slice(0, 60),
-            base64: await base64(file),
-          });
-          const meta = item.metadata
-            ? (JSON.parse(item.metadata) as NonNullable<BackupListItem['metadata']>)
-            : null;
-          if (meta && sourceIds.has(meta.book.id)) {
-            updateBatch(row.key, {
-              backupId: item.id,
-              status: '重复来源 ID',
-              error: '本批次已包含此账套；请单独预览所需版本',
-            });
-            continue;
-          }
-          if (meta) sourceIds.add(meta.book.id);
-          if (canRestore) {
-            const p = await preview.mutateAsync({
-              id: item.id,
-              purpose,
-              name: purpose === 'copy' && copyName.trim() ? copyName : undefined,
-            });
-            updateBatch(row.key, {
-              backupId: item.id,
-              status: p.status === 'done' ? '已引入，不重复创建' : '预检通过',
-              plan: p,
-            });
-          } else updateBatch(row.key, { backupId: item.id, status: '校验通过；无管理员恢复权限' });
-        } catch (e) {
-          updateBatch(row.key, {
-            status: '拒绝',
-            error: e instanceof Error ? e.message : '预检失败',
-          });
-        }
-      }
-    } finally {
-      setUploading(false);
-      refresh();
-    }
+  const readFiles = (files: File[]) => {
+    const client = batchClient(session.token);
+    return batchQueue.start(files, {
+      limit: TRANSFER_LIMIT,
+      canRestore,
+      isCurrent: () => sessionStore.get()?.token === session.token,
+      read: base64,
+      upload: async (file, content) => {
+        const item = await client.upload.mutate({
+          name: file.name.replace(/\.caiwubak$/i, '').slice(0, 60),
+          base64: content,
+        });
+        const metadata = item.metadata
+          ? (JSON.parse(item.metadata) as NonNullable<BackupListItem['metadata']>)
+          : null;
+        return { id: item.id, sourceId: metadata?.book.id };
+      },
+      preview: (id) =>
+        client.preview.mutate({
+          id,
+          purpose,
+          name: purpose === 'copy' && copyName.trim() ? copyName : undefined,
+        }),
+      settled: refresh,
+    });
   };
   if (result)
     return (
@@ -505,15 +465,7 @@ function BackupPage() {
                 }}
               />
             </label>
-            {uploading && (
-              <Button
-                onClick={() => {
-                  cancelled.current = true;
-                }}
-              >
-                取消未开始的上传
-              </Button>
-            )}
+            {uploading && <Button onClick={batchQueue.cancelUnstarted}>取消未开始的上传</Button>}
             <DataTable
               tableId="backup-batch"
               rowKey="key"
@@ -557,7 +509,6 @@ function BackupPage() {
                         <Button
                           onClick={() => {
                             cancelPlan.mutate({ id: r.plan!.id });
-                            updateBatch(r.key, { status: '已取消', plan: undefined });
                           }}
                         >
                           取消此项
@@ -568,7 +519,7 @@ function BackupPage() {
               ]}
             />
             <span style={{ color: '#666' }}>
-              合法项独立引入；失败不删除已成功项。每项须由管理员复核并输入密码。成功后必须重新登录，可再次上传剩余包；已引入包不会重复建套。
+              上传预检可在当前窗口跨业务标签页继续，关闭后重开本页可查看结果；刷新网页或切账会结束当前队列。每项须由管理员复核并输入密码。成功后必须重新登录，可再次上传剩余包；已引入包不会重复建套。
             </span>
           </Space>
         </Card>

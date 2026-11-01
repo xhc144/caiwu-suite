@@ -10,12 +10,16 @@ export const BucketBoundsSchema = z
       .max(36500, '区间上限不能超过36500天'),
   )
   .min(1, '至少设置一个区间上限')
-  .max(12, '最多设置12个区间上限')
+  .max(14, '最多设置14个区间上限，形成15个账龄区间')
   .refine(
     (v) => v.every((n, i) => i === 0 || n > v[i - 1]!),
     '账龄上限必须严格递增，系统自动连续衔接并补最后的无限区间',
   );
 export const DEFAULT_BOUNDS = [30, 60, 90, 180, 365];
+/** w_fx_zl 的12个月内区间、1至2年、2至3年及3年以上；区间连续不重叠。 */
+export const ORIGINAL_AGING_BOUNDS = [
+  30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 365, 730, 1095,
+];
 export const GroupSchema = z.enum(['partner', 'project', 'department', 'person', 'none']);
 export const AgingFilterSchema = z.object({
   accountCode: z.string().trim().min(1, '请选择科目').max(40, '科目编码过长'),

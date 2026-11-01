@@ -1,10 +1,22 @@
-import { memo, useState } from 'react';
-import { Alert, Button, Checkbox, Drawer, Form, Input, Select, Space } from 'antd';
+import { memo, useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
+import {
+  Alert,
+  Button,
+  Checkbox,
+  Drawer,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Space,
+} from 'antd';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { balanceSide, formatMoney, periodEndDate } from '@caiwu/core';
+import { balanceSide, formatMoney, isValidDate, periodEndDate } from '@caiwu/core';
 import {
   useAccounts,
+  useHotkey,
   usePermission,
   useRequiredSession,
   queryClient,
@@ -21,6 +33,7 @@ import {
 import {
   AgingFilterSchema,
   DEFAULT_BOUNDS,
+  ORIGINAL_AGING_BOUNDS,
   type AgingLot,
   type AgingReport,
   type AgingRow,
@@ -44,6 +57,129 @@ type FormValues = {
   includeUnposted: boolean;
   hideZero: boolean;
 };
+
+export const AGING_WIDTH_KEY = 'caiwu.table.analysis.aging.widths';
+type WidthStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+class InvalidAgingWidths extends Error {}
+export function readAgingWidths(storage: WidthStorage): Record<string, number> {
+  const raw = storage.getItem(AGING_WIDTH_KEY);
+  if (raw === null) return {};
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new InvalidAgingWidths('列宽设置内容损坏，请恢复默认列宽');
+  }
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.values(value).some(
+      (v) => typeof v !== 'number' || !Number.isFinite(v) || v < 48 || v > 10000,
+    )
+  )
+    throw new InvalidAgingWidths('列宽设置内容无效，请恢复默认列宽');
+  return value as Record<string, number>;
+}
+export function adjustAgingWidth(
+  storage: WidthStorage,
+  key: string,
+  fallback: number,
+  delta: -10 | 10,
+) {
+  const widths = readAgingWidths(storage);
+  const next = {
+    ...widths,
+    [key]: Math.min(10000, Math.max(48, (widths[key] ?? fallback) + delta)),
+  };
+  storage.setItem(AGING_WIDTH_KEY, JSON.stringify(next));
+  if (readAgingWidths(storage)[key] !== next[key])
+    throw new Error('列宽写入后未能读取，请检查本地存储');
+  return next;
+}
+export function restoreAgingWidths(storage: WidthStorage) {
+  storage.removeItem(AGING_WIDTH_KEY);
+  if (storage.getItem(AGING_WIDTH_KEY) !== null)
+    throw new Error('默认列宽未能恢复，请检查本地存储');
+}
+/** w_xt_ye_nf 只更换截止年份；闰日调整到目标年份二月最后一天。 */
+export function changeAgingYear(cutoff: string, year: number | null, startPeriod: number) {
+  if (!Number.isInteger(year) || year === null || year < 1900 || year > 9999)
+    throw new Error('请输入1900至9999之间的整数年份');
+  if (year < Math.trunc(startPeriod / 100))
+    throw new Error(`所选年份早于账套启用年份，请选择${Math.trunc(startPeriod / 100)}年或以后`);
+  if (!isValidDate(cutoff)) throw new Error('当前截止日期无效，请先输入有效日期再选择年份');
+  const date = `${year}${cutoff.slice(4)}`;
+  if (isValidDate(date)) return { date, adjusted: false };
+  if (cutoff.slice(5) === '02-29') return { date: `${year}-02-28`, adjusted: true };
+  throw new Error('更换年份后日期无效，请重新输入截止日期');
+}
+type YearChooserHandle = { open: () => void };
+function AgingYearChooser({
+  ref,
+  startPeriod,
+  onNotice,
+  onOpenChange,
+}: {
+  ref: Ref<YearChooserHandle>;
+  startPeriod: number;
+  onNotice: (notice: string) => void;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const form = Form.useFormInstance<FormValues>();
+  const [open, setOpen] = useState(false),
+    [year, setYear] = useState<number | null>(null),
+    [error, setError] = useState('');
+  const show = () => {
+    setYear(
+      Number((form.getFieldValue('cutoff') ?? '').slice(0, 4)) || Math.trunc(startPeriod / 100),
+    );
+    setError('');
+    setOpen(true);
+    onOpenChange(true);
+  };
+  useImperativeHandle(ref, () => ({ open: show }));
+  return (
+    <>
+      <Button onClick={show}>选择截止年份</Button>
+      <Modal
+        open={open}
+        title="选择账龄分析年份"
+        okText="应用年份并查询"
+        cancelText="取消"
+        onCancel={() => {
+          setOpen(false);
+          onOpenChange(false);
+        }}
+        onOk={() => {
+          try {
+            const value = changeAgingYear(form.getFieldValue('cutoff'), year, startPeriod);
+            form.setFieldValue('cutoff', value.date);
+            onNotice(value.adjusted ? `目标年份没有2月29日，截止日期已调整为${value.date}` : '');
+            setOpen(false);
+            onOpenChange(false);
+            form.submit();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : '年份选择失败，请重试');
+          }
+        }}
+      >
+        <p>保留当前截止日期的月、日；目标年份没有2月29日时改为2月28日。不补造启用前数据。</p>
+        <label htmlFor="aging-cutoff-year">截止年份</label>
+        <InputNumber
+          id="aging-cutoff-year"
+          aria-label="截止年份"
+          value={year}
+          min={1900}
+          max={9999}
+          precision={0}
+          onChange={setYear}
+        />
+        {error && <Alert type="error" title="年份未应用" description={error} />}
+      </Modal>
+    </>
+  );
+}
 export default memo(AgingPage);
 
 function AgingPage() {
@@ -72,6 +208,45 @@ function AgingPage() {
     enabled: canView && parsed.success && !config.isPending,
   });
   const [details, setDetails] = useState<AgingRow | null>(null);
+  const yearChooser = useRef<YearChooserHandle>(null);
+  const [yearNotice, setYearNotice] = useState('');
+  const [yearOpen, setYearOpen] = useState(false);
+  const [widthColumn, setWidthColumn] = useState('account');
+  const [widthVersion, setWidthVersion] = useState(0);
+  const [widthState, setWidthState] = useState(() => {
+    try {
+      return { widths: readAgingWidths(localStorage), error: '', valid: true };
+    } catch (e) {
+      return {
+        widths: {} as Record<string, number>,
+        error:
+          e instanceof InvalidAgingWidths
+            ? e.message
+            : '无法读取本机列宽，当前使用默认列宽；请允许本地存储后重试',
+        valid: !(e instanceof InvalidAgingWidths),
+      };
+    }
+  });
+  const resizing = useRef(false);
+  useEffect(() => {
+    const finished = () => {
+      if (!resizing.current) return;
+      resizing.current = false;
+      try {
+        const widths = readAgingWidths(localStorage);
+        // 通用表格会忽略写入异常，此处补充本页的明确反馈。
+        localStorage.setItem(AGING_WIDTH_KEY, JSON.stringify(widths));
+        setWidthState({ widths, error: '', valid: true });
+      } catch (e) {
+        setWidthState((current) => ({
+          ...current,
+          error: `列宽未能保存在当前电脑，刷新后可能恢复原列宽。${e instanceof Error ? e.message : '请检查本地存储权限'}`,
+        }));
+      }
+    };
+    window.addEventListener('mouseup', finished);
+    return () => window.removeEventListener('mouseup', finished);
+  }, []);
   const [exporting, setExporting] = useState(false);
   const save = useMutation(
     api.saveConfig.mutationOptions({
@@ -122,6 +297,15 @@ function AgingPage() {
       ],
     );
   };
+  useHotkey(
+    'Ctrl+P',
+    () => {
+      void doPrint().catch(showError);
+    },
+    {
+      enabled: canView && canExport && !!report && !query.isFetching && !details && !yearOpen,
+    },
+  );
   const columns: DataColumn<AgingRow>[] = [
     {
       key: 'account',
@@ -169,6 +353,37 @@ function AgingPage() {
       render: (_, r) => report && <Link to={ledgerLink(r, report)}>明细账</Link>,
     },
   ];
+  const selectedColumn = columns.find((column) => column.key === widthColumn) ?? columns[0]!;
+  const changeWidth = (delta: -10 | 10) => {
+    try {
+      const fallback =
+        typeof selectedColumn.width === 'number'
+          ? selectedColumn.width
+          : selectedColumn.money
+            ? 130
+            : 100;
+      const widths = adjustAgingWidth(localStorage, selectedColumn.key, fallback, delta);
+      setWidthState({ widths, error: '', valid: true });
+      setWidthVersion((current) => current + 1);
+    } catch (e) {
+      setWidthState((current) => ({
+        ...current,
+        error: `列宽未保存，当前显示保持不变。${e instanceof Error ? e.message : '请允许本地存储后重试'}`,
+      }));
+    }
+  };
+  const restoreWidths = () => {
+    try {
+      restoreAgingWidths(localStorage);
+      setWidthState({ widths: {}, error: '', valid: true });
+      setWidthVersion((current) => current + 1);
+    } catch (e) {
+      setWidthState((current) => ({
+        ...current,
+        error: `列宽未恢复，当前显示保持不变。${e instanceof Error ? e.message : '请允许本地存储后重试'}`,
+      }));
+    }
+  };
   return (
     <PageContainer
       title="账龄分析"
@@ -208,6 +423,14 @@ function AgingPage() {
             <Form.Item name="cutoff" label="截止日期" rules={[{ required: true }]}>
               <Input type="date" />
             </Form.Item>
+            <Form.Item>
+              <AgingYearChooser
+                ref={yearChooser}
+                startPeriod={session.book.startPeriod}
+                onNotice={setYearNotice}
+                onOpenChange={setYearOpen}
+              />
+            </Form.Item>
             <Form.Item name="direction" label="往来方向">
               <Select
                 style={{ width: 100 }}
@@ -239,6 +462,7 @@ function AgingPage() {
               <Checkbox>余额为零隐藏</Checkbox>
             </Form.Item>
           </FilterBar>
+          {yearNotice && <Alert type="info" title={yearNotice} />}
           <Alert
             type="info"
             showIcon
@@ -260,6 +484,9 @@ function AgingPage() {
           )}
           {query.isError && <ReportError error={query.error} retry={() => void query.refetch()} />}
           <Space wrap>
+            <Button onClick={() => setFilters({ bounds: ORIGINAL_AGING_BOUNDS.join(',') })}>
+              使用原版15个账龄区间
+            </Button>
             {canEdit && (
               <Button
                 disabled={!parsed.success || !config.data}
@@ -296,6 +523,44 @@ function AgingPage() {
               刷新分析
             </Button>
           </Space>
+          <Space wrap>
+            <label htmlFor="aging-width-column">列宽调整</label>
+            <Select
+              id="aging-width-column"
+              aria-label="调整列宽的列"
+              value={selectedColumn.key}
+              onChange={setWidthColumn}
+              options={columns.map((column) => ({ value: column.key, label: column.title }))}
+              style={{ minWidth: 190 }}
+            />
+            <Button aria-label="选中列缩窄10像素" onClick={() => changeWidth(-10)}>
+              〈 缩窄
+            </Button>
+            <Button aria-label="选中列加宽10像素" onClick={() => changeWidth(10)}>
+              加宽 〉
+            </Button>
+            <Button onClick={restoreWidths}>恢复默认列宽</Button>
+            <span>
+              当前设置：
+              {widthState.widths[selectedColumn.key] ??
+                (typeof selectedColumn.width === 'number'
+                  ? selectedColumn.width
+                  : selectedColumn.money
+                    ? 130
+                    : 100)}
+              像素；只保存在当前电脑
+            </span>
+          </Space>
+          {widthState.error && (
+            <Alert type="warning" title="本机列宽设置未完成" description={widthState.error} />
+          )}
+          {save.isError && (
+            <Alert
+              type="error"
+              title="账龄区间未保存，当前输入仍保留"
+              description="请检查权限或刷新配置后重试；不会覆盖另一窗口已保存的区间。"
+            />
+          )}
           {report && (
             <>
               <p data-testid="aging-reconciliation">
@@ -310,18 +575,34 @@ function AgingPage() {
               </span>
             </>
           )}
-          <DataTable<AgingRow>
-            tableId="analysis.aging"
-            rowKey="key"
-            columns={columns}
-            dataSource={report?.rows ?? []}
-            loading={query.isFetching || config.isPending}
-            locale={{
-              emptyText: filters.accountCode
-                ? '当前筛选没有往来余额，可调整日期、隐藏零余额或未过账选项'
-                : '选择科目后查询',
-            }}
-          />
+          {widthState.valid && (
+            <div
+              onMouseDownCapture={(e) => {
+                if (e.target instanceof Element && e.target.closest('[role="separator"]'))
+                  resizing.current = true;
+              }}
+              onDoubleClick={(e) => {
+                if (!(
+                  e.target instanceof Element && e.target.closest('button,a,[role="separator"]')
+                ))
+                  yearChooser.current?.open();
+              }}
+            >
+              <DataTable<AgingRow>
+                key={`aging-width-${widthVersion}`}
+                tableId="analysis.aging"
+                rowKey="key"
+                columns={columns}
+                dataSource={report?.rows ?? []}
+                loading={query.isFetching || config.isPending}
+                locale={{
+                  emptyText: filters.accountCode
+                    ? '当前筛选没有往来余额，可调整日期、隐藏零余额或未过账选项'
+                    : '选择科目后查询',
+                }}
+              />
+            </div>
+          )}
           {report && (
             <DataTable<AgingReport['controls'][number]>
               tableId="analysis.aging.control"
