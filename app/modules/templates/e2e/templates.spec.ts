@@ -14,6 +14,10 @@ const newBookInput = (templateId: string) => ({
   templateId,
   product: 'chengben' as const,
   startYear: 2026,
+  facts:
+    templateId === 'school-canteen-anhui-2021'
+      ? { anhuiApprovedNutritionCanteen: true }
+      : undefined,
   startMonth: 1,
   adminPassword: 'm02-password',
 });
@@ -277,6 +281,8 @@ for (const example of [
     await expect(wizard.getByLabel('科目级次', { exact: true })).toHaveValue(template.codeScheme);
     await wizard.getByRole('button', { name: '下一步' }).click();
     await wizard.getByLabel('启用年份', { exact: true }).fill('2026');
+    if (example.id === 'school-canteen-anhui-2021')
+      await wizard.getByRole('checkbox', { name: /^本食堂在安徽省/ }).check();
     await wizard.getByRole('button', { name: '下一步' }).click();
     await expect(wizard).toContainText('最终复核');
     await wizard.getByRole('button', { name: '创建', exact: true }).click();

@@ -47,6 +47,20 @@ describe.each(cases)('w_xt_kgzb_3：$id 统一登记建账', ({ id, code }) => {
           startYear: 2026,
           startMonth: 1,
           adminPassword: 'admin',
+          facts: id.startsWith('financing-guarantee-')
+            ? {
+                guaranteeStandard: id.includes('cas25') ? 'cas25' : 'cas22',
+                financialGuaranteeContract: true,
+                designatedAtFairValue: false,
+                ...(id.includes('cas25')
+                  ? {
+                      previouslyAssertedInsurance: true,
+                      usedInsuranceAccounting: true,
+                      irrevocableContractElection: true,
+                    }
+                  : {}),
+              }
+            : undefined,
         });
         const { token } = await app
           .core(null)

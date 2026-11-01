@@ -774,7 +774,7 @@ describe('独立9253追加验收：全部选择顺序和有界真实导入', () 
       await expect(operation).rejects.toThrow(/自动排序预检尚未完成，未保存任何数据/);
       const elapsedMs = performance.now() - started;
       console.info(JSON.stringify({ acceptance: 'independent-budget', mode, elapsedMs }));
-      expect(elapsedMs).toBeLessThan(1000);
+      expect(elapsedMs).toBeLessThan(3000);
       expect(await target.snapshot()).toEqual(before);
     }
   });

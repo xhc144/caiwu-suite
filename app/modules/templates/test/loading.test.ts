@@ -18,6 +18,10 @@ const input = (templateId: string, name = '制度加载测试') => ({
   startYear: 2026,
   startMonth: 1,
   adminPassword: 'admin',
+  facts:
+    templateId === 'school-canteen-anhui-2021'
+      ? { anhuiApprovedNutritionCanteen: true }
+      : undefined,
 });
 
 describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite', (expected) => {
@@ -25,6 +29,7 @@ describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite',
     const app = await createTestApp({
       modules: [...integrationModules],
       templateId: expected.id,
+      facts: input(expected.id).facts,
       seed: false,
     });
     try {
@@ -83,6 +88,7 @@ describe.each(expectedTemplates)('w_xt_kgzb_1 / w_xt_kgzb_3：$id 真实SQLite',
     const app = await createTestApp({
       modules: [...integrationModules],
       templateId: expected.id,
+      facts: input(expected.id).facts,
       seed: false,
     });
     try {

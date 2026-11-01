@@ -2,6 +2,7 @@ import { lazy } from 'react';
 import type { ModuleManifest, ProductId } from '@caiwu/core';
 import { moduleAvailableIn } from '@caiwu/core';
 import type { EntryPages, WebModule } from '@caiwu/web-kit';
+import { BookPickerWithTemplateCreation } from './template-creation';
 
 // 自动发现模块：每个 modules/<id>/manifest.ts（立即加载，用于导航）和 modules/<id>/web/index.tsx（打开时才加载）。
 // 新增模块不需要改这里。以 _ 开头的目录忽略。
@@ -43,19 +44,24 @@ export function loadWebModule(id: string): Promise<WebModule | null> {
     p = loader
       ? loader()
           .then((module) =>
-            id === 'example'
+            id === 'books'
               ? {
                   ...module,
-                  routes: [
-                    ...module.routes,
-                    ...['a', 'b', ':slot'].map((path) => ({
-                      path: `/shared/${path}`,
-                      title: path === 'b' ? '乙编辑页' : '甲编辑页',
-                      component: lazy(() => import('./testing/UnsavedFixture')),
-                    })),
-                  ],
+                  entryPages: { ...module.entryPages, bookPicker: BookPickerWithTemplateCreation },
                 }
-              : module,
+              : id === 'example'
+                ? {
+                    ...module,
+                    routes: [
+                      ...module.routes,
+                      ...['a', 'b', ':slot'].map((path) => ({
+                        path: `/shared/${path}`,
+                        title: path === 'b' ? '乙编辑页' : '甲编辑页',
+                        component: lazy(() => import('./testing/UnsavedFixture')),
+                      })),
+                    ],
+                  }
+                : module,
           )
           .catch((error: unknown) => {
             cache.delete(id);

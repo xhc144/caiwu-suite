@@ -46,6 +46,17 @@ export const CreateBookInputSchema = z.object({
   name: z.string().trim().min(1, '账套名称不能为空').max(60),
   orgName: z.string().trim().min(1, '单位名称不能为空').max(100),
   templateId: z.string().min(1),
+  /** 模板提供方复检的建账事实；不用于打开、复制或初始化已有账套。 */
+  facts: z
+    .record(z.string(), z.unknown())
+    .transform((facts) =>
+      Object.fromEntries(
+        Object.keys(facts)
+          .sort()
+          .map((key) => [key, facts[key]]),
+      ),
+    )
+    .optional(),
   product: z.enum(PRODUCT_IDS),
   startYear: z.number().int().min(2000).max(2100),
   startMonth: z.number().int().min(1).max(12),

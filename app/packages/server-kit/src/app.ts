@@ -30,12 +30,14 @@ export function createRuntime(opts: CreateRuntimeOptions): AppRuntime {
   const devMode = opts.devMode ?? false;
   const templates = new TemplateRegistry({ devMode });
   templates.register('core', builtinTemplates);
-  for (const { source, templates: list } of modules.templates()) templates.register(source, list);
+  for (const { source, templates: list, validateCreation } of modules.templates())
+    templates.register(source, list, validateCreation);
   const sessions = new SessionStore();
   const bookStore = new BookStore({
     dataDir: opts.dataDir,
     exclusiveServer: opts.exclusiveServer,
     templates,
+    validateCreation: (input) => templates.assertCreation(input),
     modules: modules.lookup,
     migrationSets: () => modules.migrationSets(),
     now: opts.now,
