@@ -11,28 +11,32 @@ export default defineManifest({
     { id: 'opening.lock', name: '锁定及解锁年度期初' },
   ],
   menu: [
-    { group: 'master', title: '期初余额', path: '/', permission: 'opening.view' },
+    { group: 'master', title: '期初余额', order: 210, path: '/', permission: 'opening.view' },
     {
       group: 'master',
       title: '项目期初录入',
+      order: 250,
       path: '/?dimension=project',
       permission: 'opening.view',
     },
     {
       group: 'master',
       title: '客供期初录入',
+      order: 230,
       path: '/?dimension=partner',
       permission: 'opening.view',
     },
     {
       group: 'master',
       title: '部门期初录入',
+      order: 220,
       path: '/?dimension=department',
       permission: 'opening.view',
     },
     {
       group: 'master',
       title: '个人期初录入',
+      order: 240,
       path: '/?dimension=person',
       permission: 'opening.view',
     },

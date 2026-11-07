@@ -14,6 +14,7 @@ export default defineManifest({
     {
       group: 'system',
       title: '原账迁移',
+      order: 420,
       path: '/',
       permission: 'legacy-import.view',
       keywords: ['原版导入', '原账', 'Excel', '文本', '迁移'],

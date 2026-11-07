@@ -5,6 +5,8 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   plugins: [react()],
   server: {
+    // 与本地服务一致只监听 IPv4 回环；默认的 localhost 在部分 Windows 上解析为 ::1，而 ::1 可能被安全软件拦截。
+    host: '127.0.0.1',
     port: Number(process.env.CAIWU_WEB_PORT ?? 5173),
     strictPort: true,
     proxy: { '/trpc': { target: `http://127.0.0.1:${process.env.CAIWU_SERVER_PORT ?? 3210}` } },

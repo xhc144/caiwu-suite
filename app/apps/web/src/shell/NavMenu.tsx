@@ -1,4 +1,5 @@
 import { Menu, Typography, type MenuProps } from 'antd';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { MENU_GROUPS, moduleRoute, type CurrentUser, type ModuleManifest } from '@caiwu/core';
 import { isAdminEntry } from './guards';
@@ -14,17 +15,21 @@ export interface NavItem {
   shortcut?: string;
   keywords: string[];
   order: number;
+  /** 模块及菜单声明顺序，order 相同时用它保持清单里的业务顺序 */
+  seq: number;
 }
 
 /** 从模块清单生成导航项：按产品形态、开发模式（已在外层过滤）和权限过滤。 */
 export function buildNavItems(modules: ModuleManifest[], user: CurrentUser): NavItem[] {
   const can = (perm?: string) => !perm || user.isAdmin || user.permissions.includes(perm);
-  return modules.flatMap((m) =>
+  return modules.flatMap((m, moduleIndex) =>
     m.menu
+      .map((item, itemIndex) => ({ item, seq: moduleIndex * 1000 + itemIndex }))
       .filter(
-        (item) => can(item.permission) && (!isAdminEntry(item.title, item.path) || user.isAdmin),
+        ({ item }) =>
+          can(item.permission) && (!isAdminEntry(item.title, item.path) || user.isAdmin),
       )
-      .map((item) => {
+      .map(({ item, seq }) => {
         const to = moduleRoute(m.id, item.path);
         return {
           key: to,
@@ -35,48 +40,98 @@ export function buildNavItems(modules: ModuleManifest[], user: CurrentUser): Nav
           shortcut: item.shortcut,
           keywords: item.keywords,
           order: item.order,
+          seq,
         };
       }),
   );
 }
 
-export function NavMenu({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const groups = MENU_GROUPS.map((g) => ({
+/**
+ * 按分组整理导航：组内按 order，再按清单声明顺序（不按拼音），
+ * 保证"凭证录入""总分类账"这类常用功能排在前面。
+ */
+export function groupNavItems(items: NavItem[]) {
+  return MENU_GROUPS.map((g) => ({
     group: g,
     items: items
       .filter((i) => i.groupId === g.id)
-      .sort((a, b) => a.order - b.order || a.title.localeCompare(b.title)),
+      .sort((a, b) => a.order - b.order || a.seq - b.seq),
   })).filter((g) => g.items.length);
+}
+
+/** order 的百位表示同一分组里的一档（日常、辅助、设置……），换档处加分隔线。 */
+export const navTier = (order: number) => Math.floor(order / 100);
+
+const OPEN_GROUPS_KEY = 'caiwu.ui.nav-open-groups';
+function loadOpenGroups(): string[] | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(OPEN_GROUPS_KEY) ?? 'null') as unknown;
+    return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : null;
+  } catch {
+    return null;
+  }
+}
+function saveOpenGroups(keys: string[]) {
+  try {
+    localStorage.setItem(OPEN_GROUPS_KEY, JSON.stringify(keys));
+  } catch {
+    /* 内存中仍可使用 */
+  }
+}
+
+export function NavMenu({ items, collapsed }: { items: NavItem[]; collapsed: boolean }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const groups = useMemo(() => groupNavItems(items), [items]);
+  const selected = selectedNavKey(items, location.pathname);
+  const currentGroup = items.find((i) => i.key === selected)?.groupId;
+  // 默认全部展开；用户收起或展开的分组记在本机，打开某个功能时自动展开它所在的分组。
+  const [openKeys, setOpenKeys] = useState<string[]>(
+    () => loadOpenGroups() ?? groups.map((g) => `group:${g.group.id}`),
+  );
+  useEffect(() => {
+    if (!currentGroup) return;
+    const key = `group:${currentGroup}`;
+    setOpenKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  }, [currentGroup]);
 
   const menuItems: MenuProps['items'] = [
     { key: '/home', label: '首页' },
     ...groups.map(({ group, items: list }) => ({
       key: `group:${group.id}`,
       label: group.title,
-      children: list.map((i) => ({
-        key: i.key,
-        label: (
-          <span title={i.shortcut ? `${i.title}（${i.shortcut}）` : i.title}>
-            {i.title}
-            {i.shortcut && !collapsed && (
-              <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 6 }}>
-                {i.shortcut}
-              </Typography.Text>
-            )}
-          </span>
-        ),
-      })),
+      children: list.flatMap((i, index) => {
+        const entry = {
+          key: i.key,
+          label: (
+            <span title={i.shortcut ? `${i.title}（${i.shortcut}）` : i.title}>
+              {i.title}
+              {i.shortcut && !collapsed && (
+                <Typography.Text type="secondary" style={{ fontSize: 11, marginLeft: 6 }}>
+                  {i.shortcut}
+                </Typography.Text>
+              )}
+            </span>
+          ),
+        };
+        const previous = list[index - 1];
+        return previous && navTier(previous.order) !== navTier(i.order)
+          ? [{ type: 'divider' as const, key: `divider:${i.key}` }, entry]
+          : [entry];
+      }),
     })),
   ];
-  const selected = selectedNavKey(items, location.pathname);
   return (
     <Menu
+      className="cw-nav-menu"
       mode="inline"
       items={menuItems}
       selectedKeys={[selected]}
-      defaultOpenKeys={groups.map((g) => `group:${g.group.id}`)}
+      openKeys={collapsed ? undefined : openKeys}
+      onOpenChange={(keys) => {
+        setOpenKeys(keys);
+        saveOpenGroups(keys);
+      }}
       onClick={(e) => void navigate(e.key)}
       style={{ borderInlineEnd: 'none' }}
     />

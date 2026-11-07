@@ -15,6 +15,7 @@ export default defineManifest({
     {
       group: 'master',
       title: '科目维护',
+      order: 110,
       path: '/accounts',
       permission: 'masterdata.view',
       keywords: ['kmwh'],
@@ -22,6 +23,7 @@ export default defineManifest({
     {
       group: 'master',
       title: '辅助档案',
+      order: 120,
       path: '/dimensions',
       permission: 'masterdata.view',
       keywords: ['项目', '客供', '部门', '人员', '现金流量'],
@@ -29,6 +31,7 @@ export default defineManifest({
     {
       group: 'master',
       title: '凭证类型、结算、外币与摘要',
+      order: 130,
       path: '/reference',
       permission: 'masterdata.view',
     },

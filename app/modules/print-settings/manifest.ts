@@ -15,6 +15,7 @@ export default defineManifest({
     {
       group: 'system',
       title: '打印与导出',
+      order: 430,
       path: '/preview',
       permission: 'print-settings.view',
       keywords: ['打印', 'PDF', '格式'],

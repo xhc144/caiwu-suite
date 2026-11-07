@@ -1,5 +1,14 @@
 import Database from 'better-sqlite3';
-import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
+import { hostname } from 'node:os';
 import path from 'node:path';
 import { setImmediate } from 'node:timers/promises';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -328,5 +337,65 @@ describe('账套维护的真实连接生命周期', () => {
     writeFileSync(path.join(lock, 'owner.json'), '{"unknown":true}');
     expect(() => new BookStore(options())).toThrow(/未确认/);
     expect(readFileSync(path.join(lock, 'owner.json'), 'utf8')).toBe('{"unknown":true}');
+  });
+
+  describe('本机已退出进程留下的锁', () => {
+    // 取一个确定已经退出的进程号
+    const deadPid = () => {
+      const child = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))']);
+      return Number(child.stdout.toString());
+    };
+    const plant = (owner: Record<string, unknown>, extra: Record<string, string> = {}) => {
+      const lock = path.join(t!.dataDir, '.caiwu-runtime.lock');
+      mkdirSync(lock);
+      writeFileSync(path.join(lock, 'owner.json'), JSON.stringify(owner));
+      for (const [name, content] of Object.entries(extra))
+        writeFileSync(path.join(lock, name), content);
+      return lock;
+    };
+    const base = () => ({ protocol: 1, token: 'stale', kind: 'server', host: hostname() });
+
+    it('拥有者已退出时改名隔离并正常打开，原锁内容保留', async () => {
+      t = await createTestBook({ seed: false });
+      await t.store.closeAll();
+      const pid = deadPid();
+      const lock = plant({ ...base(), pid });
+      const store = new BookStore(options());
+      try {
+        expect(store.open(t.info.id).raw.open).toBe(true);
+        const kept = readdirSync(t.dataDir).filter((n) => n.startsWith('.caiwu-runtime.lock.stale-'));
+        expect(kept).toHaveLength(1);
+        expect(JSON.parse(readFileSync(path.join(t.dataDir, kept[0]!, 'owner.json'), 'utf8')).pid).toBe(pid);
+        expect(JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8')).pid).toBe(process.pid);
+      } finally {
+        await store.closeAll();
+      }
+    });
+
+    it.each([
+      // 存活的 server 允许辅助进程加入（原有协议），这里用 runtime 验证不会被当成残留锁
+      ['拥有者仍在运行', () => ({ ...base(), kind: 'runtime', pid: process.ppid })],
+      ['其他电脑留下', () => ({ ...base(), pid: deadPid(), host: `${hostname()}-另一台` })],
+      ['旧版本没有主机记录', () => ({ protocol: 1, token: 'old', kind: 'server', pid: deadPid() })],
+    ])('%s时仍然拒绝且不改动', async (_name, owner) => {
+      t = await createTestBook({ seed: false });
+      await t.store.closeAll();
+      const content = owner();
+      const lock = plant(content);
+      expect(() => new BookStore(options())).toThrow(/未确认/);
+      expect(JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8'))).toEqual(content);
+    });
+
+    it.each([
+      ['维护中断', { 'maintenance.json': '{"token":"x"}' }],
+      ['辅助进程仍在运行', { 'member-1.json': JSON.stringify({ pid: process.ppid, protocol: 1 }) }],
+      ['未知文件', { 'other.txt': 'x' }],
+    ])('%s时仍然拒绝', async (_name, extra) => {
+      t = await createTestBook({ seed: false });
+      await t.store.closeAll();
+      const lock = plant({ ...base(), pid: deadPid() }, extra);
+      expect(() => new BookStore(options())).toThrow(/未确认/);
+      expect(readdirSync(lock).sort()).toEqual(['owner.json', ...Object.keys(extra)].sort());
+    });
   });
 });

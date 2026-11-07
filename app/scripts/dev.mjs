@@ -3,6 +3,7 @@
 // 打开 http://localhost:5173 。数据放在 app/.data（已 gitignore）。
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generate } from './gen-modules.mjs';
@@ -20,11 +21,19 @@ const env = {
   CAIWU_SERVER_PORT: serverPort,
 };
 
+// 直接用当前 node 运行 tsx / vite 的入口脚本，不经过 pnpm 的 .cmd 包装：
+// Windows 上 spawn('pnpm') 找不到可执行文件（ENOENT），而经 shell 启动又无法可靠地结束子进程。
+const webRoot = path.join(appRoot, 'apps/web');
+const binOf = (fromDir, pkg, rel) =>
+  path.join(path.dirname(createRequire(path.join(fromDir, 'package.json')).resolve(`${pkg}/package.json`)), rel);
+const tsxCli = binOf(appRoot, 'tsx', 'dist/cli.mjs');
+const viteCli = binOf(webRoot, 'vite', 'bin/vite.js');
+
 const procs = [
-  ['server', 'pnpm', ['exec', 'tsx', 'watch', '--clear-screen=false', 'apps/server/src/main.ts']],
-  ['web', 'pnpm', ['-C', 'apps/web', 'exec', 'vite']],
-].map(([name, cmd, args]) => {
-  const p = spawn(cmd, args, { cwd: appRoot, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  ['server', appRoot, [tsxCli, 'watch', '--clear-screen=false', 'apps/server/src/main.ts']],
+  ['web', webRoot, [viteCli]],
+].map(([name, cwd, args]) => {
+  const p = spawn(process.execPath, args, { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] });
   const prefix = (chunk) =>
     chunk
       .toString()
@@ -41,5 +50,5 @@ const procs = [
   return p;
 });
 
-console.log('[dev] 打开 http://localhost:5173');
+console.log(`[dev] 打开 http://127.0.0.1:${process.env.CAIWU_WEB_PORT ?? '5173'}`);
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => procs.forEach((p) => p.kill(sig)));

@@ -6,14 +6,23 @@ import {
   readFileSync,
   readdirSync,
   realpathSync,
+  renameSync,
   rmdirSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
+import { hostname } from 'node:os';
 import path from 'node:path';
 import { BusinessError } from '../errors';
 
-type OwnerInfo = { protocol: number; pid: number; token: string; kind: 'server' | 'runtime' };
+type OwnerInfo = {
+  protocol: number;
+  pid: number;
+  token: string;
+  kind: 'server' | 'runtime';
+  /** 加锁进程所在主机。旧版本写的锁没有这一项，不参与自动恢复。 */
+  host?: string;
+};
 type DirectoryOwner = {
   lock: string;
   info: OwnerInfo;
@@ -80,6 +89,8 @@ export class DataDirectoryLease {
         return existing;
       }
       const lock = path.join(this.directory, '.caiwu-runtime.lock');
+      // 本机进程被强制结束（任务管理器、断电、开发时自动重启）后留下的锁：确认拥有者已不在才隔离。
+      if (existsSync(lock) && !lstatSync(lock).isSymbolicLink()) quarantineStaleLock(lock);
       if (existsSync(lock)) {
         if (this.#server || lstatSync(lock).isSymbolicLink()) throw occupied();
         const info = readOwner(lock);
@@ -106,6 +117,7 @@ export class DataDirectoryLease {
         pid: process.pid,
         token: randomUUID(),
         kind: this.#server ? 'server' : 'runtime',
+        host: hostname(),
       };
       // 写入失败时保留锁，绝不递归删除不确定的内容。
       writeFileSync(path.join(lock, 'owner.json'), JSON.stringify(info), {
@@ -174,10 +186,52 @@ function readOwner(lock: string): OwnerInfo {
     !Number.isInteger(info.pid) ||
     info.pid <= 0 ||
     typeof info.token !== 'string' ||
-    !['server', 'runtime'].includes(info.kind)
+    !['server', 'runtime'].includes(info.kind) ||
+    (info.host !== undefined && typeof info.host !== 'string')
   )
     throw occupied();
   return info;
+}
+
+/** 只有 ESRCH 才算进程已退出；无权限（EPERM）等其它结果一律视为仍在运行。 */
+function processAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (cause) {
+    return (cause as NodeJS.ErrnoException).code !== 'ESRCH';
+  }
+}
+
+/**
+ * 隔离本机已退出进程留下的运行锁。必须同时满足：格式完整、记录的主机就是本机、
+ * 没有维护标记（维护中断另有保护副本流程）、拥有者及所有登记的辅助进程都已退出。
+ * 满足时把锁目录改名保留（不删除任何内容），返回 true；否则原样保留并返回 false，
+ * 由调用方按"已占用"拒绝。未知格式、旧版无主机记录、其他电脑的锁都不会被动。
+ */
+function quarantineStaleLock(lock: string): boolean {
+  let info: OwnerInfo;
+  let entries: string[];
+  try {
+    info = readOwner(lock);
+    entries = readdirSync(lock);
+  } catch (_cause) {
+    return false;
+  }
+  if (info.host !== hostname() || info.pid === process.pid || processAlive(info.pid)) return false;
+  for (const name of entries) {
+    if (name === 'owner.json') continue;
+    if (!/^member-[0-9a-f-]+\.json$/.test(name)) return false;
+    try {
+      const member = JSON.parse(readFileSync(path.join(lock, name), 'utf8')) as { pid?: unknown };
+      if (typeof member.pid !== 'number' || !Number.isInteger(member.pid)) return false;
+      if (processAlive(member.pid)) return false;
+    } catch (_cause) {
+      return false;
+    }
+  }
+  renameSync(lock, `${lock}.stale-${Date.now()}-${info.pid}`);
+  return true;
 }
 function verify(owner: DirectoryOwner): void {
   const stat = lstatSync(owner.lock);

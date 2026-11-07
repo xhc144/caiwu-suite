@@ -9,7 +9,15 @@ import {
 } from '@caiwu/core';
 import { pinyinInitials, type CoreServices } from '@caiwu/core/server';
 import { sql } from '@caiwu/db';
-import { menuEntries, ProductSchema, type Preferences, type SearchResult } from '../shared';
+import {
+  menuEntries,
+  ProductSchema,
+  type FinanceMonth,
+  type FinanceOverview,
+  type FinanceTotals,
+  type Preferences,
+  type SearchResult,
+} from '../shared';
 import type { WorkbenchTables } from './migrations';
 
 const forbidden = (message: string) =>
@@ -100,6 +108,69 @@ export function workbenchService(svc: CoreServices, manifests: ModuleManifest[],
           ? '本期间全部凭证；排除草稿、作废'
           : '本期间有来源读取权限的凭证；排除草稿、作废',
       };
+    },
+    /**
+     * 经营概况：货币资金、本期及本年收入、成本费用和利润，以及本年逐月趋势。
+     * 含未过账凭证（排除草稿、作废）；收入费用排除结转凭证，避免结转损益后归零。
+     * 只有能查看汇总余额表的用户才能看到金额。
+     */
+    async finance(period?: number): Promise<FinanceOverview> {
+      svc.permissions.require('workbench.overview.view');
+      if (!(await readable('balances', ['/'])))
+        throw forbidden('没有余额表查看权限，不能查看经营概况');
+      const current = await svc.periods.current();
+      const selected = period ? await svc.periods.require(period) : current;
+      if (!selected) return { period: null, months: [], ytd: null };
+      const accounts = new Map((await svc.accounts.list()).map((a) => [a.id, a]));
+      const pnl = new Set((await svc.accounts.categories()).filter((c) => c.isPnl).map((c) => c.id));
+      const book = await svc.book.info();
+      const year = Math.floor(selected.period / 100);
+      const periods = (await svc.periods.list())
+        .map((p) => p.period)
+        .filter(
+          (p) => Math.floor(p / 100) === year && p >= book.startPeriod && p <= selected.period,
+        )
+        .sort((a, b) => a - b);
+      const month = async (p: number): Promise<FinanceMonth & { ytd: FinanceTotals }> => {
+        const base = { periodFrom: p, periodTo: p, includeUnposted: true, rollup: false };
+        const [flows, balances] = await Promise.all([
+          svc.ledger.balances({ ...base, excludeClosing: true }),
+          svc.ledger.balances(base),
+        ]);
+        const totals = { revenue: 0, expense: 0 };
+        const ytd = { revenue: 0, expense: 0 };
+        for (const row of flows) {
+          const account = accounts.get(row.accountId);
+          if (!row.isLeaf || !account || !pnl.has(account.categoryId)) continue;
+          if (account.direction === 'credit') {
+            totals.revenue += row.credit - row.debit;
+            ytd.revenue += row.ytdCredit - row.ytdDebit;
+          } else {
+            totals.expense += row.debit - row.credit;
+            ytd.expense += row.ytdDebit - row.ytdCredit;
+          }
+        }
+        let cash = 0;
+        for (const row of balances) {
+          const account = accounts.get(row.accountId);
+          if (row.isLeaf && account && (account.isCash || account.isBank)) cash += row.closing;
+        }
+        return {
+          period: p,
+          ...totals,
+          profit: totals.revenue - totals.expense,
+          cash,
+          ytd: { ...ytd, profit: ytd.revenue - ytd.expense },
+        };
+      };
+      const months: FinanceMonth[] = [];
+      let ytd: FinanceTotals | null = null;
+      for (const p of periods) {
+        const { ytd: monthYtd, ...rest } = await month(p);
+        months.push(rest);
+        if (p === selected.period) ytd = monthYtd;
+      }
+      return { period: selected.period, months, ytd };
     },
     async search(term: string, period: number | undefined, limit: number) {
       svc.permissions.require('workbench.search');

@@ -19,6 +19,7 @@ vi.mock('@caiwu/web-kit', () => ({
   getBusinessError: () => null,
 }));
 vi.mock('./FeatureMap', () => ({ FeatureMap: () => null }));
+vi.mock('./FinanceOverview', () => ({ FinanceOverview: () => null }));
 vi.mock('./guidance', () => ({ useGuidance: () => ({ dismissed: true }) }));
 vi.mock('./context', () => ({
   useWorkbenchContext: () => ({

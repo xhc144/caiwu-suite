@@ -25,6 +25,16 @@ export const PreferencesSchema = z.object({
   guided: z.boolean(),
 });
 export type Preferences = z.infer<typeof PreferencesSchema>;
+/** 金额单位均为分；收入、成本费用按发生额（不含结转凭证），资金为期末余额（借正贷负）。 */
+export type FinanceTotals = { revenue: number; expense: number; profit: number };
+export type FinanceMonth = FinanceTotals & { period: number; cash: number };
+export type FinanceOverview = {
+  period: number | null;
+  /** 所选期间所在年度、从启用期间到所选期间的逐月数据 */
+  months: FinanceMonth[];
+  /** 本年累计（截至所选期间） */
+  ytd: FinanceTotals | null;
+};
 export type SearchResult = {
   key: string;
   category: '功能' | '凭证' | '科目' | '摘要' | '往来单位';

@@ -18,6 +18,7 @@ export default defineManifest({
     {
       group: 'system',
       title: '备份恢复',
+      order: 410,
       path: '/',
       permission: 'backup.view',
       keywords: ['数据备份', '数据恢复', '自动备份', '批量引入'],

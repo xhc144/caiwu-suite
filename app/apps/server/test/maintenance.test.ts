@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -503,7 +503,7 @@ function childServer(dataDir: string) {
   return { child, ready, exited, output: () => output };
 }
 
-it('第二个 server 进程同 dataDir 被拒；正常退出释放；崩溃残留不自动清锁', async () => {
+it('第二个 server 进程同 dataDir 被拒；正常退出释放；本机崩溃残留确认进程已退出后隔离再启动', async () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'caiwu-process-'));
   dirs.push(dir);
   const first = childServer(dir);
@@ -521,8 +521,16 @@ it('第二个 server 进程同 dataDir 被拒；正常退出释放；崩溃残�
   third.child.kill('SIGKILL');
   await third.exited;
   const fourth = childServer(dir);
-  await expect(fourth.ready).rejects.toThrow(/未确认的运行锁/);
-  expect(await fourth.exited).toBe(1);
+  try {
+    await fourth.ready;
+    // 旧锁改名保留，不删除
+    expect(readdirSync(dir).filter((n) => n.startsWith('.caiwu-runtime.lock.stale-'))).toHaveLength(
+      1,
+    );
+  } finally {
+    fourth.child.send({ type: 'CAIWU_SHUTDOWN' });
+    expect(await fourth.exited).toBe(0);
+  }
 });
 
 function auxiliary(dataDir: string, bookId: string) {

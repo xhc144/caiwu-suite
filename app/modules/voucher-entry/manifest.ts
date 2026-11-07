@@ -13,6 +13,7 @@ export default defineManifest({
     {
       group: 'voucher',
       title: '凭证录入',
+      order: 110,
       path: '/new',
       permission: 'voucher-entry.view',
       keywords: ['pzlr'],
@@ -20,6 +21,7 @@ export default defineManifest({
     {
       group: 'voucher',
       title: '凭证模版',
+      order: 210,
       path: '/templates',
       permission: 'voucher-entry.view',
       keywords: ['pzmb'],

@@ -12,8 +12,8 @@ export default defineManifest({
     { id: 'books.delete', name: '删除账套' },
   ],
   menu: [
-    { group: 'system', title: '账套管理', path: '/manage', permission: 'books.view' },
-    { group: 'system', title: '账套信息', path: '/info', permission: 'books.view' },
-    { group: 'system', title: '切换账套', path: '/switch' },
+    { group: 'system', title: '账套管理', order: 220, path: '/manage', permission: 'books.view' },
+    { group: 'system', title: '账套信息', order: 210, path: '/info', permission: 'books.view' },
+    { group: 'system', title: '切换账套', order: 230, path: '/switch' },
   ],
 });

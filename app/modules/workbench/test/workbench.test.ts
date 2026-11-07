@@ -49,8 +49,18 @@ const sourceManifest = defineManifest({
 const sourceModule = defineServerModule(sourceManifest, {
   router: moduleKit(sourceManifest).router({}),
 });
+const balancesManifest = defineManifest({
+  id: 'balances',
+  name: '测试余额表',
+  products: 'all',
+  permissions: [{ id: 'balances.view', name: '查看余额表' }],
+  menu: [{ group: 'ledger', title: '汇总余额表', path: '/', permission: 'balances.view' }],
+});
+const balancesModule = defineServerModule(balancesManifest, {
+  router: moduleKit(balancesManifest).router({}),
+});
 let app: TestApp;
-const specs = (status: 'draft' | 'pending' | 'audited' | 'posted', date = '2026-01-10') => ({
+const specs =(status: 'draft' | 'pending' | 'audited' | 'posted', date = '2026-01-10') => ({
   date,
   status,
   summary: '工作台凭证摘要',
@@ -60,9 +70,84 @@ const specs = (status: 'draft' | 'pending' | 'audited' | 'posted', date = '2026-
   ],
 });
 beforeEach(async () => {
-  app = await createTestApp({ modules: [workbench, voucherModule, masterModule, sourceModule] });
+  app = await createTestApp({
+    modules: [workbench, voucherModule, masterModule, sourceModule, balancesModule],
+  });
 });
 afterEach(async () => app.close());
+
+describe('工作台经营概况', () => {
+  it('按月汇总收入、成本费用、利润和货币资金，含未过账、排除草稿和作废', async () => {
+    const api = app.call(workbench);
+    const before = await api.finance({});
+    expect(before.period).toBe(202601);
+    const baseCash = before.months[0]!.cash;
+    const vouchers = await seedVouchers(app.svc, [
+      {
+        date: '2026-01-05',
+        status: 'posted',
+        lines: [
+          { account: '100201', debit: 1000_00 },
+          { account: '6001', credit: 1000_00 },
+        ],
+      },
+      {
+        date: '2026-01-08',
+        status: 'pending',
+        lines: [
+          { account: '6401', debit: 300_00 },
+          { account: '1001', credit: 300_00 },
+        ],
+      },
+      {
+        date: '2026-01-09',
+        status: 'draft',
+        lines: [
+          { account: '100201', debit: 999_00 },
+          { account: '6001', credit: 999_00 },
+        ],
+      },
+      {
+        date: '2026-01-10',
+        status: 'pending',
+        lines: [
+          { account: '100201', debit: 77_00 },
+          { account: '6001', credit: 77_00 },
+        ],
+      },
+      {
+        date: '2026-02-03',
+        status: 'posted',
+        lines: [
+          { account: '6603', debit: 50_00 },
+          { account: '100201', credit: 50_00 },
+        ],
+      },
+    ]);
+    await app.svc.vouchers.setVoided(vouchers[3]!.id, true);
+    const result = await api.finance({ period: 202602 });
+    expect(result.period).toBe(202602);
+    expect(result.months).toEqual([
+      { period: 202601, revenue: 1000_00, expense: 300_00, profit: 700_00, cash: baseCash + 700_00 },
+      { period: 202602, revenue: 0, expense: 50_00, profit: -50_00, cash: baseCash + 650_00 },
+    ]);
+    expect(result.ytd).toEqual({ revenue: 1000_00, expense: 350_00, profit: 650_00 });
+    // 只看一月时不出现二月
+    expect((await api.finance({ period: 202601 })).months.map((m) => m.period)).toEqual([202601]);
+  });
+  it('没有余额表权限时拒绝，不泄露金额', async () => {
+    const caller = app.call(
+      workbench,
+      await app.addUser('viewer', { permissions: ['workbench.overview.view'] }),
+    );
+    await expect(caller.finance({})).rejects.toThrow(/余额表查看权限/);
+    const allowed = app.call(
+      workbench,
+      await app.addUser('boss', { permissions: ['workbench.overview.view', 'balances.view'] }),
+    );
+    expect((await allowed.finance({})).period).toBe(202601);
+  });
+});
 
 describe('w_main1 工作台', () => {
   it('功能搜索返回中文分组，不显示内部组名', async () => {

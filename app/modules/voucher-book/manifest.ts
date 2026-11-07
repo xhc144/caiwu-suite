@@ -20,9 +20,27 @@ export default defineManifest({
     { id: 'voucher-book.export', name: '导出凭证' },
   ],
   menu: [
-    { group: 'voucher', title: '凭证序时簿', path: '/', permission: 'voucher-book.view' },
-    { group: 'voucher', title: '凭证科目汇总', path: '/summary', permission: 'voucher-book.view' },
-    { group: 'voucher', title: '丁字帐户', path: '/t-account', permission: 'voucher-book.view' },
+    {
+      group: 'voucher',
+      title: '凭证序时簿',
+      order: 120,
+      path: '/',
+      permission: 'voucher-book.view',
+    },
+    {
+      group: 'voucher',
+      title: '凭证科目汇总',
+      order: 220,
+      path: '/summary',
+      permission: 'voucher-book.view',
+    },
+    {
+      group: 'voucher',
+      title: '丁字帐户',
+      order: 230,
+      path: '/t-account',
+      permission: 'voucher-book.view',
+    },
   ],
   sources: [{ type: 'reversal', name: '红字冲销', path: '/?id={id}' }],
 });

@@ -1,0 +1,287 @@
+/* 工作台首页。颜色优先使用 antd 的 CSS 变量，深色主题下同样可读。 */
+.cw-home-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px 6px;
+  border-radius: 10px;
+  border: 1px solid var(--ant-color-border-secondary, #eef0f3);
+  background:
+    radial-gradient(120% 140% at 100% 0%, rgba(31, 111, 235, 0.1), transparent 55%),
+    var(--ant-color-bg-container, #fff);
+}
+.cw-home-hero-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cw-home-hero-badge {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #1f6feb, #6366f1);
+  box-shadow: 0 4px 12px rgba(31, 111, 235, 0.25);
+}
+.cw-home-hero-name {
+  font-size: 16px;
+}
+.cw-home-period {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ant-color-text-secondary, #666);
+}
+.cw-home-hero .ant-descriptions-item {
+  padding-bottom: 6px !important;
+}
+
+.cw-home-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ant-color-border-secondary, #eef0f3);
+  background: var(--ant-color-bg-container, #fff);
+}
+.cw-home-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* 待办 */
+.cw-todo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+.cw-todo-card {
+  border-radius: 8px;
+  transition: box-shadow 0.2s;
+}
+.cw-todo-card:hover {
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.08);
+}
+.cw-todo-card .ant-statistic {
+  margin-bottom: 10px;
+}
+.cw-todo-active {
+  border-color: var(--ant-color-primary-border, #91caff);
+}
+.cw-todo-icon {
+  color: var(--ant-color-primary, #1f6feb);
+  margin-right: 4px;
+  font-size: 0.8em;
+}
+.cw-todo-unit {
+  font-size: 13px;
+  color: var(--ant-color-text-secondary, #888);
+}
+
+/* 经营概况 KPI：宽屏一行四个，较窄时两两排列，避免出现 3+1 的残行 */
+.cw-home-section {
+  container-type: inline-size;
+}
+.cw-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+@container (max-width: 760px) {
+  .cw-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@container (max-width: 380px) {
+  .cw-kpi-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cw-kpi {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--ant-color-border-secondary, #eef0f3);
+  background: var(--ant-color-fill-quaternary, #fafbfc);
+  transition:
+    box-shadow 0.2s,
+    transform 0.2s;
+}
+.cw-kpi:hover {
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+.cw-kpi:focus-visible {
+  outline: 2px solid var(--ant-color-primary, #1f6feb);
+  outline-offset: 2px;
+}
+.cw-kpi-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.cw-kpi-blue .cw-kpi-icon {
+  color: #1f6feb;
+  background: rgba(31, 111, 235, 0.12);
+}
+.cw-kpi-orange .cw-kpi-icon {
+  color: #d97706;
+  background: rgba(245, 158, 11, 0.14);
+}
+.cw-kpi-green .cw-kpi-icon {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+}
+.cw-kpi-red .cw-kpi-icon {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.12);
+}
+.cw-kpi-purple .cw-kpi-icon {
+  color: #7c3aed;
+  background: rgba(124, 58, 237, 0.12);
+}
+.cw-kpi-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.cw-kpi-label {
+  font-size: 12px;
+  color: var(--ant-color-text-secondary, #666);
+}
+.cw-kpi-value {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ant-color-text, #1f2329);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cw-kpi-value small {
+  font-size: 13px;
+  font-weight: 500;
+  margin-right: 2px;
+  color: var(--ant-color-text-secondary, #888);
+}
+.cw-kpi-negative {
+  color: var(--ant-color-error, #dc2626);
+}
+.cw-kpi-hint {
+  font-size: 12px;
+  color: var(--ant-color-text-tertiary, #999);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cw-trend-chart {
+  width: 100%;
+  height: 240px;
+  color: var(--ant-color-text-secondary, #666);
+}
+
+/* 快捷入口 */
+.cw-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 10px;
+}
+.cw-quick-tile {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+  color: var(--ant-color-text, #1f2329);
+  border: 1px solid transparent;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.cw-quick-tile:hover {
+  background: var(--ant-color-primary-bg, #eef4ff);
+  border-color: var(--ant-color-primary-border, #c7dbff);
+}
+.cw-quick-tile:focus-visible {
+  outline: 2px solid var(--ant-color-primary, #1f6feb);
+  outline-offset: 2px;
+}
+.cw-quick-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  color: var(--ant-color-primary, #1f6feb);
+  background: var(--ant-color-primary-bg, #eef4ff);
+}
+
+/* 全部功能 */
+.cw-func-group {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--ant-color-border-secondary, #eef0f3);
+}
+.cw-func-group:last-of-type {
+  border-bottom: none;
+}
+.cw-func-group-title {
+  flex: none;
+  width: 72px;
+  padding-top: 3px;
+}
+.cw-func-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 4px;
+}
+.cw-func-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.cw-func-chip:hover {
+  background: var(--ant-color-fill-tertiary, #f2f3f5);
+}
+.cw-func-star {
+  color: var(--ant-color-text-quaternary, #bbb);
+}
+@media (max-width: 700px) {
+  .cw-home-period {
+    margin-left: 0;
+  }
+  .cw-func-group {
+    flex-direction: column;
+    gap: 4px;
+  }
+}

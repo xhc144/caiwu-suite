@@ -12,9 +12,21 @@ export default defineManifest({
     { id: 'workbench.product.switch', name: '切换账套产品形态' },
   ],
   menu: [
-    { group: 'system', title: '工作台', path: '/', keywords: ['首页', 'gzt'] },
-    { group: 'system', title: '全局搜索', path: '/search', keywords: ['查找', 'qjss'] },
-    { group: 'system', title: '工作台设置', path: '/settings', keywords: ['产品形态', 'sz'] },
-    { group: 'system', title: '帮助与关于', path: '/help', keywords: ['使用引导', 'bz'] },
+    { group: 'system', title: '工作台', order: 110, path: '/', keywords: ['首页', 'gzt'] },
+    { group: 'system', title: '全局搜索', order: 120, path: '/search', keywords: ['查找', 'qjss'] },
+    {
+      group: 'system',
+      title: '工作台设置',
+      order: 440,
+      path: '/settings',
+      keywords: ['产品形态', 'sz'],
+    },
+    {
+      group: 'system',
+      title: '帮助与关于',
+      order: 510,
+      path: '/help',
+      keywords: ['使用引导', 'bz'],
+    },
   ],
 });
