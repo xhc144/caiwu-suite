@@ -1,0 +1,7 @@
+# Windows 检出时也保持 LF，与 prettier 的 endOfLine 一致，避免 pnpm format 在 Windows 上误报
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.icns binary
+*.caiwu binary
+*.sqlite binary
