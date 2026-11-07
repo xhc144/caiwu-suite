@@ -12,6 +12,10 @@ export default tseslint.config(
       '.generated/**',
       'playwright-report/**',
       'test-results/**',
+      // 本地打包产物和试用数据（已被 git 忽略），不参与检查
+      'apps/desktop/release/**',
+      'apps/desktop/release-old/**',
+      '.local-demo/**',
     ],
   },
   js.configs.recommended,

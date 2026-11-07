@@ -12,7 +12,17 @@ import {
   Typography,
   theme as antTheme,
 } from 'antd';
-import { UserOutlined } from '@ant-design/icons';
+import {
+  BgColorsOutlined,
+  CalendarOutlined,
+  HistoryOutlined,
+  LoadingOutlined,
+  QuestionCircleOutlined,
+  SearchOutlined,
+  SettingOutlined,
+  ThunderboltOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
@@ -272,25 +282,36 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
             style={{ borderRight: '1px solid var(--cw-border)' }}
           >
             <div className="cw-brand" title={productName(session.book.product)}>
-              {collapsed ? '财' : productName(session.book.product)}
+              <span className="cw-brand-logo" aria-hidden>
+                财
+              </span>
+              {!collapsed && (
+                <span className="cw-brand-text">
+                  <span>{productName(session.book.product)}</span>
+                  <small>财务软件</small>
+                </span>
+              )}
             </div>
-            <div style={{ height: 'calc(100% - 96px)', overflow: 'auto' }}>
+            <div className="cw-sider-scroll">
               <NavMenu
                 key={devMode ? 'development' : 'production'}
                 items={navItems}
                 collapsed={collapsed}
               />
               {!collapsed && recent.length > 0 && (
-                <div style={{ padding: 12 }}>
-                  <Typography.Text type="secondary">最近功能</Typography.Text>
+                <div className="cw-recent">
+                  <Typography.Text type="secondary" className="cw-recent-title">
+                    <HistoryOutlined aria-hidden /> 最近功能
+                  </Typography.Text>
                   {recent.map((to) => {
                     const item = navItems.find((i) => i.to === to);
                     return item ? (
                       <Button
-                        type="link"
+                        type="text"
+                        size="small"
                         key={to}
                         block
-                        style={{ textAlign: 'left' }}
+                        className="cw-recent-item"
                         onClick={() => void navigate(to)}
                       >
                         {item.title}
@@ -315,20 +336,55 @@ function ShellContent({ devMode: initialDevMode }: { devMode: boolean }) {
                 >
                   {session.book.orgName}
                 </Typography.Text>
-                {me.data?.currentPeriod && <Tag>{formatPeriod(me.data.currentPeriod.period)}</Tag>}
+                {me.data?.currentPeriod && (
+                  <Tag color="blue" icon={<CalendarOutlined aria-hidden />}>
+                    {formatPeriod(me.data.currentPeriod.period)}
+                  </Tag>
+                )}
               </div>
               <div className="cw-header-actions">
                 {activity.slow > 0 && (
-                  <span role="progressbar" aria-label="全局加载进度" aria-live="polite">
-                    正在加载或刷新，请稍候…
+                  <span
+                    className="cw-header-loading"
+                    role="progressbar"
+                    aria-label="全局加载进度"
+                    aria-live="polite"
+                  >
+                    <LoadingOutlined aria-hidden /> 正在加载或刷新，请稍候…
                   </span>
                 )}
-                <Button onClick={onSearch}>搜索 Ctrl+K</Button>
-                <Button onClick={onShortcuts}>快捷键 ?</Button>
-                <Button onClick={onHelp}>帮助</Button>
-                <Button onClick={() => setAppearanceOpen(true)}>界面</Button>
+                <Button
+                  className="cw-header-search"
+                  icon={<SearchOutlined aria-hidden />}
+                  onClick={onSearch}
+                >
+                  搜索 Ctrl+K
+                </Button>
+                <Button
+                  type="text"
+                  icon={<ThunderboltOutlined aria-hidden />}
+                  onClick={onShortcuts}
+                >
+                  快捷键 ?
+                </Button>
+                <Button type="text" icon={<QuestionCircleOutlined aria-hidden />} onClick={onHelp}>
+                  帮助
+                </Button>
+                <Button
+                  type="text"
+                  icon={<BgColorsOutlined aria-hidden />}
+                  onClick={() => setAppearanceOpen(true)}
+                >
+                  界面
+                </Button>
                 {session.user.isAdmin && (
-                  <Button onClick={() => setVoucherPolicyOpen(true)}>凭证设置</Button>
+                  <Button
+                    type="text"
+                    icon={<SettingOutlined aria-hidden />}
+                    onClick={() => setVoucherPolicyOpen(true)}
+                  >
+                    凭证设置
+                  </Button>
                 )}
                 <Dropdown
                   menu={{

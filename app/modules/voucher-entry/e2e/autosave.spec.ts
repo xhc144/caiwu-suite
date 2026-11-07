@@ -95,10 +95,10 @@ test('w_pz_pzedit：正式保存后过期排队自动保存不发请求、不改
       debitTotal: 7100,
       creditTotal: 7100,
     });
-    await expect.soft(page.getByRole('status')).not.toContainText('未提交编辑缓冲');
+    await expect.soft(page.getByRole('status')).not.toContainText('尚未正式保存的暂存修改');
     // dirty 已清零时的显式保存草稿不能被自动保存的去重规则吞掉。
-    await page.getByRole('button', { name: '保存草稿/缓冲', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('编辑缓冲已保存，正式凭证待手动保存');
+    await page.getByRole('button', { name: '暂存', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('修改已暂存，点击“保存”后才更新正式凭证');
     expect(gate.calls.map((call) => call.data.draft)).toEqual([false, true]);
   } finally {
     gate.release();
@@ -171,7 +171,7 @@ test('w_pz_pzedit.u_pzsave：正式保存失败仍保留 dirty，已排队自动
     await gate.saved;
     await page.clock.runFor(900);
     gate.release();
-    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    await expect(page.getByRole('status')).toContainText('草稿已暂存');
     expect(gate.calls.map((call) => call.data.draft)).toEqual([false, true]);
     expect((await buffer()).revision).toBe(draft.bufferRevision + 1);
     expect(await svc.vouchers.get(draft.voucher!.id)).toMatchObject({

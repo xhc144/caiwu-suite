@@ -1,4 +1,18 @@
-import { Alert, Button, Drawer, Input, InputNumber, Modal, Select, Space, Spin, Tag } from 'antd';
+import {
+  Alert,
+  Button,
+  Divider,
+  Drawer,
+  Dropdown,
+  Input,
+  InputNumber,
+  Modal,
+  Select,
+  Space,
+  Spin,
+  Tag,
+} from 'antd';
+import { DownOutlined, PrinterOutlined, SaveOutlined } from '@ant-design/icons';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
@@ -34,6 +48,7 @@ import PasteDialog from './PasteDialog';
 import CalculatorDialog from './CalculatorDialog';
 import { useSaveActivity } from './useSaveActivity';
 import { AmountDraftContext, amountDraftHint, useAmountDrafts } from './amount-drafts';
+import './entry.css';
 
 type Bootstrap = inferRouterOutputs<EntryRouter>['bootstrap'];
 const inputOf = (v: Voucher): Entry => ({
@@ -141,7 +156,7 @@ function Editor({
   const [data, setData] = useState(initial);
   const [header, setHeader] = useState(voucher);
   const [ready, setReady] = useState(false);
-  const [status, setStatus] = useState('正在恢复编辑缓冲');
+  const [status, setStatus] = useState('正在读取暂存内容');
   const [error, setError] = useState('');
   const [conflict, setConflict] = useState(false);
   const [active, setActive] = useState(0);
@@ -234,7 +249,8 @@ function Editor({
           if (staleBuffer) {
             live.current.data = inputOf(current);
             setData(inputOf(current));
-            restoredStatus = '已载入服务端新版本；旧编辑缓冲未自动覆盖，恢复前请核对';
+            restoredStatus =
+              '已载入最新保存的凭证；之前暂存的修改没有自动覆盖，如需继续请点击“恢复暂存内容”并核对';
           } else if (!current || current.status === 'draft' || !voucher) {
             live.current.data = buffer.data;
             setData(buffer.data);
@@ -243,7 +259,7 @@ function Editor({
             JSON.stringify({ ...buffer.data, draft: false }) !==
               JSON.stringify({ ...initial, draft: false })
           ) {
-            restoredStatus = '存在未提交编辑缓冲，可点击“恢复编辑缓冲”继续';
+            restoredStatus = '有尚未正式保存的暂存修改，可点击“恢复暂存内容”继续';
           }
         }
         live.current.savedData = live.current.data;
@@ -253,7 +269,7 @@ function Editor({
       .catch(() => {
         if (liveEffect) {
           setStatus('恢复失败，请刷新');
-          setError('读取编辑缓冲失败');
+          setError('读取暂存内容失败');
         }
       });
     return () => {
@@ -380,11 +396,11 @@ function Editor({
         });
         setStatus(
           result.coreError
-            ? `编辑缓冲已保存；core 草稿未保存：${result.coreError}`
+            ? `修改已暂存；草稿未能保存：${result.coreError}`
             : draft
               ? result.voucher?.status === 'pending'
-                ? '编辑缓冲已保存，正式凭证待手动保存'
-                : '草稿与编辑缓冲已保存'
+                ? '修改已暂存，点击“保存”后才更新正式凭证'
+                : '草稿已暂存'
               : `已保存 ${result.voucher?.displayNo}`,
         );
         if (live.current.version !== version) setStatus('上一版已保存，当前新修改等待自动保存');
@@ -741,9 +757,10 @@ function Editor({
         title="凭证录入"
         subtitle="正式保存后由服务端分配编号；F5 / Ctrl+S 保存，Ctrl+D / Ctrl+K 删行"
       >
-        <Space wrap>
+        <div className="cw-entry-toolbar" role="toolbar" aria-label="凭证操作">
           <Button
             type="primary"
+            icon={<SaveOutlined aria-hidden />}
             disabled={readonly || !ready}
             loading={persist.isPending}
             onClick={() => void save(false)}
@@ -761,23 +778,29 @@ function Editor({
             保存并新增
           </Button>
           <Button disabled={readonly || !ready} onClick={() => void save(true)}>
-            保存草稿/缓冲
+            暂存
           </Button>
-          <Button disabled={readonly} onClick={insert}>
-            插行（Ctrl+I）
+          <Divider orientation="vertical" />
+          <Button disabled={readonly} onClick={insert} title="插入一行（Ctrl+I）">
+            插行
           </Button>
-          <Button disabled={readonly} onClick={remove}>
+          <Button disabled={readonly} onClick={remove} title="删除当前行（Ctrl+D / Ctrl+K）">
             删行
           </Button>
-          <Button disabled={readonly} onClick={balance}>
-            找平（Ctrl+H）
+          <Button
+            disabled={readonly}
+            onClick={balance}
+            title="当前金额格找平借贷差额（Ctrl+H 或在金额格按 =）"
+          >
+            找平
           </Button>
-          <Button disabled={readonly} onClick={balanceCopy}>
-            平衡复制（F7）
+          <Button disabled={readonly} onClick={balanceCopy} title="复制当前行并自动找平（F7）">
+            平衡复制
           </Button>
-          <Button disabled={readonly} onClick={swap}>
-            借贷互换（F8）
+          <Button disabled={readonly} onClick={swap} title="当前行借贷方向互换（F8）">
+            借贷互换
           </Button>
+          <Divider orientation="vertical" />
           <Button
             onClick={() =>
               requestLeave(() => {
@@ -814,8 +837,8 @@ function Editor({
                   .then((b) => {
                     if (b)
                       void confirm(
-                        '恢复编辑缓冲',
-                        `缓冲对应 revision ${b.voucherRevision ?? '未建凭证'}；当前服务端 revision ${header?.revision ?? '未建凭证'}。确认恢复？旧缓冲不会自动覆盖新版本。`,
+                        '恢复暂存内容',
+                        `暂存内容基于${b.voucherRevision ? `第 ${b.voucherRevision} 版凭证` : '尚未保存的凭证'}，当前凭证为${header?.revision ? `第 ${header.revision} 版` : '尚未保存'}。确认用暂存内容替换当前编辑内容？`,
                       ).then((ok) => {
                         if (ok) {
                           amountDrafts.clear();
@@ -826,11 +849,11 @@ function Editor({
               }
               disabled={readonly}
             >
-              恢复编辑缓冲
+              恢复暂存内容
             </Button>
           )}
-        </Space>
-        <Space wrap style={{ marginTop: 12 }}>
+        </div>
+        <div className="cw-entry-toolbar cw-entry-toolbar-secondary">
           {(['first', 'previous', 'next', 'last'] as const).map((key, i) => (
             <Button
               key={key}
@@ -844,6 +867,7 @@ function Editor({
               {['首张', '上一张', '下一张', '末张'][i]}
             </Button>
           ))}
+          <Divider orientation="vertical" />
           <Button
             onClick={() =>
               requestLeave(() => {
@@ -856,33 +880,6 @@ function Editor({
           <Button
             onClick={() =>
               requestLeave(() => {
-                void navigate(`/m/voucher-book?action=copy&id=${header?.id ?? ''}`);
-              })
-            }
-          >
-            复制凭证
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate(`/m/voucher-book?action=reverse&id=${header?.id ?? ''}`);
-              })
-            }
-          >
-            反冲凭证
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate('/m/cashier');
-              })
-            }
-          >
-            出纳读取/单据生成
-          </Button>
-          <Button
-            onClick={() =>
-              requestLeave(() => {
                 void navigate('/m/accounts');
               })
             }
@@ -890,15 +887,7 @@ function Editor({
             科目维护
           </Button>
           <Button
-            onClick={() =>
-              requestLeave(() => {
-                void navigate(`/m/period-close?period=${header?.period ?? ''}`);
-              })
-            }
-          >
-            期末处理/反过账
-          </Button>
-          <Button
+            icon={<PrinterOutlined aria-hidden />}
             onClick={() =>
               requestLeave(() => {
                 void navigate(`/m/print-settings?voucherId=${header?.id ?? ''}`);
@@ -907,7 +896,33 @@ function Editor({
           >
             打印
           </Button>
-        </Space>
+          <Dropdown
+            trigger={['click']}
+            menu={{
+              items: [
+                { key: 'copy', label: '复制凭证' },
+                { key: 'reverse', label: '反冲凭证' },
+                { key: 'cashier', label: '出纳读取/单据生成' },
+                { key: 'period', label: '期末处理/反过账' },
+              ],
+              onClick: ({ key }) =>
+                requestLeave(() => {
+                  const id = header?.id ?? '';
+                  const to = {
+                    copy: `/m/voucher-book?action=copy&id=${id}`,
+                    reverse: `/m/voucher-book?action=reverse&id=${id}`,
+                    cashier: '/m/cashier',
+                    period: `/m/period-close?period=${header?.period ?? ''}`,
+                  }[key];
+                  if (to) void navigate(to);
+                }),
+            }}
+          >
+            <Button>
+              更多操作 <DownOutlined aria-hidden />
+            </Button>
+          </Dropdown>
+        </div>
         {ready && readonly && (
           <Alert
             style={{ marginTop: 12 }}
@@ -944,108 +959,105 @@ function Editor({
             }
           />
         )}
-        <Alert
-          type="info"
-          title="core 草稿不分配编号、不进入账表；未选科目的行仅保留在本模块编辑缓冲。正式凭证的自动保存只写缓冲，需手动保存才能提交修改。"
-        />
-        <Space wrap style={{ marginTop: 16 }}>
-          <label>
-            凭证类型
-            <Select
-              aria-label="凭证类型"
-              style={{ width: 150 }}
-              disabled={readonly}
-              value={data.voucherTypeId || undefined}
-              options={boot.types.map((t) => ({
-                value: t.id,
-                label: `${t.code} ${t.name}`,
-                disabled: t.disabled,
-              }))}
-              onChange={(v) => change({ ...data, voucherTypeId: v, number: null })}
-            />
-          </label>
-          <label>
-            日期
-            <Input
-              aria-label="凭证日期"
-              style={{ width: 150 }}
-              disabled={readonly}
-              value={data.date}
-              placeholder="YYYY-MM-DD"
-              onChange={(e) => change(changeEntryDate(live.current.data, e.target.value))}
-            />
-          </label>
-          <label>
-            附单据数
-            <InputNumber
-              aria-label="附单据数"
-              min={0}
-              max={9999}
-              disabled={readonly}
-              value={data.attachments}
-              onChange={(v) => change({ ...data, attachments: v ?? 0 })}
-            />
-          </label>
-          <label>
-            {policy.data?.numbering === 'manual' ? '凭证编号（必填）' : '凭证编号（自动分配）'}
-            <InputNumber
-              aria-label="手动编号"
-              min={1}
-              disabled={readonly || !policy.data || policy.data.numbering === 'automatic'}
-              value={data.number}
-              onChange={(v) => change({ ...data, number: v })}
-            />
-          </label>
-          <Tag>{header?.displayNo ?? `自动编号提示 ${hint.data ?? '—'}（未占号）`}</Tag>
-          <Tag>{header ? VOUCHER_STATUS_LABELS[header.status] : '尚未保存'}</Tag>
-          {header && (
-            <a
-              href={`/m/voucher-entry/edit?id=${header.id}`}
-              onClick={(event) => {
-                event.preventDefault();
-                requestLeave(() => window.location.assign(`/m/voucher-entry/edit?id=${header.id}`));
+        <div className="cw-voucher-sheet">
+          <Space wrap>
+            <label>
+              凭证类型
+              <Select
+                aria-label="凭证类型"
+                style={{ width: 150 }}
+                disabled={readonly}
+                value={data.voucherTypeId || undefined}
+                options={boot.types.map((t) => ({
+                  value: t.id,
+                  label: `${t.code} ${t.name}`,
+                  disabled: t.disabled,
+                }))}
+                onChange={(v) => change({ ...data, voucherTypeId: v, number: null })}
+              />
+            </label>
+            <label>
+              日期
+              <Input
+                aria-label="凭证日期"
+                style={{ width: 150 }}
+                disabled={readonly}
+                value={data.date}
+                placeholder="YYYY-MM-DD"
+                onChange={(e) => change(changeEntryDate(live.current.data, e.target.value))}
+              />
+            </label>
+            <label>
+              附单据数
+              <InputNumber
+                aria-label="附单据数"
+                min={0}
+                max={9999}
+                disabled={readonly}
+                value={data.attachments}
+                onChange={(v) => change({ ...data, attachments: v ?? 0 })}
+              />
+            </label>
+            <label>
+              {policy.data?.numbering === 'manual' ? '凭证编号（必填）' : '凭证编号（自动分配）'}
+              <InputNumber
+                aria-label="手动编号"
+                min={1}
+                disabled={readonly || !policy.data || policy.data.numbering === 'automatic'}
+                value={data.number}
+                onChange={(v) => change({ ...data, number: v })}
+              />
+            </label>
+            <Tag>{header?.displayNo ?? `自动编号提示 ${hint.data ?? '—'}（未占号）`}</Tag>
+            <Tag>{header ? VOUCHER_STATUS_LABELS[header.status] : '尚未保存'}</Tag>
+            {header && (
+              <a
+                href={`/m/voucher-entry/edit?id=${header.id}`}
+                onClick={(event) => {
+                  event.preventDefault();
+                  requestLeave(() =>
+                    window.location.assign(`/m/voucher-entry/edit?id=${header.id}`),
+                  );
+                }}
+              >
+                重新打开凭证
+              </a>
+            )}
+          </Space>
+          <p className="cw-voucher-signers">
+            制单：{header?.createdBy.name ?? session?.user.name}；审核：
+            {header?.auditedBy?.name ?? '—'}
+            ；记账：{header?.postedBy?.name ?? '—'}
+          </p>
+          <div ref={root}>
+            <LineGrid
+              lines={data.lines}
+              accounts={boot.accounts}
+              items={boot.items}
+              date={data.date}
+              methods={boot.methods}
+              summaries={boot.summaries}
+              readonly={readonly}
+              active={active}
+              onActive={(i, field) => {
+                setActive(i);
+                moneyFocused.current = field === 'debit' || field === 'credit';
+                if (field === 'debit' || field === 'credit') amountSide.current = field;
               }}
+              onChange={(lines) => change({ ...live.current.data, lines })}
+              onInfo={() => setDetails(true)}
+            />
+          </div>
+          <p className="cw-voucher-totals">
+            借方合计 {displayMoney(totalDebit)}；贷方合计 {displayMoney(totalCredit)}；
+            <span
+              data-testid="difference"
+              style={{ color: safeTotals && totalDebit === totalCredit ? '#18823a' : '#c33' }}
             >
-              重新打开凭证
-            </a>
-          )}
-        </Space>
-        <p style={{ marginTop: 10 }}>
-          制单：{header?.createdBy.name ?? session?.user.name}；审核：
-          {header?.auditedBy?.name ?? '—'}
-          ；记账：{header?.postedBy?.name ?? '—'}
-        </p>
-        <div ref={root}>
-          <LineGrid
-            lines={data.lines}
-            accounts={boot.accounts}
-            items={boot.items}
-            date={data.date}
-            methods={boot.methods}
-            summaries={boot.summaries}
-            readonly={readonly}
-            active={active}
-            onActive={(i, field) => {
-              setActive(i);
-              moneyFocused.current = field === 'debit' || field === 'credit';
-              if (field === 'debit' || field === 'credit') amountSide.current = field;
-            }}
-            onChange={(lines) => change({ ...live.current.data, lines })}
-            onInfo={() => setDetails(true)}
-          />
+              差额 {safeTotals ? formatMoney(totalDebit - totalCredit) : '合计超出范围，请核对'}
+            </span>
+          </p>
         </div>
-        <p style={{ marginTop: 16 }}>
-          借方合计 {displayMoney(totalDebit)}；贷方合计 {displayMoney(totalCredit)}；
-          <span
-            data-testid="difference"
-            style={{ color: safeTotals && totalDebit === totalCredit ? '#18823a' : '#c33' }}
-          >
-            差额 {safeTotals ? formatMoney(totalDebit - totalCredit) : '合计超出范围，请核对'}
-          </span>
-        </p>
-        <p style={{ color: '#666' }}>
-          汇兑损益尚未实现：需要明确期末汇率、汇兑损益科目配置、按辅助项折算及幂等生成契约；此处不生成推测凭证。合同及财务/预算双体系校验尚缺核心契约。
-        </p>
         <Drawer
           open={details}
           title={`第${active + 1}行分录信息`}
@@ -1256,12 +1268,12 @@ function Editor({
                   })
                 }
               >
-                保存缓冲并离开
+                暂存并离开
               </Button>
             </Space>
           }
         >
-          保存到编辑缓冲、放弃本次修改，或取消离开。
+          可以暂存修改后离开、放弃本次修改，或取消离开。
         </Modal>
       </PageContainer>
     </div>

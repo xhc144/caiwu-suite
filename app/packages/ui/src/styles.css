@@ -57,3 +57,127 @@
   flex-direction: column;
   gap: 12px;
 }
+/* 品牌标识与入口页（账套选择、登录） */
+.cw-brand-mark {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #1f6feb, #6366f1);
+  box-shadow: 0 4px 14px rgba(31, 111, 235, 0.3);
+}
+.cw-brand-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 1120px;
+  max-width: 100%;
+  margin-bottom: 16px;
+}
+.cw-brand-header-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.cw-brand-header-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ant-color-text, #1f2329);
+}
+.cw-brand-header-sub {
+  font-size: 12px;
+  color: var(--ant-color-text-secondary, #666);
+}
+.cw-brand-header-extra {
+  margin-left: auto;
+}
+.cw-brand-split-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(60% 60% at 0% 0%, rgba(31, 111, 235, 0.08), transparent 60%),
+    radial-gradient(50% 50% at 100% 100%, rgba(99, 102, 241, 0.08), transparent 60%);
+}
+.cw-brand-split {
+  display: flex;
+  width: 860px;
+  max-width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--ant-color-bg-container, #fff);
+  box-shadow: 0 12px 40px rgba(15, 23, 42, 0.1);
+}
+.cw-brand-panel {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 40px 32px;
+  color: #fff;
+  background: linear-gradient(160deg, #1f6feb 0%, #4f46e5 100%);
+}
+.cw-brand-panel .cw-brand-mark {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+}
+.cw-brand-panel-title {
+  margin-top: 12px;
+  font-size: 22px;
+  font-weight: 600;
+}
+.cw-brand-panel-sub {
+  font-size: 13px;
+  opacity: 0.85;
+}
+.cw-brand-panel-list {
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  opacity: 0.92;
+}
+.cw-brand-panel-list li::before {
+  content: '✓';
+  margin-right: 8px;
+  opacity: 0.8;
+}
+.cw-brand-split-content {
+  flex: 1;
+  min-width: 0;
+  padding: 32px 36px;
+}
+@media (max-width: 720px) {
+  .cw-brand-split {
+    flex-direction: column;
+  }
+  .cw-brand-panel {
+    flex-basis: auto;
+    padding: 20px 24px;
+  }
+  .cw-brand-panel-list {
+    display: none;
+  }
+  .cw-brand-split-content {
+    padding: 24px;
+  }
+}
+.cw-login-book {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary, #f7f8fa);
+  border: 1px solid var(--ant-color-border-secondary, #eef0f3);
+}
+.cw-center-page.cw-picker-page {
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}

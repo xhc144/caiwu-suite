@@ -111,7 +111,7 @@ export default function PasteDialog({
             render: (_, r) =>
               r.errors.join('；') ||
               r.warnings.join('；') ||
-              '引用校验通过，正式保存仍走 core 校验',
+              '引用校验通过，正式保存时还会完整校验',
           },
         ]}
       />

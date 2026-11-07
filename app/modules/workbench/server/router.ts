@@ -36,9 +36,7 @@ export const workbenchRouter = m.router({
     .meta({ permission: 'workbench.overview.view' })
     .input(OverviewSchema)
     .query(({ ctx, input }) =>
-      workbenchService(ctx.svc, ctx.app.modules.manifests(), ctx.app.devMode).finance(
-        input.period,
-      ),
+      workbenchService(ctx.svc, ctx.app.modules.manifests(), ctx.app.devMode).finance(input.period),
     ),
   search: currentSession
     .meta({ permission: 'workbench.search' })

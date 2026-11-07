@@ -25,3 +25,4 @@ export {
   type DangerConfirmOptions,
 } from './layout';
 export { exportToExcel, downloadBlob, type ExcelColumn } from './excel';
+export { BrandHeader, BrandLogo, BrandSplit } from './brand';

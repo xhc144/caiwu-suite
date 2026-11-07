@@ -289,7 +289,7 @@ test('w_pz_pzedit_b：首上下一末稳定移动，保存响应延迟不覆盖�
     await leave.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('保存期间继续输入');
     await page.getByRole('button', { name: '下一张', exact: true }).click();
-    await leave.getByRole('button', { name: '保存缓冲并离开', exact: true }).click();
+    await leave.getByRole('button', { name: '暂存并离开', exact: true }).click();
     await expect(page).toHaveURL(`${local.url}/m/voucher-entry/edit?id=${a.id}`);
     await expect(page.getByRole('status')).toContainText('已恢复');
     expect((await svc.vouchers.get(b.id))!.lines[0]?.summary).toBe('正式提交的版本');
@@ -297,10 +297,10 @@ test('w_pz_pzedit_b：首上下一末稳定移动，保存响应延迟不覆盖�
     await page.getByRole('button', { name: '上一张', exact: true }).click();
     await expect(page).toHaveURL(`${local.url}/m/voucher-entry/edit?id=${b.id}`);
     // 正式凭证的未提交缓冲按现有契约显式恢复；不能把缓冲当作正式记录。
-    await expect(page.getByRole('status')).toContainText('存在未提交编辑缓冲');
-    await page.getByRole('button', { name: '恢复编辑缓冲', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('尚未正式保存的暂存修改');
+    await page.getByRole('button', { name: '恢复暂存内容', exact: true }).click();
     await page
-      .getByRole('dialog', { name: '恢复编辑缓冲', exact: true })
+      .getByRole('dialog', { name: '恢复暂存内容', exact: true })
       .getByRole('button', { name: '确认', exact: true })
       .click();
     await expect(page.getByLabel('第1行摘要', { exact: true })).toHaveValue('保存期间继续输入');

@@ -452,7 +452,7 @@ export default function TemplatePage() {
               </Button>
             </Space>
             <p style={{ color: '#666' }}>
-              只保存模板头和分录，不保存来源、原编号、制单/审核/过账人或原凭证 revision。
+              只保存模板头和分录，不保存来源、原编号、制单/审核/过账人或原凭证版本。
             </p>
             <LineGrid
               lines={draft.lines}

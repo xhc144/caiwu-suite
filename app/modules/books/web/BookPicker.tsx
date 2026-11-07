@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { formatPeriod, productName, type BookSummary } from '@caiwu/core';
 import { coreApi, queryClient, useSession } from '@caiwu/web-kit';
+import { BrandHeader } from '@caiwu/ui';
 import { filterBooks, moveBookSelection, selectedBook } from '../shared';
 import Wizard from './Wizard';
 import { switchBook } from './session';
@@ -65,7 +66,8 @@ function PickerContent({ templateCreation }: { templateCreation?: TemplateCreati
     await navigate(`/login/${b.id}`);
   };
   return (
-    <div className="cw-center-page">
+    <div className="cw-center-page cw-picker-page">
+      <BrandHeader />
       <Card
         style={{ width: 1120, maxWidth: '100%' }}
         title="选择账套"

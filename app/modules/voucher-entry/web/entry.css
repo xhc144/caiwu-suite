@@ -1,0 +1,47 @@
+/* 凭证录入工具栏：按用途分组、组间用竖线分隔，减少换行和占用高度。 */
+.cw-entry-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--ant-color-border-secondary, #eef0f3);
+  background: var(--ant-color-bg-container, #fff);
+}
+.cw-entry-toolbar .ant-divider-vertical {
+  height: 20px;
+  margin: 0 4px;
+}
+.cw-entry-toolbar-secondary {
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--ant-color-fill-quaternary, #fafbfc);
+}
+/* 凭证"票面"：表头、分录和合计放在同一张卡片里 */
+.cw-voucher-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--ant-color-border-secondary, #eef0f3);
+  border-top: 3px solid var(--ant-color-primary, #1f6feb);
+  background: var(--ant-color-bg-container, #fff);
+}
+.cw-voucher-sheet > p {
+  margin: 0;
+}
+.cw-voucher-signers {
+  font-size: 12px;
+  color: var(--ant-color-text-secondary, #666);
+}
+.cw-voucher-totals {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--ant-color-border, #e5e7eb);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}

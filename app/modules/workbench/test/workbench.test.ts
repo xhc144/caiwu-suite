@@ -60,7 +60,7 @@ const balancesModule = defineServerModule(balancesManifest, {
   router: moduleKit(balancesManifest).router({}),
 });
 let app: TestApp;
-const specs =(status: 'draft' | 'pending' | 'audited' | 'posted', date = '2026-01-10') => ({
+const specs = (status: 'draft' | 'pending' | 'audited' | 'posted', date = '2026-01-10') => ({
   date,
   status,
   summary: '工作台凭证摘要',
@@ -128,7 +128,13 @@ describe('工作台经营概况', () => {
     const result = await api.finance({ period: 202602 });
     expect(result.period).toBe(202602);
     expect(result.months).toEqual([
-      { period: 202601, revenue: 1000_00, expense: 300_00, profit: 700_00, cash: baseCash + 700_00 },
+      {
+        period: 202601,
+        revenue: 1000_00,
+        expense: 300_00,
+        profit: 700_00,
+        cash: baseCash + 700_00,
+      },
       { period: 202602, revenue: 0, expense: 50_00, profit: -50_00, cash: baseCash + 650_00 },
     ]);
     expect(result.ytd).toEqual({ revenue: 1000_00, expense: 350_00, profit: 650_00 });

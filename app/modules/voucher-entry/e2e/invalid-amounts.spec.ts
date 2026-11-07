@@ -75,7 +75,7 @@ for (const label of ['第1行借方', '第2行贷方']) {
       expect(await dirty(page)).toBe(true);
       await page.clock.runFor(1000);
       await expect(page.getByRole('status')).toContainText('金额格式有误');
-      await page.getByRole('button', { name: '保存草稿/缓冲', exact: true }).click();
+      await page.getByRole('button', { name: '暂存', exact: true }).click();
       await page.getByRole('button', { name: '保存', exact: true }).click();
       await expect(page.getByRole('alert').filter({ hasText: '请改为数字金额' })).toBeVisible();
       expect(calls).toHaveLength(0);
@@ -116,7 +116,7 @@ test('w_pz_flxx1：非法原币抽屉关闭重开、前方插删行仍保留，�
     await expect(detail).not.toBeVisible();
     await page.clock.runFor(1000);
     expect(calls).toHaveLength(0);
-    await page.getByRole('button', { name: '保存草稿/缓冲', exact: true }).click();
+    await page.getByRole('button', { name: '暂存', exact: true }).click();
     await expect(detail).toBeVisible();
     await expect(detail.getByLabel('第1行原币金额', { exact: true })).toHaveValue('原币错文');
     await page.keyboard.press('Escape');
@@ -136,8 +136,8 @@ test('w_pz_flxx1：非法原币抽屉关闭重开、前方插删行仍保留，�
     await detail.getByLabel('第1行原币金额', { exact: true }).fill('10');
     await page.keyboard.press('Escape');
     await page.getByLabel('第2行贷方', { exact: true }).fill('71');
-    await page.getByRole('button', { name: '保存草稿/缓冲', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('草稿与编辑缓冲已保存');
+    await page.getByRole('button', { name: '暂存', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('草稿已暂存');
     expect(calls).toHaveLength(1);
   } finally {
     await local.close();
@@ -158,7 +158,7 @@ test('w_pz_pzedit.closequery：非法文本关闭标签可取消，保存失败�
     await leave.getByRole('button', { name: '取消', exact: true }).click();
     await expect(page.getByLabel('第1行借方', { exact: true })).toHaveValue('坏金额');
     await page.keyboard.press('Control+F4');
-    await leave.getByRole('button', { name: '保存缓冲并离开', exact: true }).click();
+    await leave.getByRole('button', { name: '暂存并离开', exact: true }).click();
     await expect(leave).toBeVisible();
     expect(await dirty(page)).toBe(true);
     expect(calls).toHaveLength(0);
@@ -244,8 +244,8 @@ test('w_pz_pzedit_b：保存响应等待期间输入非法文本，旧响应和�
     expect(await dirty(page)).toBe(true);
     await leave.getByRole('button', { name: '取消', exact: true }).click();
     await page.getByLabel('第1行借方', { exact: true }).fill('71');
-    await page.getByRole('button', { name: '保存草稿/缓冲', exact: true }).click();
-    await expect(page.getByRole('status')).toContainText('编辑缓冲已保存');
+    await page.getByRole('button', { name: '暂存', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('已暂存');
     expect(await dirty(page)).toBe(false);
     expect(calls).toHaveLength(2);
   } finally {

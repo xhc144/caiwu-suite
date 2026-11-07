@@ -342,7 +342,10 @@ describe('账套维护的真实连接生命周期', () => {
   describe('本机已退出进程留下的锁', () => {
     // 取一个确定已经退出的进程号
     const deadPid = () => {
-      const child = spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))']);
+      const child = spawnSync(process.execPath, [
+        '-e',
+        'process.stdout.write(String(process.pid))',
+      ]);
       return Number(child.stdout.toString());
     };
     const plant = (owner: Record<string, unknown>, extra: Record<string, string> = {}) => {
@@ -363,10 +366,16 @@ describe('账套维护的真实连接生命周期', () => {
       const store = new BookStore(options());
       try {
         expect(store.open(t.info.id).raw.open).toBe(true);
-        const kept = readdirSync(t.dataDir).filter((n) => n.startsWith('.caiwu-runtime.lock.stale-'));
+        const kept = readdirSync(t.dataDir).filter((n) =>
+          n.startsWith('.caiwu-runtime.lock.stale-'),
+        );
         expect(kept).toHaveLength(1);
-        expect(JSON.parse(readFileSync(path.join(t.dataDir, kept[0]!, 'owner.json'), 'utf8')).pid).toBe(pid);
-        expect(JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8')).pid).toBe(process.pid);
+        expect(
+          JSON.parse(readFileSync(path.join(t.dataDir, kept[0]!, 'owner.json'), 'utf8')).pid,
+        ).toBe(pid);
+        expect(JSON.parse(readFileSync(path.join(lock, 'owner.json'), 'utf8')).pid).toBe(
+          process.pid,
+        );
       } finally {
         await store.closeAll();
       }

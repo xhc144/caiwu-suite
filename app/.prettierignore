@@ -6,3 +6,7 @@ playwright-report
 test-results
 pnpm-lock.yaml
 *.md
+apps/desktop/release
+.local-demo
+.claude
+apps/desktop/release-old

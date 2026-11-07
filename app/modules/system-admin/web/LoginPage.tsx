@@ -1,4 +1,5 @@
-import { Alert, Button, Card, Form, Input, Space, Typography } from 'antd';
+import { Alert, Button, Form, Input, Space, Typography } from 'antd';
+import { BrandSplit } from '@caiwu/ui';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { useNavigate } from 'react-router';
@@ -53,9 +54,11 @@ export default function LoginPage({ bookId }: { bookId: string }) {
     }
   };
   return (
-    <main style={{ maxWidth: 480, margin: '8vh auto', padding: 24 }}>
-      <Card>
-        <Typography.Title level={3}>用户登录</Typography.Title>
+    <BrandSplit>
+      <main>
+        <Typography.Title level={3} style={{ marginTop: 0 }}>
+          用户登录
+        </Typography.Title>
         {books.isLoading ? (
           <Typography.Paragraph>正在读取账套…</Typography.Paragraph>
         ) : books.error ? (
@@ -73,7 +76,7 @@ export default function LoginPage({ bookId }: { bookId: string }) {
           />
         ) : (
           <>
-            <Typography.Paragraph>
+            <Typography.Paragraph className="cw-login-book">
               已选账套：<strong>{book.name}</strong>
               <br />
               {book.orgName} · 启用期间 {book.startPeriod}
@@ -142,7 +145,7 @@ export default function LoginPage({ bookId }: { bookId: string }) {
           <Button onClick={() => void navigate('/')}>返回账套列表</Button>
           <Button onClick={() => void books.refetch()}>刷新账套</Button>
         </Space>
-      </Card>
-    </main>
+      </main>
+    </BrandSplit>
   );
 }

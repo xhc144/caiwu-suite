@@ -122,7 +122,9 @@ export function workbenchService(svc: CoreServices, manifests: ModuleManifest[],
       const selected = period ? await svc.periods.require(period) : current;
       if (!selected) return { period: null, months: [], ytd: null };
       const accounts = new Map((await svc.accounts.list()).map((a) => [a.id, a]));
-      const pnl = new Set((await svc.accounts.categories()).filter((c) => c.isPnl).map((c) => c.id));
+      const pnl = new Set(
+        (await svc.accounts.categories()).filter((c) => c.isPnl).map((c) => c.id),
+      );
       const book = await svc.book.info();
       const year = Math.floor(selected.period / 100);
       const periods = (await svc.periods.list())

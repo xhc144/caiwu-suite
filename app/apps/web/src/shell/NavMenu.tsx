@@ -1,5 +1,22 @@
 import { Menu, Typography, type MenuProps } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import {
+  AccountBookOutlined,
+  BarChartOutlined,
+  BookOutlined,
+  CalculatorOutlined,
+  DatabaseOutlined,
+  ExperimentOutlined,
+  FileTextOutlined,
+  FundOutlined,
+  HddOutlined,
+  HomeOutlined,
+  InboxOutlined,
+  LockOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  WalletOutlined,
+} from '@ant-design/icons';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { MENU_GROUPS, moduleRoute, type CurrentUser, type ModuleManifest } from '@caiwu/core';
 import { isAdminEntry } from './guards';
@@ -59,6 +76,24 @@ export function groupNavItems(items: NavItem[]) {
   })).filter((g) => g.items.length);
 }
 
+/** 分组图标。图标不参与可访问名称（aria-hidden），菜单项名称仍是纯文字。 */
+const GROUP_ICONS: Record<string, ReactNode> = {
+  voucher: <FileTextOutlined aria-hidden />,
+  ledger: <BookOutlined aria-hidden />,
+  report: <BarChartOutlined aria-hidden />,
+  period: <LockOutlined aria-hidden />,
+  cashier: <WalletOutlined aria-hidden />,
+  invoice: <AccountBookOutlined aria-hidden />,
+  payroll: <TeamOutlined aria-hidden />,
+  asset: <HddOutlined aria-hidden />,
+  inventory: <InboxOutlined aria-hidden />,
+  costing: <CalculatorOutlined aria-hidden />,
+  analysis: <FundOutlined aria-hidden />,
+  master: <DatabaseOutlined aria-hidden />,
+  system: <SettingOutlined aria-hidden />,
+  dev: <ExperimentOutlined aria-hidden />,
+};
+
 /** order 的百位表示同一分组里的一档（日常、辅助、设置……），换档处加分隔线。 */
 export const navTier = (order: number) => Math.floor(order / 100);
 
@@ -96,10 +131,11 @@ export function NavMenu({ items, collapsed }: { items: NavItem[]; collapsed: boo
   }, [currentGroup]);
 
   const menuItems: MenuProps['items'] = [
-    { key: '/home', label: '首页' },
+    { key: '/home', label: '首页', icon: <HomeOutlined aria-hidden /> },
     ...groups.map(({ group, items: list }) => ({
       key: `group:${group.id}`,
       label: group.title,
+      icon: GROUP_ICONS[group.id],
       children: list.flatMap((i, index) => {
         const entry = {
           key: i.key,

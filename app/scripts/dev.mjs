@@ -25,7 +25,10 @@ const env = {
 // Windows 上 spawn('pnpm') 找不到可执行文件（ENOENT），而经 shell 启动又无法可靠地结束子进程。
 const webRoot = path.join(appRoot, 'apps/web');
 const binOf = (fromDir, pkg, rel) =>
-  path.join(path.dirname(createRequire(path.join(fromDir, 'package.json')).resolve(`${pkg}/package.json`)), rel);
+  path.join(
+    path.dirname(createRequire(path.join(fromDir, 'package.json')).resolve(`${pkg}/package.json`)),
+    rel,
+  );
 const tsxCli = binOf(appRoot, 'tsx', 'dist/cli.mjs');
 const viteCli = binOf(webRoot, 'vite', 'bin/vite.js');
 

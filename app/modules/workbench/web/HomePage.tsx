@@ -270,12 +270,7 @@ export default function HomePage() {
       ) : (
         <Empty description="账套尚无会计期间，请联系管理员检查账套" />
       )}
-      <FinanceOverview
-        period={period}
-        scope={scope}
-        refreshSignal={refreshSignal}
-        onOpen={open}
-      />
+      <FinanceOverview period={period} scope={scope} refreshSignal={refreshSignal} onOpen={open} />
       {shortcuts.length > 0 && (
         <section className="cw-home-section" aria-label="快捷入口">
           <div className="cw-home-section-head">
